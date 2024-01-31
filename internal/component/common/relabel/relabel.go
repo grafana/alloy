@@ -68,13 +68,13 @@ type Regexp struct {
 	*regexp.Regexp
 }
 
-func newRegexp(s string) (Regexp, error) {
+func NewRegexp(s string) (Regexp, error) {
 	re, err := regexp.Compile("^(?:" + s + ")$")
 	return Regexp{re}, err
 }
 
-func mustNewRegexp(s string) Regexp {
-	re, err := newRegexp(s)
+func MustNewRegexp(s string) Regexp {
+	re, err := NewRegexp(s)
 	if err != nil {
 		panic(err)
 	}
@@ -122,7 +122,7 @@ type Config struct {
 var DefaultRelabelConfig = Config{
 	Action:      Replace,
 	Separator:   ";",
-	Regex:       mustNewRegexp("(.*)"),
+	Regex:       MustNewRegexp("(.*)"),
 	Replacement: "$1",
 }
 
@@ -131,7 +131,7 @@ func (c *Config) SetToDefault() {
 	*c = Config{
 		Action:      Replace,
 		Separator:   ";",
-		Regex:       mustNewRegexp("(.*)"),
+		Regex:       MustNewRegexp("(.*)"),
 		Replacement: "$1",
 	}
 }
