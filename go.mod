@@ -4,7 +4,7 @@ go 1.22.5
 
 require (
 	cloud.google.com/go/pubsub v1.38.0
-	connectrpc.com/connect v1.14.0
+	connectrpc.com/connect v1.16.2
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.7.0
 	github.com/Azure/go-autorest/autorest v0.11.29
@@ -60,7 +60,7 @@ require (
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
 	github.com/grafana/dskit v0.0.0-20240104111617-ea101a3b86eb
 	github.com/grafana/go-gelf/v2 v2.0.1
-	github.com/grafana/jfr-parser/pprof v0.0.0-20240126072739-986e71dc0361
+	github.com/grafana/jfr-parser/pprof v0.0.0-20240815065100-4296f63fd6d7
 	github.com/grafana/jsonparser v0.0.0-20240209175146-098958973a2d
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
 	github.com/grafana/loki/pkg/push v0.0.0-20240514112848-a1b1eeb09583 // k201 branch
@@ -252,6 +252,8 @@ require (
 	sigs.k8s.io/controller-runtime v0.17.3
 	sigs.k8s.io/yaml v1.4.0
 )
+
+require github.com/gorilla/websocket v1.5.0
 
 require (
 	cloud.google.com/go v0.114.0 // indirect
@@ -445,11 +447,10 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.4 // indirect
 	github.com/gophercloud/gophercloud v1.12.0 // indirect
-	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/gosnmp/gosnmp v1.37.0 // indirect
 	github.com/grafana/go-offsets-tracker v0.1.7 // indirect
 	github.com/grafana/gomemcache v0.0.0-20231204155601-7de47a8c3cb0 // indirect
-	github.com/grafana/jfr-parser v0.8.0 // indirect
+	github.com/grafana/jfr-parser v0.8.1-0.20240815065100-4296f63fd6d7 // indirect
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240813124544-9995e8354548
 	github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
@@ -601,6 +602,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
+	github.com/planetscale/vtprotobuf v0.6.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20220216144756-c35f1ee13d7c // indirect
 	github.com/prometheus-community/go-runit v0.1.0 // indirect
 	github.com/prometheus-community/prom-label-proxy v0.6.0 // indirect
@@ -615,7 +617,7 @@ require (
 	github.com/safchain/ethtool v0.3.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
-	github.com/samber/lo v1.38.1 // indirect
+	github.com/samber/lo v1.38.1
 	github.com/samuel/go-zookeeper v0.0.0-20190923202752-2cc03de413da // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/seccomp/libseccomp-golang v0.9.2-0.20220502022130-f33da4d89646 // indirect
@@ -809,3 +811,6 @@ exclude (
 )
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
+
+// TODO: Remove after https://github.com/grafana/pyroscope/pull/3416  merges and gets tagged
+replace github.com/grafana/pyroscope/api => github.com/simonswine/pyroscope/api v0.0.0-20240726141528-fef95be2e3c2
