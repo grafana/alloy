@@ -1,10 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tutorials/flow-by-example/processing-logs/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tutorials/flow-by-example/processing-logs/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tutorials/flow-by-example/processing-logs/
-- /docs/grafana-cloud/send-data/agent/flow/tutorials/processing-logs/
-canonical: https://grafana.com/docs/agent/latest/flow/tutorials/flow-by-example/processing-logs/
+- ./tutorials/flow-by-example/processing-logs/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/processing-logs/
 description: Learn how to process logs
 title: Processing Logs
 weight: 40
@@ -19,7 +16,7 @@ It covers using `loki.source.api` to receive logs over HTTP, processing and filt
 
 **Recommended reading**
 
-- Optional: [loki.source.api](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/loki.source.api/)
+- Optional: [loki.source.api][]
 
 The `loki.source.api` component can receive logs over HTTP.
 It can be useful for receiving logs from other {{< param "PRODUCT_ROOT_NAME" >}}s or collectors, or directly from applications that can send logs over HTTP, and then processing them centrally.
@@ -51,9 +48,9 @@ Next, you can configure the `loki.process` and `loki.write` components.
 
 **Recommended reading**
 
-- [loki.process#stage.drop](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/loki.process/#stagedrop-block)
-- [loki.process#stage.json](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/loki.process/#stagejson-block)
-- [loki.process#stage.labels](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/loki.process/#stagelabels-block)
+- [loki.process#stage.drop][]
+- [loki.process#stage.json][]
+- [loki.process#stage.labels][]
 
 ```river
 // Let's send and process more logs!
@@ -142,7 +139,8 @@ In subsequent stages, you can use the extracted map to filter logs, add or remov
 `stage.*` blocks are executed in the order they appear in the component, top down.
 {{< /admonition >}}
 
-Let's use an example log line to illustrate this, then go stage by stage, showing the contents of the extracted map. Here is our example log line:
+Let's use an example log line to illustrate this, then go stage by stage, showing the contents of the extracted map.
+Here is our example log line:
 
 ```json
 {
@@ -166,10 +164,11 @@ stage.json {
 }
 ```
 
-This stage parses the log line as JSON, extracts two values from it, `log` and `timestamp`, and puts them into the extracted map with keys `log` and `ts`, respectively. 
+This stage parses the log line as JSON, extracts two values from it, `log` and `timestamp`, and puts them into the extracted map with keys `log` and `ts`, respectively.
 
 {{< admonition type="note" >}}
-Supplying an empty string is shorthand for using the same key as in the input log line (so `log = ""` is the same as `log = "log"`). The _keys_ of the `expressions` object end up as the keys in the extracted map, and the _values_ are used as keys to look up in the parsed log line.
+Supplying an empty string is shorthand for using the same key as in the input log line (so `log = ""` is the same as `log = "log"`).
+The _keys_ of the `expressions` object end up as the keys in the extracted map, and the _values_ are used as keys to look up in the parsed log line.
 {{< /admonition >}}
 
 If this were Python, it would be roughly equivalent to:
@@ -293,7 +292,7 @@ stage.drop {
 This stage acts on the `is_secret` value in the extracted map, which is a value that you extracted in the previous stage.
 This stage drops the log line if the value of `is_secret` is `"true"` and does not modify the extracted map.
 There are many other ways to filter logs, but this is a simple example.
-Refer to the [loki.process#stage.drop](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/loki.process/#stagedrop-block) documentation for more information.
+Refer to the [loki.process#stage.drop][] documentation for more information.
 
 ### Stage 5
 
@@ -320,12 +319,12 @@ stage.output {
 This stage uses the `log_line` value in the extracted map to set the actual log line that is forwarded to Loki.
 Rather than sending the entire JSON blob to Loki, you are only sending `original_log_line["log"]["message"]`, along with some labels that you attached.
 
-This stage does not modify the extracted map.
+This stage doesn't modify the extracted map.
 
 ## Putting it all together
 
-Now that you have all of the pieces, let's run the {{< param "PRODUCT_ROOT_NAME" >}} and send some logs to it.
-Modify `config.river` with the config from the previous example and start the {{< param "PRODUCT_ROOT_NAME" >}} with:
+Now that you have all of the pieces, let's run {{< param "PRODUCT_ROOT_NAME" >}} and send some logs to it.
+Modify `config.river` with the config from the previous example and start {{< param "PRODUCT_ROOT_NAME" >}} with:
 
 ```bash
 /path/to/agent run config.river
@@ -344,7 +343,7 @@ curl localhost:9999/loki/api/v1/raw -XPOST -H "Content-Type: application/json" -
 ```
 
 Now that you have sent some logs, let's see how they look in Grafana.
-Navigate to [localhost:3000/explore](http://localhost:3000/explore) and switch the Datasource to `Loki`. 
+Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`.
 Try querying for `{source="demo-api"}` and see if you can find the logs you sent.
 
 Try playing around with the values of `"level"`, `"message"`, `"timestamp"`, and `"is_secret"` and see how the logs change.
@@ -355,12 +354,12 @@ You can also try adding more stages to the `loki.process` component to extract m
 ## Exercise
 
 Since you are already using Docker and Docker exports logs, let's get those logs into Loki.
-You can refer to the [discovery.docker](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/discovery.docker/) and [loki.source.docker](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/loki.source.docker/) documentation for more information. 
+You can refer to the [discovery.docker][] and [loki.source.docker][] documentation for more information.
 
 To ensure proper timestamps and other labels, make sure you use a `loki.process` component to process the logs before sending them to Loki.
 
-Although you have not used it before, let's use a `discovery.relabel` component to attach the container name as a label to the logs.
-You can refer to the [discovery.relabel](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/discovery.relabel/) documentation for more information.
+Although you haven't used it before, let's use a `discovery.relabel` component to attach the container name as a label to the logs.
+You can refer to the [discovery.relabel][] documentation for more information.
 The `discovery.relabel` component is very similar to the `prometheus.relabel` component, but is used to relabel discovered targets rather than metrics.
 
 {{< collapse title="Solution" >}}
@@ -405,3 +404,12 @@ loki.write "local_loki" {
 ```
 
 {{< /collapse >}}
+
+[loki.source.api]: ../../../reference/components/loki.source.api/
+[loki.process#stage.drop]: ../../../reference/components/loki.process/#stagedrop-block
+[loki.process#stage.json]: ../../../reference/components/loki.process/#stagejson-block
+[loki.process#stage.labels]: ../../../reference/components/loki.process/#stagelabels-block
+[localhost:3000/explore]: http://localhost:3000/explore
+[discovery.docker]: ../../../reference/components/discovery.docker/
+[loki.source.docker]: ../../../reference/components/loki.source.docker/
+[discovery.relabel]: ../../../reference/components/discovery.relabel/

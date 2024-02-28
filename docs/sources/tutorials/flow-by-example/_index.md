@@ -1,11 +1,8 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tutorials/flow-by-example/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tutorials/flow-by-example/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tutorials/flow-by-example/
-- /docs/grafana-cloud/send-data/agent/flow/tutorials/flow-by-example/
-canonical: https://grafana.com/docs/agent/latest/flow/tutorials/flow-by-example/
-description: Learn how to use Grafana Agent Flow
+- ./tutorials/flow-by-example/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/
+description: Learn how to use Grafana Alloy
 title: Flow by example
 weight: 100
 ---

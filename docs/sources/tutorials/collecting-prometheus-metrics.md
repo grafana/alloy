@@ -1,11 +1,7 @@
 ---
 aliases:
-- ./collecting-prometheus-metrics/
-- /docs/grafana-cloud/agent/flow/tutorials/collecting-prometheus-metrics/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tutorials/collecting-prometheus-metrics/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tutorials/collecting-prometheus-metrics/
-- /docs/grafana-cloud/send-data/agent/flow/tutorials/collecting-prometheus-metrics/
-canonical: https://grafana.com/docs/agent/latest/flow/tutorials/collecting-prometheus-metrics/
+- ./tutorials/collecting-prometheus-metrics/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/collecting-prometheus-metrics/
 description: Learn how to collect Prometheus metrics
 menuTitle: Collect Prometheus metrics
 title: Collect Prometheus metrics
@@ -14,7 +10,8 @@ weight: 200
 
 # Collect Prometheus metrics
 
-{{< param "PRODUCT_ROOT_NAME" >}} is a telemetry collector with the primary goal of moving telemetry data from one location to another. In this tutorial, you'll set up {{< param "PRODUCT_NAME" >}}.
+{{< param "PRODUCT_ROOT_NAME" >}} is a telemetry collector with the primary goal of moving telemetry data from one location to another.
+In this tutorial, you'll set up {{< param "PRODUCT_NAME" >}}.
 
 ## Prerequisites
 
@@ -31,8 +28,8 @@ curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tuto
 The `runt.sh` script does:
 
 1. Downloads the configurations necessary for Mimir, Grafana, and {{< param "PRODUCT_ROOT_NAME" >}}.
-2. Downloads the docker image for {{< param "PRODUCT_ROOT_NAME" >}} explicitly.
-3. Runs the docker-compose up command to bring all the services up.
+1. Downloads the docker image for {{< param "PRODUCT_ROOT_NAME" >}} explicitly.
+1. Runs the docker-compose up command to bring all the services up.
 
 Allow {{< param "PRODUCT_ROOT_NAME" >}} to run for two minutes, then navigate to [Grafana][].
 
@@ -44,7 +41,8 @@ Navigate to `http://localhost:12345/graph` to view the {{< param "PRODUCT_NAME" 
 
 ![The User Interface](/media/docs/agent/screenshot-grafana-agent-collect-metrics-graph.png)
 
-{{< param "PRODUCT_ROOT_NAME" >}} displays the component pipeline in a dependency graph. See [Scraping component](#scraping-component) and [Remote Write component](#remote-write-component) for details about the components used in this configuration.
+{{< param "PRODUCT_ROOT_NAME" >}} displays the component pipeline in a dependency graph.
+See [Scraping component](#scraping-component) and [Remote Write component](#remote-write-component) for details about the components used in this configuration.
 Click the nodes to navigate to the associated component page. There, you can view the state, health information, and, if applicable, the debug information.
 
 ![Component information](/media/docs/agent/screenshot-grafana-agent-collect-metrics-comp-info.png)
@@ -67,11 +65,14 @@ prometheus.scrape "default" {
 }
 ```
 
-The `prometheus.scrape "default"` annotation indicates the name of the component, `prometheus.scrape`, and its label, `default`. All components must have a unique combination of name and if applicable label.
+The `prometheus.scrape "default"` annotation indicates the name of the component, `prometheus.scrape`, and its label, `default`.
+All components must have a unique combination of name and if applicable label.
 
-The `targets` [attribute][] is an [argument][]. `targets` is a list of labels that specify the target via the special key `__address__`. The scraper is targeting the {{< param "PRODUCT_NAME" >}} `/metrics` endpoint. Both `http` and `/metrics` are implied but can be overridden.
+The `targets` [attribute][] is an [argument][]. `targets` is a list of labels that specify the target via the special key `__address__`.
+The scraper is targeting the {{< param "PRODUCT_NAME" >}} `/metrics` endpoint. Both `http` and `/metrics` are implied but can be overridden.
 
-The `forward_to` attribute is an argument that references the [export][] of the `prometheus.remote_write.prom` component. This is where the scraper will send the metrics for further processing.
+The `forward_to` attribute is an argument that references the [export][] of the `prometheus.remote_write.prom` component.
+This is where the scraper will send the metrics for further processing.
 
 ## Remote Write component
 
@@ -95,16 +96,8 @@ To try out {{< param "PRODUCT_ROOT_NAME" >}} without using Docker:
 
 [Docker]: https://www.docker.com/products/docker-desktop
 [Grafana]: http://localhost:3000/explore?orgId=1&left=%5B%22now-1h%22,%22now%22,%22Mimir%22,%7B%22refId%22:%22A%22,%22instant%22:true,%22range%22:true,%22exemplar%22:true,%22expr%22:%22agent_build_info%7B%7D%22%7D%5D
-
-{{% docs/reference %}}
-[prometheus.scrape]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.scrape.md"
-[prometheus.scrape]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.scrape.md"
-[attribute]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/config-language/#attributes"
-[attribute]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/config-language/#attributes"
-[argument]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/components"
-[argument]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/components"
-[export]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/components"
-[export]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/components"
-[prometheus.remote_write]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.remote_write.md"
-[prometheus.remote_write]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.remote_write.md"
-{{% /docs/reference %}}
+[prometheus.scrape]: ../../reference/components/prometheus.scrape/
+[attribute]: ../../concepts/config-language/#attributes
+[argument]: ../../concepts/components/
+[export]: ../../concepts/components/
+[prometheus.remote_write]: ../../reference/components/prometheus.remote_write/

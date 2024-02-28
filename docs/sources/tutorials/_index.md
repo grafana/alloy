@@ -1,11 +1,8 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tutorials/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tutorials/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tutorials/
-- /docs/grafana-cloud/send-data/agent/flow/tutorials/
-canonical: https://grafana.com/docs/agent/latest/flow/tutorials/
-description: Learn how to use Grafana Agent Flow
+- ./tutorials/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/
+description: Learn how to use Grafana Alloy
 title: Tutorials
 weight: 300
 ---
