@@ -119,7 +119,6 @@ Patch and security releases may be created at any time.
 [UI]: "/docs/grafana-cloud/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug.md#grafana-agent-flow-ui"
 {{% /docs/reference %}}
 
-
 # {{% param "PRODUCT_NAME" %}}
 
 {{< param "PRODUCT_NAME" >}} is a _component-based_ revision of {{< param "PRODUCT_ROOT_NAME" >}} with a focus on ease-of-use,
@@ -202,4 +201,3 @@ This feature is experimental, and it doesn't support all River components.
 [Reference]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/"
 [Reference]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/
 {{% /docs/reference %}}
-
