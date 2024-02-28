@@ -91,6 +91,12 @@ local windows_containers_jobs = std.map(function(container) (
   }
 ), windows_containers);
 
+// TODO(rfratto): The following are TEMPORARILY disabled as grafana/alloy gets
+// set up. Remove the line below in favor of the comment block to reenable the
+// publish jobs.
+[]
+
+/*
 linux_containers_jobs + windows_containers_jobs + [
   pipelines.linux('Deploy to deployment_tools') {
     trigger: {
@@ -196,3 +202,4 @@ linux_containers_jobs + windows_containers_jobs + [
     }],
   },
 ]
+*/
