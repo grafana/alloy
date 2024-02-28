@@ -14,10 +14,10 @@ Patch Releases for that major pr minor version of the agent.
 
 2. Create and push the release branch from the selected base commit:
 
-    The name of the release branch should be `release-VERSION_PREFIX`
-    defined above, such as `release-v0.31`.
+    The name of the release branch should be `release/VERSION_PREFIX`
+    defined above, such as `release/v0.31`.
 
-        > **NOTE**: Branches are only made for VERSION_PREFIX; do not create branches for the full VERSION such as `release-v0.31-rc.0` or `release-v0.31.0`.
+        > **NOTE**: Branches are only made for VERSION_PREFIX; do not create branches for the full VERSION such as `release/v0.31-rc.0` or `release/v0.31.0`.
 
     - If the consensus commit is the latest commit from main you can branch from main.
     - If the consensus commit is not the latest commit from main, branch from that instead.
