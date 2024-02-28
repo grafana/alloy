@@ -331,7 +331,7 @@ endif
 .PHONY: drone
 drone: generate-drone
 	drone lint .drone/drone.yml --trusted
-	drone --server https://drone.grafana.net sign --save grafana/agent .drone/drone.yml
+	drone --server https://drone.grafana.net sign --save grafana/alloy .drone/drone.yml
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache

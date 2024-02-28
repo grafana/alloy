@@ -900,6 +900,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: f0ee45eb7194fb9b66e5fe25c83d3727698c10653033ffcc8f8aaae215c23752
+hmac: 25f83467a6323fb131c803ff1e9b9b0676d28c40ab0d55f374307685111eb61f
 
 ...
