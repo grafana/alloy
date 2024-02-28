@@ -11,6 +11,8 @@ weight: 350
 cascade:
   AGENT_RELEASE: v0.40.0
   OTEL_VERSION: v0.87.0
+PRODUCT_NAME: Grafana Alloy
+  PRODUCT_ROOT_NAME: Grafana Alloy
 ---
 
 # Grafana Agent
