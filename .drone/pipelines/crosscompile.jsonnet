@@ -31,7 +31,6 @@ local os_arch_tuples = [
 local targets = [
   'agent',
   'agent-flow',
-  'operator',
 ];
 
 local targets_boringcrypto = [

@@ -3,7 +3,6 @@ local pipelines = import '../util/pipelines.jsonnet';
 
 local linux_containers = [
   { name: 'grafana/agent', make: 'make agent-image', path: 'cmd/grafana-agent/Dockerfile' },
-  { name: 'grafana/agent-operator', make: 'make operator-image', path: 'cmd/grafana-agent-operator/Dockerfile' },
 ];
 
 local windows_containers = [

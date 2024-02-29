@@ -33,23 +33,6 @@ local pipelines = import '../util/pipelines.jsonnet';
     }],
   },
 
-  pipelines.linux('Test crds') {
-    trigger: {
-      event: ['pull_request'],
-    },
-    steps: [{
-      name: 'Regenerate crds',
-      image: build_image.linux,
-
-      commands: [
-        'make generate-crds',
-        'ERR_MSG="Custom Resource Definitions are out of date. Please run \'make generate-crds\' and commit changes!"',
-        // "git status --porcelain" reports if there's any new, modified, or deleted files.
-        'if [ ! -z "$(git status --porcelain)" ]; then echo $ERR_MSG >&2; exit 1; fi',
-      ],
-    }],
-  },
-
   pipelines.linux('Test') {
     trigger: {
       event: ['pull_request'],
