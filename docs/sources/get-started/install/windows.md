@@ -1,20 +1,10 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/get-started/install/windows/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/get-started/install/windows/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/get-started/install/windows/
-- /docs/grafana-cloud/send-data/agent/flow/get-started/install/windows/
-# Previous docs aliases for backwards compatibility:
-- ../../install/windows/ # /docs/agent/latest/flow/install/windows/
-- /docs/grafana-cloud/agent/flow/setup/install/windows/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/setup/install/windows/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/setup/install/windows/
-- /docs/grafana-cloud/send-data/agent/flow/setup/install/windows/
-- ../../setup/install/windows/ # /docs/agent/latest/flow/setup/install/windows/
-canonical: https://grafana.com/docs/agent/latest/flow/get-started/install/windows/
-description: Learn how to install Grafana Agent Flow on Windows
+- ./get-started/install/windows/
+canonical: https://grafana.com/docs/alloy/latest/get-started/install/windows/
+description: Learn how to install Grafana Alloy on Windows
 menuTitle: Windows
-title: Install Grafana Agent Flow on Windows
+title: Install Grafana Alloy on Windows
 weight: 500
 ---
 
@@ -76,7 +66,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 ## Uninstall
 
-You can uninstall {{< param "PRODUCT_NAME" >}} with Windows Remove Programs or `C:\Program Files\Grafana Agent\uninstaller.exe`.
+You can uninstall {{< param "PRODUCT_NAME" >}} with Windows Remove Programs or `C:\Program Files\Grafana Alloy\uninstaller.exe`.
 Uninstalling {{< param "PRODUCT_NAME" >}} stops the service and removes it from disk.
 This includes any configuration files in the installation directory.
 
@@ -84,16 +74,10 @@ This includes any configuration files in the installation directory.
 
 ## Next steps
 
-- [Run {{< param "PRODUCT_NAME" >}}][Start]
+- [Run {{< param "PRODUCT_NAME" >}}][Run]
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
-[latest]: https://github.com/grafana/agent/releases/latest
-
-{{% docs/reference %}}
-[Run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/get-started/run/windows.md"
-[Run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/get-started/run/windows.md"
-[Configure]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/configure/configure-windows.md"
-[Configure]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/configure/configure-windows.md"
-[data collection]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/data-collection.md"
-[data collection]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/data-collection.md"
-{{% /docs/reference %}}
+[latest]: https://github.com/grafana/alloy/releases/latest
+[data collection]: ../../../data-collection/
+[Run]: ../../run/windows/
+[Configure]: ../../../tasks/configure/configure-windows/

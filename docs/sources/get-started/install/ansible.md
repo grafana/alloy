@@ -1,13 +1,10 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/get-started/install/ansible/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/get-started/install/ansible/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/get-started/install/ansible/
-- /docs/grafana-cloud/send-data/agent/flow/get-started/install/ansible/
-canonical: https://grafana.com/docs/agent/latest/flow/get-started/install/ansible/
-description: Learn how to install Grafana Agent Flow with Ansible
+- ./get-started/install/ansible/
+canonical: https://grafana.com/docs/alloy/latest/get-started/install/ansible/
+description: Learn how to install Grafana Alloy with Ansible
 menuTitle: Ansible
-title: Install Grafana Agent Flow with Ansible
+title: Install Grafana Alloy with Ansible
 weight: 550
 ---
 
@@ -17,7 +14,7 @@ You can use Ansible to install and manage {{< param "PRODUCT_NAME" >}} on Linux 
 
 ## Before you begin
 
-- These steps assume you already have a working [Ansible](https://www.ansible.com/) setup and a pre-existing inventory.
+- These steps assume you already have a working [Ansible][] setup and a pre-existing inventory.
 - You can add the tasks below to any new or existing role.
 
 ## Steps
@@ -45,7 +42,6 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
     ```
 
    Replace the following:
-
    - _`<path-to-config-file-on-localhost>`_: The path to the River configuration file on the Ansible Controller (Localhost).
 
 1. Run the Ansible playbook. Open a terminal window and run the following command from the Ansible playbook directory.
@@ -80,7 +76,5 @@ Main PID: 3176 (agent-linux-amd)
 
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
-{{% docs/reference %}}
-[Configure]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/configure/configure-linux.md"
-[Configure]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/configure/configure-linux.md"
-{{% /docs/reference %}}
+[Ansible]: https://www.ansible.com/
+[Configure]: ../../../tasks/configure/configure-linux/

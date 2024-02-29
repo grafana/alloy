@@ -1,20 +1,10 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/get-started/install/docker/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/get-started/install/docker/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/get-started/install/docker/
-- /docs/grafana-cloud/send-data/agent/flow/get-started/install/docker/
-# Previous docs aliases for backwards compatibility:
-- ../../install/docker/ # /docs/agent/latest/flow/install/docker/
-- /docs/grafana-cloud/agent/flow/setup/install/docker/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/setup/install/docker/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/setup/install/docker/
-- /docs/grafana-cloud/send-data/agent/flow/setup/install/docker/
-- ../../setup/install/docker/ # /docs/agent/latest/flow/setup/install/docker/
-canonical: https://grafana.com/docs/agent/latest/flow/get-started/install/docker/
-description: Learn how to install Grafana Agent Flow on Docker
+- ./get-started/install/docker/
+canonical: https://grafana.com/docs/alloy/latest/get-started/install/docker/
+description: Learn how to install Grafana Alloy on Docker
 menuTitle: Docker
-title: Run Grafana Agent Flow in a Docker container
+title: Run Grafana Alloy in a Docker container
 weight: 100
 ---
 
@@ -94,10 +84,5 @@ To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to
 [Linux containers]: #run-a-linux-docker-container
 [Windows containers]: #run-a-windows-docker-container
 [Docker]: https://docker.io
-
-{{% docs/reference %}}
-[run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/run.md"
-[run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/run.md"
-[UI]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug.md#grafana-agent-flow-ui"
-[UI]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/debug.md#grafana-agent-flow-ui"
-{{% /docs/reference %}}
+[run]: ../../../reference/cli/run/
+[UI]: ../../../tasks/debug/#grafana-agent-flow-ui

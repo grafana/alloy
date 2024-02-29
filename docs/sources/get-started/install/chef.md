@@ -1,14 +1,10 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/get-started/install/chef/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/get-started/install/chef/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/get-started/install/chef/
-- /docs/grafana-cloud/send-data/agent/flow/get-started/install/chef/
-
-canonical: https://grafana.com/docs/agent/latest/flow/get-started/install/chef/
-description: Learn how to install Grafana Agent Flow with Chef
+- ./get-started/install/chef/
+canonical: https://grafana.com/docs/alloy/latest/get-started/install/chef/
+description: Learn how to install Grafana Alloy with Chef
 menuTitle: Chef
-title: Install Grafana Agent Flow with Chef
+title: Install Grafana Alloy with Chef
 weight: 550
 ---
 
@@ -20,7 +16,8 @@ You can use Chef to install and manage {{< param "PRODUCT_NAME" >}}.
 
 - These steps assume you already have a working [Chef][] setup.
 - You can add the following resources to any new or existing recipe.
-- These tasks install {{< param "PRODUCT_NAME" >}} from the package repositories. The tasks target Linux systems from the following families:
+- These tasks install {{< param "PRODUCT_NAME" >}} from the package repositories.
+  The tasks target Linux systems from the following families:
   - Debian (including Ubuntu)
   - RedHat Enterprise Linux
   - Amazon Linux
@@ -97,8 +94,4 @@ The default configuration file location is `/etc/grafana-agent-flow.river`. You 
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Chef]: https://www.chef.io/products/chef-infrastructure-management/
-
-{{% docs/reference %}}
-[Configure]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/configure/configure-linux.md"
-[Configure]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/configure/configure-linux.md"
-{{% /docs/reference %}}
+[Configure]: ../../../tasks/configure/configure-linux/

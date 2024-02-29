@@ -1,11 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/get-started/install/puppet/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/get-started/install/puppet/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/get-started/install/puppet/
-- /docs/grafana-cloud/send-data/agent/flow/get-started/install/puppet/
-
-canonical: https://grafana.com/docs/agent/latest/flow/get-started/install/puppet/
+- ./get-started/install/puppet/
+canonical: https://grafana.com/docs/alloy/latest/get-started/install/puppet/
 description: Learn how to install Grafana Agent Flow with Puppet
 menuTitle: Puppet
 title: Install Grafana Agent Flow with Puppet
@@ -41,7 +37,7 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
     }
     ```
 
-1. Create a new [Puppet][] manifest with the following class to add the Grafana package repositories, install the `grafana-agent-flow` package, and run the service:
+1. Create a new [Puppet][] manifest with the following class to add the Grafana package repositories, install the `grafana-alloy` package, and run the service:
 
     ```ruby
     class grafana_agent::grafana_agent_flow () {
@@ -97,17 +93,14 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
 
 ## Configuration
 
-The `grafana-agent-flow` package installs a default configuration file that doesn't send telemetry anywhere.
+The `grafana-alloy` package installs a default configuration file that doesn't send telemetry anywhere.
 
-The default configuration file location is `/etc/grafana-agent-flow.river`. You can replace this file with your own configuration, or create a new configuration file for the service to use. 
+The default configuration file location is `/etc/grafana-alloy.river`.
+You can replace this file with your own configuration, or create a new configuration file for the service to use.
 
 ## Next steps
 
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Puppet]: https://www.puppet.com/
-
-{{% docs/reference %}}
-[Configure]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/configure/configure-linux.md"
-[Configure]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/configure/configure-linux.md"
-{{% /docs/reference %}}
+[Configure]: ../../../tasks/configure/configure-linux/

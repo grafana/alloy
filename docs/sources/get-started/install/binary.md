@@ -1,17 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/get-started/install/binary/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/get-started/install/binary/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/get-started/install/binary/
-- /docs/grafana-cloud/send-data/agent/flow/get-started/install/binary/
-# Previous docs aliases for backwards compatibility:
-- ../../install/binary/ # /docs/agent/latest/flow/install/binary/
-- /docs/grafana-cloud/agent/flow/setup/install/binary/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/setup/install/binary/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/setup/install/binary/
-- /docs/grafana-cloud/send-data/agent/flow/setup/install/binary/
-- ../../setup/install/binary/ # /docs/agent/latest/flow/setup/install/binary/
-canonical: https://grafana.com/docs/agent/latest/flow/get-started/install/binary/
+- ./get-started/install/binary/
+canonical: https://grafana.com/docs/alloy/latest/get-started/install/binary/
 description: Learn how to install Grafana Agent Flow as a standalone binary
 menuTitle: Standalone
 title: Install Grafana Agent Flow as a standalone binary
@@ -31,7 +21,7 @@ weight: 600
 
 To download {{< param "PRODUCT_NAME" >}} as a standalone binary, perform the following steps.
 
-1. Navigate to the current {{< param "PRODUCT_ROOT_NAME" >}} [release](https://github.com/grafana/agent/releases) page.
+1. Navigate to the current {{< param "PRODUCT_ROOT_NAME" >}} [release][] page.
 
 1. Scroll down to the **Assets** section.
 
@@ -46,14 +36,11 @@ To download {{< param "PRODUCT_NAME" >}} as a standalone binary, perform the fol
    ```
 
    Replace the following:
-
    - _`<BINARY_PATH>`_: The path to the extracted binary.
 
 ## Next steps
 
 - [Run {{< param "PRODUCT_NAME" >}}][Run]
 
-{{% docs/reference %}}
-[Run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/get-started/run/binary.md"
-[Run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/get-started/run/binary.md"
-{{% /docs/reference %}}
+[release]: https://github.com/grafana/alloy/releases
+[Run]: ../../run/binary/

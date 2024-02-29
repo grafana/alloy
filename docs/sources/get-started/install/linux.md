@@ -1,20 +1,10 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/get-started/install/linux/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/get-started/install/linux/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/get-started/install/linux/
-- /docs/grafana-cloud/send-data/agent/flow/get-started/install/linux/
-# Previous docs aliases for backwards compatibility:
-- ../../install/linux/ # /docs/agent/latest/flow/install/linux/
-- /docs/grafana-cloud/agent/flow/setup/install/linux/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/setup/install/linux/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/setup/install/linux/
-- /docs/grafana-cloud/send-data/agent/flow/setup/install/linux/
-- ../../setup/install/linux/ # /docs/agent/latest/flow/setup/install/linux/
-canonical: https://grafana.com/docs/agent/latest/flow/get-started/install/linux/
-description: Learn how to install Grafana Agent Flow on Linux
+- ./get-started/install/linux/
+canonical: https://grafana.com/docs/alloy/latest/get-started/install/linux/
+description: Learn how to install Grafana Alloy on Linux
 menuTitle: Linux
-title: Install Grafana Agent Flow on Linux
+title: Install Grafana Alloy on Linux
 weight: 300
 ---
 
@@ -128,9 +118,5 @@ To uninstall {{< param "PRODUCT_NAME" >}} on Linux, run the following commands i
 - [Run {{< param "PRODUCT_NAME" >}}][Run]
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
-{{% docs/reference %}}
-[Run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/get-started/run/linux.md"
-[Run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/get-started/run/linux.md"
-[Configure]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/configure/configure-linux.md"
-[Configure]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/configure/configure-linux.md"
-{{% /docs/reference %}}
+[Run]: ../../run/linux/
+[Configure]: ../../../tasks/configure/configure-linux/

@@ -1,20 +1,10 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/get-started/install/macos/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/get-started/install/macos/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/get-started/install/macos/
-- /docs/grafana-cloud/send-data/agent/flow/get-started/install/macos/
-# Previous docs aliases for backwards compatibility:
-- ../../install/macos/ # /docs/agent/latest/flow/install/macos/
-- /docs/grafana-cloud/agent/flow/setup/install/macos/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/setup/install/macos/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/setup/install/macos/
-- /docs/grafana-cloud/send-data/agent/flow/setup/install/macos/
-- ../../setup/install/macos/ # /docs/agent/latest/flow/setup/install/macos/
-canonical: https://grafana.com/docs/agent/latest/flow/get-started/install/macos/
-description: Learn how to install Grafana AgentFlow on macOS
+- ./get-started/install/macos/
+canonical: https://grafana.com/docs/alloy/latest/get-started/install/macos/
+description: Learn how to install Grafana Alloy on macOS
 menuTitle: macOS
-title: Install Grafana Agent Flow on macOS
+title: Install Grafana Alloy on macOS
 weight: 400
 ---
 
@@ -23,7 +13,9 @@ weight: 400
 You can install {{< param "PRODUCT_NAME" >}} on macOS with Homebrew .
 
 {{< admonition type="note" >}}
-The default prefix for Homebrew on Intel is `/usr/local`. The default prefix for Homebrew on Apple Silicon is `/opt/Homebrew`. To verify the default prefix for Homebrew on your computer, open a terminal window and type `brew --prefix`.
+The default prefix for Homebrew on Intel is `/usr/local`.
+The default prefix for Homebrew on Apple Silicon is `/opt/Homebrew`.
+To verify the default prefix for Homebrew on your computer, open a terminal window and type `brew --prefix`.
 {{< /admonition >}}
 
 ## Before you begin
@@ -76,10 +68,5 @@ brew uninstall grafana-agent-flow
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Homebrew]: https://brew.sh
-
-{{% docs/reference %}}
-[Run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/get-started/run/macos.md"
-[Run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/get-started/run/macos.md"
-[Configure]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/configure/configure-macos.md"
-[Configure]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/configure/configure-macos.md"
-{{% /docs/reference %}}
+[Run]: ../../run/macos/
+[Configure]: ../../../tasks/configure/configure-macos/
