@@ -103,3 +103,4 @@ River ignores other newlines and you can can enter as many newlines as you want.
 [identifier]: #identifiers
 [expression]: ../expressions/
 [type]: ../expressions/types_and_values
+"/docs/agent/ -> /docs/agent/<ALLOY_VERSION>/flow/concepts/config-language/expressions/"/docs/agent/ -> /docs/agent/<ALLOY_VERSION>/flow/concepts/config-language/expressions/

@@ -79,7 +79,7 @@ The following attributes are supported:
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block-logs.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/output-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

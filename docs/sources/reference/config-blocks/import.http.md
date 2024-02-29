@@ -10,7 +10,7 @@ title: import.http
 
 # import.http
 
-{{< docs/shared lookup="flow/stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `import.http` retrieves a module from an HTTP server.
 

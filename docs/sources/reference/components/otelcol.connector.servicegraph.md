@@ -11,7 +11,7 @@ title: otelcol.connector.servicegraph
 
 # otelcol.connector.servicegraph
 
-{{< docs/shared lookup="flow/stability/experimental.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.connector.servicegraph` accepts span data from other `otelcol` components and 
 outputs metrics representing the relationship between various services in a system.
@@ -139,7 +139,7 @@ Name | Type | Description | Default | Required
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block-metrics.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

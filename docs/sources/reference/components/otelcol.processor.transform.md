@@ -13,7 +13,7 @@ title: otelcol.processor.transform
 
 # otelcol.processor.transform
 
-{{< docs/shared lookup="flow/stability/experimental.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.transform` accepts telemetry data from other `otelcol`
 components and modifies it using the [OpenTelemetry Transformation Language (OTTL)][OTTL].
@@ -251,7 +251,7 @@ span using the `span` context, it is more efficient to use the `resource` contex
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

@@ -39,7 +39,7 @@ Name                     | Type                | Description                    
 `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.           | `true`               | no
 `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                               | `true`               | no
 
-{{< docs/shared lookup="flow/reference/components/http-client-proxy-config-description.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
 The following blocks are supported inside the definition of
@@ -75,7 +75,7 @@ Name | Type | Description | Default | Required
 
 ### tls_config block
 
-{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

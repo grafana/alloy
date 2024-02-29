@@ -13,7 +13,7 @@ description: Learn about otelcol.processor.resourcedetection
 
 # otelcol.processor.resourcedetection
 
-{{< docs/shared lookup="flow/stability/beta.md" source="agent" version="<AGENT VERSION>" >}}
+{{< docs/shared lookup="stability/beta.md" source="alloy" version="<AGENT VERSION>" >}}
 
 `otelcol.processor.resourcedetection` detects resource information from the host
 in a format that conforms to the [OpenTelemetry resource semantic conventions](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/resource/semantic_conventions/), and appends or
@@ -128,7 +128,7 @@ kubernetes_node   | [kubernetes_node][]   |                                     
 
 ### output
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="agent" version="<AGENT VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<AGENT VERSION>" >}}
 
 ### ec2
 
@@ -669,7 +669,7 @@ Block                                          | Description                    
 The `tls` block configures TLS settings used for the connection to the gRPC
 server.
 
-{{< docs/shared lookup="flow/reference/components/otelcol-tls-config-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 #### openshift > resource_attributes
 

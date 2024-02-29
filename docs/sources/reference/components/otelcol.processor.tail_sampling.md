@@ -13,7 +13,7 @@ title: otelcol.processor.tail_sampling
 
 # otelcol.processor.tail_sampling
 
-{{< docs/shared lookup="flow/stability/beta.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.tail_sampling` samples traces based on a set of defined
 policies. All spans for a given trace *must* be received by the same collector
@@ -312,7 +312,7 @@ Name | Type | Description | Default | Required
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

@@ -11,7 +11,7 @@ title: pyroscope.java
 
 # pyroscope.java
 
-{{< docs/shared lookup="flow/stability/beta.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.java` continuously profiles Java processes running on the local Linux OS
 using [async-profiler](https://github.com/async-profiler/async-profiler).

@@ -10,7 +10,7 @@ title: import.string
 
 # import.string
 
-{{< docs/shared lookup="flow/stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `import.string` block imports custom components from a string and exposes them to the importer.
 `import.string` blocks must be given a label that determines the namespace where custom components are exposed.

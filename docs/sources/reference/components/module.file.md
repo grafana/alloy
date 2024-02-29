@@ -13,7 +13,7 @@ title: module.file
 
 # module.file
 
-{{< docs/shared lookup="flow/stability/beta.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `module.file` is a *module loader* component. A module loader is a {{< param "PRODUCT_NAME" >}}
 component which retrieves a [module][] and runs the components defined inside of it.
@@ -53,7 +53,7 @@ Name | Type | Description | Default | Required
 
 [secret]: {{< relref "../../concepts/config-language/expressions/types_and_values.md#secrets" >}}
 
-{{< docs/shared lookup="flow/reference/components/local-file-arguments-text.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/local-file-arguments-text.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
 

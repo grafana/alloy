@@ -11,7 +11,7 @@ title: otelcol.connector.host_info
 
 # otelcol.connector.host_info
 
-{{< docs/shared lookup="flow/stability/experimental.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otel.connector.host_info` accepts span data from other `otelcol` components and generates usage metrics.
 
@@ -47,7 +47,7 @@ The following blocks are supported inside the definition of
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block-metrics.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

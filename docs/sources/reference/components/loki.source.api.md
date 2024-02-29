@@ -69,7 +69,7 @@ Hierarchy | Name     | Description                                        | Requ
 
 ### http
 
-{{< docs/shared lookup="flow/reference/components/loki-server-http.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

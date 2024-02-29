@@ -13,7 +13,7 @@ title: otelcol.connector.spanmetrics
 
 # otelcol.connector.spanmetrics
 
-{{< docs/shared lookup="flow/stability/experimental.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.connector.spanmetrics` accepts span data from other `otelcol` components and
 aggregates Request, Error and Duration (R.E.D) OpenTelemetry metrics from the spans:
@@ -187,7 +187,7 @@ The following attributes are supported:
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block-metrics.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

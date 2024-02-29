@@ -48,7 +48,7 @@ Exactly one of the [`bearer_token`](#arguments) and [`bearer_token_file`](#argum
 
 [arguments]: #arguments
 
-{{< docs/shared lookup="flow/reference/components/http-client-proxy-config-description.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
 The `discovery.digitalocean` component does not support any blocks, and is configured fully through arguments.

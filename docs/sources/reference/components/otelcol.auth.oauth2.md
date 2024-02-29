@@ -64,7 +64,7 @@ tls | [tls][] | TLS settings for the token client. | no
 The `tls` block configures TLS settings used for connecting to the token client. If the `tls` block isn't provided, 
 TLS won't be used for communication.
 
-{{< docs/shared lookup="flow/reference/components/otelcol-tls-config-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

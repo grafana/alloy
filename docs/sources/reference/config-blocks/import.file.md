@@ -10,7 +10,7 @@ title: import.file
 
 # import.file
 
-{{< docs/shared lookup="flow/stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `import.file` block imports custom components from a file and exposes them to the importer.
 `import.file` blocks must be given a label that determines the namespace where custom components are exposed.

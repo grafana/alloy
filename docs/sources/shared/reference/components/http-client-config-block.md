@@ -23,4 +23,4 @@ Name                     | Type                | Description                    
 
 `bearer_token`, `bearer_token_file`, `basic_auth`, `authorization`, and `oauth2` are mutually exclusive, and only one can be provided inside of a `http_client_config` block.
 
-{{< docs/shared lookup="flow/reference/components/http-client-proxy-config-description.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}

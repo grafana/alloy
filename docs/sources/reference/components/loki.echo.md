@@ -13,7 +13,7 @@ title: loki.echo
 
 # loki.echo
 
-{{< docs/shared lookup="flow/stability/beta.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `loki.echo` receives log entries from other `loki` components and prints them
 to the process' standard output (stdout).

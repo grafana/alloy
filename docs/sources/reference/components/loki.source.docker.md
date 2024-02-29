@@ -74,35 +74,35 @@ or HTTPS and has no effect when connecting via a `unix:///` socket
 The `client` block configures settings used to connect to HTTP(S) Docker
 daemons.
 
-{{< docs/shared lookup="flow/reference/components/http-client-config-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/http-client-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### basic_auth block
 
 The `basic_auth` block configures basic authentication for HTTP(S) Docker
 daemons.
 
-{{< docs/shared lookup="flow/reference/components/basic-auth-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### authorization block
 
 The `authorization` block configures custom authorization to use for the Docker
 daemon.
 
-{{< docs/shared lookup="flow/reference/components/authorization-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### oauth2 block
 
 The `oauth2` block configures OAuth2 authorization to use for the Docker
 daemon.
 
-{{< docs/shared lookup="flow/reference/components/oauth2-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### tls_config block
 
 The `tls_config` block configures TLS settings for connecting to HTTPS Docker
 daemons.
 
-{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

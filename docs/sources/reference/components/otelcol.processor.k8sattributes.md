@@ -143,13 +143,13 @@ By default, if `metadata` is not specified, the following fields are extracted a
 
 The `annotation` block configures how to extract Kubernetes annotations.
 
-{{< docs/shared lookup="flow/reference/components/extract-field-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/extract-field-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### label block {#extract-label-block}
 
 The `label` block configures how to extract Kubernetes labels.
 
-{{< docs/shared lookup="flow/reference/components/extract-field-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/extract-field-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### filter block
 
@@ -168,13 +168,13 @@ If `node` is specified, then any pods not running on the specified node will be 
 
 The `field` block allows you to filter pods by generic Kubernetes fields.
 
-{{< docs/shared lookup="flow/reference/components/field-filter-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/field-filter-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### label block {#filter-label-block}
 
 The `label` block allows you to filter pods by generic Kubernetes labels.
 
-{{< docs/shared lookup="flow/reference/components/field-filter-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/field-filter-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### pod_association block
 
@@ -237,7 +237,7 @@ Name | Type     | Description         | Default | Required
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
