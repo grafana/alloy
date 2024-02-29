@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/resource-usage/
 canonical: https://grafana.com/docs/alloy/latest/tasks/resource-usage/
 description: Estimate expected Grafana Alloy resource usage
 headless: true

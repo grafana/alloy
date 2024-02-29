@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./monitor/controller_metrics/
 canonical: https://grafana.com/docs/alloy/latest/monitor/controller_metrics/
 description: Learn how to monitor controller metrics
 title: Monitor controller

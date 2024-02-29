@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/configure/configure-kubernetes/
 canonical: https://grafana.com/docs/alloy/latest/tasks/configure/configure-kubernetes/
 description: Learn how to configure Grafana Alloy on Kubernetes
 menuTitle: Kubernetes

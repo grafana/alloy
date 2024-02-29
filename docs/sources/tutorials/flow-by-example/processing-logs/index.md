@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tutorials/flow-by-example/processing-logs/
 canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/processing-logs/
 description: Learn how to process logs
 title: Processing Logs

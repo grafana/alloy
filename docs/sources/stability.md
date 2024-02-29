@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./stability/
 canonical: https://grafana.com/docs/alloy/latest/stability/
 description: Grafana Alloy features fall into one of three stability categories, experimental, beta, or stable
 title: Stability

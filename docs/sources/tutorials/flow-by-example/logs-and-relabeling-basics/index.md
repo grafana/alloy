@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tutorials/flow-by-example/logs-and-relabeling-basics/
 canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/logs-and-relabeling-basics/
 description: Learn how to relabel metrics and collect logs
 title: Logs and relabeling basics

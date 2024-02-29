@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/configure/configure-macos/
 canonical: https://grafana.com/docs/agent/latest/flow/tasks/configure/configure-macos/
 description: Learn how to configure Grafana Alloy on macOS
 menuTitle: macOS

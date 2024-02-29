@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tutorials/collecting-prometheus-metrics/
 canonical: https://grafana.com/docs/alloy/latest/tutorials/collecting-prometheus-metrics/
 description: Learn how to collect Prometheus metrics
 menuTitle: Collect Prometheus metrics

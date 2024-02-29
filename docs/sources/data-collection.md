@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./data-collection/
 canonical: https://grafana.com/docs/alloy/latest/data-collection/
 description: Grafana Alloy data collection
 menuTitle: Data collection

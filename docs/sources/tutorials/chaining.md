@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tutorials/chaining/
 canonical: https://grafana.com/docs/alloy/latest/tutorials/chaining/
 description: Learn how to chain Prometheus components
 menuTitle: Chain Prometheus components

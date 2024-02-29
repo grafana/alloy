@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/configure/
 canonical: https://grafana.com/docs/alloy/latest/tasks/configure/
 description: Configure Grafana Alloy after it is installed
 menuTitle: Configure

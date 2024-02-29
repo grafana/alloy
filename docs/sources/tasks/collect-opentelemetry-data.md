@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/collect-opentelemetry-data/
 canonical: https://grafana.com/docs/agent/latest/flow/tasks/collect-opentelemetry-data/
 description: Learn how to collect OpenTelemetry data
 title: Collect OpenTelemetry data

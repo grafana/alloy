@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/collect-prometheus-metrics/
 canonical: https://grafana.com/docs/agent/latest/flow/tasks/collect-prometheus-metrics/
 description: Learn how to collect and forward Prometheus metrics
 title: Collect and forward Prometheus metrics

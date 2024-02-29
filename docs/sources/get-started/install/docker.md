@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./get-started/install/docker/
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/docker/
 description: Learn how to install Grafana Alloy on Docker
 menuTitle: Docker

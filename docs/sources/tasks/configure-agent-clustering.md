@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/configure-agent-clustering/
 canonical: https://grafana.com/docs/alloy/latest/tasks/configure-agent-clustering/
 description: Learn how to configure Grafana Alloy clustering in an existing installation
 menuTitle: Configure clustering

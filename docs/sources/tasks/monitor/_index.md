@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/monitor/
 canonical: https://grafana.com/docs/alloy/latest/tasks/monitor/
 description: Learn about monitoring Grafana Alloy
 title: Monitor Grafana Alloy

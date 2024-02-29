@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./get-started/deploy-alloy/
 canonical: https://grafana.com/docs/alloy/latest/get-started/deploy-alloy/
 description: Learn about possible deployment topologies for Grafana Alloy
 menuTitle: Deploy

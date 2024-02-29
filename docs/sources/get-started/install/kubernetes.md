@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./get-started/install/kubernetes/
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/kubernetes/
 description: Learn how to deploy Grafana Agent Flow on Kubernetes
 menuTitle: Kubernetes

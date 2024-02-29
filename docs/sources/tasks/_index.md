@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/
 canonical: https://grafana.com/docs/alloy/latest/tasks/
 description: How to perform common tasks with Grafana Alloy
 menuTitle: Tasks

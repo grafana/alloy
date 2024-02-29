@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./get-started/install/ansible/
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/ansible/
 description: Learn how to install Grafana Alloy with Ansible
 menuTitle: Ansible

@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/debug/
 canonical: https://grafana.com/docs/alloy/latest/tasks/debug/
 description: Learn about debugging issues with Grafana alloy
 title: Debug issues with Grafana Alloy

@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./get-started/run/
 canonical: https://grafana.com/docs/agent/latest/flow/get-started/run/
 description: Learn how to run Grafana Alloy
 menuTitle: Run

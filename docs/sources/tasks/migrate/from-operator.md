@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/migrate/from-operator/
 canonical: https://grafana.com/docs/alloy/latest/tasks/migrate/from-operator/
 description: Migrate from Grafana Agent Operator to Grafana Alloy
 menuTitle: Migrate from Operator

@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./get-started/install/macos/
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/macos/
 description: Learn how to install Grafana Alloy on macOS
 menuTitle: macOS

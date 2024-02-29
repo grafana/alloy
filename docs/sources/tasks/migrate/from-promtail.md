@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/migrate/from-promtail/
 canonical: https://grafana.com/docs/alloy/latest/tasks/migrate/from-promtail/
 description: Learn how to migrate from Promtail to Grafana Alloy
 menuTitle: Migrate from Promtail

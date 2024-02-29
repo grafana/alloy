@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tutorials/filtering-metrics/
 canonical: https://grafana.com/docs/alloy/latest/tutorials/filtering-metrics/
 description: Learn how to filter Prometheus metrics
 menuTitle: Filter Prometheus metrics

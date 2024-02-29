@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./about/
 canonical: https://grafana.com/docs/alloy/latest/about/
 description: Grafana Alloy is a flexible, performant, vendor-neutral, telemetry collector
 menuTitle: Introduction

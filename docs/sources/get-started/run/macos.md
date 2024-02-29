@@ -1,6 +1,4 @@
 ---
-aliases:
-  - ./get-started/run/macos/
 canonical: https://grafana.com/docs/alloy/latest/get-started/run/macos/
 description: Learn how to run Grafana Alloy on macOS
 menuTitle: macOS

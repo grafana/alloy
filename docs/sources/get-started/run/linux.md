@@ -1,6 +1,4 @@
 ---
-aliases:
-  - ./get-started/run/linux/
 canonical: https://grafana.com/docs/alloy/latest/get-started/run/linux/
 description: Learn how to run Grafana Agent Flow on Linux
 menuTitle: Linux

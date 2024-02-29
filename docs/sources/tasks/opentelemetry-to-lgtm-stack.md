@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/opentelemetry-to-lgtm-stack/
 canonical: https://grafana.com/docs/alloy/latest/tasks/opentelemetry-to-lgtm-stack/
 description: Learn how to collect OpenTelemetry data and forward it to the Grafana stack
 title: OpenTelemetry to Grafana stack

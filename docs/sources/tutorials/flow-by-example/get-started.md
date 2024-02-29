@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tutorials/flow-by-example/get-started/
 canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/get-started/
 description: Getting started with Flow-by-Example Tutorials
 title: Get started

@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tutorials/flow-by-example/first-components-and-stdlib/
 canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/first-components-and-stdlib/
 description: Learn about the basics of River and the configuration language
 title: First components and introducing the standard library

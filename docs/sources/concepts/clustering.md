@@ -1,11 +1,6 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/concepts/clustering/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/concepts/clustering/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/concepts/clustering/
-- /docs/grafana-cloud/send-data/agent/flow/concepts/clustering/
-canonical: https://grafana.com/docs/agent/latest/flow/concepts/clustering/
-description: Learn about Grafana Agent clustering concepts
+canonical: https://grafana.com/docs/alloy/latest/concepts/clustering/
+description: Learn about Grafana Alloy clustering concepts
 labels:
   stage: beta
 menuTitle: Clustering
@@ -18,8 +13,7 @@ weight: 500
 Clustering enables a fleet of {{< param "PRODUCT_ROOT_NAME" >}}s to work together for workload distribution and high availability.
 It helps create horizontally scalable deployments with minimal resource and operational overhead.
 
-To achieve this, {{< param "PRODUCT_NAME" >}} makes use of an eventually consistent model that assumes all participating
-{{< param "PRODUCT_ROOT_NAME" >}}s are interchangeable and converge on using the same configuration file.
+To achieve this, {{< param "PRODUCT_NAME" >}} makes use of an eventually consistent model that assumes all participating {{< param "PRODUCT_ROOT_NAME" >}}s are interchangeable and converge on using the same configuration file.
 
 The behavior of a standalone, non-clustered {{< param "PRODUCT_ROOT_NAME" >}} is the same as if it were a single-node cluster.
 
@@ -65,19 +59,11 @@ Refer to component reference documentation to discover whether it supports clust
 You can use the {{< param "PRODUCT_NAME" >}} UI [clustering page][] to monitor your cluster status.
 Refer to [Debugging clustering issues][debugging] for additional troubleshooting information.
 
-{{% docs/reference %}}
-[run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/run.md#clustering-beta"
-[run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/run.md#clustering-beta"
-[prometheus.scrape]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.scrape.md#clustering-beta"
-[prometheus.scrape]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.scrape.md#clustering-beta"
-[pyroscope.scrape]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/pyroscope.scrape.md#clustering-beta"
-[pyroscope.scrape]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/pyroscope.scrape.md#clustering-beta"
-[prometheus.operator.podmonitors]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.operator.podmonitors.md#clustering-beta"
-[prometheus.operator.podmonitors]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.operator.podmonitors.md#clustering-beta"
-[prometheus.operator.servicemonitors]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.operator.servicemonitors.md#clustering-beta"
-[prometheus.operator.servicemonitors]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.operator.servicemonitors.md#clustering-beta"
-[clustering page]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug.md#clustering-page"
-[clustering page]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/debug.md#clustering-page"
-[debugging]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug.md#debugging-clustering-issues"
-[debugging]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/debug.md#debugging-clustering-issues"
-{{% /docs/reference %}}
+
+[run]: ../../reference/cli/run/#clustering-beta
+[prometheus.scrape]: ../../reference/components/prometheus.scrape/#clustering-beta
+[pyroscope.scrape]: ../../reference/components/pyroscope.scrape/#clustering-beta
+[prometheus.operator.podmonitors]: ../../reference/components/prometheus.operator.podmonitors/#clustering-beta
+[prometheus.operator.servicemonitors]: ../../reference/components/prometheus.operator.servicemonitors/#clustering-beta
+[clustering page]: ../../tasks/debug/#clustering-page
+[debugging]: ../../tasks/debug/#debugging-clustering-issues

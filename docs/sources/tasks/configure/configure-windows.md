@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tasks/configure/configure-windows/
 canonical: https://grafana.com/docs/alloy/latest/tasks/configure/configure-windows/
 description: Learn how to configure Grafana Alloy on Windows
 menuTitle: Windows

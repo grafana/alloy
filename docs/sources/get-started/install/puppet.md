@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./get-started/install/puppet/
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/puppet/
 description: Learn how to install Grafana Agent Flow with Puppet
 menuTitle: Puppet

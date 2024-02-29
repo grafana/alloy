@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./tutorials/flow-by-example/
 canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/
 description: Learn how to use Grafana Alloy
 title: Flow by example

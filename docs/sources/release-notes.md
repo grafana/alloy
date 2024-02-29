@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./release-notes/
 canonical: https://grafana.com/docs/alloy/latest/release-notes/
 description: Release notes for Grafana Alloy
 menuTitle: Release notes

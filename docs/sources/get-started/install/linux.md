@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./get-started/install/linux/
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/linux/
 description: Learn how to install Grafana Alloy on Linux
 menuTitle: Linux
