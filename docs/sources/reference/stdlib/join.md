@@ -1,11 +1,7 @@
 ---
 aliases:
-- ../../configuration-language/standard-library/join/
-- /docs/grafana-cloud/agent/flow/reference/stdlib/join/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/stdlib/join/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/stdlib/join/
-- /docs/grafana-cloud/send-data/agent/flow/reference/stdlib/join/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/stdlib/join/
+- ./reference/stdlib/join/
+canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/join/
 description: Learn about join
 title: join
 ---

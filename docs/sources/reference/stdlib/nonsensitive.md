@@ -1,11 +1,7 @@
 ---
 aliases:
-- ../../configuration-language/standard-library/nonsensitive/
-- /docs/grafana-cloud/agent/flow/reference/stdlib/nonsensitive/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/stdlib/nonsensitive/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/stdlib/nonsensitive/
-- /docs/grafana-cloud/send-data/agent/flow/reference/stdlib/nonsensitive/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/stdlib/nonsensitive/
+- ./reference/stdlib/nonsensitive/
+canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/nonsensitive/
 description: Learn about nonsensitive
 title: nonsensitive
 ---
@@ -14,13 +10,11 @@ title: nonsensitive
 
 `nonsensitive` converts a [secret][] value back into a string.
 
-> **WARNING**: Only use `nonsensitive` when you are positive that the value
-> being converted back to a string is not a sensitive value.
->
-> Strings resulting from calls to `nonsensitive` will be displayed in plaintext
-> in the UI and internal API calls.
+{{< admonition type="warning" >}}
+Only use `nonsensitive` when you are positive that the value converted back to a string isn't a sensitive value.
 
-[secret]: {{< relref "../../concepts/config-language/expressions/types_and_values.md#secrets" >}}
+Strings resulting from calls to `nonsensitive` are displayed in plain text in the UI and internal API calls.
+{{< /admonition >}}
 
 ## Examples
 
@@ -32,3 +26,5 @@ title: nonsensitive
 > nonsensitive(sensitive_value)
 "Hello, world!"
 ```
+
+[secret]: ../../../concepts/config-language/expressions/types_and_values/#secrets

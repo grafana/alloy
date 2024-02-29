@@ -1,11 +1,7 @@
 ---
 aliases:
-- ../../configuration-language/standard-library/trim/
-- /docs/grafana-cloud/agent/flow/reference/stdlib/trim/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/stdlib/trim/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/stdlib/trim/
-- /docs/grafana-cloud/send-data/agent/flow/reference/stdlib/trim/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/stdlib/trim/
+- ./reference/stdlib/trim/
+canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/trim/
 description: Learn about trim
 title: trim
 ---

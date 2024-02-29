@@ -1,20 +1,15 @@
 ---
 aliases:
-- ../../configuration-language/standard-library/format/
-- /docs/grafana-cloud/agent/flow/reference/stdlib/format/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/stdlib/format/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/stdlib/format/
-- /docs/grafana-cloud/send-data/agent/flow/reference/stdlib/format/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/stdlib/format/
+- ./reference/stdlib/format/
+canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/format/
 description: Learn about format
 title: format
 ---
 
 # format
 
-The `format` function produces a string by formatting a number of other values according
-to a specification string. It is similar to the `printf` function in C, and
-other similar functions in other programming languages.
+The `format` function produces a string by formatting a number of other values according to a specification string.
+It's similar to the `printf` function in C, and other similar functions in other programming languages.
 
 ```river
 format(spec, values...)
@@ -33,21 +28,16 @@ The `format` function is most useful when you use more complex format specificat
 
 ## Specification Syntax
 
-The specification is a string that includes formatting verbs that are introduced
-with the `%` character. The function call must then have one additional argument
-for each verb sequence in the specification. The verbs are matched with
-consecutive arguments and formatted as directed, as long as each given argument
-is convertible to the type required by the format verb.
+The specification is a string that includes formatting verbs that are introduced with the `%` character.
+The function call must then have one additional argument for each verb sequence in the specification.
+The verbs are matched with consecutive arguments and formatted as directed, as long as each given argument is convertible to the type required by the format verb.
 
 By default, `%` sequences consume successive arguments starting with the first.
-Introducing a `[n]` sequence immediately before the verb letter, where `n` is a
-decimal integer, explicitly chooses a particular value argument by its
-one-based index. Subsequent calls without an explicit index will then proceed
-with `n`+1, `n`+2, etc.
+Introducing a `[n]` sequence immediately before the verb letter, where `n` is a decimal integer, explicitly chooses a particular value argument by its one-based index.
+Subsequent calls without an explicit index will then proceed with `n`+1, `n`+2, etc.
 
-The function produces an error if the format string requests an impossible
-conversion or accesses more arguments than are given. An error is also produced
-for an unsupported format verb.
+The function produces an error if the format string requests an impossible conversion or accesses more arguments than are given.
+An error is also produced for an unsupported format verb.
 
 ### Verbs
 
