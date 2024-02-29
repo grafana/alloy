@@ -137,7 +137,7 @@ func (s *PushAPIServer) getRelabelRules() []*relabel.Config {
 func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	logger := util_log.WithContext(r.Context(), util_log.Logger)
 	userID, _ := tenant.TenantID(r.Context())
-	req, err := push.ParseRequest(logger, userID, r, nil)
+	req, err := push.ParseRequest(logger, userID, r, nil, nil, push.ParseLokiRequest)
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "failed to parse incoming push request", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)

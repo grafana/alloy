@@ -21,13 +21,14 @@
 ##
 ## Targets for building binaries:
 ##
-##   binaries                Compiles all binaries.
-##   agent                   Compiles cmd/grafana-agent to $(AGENT_BINARY)
-##   agent-boringcrypto      Compiles cmd/grafana-agent with GOEXPERIMENT=boringcrypto to $(AGENT_BORINGCRYPTO_BINARY)
-##   agent-flow              Compiles cmd/grafana-agent-flow to $(FLOW_BINARY)
-##   agent-service           Compiles cmd/grafana-agent-service to $(SERVICE_BINARY)
-##   agentctl                Compiles cmd/grafana-agentctl to $(AGENTCTL_BINARY)
-##   operator                Compiles cmd/grafana-agent-operator to $(OPERATOR_BINARY)
+##   binaries                        Compiles all binaries.
+##   agent                           Compiles cmd/grafana-agent to $(AGENT_BINARY)
+##   agent-boringcrypto              Compiles cmd/grafana-agent with GOEXPERIMENT=boringcrypto to $(AGENT_BORINGCRYPTO_BINARY)
+##   agent-flow                      Compiles cmd/grafana-agent-flow to $(FLOW_BINARY)
+##   agent-flow-windows-boringcrypto Compiles cmd/grafana-agent-flow to $(FLOW_BINARY)-windows-boringcrypto
+##   agent-service                   Compiles cmd/grafana-agent-service to $(SERVICE_BINARY)
+##   agentctl                        Compiles cmd/grafana-agentctl to $(AGENTCTL_BINARY)
+##   operator                        Compiles cmd/grafana-agent-operator to $(OPERATOR_BINARY)
 ##
 ## Targets for building Docker images:
 ##
@@ -98,6 +99,7 @@ AGENTCTL_IMAGE                          ?= grafana/agentctl:latest
 OPERATOR_IMAGE                          ?= grafana/agent-operator:latest
 AGENT_BINARY                            ?= build/grafana-agent
 AGENT_BORINGCRYPTO_BINARY               ?= build/grafana-agent-boringcrypto
+AGENT_BORINGCRYPTO_WINDOWS_BINARY       ?= build/agent-flow-windows-boringcrypto.exe
 FLOW_BINARY                             ?= build/grafana-agent-flow
 SERVICE_BINARY                          ?= build/grafana-agent-service
 AGENTCTL_BINARY                         ?= build/grafana-agentctl
@@ -190,6 +192,13 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	GOEXPERIMENT=boringcrypto $(GO_ENV) go build $(GO_FLAGS) -o $(AGENT_BORINGCRYPTO_BINARY) ./cmd/grafana-agent
+endif
+
+agent-flow-windows-boringcrypto:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	GOEXPERIMENT=cngcrypto $(GO_ENV) go build $(GO_FLAGS) -tags cngcrypto -o $(AGENT_BORINGCRYPTO_WINDOWS_BINARY) ./cmd/grafana-agent-flow
 endif
 
 

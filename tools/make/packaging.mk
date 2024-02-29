@@ -20,15 +20,15 @@ PACKAGING_VARS = RELEASE_BUILD=1 GO_TAGS="$(GO_TAGS)" GOOS=$(GOOS) GOARCH=$(GOAR
 # agent release binaries
 #
 
-dist-agent-binaries: dist/grafana-agent-linux-amd64       \
-                     dist/grafana-agent-linux-arm64       \
-                     dist/grafana-agent-linux-ppc64le     \
-                     dist/grafana-agent-linux-s390x       \
-                     dist/grafana-agent-darwin-amd64      \
-                     dist/grafana-agent-darwin-arm64      \
-                     dist/grafana-agent-windows-amd64.exe \
-                     dist/grafana-agent-freebsd-amd64     \
-                     dist/grafana-agent-linux-amd64-boringcrypto  \
+dist-agent-binaries: dist/grafana-agent-linux-amd64                    \
+                     dist/grafana-agent-linux-arm64                    \
+                     dist/grafana-agent-linux-ppc64le                  \
+                     dist/grafana-agent-linux-s390x                    \
+                     dist/grafana-agent-darwin-amd64                   \
+                     dist/grafana-agent-darwin-arm64                   \
+                     dist/grafana-agent-windows-amd64.exe              \
+                     dist/grafana-agent-windows-boringcrypto-amd64.exe \
+                     dist/grafana-agent-freebsd-amd64                  \
                      dist/grafana-agent-linux-arm64-boringcrypto
 
 dist/grafana-agent-linux-amd64: GO_TAGS += netgo builtinassets promtail_journal_enabled
@@ -77,6 +77,18 @@ dist/grafana-agent-windows-amd64.exe: GOOS    := windows
 dist/grafana-agent-windows-amd64.exe: GOARCH  := amd64
 dist/grafana-agent-windows-amd64.exe: generate-ui
 	$(PACKAGING_VARS) AGENT_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agent
+
+# NOTE(rfratto): do not use netgo when building Windows binaries, which
+# prevents DNS short names from being resovable. See grafana/agent#4665.
+#
+# TODO(rfratto): add netgo back to Windows builds if a version of Go is
+# released which natively supports resolving DNS short names on Windows.
+dist/grafana-agent-windows-boringcrypto-amd64.exe: GO_TAGS += builtinassets
+dist/grafana-agent-windows-boringcrypto-amd64.exe: GOOS    := windows
+dist/grafana-agent-windows-boringcrypto-amd64.exe: GOARCH  := amd64
+dist/grafana-agent-windows-boringcrypto-amd64.exe: generate-ui
+	$(PACKAGING_VARS) AGENT_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agent
+
 
 dist/grafana-agent-freebsd-amd64: GO_TAGS += netgo builtinassets
 dist/grafana-agent-freebsd-amd64: GOOS    := freebsd

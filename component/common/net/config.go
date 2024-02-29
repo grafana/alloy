@@ -77,9 +77,9 @@ func (g *GRPCConfig) Into(c *dskit.Config) {
 	c.GRPCServerMaxConnectionAge = g.MaxConnectionAge
 	c.GRPCServerMaxConnectionAgeGrace = g.MaxConnectionAgeGrace
 	c.GRPCServerMaxConnectionIdle = g.MaxConnectionIdle
-	c.GPRCServerMaxRecvMsgSize = g.ServerMaxRecvMsg
+	c.GRPCServerMaxRecvMsgSize = g.ServerMaxRecvMsg
 	c.GRPCServerMaxSendMsgSize = g.ServerMaxSendMsg
-	c.GPRCServerMaxConcurrentStreams = g.ServerMaxConcurrentStreams
+	c.GRPCServerMaxConcurrentStreams = g.ServerMaxConcurrentStreams
 }
 
 // Convert converts the River-based ServerConfig into a dskit.Config object.
