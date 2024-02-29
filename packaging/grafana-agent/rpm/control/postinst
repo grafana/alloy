@@ -2,6 +2,10 @@
 
 set -e
 
+# NOTE: the grafana-agent group is shared with the grafana-agent package to
+# make it easier to migrate between the two. A unique user is still used to
+# give them different home directories.
+
 # shellcheck disable=SC1091
 [ -f /etc/sysconfig/grafana-agent ] && . /etc/sysconfig/grafana-agent
 [ -z "$AGENT_USER" ] && AGENT_USER="grafana-agent"
@@ -32,8 +36,8 @@ if [ "$1" -eq 1 ] ; then
     chown $AGENT_USER:$AGENT_GROUP /var/lib/grafana-agent
     chmod 770 /var/lib/grafana-agent
 
-    chmod 640 /etc/grafana-agent.yaml
-    chown root:$AGENT_GROUP /etc/grafana-agent.yaml
+    chmod 640 /etc/grafana-agent.river
+    chown root:$AGENT_GROUP /etc/grafana-agent.river
 
 elif [ "$1" -ge 2 ] ; then
     add_to_logging_groups

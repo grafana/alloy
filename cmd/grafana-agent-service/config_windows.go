@@ -32,7 +32,7 @@ func loadConfig() (*config, error) {
 	// able to either migrate from the old key to the new key or supporting
 	// both the old and the new key at the same time.
 
-	agentKey, err := registry.OpenKey(registry.LOCAL_MACHINE, `Software\Grafana\Grafana Agent Flow`, registry.READ)
+	agentKey, err := registry.OpenKey(registry.LOCAL_MACHINE, `Software\Grafana\Grafana Agent`, registry.READ)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open registry: %w", err)
 	}

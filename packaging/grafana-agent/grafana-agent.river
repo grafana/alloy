@@ -1,6 +1,6 @@
-// Sample config for Grafana Agent Flow.
+// Sample config for Grafana Agent.
 //
-// For a full configuration reference, see https://grafana.com/docs/agent/latest/flow/
+// For a full configuration reference, see https://grafana.com/docs/agent
 logging {
 	level = "warn"
 }

@@ -30,14 +30,13 @@ local os_arch_tuples = [
 
 local targets = [
   'agent',
-  'agent-flow',
 ];
 
 local targets_boringcrypto = [
   'agent-boringcrypto',
 ];
 local targets_boringcrypto_windows = [
-  'agent-flow-windows-boringcrypto',
+  'agent-windows-boringcrypto',
 ];
 
 
