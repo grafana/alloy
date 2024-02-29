@@ -1,10 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/reference/config-blocks/import.string/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/config-blocks/import.string/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/config-blocks/import.string/
-- /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/import.string/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/config-blocks/import.string/
+- ./reference/config-blocks/import.string/
+canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/import.string/
 description: Learn about the import.string configuration block
 labels:
   stage: beta
@@ -13,7 +10,7 @@ title: import.string
 
 # import.string
 
-{{< docs/shared lookup="flow/stability/beta.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `import.string` block imports custom components from a string and exposes them to the importer.
 `import.string` blocks must be given a label that determines the namespace where custom components are exposed.
@@ -59,8 +56,3 @@ math.add "default" {
   b = 45
 }
 ```
-
-{{% docs/reference %}}
-[module]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/modules"
-[module]:"/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/modules"
-{{% /docs/reference %}}

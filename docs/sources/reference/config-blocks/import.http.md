@@ -1,10 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/reference/config-blocks/import.http/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/config-blocks/import.http/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/config-blocks/import.http/
-- /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/import.http/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/config-blocks/import.http/
+- ./reference/config-blocks/import.http/
+canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/import.http/
 description: Learn about the import.http configuration block
 labels:
   stage: beta
@@ -13,7 +10,7 @@ title: import.http
 
 # import.http
 
-{{< docs/shared lookup="flow/stability/beta.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `import.http` retrieves a module from an HTTP server.
 

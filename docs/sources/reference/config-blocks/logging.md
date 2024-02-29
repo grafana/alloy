@@ -1,10 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/reference/config-blocks/logging/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/config-blocks/logging/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/config-blocks/logging/
-- /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/logging/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/config-blocks/logging/
+- ./reference/config-blocks/logging/
+canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/logging/
 description: Learn about the logging configuration block
 menuTitle: logging
 title: logging block
@@ -50,14 +47,10 @@ The following strings are recognized as valid log line formats:
 * `"logfmt"`: Write logs as [logfmt][] lines.
 * `"json"`: Write logs as JSON objects.
 
-[logfmt]: https://brandur.org/logfmt
-
 ### Log receivers
 
 The `write_to` argument allows {{< param "PRODUCT_NAME" >}} to tee its log entries to one or more `loki.*` component log receivers in addition to the default [location][].
 This, for example can be the export of a `loki.write` component to ship log entries directly to Loki, or a `loki.relabel` component to add a certain label first.
-
-[location]: #log-location
 
 ## Log location
 
@@ -70,3 +63,6 @@ When running {{< param "PRODUCT_NAME" >}} as a container, view logs written to `
 When running {{< param "PRODUCT_NAME" >}} as a Windows service, logs are instead written as event logs. You can view the logs through Event Viewer.
 
 In other cases, redirect `stderr` of the {{< param "PRODUCT_NAME" >}} process to a file for logs to persist on disk.
+
+[logfmt]: https://brandur.org/logfmt
+[location]: #log-location

@@ -1,10 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/reference/config-blocks/import.file/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/config-blocks/import.file/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/config-blocks/import.file/
-- /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/import.file/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/config-blocks/import.file/
+- ./reference/config-blocks/import.file/
+canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/import.file/
 description: Learn about the import.file configuration block
 labels:
   stage: beta
@@ -13,7 +10,7 @@ title: import.file
 
 # import.file
 
-{{< docs/shared lookup="flow/stability/beta.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `import.file` block imports custom components from a file and exposes them to the importer.
 `import.file` blocks must be given a label that determines the namespace where custom components are exposed.
@@ -36,7 +33,7 @@ Name             | Type       | Description                                     
 `detector`       | `string`   | Which file change detector to use (fsnotify, poll). | `"fsnotify"` | no
 `poll_frequency` | `duration` | How often to poll for file changes.                 | `"1m"`       | no
 
-{{< docs/shared lookup="flow/reference/components/local-file-arguments-text.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/local-file-arguments-text.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Example
 
@@ -67,8 +64,3 @@ math.add "default" {
 }
 ```
 {{< /collapse >}}
-
-{{% docs/reference %}}
-[module]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/modules"
-[module]:"/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/modules"
-{{% /docs/reference %}}

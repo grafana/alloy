@@ -1,10 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/reference/config-blocks/import.git/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/config-blocks/import.git/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/config-blocks/import.git/
-- /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/import.git/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/config-blocks/import.git/
+- ./reference/config-blocks/import.git/
+canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/import.git/
 description: Learn about the import.git configuration block
 labels:
   stage: beta
@@ -13,7 +10,7 @@ title: import.git
 
 # import.git
 
-{{< docs/shared lookup="flow/stability/beta.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `import.git` block imports custom components from a Git repository and exposes them to the importer.
 `import.git` blocks must be given a label that determines the namespace where custom components are exposed.
@@ -38,18 +35,13 @@ Name             | Type       | Description                                     
 `path`           | `string`   | The path in the repository where the module is stored.  |          | yes
 `pull_frequency` | `duration` | The frequency to pull the repository for updates.       | `"60s"`  | no
 
-The `repository` attribute must be set to a repository address that would be
-recognized by Git with a `git clone REPOSITORY_ADDRESS` command, such as
-`https://github.com/grafana/agent.git`.
+The `repository` attribute must be set to a repository address that would be recognized by Git with a `git clone REPOSITORY_ADDRESS` command, such as `https://github.com/grafana/alloy.git`.
 
-You must set the `repository` attribute to a repository address that Git would recognize
-with a `git clone REPOSITORY_ADDRESS` command, such as `https://github.com/grafana/agent.git`.
+You must set the `repository` attribute to a repository address that Git would recognize with a `git clone REPOSITORY_ADDRESS` command, such as `https://github.com/grafana/alloy.git`.
 
-When provided, the `revision` attribute must be set to a valid branch, tag, or
-commit SHA within the repository.
+When provided, the `revision` attribute must be set to a valid branch, tag, or commit SHA within the repository.
 
-You must set the `path` attribute to a path accessible from the repository's root,
-such as `FILE_NAME.river` or `FOLDER_NAME/FILE_NAME.river`.
+You must set the `path` attribute to a path accessible from the repository's root, such as `FILE_NAME.river` or `FOLDER_NAME/FILE_NAME.river`.
 
 If `pull_frequency` isn't `"0s"`, the Git repository is pulled for updates at the frequency specified.
 If it's set to `"0s"`, the Git repository is pulled once on init.
@@ -69,7 +61,7 @@ ssh_key    | [ssh_key][]    | Configure an SSH Key for authenticating to the rep
 
 ### basic_auth block
 
-{{< docs/shared lookup="flow/reference/components/basic-auth-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### ssh_key block
 
@@ -99,8 +91,3 @@ math.add "default" {
 
 [basic_auth]: #basic_auth-block
 [ssh_key]: #ssh_key-block
-
-{{% docs/reference %}}
-[module]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/modules"
-[module]:"/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/modules"
-{{% /docs/reference %}}

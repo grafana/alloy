@@ -1,10 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/reference/config-blocks/declare/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/config-blocks/declare/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/config-blocks/declare/
-- /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/declare/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/config-blocks/declare/
+- ./flow/reference/config-blocks/declare/
+canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/declare/
 description: Learn about the declare configuration block
 menuTitle: declare
 title: declare block
@@ -73,13 +70,8 @@ prometheus.remote_write "example" {
 }
 ```
 
-{{% docs/reference %}}
-[argument]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/config-blocks/argument"
-[argument]:"/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/argument"
-[export]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/config-blocks/export"
-[export]:"/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/export"
-[declare]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/config-blocks/declare"
-[declare]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/declare"
-[import]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/modules#importing-modules"
-[import]:"/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/modules#importing-modules"
-{{% /docs/reference %}}
+[argument]: ../argument/
+[export]: ../export/
+[declare]: ../declare/
+[import]: ../../../concepts/modules/#importing-modules
+[custom component]: ../../../concepts/custom_components/

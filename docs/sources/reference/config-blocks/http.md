@@ -1,10 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/reference/config-blocks/http/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/config-blocks/http/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/config-blocks/http/
-- /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/http/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/config-blocks/http/
+- ./reference/config-blocks/http/
+canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/http/
 description: Learn about the http configuration block
 menuTitle: http
 title: http block
@@ -41,11 +38,6 @@ tls > windows_certificate_filter          | [windows_certificate_filter][] | Con
 tls > windows_certificate_filter > client | [client][]                     | Configure client certificates for Windows certificate filter. | no
 tls > windows_certificate_filter > server | [server][]                     | Configure server certificates for Windows certificate filter. | no
 
-[tls]: #tls-block
-[windows_certificate_filter]: #windows-certificate-filter-block
-[server]: #server-block
-[client]: #client-block
-
 ### tls block
 
 The `tls` block configures TLS settings for the HTTP server.
@@ -71,9 +63,7 @@ Name                | Type           | Description                              
 `min_version`       | `string`       | Oldest TLS version to accept from clients.                       | `""`             | no
 `max_version`       | `string`       | Newest TLS version to accept from clients.                       | `""`             | no
 
-When the `tls` block is specified, arguments for the TLS certificate (using
-`cert_pem` or `cert_file`) and for the TLS key (using `key_pem` or `key_file`)
-are required.
+When the `tls` block is specified, arguments for the TLS certificate (using `cert_pem` or `cert_file`) and for the TLS key (using `key_pem` or `key_file`) are required.
 
 The following pairs of arguments are mutually exclusive, and only one may be configured at a time:
 
@@ -120,9 +110,9 @@ The set of cipher suites specified may be from the following:
 | `TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256`   | no                               |
 | `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` | no                               |
 
-The `curve_preferences` argument determines the set of elliptic curves to
-prefer during a handshake in preference order. If not provided, a default list
-is used. The set of elliptic curves specified may be from the following:
+The `curve_preferences` argument determines the set of elliptic curves to prefer during a handshake in preference order.
+If not provided, a default list is used.
+The set of elliptic curves specified may be from the following:
 
 | Curve       | Allowed in `boringcrypto` builds |
 | ----------- | -------------------------------- |
@@ -186,3 +176,8 @@ Name                  | Type           | Description                            
 `issuer_common_names` | `list(string)` | Issuer common names to check against.                             |         | no
 `subject_regex`       | `string`       | Regular expression to match Subject name.                         | `""`    | no
 `template_id`         | `string`       | Client Template ID to match in ASN1 format, for example, "1.2.3". | `""`    | no
+
+[tls]: #tls-block
+[windows_certificate_filter]: #windows-certificate-filter-block
+[server]: #server-block
+[client]: #client-block

@@ -1,10 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/reference/config-blocks/remotecfg/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/config-blocks/remotecfg/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/config-blocks/remotecfg/
-- /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/remotecfg/
-canonical: remotecfgs://grafana.com/docs/agent/latest/flow/reference/config-blocks/remotecfg/
+- ./reference/config-blocks/remotecfg/
+canonical: remotecfgs://grafana.com/docs/alloy/latest/reference/config-blocks/remotecfg/
 description: Learn about the remotecfg configuration block
 menuTitle: remotecfg
 title: remotecfg block
@@ -18,8 +15,7 @@ title: remotecfg block
 The [API definition][] for managing and fetching configuration that the `remotecfg` block uses is available under the Apache 2.0 license.
 
 > **BETA**: The `remotecfg` enables [beta][] functionality.
-> Beta features are subject to breaking changes, and may be replaced with
-> equivalent functionality that cover the same use case.
+> Beta features are subject to breaking changes, and may be replaced with equivalent functionality that cover the same use case.
 
 ## Example
 
@@ -50,9 +46,7 @@ Name             | Type                 | Description                           
 
 If the `url` is not set, then the service block is a no-op.
 
-If not set, the self-reported `id` that the Agent uses is a randomly generated,
-anonymous unique ID (UUID) that is stored as an `agent_seed.json` file in the
-Agent's storage path so that it can persist across restarts.
+If not set, the self-reported `id` that {{< param "PRODUCT_NAME" >}} uses is a randomly generated, anonymous unique ID (UUID) that is stored as an `agent_seed.json` file in {{< param "PRODUCT_NAME" >}}'s storage path so that it can persist across restarts.
 
 The `id` and `metadata` fields are used in the periodic request sent to the
 remote endpoint so that the API can decide what configuration to serve.
@@ -74,22 +68,22 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 
 ### basic_auth block
 
-{{< docs/shared lookup="flow/reference/components/basic-auth-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### authorization block
 
-{{< docs/shared lookup="flow/reference/components/authorization-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### oauth2 block
 
-{{< docs/shared lookup="flow/reference/components/oauth2-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### tls_config block
 
-{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="agent" version="<AGENT_VERSION>" >}}
+{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 [API definition]: https://github.com/grafana/agent-remote-config
-[beta]: https://grafana.com/docs/agent/<AGENT_VERSION>/stability/#beta
+[beta]: ../../../stability/#beta
 [basic_auth]: #basic_auth-block
 [authorization]: #authorization-block
 [oauth2]: #oauth2-block
