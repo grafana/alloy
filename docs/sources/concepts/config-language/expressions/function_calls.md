@@ -1,16 +1,4 @@
 ---
-aliases:
-- ../../configuration-language/expressions/function-calls/ # /docs/agent/latest/flow/concepts/configuration-language/expressions/function-calls/
-- /docs/grafana-cloud/agent/flow/concepts/config-language/expressions/function_calls/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/concepts/config-language/expressions/function_calls/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/concepts/config-language/expressions/function_calls/
-- /docs/grafana-cloud/send-data/agent/flow/concepts/config-language/expressions/function_calls/
-# Previous page aliases for backwards compatibility:
-- ../../../configuration-language/expressions/function-calls/ # /docs/agent/latest/flow/configuration-language/expressions/function-calls/
-- /docs/grafana-cloud/agent/flow/config-language/expressions/function_calls/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/config-language/expressions/function_calls/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/config-language/expressions/function_calls/
-- /docs/grafana-cloud/send-data/agent/flow/config-language/expressions/function_calls/
 canonical: https://grafana.com/docs/agent/latest/flow/concepts/config-language/expressions/function_calls/
 description: Learn about function calls
 title: Function calls
@@ -37,7 +25,4 @@ env("HOME")
 json_decode(local.file.cfg.content)["namespace"]
 ```
 
-{{% docs/reference %}}
-[standard library]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/stdlib"
-[standard library]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/stdlib"
-{{% /docs/reference %}}
+[standard library]:../../../../reference/stdlib/

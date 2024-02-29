@@ -108,12 +108,6 @@ removing components no longer defined in the configuration file and creating new
 All components managed by the controller are reevaluated after reloading.
 
 [DAG]: https://en.wikipedia.org/wiki/Directed_acyclic_graph
-
-{{% docs/reference %}}
-[prometheus.exporter.unix]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.exporter.unix.md"
-[prometheus.exporter.unix]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.unix.md"
-[run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/run.md"
-[run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/run.md"
-[Components]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/components.md"
-[Components]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/components.md"
-{{% /docs/reference %}}
+[prometheus.exporter.unix]: ../../reference/components/prometheus.exporter.unix
+[run]: ../../reference/cli/run/
+[Components]: ../components/

@@ -1,22 +1,5 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/concepts/config-language/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/concepts/config-language/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/concepts/config-language/
-- /docs/grafana-cloud/send-data/agent/flow/concepts/config-language/
-- configuration-language/ # /docs/agent/latest/flow/concepts/configuration-language/
-# Previous page aliases for backwards compatibility:
-- /docs/grafana-cloud/agent/flow/config-language/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/config-language/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/config-language/
-- /docs/grafana-cloud/send-data/agent/flow/config-language/
-- ../configuration-language/ # /docs/agent/latest/flow/configuration-language/
-- ../concepts/configuration_language/ # /docs/agent/latest/flow/concepts/configuration_language/
-- /docs/grafana-cloud/agent/flow/concepts/configuration_language/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/concepts/configuration_language/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/concepts/configuration_language/
-- /docs/grafana-cloud/send-data/agent/flow/concepts/configuration_language/
-canonical: https://grafana.com/docs/agent/latest/flow/concepts/config-language/
+canonical: https://grafana.com/docs/alloy/latest/concepts/config-language/
 description: Learn about the configuration language
 title: Configuration language
 weight: 10
@@ -140,8 +123,4 @@ You can also start developing your own tooling using the {{< param "PRODUCT_ROOT
 [VSCode]: https://github.com/rfratto/vscode-river
 [river-mode]: https://github.com/jdbaldry/river-mode
 [tree-sitter grammar]: https://github.com/grafana/tree-sitter-river
-
-{{% docs/reference %}}
-[fmt]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/fmt"
-[fmt]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/fmt"
-{{% /docs/reference %}}
+[fmt]: ../../reference/cli/fmt/

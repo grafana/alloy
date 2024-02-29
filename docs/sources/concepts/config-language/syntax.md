@@ -1,17 +1,5 @@
 ---
-aliases:
-- ../configuration-language/syntax/ # /docs/agent/latest/flow/concepts/configuration-language/syntax/
-- /docs/grafana-cloud/agent/flow/concepts/config-language/syntax/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/concepts/config-language/syntax/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/concepts/config-language/syntax/
-- /docs/grafana-cloud/send-data/agent/flow/concepts/config-language/syntax/
-# Previous page aliases for backwards compatibility:
-- ../../configuration-language/syntax/ # /docs/agent/latest/flow/configuration-language/syntax/
-- /docs/grafana-cloud/agent/flow/config-language/syntax/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/config-language/syntax/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/config-language/syntax/
-- /docs/grafana-cloud/send-data/agent/flow/config-language/syntax/
-canonical: https://grafana.com/docs/agent/latest/flow/concepts/config-language/syntax/
+canonical: https://grafana.com/docs/alloy/latest/concepts/config-language/syntax/
 description: Learn about the River syntax
 title: Syntax
 weight: 200
@@ -50,13 +38,11 @@ log_level = "debug"
 
 The `ATTRIBUTE_NAME` must be a valid River [identifier][].
 
-The `ATTRIBUTE_VALUE` can be either a constant value of a valid River [type][] (for example, a string, boolean, number),
-or an [_expression_][expression] to represent or compute more complex attribute values.
+The `ATTRIBUTE_VALUE` can be either a constant value of a valid River [type][] (for example, a string, boolean, number), or an [_expression_][expression] to represent or compute more complex attribute values.
 
 ### Blocks
 
-You use _Blocks_ to configure the {{< param "PRODUCT_ROOT_NAME" >}}'s behavior as well as {{< param "PRODUCT_NAME" >}}
-components by grouping any number of attributes or nested blocks using curly braces.
+You use _Blocks_ to configure the {{< param "PRODUCT_ROOT_NAME" >}}'s behavior as well as {{< param "PRODUCT_NAME" >}} components by grouping any number of attributes or nested blocks using curly braces.
 Blocks have a _name_, an optional _label_ and a body that contains any number of arguments and nested unlabeled blocks.
 
 Some blocks can be defined more than once.
@@ -97,8 +83,7 @@ If the `BLOCK_LABEL` must be set, it must be a valid River [identifier][] wrappe
 In these cases, you use the label to disambiguate between multiple top-level blocks of the same name.
 
 The following snippet defines a block named `local.file` with its label set to "token".
-The block's body sets `filename` to the content of the `TOKEN_FILE_PATH` environment variable by using an expression,
-and the `is_secret` attribute is set to the boolean `true`, marking the file content as sensitive.
+The block's body sets `filename` to the content of the `TOKEN_FILE_PATH` environment variable by using an expression, and the `is_secret` attribute is set to the boolean `true`, marking the file content as sensitive.
 
 ```river
 local.file "token" {
@@ -116,10 +101,5 @@ River ignores other newlines and you can can enter as many newlines as you want.
 
 [identifier]: #identifiers
 [identifier]: #identifiers
-
-{{% docs/reference %}}
-[expression]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/config-language/expressions"
-[expression]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/config-language/expressions"
-[type]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/config-language/expressions/types_and_values"
-[type]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/config-language/expressions/types_and_values"
-{{% /docs/reference %}}
+[expression]: ../expressions/
+[type]: ../expressions/types_and_values

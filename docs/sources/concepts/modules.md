@@ -1,11 +1,5 @@
 ---
-aliases:
-- ../../concepts/modules/
-- /docs/grafana-cloud/agent/flow/concepts/modules/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/concepts/modules/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/concepts/modules/
-- /docs/grafana-cloud/send-data/agent/flow/concepts/modules/
-canonical: https://grafana.com/docs/agent/latest/flow/concepts/modules/
+canonical: https://grafana.com/docs/alloy/latest/concepts/modules/
 description: Learn about modules
 title: Modules
 weight: 400
@@ -18,23 +12,15 @@ The module passed as an argument to [the `run` command][run] is called the _main
 
 Modules can be [imported](#importing-modules) to enable the reuse of [custom components][] defined by that module.
 
-[custom components]: {{< relref "./custom_components.md" >}}
-[run]: {{< relref "../reference/cli/run.md" >}}
-
 ## Importing modules
 
 A module can be _imported_, allowing the custom components defined by that module to be used by other modules, called the _importing module_.
 Modules can be imported from multiple locations using one of the `import` configuration blocks:
 
-* [import.file]: Imports a module from a file on disk.
-* [import.git]: Imports a module from a file located in a Git repository.
-* [import.http]: Imports a module from the response of an HTTP request.
-* [import.string]: Imports a module from a string.
-
-[import.file]: {{< relref "../reference/config-blocks/import.file.md" >}}
-[import.git]: {{< relref "../reference/config-blocks/import.git.md" >}}
-[import.http]: {{< relref "../reference/config-blocks/import.http.md" >}}
-[import.string]: {{< relref "../reference/config-blocks/import.string.md" >}}
+* [import.file][]: Imports a module from a file on disk.
+* [import.git][]: Imports a module from a file located in a Git repository.
+* [import.http][]: Imports a module from the response of an HTTP request.
+* [import.string][]: Imports a module from a string.
 
 {{< admonition type="warning" >}}
 You can't import a module that contains top-level blocks other than `declare` or `import`.
@@ -42,7 +28,8 @@ You can't import a module that contains top-level blocks other than `declare` or
 
 Modules are imported into a _namespace_ where the top-level custom components of the imported module are exposed to the importing module.
 The label of the import block specifies the namespace of an import.
-For example, if a configuration contains a block called `import.file "my_module"`, then custom components defined by that module are exposed as `my_module.CUSTOM_COMPONENT_NAME`. Imported namespaces must be unique across a given importing module.
+For example, if a configuration contains a block called `import.file "my_module"`, then custom components defined by that module are exposed as `my_module.CUSTOM_COMPONENT_NAME`.
+Imported namespaces must be unique across a given importing module.
 
 If an import namespace matches the name of a built-in component namespace, such as `prometheus`, the built-in namespace is hidden from the importing module, and only components defined in the imported module may be used.
 
@@ -115,9 +102,10 @@ loki.write "default" {
 # Classic modules (deprecated)
 
 {{< admonition type="caution" >}}
-Modules were redesigned in v0.40 to simplify concepts. This section outlines the design of the original modules prior to v0.40. Classic modules are scheduled to be removed in the release after v0.40.
+Modules were redesigned in v0.40 to simplify concepts.
+This section outlines the design of the original modules prior to v0.40.
+Classic modules are scheduled to be removed in the release after v0.40.
 {{< /admonition >}}
-
 
 You use _Modules_ to create {{< param "PRODUCT_NAME" >}} configurations that you can load as a component.
 Modules are a great way to parameterize a configuration to create reusable pipelines.
@@ -240,8 +228,15 @@ loki.write "default" {
 ```
 
 [Module loader]: #module-loaders
-[argument block]: https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/config-blocks/argument
-[export block]: https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/config-blocks/export
-[Component controller]: https://grafana.com/docs/agent/<AGENT_VERSION>/flow/concepts/component_controller
-[Components]: https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components
+[argument block]: ../../reference/config-blocks/argument/
+[export block]: ../../reference/config-blocks/export/
+[Component controller]: ../component_controller/
+[Components]: ../../reference/components/
 {{< /collapse >}}
+
+[custom components]: ../custom_components/
+[run]: ../../reference/cli/run/
+[import.file]: ../../reference/config-blocks/import.file/
+[import.git]: ../../reference/config-blocks/import.git/
+[import.http]: ../../reference/config-blocks/import.http/
+[import.string]: ../../reference/config-blocks/import.string/
