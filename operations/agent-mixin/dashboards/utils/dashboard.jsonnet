@@ -7,8 +7,8 @@
     timezone: 'utc',
     refresh: '10s',
     schemaVersion: 36,
-    graphTooltip: 1, // shared crosshair for all graphs
-    tags: ['grafana-agent-flow-mixin'],
+    graphTooltip: 1,  // shared crosshair for all graphs
+    tags: ['grafana-agent-mixin'],
     templating: {
       list: [{
         name: 'datasource',
@@ -122,7 +122,7 @@
       icon: 'external link',
       includeVars: true,
       keepTime: true,
-      tags: ['grafana-agent-flow-mixin'],
+      tags: ['grafana-agent-mixin'],
       targetBlank: false,
     }],
   },
