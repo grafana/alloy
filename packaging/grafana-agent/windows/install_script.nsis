@@ -229,6 +229,7 @@ Section "uninstall"
 
     RMDir /r $APPDATA\grafana-agent-wal
 
-    # Remove uninstaller information from the registry
-    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
+    # Remove service and uninstaller information from the registry.
+    nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"  /reg:64 /f'
+    Pop $0
 SectionEnd

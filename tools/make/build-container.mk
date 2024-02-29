@@ -34,7 +34,7 @@
 # variable names should be passed through to the container.
 
 USE_CONTAINER       ?= 0
-BUILD_IMAGE_VERSION ?= 0.31.0
+BUILD_IMAGE_VERSION ?= 0.32.0
 BUILD_IMAGE         ?= grafana/agent-build-image:$(BUILD_IMAGE_VERSION)
 DOCKER_OPTS         ?= -it
 

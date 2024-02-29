@@ -54,7 +54,7 @@ func TestLogs(t *testing.T) {
 	})
 	go func() {
 		_ = http.Serve(lis, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			req, err := push.ParseRequest(log.NewNopLogger(), "user_id", r, nil)
+			req, err := push.ParseRequest(log.NewNopLogger(), "user_id", r, nil, nil, push.ParseLokiRequest)
 			require.NoError(t, err)
 
 			pushes <- req

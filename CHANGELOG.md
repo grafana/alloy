@@ -51,6 +51,8 @@ v0.40.0 (2024-02-27)
 
 - Add `otelcol.connector.host_info` component to gather usage metrics for cloud users. (@rlankfo, @jcreixell)
 
+- Add Windows boringcrypto build and executable. (@mattdurham)
+
 ### Enhancements
 
 - Include line numbers in profiles produced by `pyrsocope.java` component. (@korniltsev)
@@ -126,6 +128,8 @@ v0.40.0 (2024-02-27)
 - Fix an issue where the configuration of the `http` and `remotecfg` blocks get ignored after loading a module. (@erikbaranowski)
 
 - Fix an issue where changing the configuration of `loki.write` would cause a panic. (@rfratto)
+
+- Fix issue where registry was not being properly deleted. (@mattdurham)
 
 ### Other changes
 

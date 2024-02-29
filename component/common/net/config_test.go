@@ -50,7 +50,7 @@ func TestConfig(t *testing.T) {
 				require.Equal(t, time.Second*30, config.ServerGracefulShutdownTimeout)
 
 				require.Equal(t, size4MB, config.GRPCServerMaxSendMsgSize)
-				require.Equal(t, size4MB, config.GPRCServerMaxRecvMsgSize)
+				require.Equal(t, size4MB, config.GRPCServerMaxRecvMsgSize)
 			},
 		},
 		"overriding defaults": {
@@ -97,7 +97,7 @@ func TestConfig(t *testing.T) {
 				require.Equal(t, "0.0.0.0", config.GRPCListenAddress)
 				require.Equal(t, 10, config.GRPCServerMaxSendMsgSize)
 				// this should have the default applied
-				require.Equal(t, size4MB, config.GPRCServerMaxRecvMsgSize)
+				require.Equal(t, size4MB, config.GRPCServerMaxRecvMsgSize)
 
 				require.Equal(t, time.Minute, config.ServerGracefulShutdownTimeout)
 			},
@@ -141,9 +141,9 @@ func TestConfig(t *testing.T) {
 				require.Equal(t, 5*time.Minute, config.GRPCServerMaxConnectionAge)
 				require.Equal(t, 6*time.Minute, config.GRPCServerMaxConnectionAgeGrace)
 				require.Equal(t, 7*time.Minute, config.GRPCServerMaxConnectionIdle)
-				require.Equal(t, 5, config.GPRCServerMaxRecvMsgSize)
+				require.Equal(t, 5, config.GRPCServerMaxRecvMsgSize)
 				require.Equal(t, 6, config.GRPCServerMaxSendMsgSize)
-				require.Equal(t, uint(7), config.GPRCServerMaxConcurrentStreams)
+				require.Equal(t, uint(7), config.GRPCServerMaxConcurrentStreams)
 			},
 		},
 	}

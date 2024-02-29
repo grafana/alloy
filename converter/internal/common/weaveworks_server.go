@@ -32,9 +32,9 @@ func WeaveWorksServerToFlowServer(config server.Config) *fnet.ServerConfig {
 			MaxConnectionAge:           config.GRPCServerMaxConnectionAge,
 			MaxConnectionAgeGrace:      config.GRPCServerMaxConnectionAgeGrace,
 			MaxConnectionIdle:          config.GRPCServerMaxConnectionIdle,
-			ServerMaxRecvMsg:           config.GPRCServerMaxRecvMsgSize,
+			ServerMaxRecvMsg:           config.GRPCServerMaxRecvMsgSize,
 			ServerMaxSendMsg:           config.GRPCServerMaxSendMsgSize,
-			ServerMaxConcurrentStreams: config.GPRCServerMaxConcurrentStreams,
+			ServerMaxConcurrentStreams: config.GRPCServerMaxConcurrentStreams,
 		},
 		GracefulShutdownTimeout: config.ServerGracefulShutdownTimeout,
 	}
