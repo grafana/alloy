@@ -36,7 +36,7 @@ To configure clustering:
 
    ```yaml
    agent:
-     clustering:
+     clustering:"/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow
        enabled: true
    ```
 
