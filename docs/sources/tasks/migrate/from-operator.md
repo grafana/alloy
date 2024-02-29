@@ -1,15 +1,10 @@
 ---
 aliases:
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tasks/migrate/from-operator/
-- /docs/grafana-cloud/send-data/agent/flow/tasks/migrate/from-operator/
-# Previous page aliases for backwards compatibility:
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/getting-started/migrating-from-operator/
-- /docs/grafana-cloud/send-data/agent/flow/getting-started/migrating-from-operator/
-- ../../getting-started/migrating-from-operator/ # /docs/agent/latest/flow/getting-started/migrating-from-operator/
-canonical: https://grafana.com/docs/agent/latest/flow/tasks/migrate/from-operator/
-description: Migrate from Grafana Agent Operator to Grafana Agent Flow
+- ./tasks/migrate/from-operator/
+canonical: https://grafana.com/docs/alloy/latest/tasks/migrate/from-operator/
+description: Migrate from Grafana Agent Operator to Grafana Alloy
 menuTitle: Migrate from Operator
-title: Migrate from Grafana Agent Operator to Grafana Agent Flow
+title: Migrate from Grafana Agent Operator to Grafana Alloy
 weight: 320
 ---
 
@@ -275,38 +270,24 @@ The logging subsystem is very powerful and has many options for processing logs.
 ## Integrations
 
 The `Integration` CRD isn't supported with {{< param "PRODUCT_NAME" >}}.
-However, all static mode integrations have an equivalent component in the [`prometheus.exporter`][] namespace.
+However, all static mode integrations have an equivalent component in the [`prometheus.exporter`][prometheus.exporter] namespace.
 The [reference documentation][component documentation] should help convert those integrations to their {{< param "PRODUCT_NAME" >}} equivalent.
 
-[default values]: https://github.com/grafana/agent/blob/main/operations/helm/charts/grafana-agent/values.yaml
+<!-- ToDo: Validate path -->
+[default values]: https://github.com/grafana/alloy/blob/main/operations/helm/charts/grafana-agent/values.yaml
+[clustering]: ../../../concepts/clustering/
+[deployment guide]: ../../../get-started/deploy-alloy
+<!-- ToDo: check link syntax -->
+[operator guide]: https://grafana.com/docs/agent/latest/operator/deploy-agent-operator-resources/#deploy-a-metricsinstance-resource
 
-{{% docs/reference %}}
-[clustering]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/clustering"
-[clustering]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/clustering"
-[deployment guide]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/get-started/deploy-agent"
-[deployment guide]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/get-started/deploy-agent"
-[operator guide]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/operator/deploy-agent-operator-resources.md#deploy-a-metricsinstance-resource"
-[operator guide]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/operator/deploy-agent-operator-resources.md#deploy-a-metricsinstance-resource"
-[Helm chart]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/get-started/install/kubernetes"
-[Helm chart]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/get-started/install/kubernetes"
-[remote.kubernetes.secret]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/remote.kubernetes.secret.md"
-[remote.kubernetes.secret]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/reference/components/remote.kubernetes.secret.md"
-[prometheus.remote_write]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.remote_write.md"
-[prometheus.remote_write]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/reference/components/prometheus.remote_write.md"
-[prometheus.operator.podmonitors]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.operator.podmonitors.md"
-[prometheus.operator.podmonitors]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/reference/components/prometheus.operator.podmonitors.md"
-[prometheus.operator.servicemonitors]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.operator.servicemonitors.md"
-[prometheus.operator.servicemonitors]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/reference/components/prometheus.operator.servicemonitors.md"
-[prometheus.operator.probes]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.operator.probes.md"
-[prometheus.operator.probes]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/reference/components/prometheus.operator.probes.md"
-[prometheus.scrape]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.scrape.md"
-[prometheus.scrape]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/reference/components/prometheus.scrape"
-[loki.source.kubernetes]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/loki.source.kubernetes.md"
-[loki.source.kubernetes]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/reference/components/loki.source.kubernetes.md"
-[loki.source.podlogs]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/loki.source.podlogs.md"
-[loki.source.podlogs]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/reference/components/loki.source.podlogs.md"
-[component documentation]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components"
-[component documentation]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/reference/components"
-[`prometheus.exporter`]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components"
-[`prometheus.exporter`]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/flow/reference/components"
-{{% /docs/reference %}}
+[Helm chart]: ../../../get-started/install/kubernetes/
+[remote.kubernetes.secret]: ../../../reference/components/remote.kubernetes.secret/
+[prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
+[prometheus.operator.podmonitors]: ../../../reference/components/prometheus.operator.podmonitors/
+[prometheus.operator.servicemonitors]: ../../../reference/components/prometheus.operator.servicemonitors/
+[prometheus.operator.probes]: ../../../reference/components/prometheus.operator.probes/
+[prometheus.scrape]: ../../../reference/components/prometheus.scrape/
+[loki.source.kubernetes]: ../../../reference/components/loki.source.kubernetes/
+[loki.source.podlogs]: ../../../reference/components/loki.source.podlogs/
+[component documentation]: ../../../reference/components/
+[prometheus.exporter]: ../../../reference/components/

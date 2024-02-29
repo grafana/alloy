@@ -1,25 +1,16 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tasks/migrate/from-static/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tasks/migrate/from-static/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tasks/migrate/from-static/
-- /docs/grafana-cloud/send-data/agent/flow/tasks/migrate/from-static/
-# Previous page aliases for backwards compatibility:
-- /docs/grafana-cloud/agent/flow/getting-started/migrating-from-static/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/getting-started/migrating-from-static/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/getting-started/migrating-from-static/
-- /docs/grafana-cloud/send-data/agent/flow/getting-started/migrating-from-static/
-- ../../getting-started/migrating-from-static/ # /docs/agent/latest/flow/getting-started/migrating-from-static/
+- ./tasks/migrate/from-static/
 canonical: https://grafana.com/docs/agent/latest/flow/tasks/migrate/from-static/
-description: Learn how to migrate your configuration from Grafana Agent Static to Grafana Agent Flow
-menuTitle: Migrate from Static to Flow
-title: Migrate Grafana Agent Static to Grafana Agent Flow
+description: Learn how to migrate your configuration from Grafana Agent Static to Grafana Alloy
+menuTitle: Migrate from Grafana Agent Static
+title: Migrate Grafana Agent Static to Grafana Alloy
 weight: 340
 ---
 
-# Migrate from {{% param "PRODUCT_ROOT_NAME" %}} Static to {{% param "PRODUCT_NAME" %}}
+# Migrate from Grafana Agent Static to {{% param "PRODUCT_NAME" %}}
 
-The built-in {{< param "PRODUCT_ROOT_NAME" >}} convert command can migrate your [Static][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+The built-in {{< param "PRODUCT_ROOT_NAME" >}} convert command can migrate your [Grafana Agent Static][Static] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
 
 This topic describes how to:
 
@@ -42,7 +33,7 @@ This topic describes how to:
 
 ## Convert a Grafana Agent Static configuration
 
-To fully migrate Grafana Agent [Static][] to {{< param "PRODUCT_NAME" >}}, you must convert your Static configuration into a {{< param "PRODUCT_NAME" >}} configuration.
+To fully migrate Grafana Agent Static to {{< param "PRODUCT_NAME" >}}, you must convert your Grafana Agent Static configuration into a {{< param "PRODUCT_NAME" >}} configuration.
 This conversion will enable you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
 
 > In this task, you will use the [convert][] CLI command to output a {{< param "PRODUCT_NAME" >}}
@@ -64,14 +55,14 @@ This conversion will enable you to take full advantage of the many additional fe
 
    Replace the following:
 
-    * _`<INPUT_CONFIG_PATH>`_: The full path to the [Static][] configuration.
+    * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
     * _`<OUTPUT_CONFIG_PATH>_`: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
-1. [Run][] {{< param "PRODUCT_NAME" >}} using the new {{< param "PRODUCT_NAME" >}} configuration from _`<OUTPUT_CONFIG_PATH>`_:
+1. [Run][run alloy] {{< param "PRODUCT_NAME" >}} using the new {{< param "PRODUCT_NAME" >}} configuration from _`<OUTPUT_CONFIG_PATH>`_:
 
 ### Debugging
 
-1. If the convert command can't convert a [Static][] configuration, diagnostic information is sent to `stderr`.
+1. If the convert command can't convert a Grafana Agent Static configuration, diagnostic information is sent to `stderr`.
    You can use the `--bypass-errors` flag to bypass any non-critical issues and output the {{< param "PRODUCT_NAME" >}} configuration using a best-effort conversion.
 
    {{< admonition type="caution" >}}
@@ -93,7 +84,7 @@ This conversion will enable you to take full advantage of the many additional fe
 
    Replace the following:
 
-   * _`<INPUT_CONFIG_PATH>`_: The full path to the [Static][] configuration.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
    * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 1. You can use the `--report` flag to output a diagnostic report.
@@ -112,7 +103,7 @@ This conversion will enable you to take full advantage of the many additional fe
 
    Replace the following:
 
-   * _`<INPUT_CONFIG_PATH>`_: The full path to the [Static][] configuration.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
    * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
    * _`<OUTPUT_REPORT_PATH>`_: The output path for the report.
 
@@ -122,16 +113,16 @@ This conversion will enable you to take full advantage of the many additional fe
     (Warning) Please review your agent command line flags and ensure they are set in your {{< param "PRODUCT_NAME" >}} configuration file where necessary.
     ```
 
-## Run a Static mode configuration
+## Run a Grafana Agent Static mode configuration
 
 If you’re not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_ROOT_NAME" >}} using your existing Grafana Agent Static configuration.
-The `--config.format=static` flag tells {{< param "PRODUCT_ROOT_NAME" >}} to convert your [Static] configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the new configuration.
+The `--config.format=static` flag tells {{< param "PRODUCT_ROOT_NAME" >}} to convert your Grafana Agent Static configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the new configuration.
 This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your existing Grafana Agent Static configuration infrastructure.
 
 > In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Static configuration.
 
 [Run][] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=static`.
-Your configuration file must be a valid [Static] configuration file.
+Your configuration file must be a valid Grafana Agent Static configuration file.
 
 ### Debugging
 
@@ -139,7 +130,7 @@ Your configuration file must be a valid [Static] configuration file.
 
 1. Refer to the {{< param "PRODUCT_NAME" >}} [debugging UI][DebuggingUI] for more information about running {{< param "PRODUCT_NAME" >}}.
 
-1. If your [Static] configuration can't be converted and loaded directly into {{< param "PRODUCT_NAME" >}}, diagnostic information is sent to `stderr`.
+1. If your Grafana Agent Static configuration can't be converted and loaded directly into {{< param "PRODUCT_NAME" >}}, diagnostic information is sent to `stderr`.
    You can use the `--config.bypass-conversion-errors` flag with `--config.format=static` to bypass any non-critical issues and start {{< param "PRODUCT_NAME" >}}.
 
    {{< admonition type="caution" >}}
@@ -149,9 +140,9 @@ Your configuration file must be a valid [Static] configuration file.
 
 ## Example
 
-This example demonstrates converting a [Static] configuration file to a {{< param "PRODUCT_NAME" >}} configuration file.
+This example demonstrates converting a Grafana Agent Static configuration file to a {{< param "PRODUCT_NAME" >}} configuration file.
 
-The following [Static] configuration file provides the input for the conversion.
+The following Grafana Agent Static configuration file provides the input for the conversion.
 
 ```yaml
 server:
@@ -223,7 +214,7 @@ grafana-agent-flow convert --source-format=static --output=<OUTPUT_CONFIG_PATH> 
 
 Replace the following:
 
-* _`<INPUT_CONFIG_PATH>`_: The full path to the [Static][] configuration.
+* _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
 * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 The new {{< param "PRODUCT_NAME" >}} configuration file looks like this:
@@ -320,9 +311,9 @@ grafana-agent-flow convert --source-format=static --extra-args="-enable-features
 {{< /code >}}
 
  Replace the following:
-   * _`<INPUT_CONFIG_PATH>`_: The full path to the [Static][] configuration.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
    * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
-   
+
 ## Environment Vars
 
 You can use the `-config.expand-env` command line flag to interpret environment variables in your Grafana Agent Static configuration.
@@ -343,7 +334,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
   Any additional unsupported features are returned as errors during conversion.
 * There is no gRPC server to configure for {{< param "PRODUCT_NAME" >}}, as any non-default configuration will show as unsupported during the conversion.
 * Check if you are using any extra command line arguments with Static that aren't present in your configuration file. For example, `-server.http.address`.
-* Check if you are using any environment variables in your [Static][] configuration.
+* Check if you are using any environment variables in your Grafana Agent Static configuration.
   These will be evaluated during conversion and you may want to replace them with the {{< param "PRODUCT_NAME" >}} Standard library [env][] function after conversion.
 * Review additional [Prometheus Limitations][] for limitations specific to your [Metrics][] configuration.
 * Review additional [Promtail Limitations][] for limitations specific to your [Logs][] configuration.
@@ -353,49 +344,33 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [debugging]: #debugging
 [example]: #example
 
-{{% docs/reference %}}
-[Static]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/static"
-[Static]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/static"
-[prometheus.scrape]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.scrape.md"
-[prometheus.scrape]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.scrape.md"
-[prometheus.remote_write]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.remote_write.md"
-[prometheus.remote_write]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.remote_write.md"
-[local.file_match]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/local.file_match.md"
-[local.file_match]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/local.file_match.md"
-[loki.process]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/loki.process.md"
-[loki.process]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.process.md"
-[loki.source.file]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/loki.source.file.md"
-[loki.source.file]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.file.md"
-[loki.write]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/loki.write.md"
-[loki.write]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.write.md"
-[Components]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/components.md"
-[Components]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/components.md"
-[convert]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/convert.md"
-[convert]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/convert.md"
-[run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/run.md"
-[run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/run.md"
-[Run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/get-started/run/"
-[Run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/get-started/run/"
-[DebuggingUI]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug.md"
-[DebuggingUI]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/debug.md"
-[River]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/config-language/"
-[River]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/config-language/"
-[Integrations next]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/static/configuration/integrations/integrations-next/_index.md"
-[Integrations next]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/static/configuration/traces-config.md
-[Traces]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/static/configuration/traces-config.md"
-[Traces]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/static/configuration/traces-config.md"
-[Agent Management]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/static/configuration/agent-management.md"
-[Agent Management]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/static/configuration/agent-management.md"
-[env]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/stdlib/env.md"
-[env]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/stdlib/env.md"
-[Prometheus Limitations]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/migrate/from-prometheus.md#limitations"
-[Prometheus Limitations]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/migrate/from-prometheus.md#limitations"
-[Promtail Limitations]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/migrate/from-promtail.md#limitations"
-[Promtail Limitations]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/migrate/from-promtail.md#limitations"
-[Metrics]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/static/configuration/metrics-config.md"
-[Metrics]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/static/configuration/metrics-config.md"
-[Logs]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/static/configuration/logs-config.md"
-[Logs]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/static/logs-config.md"
-[UI]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug#grafana-agent-flow-ui"
-[UI]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/debug#grafana-agent-flow-ui"
-{{% /docs/reference %}}
+<!-- ToDo: Verify URL path -->
+[Static]: https://grafana.com/docs/agent/latest/static
+
+[prometheus.scrape]: ../../../reference/components/prometheus.scrape/
+[prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
+[local.file_match]: ../../../reference/components/local.file_match/
+[loki.process]: ../../../reference/components/loki.process/
+[loki.source.file]: ../../../reference/components/loki.source.file/
+[loki.write]: ../../../reference/components/loki.write/
+[Components]: ../../../concepts/components/
+[convert]: ../../../reference/cli/convert/
+[run]: ../../../reference/cli/run/
+[run alloy]: ../../../get-started/run/
+[DebuggingUI]: ../../debug/
+[River]: ../../../concepts/config-language/
+
+<!--ToDo: Check path -->
+[Integrations next]: https://grafana.com/docs/agent/latest/static/configuration/integrations/integrations-next/
+[Traces]: https://grafana.com/docs/agent/latest/static/configuration/traces-config/
+[Agent Management]: https://grafana.com/docs/agent/latest/static/configuration/agent-management/
+
+[env]: ../../../reference/stdlib/env/
+[Prometheus Limitations]: ../from-prometheus/#limitations
+[Promtail Limitations]: ../from-promtail/#limitations
+
+<!--ToDo: Check path -->
+[Metrics]: https://grafana.com/docs/agent/latest/static/configuration/metrics-config/
+[Logs]: https://grafana.com/docs/agent/latest/static/configuration/logs-config/
+
+[UI]: ../../debug/#grafana-agent-flow-ui

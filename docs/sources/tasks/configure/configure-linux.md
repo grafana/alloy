@@ -1,19 +1,10 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tasks/configure/configure-linux/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tasks/configure/configure-linux/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tasks/configure/configure-linux/
-- /docs/grafana-cloud/send-data/agent/flow/tasks/configure/configure-linux/
-# Previous page aliases for backwards compatibility:
-- /docs/grafana-cloud/agent/flow/setup/configure/configure-linux/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/setup/configure/configure-linux/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/setup/configure/configure-linux/
-- /docs/grafana-cloud/send-data/agent/flow/setup/configure/configure-linux/
-- ../../setup/configure/configure-linux/ # /docs/agent/latest/flow/setup/configure/configure-linux/
-canonical: https://grafana.com/docs/agent/latest/flow/tasks/configure/configure-linux/
-description: Learn how to configure Grafana Agent Flow on Linux
+- ./tasks/configure/configure-linux/
+canonical: https://grafana.com/docs/alloy/latest/tasks/configure/configure-linux/
+description: Learn how to configure Grafana Alloy on Linux
 menuTitle: Linux
-title: Configure Grafana Agent Flow on Linux
+title: Configure Grafana Alloy on Linux
 weight: 300
 ---
 
@@ -36,8 +27,7 @@ To change the configuration file used by the service, perform the following step
    * Debian or Ubuntu: edit `/etc/default/grafana-agent-flow`
    * RHEL/Fedora or SUSE/openSUSE: edit `/etc/sysconfig/grafana-agent-flow`
 
-1. Change the contents of the `CONFIG_FILE` environment variable to point to
-   the new configuration file to use.
+1. Change the contents of the `CONFIG_FILE` environment variable to point at the new configuration file to use.
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
 
@@ -47,13 +37,11 @@ To change the configuration file used by the service, perform the following step
 
 ## Pass additional command-line flags
 
-By default, the {{< param "PRODUCT_NAME" >}} service launches with the [run][]
-command, passing the following flags:
+By default, the {{< param "PRODUCT_NAME" >}} service launches with the [run][] command, passing the following flags:
 
 * `--storage.path=/var/lib/grafana-agent-flow`
 
-To pass additional command-line flags to the {{< param "PRODUCT_NAME" >}} binary, perform
-the following steps:
+To pass additional command-line flags to the {{< param "PRODUCT_NAME" >}} binary, perform the following steps:
 
 1. Edit the environment file for the service:
 
@@ -69,14 +57,12 @@ the following steps:
    sudo systemctl restart grafana-agent-flow
    ```
 
-To see the list of valid command-line flags that can be passed to the service,
-refer to the documentation for the [run][] command.
+To see the list of valid command-line flags that can be passed to the service, refer to the documentation for the [run][] command.
 
 ## Expose the UI to other machines
 
-By default, {{< param "PRODUCT_NAME" >}} listens on the local network for its HTTP
-server. This prevents other machines on the network from being able to access
-the [UI for debugging][UI].
+By default, {{< param "PRODUCT_NAME" >}} listens on the local network for its HTTP server.
+This prevents other machines on the network from being able to access the [UI for debugging][UI].
 
 To expose the UI to other machines, complete the following steps:
 
@@ -96,9 +82,5 @@ To expose the UI to other machines, complete the following steps:
 
        To listen on all interfaces, replace `LISTEN_ADDR` with `0.0.0.0`.
 
-{{% docs/reference %}}
-[run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/run.md"
-[run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/run.md"
-[UI]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug.md#grafana-agent-flow-ui"
-[UI]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/debug.md#grafana-agent-flow-ui"
-{{% /docs/reference %}}
+[run]:../../../reference/cli/run/
+[UI]: ../../debug/#grafana-alloy-ui

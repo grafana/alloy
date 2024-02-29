@@ -1,19 +1,10 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tasks/migrate/from-promtail/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tasks/migrate/from-promtail/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tasks/migrate/from-promtail/
-- /docs/grafana-cloud/send-data/agent/flow/tasks/migrate/from-promtail/
-# Previous page aliases for backwards compatibility:
-- /docs/grafana-cloud/agent/flow/getting-started/migrating-from-promtail/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/getting-started/migrating-from-promtail/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/getting-started/migrating-from-promtail/
-- /docs/grafana-cloud/send-data/agent/flow/getting-started/migrating-from-promtail/
-- ../../getting-started/migrating-from-promtail/ # /docs/agent/latest/flow/getting-started/migrating-from-promtail/
-canonical: https://grafana.com/docs/agent/latest/flow/tasks/migrate/from-promtail/
-description: Learn how to migrate from Promtail to Grafana Agent Flow
+- ./tasks/migrate/from-promtail/
+canonical: https://grafana.com/docs/alloy/latest/tasks/migrate/from-promtail/
+description: Learn how to migrate from Promtail to Grafana Alloy
 menuTitle: Migrate from Promtail
-title: Migrate from Promtail to Grafana Agent Flow
+title: Migrate from Promtail to Grafana Alloy
 weight: 330
 ---
 
@@ -64,7 +55,7 @@ This conversion will enable you to take full advantage of the many additional fe
     * _`<INPUT_CONFIG_PATH>`_: The full path to the Promtail configuration.
     * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
-1. [Run][] {{< param "PRODUCT_NAME" >}} using the new configuration from _`<OUTPUT_CONFIG_PATH>`_:
+1. [Run][run alloy] {{< param "PRODUCT_NAME" >}} using the new configuration from _`<OUTPUT_CONFIG_PATH>`_:
 
 ### Debugging
 
@@ -127,7 +118,7 @@ This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your exist
 
 > In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Promtail configuration.
 
-[Run][] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=promtail`.
+[Run][run alloy] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=promtail`.
 Your configuration file must be a valid Promtail configuration file rather than a {{< param "PRODUCT_NAME" >}} configuration file.
 
 ### Debugging
@@ -225,26 +216,13 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Promtail]: https://www.grafana.com/docs/loki/<LOKI_VERSION>/clients/promtail/
 [debugging]: #debugging
 [expanded in the configuration file]: https://www.grafana.com/docs/loki/<LOKI_VERSION>/clients/promtail/configuration/#use-environment-variables-in-the-configuration
-
-{{% docs/reference %}}
-[local.file_match]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/local.file_match.md"
-[local.file_match]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/local.file_match.md"
-[loki.source.file]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/loki.source.file.md"
-[loki.source.file]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.file.md"
-[loki.write]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/loki.write.md"
-[loki.write]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.write.md"
-[Components]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/components.md"
-[Components]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/components.md"
-[convert]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/convert.md"
-[convert]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/convert.md"
-[run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/run.md"
-[run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/run.md"
-[Run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/get-started/run/"
-[Run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/get-started/run/"
-[DebuggingUI]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug.md"
-[DebuggingUI]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/debug.md"
-[River]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/config-language/_index.md"
-[River]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/config-language/_index.md"
-[UI]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug#grafana-agent-flow-ui"
-[UI]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/debug#grafana-agent-flow-ui"
-{{% /docs/reference %}}
+[local.file_match]: ../../../reference/components/local.file_match/
+[loki.source.file]: ../../../reference/components/loki.source.file/
+[loki.write]: ../../../reference/components/loki.write/
+[Components]: ../../../concepts/components/
+[convert]: ../../../reference/cli/convert/
+[run]: ../../../reference/cli/run/
+[run alloy]: ../../../get-started/run/
+[DebuggingUI]: ../../../tasks/debug/
+[River]: ../../../concepts/config-language/
+[UI]: ../../tasks/debug/#grafana-alloy-ui

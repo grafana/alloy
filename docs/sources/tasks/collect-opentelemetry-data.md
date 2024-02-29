@@ -1,15 +1,6 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tasks/collect-opentelemetry-data/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tasks/collect-opentelemetry-data/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tasks/collect-opentelemetry-data/
-- /docs/grafana-cloud/send-data/agent/flow/tasks/collect-opentelemetry-data/
-# Previous page aliases for backwards compatibility:
-- /docs/grafana-cloud/agent/flow/getting-started/collect-opentelemetry-data/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/getting-started/collect-opentelemetry-data/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/getting-started/collect-opentelemetry-data/
-- /docs/grafana-cloud/send-data/agent/flow/getting-started/collect-opentelemetry-data/
-- ../getting-started/collect-opentelemetry-data/ # /docs/agent/latest/flow/getting-started/collect-opentelemetry-data/
+- ./tasks/collect-opentelemetry-data/
 canonical: https://grafana.com/docs/agent/latest/flow/tasks/collect-opentelemetry-data/
 description: Learn how to collect OpenTelemetry data
 title: Collect OpenTelemetry data
@@ -18,8 +9,7 @@ weight: 300
 
 # Collect OpenTelemetry data
 
-{{< param "PRODUCT_NAME" >}} can be configured to collect [OpenTelemetry][]-compatible
-data and forward it to any OpenTelemetry-compatible endpoint.
+{{< param "PRODUCT_NAME" >}} can be configured to collect [OpenTelemetry][]-compatible data and forward it to any OpenTelemetry-compatible endpoint.
 
 This topic describes how to:
 
@@ -318,18 +308,9 @@ For more information on receiving OpenTelemetry data using the OpenTelemetry Pro
 [OpenTelemetry]: https://opentelemetry.io
 [Configure an OpenTelemetry Protocol exporter]: #configure-an-opentelemetry-protocol-exporter
 [Configure batching]: #configure-batching
-
-{{% docs/reference %}}
-[otelcol.auth.basic]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/otelcol.auth.basic.md"
-[otelcol.auth.basic]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.auth.basic.md"
-[otelcol.exporter.otlp]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/otelcol.exporter.otlp.md"
-[otelcol.exporter.otlp]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.exporter.otlp.md"
-[otelcol.exporter.otlphttp]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/otelcol.exporter.otlphttp.md"
-[otelcol.exporter.otlphttp]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.exporter.otlphttp.md"
-[otelcol.processor.batch]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/otelcol.processor.batch.md"
-[otelcol.processor.batch]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.batch.md"
-[otelcol.receiver.otlp]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/otelcol.receiver.otlp.md"
-[otelcol.receiver.otlp]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.receiver.otlp.md"
-[Components]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/components.md"
-[Components]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/components.md"
-{{% /docs/reference %}}
+[otelcol.auth.basic]: ../../reference/components/otelcol.auth.basic/
+[otelcol.exporter.otlp]: ../../reference/components/otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../../reference/components/otelcol.exporter.otlphttp/
+[otelcol.processor.batch]: ../../reference/components/otelcol.processor.batch/
+[otelcol.receiver.otlp]: ../../reference/components/otelcol.receiver.otlp/
+[Components]: ../../concepts/components/

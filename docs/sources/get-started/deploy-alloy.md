@@ -17,7 +17,7 @@ title: Grafana Agent Flow deployment topologies
 weight: 900
 ---
 
-{{< docs/shared source="agent" lookup="/deploy-agent.md" version="<AGENT_VERSION>" >}}
+{{< docs/shared source="alloy" lookup="/deploy-agent.md" version="<AGENT_VERSION>" >}}
 
 ## Processing different types of telemetry in different {{< param "PRODUCT_ROOT_NAME" >}} instances
 

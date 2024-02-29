@@ -1,18 +1,9 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tasks/debug/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tasks/debug/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tasks/debug/
-- /docs/grafana-cloud/send-data/agent/flow/tasks/debug/
-# Previous page aliases for backwards compatibility:
-- /docs/grafana-cloud/agent/flow/monitoring/debugging/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/monitoring/debugging/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/monitoring/debugging/
-- /docs/grafana-cloud/send-data/agent/flow/monitoring/debugging/
-- ../monitoring/debugging/ # /docs/agent/latest/flow/monitoring/debugging/
-canonical: https://grafana.com/docs/agent/latest/flow/monitoring/debugging/
-description: Learn about debugging issues with Grafana Agent Flow
-title: Debug issues with Grafana Agent Flow
+- ./tasks/debug/
+canonical: https://grafana.com/docs/alloy/latest/tasks/debug/
+description: Learn about debugging issues with Grafana alloy
+title: Debug issues with Grafana Alloy
 menuTitle: Debug issues
 weight: 1000
 ---
@@ -28,14 +19,17 @@ Follow these steps to debug issues with {{< param "PRODUCT_NAME" >}}:
 
 {{< param "PRODUCT_NAME" >}} includes an embedded UI viewable from the {{< param "PRODUCT_ROOT_NAME" >}} HTTP server, which defaults to listening at `http://localhost:12345`.
 
-> **NOTE**: For security reasons, installations of {{< param "PRODUCT_NAME" >}} on non-containerized platforms default to listening on `localhost`.
-> This default prevents other machines on the network from being able to view the UI.
->
-> To expose the UI to other machines on the network on non-containerized platforms, refer to the documentation for how you [installed][install] {{< param "PRODUCT_NAME" >}}.
->
-> If you are running a custom installation of {{< param "PRODUCT_NAME" >}},
-> refer to the documentation for [the `grafana-agent run` command][grafana-agent run] to learn how to change the HTTP listen address,
-> and pass the appropriate flag when running {{< param "PRODUCT_NAME" >}}.
+{{< admonition type="note" >}}
+For security reasons, installations of {{< param "PRODUCT_NAME" >}} on non-containerized platforms default to listening on `localhost`.
+This default prevents other machines on the network from being able to view the UI.
+
+To expose the UI to other machines on the network on non-containerized platforms, refer to the documentation for how you [installed][install] {{< param "PRODUCT_NAME" >}}.
+
+If you are running a custom installation of {{< param "PRODUCT_NAME" >}}, refer to the documentation for the [`grafana-agent run` command][grafana-agent run] to learn how to change the HTTP listen address, > and pass the appropriate flag when running {{< param "PRODUCT_NAME" >}}.
+
+[install]: ../../get-started/install/
+[grafana-agent run]: ../../reference/cli/run/
+{{< /admonition >}}
 
 ### Home page
 
@@ -113,16 +107,6 @@ To debug issues when using [clustering][], check for the following symptoms.
 - **Node stuck in terminating state**: The node attempted to gracefully shut down and set its state to Terminating, but it has not completely gone away.
   Check the clustering page to view the state of the peers and verify that the terminating {{< param "PRODUCT_ROOT_NAME" >}} has been shut down.
 
-{{% docs/reference %}}
-[logging]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/config-blocks/logging.md"
-[logging]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/config-blocks/logging.md"
-[clustering]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/clustering.md"
-[clustering]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/clustering.md"
-[install]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/get-started/install"
-[install]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/get-started/install"
-[secret]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/config-language/expressions/types_and_values.md#secrets.md"
-[secret]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/config-language/expressions/types_and_values.md#secrets.md"
-[grafana-agent run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/run.md"
-[grafana-agent run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/run.md"
-{{% /docs/reference %}}
-
+[logging]: ../../reference/config-blocks/logging/
+[clustering]: ../../concepts/clustering/
+[secret]: ../../concepts/config-language/expressions/types_and_values/#secrets

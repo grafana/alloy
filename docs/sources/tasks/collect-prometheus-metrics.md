@@ -1,15 +1,6 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tasks/collect-prometheus-metrics/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tasks/collect-prometheus-metrics/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tasks/collect-prometheus-metrics/
-- /docs/grafana-cloud/send-data/agent/flow/tasks/collect-prometheus-metrics/
-# Previous page aliases for backwards compatibility:
-- /docs/grafana-cloud/agent/flow/getting-started/collect-prometheus-metrics/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/getting-started/collect-prometheus-metrics/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/getting-started/collect-prometheus-metrics/
-- /docs/grafana-cloud/send-data/agent/flow/getting-started/collect-prometheus-metrics/
-- ../getting-started/collect-prometheus-metrics/ # /docs/agent/latest/flow/getting-started/collect-prometheus-metrics/
+- ./tasks/collect-prometheus-metrics/
 canonical: https://grafana.com/docs/agent/latest/flow/tasks/collect-prometheus-metrics/
 description: Learn how to collect and forward Prometheus metrics
 title: Collect and forward Prometheus metrics
@@ -436,16 +427,8 @@ prometheus.remote_write "default" {
 [Field Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
 [Labels and Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#set-based-requirement
 [Configure metrics delivery]: #configure-metrics-delivery
-
-{{% docs/reference %}}
-[discovery.kubernetes]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/discovery.kubernetes.md"
-[discovery.kubernetes]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.kubernetes.md"
-[prometheus.remote_write]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.remote_write.md"
-[prometheus.remote_write]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.remote_write.md"
-[prometheus.scrape]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.scrape.md"
-[prometheus.scrape]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.scrape.md"
-[Components]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/components.md"
-[Components]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/components.md"
-[Objects]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/config-language/expressions/types_and_values.md#objects"
-[Objects]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/config-language/expressions/types_and_values.md#objects"
-{{% /docs/reference %}}
+[discovery.kubernetes]: ../../reference/components/discovery.kubernetes/
+[prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
+[prometheus.scrape]: ../../reference/components/prometheus.scrape/
+[Components]: ../../concepts/components/
+[Objects]: ../../concepts/config-language/expressions/types_and_values/#objects

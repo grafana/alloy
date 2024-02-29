@@ -1,19 +1,10 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tasks/configure/configure-macos/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tasks/configure/configure-macos/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tasks/configure/configure-macos/
-- /docs/grafana-cloud/send-data/agent/flow/tasks/configure/configure-macos/
-# Previous page aliases for backwards compatibility:
-- /docs/grafana-cloud/agent/flow/setup/configure/configure-macos/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/setup/configure/configure-macos/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/setup/configure/configure-macos/
-- /docs/grafana-cloud/send-data/agent/flow/setup/configure/configure-macos/
-- ../../setup/configure/configure-macos/ # /docs/agent/latest/flow/setup/configure/configure-macos/
+- ./tasks/configure/configure-macos/
 canonical: https://grafana.com/docs/agent/latest/flow/tasks/configure/configure-macos/
-description: Learn how to configure Grafana Agent Flow on macOS
+description: Learn how to configure Grafana Alloy on macOS
 menuTitle: macOS
-title: Configure Grafana Agent Flow on macOS
+title: Configure Grafana Alloy on macOS
 weight: 400
 ---
 
@@ -32,13 +23,10 @@ To configure {{< param "PRODUCT_NAME" >}} on macOS, perform the following steps:
 ## Configure the {{% param "PRODUCT_NAME" %}} service
 
 {{< admonition type="note" >}}
-Due to limitations in Homebrew, customizing the service used by
-{{< param "PRODUCT_NAME" >}} on macOS requires changing the Homebrew formula and
-reinstalling {{< param "PRODUCT_NAME" >}}.
+Due to limitations in Homebrew, customizing the service used by {{< param "PRODUCT_NAME" >}} on macOS requires changing the Homebrew formula and reinstalling {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
-To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the following
-steps:
+To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the following steps:
 
 1. Run the following command in a terminal:
 
@@ -70,9 +58,8 @@ steps:
 
 ## Expose the UI to other machines
 
-By default, {{< param "PRODUCT_NAME" >}} listens on the local network for its HTTP
-server. This prevents other machines on the network from being able to access
-the [UI for debugging][UI].
+By default, {{< param "PRODUCT_NAME" >}} listens on the local network for its HTTP server.
+This prevents other machines on the network from being able to access the [UI for debugging][UI].
 
 To expose the UI to other machines, complete the following steps:
 
@@ -87,7 +74,4 @@ To expose the UI to other machines, complete the following steps:
 
        To listen on all interfaces, replace `127.0.0.1` with `0.0.0.0`.
 
-{{% docs/reference %}}
-[UI]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug.md#grafana-agent-flow-ui"
-[UI]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/debug.md#grafana-agent-flow-ui"
-{{% /docs/reference %}}
+[UI]: ../../debug/#grafana-alloy-ui

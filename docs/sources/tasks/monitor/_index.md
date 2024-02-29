@@ -1,18 +1,9 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tasks/monitor/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tasks/monitor/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tasks/monitor/
-- /docs/grafana-cloud/send-data/agent/flow/tasks/monitor/
-# Previous page aliases for backwards compatibility:
-- /docs/grafana-cloud/agent/flow/monitoring/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/monitoring/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/monitoring/
-- /docs/grafana-cloud/send-data/agent/flow/monitoring/
-- ../monitoring/ # /docs/agent/latest/flow/monitoring/
-canonical: https://grafana.com/docs/agent/latest/flow/tasks/monitor/
-description: Learn about monitoring Grafana Agent Flow
-title: Monitor Grafana Agent Flow
+- ./tasks/monitor/
+canonical: https://grafana.com/docs/alloy/latest/tasks/monitor/
+description: Learn about monitoring Grafana Alloy
+title: Monitor Grafana Alloy
 menuTitle: Monitor
 weight: 110
 ---

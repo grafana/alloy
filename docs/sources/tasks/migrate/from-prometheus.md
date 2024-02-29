@@ -1,19 +1,10 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/tasks/migrate/from-prometheus/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/tasks/migrate/from-prometheus/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/tasks/migrate/from-prometheus/
-- /docs/grafana-cloud/send-data/agent/flow/tasks/migrate/from-prometheus/
-# Previous page aliases for backwards compatibility:
-- /docs/grafana-cloud/agent/flow/getting-started/migrating-from-prometheus/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/getting-started/migrating-from-prometheus/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/getting-started/migrating-from-prometheus/
-- /docs/grafana-cloud/send-data/agent/flow/getting-started/migrating-from-prometheus/
-- ../../getting-started/migrating-from-prometheus/ # /docs/agent/latest/flow/getting-started/migrating-from-prometheus/
-canonical: https://grafana.com/docs/agent/latest/flow/tasks/migrate/from-prometheus/
-description: Learn how to migrate from Prometheus to Grafana Agent Flow
+- ./tasks/migrate/from-prometheus/
+canonical: https://grafana.com/docs/alloy/latest/tasks/migrate/from-prometheus/
+description: Learn how to migrate from Prometheus to Grafana Alloy
 menuTitle: Migrate from Prometheus
-title: Migrate from Prometheus to Grafana Agent Flow
+title: Migrate from Prometheus to Grafana Alloy
 weight: 320
 ---
 
@@ -71,10 +62,10 @@ This conversion will enable you to take full advantage of the many additional fe
 1. If the `convert` command can't convert a Prometheus configuration, diagnostic information is sent to `stderr`.\
    You can bypass any non-critical issues and output the {{< param "PRODUCT_NAME" >}} configuration using a best-effort conversion by including the `--bypass-errors` flag.
 
-    {{< admonition type="caution" >}}
-    If you bypass the errors, the behavior of the converted configuration may not match the original Prometheus configuration.
-    Make sure you fully test the converted configuration before using it in a production environment.
-    {{< /admonition >}}
+   {{< admonition type="caution" >}}
+   If you bypass the errors, the behavior of the converted configuration may not match the original Prometheus configuration.
+   Make sure you fully test the converted configuration before using it in a production environment.
+   {{< /admonition >}}
 
    {{< code >}}
 
@@ -131,14 +122,14 @@ This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your exist
 > In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}}
 > using a Prometheus configuration.
 
-[Run][] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=prometheus`.
+[Run][run alloy] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=prometheus`.
 Your configuration file must be a valid Prometheus configuration file rather than a {{< param "PRODUCT_NAME" >}} configuration file.
 
 ### Debugging
 
 1. You can follow the convert CLI command [debugging][] instructions to generate a diagnostic report.
 
-1. Refer to the {{< param "PRODUCT_NAME" >}} [Debugging][DebuggingUI] for more information about a running {{< param "PRODUCT_NAME" >}}.
+1. Refer to [Debug {{< param "PRODUCT_NAME" >}}][DebuggingUI] for more information about a running {{< param "PRODUCT_NAME" >}}.
 
 1. If your Prometheus configuration can't be converted and loaded directly into {{< param "PRODUCT_NAME" >}}, diagnostic information is sent to `stderr`.
    You can bypass any non-critical issues and start the Agent by including the `--config.bypass-conversion-errors` flag in addition to `--config.format=prometheus`.
@@ -244,24 +235,12 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Prometheus]: https://prometheus.io/docs/prometheus/latest/configuration/configuration/
 [debugging]: #debugging
 [example]: #example
-
-{{% docs/reference %}}
-[prometheus.scrape]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.scrape.md"
-[prometheus.scrape]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.scrape.md"
-[prometheus.remote_write]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/components/prometheus.remote_write.md"
-[prometheus.remote_write]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.remote_write.md"
-[Components]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/components.md"
-[Components]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/components.md"
-[convert]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/convert.md"
-[convert]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/convert.md"
-[run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/reference/cli/run.md"
-[run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/reference/cli/run.md"
-[Run]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/get-started/run/"
-[Run]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/get-started/run/"
-[DebuggingUI]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug.md"
-[DebuggingUI]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/debug.md"
-[River]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/concepts/config-language/_index.md"
-[River]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/concepts/config-language/_index.md"
-[UI]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug#grafana-agent-flow-ui"
-[UI]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/flow/tasks/debug#grafana-agent-flow-ui"
-{{% /docs/reference %}}
+[prometheus.scrape]: ../../../reference/components/prometheus.scrape/
+[prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
+[Components]: ../../../concepts/components/
+[convert]: ../../../reference/cli/convert/
+[run]: ../../../reference/cli/run/
+[run alloy]: ../../../get-started/run/
+[DebuggingUI]: ../../tasks/debug/
+[River]: ../../../concepts/config-language/
+[UI]: ../../debug/#grafana-alloy-ui
