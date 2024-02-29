@@ -402,7 +402,7 @@ defaults to `localhost:12345`.
 The support bundle contains all information in plain text, so that it can be
 inspected before sharing, to verify that no sensitive information has leaked.
 
-In addition, you can inspect the [supportbundle package](https://github.com/grafana/agent/tree/main/pkg/supportbundle)
+In addition, you can inspect the [supportbundle package](https://github.com/grafana/agent/tree/main/internal/static/supportbundle)
 to verify the code that is being used to generate these bundles.
 
 A support bundle contains the following data:

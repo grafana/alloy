@@ -124,7 +124,7 @@ Full reference of options:
   snmp_config:
     [- <modules> ... ]
     [- <auths> ... ]
-  
+
   # List of SNMP targets to poll
   snmp_targets:
     [- <snmp_target> ... ]
@@ -148,7 +148,7 @@ Full reference of options:
   [module: <string> | default = ""]
 
   # SNMP authentication profile to use
-  [auth: <string> | default = ""]  
+  [auth: <string> | default = ""]
 
   # walk_param config to use for this snmp_target
   [walk_params: <string> | default = ""]
@@ -173,6 +173,6 @@ Full reference of options:
 
 SNMP module is the set of SNMP counters to be scraped together from the specific network device.
 
-SNMP modules available can be found in the embedded snmp.yml file [here](https://github.com/grafana/agent/blob/main/pkg/integrations/snmp_exporter/common/snmp.yml). If not specified, `if_mib` module is used.
+SNMP modules available can be found in the embedded snmp.yml file [here](https://github.com/grafana/agent/blob/main/internal/static/integrations/snmp_exporter/common/snmp.yml). If not specified, `if_mib` module is used.
 
 If you need to use custom SNMP modules, you can [generate](https://github.com/prometheus/snmp_exporter#generating-configuration) your own snmp.yml file and specify it using `config_file` parameter.
