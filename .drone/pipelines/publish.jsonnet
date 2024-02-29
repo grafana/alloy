@@ -6,7 +6,7 @@ local ghTokenFilename = '/drone/src/gh-token.txt';
 // job_names gets the list of job names for use in depends_on.
 local job_names = function(jobs) std.map(function(job) job.name, jobs);
 
-local linux_containers = ['agent', 'agent-boringcrypto', 'agentctl', 'agent-operator'];
+local linux_containers = ['agent', 'agent-boringcrypto', 'agent-operator'];
 local linux_containers_jobs = std.map(function(container) (
   pipelines.linux('Publish Linux %s container' % container) {
     trigger: {
@@ -60,7 +60,7 @@ local linux_containers_jobs = std.map(function(container) (
   }
 ), linux_containers);
 
-local windows_containers = ['agent', 'agentctl'];
+local windows_containers = ['agent'];
 local windows_containers_jobs = std.map(function(container) (
   pipelines.windows('Publish Windows %s container' % container) {
     trigger: {

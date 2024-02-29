@@ -19,7 +19,6 @@ export DRONE_BRANCH=${DRONE_BRANCH:-}
 
 export AGENT_IMAGE=grafana/agent
 export AGENT_BORINGCRYPTO_IMAGE=grafana/agent-boringcrypto
-export AGENTCTL_IMAGE=grafana/agentctl
 export OPERATOR_IMAGE=grafana/agent-operator
 
 # We need to determine what version to assign to built binaries. If containers
@@ -80,19 +79,6 @@ case "$TARGET_CONTAINER" in
       .
     ;;
 
-
-
-  agentctl)
-    docker buildx build --push           \
-      --platform $BUILD_PLATFORMS        \
-      --build-arg RELEASE_BUILD=1        \
-      --build-arg VERSION="$VERSION"     \
-      -t "$AGENTCTL_IMAGE:$VERSION"      \
-      -t "$AGENTCTL_IMAGE:$BRANCH_TAG"   \
-      -f cmd/grafana-agentctl/Dockerfile \
-      .
-    ;;
-
   agent-operator)
     docker buildx build --push                 \
       --platform $BUILD_PLATFORMS              \
@@ -105,7 +91,7 @@ case "$TARGET_CONTAINER" in
     ;;
 
   *)
-    echo "Usage: $0 agent|agent-boringcrypto|agentctl|agent-operator"
+    echo "Usage: $0 agent|agent-boringcrypto|agent-operator"
     exit 1
     ;;
 esac

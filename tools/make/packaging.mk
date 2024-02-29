@@ -3,7 +3,7 @@
 PARENT_MAKEFILE := $(firstword $(MAKEFILE_LIST))
 
 .PHONY: dist clean-dist
-dist: dist-agent-binaries dist-agent-flow-binaries dist-agentctl-binaries dist-agent-packages dist-agent-flow-packages dist-agent-installer dist-agent-flow-installer
+dist: dist-agent-binaries dist-agent-flow-binaries dist-agent-packages dist-agent-flow-packages dist-agent-installer dist-agent-flow-installer
 
 clean-dist:
 	rm -rf ./dist/* ./dist.temp/*
@@ -112,66 +112,6 @@ dist/grafana-agent-linux-arm64-boringcrypto: generate-ui
 	$(PACKAGING_VARS) AGENT_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agent
 
 #
-# agentctl release binaries.
-#
-
-dist-agentctl-binaries: dist/grafana-agentctl-linux-amd64       \
-                        dist/grafana-agentctl-linux-arm64       \
-                        dist/grafana-agentctl-linux-ppc64le     \
-                        dist/grafana-agentctl-linux-s390x       \
-                        dist/grafana-agentctl-darwin-amd64      \
-                        dist/grafana-agentctl-darwin-arm64      \
-                        dist/grafana-agentctl-windows-amd64.exe \
-                        dist/grafana-agentctl-freebsd-amd64
-
-dist/grafana-agentctl-linux-amd64: GO_TAGS += netgo promtail_journal_enabled
-dist/grafana-agentctl-linux-amd64: GOOS    := linux
-dist/grafana-agentctl-linux-amd64: GOARCH  := amd64
-dist/grafana-agentctl-linux-amd64:
-	$(PACKAGING_VARS) AGENTCTL_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agentctl
-
-dist/grafana-agentctl-linux-arm64: GO_TAGS += netgo promtail_journal_enabled
-dist/grafana-agentctl-linux-arm64: GOOS    := linux
-dist/grafana-agentctl-linux-arm64: GOARCH  := arm64
-dist/grafana-agentctl-linux-arm64:
-	$(PACKAGING_VARS) AGENTCTL_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agentctl
-
-dist/grafana-agentctl-linux-ppc64le: GO_TAGS += netgo promtail_journal_enabled
-dist/grafana-agentctl-linux-ppc64le: GOOS    := linux
-dist/grafana-agentctl-linux-ppc64le: GOARCH  := ppc64le
-dist/grafana-agentctl-linux-ppc64le:
-	$(PACKAGING_VARS) AGENTCTL_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agentctl
-
-dist/grafana-agentctl-linux-s390x: GO_TAGS += netgo promtail_journal_enabled
-dist/grafana-agentctl-linux-s390x: GOOS    := linux
-dist/grafana-agentctl-linux-s390x: GOARCH  := s390x
-dist/grafana-agentctl-linux-s390x:
-	$(PACKAGING_VARS) AGENTCTL_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agentctl
-
-dist/grafana-agentctl-darwin-amd64: GO_TAGS += netgo
-dist/grafana-agentctl-darwin-amd64: GOOS    := darwin
-dist/grafana-agentctl-darwin-amd64: GOARCH  := amd64
-dist/grafana-agentctl-darwin-amd64:
-	$(PACKAGING_VARS) AGENTCTL_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agentctl
-
-dist/grafana-agentctl-darwin-arm64: GO_TAGS += netgo
-dist/grafana-agentctl-darwin-arm64: GOOS    := darwin
-dist/grafana-agentctl-darwin-arm64: GOARCH  := arm64
-dist/grafana-agentctl-darwin-arm64:
-	$(PACKAGING_VARS) AGENTCTL_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agentctl
-
-dist/grafana-agentctl-windows-amd64.exe: GOOS   := windows
-dist/grafana-agentctl-windows-amd64.exe: GOARCH := amd64
-dist/grafana-agentctl-windows-amd64.exe:
-	$(PACKAGING_VARS) AGENTCTL_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agentctl
-
-dist/grafana-agentctl-freebsd-amd64: GO_TAGS += netgo
-dist/grafana-agentctl-freebsd-amd64: GOOS    := freebsd
-dist/grafana-agentctl-freebsd-amd64: GOARCH  := amd64
-dist/grafana-agentctl-freebsd-amd64:
-	$(PACKAGING_VARS) AGENTCTL_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agentctl
-
-#
 # agent-flow release binaries
 #
 # agent-flow release binaries are intermediate build assets used for producing
@@ -260,7 +200,6 @@ define generate_agent_fpm =
 		--rpm-rpmbuild-define "_build_id_links none" \
 		--package $(4) \
 			dist/grafana-agent-linux-$(3)=/usr/bin/grafana-agent \
-			dist/grafana-agentctl-linux-$(3)=/usr/bin/grafana-agentctl \
 			packaging/grafana-agent/grafana-agent.yaml=/etc/grafana-agent.yaml \
 			packaging/grafana-agent/environment-file=$(AGENT_ENVIRONMENT_FILE_$(1)) \
 			packaging/grafana-agent/$(1)/grafana-agent.service=/usr/lib/systemd/system/grafana-agent.service
@@ -277,7 +216,7 @@ dist-agent-packages: dist-agent-packages-amd64   \
                      dist-agent-packages-s390x
 
 .PHONY: dist-agent-packages-amd64
-dist-agent-packages-amd64: dist/grafana-agent-linux-amd64 dist/grafana-agentctl-linux-amd64
+dist-agent-packages-amd64: dist/grafana-agent-linux-amd64
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -286,7 +225,7 @@ else
 endif
 
 .PHONY: dist-agent-packages-arm64
-dist-agent-packages-arm64: dist/grafana-agent-linux-arm64 dist/grafana-agentctl-linux-arm64
+dist-agent-packages-arm64: dist/grafana-agent-linux-arm64
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -295,7 +234,7 @@ else
 endif
 
 .PHONY: dist-agent-packages-ppc64le
-dist-agent-packages-ppc64le: dist/grafana-agent-linux-ppc64le dist/grafana-agentctl-linux-ppc64le
+dist-agent-packages-ppc64le: dist/grafana-agent-linux-ppc64le
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -304,7 +243,7 @@ else
 endif
 
 .PHONY: dist-agent-packages-s390x
-dist-agent-packages-s390x: dist/grafana-agent-linux-s390x dist/grafana-agentctl-linux-s390x
+dist-agent-packages-s390x: dist/grafana-agent-linux-s390x
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else

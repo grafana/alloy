@@ -31,7 +31,6 @@ local os_arch_tuples = [
 local targets = [
   'agent',
   'agent-flow',
-  'agentctl',
   'operator',
 ];
 
@@ -64,7 +63,7 @@ local build_environments(targets, tuples, image) = std.flatMap(function(target) 
         target: target,
 
         tags: go_tags[platform.os],
-      } + (if 'experiment' in platform then { GOEXPERIMENT: platform.experiment } else { }),
+      } + (if 'experiment' in platform then { GOEXPERIMENT: platform.experiment } else {}),
 
       trigger: {
         event: ['pull_request'],
@@ -75,7 +74,7 @@ local build_environments(targets, tuples, image) = std.flatMap(function(target) 
         image: image,
         commands: [
           'make generate-ui',
-          (if 'GOEXPERIMENT' in env 
+          (if 'GOEXPERIMENT' in env
            then 'GO_TAGS="%(tags)s" GOOS=%(GOOS)s GOARCH=%(GOARCH)s GOARM=%(GOARM)s GOEXPERIMENT=%(GOEXPERIMENT)s make %(target)s' % env
            else 'GO_TAGS="%(tags)s" GOOS=%(GOOS)s GOARCH=%(GOARCH)s GOARM=%(GOARM)s make %(target)s') % env,
         ],
