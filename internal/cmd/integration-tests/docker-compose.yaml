@@ -1,0 +1,36 @@
+version: "3"
+services:
+
+  mimir:
+    image: grafana/mimir:2.10.4
+    volumes:
+      - ./configs/mimir:/etc/mimir-config
+    entrypoint:
+      - /bin/mimir
+      - -config.file=/etc/mimir-config/mimir.yaml
+    ports:
+      - "9009:9009"
+
+  loki:
+    image: grafana/loki:latest
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+
+  otel-metrics-gen:
+    build:
+      dockerfile: ./internal/cmd/integration-tests/configs/otel-metrics-gen/Dockerfile
+      context: ../../..
+    environment:
+      - OTEL_EXPORTER_ENDPOINT=${OTEL_EXPORTER_ENDPOINT:-host.docker.internal:4318}
+
+  prom-gen:
+    build:
+      dockerfile: ./internal/cmd/integration-tests/configs/prom-gen/Dockerfile
+      context: ../../..
+    ports:
+      - "9001:9001"
+  redis:
+    image: redis:6.0.9-alpine
+    ports:
+      - "6379:6379"

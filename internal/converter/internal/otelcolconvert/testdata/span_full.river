@@ -1,0 +1,72 @@
+otelcol.receiver.otlp "default" {
+	grpc { }
+
+	http { }
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+		logs    = [otelcol.exporter.otlp.default.input]
+		traces  = [otelcol.processor.span.default.input]
+	}
+}
+
+otelcol.processor.span "default" {
+	include {
+		match_type         = "strict"
+		span_names         = ["span1", "span2"]
+		log_bodies         = ["lb1", "lb2"]
+		log_severity_texts = ["ls1", "ls2"]
+
+		attribute {
+			key   = "key1"
+			value = "value1"
+		}
+		span_kinds = ["spankind1", "spankind2"]
+	}
+
+	exclude {
+		match_type = "regex"
+		services   = ["svc1", "svc2"]
+
+		log_severity {
+			min             = "TRACE2"
+			match_undefined = false
+		}
+		metric_names = ["mn1", "mn2"]
+
+		resource {
+			key   = "key1"
+			value = "value1"
+		}
+
+		library {
+			name    = "name1"
+			version = "version1"
+		}
+	}
+
+	name {
+		from_attributes = ["db.svc", "operation"]
+		separator       = "::"
+
+		to_attributes {
+			rules             = ["^\\/api\\/v1\\/document\\/(?P<documentId>.*)\\/update$"]
+			break_after_match = true
+		}
+	}
+
+	status {
+		code        = "Error"
+		description = "some error description"
+	}
+
+	output {
+		traces = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

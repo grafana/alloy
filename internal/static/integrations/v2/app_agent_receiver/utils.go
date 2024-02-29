@@ -1,0 +1,84 @@
+package app_agent_receiver
+
+import (
+	"fmt"
+	"sort"
+
+	"github.com/grafana/agent/internal/util/wildcard"
+	om "github.com/wk8/go-ordered-map"
+)
+
+// KeyVal is an ordered map of string to interface
+type KeyVal = om.OrderedMap
+
+// NewKeyVal creates new empty KeyVal
+func NewKeyVal() *KeyVal {
+	return om.New()
+}
+
+// KeyValFromMap will instantiate KeyVal from a map[string]string
+func KeyValFromMap(m map[string]string) *KeyVal {
+	kv := NewKeyVal()
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		KeyValAdd(kv, k, m[k])
+	}
+	return kv
+}
+
+// MergeKeyVal will merge source in target
+func MergeKeyVal(target *KeyVal, source *KeyVal) {
+	for el := source.Oldest(); el != nil; el = el.Next() {
+		target.Set(el.Key, el.Value)
+	}
+}
+
+// MergeKeyValWithPrefix will merge source in target, adding a prefix to each key being merged in
+func MergeKeyValWithPrefix(target *KeyVal, source *KeyVal, prefix string) {
+	for el := source.Oldest(); el != nil; el = el.Next() {
+		target.Set(fmt.Sprintf("%s%s", prefix, el.Key), el.Value)
+	}
+}
+
+// KeyValAdd adds a key + value string pair to kv
+func KeyValAdd(kv *KeyVal, key string, value string) {
+	if len(value) > 0 {
+		kv.Set(key, value)
+	}
+}
+
+// KeyValToInterfaceSlice converts KeyVal to []interface{}, typically used for logging
+func KeyValToInterfaceSlice(kv *KeyVal) []interface{} {
+	slice := make([]interface{}, kv.Len()*2)
+	idx := 0
+	for el := kv.Oldest(); el != nil; el = el.Next() {
+		slice[idx] = el.Key
+		idx++
+		slice[idx] = el.Value
+		idx++
+	}
+	return slice
+}
+
+// KeyValToInterfaceMap converts KeyVal to map[string]interface
+func KeyValToInterfaceMap(kv *KeyVal) map[string]interface{} {
+	retv := make(map[string]interface{})
+	for el := kv.Oldest(); el != nil; el = el.Next() {
+		retv[fmt.Sprint(el.Key)] = el.Value
+	}
+	return retv
+}
+
+// URLMatchesOrigins returns true if URL matches at least one of origin prefix. Wildcard '*' and '?' supported
+func urlMatchesOrigins(URL string, origins []string) bool {
+	for _, origin := range origins {
+		if origin == "*" || wildcard.Match(origin+"*", URL) {
+			return true
+		}
+	}
+	return false
+}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package agentproto;
+option go_package = "github.com/grafana/agent/internal/static/agentproto";
+
+import "google/protobuf/empty.proto";
+
+// ScrapingService holds methods that can be called against a Prometheus
+// Scraping Service instance.
+//
+// These methods are only available when the agent config file has enabled the
+// scraping service mode. If the scraping service mode is not enabling,
+// invoking any of the RPCs here will return a not found error.
+service ScrapingService {
+  // Reshard tells the implementing service to reshard all of its running
+  // configs.
+  rpc Reshard(ReshardRequest) returns (google.protobuf.Empty);
+}
+
+message ReshardRequest {}

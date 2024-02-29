@@ -193,6 +193,8 @@ Section "uninstall"
   RMDir /r "$APPDATA\${APPNAME}"     # Application data.
 
   # Remove service and uninstaller information from the registry.
-  DeleteRegKey HKLM "Software\Grafana\Grafana Agent Flow"
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
+  nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\Grafana\Grafana Agent Flow"  /reg:64 /f'
+  Pop $0
+  nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"  /reg:64 /f'
+  Pop $0
 SectionEnd

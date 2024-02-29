@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/grafana/agent/pkg/build"
+	"github.com/grafana/agent/internal/build"
 )
 
 const (

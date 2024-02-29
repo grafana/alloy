@@ -4,7 +4,7 @@ ROOT=$(git rev-parse --show-toplevel)
 
 
 # Generate objects and controllers for our CRDs
-cd $ROOT/pkg/operator/apis/monitoring/v1alpha1
+cd $ROOT/internal/static/operator/apis/monitoring/v1alpha1
 controller-gen object paths=.
 controller-gen crd:crdVersions=v1,maxDescLen=0 paths=. output:crd:dir=$ROOT/operations/agent-static-operator/crds
 

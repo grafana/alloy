@@ -32,8 +32,8 @@
         "docsURLTemplate": "https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/client#Object"
       },
       {
-        "typeMatchPrefix": "^github\\.com/grafana/agent/pkg/operator/assets\\.SecretStore$",
-        "docsURLTemplate": "https://pkg.go.dev/github.com/grafana/agent/pkg/operator/assets#SecretStore"
+        "typeMatchPrefix": "^github\\.com/grafana/agent/internal/static/operator/assets\\.SecretStore$",
+        "docsURLTemplate": "https://pkg.go.dev/github.com/grafana/agent/internal/static/operator/assets#SecretStore"
       }
     ],
     "typeDisplayNamePrefixOverrides": {
@@ -42,4 +42,4 @@
     },
     "markdownDisabled": false
   }
-  
+

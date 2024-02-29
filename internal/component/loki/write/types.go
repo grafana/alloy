@@ -1,0 +1,118 @@
+package write
+
+import (
+	"fmt"
+	"net/url"
+	"time"
+
+	"github.com/grafana/agent/internal/component/common/loki/client"
+	"github.com/grafana/agent/internal/component/common/loki/utils"
+
+	"github.com/alecthomas/units"
+	types "github.com/grafana/agent/internal/component/common/config"
+	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/dskit/flagext"
+	lokiflagext "github.com/grafana/loki/pkg/util/flagext"
+)
+
+// EndpointOptions describes an individual location to send logs to.
+type EndpointOptions struct {
+	Name              string                  `river:"name,attr,optional"`
+	URL               string                  `river:"url,attr"`
+	BatchWait         time.Duration           `river:"batch_wait,attr,optional"`
+	BatchSize         units.Base2Bytes        `river:"batch_size,attr,optional"`
+	RemoteTimeout     time.Duration           `river:"remote_timeout,attr,optional"`
+	Headers           map[string]string       `river:"headers,attr,optional"`
+	MinBackoff        time.Duration           `river:"min_backoff_period,attr,optional"`  // start backoff at this level
+	MaxBackoff        time.Duration           `river:"max_backoff_period,attr,optional"`  // increase exponentially to this level
+	MaxBackoffRetries int                     `river:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+	TenantID          string                  `river:"tenant_id,attr,optional"`
+	RetryOnHTTP429    bool                    `river:"retry_on_http_429,attr,optional"`
+	HTTPClientConfig  *types.HTTPClientConfig `river:",squash"`
+	QueueConfig       QueueConfig             `river:"queue_config,block,optional"`
+}
+
+// GetDefaultEndpointOptions defines the default settings for sending logs to a
+// remote endpoint.
+// The backoff schedule with the default parameters:
+// 0.5s, 1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s(4.267m)
+// For a total time of 511.5s (8.5m) before logs are lost.
+func GetDefaultEndpointOptions() EndpointOptions {
+	var defaultEndpointOptions = EndpointOptions{
+		BatchWait:         1 * time.Second,
+		BatchSize:         1 * units.MiB,
+		RemoteTimeout:     10 * time.Second,
+		MinBackoff:        500 * time.Millisecond,
+		MaxBackoff:        5 * time.Minute,
+		MaxBackoffRetries: 10,
+		HTTPClientConfig:  types.CloneDefaultHTTPClientConfig(),
+		RetryOnHTTP429:    true,
+	}
+
+	return defaultEndpointOptions
+}
+
+// SetToDefault implements river.Defaulter.
+func (r *EndpointOptions) SetToDefault() {
+	*r = GetDefaultEndpointOptions()
+}
+
+// Validate implements river.Validator.
+func (r *EndpointOptions) Validate() error {
+	if _, err := url.Parse(r.URL); err != nil {
+		return fmt.Errorf("failed to parse remote url %q: %w", r.URL, err)
+	}
+
+	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
+	if r.HTTPClientConfig != nil {
+		return r.HTTPClientConfig.Validate()
+	}
+
+	return nil
+}
+
+// QueueConfig controls how the queue logs remote write client is configured. Note that this client is only used when the
+// loki.write component has WAL support enabled.
+type QueueConfig struct {
+	Capacity     units.Base2Bytes `river:"capacity,attr,optional"`
+	DrainTimeout time.Duration    `river:"drain_timeout,attr,optional"`
+}
+
+// SetToDefault implements river.Defaulter.
+func (q *QueueConfig) SetToDefault() {
+	*q = QueueConfig{
+		Capacity:     10 * units.MiB, // considering the default BatchSize of 1MiB, this gives us a default buffered channel of size 10
+		DrainTimeout: 15 * time.Second,
+	}
+}
+
+func (args Arguments) convertClientConfigs() []client.Config {
+	var res []client.Config
+	for _, cfg := range args.Endpoints {
+		url, _ := url.Parse(cfg.URL)
+		cc := client.Config{
+			Name:      cfg.Name,
+			URL:       flagext.URLValue{URL: url},
+			Headers:   cfg.Headers,
+			BatchWait: cfg.BatchWait,
+			BatchSize: int(cfg.BatchSize),
+			Client:    *cfg.HTTPClientConfig.Convert(),
+			BackoffConfig: backoff.Config{
+				MinBackoff: cfg.MinBackoff,
+				MaxBackoff: cfg.MaxBackoff,
+				MaxRetries: cfg.MaxBackoffRetries,
+			},
+			ExternalLabels:         lokiflagext.LabelSet{LabelSet: utils.ToLabelSet(args.ExternalLabels)},
+			Timeout:                cfg.RemoteTimeout,
+			TenantID:               cfg.TenantID,
+			DropRateLimitedBatches: !cfg.RetryOnHTTP429,
+			Queue: client.QueueConfig{
+				Capacity:     int(cfg.QueueConfig.Capacity),
+				DrainTimeout: cfg.QueueConfig.DrainTimeout,
+			},
+		}
+		res = append(res, cc)
+	}
+
+	return res
+}
