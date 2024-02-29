@@ -1,6 +1,6 @@
 ---
 aliases:
-- /docs/alloy/
+- ./docs/alloy/
 canonical: https://grafana.com/docs/alloy/latest/
 title: Grafana Alloy
 description: Grafana Alloy is a flexible, performant, vendor-neutral, telemetry collector
