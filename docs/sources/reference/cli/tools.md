@@ -1,10 +1,7 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/reference/cli/tools/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/cli/tools/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/cli/tools/
-- /docs/grafana-cloud/send-data/agent/flow/reference/cli/tools/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/cli/tools/
+- ./reference/cli/tools/
+canonical: https://grafana.com/docs/aalloyent/latest/reference/cli/tools/
 description: Learn about the tools command
 menuTitle: tools
 title: The tools command
@@ -13,11 +10,10 @@ weight: 400
 
 # The tools command
 
-The `tools` command contains command line tooling grouped by Flow component.
+The `tools` command contains command line tooling grouped by {{< param "PRODUCT_NAME" >}} component.
 
 {{< admonition type="caution" >}}
-Utilities in this command have no backward compatibility
-guarantees and may change or be removed between releases.
+Utilities in this command have no backward compatibility guarantees and may change or be removed between releases.
 {{< /admonition >}}
 
 ## Subcommands
@@ -29,8 +25,7 @@ Usage:
 * `AGENT_MODE=flow grafana-agent tools prometheus.remote_write sample-stats [FLAG ...] WAL_DIRECTORY`
 * `grafana-agent-flow tools prometheus.remote_write sample-stats [FLAG ...] WAL_DIRECTORY`
 
-The `sample-stats` command reads the Write-Ahead Log (WAL) specified by
-`WAL_DIRECTORY` and collects information on metric samples within it.
+The `sample-stats` command reads the Write-Ahead Log (WAL) specified by `WAL_DIRECTORY` and collects information on metric samples within it.
 
 For each metric discovered, `sample-stats` emits:
 
@@ -52,13 +47,9 @@ Usage:
 * `AGENT_MODE=flow grafana-agent tools prometheus.remote_write target-stats --job JOB --instance INSTANCE WAL_DIRECTORY`
 * `grafana-agent-flow tools prometheus.remote_write target-stats --job JOB --instance INSTANCE WAL_DIRECTORY`
 
-The `target-stats` command reads the Write-Ahead Log (WAL) specified by
-`WAL_DIRECTORY` and collects metric cardinality information for a specific
-target.
+The `target-stats` command reads the Write-Ahead Log (WAL) specified by `WAL_DIRECTORY` and collects metric cardinality information for a specific target.
 
-For the target specified by the `--job` and `--instance` flags, unique metric
-names for that target are printed along with the number of series with that
-metric name.
+For the target specified by the `--job` and `--instance` flags, unique metric names for that target are printed along with the number of series with that metric name.
 
 The following flags are supported:
 
@@ -69,13 +60,12 @@ The `--job` and `--instance` labels are required.
 
 ### prometheus.remote_write wal-stats
 
-Usage: 
+Usage:
 
 * `AGENT_MODE=flow grafana-agent tools prometheus.remote_write wal-stats WAL_DIRECTORY`
 * `grafana-agent-flow tools prometheus.remote_write wal-stats WAL_DIRECTORY`
 
-The `wal-stats` command reads the Write-Ahead Log (WAL) specified by
-`WAL_DIRECTORY` and collects general information about it.
+The `wal-stats` command reads the Write-Ahead Log (WAL) specified by `WAL_DIRECTORY` and collects general information about it.
 
 The following information is reported:
 
@@ -89,9 +79,7 @@ The following information is reported:
 * The oldest segment number in the WAL.
 * The newest segment number in the WAL.
 
-Additionally, `wal-stats` reports per-target information, where a target is
-defined as a unique combination of the `job` and `instance` label values. For
-each target, `wal-stats` reports the number of series and the number of
-metric samples associated with that target.
+Additionally, `wal-stats` reports per-target information, where a target is defined as a unique combination of the `job` and `instance` label values.
+For each target, `wal-stats` reports the number of series and the number of metric samples associated with that target.
 
 The `wal-stats` command does not support any flags.
