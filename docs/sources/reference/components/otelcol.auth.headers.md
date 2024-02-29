@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.auth.headers/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.auth.headers/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.auth.headers/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.auth.headers/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.auth.headers/
 description: Learn about otelcol.auth.headers
 title: otelcol.auth.headers
 ---

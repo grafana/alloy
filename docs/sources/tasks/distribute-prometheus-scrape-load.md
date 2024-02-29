@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/agent/latest/flow/tasks/distribute-prometheus-scrape-load/
+canonical: https://grafana.com/docs/alloy/latest/tasks/distribute-prometheus-scrape-load/
 description: Learn how to distribute your Prometheus metrics scrape load
 menuTitle: Distribute Prometheus metrics scrape load
 title: Distribute Prometheus metrics scrape load

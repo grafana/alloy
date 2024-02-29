@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.memory_limiter/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.memory_limiter/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.memory_limiter/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.processor.memory_limiter/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.memory_limiter/
 description: Learn about otelcol.processor.memory_limiter
 title: otelcol.processor.memory_limiter
 ---
@@ -87,7 +87,7 @@ output | [output][] | Configures where to send received telemetry data. | yes
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

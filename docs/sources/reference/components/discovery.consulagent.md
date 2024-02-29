@@ -2,7 +2,7 @@
 aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.consulagent/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.consulagent/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/discovery.consulagent/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.consulagent/
 description: Learn about discovery.consulagent
 title: discovery.consulagent
 ---
@@ -53,7 +53,7 @@ The following blocks are supported inside the definition of
 
 ### tls_config block
 
-{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

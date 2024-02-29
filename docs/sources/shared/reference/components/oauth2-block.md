@@ -27,4 +27,4 @@ Name                     | Type                | Description                    
 
 The `oauth2` block may also contain a separate `tls_config` sub-block.
 
-{{< docs/shared lookup="flow/reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}

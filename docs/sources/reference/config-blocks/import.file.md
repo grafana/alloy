@@ -33,7 +33,7 @@ Name             | Type       | Description                                     
 `detector`       | `string`   | Which file change detector to use (fsnotify, poll). | `"fsnotify"` | no
 `poll_frequency` | `duration` | How often to poll for file changes.                 | `"1m"`       | no
 
-{{< docs/shared lookup="flow/reference/components/local-file-arguments-text.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/local-file-arguments-text.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Example
 

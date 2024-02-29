@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.batch/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.batch/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.batch/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.processor.batch/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.batch/
 description: Learn about otelcol.processor.batch
 title: otelcol.processor.batch
 ---
@@ -110,7 +110,7 @@ output | [output][] | Configures where to send received telemetry data. | yes
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

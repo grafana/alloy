@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.remote_write/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.remote_write/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.remote_write/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.remote_write/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.remote_write/
 description: Learn about prometheus.remote_write
 title: prometheus.remote_write
 ---
@@ -128,35 +128,35 @@ sent to `prometheus.remote_write` are forwarded to the configured endpoint. If
 the endpoint doesn't support receiving native histogram samples, pushing
 metrics fails.
 
-{{< docs/shared lookup="flow/reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### basic_auth block
 
-{{< docs/shared lookup="flow/reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### authorization block
 
-{{< docs/shared lookup="flow/reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### oauth2 block
 
-{{< docs/shared lookup="flow/reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### sigv4 block
 
-{{< docs/shared lookup="flow/reference/components/sigv4-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/sigv4-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### azuread block
 
-{{< docs/shared lookup="flow/reference/components/azuread-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/azuread-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### managed_identity block
 
-{{< docs/shared lookup="flow/reference/components/managed_identity-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/managed_identity-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### tls_config block
 
-{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### queue_config block
 
@@ -211,7 +211,7 @@ Name | Type | Description | Default | Required
 
 ### write_relabel_config block
 
-{{< docs/shared lookup="flow/reference/components/write_relabel_config.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/write_relabel_config.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### wal block
 

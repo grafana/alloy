@@ -2,7 +2,7 @@
 aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.scaleway/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.scaleway/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/discovery.scaleway/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.scaleway/
 description: Learn about discovery.scaleway
 title: discovery.scaleway
 ---
@@ -61,7 +61,7 @@ discovered servers. `name_filter` returns machines matching a specific name,
 while `tags_filter` returns machines who contain _all_ the tags listed in the
 `tags_filter` argument.
 
-{{< docs/shared lookup="flow/reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
 
@@ -80,7 +80,7 @@ an `oauth2` block.
 
 ### tls_config block
 
-{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

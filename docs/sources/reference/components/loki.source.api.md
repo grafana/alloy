@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.api/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.api/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.api/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/loki.source.api/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.api/
 description: Learn about loki.source.api
 title: loki.source.api
 ---
@@ -69,7 +69,7 @@ Hierarchy | Name     | Description                                        | Requ
 
 ### http
 
-{{< docs/shared lookup="flow/reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.resourcedetection/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.resourcedetection/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.resourcedetection/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.processor.resourcedetection/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.resourcedetection/
 labels:
   stage: beta
 title: otelcol.processor.resourcedetection
@@ -128,7 +128,7 @@ kubernetes_node   | [kubernetes_node][]   |                                     
 
 ### output
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<AGENT VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<AGENT VERSION>" >}}
 
 ### ec2
 
@@ -669,7 +669,7 @@ Block                                          | Description                    
 The `tls` block configures TLS settings used for the connection to the gRPC
 server.
 
-{{< docs/shared lookup="flow/reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 #### openshift > resource_attributes
 

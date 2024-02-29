@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.exporter.statsd/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.exporter.statsd/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.statsd/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.exporter.statsd/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.statsd/
 description: Learn about prometheus.exporter.statsd
 title: prometheus.exporter.statsd
 ---
@@ -59,7 +59,7 @@ fully through arguments.
 
 ## Exported fields
 
-{{< docs/shared lookup="flow/reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

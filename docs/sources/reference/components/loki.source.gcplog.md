@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.gcplog/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.gcplog/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.gcplog/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/loki.source.gcplog/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.gcplog/
 description: Learn about loki.source.gcplog
 title: loki.source.gcplog
 ---
@@ -118,11 +118,11 @@ The `labels` map is applied to every entry that passes through the component.
 
 ### http
 
-{{< docs/shared lookup="flow/reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### grpc
 
-{{< docs/shared lookup="flow/reference/components/loki-server-grpc.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/loki-server-grpc.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

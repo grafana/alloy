@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.uyuni/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.uyuni/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.uyuni/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/discovery.uyuni/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.uyuni/
 description: Learn about discovery.uyuni
 title: discovery.uyuni
 ---
@@ -44,7 +44,7 @@ Name                     | Type                | Description                    
 `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.        | `true`                  | no
 `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                            | `true`                  | no
 
-{{< docs/shared lookup="flow/reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
 The following blocks are supported inside the definition of
@@ -58,7 +58,7 @@ tls_config | [tls_config][] | TLS configuration for requests to the Uyuni API. |
 
 ### tls_config block
 
-{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

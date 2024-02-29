@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.tail_sampling/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.tail_sampling/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.tail_sampling/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.processor.tail_sampling/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.tail_sampling/
 description: Learn about otelcol.processor.tail_sampling
 labels:
   stage: beta
@@ -312,7 +312,7 @@ Name | Type | Description | Default | Required
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

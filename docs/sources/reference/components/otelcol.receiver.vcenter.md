@@ -3,7 +3,7 @@ aliases:
 - /docs/grafana-cloud/agent/flow/reference/components/otelcol.receiver.vcenter/
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.receiver.vcenter/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.receiver.vcenter/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.receiver.vcenter/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.vcenter/
 title: otelcol.receiver.vcenter
 description: Learn about otelcol.receiver.vcenter
 labels:
@@ -94,7 +94,7 @@ output | [output][] | Configures where to send received telemetry data. | yes
 The `tls` block configures TLS settings used for a server. If the `tls` block
 isn't provided, TLS won't be used for connections to the server.
 
-{{< docs/shared lookup="flow/reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### metrics block
 
@@ -172,11 +172,11 @@ Name | Type | Description | Default | Required
 
 ### debug_metrics block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

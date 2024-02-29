@@ -5,7 +5,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.dns/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.dns/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.dns/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/discovery.dns/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.dns/
 description: Learn about discovery.dns
 title: discovery.dns
 ---

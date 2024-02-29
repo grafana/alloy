@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.exporter.snmp/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.exporter.snmp/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.snmp/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.exporter.snmp/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.snmp/
 description: Learn about prometheus.exporter.snmp
 title: prometheus.exporter.snmp
 ---
@@ -89,7 +89,7 @@ The `walk_param` block may be specified multiple times to define multiple SNMP c
 
 ## Exported fields
 
-{{< docs/shared lookup="flow/reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

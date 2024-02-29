@@ -2,7 +2,7 @@
 aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.connector.servicegraph/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.connector.servicegraph/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.connector.servicegraph/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.servicegraph/
 description: Learn about otelcol.connector.servicegraph
 labels:
   stage: experimental
@@ -139,7 +139,7 @@ Name | Type | Description | Default | Required
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

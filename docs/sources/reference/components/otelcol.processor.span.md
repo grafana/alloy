@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.span/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.span/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.span/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.processor.span/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.span/
 description: Learn about otelcol.processor.span
 labels:
   stage: experimental
@@ -191,23 +191,23 @@ with a non-empty value for a valid configuration.
 
 ### regexp block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-filter-regexp-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-filter-regexp-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### attribute block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-filter-attribute-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-filter-attribute-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### resource block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-filter-resource-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-filter-resource-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### library block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-filter-library-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-filter-library-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block-traces.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block-traces.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

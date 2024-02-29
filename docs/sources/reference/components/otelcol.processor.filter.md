@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.filter/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.filter/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.filter/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.processor.filter/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.filter/
 description: Learn about otelcol.processor.filter
 labels:
   stage: experimental
@@ -173,7 +173,7 @@ Only one of the statements inside the list of statements has to be satisfied.
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

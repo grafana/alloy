@@ -3,7 +3,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.exporter.agent/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.agent/
 - ./prometheus.exporter.agent/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.exporter.self/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.self/
 description: Learn about prometheus.exporter.self
 title: prometheus.exporter.self
 ---
@@ -25,7 +25,7 @@ prometheus.exporter.self "agent" {
 
 ## Exported fields
 
-{{< docs/shared lookup="flow/reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

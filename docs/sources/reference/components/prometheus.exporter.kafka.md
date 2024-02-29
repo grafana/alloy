@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.exporter.kafka/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.exporter.kafka/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.kafka/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.exporter.kafka/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.kafka/
 description: Learn about prometheus.exporter.kafka
 title: prometheus.exporter.kafka
 ---
@@ -54,7 +54,7 @@ Omitted fields take their default values.
 
 ## Exported fields
 
-{{< docs/shared lookup="flow/reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

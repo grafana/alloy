@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.exporter.github/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.exporter.github/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.github/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.exporter.github/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.github/
 description: Learn about prometheus.exporter.github
 title: prometheus.exporter.github
 ---
@@ -41,7 +41,7 @@ When provided, `api_token_file` takes precedence over `api_token`.
 
 ## Exported fields
 
-{{< docs/shared lookup="flow/reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.extension.jaeger_remote_sampling/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.extension.jaeger_remote_sampling/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.extension.jaeger_remote_sampling/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.extension.jaeger_remote_sampling/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.extension.jaeger_remote_sampling/
 description: Learn about otelcol.extension.jaeger_remote_sampling
 label:
   stage: experimental
@@ -212,11 +212,11 @@ Name | Type | Description | Default | Required
 `authority` | `string` | Overrides the default `:authority` header in gRPC requests from the gRPC client. | | no
 `auth` | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. | | no
 
-{{< docs/shared lookup="flow/reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-{{< docs/shared lookup="flow/reference/components/otelcol-grpc-balancer-name.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-grpc-balancer-name.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-{{< docs/shared lookup="flow/reference/components/otelcol-grpc-authority.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-grpc-authority.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 An HTTP proxy can be configured through the following environment variables:
 
@@ -245,7 +245,7 @@ able to handle and proxy HTTP/2 traffic.
 The `tls` block configures TLS settings used for the connection to the gRPC
 server.
 
-{{< docs/shared lookup="flow/reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### keepalive client block
 

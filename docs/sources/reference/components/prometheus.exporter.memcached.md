@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.exporter.memcached/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.exporter.memcached/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.memcached/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.exporter.memcached/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.memcached/
 description: Learn about prometheus.exporter.memcached
 title: prometheus.exporter.memcached
 ---
@@ -42,11 +42,11 @@ The following blocks are supported inside the definition of `prometheus.exporter
 
 ### tls_config block
 
-{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
-{{< docs/shared lookup="flow/reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

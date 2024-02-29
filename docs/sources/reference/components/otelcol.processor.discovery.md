@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.discovery/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.discovery/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.discovery/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.processor.discovery/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.discovery/
 description: Learn about otelcol.processor.discovery
 title: otelcol.processor.discovery
 ---
@@ -106,7 +106,7 @@ output | [output][] | Configures where to send received telemetry data. | yes
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block-traces.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block-traces.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

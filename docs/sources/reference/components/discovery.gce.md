@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.gce/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.gce/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.gce/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/discovery.gce/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.gce/
 description: Learn about discovery.gce
 title: discovery.gce
 ---

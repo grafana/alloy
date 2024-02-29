@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/agent/latest/flow/tasks/migrate/from-static/
+canonical: https://grafana.com/docs/alloy/latest/tasks/migrate/from-static/
 description: Learn how to migrate your configuration from Grafana Agent Static to Grafana Alloy
 menuTitle: Migrate from Grafana Agent Static
 title: Migrate Grafana Agent Static to Grafana Alloy

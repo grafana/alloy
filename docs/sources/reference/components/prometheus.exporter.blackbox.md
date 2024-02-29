@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.exporter.blackbox/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.exporter.blackbox/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.blackbox/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.exporter.blackbox/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.blackbox/
 description: Learn about prometheus.exporter.blackbox
 title: prometheus.exporter.blackbox
 ---
@@ -74,7 +74,7 @@ Labels specified in the `labels` argument will not override labels set by `black
 
 ## Exported fields
 
-{{< docs/shared lookup="flow/reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

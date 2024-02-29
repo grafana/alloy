@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.attributes/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.attributes/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.attributes/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.processor.attributes/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.attributes/
 description: Learn about otelcol.processor.attributes
 title: otelcol.processor.attributes
 ---
@@ -149,7 +149,7 @@ The supported values for `action` are:
 
 The `include` block provides an option to include data being fed into the [action] blocks based on the properties of a span, log, or metric records.
 
-{{< docs/shared lookup="flow/reference/components/match-properties-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/match-properties-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 One of the following is also required:
 * For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified 
@@ -172,7 +172,7 @@ If you would like to not propagate certain signals to downstream components,
 consider a processor such as [otelcol.processor.tail_sampling]({{< relref "./otelcol.processor.tail_sampling.md" >}}).
 {{< /admonition >}}
 
-{{< docs/shared lookup="flow/reference/components/match-properties-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/match-properties-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 One of the following is also required:
 * For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified 
@@ -187,27 +187,27 @@ For example, adding a `span_names` filter could cause the component to error if 
 
 ### regexp block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-filter-regexp-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-filter-regexp-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### attribute block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-filter-attribute-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-filter-attribute-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### resource block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-filter-resource-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-filter-resource-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### library block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-filter-library-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-filter-library-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### log_severity block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-filter-log-severity-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-filter-log-severity-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

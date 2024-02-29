@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.exporter.unix/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.exporter.unix/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.unix/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.exporter.unix/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.unix/
 description: Learn about prometheus.exporter.unix
 title: prometheus.exporter.unix
 ---
@@ -262,7 +262,7 @@ An explicit value in the block takes precedence over the environment variable.
 
 ## Exported fields
 
-{{< docs/shared lookup="flow/reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

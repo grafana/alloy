@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.digitalocean/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.digitalocean/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.digitalocean/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/discovery.digitalocean/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.digitalocean/
 description: Learn about discovery.digitalocean
 title: discovery.digitalocean
 ---
@@ -48,7 +48,7 @@ Exactly one of the [`bearer_token`](#arguments) and [`bearer_token_file`](#argum
 
 [arguments]: #arguments
 
-{{< docs/shared lookup="flow/reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
 The `discovery.digitalocean` component does not support any blocks, and is configured fully through arguments.

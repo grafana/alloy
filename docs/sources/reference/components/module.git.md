@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/module.git/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/module.git/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/module.git/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/module.git/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/module.git/
 description: Learn about module.git
 labels:
   stage: beta
@@ -78,7 +78,7 @@ arguments | [arguments][] | Arguments to pass to the module. | no
 
 ### basic_auth block
 
-{{< docs/shared lookup="flow/reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### ssh_key block
 

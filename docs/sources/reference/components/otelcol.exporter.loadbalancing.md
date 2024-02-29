@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.exporter.loadbalancing/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.exporter.loadbalancing/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.exporter.loadbalancing/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.exporter.loadbalancing/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.loadbalancing/
 description: Learn about otelcol.exporter.loadbalancing
 labels:
   stage: beta
@@ -189,11 +189,11 @@ Name | Type | Description | Default | Required
 `authority` | `string` | Overrides the default `:authority` header in gRPC requests from the gRPC client. | | no
 `auth` | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. | | no
 
-{{< docs/shared lookup="flow/reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-{{< docs/shared lookup="flow/reference/components/otelcol-grpc-balancer-name.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-grpc-balancer-name.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-{{< docs/shared lookup="flow/reference/components/otelcol-grpc-authority.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-grpc-authority.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 You can configure an HTTP proxy with the following environment variables:
 
@@ -222,7 +222,7 @@ able to handle and proxy HTTP/2 traffic.
 The `tls` block configures TLS settings used for the connection to the gRPC
 server.
 
-{{< docs/shared lookup="flow/reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### keepalive block
 
@@ -242,18 +242,18 @@ Name | Type | Description | Default | Required
 The `queue` block configures an in-memory buffer of batches before data is sent
 to the gRPC server.
 
-{{< docs/shared lookup="flow/reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### retry block
 
 The `retry` block configures how failed requests to the gRPC server are
 retried.
 
-{{< docs/shared lookup="flow/reference/components/otelcol-retry-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-retry-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### debug_metrics block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

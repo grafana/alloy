@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.connector.spanlogs/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.connector.spanlogs/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.connector.spanlogs/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.connector.spanlogs/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.spanlogs/
 description: Learn about otelcol.connector.spanlogs
 title: otelcol.connector.spanlogs
 ---
@@ -79,7 +79,7 @@ The following attributes are supported:
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

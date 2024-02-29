@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.receive_http/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.receive_http/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.receive_http/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.receive_http/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.receive_http/
 description: Learn about prometheus.receive_http
 title: prometheus.receive_http
 ---
@@ -54,7 +54,7 @@ Hierarchy | Name     | Description                                        | Requ
 
 ### http
 
-{{< docs/shared lookup="flow/reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

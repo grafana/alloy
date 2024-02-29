@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.receiver.otlp/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.receiver.otlp/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.receiver.otlp/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/otelcol.receiver.otlp/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.otlp/
 description: Learn about otelcol.receiver.otlp
 title: otelcol.receiver.otlp
 ---
@@ -187,11 +187,11 @@ If `allowed_headers` includes `"*"`, all headers are permitted.
 
 ### debug_metrics block
 
-{{< docs/shared lookup="flow/reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### output block
 
-{{< docs/shared lookup="flow/reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

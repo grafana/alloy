@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.openstack/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.openstack/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.openstack/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/discovery.openstack/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.openstack/
 description: Learn about discovery.openstack
 title: discovery.openstack
 ---
@@ -73,7 +73,7 @@ tls_config | [tls_config][] | TLS configuration for requests to the OpenStack AP
 
 ### tls_config block
 
-{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

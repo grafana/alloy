@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.relabel/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.relabel/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.relabel/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.relabel/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.relabel/
 description: Learn about prometheus.relabel
 title: prometheus.relabel
 ---
@@ -70,7 +70,7 @@ rule | [rule][] | Relabeling rules to apply to received metrics. | no
 
 ### rule block
 
-{{< docs/shared lookup="flow/reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

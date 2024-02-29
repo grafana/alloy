@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/module.http/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/module.http/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/module.http/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/module.http/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/module.http/
 description: Learn about module.http
 labels:
   stage: beta

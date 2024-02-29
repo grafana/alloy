@@ -4,7 +4,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.syslog/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.syslog/
 - /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.syslog/
-canonical: https://grafana.com/docs/agent/latest/flow/reference/components/loki.source.syslog/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.syslog/
 description: Learn about loki.source.syslog
 title: loki.source.syslog
 ---
@@ -102,7 +102,7 @@ translated to internal labels in the form of
 
 ### tls_config block
 
-{{< docs/shared lookup="flow/reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

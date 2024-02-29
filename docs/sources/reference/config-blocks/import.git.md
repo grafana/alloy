@@ -61,7 +61,7 @@ ssh_key    | [ssh_key][]    | Configure an SSH Key for authenticating to the rep
 
 ### basic_auth block
 
-{{< docs/shared lookup="flow/reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### ssh_key block
 
