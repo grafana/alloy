@@ -5,7 +5,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/extract-field-block/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/reference/components/extract-field-block/
 - /docs/grafana-cloud/send-data/agent/shared/flow/reference/components/extract-field-block/
-canonical: https://grafana.com/docs/agent/latest/shared/flow/reference/components/extract-field-block/
+canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/extract-field-block/
 description: Shared content, extract field block
 headless: true
 ---

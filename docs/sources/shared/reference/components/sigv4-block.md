@@ -5,7 +5,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/sigv4-block/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/reference/components/sigv4-block/
 - /docs/grafana-cloud/send-data/agent/shared/flow/reference/components/sigv4-block/
-canonical: https://grafana.com/docs/agent/latest/shared/flow/reference/components/sigv4-block/
+canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/sigv4-block/
 description: Shared content, sigv4 block
 headless: true
 ---

@@ -1,11 +1,6 @@
 ---
-aliases:
-- /docs/agent/shared/flow/stability/beta/
-- /docs/grafana-cloud/agent/shared/flow/stability/beta/
-- /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/stability/beta/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/stability/beta/
-- /docs/grafana-cloud/send-data/agent/shared/flow/stability/beta/
-canonical: https://grafana.com/docs/agent/latest/shared/flow/stability/beta/
+
+canonical: https://grafana.com/docs/alloy/latest/shared/stability/beta/
 description: Shared content, beta
 headless: true
 ---

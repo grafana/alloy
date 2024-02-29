@@ -5,7 +5,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/exporter-component-exports/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/reference/components/exporter-component-exports/
 - /docs/grafana-cloud/send-data/agent/shared/flow/reference/components/exporter-component-exports/
-canonical: https://grafana.com/docs/agent/latest/shared/flow/reference/components/exporter-component-exports/
+canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/exporter-component-exports/
 description: Shared content, exporter component exports
 headless: true
 ---

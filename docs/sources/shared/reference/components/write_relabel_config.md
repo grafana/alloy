@@ -5,7 +5,7 @@ aliases:
 - /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/write-relabel-config-block/
 - /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/reference/components/write-relabel-config-block/
 - /docs/grafana-cloud/send-data/agent/shared/flow/reference/components/write-relabel-config-block/
-canonical: https://grafana.com/docs/agent/latest/shared/flow/reference/components/write-relabel-config-block/
+canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/write-relabel-config-block/
 description: Shared content, write_relabel_config block
 headless: true
 ---
