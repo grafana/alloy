@@ -46,8 +46,6 @@
 ##   generate-drone           Generate the Drone YAML from Jsonnet.
 ##   generate-helm-docs       Generate Helm chart documentation.
 ##   generate-helm-tests      Generate Helm chart tests.
-##   generate-dashboards      Generate dashboards in example/docker-compose after
-##                            changing Jsonnet.
 ##   generate-protos          Generate protobuf files.
 ##   generate-ui              Generate the UI assets.
 ##   generate-versioned-files Generate versioned files.
@@ -221,8 +219,8 @@ agent-boringcrypto-image:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-drone generate-helm-docs generate-helm-tests generate-dashboards generate-protos generate-ui generate-versioned-files
-generate: generate-drone generate-helm-docs generate-helm-tests generate-dashboards generate-protos generate-ui generate-versioned-files generate-docs
+.PHONY: generate generate-drone generate-helm-docs generate-helm-tests generate-protos generate-ui generate-versioned-files
+generate: generate-drone generate-helm-docs generate-helm-tests  generate-protos generate-ui generate-versioned-files generate-docs
 
 generate-drone:
 	drone jsonnet -V BUILD_IMAGE_VERSION=$(BUILD_IMAGE_VERSION) --stream --format --source .drone/drone.jsonnet --target .drone/drone.yml
@@ -239,14 +237,6 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	bash ./operations/helm/scripts/rebuild-tests.sh
-endif
-
-generate-dashboards:
-ifeq ($(USE_CONTAINER),1)
-	$(RERUN_IN_CONTAINER)
-else
-	cd example/docker-compose && jb install && \
-	cd grafana/dashboards && jsonnet template.jsonnet -J ../../vendor -m .
 endif
 
 generate-protos:

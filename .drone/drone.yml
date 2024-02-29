@@ -16,24 +16,6 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Test dashboards
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - make generate-dashboards
-  - ERR_MSG="Dashboard definitions are out of date. Please run 'make generate-dashboards'
-    and commit changes!"
-  - if [ ! -z "$(git status --porcelain)" ]; then echo $ERR_MSG >&2; exit 1; fi
-  image: grafana/agent-build-image:0.32.0
-  name: Regenerate dashboards
-trigger:
-  event:
-  - pull_request
-type: docker
----
-kind: pipeline
 name: Test
 platform:
   arch: amd64
@@ -425,6 +407,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 9d5c94b8427eaa61069314281249efe1ba1c4a8a6d1c23e0088dff0c030d40a7
+hmac: 118cf0f805912a99d8c268f18a179dbe69fa701fbf11f9a9effac933b63091e0
 
 ...
