@@ -81,9 +81,7 @@ func (env *AgentEnvironment) TestInstall(t *testing.T) {
 
 	res = env.ExecScript(`[ -f /usr/bin/grafana-agent ]`)
 	require.Equal(t, 0, res.ExitCode, "expected grafana-agent to be installed")
-	res = env.ExecScript(`[ -f /usr/bin/grafana-agentctl ]`)
-	require.Equal(t, 0, res.ExitCode, "expected grafana-agentctl to be installed")
-	res = env.ExecScript(`[ -f /etc/grafana-agent.yaml ]`)
+	res = env.ExecScript(`[ -f /etc/grafana-agent.river ]`)
 	require.Equal(t, 0, res.ExitCode, "expected grafana agent configuration file to exist")
 
 	res = env.Uninstall()
@@ -91,20 +89,18 @@ func (env *AgentEnvironment) TestInstall(t *testing.T) {
 
 	res = env.ExecScript(`[ -f /usr/bin/grafana-agent ]`)
 	require.Equal(t, 1, res.ExitCode, "expected grafana-agent to be uninstalled")
-	res = env.ExecScript(`[ -f /usr/bin/grafana-agentctl ]`)
-	require.Equal(t, 1, res.ExitCode, "expected grafana-agentctl to be uninstalled")
 	// NOTE(rfratto): we don't check for what happens to the config file here,
 	// since the behavior is inconsistent: rpm uninstalls it, but deb doesn't.
 }
 
 func (env *AgentEnvironment) TestConfigPersistence(t *testing.T) {
-	res := env.ExecScript(`echo -n "keepalive" > /etc/grafana-agent.yaml`)
+	res := env.ExecScript(`echo -n "keepalive" > /etc/grafana-agent.river`)
 	require.Equal(t, 0, res.ExitCode, "failed to write config file")
 
 	res = env.Install()
 	require.Equal(t, 0, res.ExitCode, "installation failed")
 
-	res = env.ExecScript(`cat /etc/grafana-agent.yaml`)
+	res = env.ExecScript(`cat /etc/grafana-agent.river`)
 	require.Equal(t, "keepalive", res.Stdout, "Expected existing file to not be overridden")
 }
 

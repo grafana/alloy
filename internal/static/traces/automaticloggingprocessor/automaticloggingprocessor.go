@@ -11,9 +11,9 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/go-logfmt/logfmt"
 	"github.com/grafana/agent/internal/static/logs"
-	"github.com/grafana/agent/internal/static/operator/config"
 	"github.com/grafana/agent/internal/static/traces/contextkeys"
-	util "github.com/grafana/agent/internal/util/log"
+	"github.com/grafana/agent/internal/util"
+	util_log "github.com/grafana/agent/internal/util/log"
 	"github.com/grafana/loki/clients/pkg/promtail/api"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/common/model"
@@ -55,7 +55,7 @@ type automaticLoggingProcessor struct {
 }
 
 func newTraceProcessor(nextConsumer consumer.Traces, cfg *AutomaticLoggingConfig) (processor.Traces, error) {
-	logger := log.With(util.Logger, "component", "traces automatic logging")
+	logger := log.With(util_log.Logger, "component", "traces automatic logging")
 
 	if nextConsumer == nil {
 		return nil, component.ErrNilNextConsumer
@@ -170,7 +170,7 @@ func (p *automaticLoggingProcessor) spanLabels(keyValues []interface{}) model.La
 		if _, ok := p.labels[k]; ok {
 			// Loki does not accept "." as a valid character for labels
 			// Dots . are replaced by underscores _
-			k = config.SanitizeLabelName(k)
+			k = util.SanitizeLabelName(k)
 
 			ls[model.LabelName(k)] = model.LabelValue(v)
 		}

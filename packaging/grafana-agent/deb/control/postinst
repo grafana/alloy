@@ -29,8 +29,8 @@ case "$1" in
         chown $GRAFANA_AGENT_USER:$GRAFANA_AGENT_GROUP /var/lib/grafana-agent
         chmod 770 /var/lib/grafana-agent
 
-        chmod 640 /etc/grafana-agent.yaml
-        chown root:$GRAFANA_AGENT_GROUP /etc/grafana-agent.yaml
+        chmod 640 /etc/grafana-agent.river
+        chown root:$GRAFANA_AGENT_GROUP /etc/grafana-agent.river
 
         if [ -z ${2+x} ] && [ "$RESTART_ON_UPGRADE" = "true" ]; then
             if command -v systemctl 2>/dev/null; then

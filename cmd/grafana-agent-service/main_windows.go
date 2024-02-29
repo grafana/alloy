@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sys/windows/svc"
 )
 
-const serviceName = "Grafana Agent Flow"
+const serviceName = "Grafana Agent"
 
 func main() {
 	logger, err := newLogger()
