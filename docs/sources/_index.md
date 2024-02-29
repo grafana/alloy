@@ -95,4 +95,4 @@ Patch and security releases may be created at any time.
 [Tempo]: https://github.com/grafana/tempo
 [Mimir]: https://github.com/grafana/mimir
 [Pyroscope]: https://github.com/grafana/pyroscope
-[UI]: ./tasks/debug/#grafana-agent-flow-ui
+[UI]: ./tasks/debug/#grafana-alloy-ui

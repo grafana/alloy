@@ -1,10 +1,4 @@
 ---
-aliases:
-- /docs/agent/shared/flow/reference/components/http-client-config-block/
-- /docs/grafana-cloud/agent/shared/flow/reference/components/http-client-config-block/
-- /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/http-client-config-block/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/reference/components/http-client-config-block/
-- /docs/grafana-cloud/send-data/agent/shared/flow/reference/components/http-client-config-block/
 canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/http-client-config-block/
 description: Shared content, http client config block
 headless: true

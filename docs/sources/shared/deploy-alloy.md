@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./shared/deploy-alloy/
 canonical: https://grafana.com/docs/alloy/latest/shared/deploy-alloy/
 description: Shared content, deployment topologies for Grafana Alloy
 headless: true

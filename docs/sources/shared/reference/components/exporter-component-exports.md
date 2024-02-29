@@ -1,10 +1,4 @@
 ---
-aliases:
-- /docs/agent/shared/flow/reference/components/exporter-component-exports/
-- /docs/grafana-cloud/agent/shared/flow/reference/components/exporter-component-exports/
-- /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/exporter-component-exports/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/reference/components/exporter-component-exports/
-- /docs/grafana-cloud/send-data/agent/shared/flow/reference/components/exporter-component-exports/
 canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/exporter-component-exports/
 description: Shared content, exporter component exports
 headless: true
@@ -20,5 +14,5 @@ For example, the `targets` can either be passed to a `discovery.relabel` compone
 
 The exported targets use the configured [in-memory traffic][] address specified by the [run command][].
 
-[in-memory traffic]: {{< relref "../../../../flow/concepts/component_controller.md#in-memory-traffic" >}}
-[run command]: {{< relref "../../../../flow/reference/cli/run.md" >}}
+[in-memory traffic]: ../../../concepts/component_controller/#in-memory-traffic
+[run command]: ../../../reference/cli/run/

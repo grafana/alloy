@@ -1,10 +1,4 @@
 ---
-aliases:
-- /docs/agent/shared/flow/reference/components/otelcol-filter-regexp-block/
-- /docs/grafana-cloud/agent/shared/flow/reference/components/otelcol-filter-regexp-block/
-- /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/otelcol-filter-regexp-block/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/reference/components/otelcol-filter-regexp-block/
-- /docs/grafana-cloud/send-data/agent/shared/flow/reference/components/otelcol-filter-regexp-block/
 description: Shared content, otelcol filter regexp block
 headless: true
 ---

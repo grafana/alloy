@@ -1,10 +1,4 @@
 ---
-aliases:
-- /docs/agent/shared/flow/reference/components/tls-config-block/
-- /docs/grafana-cloud/agent/shared/flow/reference/components/tls-config-block/
-- /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/tls-config-block/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/reference/components/tls-config-block/
-- /docs/grafana-cloud/send-data/agent/shared/flow/reference/components/tls-config-block/
 canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/tls-config-block/
 description: Shared content, tls config block
 headless: true

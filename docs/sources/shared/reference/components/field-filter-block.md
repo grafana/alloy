@@ -1,11 +1,4 @@
 ---
-aliases:
-- /docs/agent/shared/flow/reference/components/filter-field-block/
-- /docs/grafana-cloud/agent/shared/flow/reference/components/filter-field-block/
-- /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/field-filter-block/
-- /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/filter-field-block/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/reference/components/filter-field-block/
-- /docs/grafana-cloud/send-data/agent/shared/flow/reference/components/field-filter-block/
 canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/filter-field-block/
 description: Shared content, filter field block
 headless: true

@@ -1,10 +1,4 @@
 ---
-aliases:
-- ../../otelcol/output-block-metrics/
-- /docs/grafana-cloud/agent/shared/flow/reference/components/output-block-metrics/
-- /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/output-block-metrics/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/reference/components/output-block-metrics/
-- /docs/grafana-cloud/send-data/agent/shared/flow/reference/components/output-block-metrics/
 description: Shared content, output block metrics
 headless: true
 ---

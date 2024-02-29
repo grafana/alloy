@@ -1,10 +1,4 @@
 ---
-aliases:
-- /docs/agent/shared/flow/reference/components/write-relabel-config-block/
-- /docs/grafana-cloud/agent/shared/flow/reference/components/write-relabel-config-block/
-- /docs/grafana-cloud/monitor-infrastructure/agent/shared/flow/reference/components/write-relabel-config-block/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/shared/flow/reference/components/write-relabel-config-block/
-- /docs/grafana-cloud/send-data/agent/shared/flow/reference/components/write-relabel-config-block/
 canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/write-relabel-config-block/
 description: Shared content, write_relabel_config block
 headless: true
@@ -13,10 +7,8 @@ headless: true
 <!-- NOTE(@tpaschalis) This needs to be kept in sync with rule.md on the same
 directory since these pages don't support some type of templating. -->
 
-The `write_relabel_config` block contains the definition of any relabeling
-rules that can be applied to an input metric.
-If more than one `write_relabel_config` block is defined, the transformations
-are applied in top-down order.
+The `write_relabel_config` block contains the definition of any relabeling rules that can be applied to an input metric.
+If more than one `write_relabel_config` block is defined, the transformations are applied in top-down order.
 
 The following arguments can be used to configure a `write_relabel_config`.
 All arguments are optional. Omitted fields take their default values.
