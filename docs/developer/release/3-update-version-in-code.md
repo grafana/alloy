@@ -40,7 +40,7 @@ The project must be updated to reference the upcoming release tag whenever a new
     - Stable Release example PR [here](https://github.com/grafana/agent/pull/3119)
     - Patch Release example PR [here](https://github.com/grafana/agent/pull/3191)
 
-4. Create a branch from `release-VERSION_PREFIX` for [grafana/agent](https://github.com/grafana/agent).
+4. Create a branch from `release/VERSION_PREFIX` for [grafana/agent](https://github.com/grafana/agent).
 
 5. Cherry pick the commit on main from the merged PR in Step 3 from main into the new branch from Step 4:
 
@@ -50,7 +50,7 @@ The project must be updated to reference the upcoming release tag whenever a new
 
     Delete the `Main (unreleased)` header and anything underneath it as part of the cherry-pick. Alternatively, do it after the cherry-pick is completed.
 
-6. Create a PR to merge to `release-VERSION_PREFIX` (must be merged before continuing).
+6. Create a PR to merge to `release/VERSION_PREFIX` (must be merged before continuing).
 
     - Release Candidate example PR [here](https://github.com/grafana/agent/pull/3066)
     - Stable Release example PR [here](https://github.com/grafana/agent/pull/3123)
