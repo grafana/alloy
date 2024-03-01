@@ -60,7 +60,7 @@ func (cn *TracingConfigNode) Evaluate(scope *vm.Scope) error {
 	args := tracing.DefaultOptions
 	if cn.eval != nil {
 		if err := cn.eval.Evaluate(scope, &args); err != nil {
-			return fmt.Errorf("decoding River: %w", err)
+			return fmt.Errorf("decoding configuration: %w", err)
 		}
 	}
 

@@ -50,7 +50,7 @@ func (cn *ExportConfigNode) Evaluate(scope *vm.Scope) error {
 
 	var export exportBlock
 	if err := cn.eval.Evaluate(scope, &export); err != nil {
-		return fmt.Errorf("decoding River: %w", err)
+		return fmt.Errorf("decoding configuration: %w", err)
 	}
 	cn.value = export.Value
 	return nil

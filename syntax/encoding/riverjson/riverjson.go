@@ -61,7 +61,7 @@ func encodeStructAsBody(rv reflect.Value) jsonBody {
 
 	case reflect.Map:
 		if rv.Type().Key().Kind() != reflect.String {
-			panic("river/encoding/riverjson: unsupported map type; expected map[string]T, got " + rv.Type().String())
+			panic("syntax/encoding/riverjson: unsupported map type; expected map[string]T, got " + rv.Type().String())
 		}
 
 		iter := rv.MapRange()
@@ -76,7 +76,7 @@ func encodeStructAsBody(rv reflect.Value) jsonBody {
 		}
 
 	default:
-		panic(fmt.Sprintf("river/encoding/riverjson: can only encode struct or map[string]T values to bodies, got %s", rv.Kind()))
+		panic(fmt.Sprintf("syntax/encoding/riverjson: can only encode struct or map[string]T values to bodies, got %s", rv.Kind()))
 	}
 
 	return body
@@ -111,7 +111,7 @@ func encodeFieldAsStatements(prefix []string, field rivertags.Field, fieldValue 
 			// Iterate over the map and add each element as an attribute into it.
 
 			if fieldValue.Type().Key().Kind() != reflect.String {
-				panic("river/encoding/riverjson: unsupported map type for block; expected map[string]T, got " + fieldValue.Type().String())
+				panic("syntax/encoding/riverjson: unsupported map type for block; expected map[string]T, got " + fieldValue.Type().String())
 			}
 
 			statements := []jsonStatement{}
@@ -182,7 +182,7 @@ func encodeFieldAsStatements(prefix []string, field rivertags.Field, fieldValue 
 			return statements
 
 		default:
-			panic(fmt.Sprintf("river/encoding/riverjson: unrecognized enum kind %s", fieldValue.Kind()))
+			panic(fmt.Sprintf("syntax/encoding/riverjson: unrecognized enum kind %s", fieldValue.Kind()))
 		}
 	}
 
@@ -308,6 +308,6 @@ func buildJSONValue(v value.Value) jsonValue {
 		return jsonValue{Type: "capsule", Value: v.Describe()}
 
 	default:
-		panic(fmt.Sprintf("river/encoding/riverjson: unrecognized value type %q", v.Type()))
+		panic(fmt.Sprintf("syntax/encoding/riverjson: unrecognized value type %q", v.Type()))
 	}
 }
