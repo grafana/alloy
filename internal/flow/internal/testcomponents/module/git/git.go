@@ -11,8 +11,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/module"
 	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/agent/internal/flow/internal/testcomponents/module"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/vcs"
 )

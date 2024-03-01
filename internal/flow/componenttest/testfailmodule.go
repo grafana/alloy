@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/grafana/agent/internal/component"
-	mod "github.com/grafana/agent/internal/component/module"
 	"github.com/grafana/agent/internal/featuregate"
+	mod "github.com/grafana/agent/internal/flow/internal/testcomponents/module"
 )
 
 func init() {
