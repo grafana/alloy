@@ -11,7 +11,7 @@ weight: 320
 With the release of {{< param "PRODUCT_NAME" >}}, Grafana Agent Operator is no longer the recommended way to deploy {{< param "PRODUCT_ROOT_NAME" >}} in Kubernetes.
 Some of the Operator functionality has moved into {{< param "PRODUCT_NAME" >}} itself, and the Helm Chart has replaced the remaining functionality.
 
-- The Monitor types (`PodMonitor`, `ServiceMonitor`, `Probe`, and `LogsInstance`) are all supported natively by {{< param "PRODUCT_NAME" >}}.
+- The Monitor types (`PodMonitor`, `ServiceMonitor`, `Probe`, and `PodLogs`) are all supported natively by {{< param "PRODUCT_NAME" >}}.
   You are no longer required to use the Operator to consume those CRDs for dynamic monitoring in your cluster.
 - The parts of the Operator that deploy the {{< param "PRODUCT_ROOT_NAME" >}} itself (`GrafanaAgent`, `MetricsInstance`, and `LogsInstance` CRDs) are deprecated.
   Operator users should use the {{< param "PRODUCT_ROOT_NAME" >}} [Helm Chart][] to deploy {{< param "PRODUCT_ROOT_NAME" >}} directly to your clusters.

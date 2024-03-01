@@ -15,12 +15,12 @@ This page lists common topologies used for deployments of {{% param "PRODUCT_NAM
 ## As a centralized collection service
 
 Deploying {{< param "PRODUCT_NAME" >}} as a centralized service is recommended for collecting application telemetry.
-This topology allows you to use a smaller number of agents to coordinate service discovery, collection, and remote writing.
+This topology allows you to use a smaller number of collectors to coordinate service discovery, collection, and remote writing.
 
 ![centralized-collection](/media/docs/agent/agent-topologies/centralized-collection.png)
 
-Using this topology requires deploying the Agent on separate infrastructure, and making sure that agents can discover and reach these applications over the network.
-The main predictor for the size of the agent is the number of active metrics series it is scraping; a rule of thumb is approximately 10 KB of memory for each series.
+Using this topology requires deploying {{< param "PRODUCT_NAME" >}} on separate infrastructure, and making sure that they can discover and reach these applications over the network.
+The main predictor for the size of {{< param "PRODUCT_NAME" >}} is the number of active metrics series it's scraping. A rule of thumb is approximately 10 KB of memory for each series.
 We recommend you start looking towards horizontal scaling around the 1 million active series mark.
 
 ### Using Kubernetes StatefulSets
@@ -57,7 +57,7 @@ Deploying one {{< param "PRODUCT_NAME" >}} per machine is required for collectin
 Each {{< param "PRODUCT_NAME" >}} requires you to open an outgoing connection for each remote endpoint it’s shipping data to.
 This can lead to NAT port exhaustion on the egress infrastructure.
 Each egress IP can support up to (65535 - 1024 = 64511) outgoing connections on different ports.
-So, if all {{< param "PRODUCT_NAME" >}}s are shipping metrics and log data, an egress IP can support up to 32,255 agents.
+So, if all {{< param "PRODUCT_NAME" >}}s are shipping metrics and log data, an egress IP can support up to 32,255 collectors.
 
 ### Using Kubernetes DaemonSets
 
@@ -66,13 +66,13 @@ The simplest use case of the host daemon topology is a Kubernetes DaemonSet, and
 ### Pros
 
 * Doesn’t require running on separate infrastructure
-* Typically leads to smaller-sized agents
+* Typically leads to smaller-sized collectors
 * Lower network latency to instrumented applications
 
 ### Cons
 
-* Requires planning a process for provisioning Grafana Agent on new machines, as well as keeping configuration up to date to avoid configuration drift
-* Not possible to scale agents independently when using Kubernetes DaemonSets
+* Requires planning a process for provisioning {{< param "PRODUCT_NAME" >}} on new machines, as well as keeping configuration up to date to avoid configuration drift
+* Not possible to scale independently when using Kubernetes DaemonSets
 * Scaling the topology can strain external APIs (like service discovery) and network infrastructure (like firewalls, proxy servers, and egress points)
 
 ### Use for
@@ -81,19 +81,19 @@ The simplest use case of the host daemon topology is a Kubernetes DaemonSet, and
 
 ### Don’t use for
 
-* Scenarios where Grafana Agent grows so large it can become a noisy neighbor
+* Scenarios where {{< param "PRODUCT_NAME" >}} grows so large it can become a noisy neighbor
 * Collecting an unpredictable amount of telemetry
 
 ## As a container sidecar
 
-Deploying {{< param "PRODUCT_NAME" >}} as a container sidecar is only recommended for short-lived applications or specialized agent deployments.
+Deploying {{< param "PRODUCT_NAME" >}} as a container sidecar is only recommended for short-lived applications or specialized {{< param "PRODUCT_NAME" >}} deployments.
 
 ![daemonset](/media/docs/agent/agent-topologies/sidecar.png)
 
 ### Using Kubernetes Pod sidecars
 
 In a Kubernetes environment, the sidecar model consists of deploying {{< param "PRODUCT_NAME" >}} as an extra container on the Pod.
-The Pod’s controller, network configuration, enabled capabilities, and available resources are shared between the actual application and the sidecar agent.
+The Pod’s controller, network configuration, enabled capabilities, and available resources are shared between the actual application and the sidecar {{< param "PRODUCT_NAME" >}}.
 
 ### Pros
 
@@ -115,7 +115,7 @@ The Pod’s controller, network configuration, enabled capabilities, and availab
 ### Don’t use for
 
 * Long-lived applications
-* Scenarios where the agent size grows so large it can become a noisy neighbor
+* Scenarios where the {{< param "PRODUCT_NAME" >}} size grows so large it can become a noisy neighbor
 
 <!-- ToDo: Check URL path -->
 [hashmod sharding]: https://grafana.com/docs/agent/latest/static/operation-guide/
