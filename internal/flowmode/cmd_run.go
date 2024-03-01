@@ -68,8 +68,9 @@ func runCommand() *cobra.Command {
 		Long: `The run subcommand runs Grafana Agent Flow in the foreground until an interrupt
 is received.
 
-run must be provided an argument pointing at the River dir/file-path to use. If the
-River dir/file-path wasn't specified, can't be loaded, or contains errors, run will exit
+run must be provided an argument pointing at the Alloy configuration
+dirirectory or file path to use. If the configuration directory or file path
+wasn't specified, can't be loaded, or contains errors, run will exit
 immediately.
 
 If path is a directory, all *.river files in that directory will be combined

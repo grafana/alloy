@@ -174,7 +174,7 @@ func (b *Body) encodeFields(rv reflect.Value) {
 		rv = rv.Elem()
 	}
 	if rv.Kind() != reflect.Struct {
-		panic(fmt.Sprintf("river/token/builder: can only encode struct values to bodies, got %s", rv.Type()))
+		panic(fmt.Sprintf("syntax/token/builder: can only encode struct values to bodies, got %s", rv.Type()))
 	}
 
 	fields := rivertags.Get(rv.Type())
@@ -223,7 +223,7 @@ func (b *Body) encodeField(prefix []string, field rivertags.Field, fieldValue re
 		case fieldValue.Kind() == reflect.Map:
 			// Iterate over the map and add each element as an attribute into it.
 			if fieldValue.Type().Key().Kind() != reflect.String {
-				panic("river/token/builder: unsupported map type for block; expected map[string]T, got " + fieldValue.Type().String())
+				panic("syntax/token/builder: unsupported map type for block; expected map[string]T, got " + fieldValue.Type().String())
 			}
 
 			inner := NewBlock(fullName, "")
@@ -267,7 +267,7 @@ func (b *Body) encodeField(prefix []string, field rivertags.Field, fieldValue re
 			}
 
 		default:
-			panic(fmt.Sprintf("river/token/builder: unrecognized enum kind %s", fieldValue.Kind()))
+			panic(fmt.Sprintf("syntax/token/builder: unrecognized enum kind %s", fieldValue.Kind()))
 		}
 	}
 }

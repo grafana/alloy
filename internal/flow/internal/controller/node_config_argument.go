@@ -53,7 +53,7 @@ func (cn *ArgumentConfigNode) Evaluate(scope *vm.Scope) error {
 
 	var argument argumentBlock
 	if err := cn.eval.Evaluate(scope, &argument); err != nil {
-		return fmt.Errorf("decoding River: %w", err)
+		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
 	cn.defaultValue = argument.Default

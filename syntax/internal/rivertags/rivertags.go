@@ -148,7 +148,7 @@ func (f Field) IsLabel() bool { return f.Flags&FlagLabel != 0 }
 // `river:",label"` tags, which must be strings.
 func Get(ty reflect.Type) []Field {
 	if k := ty.Kind(); k != reflect.Struct {
-		panic(fmt.Sprintf("rivertags: Get requires struct kind, got %s", k))
+		panic(fmt.Sprintf("syntaxtags: Get requires struct kind, got %s", k))
 	}
 
 	var (
@@ -161,7 +161,7 @@ func Get(ty reflect.Type) []Field {
 	for _, field := range reflect.VisibleFields(ty) {
 		// River does not support embedding of fields
 		if field.Anonymous {
-			panic(fmt.Sprintf("river: anonymous fields not supported %s", printPathToField(ty, field.Index)))
+			panic(fmt.Sprintf("syntax: anonymous fields not supported %s", printPathToField(ty, field.Index)))
 		}
 
 		tag, tagged := field.Tag.Lookup("river")
@@ -170,15 +170,15 @@ func Get(ty reflect.Type) []Field {
 		}
 
 		if !field.IsExported() {
-			panic(fmt.Sprintf("river: river tag found on unexported field at %s", printPathToField(ty, field.Index)))
+			panic(fmt.Sprintf("syntax: river tag found on unexported field at %s", printPathToField(ty, field.Index)))
 		}
 
 		options := strings.SplitN(tag, ",", 2)
 		if len(options) == 0 {
-			panic(fmt.Sprintf("river: unsupported empty tag at %s", printPathToField(ty, field.Index)))
+			panic(fmt.Sprintf("syntax: unsupported empty tag at %s", printPathToField(ty, field.Index)))
 		}
 		if len(options) != 2 {
-			panic(fmt.Sprintf("river: field %s tag is missing options", printPathToField(ty, field.Index)))
+			panic(fmt.Sprintf("syntax: field %s tag is missing options", printPathToField(ty, field.Index)))
 		}
 
 		fullName := options[0]
@@ -189,18 +189,18 @@ func Get(ty reflect.Type) []Field {
 		}
 
 		if first, used := usedNames[fullName]; used && fullName != "" {
-			panic(fmt.Sprintf("river: field name %s already used by %s", fullName, printPathToField(ty, first)))
+			panic(fmt.Sprintf("syntax: field name %s already used by %s", fullName, printPathToField(ty, first)))
 		}
 		usedNames[fullName] = tf.Index
 
 		flags, ok := parseFlags(options[1])
 		if !ok {
-			panic(fmt.Sprintf("river: unrecognized river tag format %q at %s", tag, printPathToField(ty, tf.Index)))
+			panic(fmt.Sprintf("syntax: unrecognized river tag format %q at %s", tag, printPathToField(ty, tf.Index)))
 		}
 		tf.Flags = flags
 
 		if len(tf.Name) > 1 && tf.Flags&(FlagBlock|FlagEnum) == 0 {
-			panic(fmt.Sprintf("river: field names with `.` may only be used by blocks or enums (found at %s)", printPathToField(ty, tf.Index)))
+			panic(fmt.Sprintf("syntax: field names with `.` may only be used by blocks or enums (found at %s)", printPathToField(ty, tf.Index)))
 		}
 
 		if tf.Flags&FlagEnum != 0 {
@@ -211,21 +211,21 @@ func Get(ty reflect.Type) []Field {
 
 		if tf.Flags&FlagLabel != 0 {
 			if fullName != "" {
-				panic(fmt.Sprintf("river: label field at %s must not have a name", printPathToField(ty, tf.Index)))
+				panic(fmt.Sprintf("syntax: label field at %s must not have a name", printPathToField(ty, tf.Index)))
 			}
 			if field.Type.Kind() != reflect.String {
-				panic(fmt.Sprintf("river: label field at %s must be a string", printPathToField(ty, tf.Index)))
+				panic(fmt.Sprintf("syntax: label field at %s must be a string", printPathToField(ty, tf.Index)))
 			}
 
 			if usedLabelField != nil {
-				panic(fmt.Sprintf("river: label field already used by %s", printPathToField(ty, tf.Index)))
+				panic(fmt.Sprintf("syntax: label field already used by %s", printPathToField(ty, tf.Index)))
 			}
 			usedLabelField = tf.Index
 		}
 
 		if tf.Flags&FlagSquash != 0 {
 			if fullName != "" {
-				panic(fmt.Sprintf("river: squash field at %s must not have a name", printPathToField(ty, tf.Index)))
+				panic(fmt.Sprintf("syntax: squash field at %s must not have a name", printPathToField(ty, tf.Index)))
 			}
 
 			innerType := deferenceType(field.Type)
@@ -245,14 +245,14 @@ func Get(ty reflect.Type) []Field {
 				}
 
 			default:
-				panic(fmt.Sprintf("rivertags: squash field requires struct, got %s", innerType))
+				panic(fmt.Sprintf("syntaxtags: squash field requires struct, got %s", innerType))
 			}
 
 			continue
 		}
 
 		if fullName == "" && tf.Flags&(FlagLabel|FlagSquash) == 0 /* (e.g., *not* a label or squash) */ {
-			panic(fmt.Sprintf("river: non-empty field name required at %s", printPathToField(ty, tf.Index)))
+			panic(fmt.Sprintf("syntaxtags: non-empty field name required at %s", printPathToField(ty, tf.Index)))
 		}
 
 		fields = append(fields, tf)

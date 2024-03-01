@@ -59,7 +59,7 @@ func (a *importFileConfigBlock) SetToDefault() {
 func (im *ImportFile) Evaluate(scope *vm.Scope) error {
 	var arguments importFileConfigBlock
 	if err := im.eval.Evaluate(scope, &arguments); err != nil {
-		return fmt.Errorf("decoding River: %w", err)
+		return fmt.Errorf("decoding configuration: %w", err)
 	}
 	if im.fileComponent == nil {
 		var err error

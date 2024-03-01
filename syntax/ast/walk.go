@@ -66,7 +66,7 @@ func Walk(v Visitor, node Node) {
 	case *ParenExpr:
 		Walk(v, n.Inner)
 	default:
-		panic(fmt.Sprintf("river/ast: unexpected node type %T", n))
+		panic(fmt.Sprintf("syntax/ast: unexpected node type %T", n))
 	}
 
 	v.Visit(nil)

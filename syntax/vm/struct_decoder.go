@@ -25,7 +25,7 @@ func (st *structDecoder) Decode(stmts ast.Body, rv reflect.Value) error {
 	// TODO(rfratto): potentially loosen this restriction and allow decoding into
 	// an interface{} or map[string]interface{}.
 	if rv.Kind() != reflect.Struct {
-		panic(fmt.Sprintf("river/vm: structDecoder expects struct, got %s", rv.Kind()))
+		panic(fmt.Sprintf("syntax/vm: structDecoder expects struct, got %s", rv.Kind()))
 	}
 
 	state := decodeOptions{
@@ -79,7 +79,7 @@ func (st *structDecoder) Decode(stmts ast.Body, rv reflect.Value) error {
 			}
 
 		default:
-			panic(fmt.Sprintf("river/vm: unrecognized node type %T", stmt))
+			panic(fmt.Sprintf("syntax/vm: unrecognized node type %T", stmt))
 		}
 	}
 
@@ -228,7 +228,7 @@ func (st *structDecoder) decodeNormalBlock(fullName string, block *ast.BlockStmt
 
 		blockIndex, ok := state.BlockIndex[block]
 		if !ok {
-			panic("river/vm: block not found in index lookup table")
+			panic("syntax/vm: block not found in index lookup table")
 		}
 		decodeElement := prepareDecodeValue(decodeField.Index(blockIndex))
 		err := st.VM.evaluateBlockOrBody(st.Scope, st.Assoc, block, decodeElement)
@@ -254,7 +254,7 @@ func (st *structDecoder) decodeNormalBlock(fullName string, block *ast.BlockStmt
 
 		blockIndex, ok := state.BlockIndex[block]
 		if !ok {
-			panic("river/vm: block not found in index lookup table")
+			panic("syntax/vm: block not found in index lookup table")
 		}
 		decodeElement := prepareDecodeValue(decodeField.Index(blockIndex))
 		err := st.VM.evaluateBlockOrBody(st.Scope, st.Assoc, block, decodeElement)
@@ -297,7 +297,7 @@ func (st *structDecoder) decodeEnumBlock(fullName string, block *ast.BlockStmt, 
 	decodeField := prepareDecodeValue(enumField)
 
 	if decodeField.Kind() != reflect.Slice {
-		panic("river/vm: enum field must be a slice kind, got " + decodeField.Kind().String())
+		panic("syntax/vm: enum field must be a slice kind, got " + decodeField.Kind().String())
 	}
 
 	// If this is the first time we've seen the enum, reset its length to zero.
@@ -310,7 +310,7 @@ func (st *structDecoder) decodeEnumBlock(fullName string, block *ast.BlockStmt, 
 	// Prepare the enum element to decode into.
 	enumIndex, ok := state.EnumIndex[block]
 	if !ok {
-		panic("river/vm: enum block not found in index lookup table")
+		panic("syntax/vm: enum block not found in index lookup table")
 	}
 	enumElement := prepareDecodeValue(decodeField.Index(enumIndex))
 

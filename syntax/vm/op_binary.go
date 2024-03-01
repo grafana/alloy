@@ -204,7 +204,7 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 		}
 	}
 
-	panic("river/vm: unreachable")
+	panic("syntax/vm: unreachable")
 }
 
 // tryUnwrapOptionalSecret accepts a value and, if it is a
@@ -294,7 +294,7 @@ func valuesEqual(lhs value.Value, rhs value.Value) bool {
 		return reflect.DeepEqual(lhs.Interface(), rhs.Interface())
 	}
 
-	panic("river/vm: unreachable")
+	panic("syntax/vm: unreachable")
 }
 
 // binopAllowedTypes maps what type of values are permitted for a specific
@@ -322,7 +322,7 @@ var binopAllowedTypes = map[token.Token][]value.Type{
 func acceptableBinopType(val value.Value, op token.Token) bool {
 	allowed, ok := binopAllowedTypes[op]
 	if !ok {
-		panic("river/vm: unexpected binop type")
+		panic("syntax/vm: unexpected binop type")
 	}
 
 	actualType := val.Type()

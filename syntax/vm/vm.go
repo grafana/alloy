@@ -53,19 +53,19 @@ func (vm *Evaluator) Evaluate(scope *Scope, v interface{}) (err error) {
 	case *ast.BlockStmt, ast.Body:
 		rv := reflect.ValueOf(v)
 		if rv.Kind() != reflect.Pointer {
-			panic(fmt.Sprintf("river/vm: expected pointer, got %s", rv.Kind()))
+			panic(fmt.Sprintf("syntax/vm: expected pointer, got %s", rv.Kind()))
 		}
 		return vm.evaluateBlockOrBody(scope, assoc, node, rv)
 	case *ast.File:
 		rv := reflect.ValueOf(v)
 		if rv.Kind() != reflect.Pointer {
-			panic(fmt.Sprintf("river/vm: expected pointer, got %s", rv.Kind()))
+			panic(fmt.Sprintf("syntax/vm: expected pointer, got %s", rv.Kind()))
 		}
 		return vm.evaluateBlockOrBody(scope, assoc, node.Body, rv)
 	default:
 		expr, ok := node.(ast.Expr)
 		if !ok {
-			panic(fmt.Sprintf("river/vm: unexpected value type %T", node))
+			panic(fmt.Sprintf("syntax/vm: unexpected value type %T", node))
 		}
 		val, err := vm.evaluateExpr(scope, assoc, expr)
 		if err != nil {
@@ -108,7 +108,7 @@ func (vm *Evaluator) evaluateUnmarshalRiver(scope *Scope, assoc map[value.Value]
 		return ru.UnmarshalRiver(func(v interface{}) error {
 			rv := reflect.ValueOf(v)
 			if rv.Kind() != reflect.Pointer {
-				panic(fmt.Sprintf("river/vm: expected pointer, got %s", rv.Kind()))
+				panic(fmt.Sprintf("syntax/vm: expected pointer, got %s", rv.Kind()))
 			}
 			return vm.evaluateBlockOrBody(scope, assoc, node, rv.Elem())
 		}), true
@@ -141,7 +141,7 @@ func (vm *Evaluator) evaluateDecode(scope *Scope, assoc map[value.Value]ast.Node
 	} else if rv.Kind() == reflect.Map {
 		return vm.evaluateMap(scope, assoc, node, rv)
 	} else if rv.Kind() != reflect.Struct {
-		panic(fmt.Sprintf("river/vm: can only evaluate blocks into structs, got %s", rv.Kind()))
+		panic(fmt.Sprintf("syntax/vm: can only evaluate blocks into structs, got %s", rv.Kind()))
 	}
 
 	ti := getCachedTagInfo(rv.Type())
@@ -157,7 +157,7 @@ func (vm *Evaluator) evaluateDecode(scope *Scope, assoc map[value.Value]ast.Node
 	case ast.Body:
 		stmts = node
 	default:
-		panic(fmt.Sprintf("river/vm: unrecognized node type %T", node))
+		panic(fmt.Sprintf("syntax/vm: unrecognized node type %T", node))
 	}
 
 	sd := structDecoder{
@@ -187,7 +187,7 @@ func (vm *Evaluator) evaluateMap(scope *Scope, assoc map[value.Value]ast.Node, n
 	case ast.Body:
 		stmts = node
 	default:
-		panic(fmt.Sprintf("river/vm: unrecognized node type %T", node))
+		panic(fmt.Sprintf("syntax/vm: unrecognized node type %T", node))
 	}
 
 	if rv.IsNil() {
@@ -221,7 +221,7 @@ func (vm *Evaluator) evaluateMap(scope *Scope, assoc map[value.Value]ast.Node, n
 			}
 
 		default:
-			panic(fmt.Sprintf("river/vm: unrecognized node type %T", stmt))
+			panic(fmt.Sprintf("syntax/vm: unrecognized node type %T", stmt))
 		}
 	}
 
@@ -274,7 +274,7 @@ func (vm *Evaluator) evaluateBlockLabel(node *ast.BlockStmt, tfs []rivertags.Fie
 	)
 	if !reflect.TypeOf(node.Label).AssignableTo(fieldType) {
 		// The Label struct field needs to be a string.
-		panic(fmt.Sprintf("river/vm: cannot assign block label to non-string type %s", fieldType))
+		panic(fmt.Sprintf("syntax/vm: cannot assign block label to non-string type %s", fieldType))
 	}
 	field.Set(reflect.ValueOf(node.Label))
 	return nil
@@ -449,7 +449,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 		return funcVal.Call(args...)
 
 	default:
-		panic(fmt.Sprintf("river/vm: unexpected ast.Expr type %T", expr))
+		panic(fmt.Sprintf("syntax/vm: unexpected ast.Expr type %T", expr))
 	}
 }
 

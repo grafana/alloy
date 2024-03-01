@@ -26,9 +26,9 @@ func convertCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "convert [flags] [file]",
-		Short: "Convert a supported config file to River",
+		Short: "Convert a supported config file to Alloy",
 		Long: `The convert subcommand translates a supported config file to
-a River configuration file.
+an Alloy configuration file.
 
 If the file argument is not supplied or if the file argument is "-", then
 convert will read from stdin.

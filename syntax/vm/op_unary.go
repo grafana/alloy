@@ -29,5 +29,5 @@ func evalUnaryOp(op token.Token, val value.Value) (value.Value, error) {
 		}
 	}
 
-	panic("river/vm: unreachable")
+	panic("syntax/vm: unreachable")
 }

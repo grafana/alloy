@@ -224,7 +224,7 @@ func (cn *BuiltinComponentNode) NodeID() string { return cn.nodeID }
 // BuiltinComponentNode.
 func (cn *BuiltinComponentNode) UpdateBlock(b *ast.BlockStmt) {
 	if !BlockComponentID(b).Equals(cn.id) {
-		panic("UpdateBlock called with an River block with a different component ID")
+		panic("UpdateBlock called with an block with a different component ID")
 	}
 
 	cn.mut.Lock()
@@ -258,7 +258,7 @@ func (cn *BuiltinComponentNode) evaluate(scope *vm.Scope) error {
 
 	argsPointer := cn.reg.CloneArguments()
 	if err := cn.eval.Evaluate(scope, argsPointer); err != nil {
-		return fmt.Errorf("decoding River: %w", err)
+		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
 	// args is always a pointer to the args type, so we want to deference it since

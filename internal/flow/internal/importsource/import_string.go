@@ -33,7 +33,7 @@ type importStringConfigBlock struct {
 func (im *ImportString) Evaluate(scope *vm.Scope) error {
 	var arguments importStringConfigBlock
 	if err := im.eval.Evaluate(scope, &arguments); err != nil {
-		return fmt.Errorf("decoding River: %w", err)
+		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
 	if reflect.DeepEqual(im.arguments, arguments) {
