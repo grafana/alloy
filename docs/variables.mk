@@ -4,4 +4,4 @@
 # This results in the content being served at /docs/agent/latest/.
 # The source of the content is the current repository which is determined by the name of the parent directory of the git root.
 # This overrides the default behavior of assuming the repository directory is the same as the project name.
-PROJECTS := agent::$(notdir $(basename $(shell git rev-parse --show-toplevel)))
+PROJECTS := alloy::$(notdir $(basename $(shell git rev-parse --show-toplevel)))

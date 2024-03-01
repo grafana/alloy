@@ -113,13 +113,13 @@ If documenting a beta component, include the following after the header, but
 before the description of the component:
 
 ```markdown
-{{< docs/shared lookup="flow/stability/beta.md" source="agent" version="<AGENT VERSION>" >}}
+{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 ```
 
 If documenting an experimental component, include the following instead:
 
 ```markdown
-{{< docs/shared lookup="flow/stability/experimental.md" source="agent" version="<AGENT VERSION>" >}}
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 ```
 
 ### Usage
