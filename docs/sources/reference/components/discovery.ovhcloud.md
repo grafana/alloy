@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/discovery.ovhcloud/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.ovhcloud/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.ovhcloud/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.ovhcloud/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.ovhcloud/
 description: Learn about discovery.ovhcloud
 title: discovery.ovhcloud
@@ -11,10 +6,10 @@ title: discovery.ovhcloud
 
 # discovery.ovhcloud
 
-`discovery.ovhcloud` discovers scrape targets from OVHcloud's [dedicated servers][] and [VPS][] using their [API][]. 
-{{< param "PRODUCT_ROOT_NAME" >}} will periodically check the REST endpoint and create a target for every discovered server. 
-The public IPv4 address will be used by default - if there's none, the IPv6 address will be used. 
-This may be changed via relabeling with `discovery.relabel`. 
+`discovery.ovhcloud` discovers scrape targets from OVHcloud's [dedicated servers][] and [VPS][] using their [API][].
+{{< param "PRODUCT_ROOT_NAME" >}} will periodically check the REST endpoint and create a target for every discovered server.
+The public IPv4 address will be used by default - if there's none, the IPv6 address will be used.
+This may be changed via relabeling with `discovery.relabel`.
 For OVHcloud's [public cloud][] instances you can use `discovery.openstack`.
 
 [API]: https://api.ovh.com/
@@ -57,7 +52,7 @@ service            | `string`       | Service of the targets to retrieve.       
 The following fields are exported and can be referenced by other components:
 
 Name      | Type                | Description
---------- | ------------------- | -----------
+----------|---------------------|-----------------------------------------------------
 `targets` | `list(map(string))` | The set of targets discovered from the OVHcloud API.
 
 Multiple meta labels are available on `targets` and can be used by the `discovery.relabel` component.
@@ -99,9 +94,8 @@ Multiple meta labels are available on `targets` and can be used by the `discover
 
 ## Component health
 
-`discovery.ovhcloud` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.ovhcloud` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 

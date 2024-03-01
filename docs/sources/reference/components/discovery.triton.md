@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/discovery.triton/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.triton/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.triton/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.triton/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.triton/
 description: Learn about discovery.triton
 title: discovery.triton
@@ -44,15 +39,15 @@ Name               | Type           | Description                               
 * `"container"` to discover virtual machines (SmartOS zones, lx/KVM/bhyve branded zones) running on Triton
 * `"cn"` to discover compute nodes (servers/global zones) making up the Triton infrastructure
 
-`groups` is only supported when `role` is set to `"container"`. If omitted all
-containers owned by the requesting account are scraped.
+`groups` is only supported when `role` is set to `"container"`.
+If omitted all containers owned by the requesting account are scraped.
 
 ## Blocks
 The following blocks are supported inside the definition of
 `discovery.triton`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
+Hierarchy  | Block          | Description                                       | Required
+-----------|----------------|---------------------------------------------------|---------
 tls_config | [tls_config][] | TLS configuration for requests to the Triton API. | no
 
 [tls_config]: #tls_config-block
@@ -66,7 +61,7 @@ tls_config | [tls_config][] | TLS configuration for requests to the Triton API. 
 The following fields are exported and can be referenced by other components:
 
 Name      | Type                | Description
---------- | ------------------- | -----------
+----------|---------------------|---------------------------------------------------
 `targets` | `list(map(string))` | The set of targets discovered from the Triton API.
 
 When `role` is set to `"container"`, each target includes the following labels:
@@ -85,9 +80,8 @@ When `role` is set to `"cn"` each target includes the following labels:
 
 ## Component health
 
-`discovery.triton` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.triton` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 

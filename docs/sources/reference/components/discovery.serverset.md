@@ -1,7 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.serverset/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.serverset/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.serverset/
 description: Learn about discovery.serverset
 title: discovery.serverset
@@ -25,7 +22,8 @@ discovery.serverset "LABEL" {
 }
 ```
 
-Serverset data stored in Zookeeper must be in JSON format. The Thrift format is not supported.
+Serverset data stored in Zookeeper must be in JSON format.
+The Thrift format isn't supported.
 
 ## Arguments
 
@@ -33,16 +31,16 @@ The following arguments are supported:
 
 | Name      | Type           | Description                                      | Default | Required |
 |-----------|----------------|--------------------------------------------------|---------|----------|
-| `servers` | `list(string)` | The Zookeeper servers to connect to.                 |         | yes      |
+| `servers` | `list(string)` | The Zookeeper servers to connect to.             |         | yes      |
 | `paths`   | `list(string)` | The Zookeeper paths to discover Serversets from. |         | yes      |
-| `timeout` | `duration`     | The Zookeeper session timeout                        | `10s`   | no       |
+| `timeout` | `duration`     | The Zookeeper session timeout                    | `10s`   | no       |
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
 Name      | Type                | Description
---------- | ------------------- | -----------
+----------|---------------------|-------------------------------
 `targets` | `list(map(string))` | The set of targets discovered.
 
 The following metadata labels are available on targets during relabeling:
@@ -56,9 +54,8 @@ The following metadata labels are available on targets during relabeling:
 
 ## Component health
 
-`discovery.serverset` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.serverset` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -70,12 +67,8 @@ values.
 
 ## Example
 
-The configuration below will connect to one of the Zookeeper servers
-(either `zk1`, `zk2`, or `zk3`) and discover JSON Serversets at paths
-`/path/to/znode1` and `/path/to/znode2`. The discovered targets are scraped
-by the `prometheus.scrape.default` component and forwarded to
-the `prometheus.remote_write.default` component, which will send the samples to
-specified remote_write URL.
+The configuration below will connect to one of the Zookeeper servers (either `zk1`, `zk2`, or `zk3`) and discover JSON Serversets at paths `/path/to/znode1` and `/path/to/znode2`.
+The discovered targets are scraped by the `prometheus.scrape.default` component and forwarded to the `prometheus.remote_write.default` component, which will send the samples to specified remote_write URL.
 
 ```river
 discovery.serverset "zookeeper" {

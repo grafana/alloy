@@ -1,7 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.scaleway/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.scaleway/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.scaleway/
 description: Learn about discovery.scaleway
 title: discovery.scaleway
@@ -9,8 +6,7 @@ title: discovery.scaleway
 
 # discovery.scaleway
 
-`discovery.scaleway` discovers targets from [Scaleway instances][instance] and
-[baremetal services][baremetal].
+`discovery.scaleway` discovers targets from [Scaleway instances][instance] and [baremetal services][baremetal].
 
 [instance]: https://www.scaleway.com/en/virtual-instances/
 [baremetal]: https://www.scaleway.com/en/bare-metal-servers/
@@ -30,36 +26,34 @@ discovery.scaleway "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`project_id` | `string` | Scaleway project ID of targets. | | yes
-`role` | `string` | Role of targets to retrieve. | | yes
-`api_url` | `string` | Scaleway API URL. | `"https://api.scaleway.com"` | no
-`zone` | `string` | Availability zone of targets. | `"fr-par-1"` | no
-`access_key` | `string` | Access key for the Scaleway API. | | yes
-`secret_key` | `secret` | Secret key for the Scaleway API. | | conditional
-`secret_key_file` | `string` | Path to file containing secret key for the Scaleway API. | | conditional
-`name_filter` | `string` | Name filter to apply against the listing request. | | no
-`tags_filter` | `list(string)` | List of tags to search for. | | no
-`refresh_interval` | `duration` | Frequency to rediscover targets. | `"60s"` | no
-`port` | `number` | Default port on servers to associate with generated targets. | `80` | no
-`proxy_url` | `string` | HTTP proxy to send requests through. | | no
-`no_proxy` | `string` | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
-`proxy_from_environment` | `bool` | Use the proxy URL indicated by environment variables. | `false` | no
-`proxy_connect_header` | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests. | | no
-`follow_redirects` | `bool` | Whether redirects returned by the server should be followed. | `true` | no
-`enable_http2` | `bool` | Whether HTTP2 is supported for requests. | `true` | no
+Name                     | Type                | Description                                                                                      | Default                      | Required
+-------------------------|---------------------|--------------------------------------------------------------------------------------------------|------------------------------|------------
+`project_id`             | `string`            | Scaleway project ID of targets.                                                                  |                              | yes
+`role`                   | `string`            | Role of targets to retrieve.                                                                     |                              | yes
+`api_url`                | `string`            | Scaleway API URL.                                                                                | `"https://api.scaleway.com"` | no
+`zone`                   | `string`            | Availability zone of targets.                                                                    | `"fr-par-1"`                 | no
+`access_key`             | `string`            | Access key for the Scaleway API.                                                                 |                              | yes
+`secret_key`             | `secret`            | Secret key for the Scaleway API.                                                                 |                              | conditional
+`secret_key_file`        | `string`            | Path to file containing secret key for the Scaleway API.                                         |                              | conditional
+`name_filter`            | `string`            | Name filter to apply against the listing request.                                                |                              | no
+`tags_filter`            | `list(string)`      | List of tags to search for.                                                                      |                              | no
+`refresh_interval`       | `duration`          | Frequency to rediscover targets.                                                                 | `"60s"`                      | no
+`port`                   | `number`            | Default port on servers to associate with generated targets.                                     | `80`                         | no
+`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                              | no
+`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                              | no
+`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`                      | no
+`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                              | no
+`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`                       | no
+`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`                       | no
 
-The `role` argument determines what type of Scaleway machines to discover. It
-must be set to one of the following:
+The `role` argument determines what type of Scaleway machines to discover.
+It must be set to one of the following:
 
 * `"baremetal"`: Discover [baremetal][] Scaleway machines.
 * `"instance"`: Discover virtual Scaleway [instances][instance].
 
-The `name_filter` and `tags_filter` arguments can be used to filter the set of
-discovered servers. `name_filter` returns machines matching a specific name,
-while `tags_filter` returns machines who contain _all_ the tags listed in the
-`tags_filter` argument.
+The `name_filter` and `tags_filter` arguments can be used to filter the set of discovered servers.
+`name_filter` returns machines matching a specific name, while `tags_filter` returns machines who contain _all_ the tags listed in the `tags_filter` argument.
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -68,13 +62,12 @@ while `tags_filter` returns machines who contain _all_ the tags listed in the
 The following blocks are supported inside the definition of
 `discovery.scaleway`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
+Hierarchy  | Block          | Description                                            | Required
+-----------|----------------|--------------------------------------------------------|---------
 tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
 
-The `>` symbol indicates deeper levels of nesting. For example,
-`oauth2 > tls_config` refers to a `tls_config` block defined inside
-an `oauth2` block.
+The `>` symbol indicates deeper levels of nesting.
+For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [tls_config]: #tls_config-block
 
@@ -86,8 +79,8 @@ an `oauth2` block.
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name      | Type                | Description
+----------|---------------------|-----------------------------------------------------------
 `targets` | `list(map(string))` | The set of targets discovered from the Consul catalog API.
 
 When `role` is `baremetal`, discovered targets include the following labels:
@@ -131,9 +124,8 @@ When `role` is `instance`, discovered targets include the following labels:
 
 ## Component health
 
-`discovery.scaleway` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.scaleway` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 

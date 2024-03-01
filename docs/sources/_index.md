@@ -41,19 +41,11 @@ It is designed to be flexible, performant, and compatible with multiple ecosyste
   * [Static mode Kubernetes operator][]
   * [Flow mode][]
 
-{{% docs/reference %}}
-[variants]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/about"
-[variants]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/alloy/about"
+[variants]: ./about/
+[Static mode]: https://grafana.com/docs/agent/static/
+[Static mode Kubernetes operator]: https://grafana.com/docs/agent/operator/
+[Flow mode]: https://grafana.com/docs/agent/flow/
 
-[Static mode]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/static"
-[Static mode]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/static"
-
-[Static mode Kubernetes operator]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/operator"
-[Static mode Kubernetes operator]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/operator"
-
-[Flow mode]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/flow"
-[Flow mode]: "/docs/grafana-cloud/ -> /docs/alloy/<ALLOY_VERSION>/flow"
-{{% /docs/reference %}}
 -->
 
 ## Supported platforms

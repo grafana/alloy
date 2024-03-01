@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/discovery.puppetdb/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.puppetdb/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.puppetdb/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.puppetdb/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.puppetdb/
 description: Learn about discovery.puppetdb
 title: discovery.puppetdb
@@ -49,7 +44,7 @@ Name                     | Type                | Description                    
 
  At most, one of the following can be provided:
  - [`bearer_token` argument](#arguments).
- - [`bearer_token_file` argument](#arguments). 
+ - [`bearer_token_file` argument](#arguments).
  - [`basic_auth` block][basic_auth].
  - [`authorization` block][authorization].
  - [`oauth2` block][oauth2].
@@ -63,17 +58,16 @@ Name                     | Type                | Description                    
 The following blocks are supported inside the definition of
 `discovery.puppetdb`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the endpoint. | no
-authorization | [authorization][] | Configure generic authorization to the endpoint. | no
-oauth2 | [oauth2][] | Configure OAuth2 for authenticating to the endpoint. | no
-oauth2 > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
-tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
+Hierarchy           | Block             | Description                                              | Required
+--------------------|-------------------|----------------------------------------------------------|---------
+basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no
+authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no
+oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no
+oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
+tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
 
-The `>` symbol indicates deeper levels of nesting. For example,
-`oauth2 > tls_config` refers to a `tls_config` block defined inside
-an `oauth2` block.
+The `>` symbol indicates deeper levels of nesting.
+For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [basic_auth]: #basic_auth-block
 [authorization]: #authorization-block
@@ -100,8 +94,8 @@ an `oauth2` block.
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name      | Type                | Description
+----------|---------------------|---------------------------------------------
 `targets` | `list(map(string))` | The set of targets discovered from puppetdb.
 
 Each target includes the following labels:
@@ -119,9 +113,8 @@ Each target includes the following labels:
 
 ## Component health
 
-`discovery.puppetdb` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.puppetdb` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 

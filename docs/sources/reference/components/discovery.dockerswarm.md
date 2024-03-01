@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/discovery.dockerswarm/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.dockerswarm/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.dockerswarm/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.dockerswarm/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.dockerswarm/
 description: Learn about discovery.dockerswarm
 title: discovery.dockerswarm
@@ -26,20 +21,20 @@ discovery.dockerswarm "LABEL" {
 
 The following arguments are supported:
 
-Name                     | Type                | Description                                                   | Default | Required
------------------------- | ------------------- | ------------------------------------------------------------- | ------- | --------
-`host`                   | `string`            | Address of the Docker daemon.                                 |         | yes
-`role`                   | `string`            | Role of the targets to retrieve. Must be `services`, `tasks`, or `nodes`. | | yes
+Name                     | Type                | Description                                                                                                                   | Default | Required
+-------------------------|---------------------|-------------------------------------------------------------------------------------------------------------------------------|---------|---------
+`host`                   | `string`            | Address of the Docker daemon.                                                                                                 |         | yes
+`role`                   | `string`            | Role of the targets to retrieve. Must be `services`, `tasks`, or `nodes`.                                                     |         | yes
 `port`                   | `number`            | The port to scrape metrics from, when `role` is nodes, and for discovered tasks and services that don't have published ports. | `80`    | no
-`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.             | `"60s"` | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.          |         | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                            |         | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                      | `true`  | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.  | `true`  | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                          |         | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.         | `false` | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests. |         | no
+`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                                             | `"60s"` | no
+`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                                          |         | no
+`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                                            |         | no
+`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                                      | `true`  | no
+`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                                  | `true`  | no
+`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                          |         | no
+`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                              |         | no
+`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                                         | `false` | no
+`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                                 |         | no
 
  At most, one of the following can be provided:
  - [`bearer_token` argument](#arguments).
@@ -123,7 +118,9 @@ The `role` attribute decides the role of the targets to retrieve.
 
 ### services
 
-The `services` role discovers all [Swarm services](https://docs.docker.com/engine/swarm/key-concepts/#services-and-tasks) and exposes their ports as targets. For each published port of a service, a single target is generated. If a service has no published ports, a target per service is created using the `port` attribute defined in the arguments.
+The `services` role discovers all [Swarm services](https://docs.docker.com/engine/swarm/key-concepts/#services-and-tasks) and exposes their ports as targets.
+For each published port of a service, a single target is generated.
+If a service has no published ports, a target per service is created using the `port` attribute defined in the arguments.
 
 Available meta labels:
 
@@ -145,7 +142,9 @@ Available meta labels:
 
 ### tasks
 
-The `tasks` role discovers all [Swarm tasks](https://docs.docker.com/engine/swarm/key-concepts/#services-and-tasks) and exposes their ports as targets. For each published port of a task, a single target is generated. If a task has no published ports, a target per task is created using the `port` attribute defined in the arguments.
+The `tasks` role discovers all [Swarm tasks](https://docs.docker.com/engine/swarm/key-concepts/#services-and-tasks) and exposes their ports as targets.
+For each published port of a task, a single target is generated.
+If a task has no published ports, a target per task is created using the `port` attribute defined in the arguments.
 
 Available meta labels:
 
@@ -201,9 +200,8 @@ Available meta labels:
 
 ## Component health
 
-`discovery.dockerswarm` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.dockerswarm` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 

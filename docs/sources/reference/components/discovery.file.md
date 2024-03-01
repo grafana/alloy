@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/discovery.file/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.file/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.file/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.file/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.file/
 description: Learn about discovery.file
 title: discovery.file
@@ -11,15 +6,13 @@ title: discovery.file
 
 # discovery.file
 
-> **NOTE:** In {{< param "PRODUCT_ROOT_NAME" >}} `v0.35.0`, the `discovery.file` component was renamed to [local.file_match][],
-> and `discovery.file` was repurposed to discover scrape targets from one or more files.
->
-> <br>
->
-> If you are trying to discover files on the local filesystem rather than scrape
-> targets within a set of files, you should use [local.file_match][] instead.
+{{< admonition type="note" >}}
+In {{< param "PRODUCT_ROOT_NAME" >}} `v0.35.0`, the `discovery.file` component was renamed to [local.file_match][], and `discovery.file` was repurposed to discover scrape targets from one or more files.
 
-[local.file_match]: {{< relref "./local.file_match.md" >}}
+If you are trying to discover files on the local filesystem rather than scrape targets within a set of files, you should use [local.file_match][] instead.
+
+[local.file_match]: ../local.file_match/
+{{< /admonition >}}
 
 `discovery.file` discovers targets from a set of files, similar to the [Prometheus file_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config).
 
@@ -35,10 +28,10 @@ discovery.file "LABEL" {
 
 The following arguments are supported:
 
-Name               | Type                | Description                                | Default | Required
------------------- | ------------------- | ------------------------------------------ |---------| --------
-`files`            | `list(string)`      | Files to read and discover targets from.   |         | yes 
-`refresh_interval` | `duration`          | How often to sync targets.                 | "5m"    | no
+Name               | Type           | Description                              | Default | Required
+-------------------|----------------|------------------------------------------|---------|---------
+`files`            | `list(string)` | Files to read and discover targets from. |         | yes
+`refresh_interval` | `duration`     | How often to sync targets.               | "5m"    | no
 
 The last path segment of each element in `files` may contain a single * that matches any character sequence, e.g. `my/path/tg_*.json`.
 
@@ -47,7 +40,7 @@ The last path segment of each element in `files` may contain a single * that mat
 The following fields are exported and can be referenced by other components:
 
 Name      | Type                | Description
---------- | ------------------- | -----------
+----------|---------------------|---------------------------------------------------
 `targets` | `list(map(string))` | The set of targets discovered from the filesystem.
 
 Each target includes the following labels:
@@ -56,9 +49,8 @@ Each target includes the following labels:
 
 ## Component health
 
-`discovery.file` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.file` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -102,8 +94,7 @@ values.
 
 ### Basic file discovery
 
-This example discovers targets from a single file, scrapes them, and writes metrics
-to a Prometheus remote write endpoint.
+This example discovers targets from a single file, scrapes them, and writes metrics to a Prometheus remote write endpoint.
 
 ```river
 discovery.file "example" {
@@ -134,8 +125,7 @@ Replace the following:
 
 ### File discovery with retained file path label
 
-This example discovers targets from a wildcard file path, scrapes them, and writes metrics
-to a Prometheus remote write endpoint.
+This example discovers targets from a wildcard file path, scrapes them, and writes metrics to a Prometheus remote write endpoint.
 
 It also uses a relabeling rule to retain the file path as a label on each target.
 

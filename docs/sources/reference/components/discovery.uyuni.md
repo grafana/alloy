@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/discovery.uyuni/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.uyuni/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.uyuni/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.uyuni/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.uyuni/
 description: Learn about discovery.uyuni
 title: discovery.uyuni
@@ -29,20 +24,20 @@ discovery.uyuni "LABEL" {
 
 The following arguments are supported:
 
-Name                     | Type                | Description                                                         | Default                 | Required
------------------------- | ------------------- | ------------------------------------------------------------------- | ----------------------- | --------
-`server`                 | `string`            | The primary Uyuni Server.                                           |                         | yes
-`username`               | `string`            | The username to use for authentication to the Uyuni API.            |                         | yes
-`password`               | `Secret`            | The password to use for authentication to the Uyuni API.            |                         | yes
-`entitlement`            | `string`            | The entitlement to filter on when listing targets.                  | `"monitoring_entitled"` | no
-`separator`              | `string`            | The separator to use when building the `__meta_uyuni_groups` label. | `","`                   | no
-`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                   | `1m`                    | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                |                         | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.               | `false`                 | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.       |                         | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.        | `true`                  | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                            | `true`                  | no
+Name                     | Type                | Description                                                                                      | Default                 | Required
+-------------------------|---------------------|--------------------------------------------------------------------------------------------------|-------------------------|---------
+`server`                 | `string`            | The primary Uyuni Server.                                                                        |                         | yes
+`username`               | `string`            | The username to use for authentication to the Uyuni API.                                         |                         | yes
+`password`               | `Secret`            | The password to use for authentication to the Uyuni API.                                         |                         | yes
+`entitlement`            | `string`            | The entitlement to filter on when listing targets.                                               | `"monitoring_entitled"` | no
+`separator`              | `string`            | The separator to use when building the `__meta_uyuni_groups` label.                              | `","`                   | no
+`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `1m`                    | no
+`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                         | no
+`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                         | no
+`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`                 | no
+`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                         | no
+`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`                  | no
+`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`                  | no
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -50,8 +45,8 @@ Name                     | Type                | Description                    
 The following blocks are supported inside the definition of
 `discovery.uyuni`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
+Hierarchy  | Block          | Description                                      | Required
+-----------|----------------|--------------------------------------------------|---------
 tls_config | [tls_config][] | TLS configuration for requests to the Uyuni API. | no
 
 [tls_config]: #tls_config-block
@@ -65,7 +60,7 @@ tls_config | [tls_config][] | TLS configuration for requests to the Uyuni API. |
 The following fields are exported and can be referenced by other components:
 
 Name      | Type                | Description
---------- | ------------------- | -----------
+----------|---------------------|--------------------------------------------------
 `targets` | `list(map(string))` | The set of targets discovered from the Uyuni API.
 
 Each target includes the following labels:
@@ -80,14 +75,14 @@ Each target includes the following labels:
 * `__meta_uyuni_metrics_path`: The path to the metrics endpoint.
 * `__meta_uyuni_scheme`: `https` if TLS is enabled on the endpoint, `http` otherwise.
 
-These labels are largely derived from a [listEndpoints](https://www.uyuni-project.org/uyuni-docs-api/uyuni/api/system.monitoring.html)
-API call to the Uyuni Server.
+These labels are largely derived from a [listEndpoints][] API call to the Uyuni Server.
+
+[listEndpoints]: https://www.uyuni-project.org/uyuni-docs-api/uyuni/api/system.monitoring.html
 
 ## Component health
 
-`discovery.uyuni` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.uyuni` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -128,6 +123,7 @@ Replace the following:
   - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
   - `USERNAME`: The username to use for authentication to the remote_write API.
   - `PASSWORD`: The password to use for authentication to the remote_write API.
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

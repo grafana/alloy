@@ -1,7 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.nerve/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.nerve/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.nerve/
 description: Learn about discovery.nerve
 title: discovery.nerve
@@ -33,13 +30,11 @@ Name               | Type           | Description                          | Def
 `timeout`          | `duration`     | The timeout to use.                  | `"10s"`       | no
 
 
-Each element in the `path` list can either point to a single service, or to the
-root of a tree of services.
+Each element in the `path` list can either point to a single service, or to the root of a tree of services.
 
 ## Blocks
 
-The `discovery.nerve` component does not support any blocks, and is configured
-fully through arguments.
+The `discovery.nerve` component does not support any blocks, and is configured fully through arguments.
 
 ## Exported fields
 
@@ -49,8 +44,7 @@ Name      | Type                | Description
 --------- | ------------------- | -----------
 `targets` | `list(map(string))` | The set of targets discovered from Nerve's API.
 
-The following meta labels are available on targets and can be used by the
-discovery.relabel component
+The following meta labels are available on targets and can be used by the discovery.relabel component
 * `__meta_nerve_path`: the full path to the endpoint node in Zookeeper
 * `__meta_nerve_endpoint_host`: the host of the endpoint
 * `__meta_nerve_endpoint_port`: the port of the endpoint
@@ -58,9 +52,8 @@ discovery.relabel component
 
 ## Component health
 
-`discovery.nerve` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.nerve` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 

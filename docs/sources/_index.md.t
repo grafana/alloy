@@ -99,22 +99,11 @@ one minor release is moved.
 
 Patch and security releases may be created at any time.
 
-{{% docs/reference %}}
-[variants]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/about"
-[variants]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/about"
-
-[Static mode]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/static"
-[Static mode]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/static"
-
-[Static mode Kubernetes operator]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/operator"
-[Static mode Kubernetes operator]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/operator"
-
-[Flow mode]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/flow"
-[Flow mode]: "/docs/grafana-cloud/ -> /docs/alloy/<ALLOY_VERSION>/flow"
-
-[UI]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/tasks/debug.md#grafana-agent-flow-ui"
-[UI]: "/docs/grafana-cloud/ -> /docs/alloy/<ALLOY_VERSION>/tasks/debug.md#grafana-agent-flow-ui"
-{{% /docs/reference %}}
+[variants]: ./about/
+[Static mode]: https://grafana.com/docs/agent/static/
+[Static mode Kubernetes operator]: https://grafana.com/docs/agent/operator/
+[Flow mode]: https://grafana.com/docs/agent/flow/
+[UI]: ./tasks/debug/#grafana-alloy-ui
 
 # {{% param "PRODUCT_NAME" %}}
 
@@ -186,15 +175,8 @@ This feature is experimental, and it doesn't support all River components.
 * Consult the [Tasks][] instructions to accomplish common objectives with {{< param "PRODUCT_NAME" >}}.
 * Check out the [Reference][] documentation to find specific information you might be looking for.
 
-{{% docs/reference %}}
-[Install]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/get-started/install/"
-[Install]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/get-started/install/"
-[Concepts]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/concepts/"
-[Concepts]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/concepts/"
-[Tasks]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/tasks/"
-[Tasks]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/tasks/"
-[Tutorials]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/tutorials/"
-[Tutorials]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/tutorials/
-[Reference]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/reference/"
-[Reference]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/reference/
-{{% /docs/reference %}}
+[Install]: ./get-started/install/
+[Concepts]: ./concepts/
+[Tasks]: ./tasks/
+[Tutorials]: ./tutorials/
+[Reference]: ./reference/

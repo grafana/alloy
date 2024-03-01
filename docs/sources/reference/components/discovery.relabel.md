@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/discovery.relabel/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.relabel/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.relabel/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.relabel/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.relabel/
 description: Learn about discovery.relabel
 title: discovery.relabel
@@ -13,29 +8,20 @@ title: discovery.relabel
 
 In Flow, targets are defined as sets of key-value pairs called _labels_.
 
-`discovery.relabel` rewrites the label set of the input targets by applying one
-or more relabeling rules. If no rules are defined, then the input targets are
-exported as-is.
+`discovery.relabel` rewrites the label set of the input targets by applying one or more relabeling rules.
+If no rules are defined, then the input targets are exported as-is.
 
-The most common use of `discovery.relabel` is to filter targets or standardize
-the target label set that is passed to a downstream component. The `rule`
-blocks are applied to the label set of each target in order of their appearance
-in the configuration file. The configured rules can be retrieved by calling the
-function in the `rules` export field.
+The most common use of `discovery.relabel` is to filter targets or standardize the target label set that's passed to a downstream component.
+The `rule` blocks are applied to the label set of each target in order of their appearance in the configuration file.
+The configured rules can be retrieved by calling the function in the `rules` export field.
 
-Target labels which start with a double underscore `__` are considered
-internal, and may be removed by other Flow components prior to telemetry
-collection. To retain any of these labels, use a `labelmap` action to remove
-the prefix, or remap them to a different name. Service discovery mechanisms
-usually group their labels under `__meta_*`. For example, the
-discovery.kubernetes component populates a set of `__meta_kubernetes_*` labels
-to provide information about the discovered Kubernetes resources. If a
-relabeling rule needs to store a label value temporarily, for example as the
-input to a subsequent step, use the `__tmp` label name prefix, as it is
-guaranteed to never be used.
+Target labels which start with a double underscore `__` are considered internal, and may be removed by other components prior to telemetry collection.
+To retain any of these labels, use a `labelmap` action to remove the prefix, or remap them to a different name.
+Service discovery mechanisms usually group their labels under `__meta_*`.
+For example, the discovery.kubernetes component populates a set of `__meta_kubernetes_*` labels to provide information about the discovered Kubernetes resources.
+If a relabeling rule needs to store a label value temporarily, for example as the input to a subsequent step, use the `__tmp` label name prefix, as it's guaranteed to never be used.
 
-Multiple `discovery.relabel` components can be specified by giving them
-different labels.
+Multiple `discovery.relabel` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -55,18 +41,18 @@ discovery.relabel "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`targets` | `list(map(string))` | Targets to relabel | | yes
+Name      | Type                | Description        | Default | Required
+----------|---------------------|--------------------|---------|---------
+`targets` | `list(map(string))` | Targets to relabel |         | yes
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `discovery.relabel`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-rule | [rule][] | Relabeling rules to apply to targets. | no
+Hierarchy | Block    | Description                           | Required
+----------|----------|---------------------------------------|---------
+rule      | [rule][] | Relabeling rules to apply to targets. | no
 
 [rule]: #rule-block
 
@@ -78,16 +64,15 @@ rule | [rule][] | Relabeling rules to apply to targets. | no
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name     | Type                | Description
+---------|---------------------|----------------------------------------------
 `output` | `list(map(string))` | The set of targets after applying relabeling.
-`rules`    | `RelabelRules` | The currently configured relabeling rules.
+`rules`  | `RelabelRules`      | The currently configured relabeling rules.
 
 ## Component health
 
-`discovery.relabel` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.relabel` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -121,7 +106,6 @@ discovery.relabel "keep_backend_only" {
   }
 }
 ```
-
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

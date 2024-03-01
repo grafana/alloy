@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/discovery.azure/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.azure/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.azure/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.azure/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.azure/
 description: Learn about discovery.azure
 title: discovery.azure
@@ -26,18 +21,18 @@ discovery.azure "LABEL" {
 
 The following arguments are supported:
 
-Name                     | Type                | Description                                                            | Default              | Required
------------------------- | ----------          | ---------------------------------------------------------------------- | -------------------- | --------
-`environment`            | `string`            | Azure environment.                                                     | `"AzurePublicCloud"` | no
-`port`                   | `number`            | Port to be appended to the `__address__` label for each target.        | `80`                 | no
-`subscription_id`        | `string`            | Azure subscription ID.                                                 |                      | no
-`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                      | `5m`                 | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                   |                      | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                  | `false`              | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.          |                      | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.           | `true`               | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                               | `true`               | no
+Name                     | Type                | Description                                                                                      | Default              | Required
+-------------------------|---------------------|--------------------------------------------------------------------------------------------------|----------------------|---------
+`environment`            | `string`            | Azure environment.                                                                               | `"AzurePublicCloud"` | no
+`port`                   | `number`            | Port to be appended to the `__address__` label for each target.                                  | `80`                 | no
+`subscription_id`        | `string`            | Azure subscription ID.                                                                           |                      | no
+`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `5m`                 | no
+`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                      | no
+`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                      | no
+`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`              | no
+`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                      | no
+`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`               | no
+`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`               | no
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -45,11 +40,11 @@ Name                     | Type                | Description                    
 The following blocks are supported inside the definition of
 `discovery.azure`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-oauth | [oauth][] | OAuth configuration for Azure API. | no
-managed_identity | [managed_identity][] | Managed Identity configuration for Azure API. | no
-tls_config | [tls_config][] | TLS configuration for requests to the Azure API. | no
+Hierarchy        | Block                | Description                                      | Required
+-----------------|----------------------|--------------------------------------------------|---------
+oauth            | [oauth][]            | OAuth configuration for Azure API.               | no
+managed_identity | [managed_identity][] | Managed Identity configuration for Azure API.    | no
+tls_config       | [tls_config][]       | TLS configuration for requests to the Azure API. | no
 
 Exactly one of the `oauth` or `managed_identity` blocks must be specified.
 
@@ -60,11 +55,11 @@ Exactly one of the `oauth` or `managed_identity` blocks must be specified.
 ### oauth block
 The `oauth` block configures OAuth authentication for the Azure API.
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`client_id` | `string` | OAuth client ID. | | yes
-`client_secret` | `string` | OAuth client secret. | | yes
-`tenant_id` | `string` | OAuth tenant ID. | | yes
+Name            | Type     | Description          | Default | Required
+----------------|----------|----------------------|---------|---------
+`client_id`     | `string` | OAuth client ID.     |         | yes
+`client_secret` | `string` | OAuth client secret. |         | yes
+`tenant_id`     | `string` | OAuth tenant ID.     |         | yes
 
 ### managed_identity block
 The `managed_identity` block configures Managed Identity authentication for the Azure API.

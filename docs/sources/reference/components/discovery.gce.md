@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/discovery.gce/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.gce/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.gce/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.gce/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.gce/
 description: Learn about discovery.gce
 title: discovery.gce
@@ -11,16 +6,19 @@ title: discovery.gce
 
 # discovery.gce
 
-`discovery.gce` allows retrieving scrape targets from [Google Compute Engine](https://cloud.google.com/compute) (GCE) instances. The private IP address is used by default, but may be changed to the public IP address with relabeling.
+`discovery.gce` allows retrieving scrape targets from [Google Compute Engine][] (GCE) instances.
+The private IP address is used by default, but may be changed to the public IP address with relabeling.
 
 Credentials are discovered by the Google Cloud SDK default client by looking in the following places, preferring the first location found:
 
-1. a JSON file specified by the `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
-2. a JSON file in the well-known path `$HOME/.config/gcloud/application_default_credentials.json`.
-3. fetched from the GCE metadata server.
+1. A JSON file specified by the `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
+2. A JSON file in the well-known path `$HOME/.config/gcloud/application_default_credentials.json`.
+3. Fetched from the GCE metadata server.
 
-If the Agent is running within GCE, the service account associated with the instance it is running on should have at least read-only permissions to the compute resources. If running outside of GCE make sure to create an appropriate service account and place the credential file in one of the expected locations.
+If {{< param "PRODUCT_NAME" >}} is running within GCE, the service account associated with the instance it's running on should have at least read-only permissions to the compute resources.
+If running outside of GCE make sure to create an appropriate service account and place the credential file in one of the expected locations.
 
+[Google Compute Engine]: https://cloud.google.com/compute
 
 ## Usage
 
@@ -35,23 +33,25 @@ discovery.gce "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`project` | `string` | The GCP Project.| | yes
-`zone` | `string` | The zone of the scrape targets. | | yes
-`filter` | `string` | Filter can be used optionally to filter the instance list by other criteria. | | no
-`refresh_interval` | `duration` | Refresh interval to re-read the instance list. | `"60s"`| no
-`port` | `int` | The port to scrape metrics from. If using the public IP address, this must instead be specified in the relabeling rule. | `80`| no
-`tag_separator` | `string` | The tag separator is used to separate the tags on concatenation. | `","`| no
+Name               | Type       | Description                                                                                                             | Default | Required
+-------------------|------------|-------------------------------------------------------------------------------------------------------------------------|---------|---------
+`project`          | `string`   | The GCP Project.                                                                                                        |         | yes
+`zone`             | `string`   | The zone of the scrape targets.                                                                                         |         | yes
+`filter`           | `string`   | Filter can be used optionally to filter the instance list by other criteria.                                            |         | no
+`refresh_interval` | `duration` | Refresh interval to re-read the instance list.                                                                          | `"60s"` | no
+`port`             | `int`      | The port to scrape metrics from. If using the public IP address, this must instead be specified in the relabeling rule. | `80`    | no
+`tag_separator`    | `string`   | The tag separator is used to separate the tags on concatenation.                                                        | `","`   | no
 
-For more information on the syntax of the `filter` argument, refer to Google's `filter` documentation for [Method: instances.list](https://cloud.google.com/compute/docs/reference/latest/instances/list).
+For more information on the syntax of the `filter` argument, refer to Google's `filter` documentation for [Method: instances.list][].
+
+[Method: instances.list]: https://cloud.google.com/compute/docs/reference/latest/instances/list
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name      | Type                | Description
+----------|---------------------|-----------------------------------
 `targets` | `list(map(string))` | The set of discovered GCE targets.
 
 Each target includes the following labels:
@@ -73,9 +73,8 @@ Each target includes the following labels:
 
 ## Component health
 
-`discovery.gce` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.gce` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -113,7 +112,7 @@ Replace the following:
   - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
   - `USERNAME`: The username to use for authentication to the remote_write API.
   - `PASSWORD`: The password to use for authentication to the remote_write API.
- 
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

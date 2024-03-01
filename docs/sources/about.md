@@ -185,30 +185,17 @@ You should run Flow mode when:
 [sla]: https://grafana.com/legal/grafana-cloud-sla
 [observability]: https://grafana.com/docs/grafana-cloud/monitor-applications/application-observability/setup#send-telemetry
 
-{{% docs/reference %}}
-[integrations]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/static/configuration/integrations"
-[integrations]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/static/configuration/integrations"
-[components]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/reference/components"
-[components]: "/docs/grafana-cloud/ -> /docs/alloy/<ALLOY_VERSION>/reference/components"
-[Static mode]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/static"
-[Static mode]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/static"
-[Static mode Kubernetes operator]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/operator"
-[Static mode Kubernetes operator]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/operator"
-[Flow mode]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/flow"
-[Flow mode]: "/docs/grafana-cloud/ -> /docs/alloy/<ALLOY_VERSION>/flow"
-[Prometheus]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/flow/tasks/collect-prometheus-metrics.md"
-[Prometheus]: "/docs/grafana-cloud/ -> /docs/alloy/<ALLOY_VERSION>/flow/tasks/collect-prometheus-metrics.md"
-[OTel]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/flow/tasks/collect-opentelemetry-data.md"
-[OTel]: "/docs/grafana-cloud/ -> /docs/alloy/<ALLOY_VERSION>/flow/tasks/collect-opentelemetry-data.md"
-[Loki]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/flow/tasks/migrate/from-promtail.md"
-[Loki]: "/docs/grafana-cloud/ -> /docs/alloy/<ALLOY_VERSION>/flow/tasks/migrate/from-promtail.md"
-[clustering]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/flow/concepts/clustering/_index.md"
-[clustering]: "/docs/grafana-cloud/ -> /docs/alloy/<ALLOY_VERSION>/flow/concepts/clustering/_index.md"
-[rules]: "/docs/alloy/ -> /docs/alloy/latest/flow/reference/components/mimir.rules.kubernetes.md"
-[rules]: "/docs/grafana-cloud/ -> /docs/alloy/latest/flow/reference/components/mimir.rules.kubernetes.md"
-[vault]: "/docs/alloy/ -> /docs/alloy/<ALLOY_VERSION>/flow/reference/components/remote.vault.md"
-[vault]: "/docs/grafana-cloud/ -> /docs/alloy/<ALLOY_VERSION>/flow/reference/components/remote.vault.md"
-{{% /docs/reference %}}
+[integrations]: https://grafana.com/docs/agent/static/configuration/integrations/
+[components]: ./reference/components
+[Static mode]: https://grafana.com/docs/agent/static/
+[Static mode Kubernetes operator]: https://grafana.com/docs/agent/operator/
+[Flow mode]: https://grafana.com/docs/agent/flow/
+[Prometheus]: ./tasks/collect-prometheus-metrics/
+[OTel]: ./tasks/collect-opentelemetry-data/
+[Loki]: ./tasks/migrate/from-promtail/
+[clustering]: ./concepts/clustering/
+[rules]: ./reference/components/mimir.rules.kubernetes/
+[vault]: ./reference/components/remote.vault/
 
 -->
 ### BoringCrypto

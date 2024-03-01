@@ -1,10 +1,4 @@
 ---
-aliases:
-- /docs/agent/latest/flow/reference/components/discovery.dns/
-- /docs/grafana-cloud/agent/flow/reference/components/discovery.dns/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.dns/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.dns/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.dns/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.dns/
 description: Learn about discovery.dns
 title: discovery.dns
@@ -26,12 +20,12 @@ discovery.dns "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`names` | `list(string)` | DNS names to look up. | | yes
-`port` | `number` | Port to use for collecting metrics. Not used for SRV records. | `0` | no
-`refresh_interval` | `duration` | How often to query DNS for updates. | `"30s"` | no
-`type` | `string` | Type of DNS record to query. Must be one of SRV, A, AAAA, or MX. | `"SRV"` | no
+Name               | Type           | Description                                                      | Default | Required
+-------------------|----------------|------------------------------------------------------------------|---------|---------
+`names`            | `list(string)` | DNS names to look up.                                            |         | yes
+`port`             | `number`       | Port to use for collecting metrics. Not used for SRV records.    | `0`     | no
+`refresh_interval` | `duration`     | How often to query DNS for updates.                              | `"30s"` | no
+`type`             | `string`       | Type of DNS record to query. Must be one of SRV, A, AAAA, or MX. | `"SRV"` | no
 
 ## Exported fields
 
@@ -51,9 +45,8 @@ Each target includes the following labels:
 
 ## Component health
 
-`discovery.dns` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.dns` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 

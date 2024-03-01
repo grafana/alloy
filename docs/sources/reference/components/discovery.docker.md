@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/discovery.docker/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/discovery.docker/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/discovery.docker/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/discovery.docker/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.docker/
 description: Learn about discovery.docker
 title: discovery.docker
@@ -27,20 +22,20 @@ discovery.docker "LABEL" {
 
 The following arguments are supported:
 
-Name                     | Type                | Description                                                   | Default | Required
------------------------- | ------------------- | ------------------------------------------------------------- | ------- | --------
-`host`                   | `string`            | Address of the Docker Daemon to connect to.                   |         | yes
-`port`                   | `number`            | Port to use for collecting metrics when containers don't have any port mappings. | `80` | no
-`host_networking_host`   | `string`            | Host to use if the container is in host networking mode.      | `"localhost"` | no
-`refresh_interval`       | `duration`          | Frequency to refresh list of containers.                      | `"1m"`  | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.          |         | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                            |         | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                      | `true`  | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.  | `true`  | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                          |         | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.         | `false` | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests. |         | no
+Name                     | Type                | Description                                                                                      | Default       | Required
+-------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------------|---------
+`host`                   | `string`            | Address of the Docker Daemon to connect to.                                                      |               | yes
+`port`                   | `number`            | Port to use for collecting metrics when containers don't have any port mappings.                 | `80`          | no
+`host_networking_host`   | `string`            | Host to use if the container is in host networking mode.                                         | `"localhost"` | no
+`refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                         | `"1m"`        | no
+`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |               | no
+`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |               | no
+`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no
+`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`        | no
+`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |               | no
+`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |               | no
+`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`       | no
+`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |               | no
 
  At most, one of the following can be provided:
  - [`bearer_token` argument](#arguments).
@@ -58,18 +53,17 @@ Name                     | Type                | Description                    
 The following blocks are supported inside the definition of
 `discovery.docker`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-filter | [filter][] | Filters discoverable resources. | no
-basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the endpoint. | no
-authorization | [authorization][] | Configure generic authorization to the endpoint. | no
-oauth2 | [oauth2][] | Configure OAuth2 for authenticating to the endpoint. | no
-oauth2 > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
-tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
+Hierarchy           | Block             | Description                                              | Required
+--------------------|-------------------|----------------------------------------------------------|---------
+filter              | [filter][]        | Filters discoverable resources.                          | no
+basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no
+authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no
+oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no
+oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
+tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
 
-The `>` symbol indicates deeper levels of nesting. For example,
-`oauth2 > tls_config` refers to a `tls_config` block defined inside
-an `oauth2` block.
+The `>` symbol indicates deeper levels of nesting.
+For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [filter]: #filter-block
 [basic_auth]: #basic_auth-block
@@ -79,17 +73,15 @@ an `oauth2` block.
 
 ### filter block
 
-The `filter` block configures a filter to pass to the Docker Engine to limit
-the amount of containers returned. The `filter` block can be specified multiple
-times to provide more than one filter.
+The `filter` block configures a filter to pass to the Docker Engine to limit the amount of containers returned.
+The `filter` block can be specified multiple times to provide more than one filter.
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`name` | `string` | Filter name to use. | | yes
-`values` | `list(string)` | Values to pass to the filter. | | yes
+Name     | Type           | Description                   | Default | Required
+---------|----------------|-------------------------------|---------|---------
+`name`   | `string`       | Filter name to use.           |         | yes
+`values` | `list(string)` | Values to pass to the filter. |         | yes
 
-Refer to [List containers][List containers] from the Docker Engine API
-documentation for the list of supported filters and their meaning.
+Refer to [List containers][List containers] from the Docker Engine API documentation for the list of supported filters and their meaning.
 
 [List containers]: https://docs.docker.com/engine/api/v1.41/#tag/Container/operation/ContainerList
 
@@ -113,8 +105,8 @@ documentation for the list of supported filters and their meaning.
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name      | Type                | Description
+----------|---------------------|---------------------------------------------------
 `targets` | `list(map(string))` | The set of targets discovered from the docker API.
 
 Each target includes the following labels:
@@ -125,28 +117,21 @@ Each target includes the following labels:
 * `__meta_docker_container_label_<labelname>`: Each label from the container.
 * `__meta_docker_network_id`: ID of the Docker network the container is in.
 * `__meta_docker_network_name`: Name of the Docker network the container is in.
-* `__meta_docker_network_ingress`: Set to `true` if the Docker network is an
-  ingress network.
-* `__meta_docker_network_internal`: Set to `true` if the Docker network is an
-  internal network.
-* `__meta_docker_network_label_<labelname>`: Each label from the network the
-  container is in.
+* `__meta_docker_network_ingress`: Set to `true` if the Docker network is an ingress network.
+* `__meta_docker_network_internal`: Set to `true` if the Docker network is an internal network.
+* `__meta_docker_network_label_<labelname>`: Each label from the network the container is in.
 * `__meta_docker_network_scope`: The scope of the network the container is in.
 * `__meta_docker_network_ip`: The IP of the container in the network.
 * `__meta_docker_port_private`: The private port on the container.
-* `__meta_docker_port_public`: The publicly exposed port from the container,
-  if a port mapping exists.
-* `__meta_docker_port_public_ip`: The public IP of the container, if a port
-  mapping exists.
+* `__meta_docker_port_public`: The publicly exposed port from the container, if a port mapping exists.
+* `__meta_docker_port_public_ip`: The public IP of the container, if a port mapping exists.
 
-Each discovered container maps to one target per unique combination of networks
-and port mappings used by the container.
+Each discovered container maps to one target per unique combination of networks and port mappings used by the container.
 
 ## Component health
 
-`discovery.docker` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`discovery.docker` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -160,8 +145,7 @@ values.
 
 ### Linux or macOS hosts
 
-This example discovers Docker containers when the host machine is macOS or
-Linux:
+This example discovers Docker containers when the host machine is macOS or Linux:
 
 ```river
 discovery.docker "containers" {
