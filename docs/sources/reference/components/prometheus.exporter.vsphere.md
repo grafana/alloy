@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/prometheus.exporter.vsphere/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.exporter.vsphere/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.exporter.vsphere/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.vsphere/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.vsphere/
 title: prometheus.exporter.vsphere
 description: Learn about prometheus.exporter.vsphere

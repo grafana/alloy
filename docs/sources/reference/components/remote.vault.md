@@ -1,10 +1,4 @@
 ---
-aliases:
-- /docs/agent/latest/flow/reference/components/remote.vault/
-- /docs/grafana-cloud/agent/flow/reference/components/remote.vault/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/remote.vault/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/remote.vault/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/remote.vault/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/remote.vault/
 description: Learn about remote.vault
 title: remote.vault
@@ -39,12 +33,12 @@ remote.vault "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`server` | `string` | The Vault server to connect to. | | yes
-`namespace` | `string` | The Vault namespace to connect to (Vault Enterprise only). | | no
-`path` | `string` | The path to retrieve a secret from. | | yes
-`reread_frequency` | `duration` | Rate to re-read keys. | `"0s"` | no
+Name               | Type       | Description                                                | Default | Required
+-------------------|------------|------------------------------------------------------------|---------|---------
+`server`           | `string`   | The Vault server to connect to.                            |         | yes
+`namespace`        | `string`   | The Vault namespace to connect to (Vault Enterprise only). |         | no
+`path`             | `string`   | The path to retrieve a secret from.                        |         | yes
+`reread_frequency` | `duration` | Rate to re-read keys.                                      | `"0s"`  | no
 
 Tokens with a lease will be automatically renewed roughly two-thirds through
 their lease duration. If the leased token isn't renewable, or renewing the
@@ -58,18 +52,18 @@ at a frequency specified by the `reread_frequency` argument. Setting
 
 The following blocks are supported inside the definition of `remote.vault`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-client_options | [client_options][] | Options for the Vault client. | no
-auth.token | [auth.token][] | Authenticate to Vault with a token. | no
-auth.approle | [auth.approle][] | Authenticate to Vault using AppRole. | no
-auth.aws | [auth.aws][] | Authenticate to Vault using AWS. | no
-auth.azure | [auth.azure][] | Authenticate to Vault using Azure. | no
-auth.gcp | [auth.gcp][] | Authenticate to Vault using GCP. | no
-auth.kubernetes | [auth.kubernetes][] | Authenticate to Vault using Kubernetes. | no
-auth.ldap | [auth.ldap][] | Authenticate to Vault using LDAP. | no
-auth.userpass | [auth.userpass][] | Authenticate to Vault using a username and password. | no
-auth.custom | [auth.custom][] | Authenticate to Vault with custom authentication. | no
+Hierarchy       | Block               | Description                                          | Required
+----------------|---------------------|------------------------------------------------------|---------
+client_options  | [client_options][]  | Options for the Vault client.                        | no
+auth.token      | [auth.token][]      | Authenticate to Vault with a token.                  | no
+auth.approle    | [auth.approle][]    | Authenticate to Vault using AppRole.                 | no
+auth.aws        | [auth.aws][]        | Authenticate to Vault using AWS.                     | no
+auth.azure      | [auth.azure][]      | Authenticate to Vault using Azure.                   | no
+auth.gcp        | [auth.gcp][]        | Authenticate to Vault using GCP.                     | no
+auth.kubernetes | [auth.kubernetes][] | Authenticate to Vault using Kubernetes.              | no
+auth.ldap       | [auth.ldap][]       | Authenticate to Vault using LDAP.                    | no
+auth.userpass   | [auth.userpass][]   | Authenticate to Vault using a username and password. | no
+auth.custom     | [auth.custom][]     | Authenticate to Vault with custom authentication.    | no
 
 Exactly one `auth.*` block **must** be provided, otherwise the component will
 fail to load.
@@ -89,12 +83,12 @@ fail to load.
 
 The `client_options` block customizes the connection to vault.
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
+Name             | Type       | Description                                           | Default    | Required
+-----------------|------------|-------------------------------------------------------|------------|---------
 `min_retry_wait` | `duration` | Minimum time to wait before retrying failed requests. | `"1000ms"` | no
 `max_retry_wait` | `duration` | Maximum time to wait before retrying failed requests. | `"1500ms"` | no
-`max_retries` | `int` | Maximum number of times to retry after a 5xx error. | `2` | no
-`timeout` | `duration` | Maximum time to wait before a request times out. | `"60s"` | no
+`max_retries`    | `int`      | Maximum number of times to retry after a 5xx error.   | `2`        | no
+`timeout`        | `duration` | Maximum time to wait before a request times out.      | `"60s"`    | no
 
 Requests which fail due to server errors (HTTP 5xx error codes) can be retried.
 The `max_retries` argument specifies how many times to retry failed requests.

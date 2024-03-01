@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/module.git/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/module.git/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/module.git/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/module.git/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/module.git/
 description: Learn about module.git
 labels:
@@ -20,7 +15,7 @@ component which retrieves a [module][] and runs the components defined inside of
 
 `module.git` retrieves a module source from a file in a Git repository.
 
-[module]: {{< relref "../../concepts/modules.md" >}}
+[module]: ../../../concepts/modules/
 
 ## Usage
 
@@ -41,12 +36,12 @@ module.git "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`repository` | `string` | The Git repository address to retrieve the module from. | | yes
-`revision` | `string` | The Git revision to retrieve the module from. | `"HEAD"` | no
-`path` | `string` | The path in the repository where the module is stored. | | yes
-`pull_frequency` | `duration` | The frequency to pull the repository for updates. | `"60s"` | no
+Name             | Type       | Description                                             | Default  | Required
+-----------------|------------|---------------------------------------------------------|----------|---------
+`repository`     | `string`   | The Git repository address to retrieve the module from. |          | yes
+`revision`       | `string`   | The Git revision to retrieve the module from.           | `"HEAD"` | no
+`path`           | `string`   | The path in the repository where the module is stored.  |          | yes
+`pull_frequency` | `duration` | The frequency to pull the repository for updates.       | `"60s"`  | no
 
 The `repository` attribute must be set to a repository address that would be
 recognized by Git with a `git clone REPOSITORY_ADDRESS` command, such as
@@ -66,11 +61,11 @@ the retrieved changes.
 
 The following blocks are supported inside the definition of `module.git`:
 
-Hierarchy        | Block      | Description | Required
----------------- | ---------- | ----------- | --------
+Hierarchy  | Block          | Description                                          | Required
+-----------|----------------|------------------------------------------------------|---------
 basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the repo. | no
-ssh_key | [ssh_key][] | Configure a SSH Key for authenticating to the repo. | no
-arguments | [arguments][] | Arguments to pass to the module. | no
+ssh_key    | [ssh_key][]    | Configure a SSH Key for authenticating to the repo.  | no
+arguments  | [arguments][]  | Arguments to pass to the module.                     | no
 
 [basic_auth]: #basic_auth-block
 [ssh_key]: #ssh_key-block
@@ -82,12 +77,12 @@ arguments | [arguments][] | Arguments to pass to the module. | no
 
 ### ssh_key block
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`username`  | `string` | SSH username. | | yes
-`key`       | `secret` | SSH private key | | no
-`key_file`  | `string` | SSH private key path. | | no
-`passphrase` | `secret` | Passphrase for SSH key if needed. | | no
+Name         | Type     | Description                       | Default | Required
+-------------|----------|-----------------------------------|---------|---------
+`username`   | `string` | SSH username.                     |         | yes
+`key`        | `secret` | SSH private key                   |         | no
+`key_file`   | `string` | SSH private key path.             |         | no
+`passphrase` | `secret` | Passphrase for SSH key if needed. |         | no
 
 ### arguments block
 
@@ -109,8 +104,8 @@ The attributes provided in the `arguments` block are validated based on the
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name      | Type       | Description
+----------|------------|----------------------------------
 `exports` | `map(any)` | The exports of the Module loader.
 
 `exports` exposes the `export` config block inside a module. It can be accessed

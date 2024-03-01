@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/pyroscope.scrape/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/pyroscope.scrape/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/pyroscope.scrape/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/pyroscope.scrape/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope.scrape/
 description: Learn about pyroscope.scrape
 labels:

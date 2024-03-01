@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.exporter.loadbalancing/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.exporter.loadbalancing/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.exporter.loadbalancing/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.exporter.loadbalancing/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.loadbalancing/
 description: Learn about otelcol.exporter.loadbalancing
 labels:
@@ -18,24 +13,25 @@ title: otelcol.exporter.loadbalancing
 <!-- Include a picture of the LB architecture? -->
 
 `otelcol.exporter.loadbalancing` accepts logs and traces from other `otelcol` components
-and writes them over the network using the OpenTelemetry Protocol (OTLP) protocol. 
+and writes them over the network using the OpenTelemetry Protocol (OTLP) protocol.
 
-> **NOTE**: `otelcol.exporter.loadbalancing` is a wrapper over the upstream
-> OpenTelemetry Collector `loadbalancing` exporter. Bug reports or feature requests will
-> be redirected to the upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.exporter.loadbalancing` is a wrapper over the upstream OpenTelemetry Collector `loadbalancing` exporter.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
 
 Multiple `otelcol.exporter.loadbalancing` components can be specified by giving them
 different labels.
 
-The decision which backend to use depends on the trace ID or the service name. 
-The backend load doesn't influence the choice. Even though this load-balancer won't do 
-round-robin balancing of the batches, the load distribution should be very similar among backends, 
+The decision which backend to use depends on the trace ID or the service name.
+The backend load doesn't influence the choice. Even though this load-balancer won't do
+round-robin balancing of the batches, the load distribution should be very similar among backends,
 with a standard deviation under 5% at the current configuration.
 
 `otelcol.exporter.loadbalancing` is especially useful for backends configured with tail-based samplers
 which choose a backend based on the view of the full trace.
 
-When a list of backends is updated, some of the signals will be rerouted to different backends. 
+When a list of backends is updated, some of the signals will be rerouted to different backends.
 Around R/N of the "routes" will be rerouted differently, where:
 
 * A "route" is either a trace ID or a service name mapped to a certain backend.
@@ -63,13 +59,13 @@ otelcol.exporter.loadbalancing "LABEL" {
 
 `otelcol.exporter.loadbalancing` supports the following arguments:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
+Name          | Type     | Description                          | Default     | Required
+--------------|----------|--------------------------------------|-------------|---------
 `routing_key` | `string` | Routing strategy for load balancing. | `"traceID"` | no
 
 The `routing_key` attribute determines how to route signals across endpoints. Its value could be one of the following:
 * `"service"`: spans with the same `service.name` will be exported to the same backend.
-This is useful when using processors like the span metrics, so all spans for each service are sent to consistent Agent instances 
+This is useful when using processors like the span metrics, so all spans for each service are sent to consistent Agent instances
 for metric collection. Otherwise, metrics for the same services would be sent to different Agents, making aggregations inaccurate.
 * `"traceID"`: spans belonging to the same traceID will be exported to the same backend.
 
@@ -78,20 +74,20 @@ for metric collection. Otherwise, metrics for the same services would be sent to
 The following blocks are supported inside the definition of
 `otelcol.exporter.loadbalancing`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-resolver | [resolver][] | Configures discovering the endpoints to export to. | yes
-resolver > static | [static][] | Static list of endpoints to export to. | no
-resolver > dns | [dns][] | DNS-sourced list of endpoints to export to. | no
-resolver > kubernetes | [kubernetes][] | Kubernetes-sourced list of endpoints to export to. | no
-protocol | [protocol][] | Protocol settings. Only OTLP is supported at the moment. | no
-protocol > otlp | [otlp][] | Configures an OTLP exporter. | no
-protocol > otlp > client | [client][] | Configures the exporter gRPC client. | no
-protocol > otlp > client > tls | [tls][] | Configures TLS for the gRPC client. | no
-protocol > otlp > client > keepalive | [keepalive][] | Configures keepalive settings for the gRPC client. | no
-protocol > otlp > queue | [queue][] | Configures batching of data before sending. | no
-protocol > otlp > retry | [retry][] | Configures retry mechanism for failed requests. | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+Hierarchy                            | Block             | Description                                                                | Required
+-------------------------------------|-------------------|----------------------------------------------------------------------------|---------
+resolver                             | [resolver][]      | Configures discovering the endpoints to export to.                         | yes
+resolver > static                    | [static][]        | Static list of endpoints to export to.                                     | no
+resolver > dns                       | [dns][]           | DNS-sourced list of endpoints to export to.                                | no
+resolver > kubernetes                | [kubernetes][]    | Kubernetes-sourced list of endpoints to export to.                         | no
+protocol                             | [protocol][]      | Protocol settings. Only OTLP is supported at the moment.                   | no
+protocol > otlp                      | [otlp][]          | Configures an OTLP exporter.                                               | no
+protocol > otlp > client             | [client][]        | Configures the exporter gRPC client.                                       | no
+protocol > otlp > client > tls       | [tls][]           | Configures TLS for the gRPC client.                                        | no
+protocol > otlp > client > keepalive | [keepalive][]     | Configures keepalive settings for the gRPC client.                         | no
+protocol > otlp > queue              | [queue][]         | Configures batching of data before sending.                                | no
+protocol > otlp > retry              | [retry][]         | Configures retry mechanism for failed requests.                            | no
+debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `resolver > static`
 refers to a `static` block defined inside a `resolver` block.
@@ -113,8 +109,8 @@ refers to a `static` block defined inside a `resolver` block.
 
 The `resolver` block configures how to retrieve the endpoint to which this exporter will send data.
 
-Inside the `resolver` block, either the [dns][] block or the [static][] block 
-should be specified. If both `dns` and `static` are specified, `dns` takes precedence.
+Inside the `resolver` block, either the [dns][] block or the [static][] block should be specified.
+If both `dns` and `static` are specified, `dns` takes precedence.
 
 ### static block
 
@@ -122,9 +118,9 @@ The `static` block configures a list of endpoints which this exporter will send 
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`hostnames` | `list(string)` | List of endpoints to export to. |  | yes
+Name        | Type           | Description                     | Default | Required
+------------|----------------|---------------------------------|---------|---------
+`hostnames` | `list(string)` | List of endpoints to export to. |         | yes
 
 ### dns block
 
@@ -134,11 +130,11 @@ as the endpoint to which to export data to.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`hostname` | `string`   | DNS hostname to resolve. |  | yes
-`interval` | `duration` | Resolver interval. | `"5s"` | no
-`timeout`  | `duration` | Resolver timeout. | `"1s"`  | no
+Name       | Type       | Description                                                           | Default  | Required
+-----------|------------|-----------------------------------------------------------------------|----------|---------
+`hostname` | `string`   | DNS hostname to resolve.                                              |          | yes
+`interval` | `duration` | Resolver interval.                                                    | `"5s"`   | no
+`timeout`  | `duration` | Resolver timeout.                                                     | `"1s"`   | no
 `port`     | `string`   | Port to be used with the IP addresses resolved from the DNS hostname. | `"4317"` | no
 
 ### kubernetes block
@@ -149,9 +145,9 @@ The `kubernetes` resolver has a much faster response time than the `dns` resolve
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`service` | `string`       | Kubernetes service to resolve. |  | yes
+Name      | Type           | Description                                                 | Default  | Required
+----------|----------------|-------------------------------------------------------------|----------|---------
+`service` | `string`       | Kubernetes service to resolve.                              |          | yes
 `ports`   | `list(number)` | Ports to use with the IP addresses resolved from `service`. | `[4317]` | no
 
 If no namespace is specified inside `service`, an attempt will be made to infer the namespace for this Agent. 
@@ -178,16 +174,16 @@ The endpoints used by the client block are the ones from the `resolver` block
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`compression` | `string` | Compression mechanism to use for requests. | `"gzip"` | no
-`read_buffer_size` | `string` | Size of the read buffer the gRPC client to use for reading server responses. | | no
-`write_buffer_size` | `string` | Size of the write buffer the gRPC client to use for writing requests. | `"512KiB"` | no
-`wait_for_ready` | `boolean` | Waits for gRPC connection to be in the `READY` state before sending data. | `false` | no
-`headers` | `map(string)` | Additional headers to send with the request. | `{}` | no
-`balancer_name` | `string` | Which gRPC client-side load balancer to use for requests. | `pick_first` | no
-`authority` | `string` | Overrides the default `:authority` header in gRPC requests from the gRPC client. | | no
-`auth` | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. | | no
+Name                | Type                       | Description                                                                      | Default      | Required
+--------------------|----------------------------|----------------------------------------------------------------------------------|--------------|---------
+`compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`     | no
+`read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |              | no
+`write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"`   | no
+`wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`      | no
+`headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`         | no
+`balancer_name`     | `string`                   | Which gRPC client-side load balancer to use for requests.                        | `pick_first` | no
+`authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |              | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |              | no
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -219,8 +215,7 @@ able to handle and proxy HTTP/2 traffic.
 
 ### tls block
 
-The `tls` block configures TLS settings used for the connection to the gRPC
-server.
+The `tls` block configures TLS settings used for the connection to the gRPC server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -231,23 +226,21 @@ connections.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`ping_wait` | `duration` | How often to ping the server after no activity. | | no
-`ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server does not respond to a ping. | | no
-`ping_without_stream` | `boolean` | Send pings even if there is no active stream request. | | no
+Name                    | Type       | Description                                                                                | Default | Required
+------------------------|------------|--------------------------------------------------------------------------------------------|---------|---------
+`ping_wait`             | `duration` | How often to ping the server after no activity.                                            |         | no
+`ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server does not respond to a ping. |         | no
+`ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                      |         | no
 
 ### queue block
 
-The `queue` block configures an in-memory buffer of batches before data is sent
-to the gRPC server.
+The `queue` block configures an in-memory buffer of batches before data is sent to the gRPC server.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### retry block
 
-The `retry` block configures how failed requests to the gRPC server are
-retried.
+The `retry` block configures how failed requests to the gRPC server are retried.
 
 {{< docs/shared lookup="reference/components/otelcol-retry-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -259,8 +252,8 @@ retried.
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` OTLP-formatted data for telemetry signals of these types:

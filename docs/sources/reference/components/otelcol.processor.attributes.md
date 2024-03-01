@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.processor.attributes/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.attributes/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.attributes/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.attributes/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.attributes/
 description: Learn about otelcol.processor.attributes
 title: otelcol.processor.attributes
@@ -13,15 +8,14 @@ title: otelcol.processor.attributes
 
 `otelcol.processor.attributes` accepts telemetry data from other `otelcol`
 components and modifies attributes of a span, log, or metric.
-It also supports the ability to filter and match input data to determine if 
-it should be included or excluded for attribute modifications.
+It also supports the ability to filter and match input data to determine if it should be included or excluded for attribute modifications.
 
-> **NOTE**: `otelcol.processor.attributes` is a wrapper over the upstream
-> OpenTelemetry Collector `attributes` processor. Bug reports or feature requests
-> will be redirected to the upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.processor.attributes` is a wrapper over the upstream OpenTelemetry Collector `attributes` processor.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
 
-You can specify multiple `otelcol.processor.attributes` components by giving them
-different labels.
+You can specify multiple `otelcol.processor.attributes` components by giving them different labels.
 
 ## Usage
 
@@ -37,29 +31,29 @@ otelcol.processor.attributes "LABEL" {
 
 ## Arguments
 
-`otelcol.processor.attributes` doesn't support any arguments and is configured fully
-through inner blocks.
+`otelcol.processor.attributes` doesn't support any arguments and is configured fully through inner blocks.
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `otelcol.processor.attributes`:
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-output | [output][] | Configures where to send received telemetry data. | yes
-action | [action][] | Actions to take on the attributes of incoming metrics/logs/traces. | no
-include | [include][] | Filter for data included in this processor's actions. | no
-include > regexp | [regexp][] | Regex cache settings. | no
-include > attribute | [attribute][] | A list of attributes to match against. | no
-include > resource | [resource][] | A list of items to match the resources against. | no
-include > library | [library][] | A list of items to match the implementation library against. | no
-include > log_severity | [library][] | How to match against a log record's SeverityNumber, if defined. | no
-exclude | [exclude][] | Filter for data excluded from this processor's actions | no
-exclude > regexp | [regexp][] | Regex cache settings. | no
-exclude > attribute | [attribute][] | A list of attributes to match against. | no
-exclude > resource | [resource][] | A list of items to match the resources against. | no
-exclude > library | [library][] | A list of items to match the implementation library against. | no
-exclude > log_severity | [log_severity][] | How to match against a log record's SeverityNumber, if defined. | no
+
+Hierarchy              | Block            | Description                                                        | Required
+-----------------------|------------------|--------------------------------------------------------------------|---------
+output                 | [output][]       | Configures where to send received telemetry data.                  | yes
+action                 | [action][]       | Actions to take on the attributes of incoming metrics/logs/traces. | no
+include                | [include][]      | Filter for data included in this processor's actions.              | no
+include > regexp       | [regexp][]       | Regex cache settings.                                              | no
+include > attribute    | [attribute][]    | A list of attributes to match against.                             | no
+include > resource     | [resource][]     | A list of items to match the resources against.                    | no
+include > library      | [library][]      | A list of items to match the implementation library against.       | no
+include > log_severity | [library][]      | How to match against a log record's SeverityNumber, if defined.    | no
+exclude                | [exclude][]      | Filter for data excluded from this processor's actions             | no
+exclude > regexp       | [regexp][]       | Regex cache settings.                                              | no
+exclude > attribute    | [attribute][]    | A list of attributes to match against.                             | no
+exclude > resource     | [resource][]     | A list of items to match the resources against.                    | no
+exclude > library      | [library][]      | A list of items to match the implementation library against.       | no
+exclude > log_severity | [log_severity][] | How to match against a log record's SeverityNumber, if defined.    | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `include > attribute`
 refers to an `attribute` block defined inside an `include` block.
@@ -82,15 +76,15 @@ The `action` block configures how to modify the span, log, or metric.
 
 The following attributes are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`key` | `string` | The attribute that the action relates to. |  | yes
-`action` | `string` | The type of action performed. |  | yes
-`value` | `any` | The value to populate for the key. |  | no
-`pattern` | `string` | A regex pattern. | `""` | no
-`from_attribute` | `string` | The attribute from the input data used to populate the attribute value. | `""` | no
-`from_context` | `string` | The context value used to populate the attribute value.  | `""` | no
-`converted_type` | `string` | The type to convert the attribute value to. | `""` | no
+Name             | Type     | Description                                                             | Default | Required
+-----------------|----------|-------------------------------------------------------------------------|---------|---------
+`key`            | `string` | The attribute that the action relates to.                               |         | yes
+`action`         | `string` | The type of action performed.                                           |         | yes
+`value`          | `any`    | The value to populate for the key.                                      |         | no
+`pattern`        | `string` | A regex pattern.                                                        | `""`    | no
+`from_attribute` | `string` | The attribute from the input data used to populate the attribute value. | `""`    | no
+`from_context`   | `string` | The context value used to populate the attribute value.                 | `""`    | no
+`converted_type` | `string` | The type to convert the attribute value to.                             | `""`    | no
 
 The `value` data type must be either a number, string, or boolean.
 
@@ -106,7 +100,7 @@ The supported values for `action` are:
     * The `key`attribute is required. It specifies the attribute to act upon.
     * One of the `value`, `from_attribute` or `from_context` attributes is required.
 
-* `upsert`: Either inserts a new attribute in input data where the key does not already exist 
+* `upsert`: Either inserts a new attribute in input data where the key does not already exist
    or updates an attribute in input data where the key does exist.
 
     * The `key`attribute is required. It specifies the attribute to act upon.
@@ -116,10 +110,10 @@ The supported values for `action` are:
         the value. If the attribute doesn't exist, no action is performed.
         * `from_context` specifies the context value used to populate the attribute value.
         If the key is prefixed with `metadata.`, the values are searched
-        in the receiver's transport protocol for additional information like gRPC Metadata or HTTP Headers. 
+        in the receiver's transport protocol for additional information like gRPC Metadata or HTTP Headers.
         If the key is prefixed with `auth.`, the values are searched
-        in the authentication information set by the server authenticator. 
-        Refer to the server authenticator's documentation part of your pipeline 
+        in the authentication information set by the server authenticator.
+        Refer to the server authenticator's documentation part of your pipeline
         for more information about which attributes are available.
         If the key doesn't exist, no action is performed.
         If the key has multiple values the values will be joined with a `;` separator.
@@ -128,12 +122,12 @@ The supported values for `action` are:
 
     * The `key` attribute and/or the `pattern` attributes is required.
 
-* `extract`: Extracts values using a regular expression rule from the input key to target keys specified in the rule. 
-  If a target key already exists, it will be overridden. Note: It behaves similarly to the Span Processor `to_attributes` 
+* `extract`: Extracts values using a regular expression rule from the input key to target keys specified in the rule.
+  If a target key already exists, it will be overridden. Note: It behaves similarly to the Span Processor `to_attributes`
   setting with the existing attribute as the source.
 
     * The `key` attribute is required. It specifies the attribute to extract values from. The value of `key` is NOT altered.
-    * The `pattern` attribute is required. It is the regex pattern used to extract attributes from the value of `key`. 
+    * The `pattern` attribute is required. It is the regex pattern used to extract attributes from the value of `key`.
       The submatchers must be named. If attributes already exist, they will be overwritten.
 
 * `convert`: Converts an existing attribute to a specified type.
@@ -152,11 +146,11 @@ The `include` block provides an option to include data being fed into the [actio
 {{< docs/shared lookup="reference/components/match-properties-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 One of the following is also required:
-* For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified 
+* For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified
   with a non-empty value for a valid configuration. The `log_bodies`, `log_severity_texts`, `log_severity`, and `metric_names` attributes are invalid.
-* For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute][], [resource][], or [library][] must be 
+* For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute][], [resource][], or [library][] must be
   specified with a non-empty value for a valid configuration. The `span_names`, `span_kinds`, `metric_names`, and `services` attributes are invalid.
-* For metrics, `metric_names` must be specified with a valid non-empty value for a valid configuration. The `span_names`, 
+* For metrics, `metric_names` must be specified with a valid non-empty value for a valid configuration. The `span_names`,
   `span_kinds`, `log_bodies`, `log_severity_texts`, `log_severity`, `services`, [attribute][], [resource][], and [library][] attributes are invalid.
 
 If the configuration includes filters which are specific to a particular signal type, it is best to include only that signal type in the component's output.
@@ -169,7 +163,9 @@ The `exclude` block provides an option to exclude data from being fed into the [
 {{< admonition type="note" >}}
 Signals excluded by the `exclude` block will still be propagated to downstream components as-is.
 If you would like to not propagate certain signals to downstream components,
-consider a processor such as [otelcol.processor.tail_sampling]({{< relref "./otelcol.processor.tail_sampling.md" >}}).
+consider a processor such as [otelcol.processor.tail_sampling][].
+
+[otelcol.processor.tail_sampling]: ../otelcol.processor.tail_sampling/
 {{< /admonition >}}
 
 {{< docs/shared lookup="reference/components/match-properties-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -213,8 +209,8 @@ For example, adding a `span_names` filter could cause the component to error if 
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).

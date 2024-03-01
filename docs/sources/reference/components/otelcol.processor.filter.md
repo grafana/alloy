@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.processor.filter/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.filter/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.filter/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.filter/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.filter/
 description: Learn about otelcol.processor.filter
 labels:
@@ -25,8 +20,7 @@ A path is a reference to a telemetry data such as:
 * Instrumentation scope name.
 * Span attributes.
 
-In addition to the [standard OTTL Converter functions][OTTL Converter functions], 
-the following metrics-only functions are used exclusively by the processor:
+In addition to the [standard OTTL Converter functions][OTTL Converter functions], the following metrics-only functions are used exclusively by the processor:
 * [HasAttrKeyOnDataPoint][]
 * [HasAttrOnDataPoint][]
 
@@ -41,15 +35,12 @@ the following metrics-only functions are used exclusively by the processor:
 
 {{< admonition type="note" >}}
 Raw River strings can be used to write OTTL statements.
-For example, the OTTL statement `attributes["grpc"] == true` 
-is written in River as \`attributes["grpc"] == true\`
-
+For example, the OTTL statement `attributes["grpc"] == true` is written in River as \`attributes["grpc"] == true\`
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-`otelcol.processor.filter` is a wrapper over the upstream
-OpenTelemetry Collector `filter` processor. If necessary, bug reports or feature requests
-will be redirected to the upstream repository.
+`otelcol.processor.filter` is a wrapper over the upstream OpenTelemetry Collector `filter` processor.
+If necessary, bug reports or feature requests will be redirected to the upstream repository.
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.filter` components by giving them different labels.
@@ -133,7 +124,7 @@ If all span events for a span are dropped, the span will be left intact.
 
 ### metrics block
 
-The `metrics` block specifies statements that filter metric telemetry signals. 
+The `metrics` block specifies statements that filter metric telemetry signals.
 Only one `metrics` blocks can be specified.
 
 Name        | Type           | Description                                               | Default | Required
@@ -141,8 +132,7 @@ Name        | Type           | Description                                      
 `metric`    | `list(string)` | List of OTTL statements filtering OTLP metric.            |         | no
 `datapoint` | `list(string)` | List of OTTL statements filtering OTLP metric datapoints. |         | no
 
-The syntax of OTTL statements depends on the OTTL context. See the OpenTelemetry 
-documentation for more information:
+The syntax of OTTL statements depends on the OTTL context. See the OpenTelemetry documentation for more information:
 * [OTTL metric context][]
 * [OTTL datapoint context][]
 
@@ -157,19 +147,17 @@ If all datapoints for a metric are dropped, the metric will also be dropped.
 
 ### logs block
 
-The `logs` block specifies statements that filter log telemetry signals. 
+The `logs` block specifies statements that filter log telemetry signals.
 Only `logs` blocks can be specified.
 
 Name            | Type           | Description                                    | Default | Required
 --------------- | -------------- | ---------------------------------------------- | ------- | --------
 `log_record`    | `list(string)` | List of OTTL statements filtering OTLP metric. |         | no
 
-The syntax of OTTL statements depends on the OTTL context. See the OpenTelemetry 
-documentation for more information:
+The syntax of OTTL statements depends on the OTTL context. See the OpenTelemetry documentation for more information:
 * [OTTL log context][]
 
 Only one of the statements inside the list of statements has to be satisfied.
-
 
 ### output block
 
@@ -180,7 +168,7 @@ Only one of the statements inside the list of statements has to be satisfied.
 The following fields are exported and can be referenced by other components:
 
 Name    | Type               | Description
-------- | ------------------ | -----------
+--------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,
@@ -290,7 +278,7 @@ Some values in the River strings are [escaped][river-strings]:
 * `\` is escaped with `\\`
 * `"` is escaped with `\"`
 
-[river-strings]: {{< relref "../../concepts/config-language/expressions/types_and_values.md/#strings" >}}
+[river-strings]: ../../../concepts/config-language/expressions/types_and_values/#strings
 
 
 [OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.85.0/pkg/ottl/README.md

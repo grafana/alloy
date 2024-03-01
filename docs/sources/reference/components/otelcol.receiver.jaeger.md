@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.receiver.jaeger/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.receiver.jaeger/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.receiver.jaeger/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.receiver.jaeger/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.jaeger/
 description: Learn about otelcol.receiver.jaeger
 title: otelcol.receiver.jaeger

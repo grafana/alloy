@@ -1,7 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/remote.kubernetes.configmap/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/remote.kubernetes.configmap/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/remote.kubernetes.configmap/
 description: Learn about remote.kubernetes.configmap
 title: remote.kubernetes.configmap

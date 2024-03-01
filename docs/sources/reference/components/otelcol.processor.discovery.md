@@ -1,9 +1,5 @@
 ---
 aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.processor.discovery/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.discovery/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.discovery/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.discovery/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.discovery/
 description: Learn about otelcol.processor.discovery
 title: otelcol.processor.discovery
@@ -18,12 +14,10 @@ of labels for each discovered target.
 matching the one in the `__address__` label provided by the `discovery.*` component.
 
 {{< admonition type="note" >}}
-`otelcol.processor.discovery` is a custom component unrelated to any
-processors from the OpenTelemetry Collector.
+`otelcol.processor.discovery` is a custom component unrelated to any processors from the OpenTelemetry Collector.
 {{< /admonition >}}
 
-Multiple `otelcol.processor.discovery` components can be specified by giving them
-different labels.
+Multiple `otelcol.processor.discovery` components can be specified by giving them different labels.
 
 {{< admonition type="note" >}}
 It can be difficult to follow [OpenTelemetry semantic conventions][OTEL sem conv] when
@@ -46,7 +40,7 @@ from Static mode's `prom_sd_operation_type`/`prom_sd_pod_associations` [configur
 
 [Prometheus data model]: https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 [OTEL sem conv]: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/README.md
-[Traces]: {{< relref "../../../static/configuration/traces-config.md" >}}
+[Traces]: http://grafana.com/docs/agent/latest/static/configuration/traces-config/
 {{< /admonition >}}
 
 ## Usage
@@ -64,11 +58,11 @@ otelcol.processor.discovery "LABEL" {
 
 `otelcol.processor.discovery` supports the following arguments:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`targets` | `list(map(string))` | List of target labels to apply to the spans. | | yes
-`operation_type` | `string` | Configures whether to update a span's attribute if it already exists. | `upsert` | no
-`pod_associations` | `list(string)` | Configures how to decide the hostname of the span. | `["ip", "net.host.ip", "k8s.pod.ip", "hostname", "connection"]` | no
+Name             | Type                | Description                                                           | Default  | Required
+-----------------|---------------------|-----------------------------------------------------------------------|----------|---------
+`targets`        | `list(map(string))` | List of target labels to apply to the spans.                          |          | yes
+`operation_type` | `string`            | Configures whether to update a span's attribute if it already exists. | `upsert` | no
+`pod_associations` | `list(string)`    | Configures how to decide the hostname of the span. | `["ip", "net.host.ip", "k8s.pod.ip", "hostname", "connection"]` | no
 
 `targets` could come from `discovery.*` components:
 1. The `__address__` label will be matched against the IP address of incoming spans.
@@ -98,9 +92,9 @@ only if `"ip"` has not already matched.
 The following blocks are supported inside the definition of
 `otelcol.processor.discovery`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-output | [output][] | Configures where to send received telemetry data. | yes
+Hierarchy | Block      | Description                                       | Required
+----------|------------|---------------------------------------------------|---------
+output    | [output][] | Configures where to send received telemetry data. | yes
 
 [output]: #output-block
 
@@ -112,8 +106,8 @@ output | [output][] | Configures where to send received telemetry data. | yes
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` OTLP-formatted data for telemetry signals of these types:
@@ -173,7 +167,7 @@ otelcol.processor.discovery "default" {
 
 ### Using a preconfigured list of attributes
 
-It is not necessary to use a discovery component. In the example below, both a `test_label` and 
+It's not necessary to use a discovery component. In the example below, both a `test_label` and 
 a `test.label.with.dots` resource attributes will be added to a span if its IP address is 
 "1.2.2.2". The `__internal_label__` will be not be added to the span, because it begins with 
 a double underscore (`__`).
@@ -181,7 +175,7 @@ a double underscore (`__`).
 ```river
 otelcol.processor.discovery "default" {
     targets = [{
-        "__address__"          = "1.2.2.2", 
+        "__address__"          = "1.2.2.2",
         "__internal_label__"   = "test_val",
         "test_label"           = "test_val2",
         "test.label.with.dots" = "test.val2.with.dots"}]

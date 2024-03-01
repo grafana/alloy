@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.auth.basic/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.auth.basic/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.auth.basic/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.auth.basic/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.auth.basic/
 description: Learn about otelcol.auth.basic
 title: otelcol.auth.basic
@@ -36,17 +31,17 @@ otelcol.auth.basic "LABEL" {
 
 `otelcol.auth.basic` supports the following arguments:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`username` | `string` | Username to use for basic authentication requests. | | yes
-`password` | `secret` | Password to use for basic authentication requests. | | yes
+Name       | Type     | Description                                        | Default | Required
+-----------|----------|----------------------------------------------------|---------|---------
+`username` | `string` | Username to use for basic authentication requests. |         | yes
+`password` | `secret` | Password to use for basic authentication requests. |         | yes
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name      | Type                       | Description
+----------|----------------------------|----------------------------------------------------------------
 `handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests.
 
 ## Component health

@@ -135,19 +135,19 @@ The `operator` argument should be one of the following strings:
 
 ### basic_auth block
 
-{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" >}}
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### authorization block
 
-{{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" >}}
+{{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### oauth2 block
 
-{{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" >}}
+{{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### tls_config block
 
-{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" >}}
+{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

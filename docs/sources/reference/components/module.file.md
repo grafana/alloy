@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/module.file/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/module.file/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/module.file/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/module.file/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/module.file/
 description: Learn about module.file
 labels:
@@ -44,12 +39,12 @@ module.file "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`filename`       | `string`   | Path of the file on disk to watch | | yes
+Name             | Type       | Description                                        | Default      | Required
+-----------------|------------|----------------------------------------------------|--------------|---------
+`filename`       | `string`   | Path of the file on disk to watch                  |              | yes
 `detector`       | `string`   | Which file change detector to use (fsnotify, poll) | `"fsnotify"` | no
-`poll_frequency` | `duration` | How often to poll for file changes | `"1m"` | no
-`is_secret`      | `bool`     | Marks the file as containing a [secret][] | `false` | no
+`poll_frequency` | `duration` | How often to poll for file changes                 | `"1m"`       | no
+`is_secret`      | `bool`     | Marks the file as containing a [secret][]          | `false`      | no
 
 [secret]: {{< relref "../../concepts/config-language/expressions/types_and_values.md#secrets" >}}
 
@@ -59,8 +54,8 @@ Name | Type | Description | Default | Required
 
 The following blocks are supported inside the definition of `module.file`:
 
-Hierarchy        | Block      | Description | Required
----------------- | ---------- | ----------- | --------
+Hierarchy | Block         | Description                      | Required
+----------|---------------|----------------------------------|---------
 arguments | [arguments][] | Arguments to pass to the module. | no
 
 [arguments]: #arguments-block
@@ -85,15 +80,14 @@ The attributes provided in the `arguments` block are validated based on the
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name      | Type       | Description
+----------|------------|----------------------------------
 `exports` | `map(any)` | The exports of the Module loader.
 
 `exports` exposes the `export` config block inside a module. It can be accessed
 from the parent config via `module.file.LABEL.exports.EXPORT_LABEL`.
 
-Values in `exports` correspond to [export blocks][] defined in the module
-source.
+Values in `exports` correspond to [export blocks][] defined in the module source.
 
 [export blocks]: {{< relref "../config-blocks/export.md" >}}
 

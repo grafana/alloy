@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.exporter.logging/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.exporter.logging/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.exporter.logging/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.exporter.logging/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.logging/
 description: Learn about otelcol.exporter.logging
 title: otelcol.exporter.logging
@@ -17,14 +12,15 @@ and writes them to the console.
 This component writes logs at the info level. The [logging config block][] must be
 configured to write logs at the info level.
 
-> **NOTE**: `otelcol.exporter.logging` is a wrapper over the upstream
-> OpenTelemetry Collector `logging` exporter. Bug reports or feature requests will
-> be redirected to the upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.exporter.logging` is a wrapper over the upstream OpenTelemetry Collector `logging` exporter.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
 
 Multiple `otelcol.exporter.logging` components can be specified by giving them
 different labels.
 
-[logging config block]: {{< relref "../config-blocks/logging.md" >}}
+[logging config block]: ../../config-blocks/logging/
 
 ## Usage
 
@@ -36,11 +32,11 @@ otelcol.exporter.logging "LABEL" { }
 
 `otelcol.exporter.logging` supports the following arguments:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`verbosity`           | `string` | Verbosity of the generated logs. | `"normal"` | no
-`sampling_initial`    | `int`    | Number of messages initially logged each second. | `2` | no
-`sampling_thereafter` | `int`    | Sampling rate after the initial messages are logged. | `500` | no
+Name                  | Type     | Description                                          | Default    | Required
+----------------------|----------|------------------------------------------------------|------------|---------
+`verbosity`           | `string` | Verbosity of the generated logs.                     | `"normal"` | no
+`sampling_initial`    | `int`    | Number of messages initially logged each second.     | `2`        | no
+`sampling_thereafter` | `int`    | Sampling rate after the initial messages are logged. | `500`      | no
 
 The `verbosity` argument must be one of `"basic"`, `"normal"`, or `"detailed"`.
 
@@ -49,8 +45,8 @@ The `verbosity` argument must be one of `"basic"`, `"normal"`, or `"detailed"`.
 The following blocks are supported inside the definition of
 `otelcol.exporter.logging`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
+Hierarchy     | Block             | Description                                                                | Required
+--------------|-------------------|----------------------------------------------------------------------------|---------
 debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `client > tls`
@@ -66,8 +62,8 @@ refers to a `tls` block defined inside a `client` block.
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,

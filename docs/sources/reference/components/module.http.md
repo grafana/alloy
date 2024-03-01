@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/module.http/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/module.http/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/module.http/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/module.http/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/module.http/
 description: Learn about module.http
 labels:
@@ -21,10 +16,10 @@ title: module.http
 HTTP server. This allows you to use a single module loader, rather than a `remote.http`
 component paired with a [module.string][] component.
 
-[module]: {{< relref "../../concepts/modules.md" >}}
-[remote.http]: {{< relref "./remote.http.md" >}}
-[module.string]: {{< relref "./module.string.md" >}}
-[module loader]: {{< relref "../../concepts/modules.md#module-loaders" >}}
+[module]: ../../../concepts/modules/
+[remote.http]: ../remote.http/
+[module.string]: ../module.string/
+[module loader]: ../../../concepts/modules/#module-loaders
 
 ## Usage
 
@@ -43,14 +38,14 @@ module.http "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`url` | `string` | URL to poll. | | yes
-`method` | `string` | Define HTTP method for the request | `"GET"` | no
-`headers` | `map(string)` | Custom headers for the request. | `{}` | no
-`poll_frequency` | `duration` | Frequency to poll the URL. | `"1m"` | no
-`poll_timeout` | `duration` | Timeout when polling the URL. | `"10s"` | no
-`is_secret` | `bool` | Whether the response body should be treated as a secret. | false | no
+Name             | Type          | Description                                              | Default | Required
+-----------------|---------------|----------------------------------------------------------|---------|---------
+`url`            | `string`      | URL to poll.                                             |         | yes
+`method`         | `string`      | Define HTTP method for the request                       | `"GET"` | no
+`headers`        | `map(string)` | Custom headers for the request.                          | `{}`    | no
+`poll_frequency` | `duration`    | Frequency to poll the URL.                               | `"1m"`  | no
+`poll_timeout`   | `duration`    | Timeout when polling the URL.                            | `"10s"` | no
+`is_secret`      | `bool`        | Whether the response body should be treated as a secret. | false   | no
 
 [secret]: {{< relref "../../concepts/config-language/expressions/types_and_values.md#secrets" >}}
 
@@ -58,8 +53,8 @@ Name | Type | Description | Default | Required
 
 The following blocks are supported inside the definition of `module.http`:
 
-Hierarchy        | Block      | Description | Required
----------------- | ---------- | ----------- | --------
+Hierarchy | Block         | Description                      | Required
+----------|---------------|----------------------------------|---------
 arguments | [arguments][] | Arguments to pass to the module. | no
 
 [arguments]: #arguments-block
@@ -78,14 +73,14 @@ The attributes provided in the `arguments` block are validated based on the
 * Attributes in the `argument` block of the module loader are rejected if
   they are not defined in the module source.
 
-[argument blocks]: {{< relref "../config-blocks/argument.md" >}}
+[argument blocks]: ../../config-blocks/argument/
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name      | Type       | Description
+----------|------------|----------------------------------
 `exports` | `map(any)` | The exports of the Module loader.
 
 `exports` exposes the `export` config block inside a module. It can be accessed
@@ -94,7 +89,7 @@ from the parent config via `module.http.LABEL.exports.EXPORT_LABEL`.
 Values in `exports` correspond to [export blocks][] defined in the module
 source.
 
-[export blocks]: {{< relref "../config-blocks/export.md" >}}
+[export blocks]: ../../config-blocks/export/
 
 ## Component health
 

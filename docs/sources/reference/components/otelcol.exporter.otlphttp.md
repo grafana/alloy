@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.exporter.otlphttp/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.exporter.otlphttp/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.exporter.otlphttp/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.exporter.otlphttp/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.otlphttp/
 description: Learn about otelcol.exporter.otlphttp
 title: otelcol.exporter.otlphttp
@@ -35,8 +30,8 @@ otelcol.exporter.otlphttp "LABEL" {
 
 `otelcol.exporter.otlphttp` supports the following arguments:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
+Name               | Type     | Description                      | Default                           | Required
+-------------------|----------|----------------------------------|-----------------------------------|---------
 `metrics_endpoint` | `string` | The endpoint to send metrics to. | `client.endpoint + "/v1/metrics"` | no
 `logs_endpoint`    | `string` | The endpoint to send logs to.    | `client.endpoint + "/v1/logs"`    | no
 `traces_endpoint`  | `string` | The endpoint to send traces to.  | `client.endpoint + "/v1/traces"`  | no
@@ -50,13 +45,13 @@ corresponding signal.
 The following blocks are supported inside the definition of
 `otelcol.exporter.otlphttp`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-client           | [client][] | Configures the HTTP server to send telemetry data to. | yes
-client > tls     | [tls][] | Configures TLS for the HTTP client. | no
-sending_queue    | [sending_queue][] | Configures batching of data before sending. | no
-retry_on_failure | [retry_on_failure][] | Configures retry mechanism for failed requests. | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+Hierarchy        | Block                | Description                                                                | Required
+-----------------|----------------------|----------------------------------------------------------------------------|---------
+client           | [client][]           | Configures the HTTP server to send telemetry data to.                      | yes
+client > tls     | [tls][]              | Configures TLS for the HTTP client.                                        | no
+sending_queue    | [sending_queue][]    | Configures batching of data before sending.                                | no
+retry_on_failure | [retry_on_failure][] | Configures retry mechanism for failed requests.                            | no
+debug_metrics    | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state. | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `client > tls`
 refers to a `tls` block defined inside a `client` block.
@@ -73,20 +68,20 @@ The `client` block configures the HTTP client used by the component.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`endpoint`           | `string`      | The target URL to send telemetry data to. | | yes
-`read_buffer_size`   | `string`      | Size of the read buffer the HTTP client uses for reading server responses. | `0` | no
-`write_buffer_size`  | `string`      | Size of the write buffer the HTTP client uses for writing requests. | `"512KiB"` | no
-`timeout`            | `duration`    | Time to wait before marking a request as failed. | `"30s"` | no
-`headers`            | `map(string)` | Additional headers to send with the request. | `{}` | no
-`compression`        | `string`      | Compression mechanism to use for requests. | `"gzip"` | no
-`max_idle_conns`     | `int`         | Limits the number of idle HTTP connections the client can keep open. | `100` | no
-`max_idle_conns_per_host` | `int`    | Limits the number of idle HTTP connections the host can keep open. | `0` | no
-`max_conns_per_host` | `int`         | Limits the total (dialing,active, and idle) number of connections per host. | `0` | no
-`idle_conn_timeout`  | `duration`    | Time to wait before an idle connection closes itself. | `"90s"` | no
-`disable_keep_alives`| `bool`        | Disable HTTP keep-alive. | `false` | no
-`auth`               | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. | | no
+Name                      | Type                       | Description                                                                  | Default    | Required
+--------------------------|----------------------------|------------------------------------------------------------------------------|------------|---------
+`endpoint`                | `string`                   | The target URL to send telemetry data to.                                    |            | yes
+`read_buffer_size`        | `string`                   | Size of the read buffer the HTTP client uses for reading server responses.   | `0`        | no
+`write_buffer_size`       | `string`                   | Size of the write buffer the HTTP client uses for writing requests.          | `"512KiB"` | no
+`timeout`                 | `duration`                 | Time to wait before marking a request as failed.                             | `"30s"`    | no
+`headers`                 | `map(string)`              | Additional headers to send with the request.                                 | `{}`       | no
+`compression`             | `string`                   | Compression mechanism to use for requests.                                   | `"gzip"`   | no
+`max_idle_conns`          | `int`                      | Limits the number of idle HTTP connections the client can keep open.         | `100`      | no
+`max_idle_conns_per_host` | `int`                      | Limits the number of idle HTTP connections the host can keep open.           | `0`        | no
+`max_conns_per_host`      | `int`                      | Limits the total (dialing,active, and idle) number of connections per host.  | `0`        | no
+`idle_conn_timeout`       | `duration`                 | Time to wait before an idle connection closes itself.                        | `"90s"`    | no
+`disable_keep_alives`     | `bool`                     | Disable HTTP keep-alive.                                                     | `false`    | no
+`auth`                    | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |            | no
 
 Setting `disable_keep_alives` to `true` will result in significant overhead establishing a new HTTP(s) connection for every request.
 Before enabling this option, consider whether changes to idle connection settings can achieve your goal.
@@ -122,8 +117,8 @@ retried.
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,

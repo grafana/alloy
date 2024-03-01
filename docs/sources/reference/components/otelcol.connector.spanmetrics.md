@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.connector.spanmetrics/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.connector.spanmetrics/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.connector.spanmetrics/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.connector.spanmetrics/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.spanmetrics/
 description: Learn about otelcol.connector.spanmetrics
 labels:
@@ -171,8 +166,8 @@ The `explicit` block configures a histogram with explicit buckets.
 
 The following attributes are supported:
 
-| Name      | Type             | Description                | Default                                                                                                                      | Required |
-| --------- | ---------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Name      | Type             | Description                | Default                                    | Required |
+| --------- | ---------------- | -------------------------- | ------------------------------------------ | -------- |
 | `buckets` | `list(duration)` | List of histogram buckets. | `["2ms", "4ms", "6ms", "8ms", "10ms", "50ms", "100ms", "200ms", "400ms", "800ms", "1s", "1400ms", "2s", "5s", "10s", "15s"]` | no       |
 
 ### exemplars block
@@ -626,6 +621,7 @@ but different resource attributes, `otelcol.exporter.prometheus` will convert th
 This problem can be solved by doing **either** of the following:
 
 - **Recommended approach:** Prior to `otelcol.connector.spanmetrics`, remove all resource attributes from the incoming spans which are not needed by `otelcol.connector.spanmetrics`.
+
   {{< collapse title="Example River configuration to remove unnecessary resource attributes." >}}
   ```river
   otelcol.receiver.otlp "default" {

@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/prometheus.exporter.azure/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.exporter.azure/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.exporter.azure/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.azure/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.azure/
 description: Learn about prometheus.exporter.azure
 title: prometheus.exporter.azure
@@ -11,7 +6,7 @@ title: prometheus.exporter.azure
 
 # prometheus.exporter.azure
 
-The `prometheus.exporter.azure` component embeds [`azure-metrics-exporter`](https://github.com/webdevops/azure-metrics-exporter) to collect metrics from [Azure Monitor](https://azure.microsoft.com/en-us/products/monitor).  
+The `prometheus.exporter.azure` component embeds [`azure-metrics-exporter`](https://github.com/webdevops/azure-metrics-exporter) to collect metrics from [Azure Monitor](https://azure.microsoft.com/en-us/products/monitor).
 
 The exporter supports all metrics defined by Azure Monitor. You can find the complete list of available metrics in the [Azure Monitor documentation](https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/metrics-supported).
 Metrics for this integration are exposed with the template `azure_{type}_{metric}_{aggregation}_{unit}` by default. As an example,

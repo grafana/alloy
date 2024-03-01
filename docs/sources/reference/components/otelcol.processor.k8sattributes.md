@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.processor.k8sattributes/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.k8sattributes/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.k8sattributes/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.k8sattributes/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.k8sattributes/
 description: Learn about otelcol.processor.k8sattributes
 title: otelcol.processor.k8sattributes
@@ -15,13 +10,11 @@ title: otelcol.processor.k8sattributes
 components and adds Kubernetes metadata to the resource attributes of spans, logs, or metrics.
 
 {{< admonition type="note" >}}
-`otelcol.processor.k8sattributes` is a wrapper over the upstream OpenTelemetry
-Collector `k8sattributes` processor. If necessary, bug reports or feature requests
-will be redirected to the upstream repository.
+`otelcol.processor.k8sattributes` is a wrapper over the upstream OpenTelemetry Collector `k8sattributes` processor.
+If necessary, bug reports or feature requests will be redirected to the upstream repository.
 {{< /admonition >}}
 
-You can specify multiple `otelcol.processor.k8sattributes` components by giving them
-different labels.
+You can specify multiple `otelcol.processor.k8sattributes` components by giving them different labels.
 
 ## Usage
 
@@ -39,10 +32,10 @@ otelcol.processor.k8sattributes "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description                                | Default         | Required
----- | ---- |--------------------------------------------|-----------------| --------
-`auth_type` | `string` | Authentication method when connecting to the Kubernetes API. | `serviceAccount` | no
-`passthrough` | `bool` | Passthrough signals as-is, only adding a `k8s.pod.ip` resource attribute. | `false` | no
+Name          | Type     | Description                                                               | Default          | Required
+--------------|----------|---------------------------------------------------------------------------|------------------|---------
+`auth_type`   | `string` | Authentication method when connecting to the Kubernetes API.              | `serviceAccount` | no
+`passthrough` | `bool`   | Passthrough signals as-is, only adding a `k8s.pod.ip` resource attribute. | `false`          | no
 
 The supported values for `auth_type` are:
 * `none`: No authentication is required.
@@ -65,19 +58,20 @@ you can configure the DaemonSet {{< param "PRODUCT_ROOT_NAME" >}}s with `passthr
 
 The following blocks are supported inside the definition of
 `otelcol.processor.k8sattributes`:
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-output | [output][] | Configures where to send received telemetry data. | yes
-extract | [extract][] | Rules for extracting data from Kubernetes. | no
-extract > annotation | [annotation][] | Creating resource attributes from Kubernetes annotations. | no
-extract > label | [extract_label][] | Creating resource attributes from Kubernetes labels. | no
-filter | [filter][] | Filters the data loaded from Kubernetes. | no
-filter > field | [field][] | Filter pods by generic Kubernetes fields. | no
-filter > label | [filter_label][] | Filter pods by Kubernetes labels. | no
-pod_association | [pod_association][] | Rules to associate pod metadata with telemetry signals. | no
-pod_association > source | [source][] | Source information to identify a pod. | no
-exclude | [exclude][] | Exclude pods from being processed. | no
-exclude > pod | [pod][] | Pod information. | no
+
+Hierarchy                | Block               | Description                                               | Required
+-------------------------|---------------------|-----------------------------------------------------------|---------
+output                   | [output][]          | Configures where to send received telemetry data.         | yes
+extract                  | [extract][]         | Rules for extracting data from Kubernetes.                | no
+extract > annotation     | [annotation][]      | Creating resource attributes from Kubernetes annotations. | no
+extract > label          | [extract_label][]   | Creating resource attributes from Kubernetes labels.      | no
+filter                   | [filter][]          | Filters the data loaded from Kubernetes.                  | no
+filter > field           | [field][]           | Filter pods by generic Kubernetes fields.                 | no
+filter > label           | [filter_label][]    | Filter pods by Kubernetes labels.                         | no
+pod_association          | [pod_association][] | Rules to associate pod metadata with telemetry signals.   | no
+pod_association > source | [source][]          | Source information to identify a pod.                     | no
+exclude                  | [exclude][]         | Exclude pods from being processed.                        | no
+exclude > pod            | [pod][]             | Pod information.                                          | no
 
 
 The `>` symbol indicates deeper levels of nesting. For example, `extract > annotation`
@@ -101,8 +95,8 @@ The `extract` block configures which metadata, annotations, and labels to extrac
 
 The following attributes are supported:
 
-Name | Type           | Description                          | Default     | Required
----- |----------------|--------------------------------------|-------------| --------
+Name       | Type           | Description                          | Default     | Required
+-----------|----------------|--------------------------------------|-------------|---------
 `metadata` | `list(string)` | Pre-configured metadata keys to add. | _See below_ | no
 
 The currently supported `metadata` keys are:
@@ -157,10 +151,10 @@ The `filter` block configures which nodes to get data from and which fields and 
 
 The following attributes are supported:
 
-Name | Type     | Description                                                             | Default | Required
----- |----------|-------------------------------------------------------------------------| ------- | --------
-`node` | `string` | Configures a Kubernetes node name or host name. | `""` | no
-`namespace` | `string` | Filters all pods by the provided namespace. All other pods are ignored. | `""` | no
+Name        | Type     | Description                                                             | Default | Required
+------------|----------|-------------------------------------------------------------------------|---------|---------
+`node`      | `string` | Configures a Kubernetes node name or host name.                         | `""`    | no
+`namespace` | `string` | Filters all pods by the provided namespace. All other pods are ignored. | `""`    | no
 
 If `node` is specified, then any pods not running on the specified node will be ignored by `otelcol.processor.k8sattributes`.
 
@@ -215,10 +209,10 @@ pod to be associated with the telemetry signal.
 
 The following attributes are supported:
 
-Name | Type     | Description                                                                      | Default | Required
----- |----------|----------------------------------------------------------------------------------| ------- | --------
-`from` | `string` | The association method. Currently supports `resource_attribute` and `connection` |  | yes
-`name` | `string` | Name represents extracted key name. For example, `ip`, `pod_uid`, `k8s.pod.ip`           |  | no
+Name   | Type     | Description                                                                      | Default | Required
+-------|----------|----------------------------------------------------------------------------------|---------|---------
+`from` | `string` | The association method. Currently supports `resource_attribute` and `connection` |         | yes
+`name` | `string` | Name represents extracted key name. For example, `ip`, `pod_uid`, `k8s.pod.ip`   |         | no
 
 
 ### exclude block
@@ -231,9 +225,9 @@ The `pod` block configures a pod to be excluded from the processor.
 
 The following attributes are supported:
 
-Name | Type     | Description         | Default | Required
----- |----------|---------------------| ------- | --------
-`name` | `string` | The name of the pod |  | yes
+Name   | Type     | Description         | Default | Required
+-------|----------|---------------------|---------|---------
+`name` | `string` | The name of the pod |         | yes
 
 ### output block
 
@@ -243,8 +237,8 @@ Name | Type     | Description         | Default | Required
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).

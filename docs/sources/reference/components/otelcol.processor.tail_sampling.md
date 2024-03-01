@@ -53,11 +53,11 @@ otelcol.processor.tail_sampling "LABEL" {
 
 `otelcol.processor.tail_sampling` supports the following arguments:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
+Name                          | Type       | Description                                                                  | Default | Required
+------------------------------|------------|------------------------------------------------------------------------------|---------|---------
 `decision_wait`               | `duration` | Wait time since the first span of a trace before making a sampling decision. | `"30s"` | no
-`num_traces`                  | `int`      | Number of traces kept in memory. | `50000` | no
-`expected_new_traces_per_sec` | `int`      | Expected number of new traces (helps in allocating data structures). | `0` | no
+`num_traces`                  | `int`      | Number of traces kept in memory.                                             | `50000` | no
+`expected_new_traces_per_sec` | `int`      | Expected number of new traces (helps in allocating data structures).         | `0`     | no
 
 `decision_wait` determines the number of batches to maintain on a channel. Its value must convert to a number of seconds greater than zero.
 
@@ -125,7 +125,7 @@ output                                                        | [output] [] | Co
 [composite]: #composite-block
 [composite_sub_policy]: #composite_sub_policy-block
 [output]: #output-block
-[otelcol.exporter.otlp]: {{< relref "./otelcol.exporter.otlp.md" >}}
+[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
 
 ### policy block
 
@@ -133,10 +133,10 @@ The `policy` block configures a sampling policy used by the component. At least 
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`name` | `string` | The custom name given to the policy. | | yes
-`type` | `string` | The valid policy type for this policy. | | yes
+Name   | Type     | Description                            | Default | Required
+-------|----------|----------------------------------------|---------|---------
+`name` | `string` | The custom name given to the policy.   |         | yes
+`type` | `string` | The valid policy type for this policy. |         | yes
 
 Each policy results in a decision, and the processor evaluates them to make a final decision:
 
@@ -153,9 +153,9 @@ The `latency` block configures a policy of type `latency`. The policy samples ba
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`threshold_ms` | `number` | The latency threshold for sampling, in milliseconds. | | yes
+Name           | Type     | Description                                          | Default | Required
+---------------|----------|------------------------------------------------------|---------|---------
+`threshold_ms` | `number` | The latency threshold for sampling, in milliseconds. |         | yes
 
 ### numeric_attribute block
 
@@ -163,11 +163,11 @@ The `numeric_attribute` block configures a policy of type `numeric_attribute`. T
 
 The following arguments are supported:
 
-Name | Type    | Description | Default | Required
----- | ------- | ----------- | ------- | --------
-`key`          | `string` | Tag that the filter is matched against. | | yes
-`min_value`    | `number` | The minimum value of the attribute to be considered a match. | | yes
-`max_value`    | `number` | The maximum value of the attribute to be considered a match. | | yes
+Name           | Type     | Description                                                    | Default | Required
+---------------|----------|----------------------------------------------------------------|---------|---------
+`key`          | `string` | Tag that the filter is matched against.                        |         | yes
+`min_value`    | `number` | The minimum value of the attribute to be considered a match.   |         | yes
+`max_value`    | `number` | The maximum value of the attribute to be considered a match.   |         | yes
 `invert_match` | `bool`   | Indicates that values must not match against attribute values. | `false` | no
 
 ### probabilistic block
@@ -176,10 +176,10 @@ The `probabilistic` block configures a policy of type `probabilistic`. The polic
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`sampling_percentage` | `number` | The percentage rate at which traces are sampled. | | yes
-`hash_salt`           | `string` | See below. | | no
+Name                  | Type     | Description                                      | Default | Required
+----------------------|----------|--------------------------------------------------|---------|---------
+`sampling_percentage` | `number` | The percentage rate at which traces are sampled. |         | yes
+`hash_salt`           | `string` | See below.                                       |         | no
 
 Use `hash_salt` to configure the hashing salts. This is important in scenarios where multiple layers of collectors
 have different sampling rates. If multiple collectors use the same salt with different sampling rates, passing one
@@ -191,9 +191,9 @@ The `status_code` block configures a policy of type `status_code`. The policy sa
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`status_codes` | `list(string)` | Holds the configurable settings to create a status code filter sampling policy evaluator. | | yes
+Name           | Type           | Description                                                                               | Default | Required
+---------------|----------------|-------------------------------------------------------------------------------------------|---------|---------
+`status_codes` | `list(string)` | Holds the configurable settings to create a status code filter sampling policy evaluator. |         | yes
 
 `status_codes` values must be "OK", "ERROR" or "UNSET".
 
@@ -217,9 +217,9 @@ The `rate_limiting` block configures a policy of type `rate_limiting`. The polic
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`spans_per_second` | `number` | Sets the maximum number of spans that can be processed each second. | | yes
+Name               | Type     | Description                                                         | Default | Required
+-------------------|----------|---------------------------------------------------------------------|---------|---------
+`spans_per_second` | `number` | Sets the maximum number of spans that can be processed each second. |         | yes
 
 ### span_count block
 
@@ -227,24 +227,24 @@ The `span_count` block configures a policy of type `span_count`. The policy samp
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`min_spans` | `number` | Minimum number of spans in a trace. | | yes
-`max_spans` | `number` | Maximum number of spans in a trace. | `0` | no
+Name        | Type     | Description                         | Default | Required
+------------|----------|-------------------------------------|---------|---------
+`min_spans` | `number` | Minimum number of spans in a trace. |         | yes
+`max_spans` | `number` | Maximum number of spans in a trace. | `0`     | no
 
 Set `max_spans` to `0`, if you do not want to limit the policy samples based on the maximum number of spans in a trace.
 
 ### boolean_attribute block
 
-The `boolean_attribute` block configures a policy of type `boolean_attribute`. 
+The `boolean_attribute` block configures a policy of type `boolean_attribute`.
 The policy samples based on a boolean attribute (resource and record).
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`key`   | `string` | Attribute key to match against. | | yes
-`value` | `bool` | The bool value (`true` or `false`) to use when matching against attribute values. | | yes
+Name    | Type     | Description                                                                       | Default | Required
+--------|----------|-----------------------------------------------------------------------------------|---------|---------
+`key`   | `string` | Attribute key to match against.                                                   |         | yes
+`value` | `bool`   | The bool value (`true` or `false`) to use when matching against attribute values. |         | yes
 
 ### ottl_condition block
 
@@ -253,11 +253,11 @@ The `ottl_condition` block configures a policy of type `ottl_condition`. The pol
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`error_mode` | `string` | Error handling if OTTL conditions fail to evaluate. | | yes
-`span`       | `list(string)` | OTTL conditions for spans. | `[]` | no
-`spanevent`  | `list(string)` | OTTL conditions for span events. | `[]` | no
+Name         | Type           | Description                                         | Default | Required
+-------------|----------------|-----------------------------------------------------|---------|---------
+`error_mode` | `string`       | Error handling if OTTL conditions fail to evaluate. |         | yes
+`span`       | `list(string)` | OTTL conditions for spans.                          | `[]`    | no
+`spanevent`  | `list(string)` | OTTL conditions for span events.                    | `[]`    | no
 
 The supported values for `error_mode` are:
 * `ignore`: Errors cause evaluation to continue to the next statement.
@@ -271,10 +271,10 @@ The `trace_state` block configures a policy of type `trace_state`. The policy sa
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`key`                    | `string`       | Tag that the filter is matched against. | | yes
-`values`                 | `list(string)` | Set of values to use when matching against trace_state values. | | yes
+Name     | Type           | Description                                                    | Default | Required
+---------|----------------|----------------------------------------------------------------|---------|---------
+`key`    | `string`       | Tag that the filter is matched against.                        |         | yes
+`values` | `list(string)` | Set of values to use when matching against trace_state values. |         | yes
 
 ### and block
 
@@ -286,10 +286,10 @@ The `and_sub_policy` block configures a sampling policy used by the `and` block.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`name` | `string` | The custom name given to the policy. | | yes
-`type` | `string` | The valid policy type for this policy. | | yes
+Name   | Type     | Description                            | Default | Required
+-------|----------|----------------------------------------|---------|---------
+`name` | `string` | The custom name given to the policy.   |         | yes
+`type` | `string` | The valid policy type for this policy. |         | yes
 
 ### composite block
 
@@ -305,10 +305,10 @@ The `composite_sub_policy` block configures a sampling policy used by the `compo
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`name` | `string` | The custom name given to the policy. | | yes
-`type` | `string` | The valid policy type for this policy. | | yes
+Name   | Type     | Description                            | Default | Required
+-------|----------|----------------------------------------|---------|---------
+`name` | `string` | The custom name given to the policy.   |         | yes
+`type` | `string` | The valid policy type for this policy. |         | yes
 
 ### output block
 
@@ -318,8 +318,8 @@ Name | Type | Description | Default | Required
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,

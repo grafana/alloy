@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.auth.oauth2/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.auth.oauth2/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.auth.oauth2/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.auth.oauth2/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.auth.oauth2/
 description: Learn about otelcol.auth.oauth2
 title: otelcol.auth.oauth2
@@ -37,14 +32,14 @@ otelcol.auth.oauth2 "LABEL" {
 
 ## Arguments
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`client_id` | `string` | The client identifier issued to the client. | | yes
-`client_secret` | `secret` | The secret string associated with the client identifier. | | yes
-`token_url` | `string` | The server endpoint URL from which to get tokens. | | yes
-`endpoint_params` | `map(list(string))` | Additional parameters that are sent to the token endpoint. | `{}` | no
-`scopes` | `list(string)` | Requested permissions associated for the client. | `[]` | no
-`timeout` | `duration` | The timeout on the client connecting to `token_url`. | `"0s"` | no
+Name              | Type                | Description                                                | Default | Required
+------------------|---------------------|------------------------------------------------------------|---------|---------
+`client_id`       | `string`            | The client identifier issued to the client.                |         | yes
+`client_secret`   | `secret`            | The secret string associated with the client identifier.   |         | yes
+`token_url`       | `string`            | The server endpoint URL from which to get tokens.          |         | yes
+`endpoint_params` | `map(list(string))` | Additional parameters that are sent to the token endpoint. | `{}`    | no
+`scopes`          | `list(string)`      | Requested permissions associated for the client.           | `[]`    | no
+`timeout`         | `duration`          | The timeout on the client connecting to `token_url`.       | `"0s"`  | no
 
 The `timeout` argument is used both for requesting initial tokens and for refreshing tokens. `"0s"` implies no timeout.
 
@@ -53,16 +48,15 @@ The `timeout` argument is used both for requesting initial tokens and for refres
 The following blocks are supported inside the definition of
 `otelcol.auth.oauth2`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-tls | [tls][] | TLS settings for the token client. | no
+Hierarchy | Block   | Description                        | Required
+----------|---------|------------------------------------|---------
+tls       | [tls][] | TLS settings for the token client. | no
 
 [tls]: #tls-block
 
 ### tls block
 
-The `tls` block configures TLS settings used for connecting to the token client. If the `tls` block isn't provided, 
-TLS won't be used for communication.
+The `tls` block configures TLS settings used for connecting to the token client. If the `tls` block isn't provided, TLS won't be used for communication.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -70,8 +64,8 @@ TLS won't be used for communication.
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name      | Type                       | Description
+----------|----------------------------|----------------------------------------------------------------
 `handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests.
 
 ## Component health
@@ -121,4 +115,4 @@ otelcol.auth.oauth2 "creds" {
 }
 ```
 
-[otelcol.exporter.otlp]: {{< relref "./otelcol.exporter.otlp.md" >}}
+[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/

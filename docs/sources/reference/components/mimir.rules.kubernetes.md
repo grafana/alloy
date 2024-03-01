@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/mimir.rules.kubernetes/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/mimir.rules.kubernetes/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/mimir.rules.kubernetes/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/mimir.rules.kubernetes/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/mimir.rules.kubernetes/
 description: Learn about mimir.rules.kubernetes
 labels:
@@ -47,22 +42,22 @@ mimir.rules.kubernetes "LABEL" {
 
 `mimir.rules.kubernetes` supports the following arguments:
 
-Name                     | Type                | Description                                                     | Default       | Required
------------------------- | ------------------- | --------------------------------------------------------------- | ------------- | --------
-`address`                | `string`            | URL of the Mimir ruler.                                         |               | yes
-`tenant_id`              | `string`            | Mimir tenant ID.                                                |               | no
-`use_legacy_routes`      | `bool`              | Whether to use [deprecated][gem-2_2] ruler API endpoints.       | false         | no
-`prometheus_http_prefix` | `string`            | Path prefix for [Mimir's Prometheus endpoint][gem-path-prefix]. | `/prometheus` | no
-`sync_interval`          | `duration`          | Amount of time between reconciliations with Mimir.              | "30s"         | no
-`mimir_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments. | "agent" | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.            |               | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                              |               | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                        | `true`        | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.    | `true`        | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                            |               | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.         | `false` | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests. |         | no
+Name                     | Type                | Description                                                                                      | Default       | Required
+-------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------------|---------
+`address`                | `string`            | URL of the Mimir ruler.                                                                          |               | yes
+`tenant_id`              | `string`            | Mimir tenant ID.                                                                                 |               | no
+`use_legacy_routes`      | `bool`              | Whether to use [deprecated][gem-2_2] ruler API endpoints.                                        | false         | no
+`prometheus_http_prefix` | `string`            | Path prefix for [Mimir's Prometheus endpoint][gem-path-prefix].                                  | `/prometheus` | no
+`sync_interval`          | `duration`          | Amount of time between reconciliations with Mimir.                                               | "30s"         | no
+`mimir_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.                  | "agent"       | no
+`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |               | no
+`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |               | no
+`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no
+`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`        | no
+`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |               | no
+`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |               | no
+`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`       | no
+`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |               | no
 
  At most, one of the following can be provided:
  - [`bearer_token` argument](#arguments).

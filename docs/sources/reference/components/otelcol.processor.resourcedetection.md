@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.processor.resourcedetection/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.resourcedetection/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.resourcedetection/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.resourcedetection/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.resourcedetection/
 labels:
   stage: beta
@@ -15,9 +10,9 @@ description: Learn about otelcol.processor.resourcedetection
 
 {{< docs/shared lookup="stability/beta.md" source="alloy" version="<AGENT VERSION>" >}}
 
-`otelcol.processor.resourcedetection` detects resource information from the host
-in a format that conforms to the [OpenTelemetry resource semantic conventions](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/resource/semantic_conventions/), and appends or
-overrides the resource values in the telemetry data with this information.
+`otelcol.processor.resourcedetection` detects resource information from the host in a format that conforms to the [OpenTelemetry resource semantic conventions][], and appends or overrides the resource values in the telemetry data with this information.
+
+[OpenTelemetry resource semantic conventions]: https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/resource/semantic_conventions/
 
 {{< admonition type="note" >}}
 `otelcol.processor.resourcedetection` is a wrapper over the upstream
@@ -123,7 +118,6 @@ kubernetes_node   | [kubernetes_node][]   |                                     
 [system]: #system
 [openshift]: #openshift
 [kubernetes_node]: #kubernetes_node
-
 [res-attr-cfg]: #resource-attribute-config
 
 ### output
@@ -132,7 +126,7 @@ kubernetes_node   | [kubernetes_node][]   |                                     
 
 ### ec2
 
-The `ec2` block reads resource information from the [EC2 instance metadata API] using the [AWS SDK for Go][].
+The `ec2` block reads resource information from the [EC2 instance metadata API][] using the [AWS SDK for Go][].
 
 The `ec2` block supports the following attributes:
 
@@ -155,9 +149,9 @@ To fetch EC2 tags, the IAM role assigned to the EC2 instance must have a policy 
 
 The `ec2` block supports the following blocks:
 
-Block                                          | Description                                       | Required
----------------------------------------------- | ------------------------------------------------- | --------
-[resource_attributes](#ec2--resource_attributes) | Configures which resource attributes to add.      | no
+Block                                            | Description                                  | Required
+-------------------------------------------------|----------------------------------------------|---------
+[resource_attributes](#ec2--resource_attributes) | Configures which resource attributes to add. | no
 
 ##### ec2 > resource_attributes
 
@@ -177,7 +171,7 @@ Block                                   | Description                           
 
 ### ecs
 
-The `ecs` block queries the Task Metadata Endpoint (TMDE) to record information about the current ECS Task. Only TMDE V4 and V3 are supported.
+The `ecs` block queries the [Task Metadata Endpoint][] (TMDE) to record information about the current ECS Task. Only TMDE V4 and V3 are supported.
 
 [Task Metadata Endpoint]: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint.html
 
@@ -582,9 +576,7 @@ For more information, see the [Heroku cloud provider documentation][] under the 
 The `system` block queries the host machine to retrieve various resource attributes.
 
 {{< admonition type="note" >}}
-
 Use the [Docker](#docker) detector if running {{< param "PRODUCT_ROOT_NAME" >}} as a Docker container.
-
 {{< /admonition >}}
 
 The `system` block supports the following attributes:
@@ -659,10 +651,10 @@ The determination of the API address, `ca_file`, and the service token is skippe
 
 The `openshift` block supports the following blocks:
 
-Block                                          | Description                                          | Required
----------------------------------------------- | ---------------------------------------------------- | --------
-[resource_attributes](#openshift--resource_attributes) | Configures which resource attributes to add. | no
-[tls](#openshift--tls) | TLS settings for the connection with the OpenShift API. | yes
+Block                                                  | Description                                             | Required
+-------------------------------------------------------|---------------------------------------------------------|---------
+[resource_attributes](#openshift--resource_attributes) | Configures which resource attributes to add.            | no
+[tls](#openshift--tls)                                 | TLS settings for the connection with the OpenShift API. | yes
 
 #### openshift > tls
 
@@ -713,9 +705,9 @@ rules:
 
 The `kubernetes_node` block supports the following blocks:
 
-Block                                          | Description                                       | Required
----------------------------------------------- | ------------------------------------------------- | --------
-[resource_attributes](#kubernetes_node--resource_attributes) | Configures which resource attributes to add.      | no
+Block                                                        | Description                                  | Required
+-------------------------------------------------------------|----------------------------------------------|---------
+[resource_attributes](#kubernetes_node--resource_attributes) | Configures which resource attributes to add. | no
 
 #### kubernetes_node > resource_attributes
 

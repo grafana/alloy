@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/module.string/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/module.string/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/module.string/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/module.string/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/module.string/
 description: Learn about module.string
 labels:
@@ -18,7 +13,7 @@ title: module.string
 `module.string` is a *module loader* component. A module loader is a {{< param "PRODUCT_NAME" >}}
 component which retrieves a [module][] and runs the components defined inside of it.
 
-[module]: {{< relref "../../concepts/modules.md" >}}
+[module]: ../../../concepts/modules/
 
 ## Usage
 
@@ -38,9 +33,9 @@ module.string "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`content`   | `secret` or `string` | The contents of the module to load as a secret or string. | | yes
+Name      | Type                 | Description                                               | Default | Required
+----------|----------------------|-----------------------------------------------------------|---------|---------
+`content` | `secret` or `string` | The contents of the module to load as a secret or string. |         | yes
 
 `content` is a string that contains the configuration of the module to load.
 `content` is typically loaded by using the exports of another component. For example,
@@ -53,8 +48,8 @@ Name | Type | Description | Default | Required
 
 The following blocks are supported inside the definition of `module.string`:
 
-Hierarchy        | Block      | Description | Required
----------------- | ---------- | ----------- | --------
+Hierarchy | Block         | Description                      | Required
+----------|---------------|----------------------------------|---------
 arguments | [arguments][] | Arguments to pass to the module. | no
 
 [arguments]: #arguments-block
@@ -73,14 +68,14 @@ The attributes provided in the `arguments` block are validated based on the
 * Attributes in the `argument` block of the module loader will be rejected if
   they are not defined in the module source.
 
-[argument blocks]: {{< relref "../config-blocks/argument.md" >}}
+[argument blocks]: ../../config-blocks/argument/
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name      | Type       | Description
+----------|------------|----------------------------------
 `exports` | `map(any)` | The exports of the Module loader.
 
 `exports` exposes the `export` config block inside a module. It can be accessed
@@ -89,7 +84,7 @@ from the parent config via `module.string.LABEL.exports.EXPORT_LABEL`.
 Values in `exports` correspond to [export blocks][] defined in the module
 source.
 
-[export blocks]: {{< relref "../config-blocks/export.md" >}}
+[export blocks]: ../../config-blocks/export/
 
 ## Component health
 

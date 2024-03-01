@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.connector.spanlogs/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.connector.spanlogs/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.connector.spanlogs/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.connector.spanlogs/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.spanlogs/
 description: Learn about otelcol.connector.spanlogs
 title: otelcol.connector.spanlogs
@@ -15,12 +10,14 @@ title: otelcol.connector.spanlogs
 components and outputs logs telemetry data for each span, root, or process.
 This allows you to automatically build a mechanism for trace discovery.
 
-> **NOTE**: `otelcol.connector.spanlogs` is a custom component unrelated
-> to any components from the OpenTelemetry Collector. It is based on the
-> `automatic_logging` component in the [traces]({{< relref "../../../static/configuration/traces-config" >}}) subsystem of the Agent static mode.
+{{< admonition type="note" >}}
+`otelcol.connector.spanlogs` is a custom component unrelated to any components from the OpenTelemetry Collector.
+It is based on the `automatic_logging` component in the [traces][] subsystem of Grafana Agent Static.
 
-You can specify multiple `otelcol.connector.spanlogs` components by giving them
-different labels.
+[traces]: https://grafana.com/docs/agent/latest/static/configuration/traces-config
+{{< /admonition >}}
+
+You can specify multiple `otelcol.connector.spanlogs` components by giving them different labels.
 
 ## Usage
 
@@ -47,7 +44,9 @@ otelcol.connector.spanlogs "LABEL" {
 
 The values listed in `labels` should be the values of either span or process attributes.
 
-> **WARNING**: Setting `spans` to `true` could lead to a high volume of logs.
+{{< admonition type="warning" >}}
+Setting `spans` to `true` could lead to a high volume of logs.
+{{< /admonition >}}
 
 ## Blocks
 
@@ -89,18 +88,15 @@ The following fields are exported and can be referenced by other components:
 | ------- | ------------------ | ---------------------------------------------------------------- |
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
-`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,
-logs, or traces).
+`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
 
 ## Component health
 
-`otelcol.connector.spanlogs` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.connector.spanlogs` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.connector.spanlogs` does not expose any component-specific debug
-information.
+`otelcol.connector.spanlogs` does not expose any component-specific debug information.
 
 ## Example
 

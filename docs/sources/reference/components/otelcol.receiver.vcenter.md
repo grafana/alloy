@@ -1,8 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.receiver.vcenter/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.receiver.vcenter/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.receiver.vcenter/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.vcenter/
 title: otelcol.receiver.vcenter
 description: Learn about otelcol.receiver.vcenter

@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.auth.headers/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.auth.headers/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.auth.headers/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.auth.headers/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.auth.headers/
 description: Learn about otelcol.auth.headers
 title: otelcol.auth.headers
@@ -14,12 +9,12 @@ title: otelcol.auth.headers
 `otelcol.auth.headers` exposes a `handler` that can be used by other `otelcol`
 components to authenticate requests using custom headers.
 
-> **NOTE**: `otelcol.auth.headers` is a wrapper over the upstream OpenTelemetry
-> Collector `headerssetter` extension. Bug reports or feature requests will be
-> redirected to the upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.auth.headers` is a wrapper over the upstream OpenTelemetry Collector `headerssetter` extension.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
 
-Multiple `otelcol.auth.headers` components can be specified by giving them
-different labels.
+Multiple `otelcol.auth.headers` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -42,9 +37,9 @@ through inner blocks.
 The following blocks are supported inside the definition of
 `otelcol.auth.headers`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-header | [header][] | Custom header to attach to requests. | no
+Hierarchy | Block      | Description                          | Required
+----------|------------|--------------------------------------|---------
+header    | [header][] | Custom header to attach to requests. | no
 
 [header]: #header-block
 
@@ -53,12 +48,12 @@ header | [header][] | Custom header to attach to requests. | no
 The `header` block defines a custom header to attach to requests. It is valid
 to provide multiple `header` blocks to set more than one header.
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`key` | `string` | Name of the header to set. | | yes
-`value` | `string` or `secret` | Value of the header. | | no
-`from_context` | `string` | Metadata name to get header value from. | | no
-`action` | `string` | An action to perform on the header | "upsert" | no
+Name           | Type                 | Description                             | Default  | Required
+---------------|----------------------|-----------------------------------------|----------|---------
+`key`          | `string`             | Name of the header to set.              |          | yes
+`value`        | `string` or `secret` | Value of the header.                    |          | no
+`from_context` | `string`             | Metadata name to get header value from. |          | no
+`action`       | `string`             | An action to perform on the header      | "upsert" | no
 
 The supported values for `action` are:
 * `insert`: Inserts the new header if it does not exist.
@@ -145,4 +140,4 @@ otelcol.exporter.otlp "production" {
 }
 ```
 
-[otelcol.exporter.otlp]: {{< relref "./otelcol.exporter.otlp.md" >}}
+[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/

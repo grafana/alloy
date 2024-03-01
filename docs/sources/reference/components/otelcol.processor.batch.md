@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.processor.batch/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.batch/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.batch/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.batch/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.batch/
 description: Learn about otelcol.processor.batch
 title: otelcol.processor.batch
@@ -16,11 +11,9 @@ components and places them into batches. Batching improves the compression of
 data and reduces the number of outgoing network requests required to transmit
 data. This processor supports both size and time based batching.
 
-We strongly recommend that you configure the batch processor on every Agent that
-uses OpenTelemetry (otelcol) Flow components.  The batch processor should be 
-defined in the pipeline after the `otelcol.processor.memory_limiter` as well 
-as any sampling processors. This is because batching should happen after any 
-data drops such as sampling.
+We strongly recommend that you configure the batch processor on every {{< param "PRODUCT_NAME" >}} that uses OpenTelemetry (otelcol) {{< param "PRODUCT_ROOT_NAME" >}} components.
+The batch processor should be defined in the pipeline after the `otelcol.processor.memory_limiter` as well as any sampling processors.
+This is because batching should happen after any data drops such as sampling.
 
 > **NOTE**: `otelcol.processor.batch` is a wrapper over the upstream
 > OpenTelemetry Collector `batch` processor. Bug reports or feature requests
@@ -45,13 +38,13 @@ otelcol.processor.batch "LABEL" {
 
 `otelcol.processor.batch` supports the following arguments:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`timeout` | `duration` | How long to wait before flushing the batch. | `"200ms"` | no
-`send_batch_size` | `number` | Amount of data to buffer before flushing the batch. | `8192` | no
-`send_batch_max_size` | `number` | Upper limit of a batch size. | `0` | no
-`metadata_keys` | `list(string)` | Creates a different batcher for each key/value combination of metadata. | `[]` | no
-`metadata_cardinality_limit` | `number` | Limit of the unique metadata key/value combinations. | `1000` | no
+Name                         | Type           | Description                                                             | Default   | Required
+-----------------------------|----------------|-------------------------------------------------------------------------|-----------|---------
+`timeout`                    | `duration`     | How long to wait before flushing the batch.                             | `"200ms"` | no
+`send_batch_size`            | `number`       | Amount of data to buffer before flushing the batch.                     | `8192`    | no
+`send_batch_max_size`        | `number`       | Upper limit of a batch size.                                            | `0`       | no
+`metadata_keys`              | `list(string)` | Creates a different batcher for each key/value combination of metadata. | `[]`      | no
+`metadata_cardinality_limit` | `number`       | Limit of the unique metadata key/value combinations.                    | `1000`    | no
 
 `otelcol.processor.batch` accumulates data into a batch until one of the
 following events happens:
@@ -102,9 +95,9 @@ which defaults to 1000 to limit memory impact.
 The following blocks are supported inside the definition of
 `otelcol.processor.batch`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-output | [output][] | Configures where to send received telemetry data. | yes
+Hierarchy | Block      | Description                                       | Required
+----------|------------|---------------------------------------------------|---------
+output    | [output][] | Configures where to send received telemetry data. | yes
 
 [output]: #output-block
 
@@ -116,8 +109,8 @@ output | [output][] | Configures where to send received telemetry data. | yes
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,

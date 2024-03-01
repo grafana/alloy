@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.processor.memory_limiter/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.processor.memory_limiter/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.processor.memory_limiter/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.processor.memory_limiter/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.memory_limiter/
 description: Learn about otelcol.processor.memory_limiter
 title: otelcol.processor.memory_limiter
@@ -36,7 +31,7 @@ giving them different labels.
 ```river
 otelcol.processor.memory_limiter "LABEL" {
   check_interval = "1s"
-  
+
   limit = "50MiB" // alternatively, set `limit_percentage` and `spike_limit_percentage`
 
   output {
@@ -51,14 +46,13 @@ otelcol.processor.memory_limiter "LABEL" {
 
 `otelcol.processor.memory_limiter` supports the following arguments:
 
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`check_interval`     | `duration` | How often to check memory usage. |  | yes
-`limit`              | `string`   | Maximum amount of memory targeted to be allocated by the process heap. | `"0MiB"` | no
-`spike_limit`        | `string`   | Maximum spike expected between the measurements of memory usage. | 20% of `limit` | no
-`limit_percentage`   | `int`      | Maximum amount of total available memory targeted to be allocated by the process heap. | `0` | no
-`spike_limit_percentage` |` int`  | Maximum spike expected between the measurements of memory usage. | `0` | no 
+Name                     | Type       | Description                                                                            | Default        | Required
+-------------------------|------------|----------------------------------------------------------------------------------------|----------------|---------
+`check_interval`         | `duration` | How often to check memory usage.                                                       |                | yes
+`limit`                  | `string`   | Maximum amount of memory targeted to be allocated by the process heap.                 | `"0MiB"`       | no
+`spike_limit`            | `string`   | Maximum spike expected between the measurements of memory usage.                       | 20% of `limit` | no
+`limit_percentage`       | `int`      | Maximum amount of total available memory targeted to be allocated by the process heap. | `0`            | no
+`spike_limit_percentage` | ` int`     | Maximum spike expected between the measurements of memory usage.                       | `0`            | no
 
 The arguments must define either `limit` or the `limit_percentage,
 spike_limit_percentage` pair, but not both.
@@ -79,9 +73,9 @@ The `limit` and `spike_limit` values must be larger than 1 MiB.
 The following blocks are supported inside the definition of
 `otelcol.processor.memory_limiter`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-output | [output][] | Configures where to send received telemetry data. | yes
+Hierarchy | Block      | Description                                       | Required
+----------|------------|---------------------------------------------------|---------
+output    | [output][] | Configures where to send received telemetry data. | yes
 
 [output]: #output-block
 
@@ -93,8 +87,8 @@ output | [output][] | Configures where to send received telemetry data. | yes
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,

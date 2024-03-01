@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/otelcol.extension.jaeger_remote_sampling/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/otelcol.extension.jaeger_remote_sampling/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/otelcol.extension.jaeger_remote_sampling/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/otelcol.extension.jaeger_remote_sampling/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.extension.jaeger_remote_sampling/
 description: Learn about otelcol.extension.jaeger_remote_sampling
 label:
@@ -15,15 +10,14 @@ title: otelcol.extension.jaeger_remote_sampling
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.extension.jaeger_remote_sampling` serves a specified Jaeger remote sampling
-document.
+`otelcol.extension.jaeger_remote_sampling` serves a specified Jaeger remote sampling document.
 
-> **NOTE**: `otelcol.extension.jaeger_remote_sampling` is a wrapper over the upstream OpenTelemetry
-> Collector `jaegerremotesampling` extension. Bug reports or feature requests will be
-> redirected to the upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.extension.jaeger_remote_sampling` is a wrapper over the upstream OpenTelemetry Collector `jaegerremotesampling` extension.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
 
-Multiple `otelcol.extension.jaeger_remote_sampling` components can be specified by giving them
-different labels.
+Multiple `otelcol.extension.jaeger_remote_sampling` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -36,28 +30,27 @@ otelcol.extension.jaeger_remote_sampling "LABEL" {
 
 ## Arguments
 
-`otelcol.extension.jaeger_remote_sampling` doesn't support any arguments and is configured fully
-through inner blocks.
+`otelcol.extension.jaeger_remote_sampling` doesn't support any arguments and is configured fully through inner blocks.
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `otelcol.extension.jaeger_remote_sampling`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-http | [http][] | Configures the http server to serve Jaeger remote sampling. | no
-http > tls | [tls][] | Configures TLS for the HTTP server. | no
-http > cors | [cors][] | Configures CORS for the HTTP server. | no
-grpc | [grpc][] | Configures the grpc server to serve Jaeger remote sampling. | no
-grpc > tls | [tls][] | Configures TLS for the gRPC server. | no
-grpc > keepalive | [keepalive][] | Configures keepalive settings for the configured server. | no
-grpc > keepalive > server_parameters | [server_parameters][] | Server parameters used to configure keepalive settings. | no
-grpc > keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings. | no
-source | [source][] | Configures the Jaeger remote sampling document. | yes
-source > remote | [remote][] | Configures the gRPC client used to retrieve the Jaeger remote sampling document. | no
-source > remote > tls | [tls][] | Configures TLS for the gRPC client. | no
-source > remote > keepalive | [keepalive][] | Configures keepalive settings for the gRPC client. | no
+Hierarchy                             | Block                  | Description                                                                      | Required
+--------------------------------------|------------------------|----------------------------------------------------------------------------------|---------
+http                                  | [http][]               | Configures the http server to serve Jaeger remote sampling.                      | no
+http > tls                            | [tls][]                | Configures TLS for the HTTP server.                                              | no
+http > cors                           | [cors][]               | Configures CORS for the HTTP server.                                             | no
+grpc                                  | [grpc][]               | Configures the grpc server to serve Jaeger remote sampling.                      | no
+grpc > tls                            | [tls][]                | Configures TLS for the gRPC server.                                              | no
+grpc > keepalive                      | [keepalive][]          | Configures keepalive settings for the configured server.                         | no
+grpc > keepalive > server_parameters  | [server_parameters][]  | Server parameters used to configure keepalive settings.                          | no
+grpc > keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings.                                       | no
+source                                | [source][]             | Configures the Jaeger remote sampling document.                                  | yes
+source > remote                       | [remote][]             | Configures the gRPC client used to retrieve the Jaeger remote sampling document. | no
+source > remote > tls                 | [tls][]                | Configures TLS for the gRPC client.                                              | no
+source > remote > keepalive           | [keepalive][]          | Configures keepalive settings for the gRPC client.                               | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `grpc > tls`
 refers to a `tls` block defined inside a `grpc` block.
@@ -76,16 +69,15 @@ refers to a `tls` block defined inside a `grpc` block.
 
 ### http block
 
-The `http` block configures an HTTP server which serves the Jaeger remote 
-sampling document.
+The `http` block configures an HTTP server which serves the Jaeger remote sampling document.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:5778"` | no
-`max_request_body_size` | `string` | Maximum request body size the server will allow. No limit when unset. | | no
-`include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
+Name                    | Type      | Description                                                           | Default          | Required
+------------------------|-----------|-----------------------------------------------------------------------|------------------|---------
+`endpoint`              | `string`  | `host:port` to listen for traffic on.                                 | `"0.0.0.0:5778"` | no
+`max_request_body_size` | `string`  | Maximum request body size the server will allow. No limit when unset. |                  | no
+`include_metadata`      | `boolean` | Propagate incoming connection metadata to downstream consumers.       |                  | no
 
 ### tls block
 
@@ -94,15 +86,15 @@ isn't provided, TLS won't be used for connections to the server.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`ca_file` | `string` | Path to the CA file. | | no
-`cert_file` | `string` | Path to the TLS certificate. | | no
-`key_file` | `string` | Path to the TLS certificate key. | | no
-`min_version` | `string` | Minimum acceptable TLS version for connections. | `"TLS 1.2"` | no
-`max_version` | `string` | Maximum acceptable TLS version for connections. | `"TLS 1.3"` | no
-`reload_interval` | `duration` | Frequency to reload the certificates. | | no
-`client_ca_file` | `string` | Path to the CA file used to authenticate client certificates. | | no
+Name              | Type       | Description                                                   | Default     | Required
+------------------|------------|---------------------------------------------------------------|-------------|---------
+`ca_file`         | `string`   | Path to the CA file.                                          |             | no
+`cert_file`       | `string`   | Path to the TLS certificate.                                  |             | no
+`key_file`        | `string`   | Path to the TLS certificate key.                              |             | no
+`min_version`     | `string`   | Minimum acceptable TLS version for connections.               | `"TLS 1.2"` | no
+`max_version`     | `string`   | Maximum acceptable TLS version for connections.               | `"TLS 1.3"` | no
+`reload_interval` | `duration` | Frequency to reload the certificates.                         |             | no
+`client_ca_file`  | `string`   | Path to the CA file used to authenticate client certificates. |             | no
 
 ### cors block
 
@@ -110,11 +102,11 @@ The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`allowed_origins` | `list(string)` | Allowed values for the `Origin` header. | | no
-`allowed_headers` | `list(string)` | Accepted headers from CORS requests. | `["X-Requested-With"]` | no
-`max_age` | `number` | Configures the `Access-Control-Max-Age` response header. | | no
+Name              | Type           | Description                                              | Default                | Required
+------------------|----------------|----------------------------------------------------------|------------------------|---------
+`allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no
+`allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no
+`max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no
 
 The `allowed_headers` specifies which headers are acceptable from a CORS
 request. The following headers are always implicitly allowed:
@@ -133,15 +125,15 @@ The `grpc` block configures a gRPC server which serves the Jaeger remote
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:14250"` | no
-`transport` | `string` | Transport to use for the gRPC server. | `"tcp"` | no
-`max_recv_msg_size` | `string` | Maximum size of messages the server will accept. 0 disables a limit. | | no
-`max_concurrent_streams` | `number` | Limit the number of concurrent streaming RPC calls. | | no
-`read_buffer_size` | `string` | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"` | no
-`write_buffer_size` | `string` | Size of the write buffer the gRPC server will use for writing to clients. | | no
-`include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
+Name                     | Type      | Description                                                                | Default           | Required
+-------------------------|-----------|----------------------------------------------------------------------------|-------------------|---------
+`endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"0.0.0.0:14250"` | no
+`transport`              | `string`  | Transport to use for the gRPC server.                                      | `"tcp"`           | no
+`max_recv_msg_size`      | `string`  | Maximum size of messages the server will accept. 0 disables a limit.       |                   | no
+`max_concurrent_streams` | `number`  | Limit the number of concurrent streaming RPC calls.                        |                   | no
+`read_buffer_size`       | `string`  | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"`        | no
+`write_buffer_size`      | `string`  | Size of the write buffer the gRPC server will use for writing to clients.  |                   | no
+`include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers.            |                   | no
 
 ### keepalive block
 
@@ -158,13 +150,13 @@ servers.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`max_connection_idle` | `duration` | Maximum age for idle connections. | `"infinity"` | no
-`max_connection_age` | `duration` | Maximum age for non-idle connections. | `"infinity"` | no
-`max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections. | `"infinity"` | no
-`time` | `duration` | How often to ping inactive clients to check for liveness. | `"2h"` | no
-`timeout` | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"` | no
+Name                       | Type       | Description                                                                          | Default      | Required
+---------------------------|------------|--------------------------------------------------------------------------------------|--------------|---------
+`max_connection_idle`      | `duration` | Maximum age for idle connections.                                                    | `"infinity"` | no
+`max_connection_age`       | `duration` | Maximum age for non-idle connections.                                                | `"infinity"` | no
+`max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                    | `"infinity"` | no
+`time`                     | `duration` | How often to ping inactive clients to check for liveness.                            | `"2h"`       | no
+`timeout`                  | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"`      | no
 
 ### enforcement_policy block
 
@@ -174,10 +166,10 @@ configured policy.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`min_time` | `duration` | Minimum time clients should wait before sending a keepalive ping. | `"5m"` | no
-`permit_without_stream` | `boolean` | Allow clients to send keepalive pings when there are no active streams. | `false` | no
+Name                    | Type       | Description                                                             | Default | Required
+------------------------|------------|-------------------------------------------------------------------------|---------|---------
+`min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no
+`permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no
 
 ### source block
 
@@ -186,13 +178,13 @@ that is served by the servers specified in the `grpc` and `http` blocks.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`file` | `string` | A local file containing a Jaeger remote sampling document. | `""` | no
-`reload_interval` | `duration` | The interval at which to reload the specified file. Leave at 0 to never reload. | `0` | no
-`content` | `string` | A string containing the Jaeger remote sampling contents directly. | `""` | no
+Name              | Type       | Description                                                                     | Default | Required
+------------------|------------|---------------------------------------------------------------------------------|---------|---------
+`file`            | `string`   | A local file containing a Jaeger remote sampling document.                      | `""`    | no
+`reload_interval` | `duration` | The interval at which to reload the specified file. Leave at 0 to never reload. | `0`     | no
+`content`         | `string`   | A string containing the Jaeger remote sampling contents directly.               | `""`    | no
 
-Exactly one of the `file` argument, `content` argument or `remote` block must be specified. 
+Exactly one of the `file` argument, `content` argument or `remote` block must be specified.
 
 ### remote block
 
@@ -200,17 +192,17 @@ The `remote` block configures the gRPC client used by the component.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`endpoint` | `string` | `host:port` to send telemetry data to. | | yes
-`compression` | `string` | Compression mechanism to use for requests. | `"gzip"` | no
-`read_buffer_size` | `string` | Size of the read buffer the gRPC client to use for reading server responses. | | no
-`write_buffer_size` | `string` | Size of the write buffer the gRPC client to use for writing requests. | `"512KiB"` | no
-`wait_for_ready` | `boolean` | Waits for gRPC connection to be in the `READY` state before sending data. | `false` | no
-`headers` | `map(string)` | Additional headers to send with the request. | `{}` | no
-`balancer_name` | `string` | Which gRPC client-side load balancer to use for requests. | `pick_first` | no
-`authority` | `string` | Overrides the default `:authority` header in gRPC requests from the gRPC client. | | no
-`auth` | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. | | no
+Name                | Type                       | Description                                                                      | Default      | Required
+--------------------|----------------------------|----------------------------------------------------------------------------------|--------------|---------
+`endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |              | yes
+`compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`     | no
+`read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |              | no
+`write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"`   | no
+`wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`      | no
+`headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`         | no
+`balancer_name`     | `string`                   | Which gRPC client-side load balancer to use for requests.                        | `pick_first` | no
+`authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |              | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |              | no
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -254,11 +246,11 @@ connections.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`ping_wait` | `duration` | How often to ping the server after no activity. | | no
-`ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server does not respond to a ping. | | no
-`ping_without_stream` | `boolean` | Send pings even if there is no active stream request. | | no
+Name                    | Type       | Description                                                                                | Default | Required
+------------------------|------------|--------------------------------------------------------------------------------------------|---------|---------
+`ping_wait`             | `duration` | How often to ping the server after no activity.                                            |         | no
+`ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server does not respond to a ping. |         | no
+`ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                      |         | no
 
 ## Component health
 

@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/prometheus.exporter.github/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/prometheus.exporter.github/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/prometheus.exporter.github/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/prometheus.exporter.github/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.github/
 description: Learn about prometheus.exporter.github
 title: prometheus.exporter.github
