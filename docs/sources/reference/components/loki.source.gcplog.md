@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.source.gcplog/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.gcplog/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.gcplog/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.gcplog/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.gcplog/
 description: Learn about loki.source.gcplog
 title: loki.source.gcplog
@@ -18,8 +13,7 @@ load balancers, or Kubernetes clusters running on GCP by making use of Pub/Sub
 The component uses either the 'push' or 'pull' strategy to retrieve log
 entries and forward them to the list of receivers in `forward_to`.
 
-Multiple `loki.source.gcplog` components can be specified by giving them
-different labels.
+Multiple `loki.source.gcplog` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -99,20 +93,18 @@ push requests from GCP's Pub/Sub servers.
 The following arguments can be used to configure the `push` block. Any omitted
 fields take their default values.
 
-| Name                        | Type          | Description                                                                                                                                               | Default | Required |
-|-----------------------------|---------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `graceful_shutdown_timeout` | `duration`    | Timeout for servers graceful shutdown. If configured, should be greater than zero.                                                                        | "30s"   | no       |
-| `push_timeout`              | `duration`    | Sets a maximum processing time for each incoming GCP log entry.                                                                                           | `"0s"`  | no       |
-| `labels`                    | `map(string)` | Additional labels to associate with incoming entries.                                                                                                     | `"{}"`  | no       |
-| `use_incoming_timestamp`    | `bool`        | Whether to use the incoming entry timestamp.                                                                                                              | `false` | no       |
-| `use_full_line`             | `bool`        | Send the full line from Cloud Logging even if `textPayload` is available. By default, if `textPayload` is present in the line, then it's used as log line | `false` | no       |
+| Name                        | Type          | Description                                                                        | Default | Required |
+|-----------------------------|---------------|------------------------------------------------------------------------------------|---------|----------|
+| `graceful_shutdown_timeout` | `duration`    | Timeout for servers graceful shutdown. If configured, should be greater than zero. | "30s"   | no       |
+| `push_timeout`              | `duration`    | Sets a maximum processing time for each incoming GCP log entry.                    | `"0s"`  | no       |
+| `labels`                    | `map(string)` | Additional labels to associate with incoming entries.                              | `"{}"`  | no       |
+| `use_incoming_timestamp`    | `bool`        | Whether to use the incoming entry timestamp.                                       | `false` | no       |
+| `use_full_line`             | `bool`        | Send the full line from Cloud Logging even if `textPayload` is available. By default, if `textPayload` is present in the line, then it's used as log line | `false` | no  |
 
-The server listens for POST requests from GCP's Push subscriptions on
-`HOST:PORT/gcp/api/v1/push`.
+The server listens for POST requests from GCP's Push subscriptions on `HOST:PORT/gcp/api/v1/push`.
 
 By default, for both strategies the component assigns the log entry timestamp
-as the time it was processed, except if `use_incoming_timestamp` is set to
-true.
+as the time it was processed, except if `use_incoming_timestamp` is set to true.
 
 The `labels` map is applied to every entry that passes through the component.
 

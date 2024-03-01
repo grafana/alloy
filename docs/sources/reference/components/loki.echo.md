@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.echo/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.echo/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.echo/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.echo/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.echo/
 description: Learn about loki.echo
 labels:
@@ -15,11 +10,9 @@ title: loki.echo
 
 {{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`loki.echo` receives log entries from other `loki` components and prints them
-to the process' standard output (stdout).
+`loki.echo` receives log entries from other `loki` components and prints them to the process' standard output (stdout).
 
-Multiple `loki.echo` components can be specified by giving them
-different labels.
+Multiple `loki.echo` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -35,8 +28,8 @@ loki.echo "LABEL" {}
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name       | Type           | Description
+-----------|----------------|--------------------------------------------------------------
 `receiver` | `LogsReceiver` | A value that other components can use to send log entries to.
 
 ## Component health
@@ -49,8 +42,7 @@ Name | Type | Description
 
 ## Example
 
-This example creates a pipeline that reads log files from `/var/log` and
-prints log lines to echo:
+This example creates a pipeline that reads log files from `/var/log` and prints log lines to echo:
 
 ```river
 local.file_match "varlog" {

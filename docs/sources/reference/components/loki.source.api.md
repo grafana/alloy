@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.source.api/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.api/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.api/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.api/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.api/
 description: Learn about loki.source.api
 title: loki.source.api
@@ -13,9 +8,10 @@ title: loki.source.api
 
 `loki.source.api` receives log entries over HTTP and forwards them to other `loki.*` components.
 
-The HTTP API exposed is compatible with [Loki push API][loki-push-api] and the `logproto` format. This means that other [`loki.write`][loki.write] components can be used as a client and send requests to `loki.source.api` which enables using the Agent as a proxy for logs.
+The HTTP API exposed is compatible with [Loki push API][loki-push-api] and the `logproto` format.
+This means that other [`loki.write`][loki.write] components can be used as a client and send requests to `loki.source.api` which enables using the Agent as a proxy for logs.
 
-[loki.write]: {{< relref "./loki.write.md" >}}
+[loki.write]: ../loki.write/
 [loki-push-api]: https://grafana.com/docs/loki/latest/api/#push-log-entries-to-loki
 
 ## Usage
@@ -39,7 +35,7 @@ The component will start HTTP server on the configured port and address with the
 - `/api/v1/raw` - internally reroutes to `/loki/api/v1/raw`
 
 
-[promtail-push-api]: /docs/loki/latest/clients/promtail/configuration/#loki_push_api
+[promtail-push-api]: https://grafana.com/docs/loki/latest/clients/promtail/configuration/#loki_push_api
 
 ## Arguments
 

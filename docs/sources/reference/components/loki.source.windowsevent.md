@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.source.windowsevent/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.windowsevent/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.windowsevent/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.windowsevent/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.windowsevent/
 description: Learn about loki.windowsevent
 title: loki.source.windowsevent
@@ -11,11 +6,9 @@ title: loki.source.windowsevent
 
 # loki.source.windowsevent
 
-`loki.source.windowsevent` reads events from Windows Event Logs and forwards them to other
-`loki.*` components.
+`loki.source.windowsevent` reads events from Windows Event Logs and forwards them to other `loki.*` components.
 
-Multiple `loki.source.windowsevent` components can be specified by giving them
-different labels.
+Multiple `loki.source.windowsevent` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -44,19 +37,18 @@ Name                     | Type                 | Description                   
 `exclude_event_message`  | `bool`               | Exclude the human-friendly event message.                                      | `false`                    | no
 `use_incoming_timestamp` | `bool`               | When false, assigns the current timestamp to the log when it was processed.    | `false`                    | no
 `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.                                      |                            | yes
-`labels`                 | `map(string)`        | The labels to associate with incoming logs.                                    |                            | no 
+`labels`                 | `map(string)`        | The labels to associate with incoming logs.                                    |                            | no
 
-
-> **NOTE**: `eventlog_name` is required if `xpath_query` does not specify the event log.
-> You can define `xpath_query` in [short or xml form](https://docs.microsoft.com/en-us/windows/win32/wes/consuming-events).
-> When using the XML form you can specify `event_log` in the `xpath_query`.
-> If using short form, you must define `eventlog_name`.
-
+{{< admonition type="note" >}}
+`eventlog_name` is required if `xpath_query` does not specify the event log.
+You can define `xpath_query` in [short or xml form](https://docs.microsoft.com/en-us/windows/win32/wes/consuming-events).
+When using the XML form you can specify `event_log` in the `xpath_query`.
+If using short form, you must define `eventlog_name`.
+{{< /admonition >}}
 
 ## Component health
 
-`loki.source.windowsevent` is only reported as unhealthy if given an invalid
-configuration.
+`loki.source.windowsevent` is only reported as unhealthy if given an invalid configuration.
 
 ## Example
 

@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.relabel/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.relabel/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.relabel/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.relabel/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.relabel/
 description: Learn about loki.relabel
 title: loki.relabel
@@ -27,10 +22,9 @@ calling the function in the `rules` export field.
 If you're looking for a way to process the log entry contents, take a look at
 [the `loki.process` component][loki.process] instead.
 
-[loki.process]: {{< relref "./loki.process.md" >}}
+[loki.process]: ../loki.process/
 
-Multiple `loki.relabel` components can be specified by giving them
-different labels.
+Multiple `loki.relabel` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -50,18 +44,18 @@ loki.relabel "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`forward_to` | `list(receiver)` | Where to forward log entries after relabeling. | | yes
-`max_cache_size` | `int` | The maximum number of elements to hold in the relabeling cache | 10,000 | no
+Name             | Type             | Description                                                    | Default | Required
+-----------------|------------------|----------------------------------------------------------------|---------|---------
+`forward_to`     | `list(receiver)` | Where to forward log entries after relabeling.                 |         | yes
+`max_cache_size` | `int`            | The maximum number of elements to hold in the relabeling cache | 10,000  | no
 
 ## Blocks
 
 The following blocks are supported inside the definition of `loki.relabel`:
 
-Hierarchy | Name | Description | Required
---------- | ---- | ----------- | --------
-rule | [rule][] | Relabeling rules to apply to received log entries. | no
+Hierarchy | Name     | Description                                        | Required
+----------|----------|----------------------------------------------------|---------
+rule      | [rule][] | Relabeling rules to apply to received log entries. | no
 
 [rule]: #rule-block
 
@@ -73,9 +67,9 @@ rule | [rule][] | Relabeling rules to apply to received log entries. | no
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
-`receiver` | `receiver` | The input receiver where log lines are sent to be relabeled.
+Name       | Type           | Description
+-----------|----------------|-------------------------------------------------------------
+`receiver` | `receiver`     | The input receiver where log lines are sent to be relabeled.
 `rules`    | `RelabelRules` | The currently configured relabeling rules.
 
 ## Component health
@@ -97,8 +91,7 @@ In those cases, exported fields are kept at their last healthy values.
 
 ## Example
 
-The following example creates a `loki.relabel` component that only forwards
-entries whose 'level' value is set to 'error'.
+The following example creates a `loki.relabel` component that only forwards entries whose 'level' value is set to 'error'.
 
 ```river
 loki.relabel "keep_error_only" {

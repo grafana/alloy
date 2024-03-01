@@ -1,9 +1,5 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.source.azure_event_hubs/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.azure_event_hubs/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.azure_event_hubs/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.azure_event_hubs/
+
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.azure_event_hubs/
 description: Learn about loki.source.azure_event_hubs
 title: loki.source.azure_event_hubs
@@ -42,18 +38,18 @@ loki.source.azure_event_hubs "LABEL" {
 
 `loki.source.azure_event_hubs` supports the following arguments:
 
- Name                        | Type                 | Description                                                                                                                                                             | Default                          | Required 
------------------------------|----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------|----------
- `fully_qualified_namespace` | `string`             | Event hub namespace.                                                                             |                                  | yes      
- `event_hubs`                | `list(string)`       | Event Hubs to consume.                                                                                                                                                  |                                  | yes      
- `group_id`                  | `string`             | The Kafka consumer group id.                                                                                                                                            | `"loki.source.azure_event_hubs"` | no       
- `assignor`                  | `string`             | The consumer group rebalancing strategy to use.                                                                                                                         | `"range"`                        | no       
- `use_incoming_timestamp`    | `bool`               | Whether or not to use the timestamp received from Azure Event Hub.                                                                                                      | `false`                          | no       
- `labels`                    | `map(string)`        | The labels to associate with each received event.                                                                                                                       | `{}`                             | no       
- `forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                                                                               |                                  | yes      
- `relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                                                                                                                               | `{}`                             | no       
- `disallow_custom_messages`  | `bool`               | Whether to ignore messages that don't match the [schema](https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/resource-logs-schema) for Azure resource logs. | `false`                          | no       
- `relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                                                                                                                               | `{}`                             | no       
+Name                        | Type                 | Description                                                        | Default                          | Required
+----------------------------|----------------------|--------------------------------------------------------------------|----------------------------------|---------
+`fully_qualified_namespace` | `string`             | Event hub namespace.                                               |                                  | yes
+`event_hubs`                | `list(string)`       | Event Hubs to consume.                                             |                                  | yes
+`group_id`                  | `string`             | The Kafka consumer group id.                                       | `"loki.source.azure_event_hubs"` | no
+`assignor`                  | `string`             | The consumer group rebalancing strategy to use.                    | `"range"`                        | no
+`use_incoming_timestamp`    | `bool`               | Whether or not to use the timestamp received from Azure Event Hub. | `false`                          | no
+`labels`                    | `map(string)`        | The labels to associate with each received event.                  | `{}`                             | no
+`forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                          |                                  | yes
+`relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                          | `{}`                             | no
+`disallow_custom_messages`  | `bool`               | Whether to ignore messages that don't match the [schema](https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/resource-logs-schema) for Azure resource logs. | `false` | no
+`relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                          | `{}`                             | no
 
 The `fully_qualified_namespace` argument must refer to a full `HOST:PORT` that points to your event hub, such as `NAMESPACE.servicebus.windows.net:9093`.
 The `assignor` argument must be set to one of `"range"`, `"roundrobin"`, or `"sticky"`.
@@ -79,9 +75,9 @@ The following internal labels prefixed with `__` are available but are discarded
 
 The following blocks are supported inside the definition of `loki.source.azure_event_hubs`:
 
- Hierarchy      | Name             | Description                                        | Required 
-----------------|------------------|----------------------------------------------------|----------
- authentication | [authentication] | Authentication configuration with Azure Event Hub. | yes      
+Hierarchy      | Name             | Description                                        | Required
+---------------|------------------|----------------------------------------------------|---------
+authentication | [authentication] | Authentication configuration with Azure Event Hub. | yes
 
 [authentication]: #authentication-block
 
@@ -89,11 +85,11 @@ The following blocks are supported inside the definition of `loki.source.azure_e
 
 The `authentication` block defines the authentication method when communicating with Azure Event Hub.
 
- Name                | Type           | Description                                                               | Default | Required 
----------------------|----------------|---------------------------------------------------------------------------|---------|----------
- `mechanism`         | `string`       | Authentication mechanism.                                                 |         | yes      
- `connection_string` | `string`       | Event Hubs ConnectionString for authentication on Azure Cloud.            |         | no       
- `scopes`            | `list(string)` | Access token scopes. Default is `fully_qualified_namespace` without port. |         | no       
+Name                | Type           | Description                                                               | Default | Required
+--------------------|----------------|---------------------------------------------------------------------------|---------|---------
+`mechanism`         | `string`       | Authentication mechanism.                                                 |         | yes
+`connection_string` | `string`       | Event Hubs ConnectionString for authentication on Azure Cloud.            |         | no
+`scopes`            | `list(string)` | Access token scopes. Default is `fully_qualified_namespace` without port. |         | no
 
 `mechanism` supports the values `"connection_string"` and `"oauth"`. If `"connection_string"` is used,
 you must set the `connection_string` attribute. If `"oauth"` is used, you must configure one of the supported credential
@@ -134,7 +130,9 @@ loki.write "example" {
 		url = "loki:3100/api/v1/push"
 	}
 }
-```<!-- START GENERATED COMPATIBLE COMPONENTS -->
+```
+
+<!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
 

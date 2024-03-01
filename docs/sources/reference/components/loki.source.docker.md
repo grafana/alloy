@@ -1,10 +1,4 @@
 ---
-aliases:
-- /docs/agent/latest/flow/reference/components/loki.source.docker/
-- /docs/grafana-cloud/agent/flow/reference/components/loki.source.docker/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.docker/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.docker/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.docker/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.docker/
 description: Learn about loki.source.docker
 title: loki.source.docker
@@ -12,12 +6,9 @@ title: loki.source.docker
 
 # loki.source.docker
 
-`loki.source.docker` reads log entries from Docker containers and forwards them
-to other `loki.*` components. Each component can read from a single Docker
-daemon.
+`loki.source.docker` reads log entries from Docker containers and forwards them to other `loki.*` components. Each component can read from a single Docker daemon.
 
-Multiple `loki.source.docker` components can be specified by giving them
-different labels.
+Multiple `loki.source.docker` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -30,32 +21,31 @@ loki.source.docker "LABEL" {
 ```
 
 ## Arguments
-The component starts a new reader for each of the given `targets` and fans out
-log entries to the list of receivers passed in `forward_to`.
+The component starts a new reader for each of the given `targets` and fans out log entries to the list of receivers passed in `forward_to`.
 
 `loki.source.docker` supports the following arguments:
 
-Name            | Type                 | Description          | Default | Required
---------------- | -------------------- | -------------------- | ------- | --------
-`host`          | `string`             | Address of the Docker daemon. | | yes
-`targets`       | `list(map(string))`  | List of containers to read logs from. | | yes
-`forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to. | | yes
-`labels`        | `map(string)`        | The default set of labels to apply on entries. | `"{}"` | no
-`relabel_rules` | `RelabelRules`       | Relabeling rules to apply on log entries. | `"{}"` | no
-`refresh_interval` | `duration`        | The refresh interval to use when connecting to the Docker daemon over HTTP(S). | `"60s"` | no
+Name               | Type                 | Description                                                                    | Default | Required
+-------------------|----------------------|--------------------------------------------------------------------------------|---------|---------
+`host`             | `string`             | Address of the Docker daemon.                                                  |         | yes
+`targets`          | `list(map(string))`  | List of containers to read logs from.                                          |         | yes
+`forward_to`       | `list(LogsReceiver)` | List of receivers to send log entries to.                                      |         | yes
+`labels`           | `map(string)`        | The default set of labels to apply on entries.                                 | `"{}"`  | no
+`relabel_rules`    | `RelabelRules`       | Relabeling rules to apply on log entries.                                      | `"{}"`  | no
+`refresh_interval` | `duration`           | The refresh interval to use when connecting to the Docker daemon over HTTP(S). | `"60s"` | no
 
 ## Blocks
 
 The following blocks are supported inside the definition of `loki.source.docker`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-client | [client][] | HTTP client settings when connecting to the endpoint. | no
-client > basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the endpoint. | no
-client > authorization | [authorization][] | Configure generic authorization to the endpoint. | no
-client > oauth2 | [oauth2][] | Configure OAuth2 for authenticating to the endpoint. | no
-client > oauth2 > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
-client > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
+Hierarchy                    | Block             | Description                                              | Required
+-----------------------------|-------------------|----------------------------------------------------------|---------
+client                       | [client][]        | HTTP client settings when connecting to the endpoint.    | no
+client > basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no
+client > authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no
+client > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no
+client > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
+client > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `client >
 basic_auth` refers to an `basic_auth` block defined inside a `client` block.
@@ -71,36 +61,31 @@ or HTTPS and has no effect when connecting via a `unix:///` socket
 
 ### client block
 
-The `client` block configures settings used to connect to HTTP(S) Docker
-daemons.
+The `client` block configures settings used to connect to HTTP(S) Docker daemons.
 
 {{< docs/shared lookup="reference/components/http-client-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### basic_auth block
 
-The `basic_auth` block configures basic authentication for HTTP(S) Docker
-daemons.
+The `basic_auth` block configures basic authentication for HTTP(S) Docker daemons.
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### authorization block
 
-The `authorization` block configures custom authorization to use for the Docker
-daemon.
+The `authorization` block configures custom authorization to use for the Docker daemon.
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### oauth2 block
 
-The `oauth2` block configures OAuth2 authorization to use for the Docker
-daemon.
+The `oauth2` block configures OAuth2 authorization to use for the Docker daemon.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### tls_config block
 
-The `tls_config` block configures TLS settings for connecting to HTTPS Docker
-daemons.
+The `tls_config` block configures TLS settings for connecting to HTTPS Docker daemons.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -135,7 +120,7 @@ If the target's argument contains multiple entries with the same container
 ID (for example as a result of `discovery.docker` picking up multiple exposed
 ports or networks), `loki.source.docker` will deduplicate them, and only keep
 the first of each container ID instances, based on the
-`__meta_docker_container_id` label.  As such, the Docker daemon is queried
+`__meta_docker_container_id` label. As such, the Docker daemon is queried
 for each container ID only once, and only one target will be available in the
 component's debug info.
 
@@ -151,7 +136,7 @@ discovery.docker "linux" {
 
 loki.source.docker "default" {
   host       = "unix:///var/run/docker.sock"
-  targets    = discovery.docker.linux.targets 
+  targets    = discovery.docker.linux.targets
   forward_to = [loki.write.local.receiver]
 }
 

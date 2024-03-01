@@ -1,9 +1,5 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.source.cloudflare/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.cloudflare/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.cloudflare/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.cloudflare/
+
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.cloudflare/
 description: Learn about loki.source.cloudflare
 title: loki.source.cloudflare
@@ -36,16 +32,16 @@ loki.source.cloudflare "LABEL" {
 
 `loki.source.cloudflare` supports the following arguments:
 
-Name            | Type                 | Description          | Default | Required
---------------- | -------------------- | -------------------- | ------- | --------
-`forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to. |      | yes
-`api_token`     | `string`             | The API token to authenticate with. |  | yes
-`zone_id`       | `string`             | The Cloudflare zone ID to use.      |  | yes
-`labels`        | `map(string)`        | The labels to associate with incoming log entries. | `{}` | no
-`workers`       | `int`                | The number of workers to use for parsing logs.     |  `3` | no
-`pull_range`    | `duration`           | The timeframe to fetch for each pull request.      | `"1m"` | no
-`fields_type`   | `string`             | The set of fields to fetch for log entries.        | `"default"` | no
-`additional_fields` | `list(string)`   | The additional list of fields to supplement those provided via `fields_type`. |  | no
+Name                | Type                 | Description                                                                   | Default     | Required
+--------------------|----------------------|-------------------------------------------------------------------------------|-------------|---------
+`forward_to`        | `list(LogsReceiver)` | List of receivers to send log entries to.                                     |             | yes
+`api_token`         | `string`             | The API token to authenticate with.                                           |             | yes
+`zone_id`           | `string`             | The Cloudflare zone ID to use.                                                |             | yes
+`labels`            | `map(string)`        | The labels to associate with incoming log entries.                            | `{}`        | no
+`workers`           | `int`                | The number of workers to use for parsing logs.                                | `3`         | no
+`pull_range`        | `duration`           | The timeframe to fetch for each pull request.                                 | `"1m"`      | no
+`fields_type`       | `string`             | The set of fields to fetch for log entries.                                   | `"default"` | no
+`additional_fields` | `list(string)`       | The additional list of fields to supplement those provided via `fields_type`. |             | no
 
 
 By default `loki.source.cloudflare` fetches logs with the `default` set of
@@ -74,6 +70,7 @@ plus any extra fields provided via `additional_fields` argument.
 ```
  "BotScore", "BotScoreSrc", "BotTags", "ClientRequestBytes", "ClientSrcPort", "ClientXRequestedWith", "CacheTieredFill", "EdgeResponseCompressionRatio", "EdgeServerIP", "FirewallMatchesSources", "FirewallMatchesActions", "FirewallMatchesRuleIDs", "OriginResponseBytes", "OriginResponseTime", "ClientDeviceType", "WAFFlags", "WAFMatchedVar", "EdgeColoID", "RequestHeaders", "ResponseHeaders", "ClientRequestSource"`
 ```
+
 plus any extra fields provided via `additional_fields` argument (this is still relevant in this case if new fields are made available via Cloudflare API but are not yet included in `all`).
 
 * `custom` includes only the fields defined in `additional_fields`.
@@ -95,6 +92,7 @@ The last timestamp fetched by the component is recorded in the
 All incoming Cloudflare log entries are in JSON format. You can make use of the
 `loki.process` component and a JSON processing stage to extract more labels or
 change the log line format. A sample log looks like this:
+
 ```json
 {
     "CacheCacheStatus": "miss",
@@ -165,7 +163,6 @@ change the log line format. A sample log looks like this:
 }
 ```
 
-
 ## Exported fields
 
 `loki.source.cloudflare` does not export any fields.
@@ -181,8 +178,7 @@ configuration.
 * Whether the target is ready and reading logs from the API.
 * The Cloudflare zone ID.
 * The last error reported, if any.
-* The stored positions file entry, as the combination of zone_id, labels and
-  last fetched timestamp.
+* The stored positions file entry, as the combination of zone_id, labels and last fetched timestamp.
 * The last timestamp fetched.
 * The set of fields being fetched.
 

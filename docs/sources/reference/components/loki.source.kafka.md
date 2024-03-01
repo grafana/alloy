@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.source.kafka/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.kafka/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.kafka/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.kafka/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.kafka/
 description: Learn about loki.source.kafka
 title: loki.source.kafka
@@ -22,8 +17,7 @@ writing events to at least one topic. Follow the steps in the
 [Kafka Quick Start](https://kafka.apache.org/documentation/#quickstart)
 to get started with Kafka.
 
-Multiple `loki.source.kafka` components can be specified by giving them
-different labels.
+Multiple `loki.source.kafka` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -87,11 +81,8 @@ The following blocks are supported inside the definition of `loki.source.kafka`:
  authentication > sasl_config > oauth_config | [oauth_config]   | Optional authentication configuration with Kafka brokers. | no
 
 [authentication]: #authentication-block
-
 [tls_config]: #tls_config-block
-
 [sasl_config]: #sasl_config-block
-
 [oauth_config]: #oauth_config-block
 
 ### authentication block
@@ -136,8 +127,7 @@ The `oauth_config` is required when the SASL mechanism is set to `OAUTHBEARER`.
 
 ## Component health
 
-`loki.source.kafka` is only reported as unhealthy if given an invalid
-configuration.
+`loki.source.kafka` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 

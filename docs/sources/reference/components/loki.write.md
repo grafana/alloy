@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.write/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.write/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.write/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.write/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.write/
 description: Learn about loki.write
 title: loki.write
@@ -11,11 +6,9 @@ title: loki.write
 
 # loki.write
 
-`loki.write` receives log entries from other loki components and sends them
-over the network using Loki's `logproto` format.
+`loki.write` receives log entries from other loki components and sends them over the network using Loki's `logproto` format.
 
-Multiple `loki.write` components can be specified by giving them
-different labels.
+Multiple `loki.write` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -31,25 +24,25 @@ loki.write "LABEL" {
 
 `loki.write` supports the following arguments:
 
-Name              | Type          | Description                                      | Default | Required
------------------ | ------------- | ------------------------------------------------ | ------- | --------
-`max_streams`     | `int`         | Maximum number of active streams. | 0 (no limit)  | no
-`external_labels` | `map(string)` | Labels to add to logs sent over the network.     |         | no
+Name              | Type          | Description                                  | Default      | Required
+------------------|---------------|----------------------------------------------|--------------|---------
+`max_streams`     | `int`         | Maximum number of active streams.            | 0 (no limit) | no
+`external_labels` | `map(string)` | Labels to add to logs sent over the network. |              | no
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `loki.write`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-endpoint | [endpoint][] | Location to send logs to. | no
-wal | [wal][] | Write-ahead log configuration. | no
-endpoint > basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the endpoint. | no
-endpoint > authorization | [authorization][] | Configure generic authorization to the endpoint. | no
-endpoint > oauth2 | [oauth2][] | Configure OAuth2 for authenticating to the endpoint. | no
-endpoint > oauth2 > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
-endpoint > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
+Hierarchy                      | Block             | Description                                              | Required
+-------------------------------|-------------------|----------------------------------------------------------|---------
+endpoint                       | [endpoint][]      | Location to send logs to.                                | no
+wal                            | [wal][]           | Write-ahead log configuration.                           | no
+endpoint > basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no
+endpoint > authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no
+endpoint > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no
+endpoint > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
+endpoint > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
 | endpoint > queue_config        | [queue_config][]  | When WAL is enabled, configures the queue client.        | no       |
 
 The `>` symbol indicates deeper levels of nesting. For example, `endpoint >
@@ -71,27 +64,27 @@ The `endpoint` block describes a single location to send logs to. Multiple
 
 The following arguments are supported:
 
-Name                     | Type                | Description                                                   | Default   | Required
------------------------- | ------------------- | ------------------------------------------------------------- | --------- | --------
-`url`                    | `string`            | Full URL to send logs to.                                     |           | yes
-`name`                   | `string`            | Optional name to identify this endpoint with.                 |           | no
-`headers`                | `map(string)`       | Extra headers to deliver with the request.                    |           | no
-`batch_wait`             | `duration`          | Maximum amount of time to wait before sending a batch.        | `"1s"`    | no
-`batch_size`             | `string`            | Maximum batch size of logs to accumulate before sending.      | `"1MiB"`  | no
-`remote_timeout`         | `duration`          | Timeout for requests made to the URL.                         | `"10s"`   | no
-`tenant_id`              | `string`            | The tenant ID used by default to push logs.                   |           | no
-`min_backoff_period`     | `duration`          | Initial backoff time between retries.                         | `"500ms"` | no
-`max_backoff_period`     | `duration`          | Maximum backoff time between retries.                         | `"5m"`    | no
-`max_backoff_retries`    | `int`               | Maximum number of retries.                                    | 10        | no
-`retry_on_http_429`      | `bool`              | Retry when an HTTP 429 status code is received.               | `true`    | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.          |           | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                            |           | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                      | `true`    | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.  | `true`    | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                          |           | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.         | `false` | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests. |         | no
+Name                     | Type                | Description                                                                                      | Default   | Required
+-------------------------|---------------------|--------------------------------------------------------------------------------------------------|-----------|---------
+`url`                    | `string`            | Full URL to send logs to.                                                                        |           | yes
+`name`                   | `string`            | Optional name to identify this endpoint with.                                                    |           | no
+`headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no
+`batch_wait`             | `duration`          | Maximum amount of time to wait before sending a batch.                                           | `"1s"`    | no
+`batch_size`             | `string`            | Maximum batch size of logs to accumulate before sending.                                         | `"1MiB"`  | no
+`remote_timeout`         | `duration`          | Timeout for requests made to the URL.                                                            | `"10s"`   | no
+`tenant_id`              | `string`            | The tenant ID used by default to push logs.                                                      |           | no
+`min_backoff_period`     | `duration`          | Initial backoff time between retries.                                                            | `"500ms"` | no
+`max_backoff_period`     | `duration`          | Maximum backoff time between retries.                                                            | `"5m"`    | no
+`max_backoff_retries`    | `int`               | Maximum number of retries.                                                                       | 10        | no
+`retry_on_http_429`      | `bool`              | Retry when an HTTP 429 status code is received.                                                  | `true`    | no
+`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |           | no
+`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |           | no
+`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`    | no
+`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`    | no
+`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |           | no
+`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |           | no
+`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`   | no
+`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |           | no
 
  At most, one of the following can be provided:
  - [`bearer_token` argument](#endpoint-block).
@@ -143,9 +136,9 @@ underlying client queues batches of logs to be sent to Loki.
 
 The following arguments are supported:
 
-| Name            | Type       | Description                                                                                                                                                                      | Default | Required |
-| --------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `capacity`      | `string`   | Controls the size of the underlying send queue buffer. This setting should be considered a worst-case scenario of memory consumption, in which all enqueued batches are full. | `10MiB`  | no       |
+| Name            | Type       | Description                                                                                                                                                                     | Default | Required |
+|-----------------|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `capacity`      | `string`   | Controls the size of the underlying send queue buffer. This setting should be considered a worst-case scenario of memory consumption, in which all enqueued batches are full.   | `10MiB` | no       |
 | `drain_timeout` | `duration` | Configures the maximum time the client can take to drain the send queue upon shutdown. During that time, it will enqueue pending batches and drain the send queue sending each. | `"1m"`  | no       |
 
 ### wal block (experimental)
@@ -165,28 +158,27 @@ storage path {{< param "PRODUCT_NAME" >}} is configured to use. See the
 
 The following arguments are supported:
 
-Name                  | Type       | Description                                                                                                        | Default   | Required
---------------------- |------------|--------------------------------------------------------------------------------------------------------------------|-----------| --------
-`enabled`                 | `bool`     | Whether to enable the WAL.                                                                                         | false     | no
-`max_segment_age`             | `duration` | Maximum time a WAL segment should be allowed to live. Segments older than this setting will be eventually deleted. | `"1h"`    | no
-`min_read_frequency`          | `duration` | Minimum backoff time in the backup read mechanism.                                                                 | `"250ms"` | no
-`max_read_frequency`          | `duration` | Maximum backoff time in the backup read mechanism.                                                                 | `"1s"`    | no
-`drain_timeout`          | `duration` | Maximum time the WAL drain procedure can take, before being forcefully stopped.                                    | `"30s"`   | no
+Name                 | Type       | Description                                                                                                        | Default   | Required
+---------------------|------------|--------------------------------------------------------------------------------------------------------------------|-----------|---------
+`enabled`            | `bool`     | Whether to enable the WAL.                                                                                         | false     | no
+`max_segment_age`    | `duration` | Maximum time a WAL segment should be allowed to live. Segments older than this setting will be eventually deleted. | `"1h"`    | no
+`min_read_frequency` | `duration` | Minimum backoff time in the backup read mechanism.                                                                 | `"250ms"` | no
+`max_read_frequency` | `duration` | Maximum backoff time in the backup read mechanism.                                                                 | `"1s"`    | no
+`drain_timeout`      | `duration` | Maximum time the WAL drain procedure can take, before being forcefully stopped.                                    | `"30s"`   | no
 
-[run]: {{< relref "../cli/run.md" >}}
+[run]: ../../cli/run/
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name       | Type           | Description
+-----------|----------------|--------------------------------------------------------------
 `receiver` | `LogsReceiver` | A value that other components can use to send log entries to.
 
 ## Component health
 
-`loki.write` is only reported as unhealthy if given an invalid
-configuration.
+`loki.write` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 

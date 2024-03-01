@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.source.file/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.file/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.file/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.file/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.file/
 description: Learn about loki.source.file
 title: loki.source.file
@@ -11,14 +6,14 @@ title: loki.source.file
 
 # loki.source.file
 
-`loki.source.file` reads log entries from files and forwards them to other
-`loki.*` components.
+`loki.source.file` reads log entries from files and forwards them to other `loki.*` components.
 
 Multiple `loki.source.file` components can be specified by giving them
 different labels.
 
 {{< admonition type="note" >}}
-`loki.source.file` does not handle file discovery. You can use `local.file_match` for file discovery. Refer to the [File Globbing](#file-globbing) example for more information.
+`loki.source.file` does not handle file discovery. You can use `local.file_match` for file discovery.
+Refer to the [File Globbing](#file-globbing) example for more information.
 {{< /admonition >}}
 
 ## Usage
@@ -32,8 +27,7 @@ loki.source.file "LABEL" {
 
 ## Arguments
 
-The component starts a new reader for each of the given `targets` and fans out
-log entries to the list of receivers passed in `forward_to`.
+The component starts a new reader for each of the given `targets` and fans out log entries to the list of receivers passed in `forward_to`.
 
 `loki.source.file` supports the following arguments:
 
@@ -54,10 +48,10 @@ When set to true, only new logs will be read, ignoring the existing ones.
 
 The following blocks are supported inside the definition of `loki.source.file`:
 
-| Hierarchy      | Name               | Description                                                       | Required |
-| -------------- | ------------------ | ----------------------------------------------------------------- | -------- |
-| decompression  | [decompression][] | Configure reading logs from compressed files.                     | no       |
-| file_watch     | [file_watch][]     | Configure how often files should be polled from disk for changes. | no       |
+| Hierarchy     | Name              | Description                                                       | Required |
+|---------------|-------------------|-------------------------------------------------------------------|----------|
+| decompression | [decompression][] | Configure reading logs from compressed files.                     | no       |
+| file_watch    | [file_watch][]    | Configure how often files should be polled from disk for changes. | no       |
 
 [decompression]: #decompression-block
 [file_watch]: #file_watch-block
@@ -130,8 +124,7 @@ configuration.
 If the decompression feature is deactivated, the component will continuously monitor and 'tail' the files.
 In this mode, upon reaching the end of a file, the component remains active, awaiting and reading new entries in real-time as they are appended.
 
-Each element in the list of `targets` as a set of key-value pairs called
-_labels_.
+Each element in the list of `targets` as a set of key-value pairs called _labels_.
 The set of targets can either be _static_, or dynamically provided periodically
 by a service discovery component. The special label `__path__` _must always_ be
 present and must point to the absolute path of the file to read from.
@@ -154,7 +147,7 @@ If a file is removed from the `targets` list, its positions file entry is also
 removed. When it's added back on, `loki.source.file` starts reading it from the
 beginning.
 
-[cmd-args]: {{< relref "../cli/run.md" >}}
+[cmd-args]: ../../cli/run/
 
 ## Examples
 

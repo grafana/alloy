@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.source.heroku/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.heroku/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.heroku/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.heroku/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.heroku/
 description: Learn about loki.source.heroku
 title: loki.source.heroku
@@ -17,7 +12,8 @@ and forwards them to other `loki.*` components.
 The component starts a new heroku listener for the given `listener`
 block and fans out incoming entries to the list of receivers in `forward_to`.
 
-Before using `loki.source.heroku`, Heroku should be configured with the URL where the Agent will be listening. Follow the steps in [Heroku HTTPS Drain docs](https://devcenter.heroku.com/articles/log-drains#https-drains) for using the Heroku CLI with a command like the following:
+Before using `loki.source.heroku`, Heroku should be configured with the URL where the Agent will be listening.
+Follow the steps in [Heroku HTTPS Drain docs](https://devcenter.heroku.com/articles/log-drains#https-drains) for using the Heroku CLI with a command like the following:
 
 ```shell
 heroku drains:add [http|https]://HOSTNAME:PORT/heroku/api/v1/drain -a HEROKU_APP_NAME

@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.source.gelf/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.gelf/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.gelf/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.gelf/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.gelf/
 description: Learn about loki.source.gelf
 title: loki.source.gelf
@@ -31,11 +26,11 @@ log entries to the list of receivers passed in `forward_to`.
 
 `loki.source.gelf` supports the following arguments:
 
-Name         | Type                 | Description                                                                    | Default                    | Required
------------- |----------------------|--------------------------------------------------------------------------------|----------------------------| --------
-`listen_address`    | `string`             | UDP address and port to listen for Graylog messages.                    | `0.0.0.0:12201` | no
-`use_incoming_timestamp`    | `bool`             | When false, assigns the current timestamp to the log when it was processed | `false`                            | no
-`relabel_rules` | `RelabelRules`         | Relabeling rules to apply on log entries. | "{}" | no
+Name                     | Type           | Description                                                                | Default         | Required
+-------------------------|----------------|----------------------------------------------------------------------------|-----------------|---------
+`listen_address`         | `string`       | UDP address and port to listen for Graylog messages.                       | `0.0.0.0:12201` | no
+`use_incoming_timestamp` | `bool`         | When false, assigns the current timestamp to the log when it was processed | `false`         | no
+`relabel_rules`          | `RelabelRules` | Relabeling rules to apply on log entries.                                  | "{}"            | no
 
 
 > **NOTE**: GELF logs can be sent uncompressed or compressed with GZIP or ZLIB.

@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/local.file_match/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/local.file_match/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/local.file_match/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/local.file_match/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/local.file_match/
 description: Learn about local.file_match
 title: local.file_match
@@ -42,8 +37,8 @@ Name            | Type                | Description                             
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name      | Type                | Description
+----------|---------------------|---------------------------------------------------
 `targets` | `list(map(string))` | The set of targets discovered from the filesystem.
 
 Each target includes the following labels:
@@ -52,9 +47,8 @@ Each target includes the following labels:
 
 ## Component health
 
-`local.file_match` is only reported as unhealthy when given an invalid
-configuration. In those cases, exported fields retain their last healthy
-values.
+`local.file_match` is only reported as unhealthy when given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -68,8 +62,8 @@ values.
 
 ### Send `/tmp/logs/*.log` files to Loki
 
-This example discovers all files and folders under `/tmp/logs`. The absolute paths are 
-used by `loki.source.file.files` targets.
+This example discovers all files and folders under `/tmp/logs`.
+The absolute paths are used by `loki.source.file.files` targets.
 
 ```river
 local.file_match "tmp" {

@@ -22,7 +22,7 @@ loads them into a Loki instance.
 This component requires [Role-based access control (RBAC)][] to be set up
 in Kubernetes for {{< param "PRODUCT_ROOT_NAME" >}} to access it via the Kubernetes REST API.
 
-Role-based access control (RBAC)]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+[Role-based access control (RBAC)]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 {{< /admonition >}}
 
 [Kubernetes label selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
@@ -41,18 +41,18 @@ loki.rules.kubernetes "LABEL" {
 
 `loki.rules.kubernetes` supports the following arguments:
 
-Name                     | Type       | Description                                              | Default | Required
--------------------------|------------|----------------------------------------------------------|---------|---------
-`address`                | `string`   | URL of the Loki ruler.                                  |         | yes
-`tenant_id`              | `string`   | Loki tenant ID.                                         |         | no
-`use_legacy_routes`      | `bool`     | Whether to use deprecated ruler API endpoints.           | false   | no
-`sync_interval`          | `duration` | Amount of time between reconciliations with Loki.       | "30s"   | no
+Name                    | Type       | Description                                                                          | Default | Required
+------------------------|------------|--------------------------------------------------------------------------------------|---------|---------
+`address`               | `string`   | URL of the Loki ruler.                                                               |         | yes
+`tenant_id`             | `string`   | Loki tenant ID.                                                                      |         | no
+`use_legacy_routes`     | `bool`     | Whether to use deprecated ruler API endpoints.                                       | false   | no
+`sync_interval`         | `duration` | Amount of time between reconciliations with Loki.                                    | "30s"   | no
 `loki_namespace_prefix` | `string`   | Prefix used to differentiate multiple {{< param "PRODUCT_ROOT_NAME" >}} deployments. | "agent" | no
-`bearer_token`           | `secret`   | Bearer token to authenticate with.                       |         | no
-`bearer_token_file`      | `string`   | File containing a bearer token to authenticate with.     |         | no
-`proxy_url`              | `string`   | HTTP proxy to proxy requests through.                    |         | no
-`follow_redirects`       | `bool`     | Whether redirects returned by the server should be followed. | `true` | no
-`enable_http2`           | `bool`     | Whether HTTP2 is supported for requests.                 | `true`  | no
+`bearer_token`          | `secret`   | Bearer token to authenticate with.                                                   |         | no
+`bearer_token_file`     | `string`   | File containing a bearer token to authenticate with.                                 |         | no
+`proxy_url`             | `string`   | HTTP proxy to proxy requests through.                                                |         | no
+`follow_redirects`      | `bool`     | Whether redirects returned by the server should be followed.                         | `true`  | no
+`enable_http2`          | `bool`     | Whether HTTP2 is supported for requests.                                             | `true`  | no
 
  At most, one of the following can be provided:
  - [`bearer_token` argument](#arguments).
@@ -109,9 +109,9 @@ The `label_selector` block describes a Kubernetes label selector for rule or nam
 
 The following arguments are supported:
 
-Name           | Type          | Description                                       | Default                     | Required
----------------|---------------|---------------------------------------------------|-----------------------------|---------
-`match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}` | yes
+Name           | Type          | Description                                       | Default | Required
+---------------|---------------|---------------------------------------------------|---------|---------
+`match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}`    | yes
 
 When the `match_labels` argument is empty, all resources will be matched.
 
@@ -121,11 +121,11 @@ The `match_expression` block describes a Kubernetes label match expression for r
 
 The following arguments are supported:
 
-Name       | Type           | Description                                        | Default | Required
------------|----------------|----------------------------------------------------|---------|---------
-`key`      | `string`       | The label name to match against.                   |         | yes
-`operator` | `string`       | The operator to use when matching.                 |         | yes
-`values`   | `list(string)` | The values used when matching.                     |         | no
+Name       | Type           | Description                        | Default | Required
+-----------|----------------|------------------------------------|---------|---------
+`key`      | `string`       | The label name to match against.   |         | yes
+`operator` | `string`       | The operator to use when matching. |         | yes
+`values`   | `list(string)` | The values used when matching.     |         | no
 
 The `operator` argument should be one of the following strings:
 
@@ -176,8 +176,8 @@ actually exist.
 
 ## Debug metrics
 
-Metric Name                                   | Type        | Description
-----------------------------------------------|-------------|-------------------------------------------------------------------------
+Metric Name                                  | Type        | Description
+---------------------------------------------|-------------|-------------------------------------------------------------------------
 `loki_rules_config_updates_total`            | `counter`   | Number of times the configuration has been updated.
 `loki_rules_events_total`                    | `counter`   | Number of events processed, partitioned by event type.
 `loki_rules_events_failed_total`             | `counter`   | Number of events that failed to be processed, partitioned by event type.

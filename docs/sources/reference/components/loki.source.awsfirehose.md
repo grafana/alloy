@@ -1,9 +1,4 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/flow/reference/components/loki.source.awsfirehose/
-- /docs/grafana-cloud/monitor-infrastructure/agent/flow/reference/components/loki.source.awsfirehose/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/flow/reference/components/loki.source.awsfirehose/
-- /docs/grafana-cloud/send-data/agent/flow/reference/components/loki.source.awsfirehose/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.awsfirehose/
 description: Learn about loki.source.awsfirehose
 title: loki.source.awsfirehose
@@ -36,21 +31,21 @@ the raw records to Loki. The decoding process goes as follows:
 The component exposes some internal labels, available for relabeling. The following tables describes internal labels available
 in records coming from any source.
 
-| Name                        | Description                                                                                                                                                                                         | Example                                                                  |
-|-----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| `__aws_firehose_request_id` | Firehose request ID.                                                                                                                                                                                | `a1af4300-6c09-4916-ba8f-12f336176246`                                   |
-| `__aws_firehose_source_arn` | Firehose delivery stream ARN.                                                                                                                                                                       | `arn:aws:firehose:us-east-2:123:deliverystream/aws_firehose_test_stream` |
+| Name                        | Description                   | Example                                                                  |
+|-----------------------------|-------------------------------|--------------------------------------------------------------------------|
+| `__aws_firehose_request_id` | Firehose request ID.          | `a1af4300-6c09-4916-ba8f-12f336176246`                                   |
+| `__aws_firehose_source_arn` | Firehose delivery stream ARN. | `arn:aws:firehose:us-east-2:123:deliverystream/aws_firehose_test_stream` |
 
 If the source of the Firehose record is CloudWatch logs, the request is further decoded and enriched with even more labels,
 exposed as follows:
 
-| Name                        | Description                                                                                                                                                                                         | Example                                                                  |
-|-----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| `__aws_owner`               | The AWS Account ID of the originating log data.                                                                                                                                                     | `111111111111`                                                           |
-| `__aws_cw_log_group`        | The log group name of the originating log data.                                                                                                                                                     | `CloudTrail/logs`                                                        |
-| `__aws_cw_log_stream`       | The log stream name of the originating log data.                                                                                                                                                    | `111111111111_CloudTrail/logs_us-east-1`                                 |
-| `__aws_cw_matched_filters`  | The list of subscription filter names that match the originating log data. The list is encoded as a comma-separated list.                                                                    | `Destination,Destination2`                                               |
-| `__aws_cw_msg_type`         | Data messages will use the `DATA_MESSAGE` type. Sometimes CloudWatch Logs may emit Kinesis Data Streams records with a `CONTROL_MESSAGE` type, mainly for checking if the destination is reachable. | `DATA_MESSAGE`                                                           |
+| Name                       | Description                                                                                                               | Example                                  |
+|----------------------------|---------------------------------------------------------------------------------------------------------------------------|------------------------------------------|
+| `__aws_owner`              | The AWS Account ID of the originating log data.                                                                           | `111111111111`                           |
+| `__aws_cw_log_group`       | The log group name of the originating log data.                                                                           | `CloudTrail/logs`                        |
+| `__aws_cw_log_stream`      | The log stream name of the originating log data.                                                                          | `111111111111_CloudTrail/logs_us-east-1` |
+| `__aws_cw_matched_filters` | The list of subscription filter names that match the originating log data. The list is encoded as a comma-separated list. | `Destination,Destination2`               |
+| `__aws_cw_msg_type`        | Data messages will use the `DATA_MESSAGE` type. Sometimes CloudWatch Logs may emit Kinesis Data Streams records with a `CONTROL_MESSAGE` type, mainly for checking if the destination is reachable. | `DATA_MESSAGE`                           |
 
 See [Examples](#example) for a full example configuration showing how to enrich each log entry with these labels.
 
@@ -68,8 +63,7 @@ loki.source.awsfirehose "LABEL" {
 
 The component will start an HTTP server on the configured port and address with the following endpoints:
 
-- `/awsfirehose/api/v1/push` - accepting `POST` requests compatible
-  with [AWS Firehose HTTP Specifications](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html).
+- `/awsfirehose/api/v1/push` - accepting `POST` requests compatible with [AWS Firehose HTTP Specifications](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html).
 
 ## Arguments
 
@@ -93,12 +87,11 @@ to the list of receivers in `forward_to`.
 The following blocks are supported inside the definition of `loki.source.awsfirehose`:
 
 | Hierarchy | Name     | Description                                        | Required |
- |-----------|----------|----------------------------------------------------|----------|
+|-----------|----------|----------------------------------------------------|----------|
 | `http`    | [http][] | Configures the HTTP server that receives requests. | no       |
 | `grpc`    | [grpc][] | Configures the gRPC server that receives requests. | no       |
 
 [http]: #http
-
 [grpc]: #grpc
 
 ### http
@@ -119,7 +112,8 @@ The following blocks are supported inside the definition of `loki.source.awsfire
 
 ## Debug metrics
 
-The following are some of the metrics that are exposed when this component is used. 
+The following are some of the metrics that are exposed when this component is used.
+
 {{< admonition type="note" >}}
 The metrics include labels  such as `status_code` where relevant, which you can use to measure request success rates.
 {{< /admonition >}}
