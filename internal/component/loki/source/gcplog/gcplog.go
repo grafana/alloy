@@ -1,0 +1,175 @@
+package gcplog
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"sync"
+
+	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/relabel"
+
+	"github.com/grafana/agent/internal/component"
+	"github.com/grafana/agent/internal/component/common/loki"
+	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
+	"github.com/grafana/agent/internal/component/loki/source/gcplog/gcptypes"
+	gt "github.com/grafana/agent/internal/component/loki/source/gcplog/internal/gcplogtarget"
+	"github.com/grafana/agent/internal/util"
+)
+
+func init() {
+	component.Register(component.Registration{
+		Name:      "loki.source.gcplog",
+		Stability: featuregate.StabilityStable,
+		Args:      Arguments{},
+
+		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
+			return New(opts, args.(Arguments))
+		},
+	})
+}
+
+// Arguments holds values which are used to configure the loki.source.gcplog
+// component.
+type Arguments struct {
+	PullTarget   *gcptypes.PullConfig `river:"pull,block,optional"`
+	PushTarget   *gcptypes.PushConfig `river:"push,block,optional"`
+	ForwardTo    []loki.LogsReceiver  `river:"forward_to,attr"`
+	RelabelRules flow_relabel.Rules   `river:"relabel_rules,attr,optional"`
+}
+
+// SetToDefault implements river.Defaulter.
+func (a *Arguments) SetToDefault() {
+	*a = Arguments{}
+}
+
+// Validate implements river.Validator.
+func (a *Arguments) Validate() error {
+	if (a.PullTarget != nil) == (a.PushTarget != nil) {
+		return fmt.Errorf("exactly one of 'push' or 'pull' must be provided")
+	}
+	return nil
+}
+
+// Component implements the loki.source.gcplog component.
+type Component struct {
+	opts          component.Options
+	metrics       *gt.Metrics
+	serverMetrics *util.UncheckedCollector
+
+	mut    sync.RWMutex
+	fanout []loki.LogsReceiver
+	target gt.Target
+
+	handler loki.LogsReceiver
+}
+
+// New creates a new loki.source.gcplog component.
+func New(o component.Options, args Arguments) (*Component, error) {
+	c := &Component{
+		opts:          o,
+		metrics:       gt.NewMetrics(o.Registerer),
+		handler:       loki.NewLogsReceiver(),
+		fanout:        args.ForwardTo,
+		serverMetrics: util.NewUncheckedCollector(nil),
+	}
+
+	o.Registerer.MustRegister(c.serverMetrics)
+
+	// Call to Update() to start readers and set receivers once at the start.
+	if err := c.Update(args); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+// Run implements component.Component.
+func (c *Component) Run(ctx context.Context) error {
+	defer func() {
+		level.Info(c.opts.Logger).Log("msg", "loki.source.gcplog component shutting down, stopping the targets")
+		c.mut.RLock()
+		err := c.target.Stop()
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "error while stopping gcplog target", "err", err)
+		}
+		c.mut.RUnlock()
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case entry := <-c.handler.Chan():
+			c.mut.RLock()
+			for _, receiver := range c.fanout {
+				receiver.Chan() <- entry
+			}
+			c.mut.RUnlock()
+		}
+	}
+}
+
+// Update implements component.Component.
+func (c *Component) Update(args component.Arguments) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	newArgs := args.(Arguments)
+	c.fanout = newArgs.ForwardTo
+
+	var rcs []*relabel.Config
+	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
+		rcs = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+	}
+
+	if c.target != nil {
+		err := c.target.Stop()
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "error while stopping gcplog target", "err", err)
+		}
+	}
+	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
+	jobName := strings.Replace(c.opts.ID, ".", "_", -1)
+
+	if newArgs.PullTarget != nil {
+		// TODO(@tpaschalis) Are there any options from "google.golang.org/api/option"
+		// we should expose as configuration and pass here?
+		t, err := gt.NewPullTarget(c.metrics, c.opts.Logger, entryHandler, jobName, newArgs.PullTarget, rcs)
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create gcplog target with provided config", "err", err)
+			return err
+		}
+		c.target = t
+	}
+	if newArgs.PushTarget != nil {
+		// [gt.NewPushTarget] registers new metrics every time it is called. To
+		// avoid issues with re-registering metrics with the same name, we create a
+		// new registry for the target every time we create one, and pass it to an
+		// unchecked collector to bypass uniqueness checking.
+		registry := prometheus.NewRegistry()
+		c.serverMetrics.SetCollector(registry)
+
+		t, err := gt.NewPushTarget(c.metrics, c.opts.Logger, entryHandler, jobName, newArgs.PushTarget, rcs, registry)
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create gcplog target with provided config", "err", err)
+			return err
+		}
+		c.target = t
+	}
+
+	return nil
+}
+
+// DebugInfo returns information about the status of targets.
+func (c *Component) DebugInfo() interface{} {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+	return targetDebugInfo{Details: c.target.Details()}
+}
+
+type targetDebugInfo struct {
+	Details map[string]string `river:"target_info,attr"`
+}

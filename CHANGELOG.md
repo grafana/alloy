@@ -17,6 +17,14 @@ Main (unreleased)
 
 - A new `loki.rules.kubernetes` component that discovers `PrometheusRule` Kubernetes resources and loads them into a Loki Ruler instance. (@EStork09)
 
+### Bugfixes
+
+- Fix an issues where the logging config block would trigger an error when trying to send logs to components that were not running. (@wildum)
+
+- Fix an issue where a custom component might be wired to a local declare instead of an import declare when they have the same label. (@wildum)
+
+- Fix an issue where flow mode panics if the `logging` config block is given a `null` Loki receiver to write log entries to. (@rfratto)
+
 v0.40.0 (2024-02-27)
 --------------------
 
@@ -50,6 +58,8 @@ v0.40.0 (2024-02-27)
   remote endpoint. (@tpaschalis)
 
 - Add `otelcol.connector.host_info` component to gather usage metrics for cloud users. (@rlankfo, @jcreixell)
+
+- Add Windows boringcrypto build and executable. (@mattdurham)
 
 ### Enhancements
 
@@ -126,6 +136,8 @@ v0.40.0 (2024-02-27)
 - Fix an issue where the configuration of the `http` and `remotecfg` blocks get ignored after loading a module. (@erikbaranowski)
 
 - Fix an issue where changing the configuration of `loki.write` would cause a panic. (@rfratto)
+
+- Fix issue where registry was not being properly deleted. (@mattdurham)
 
 ### Other changes
 

@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
-	"github.com/grafana/agent/pkg/flow/logging/level"
+	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/prometheus/common/version"
 )
 
