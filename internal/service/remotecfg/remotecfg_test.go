@@ -42,7 +42,7 @@ func TestOnDiskCache(t *testing.T) {
 	env.svc.asClient = client
 
 	// Mock client to return an unparseable response.
-	client.getConfigFunc = buildGetConfigHandler("unparseable river config")
+	client.getConfigFunc = buildGetConfigHandler("unparseable config")
 
 	// Write the cache contents, and run the service.
 	err := os.WriteFile(env.svc.dataPath, []byte(cacheContents), 0644)

@@ -21,9 +21,9 @@ func fmtCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "fmt [flags] file",
-		Short: "Format a River file",
-		Long: `The fmt subcommand applies standard formatting rules to the specified
-River configuration file.
+		Short: "Format a configuration file",
+		Long: `The fmt subcommand applies standard formatting rules to the
+specified configuration file.
 
 If the file argument is not supplied or if the file argument is "-", then fmt will read from stdin.
 

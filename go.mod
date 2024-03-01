@@ -29,14 +29,13 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/drone/envsubst/v2 v2.0.0-20210730161058-179042472c46
 	github.com/fatih/color v1.15.0
-	github.com/fatih/structs v1.1.0
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/github/smimesign v0.2.0
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/go-kit/log v0.2.1
 	github.com/go-logfmt/logfmt v0.6.0
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gogo/protobuf v1.3.2
@@ -45,7 +44,6 @@ require (
 	github.com/google/cadvisor v0.47.0
 	github.com/google/dnsmasq_exporter v0.2.1-0.20230620100026-44b14480804a
 	github.com/google/go-cmp v0.6.0
-	github.com/google/go-jsonnet v0.18.0
 	github.com/google/pprof v0.0.0-20240117000934-35fc243c5815
 	github.com/google/renameio/v2 v2.0.0
 	github.com/google/uuid v1.4.0
@@ -162,7 +160,6 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.25.0
-	github.com/testcontainers/testcontainers-go/modules/k3s v0.0.0-20230615142642-c175df34bd1d
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/vincent-petithory/dataurl v1.0.0
 	github.com/webdevops/azure-metrics-exporter v0.0.0-20230717202958-8701afc2b013
@@ -226,7 +223,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.28.3
-	k8s.io/apiextensions-apiserver v0.28.0
+	k8s.io/apiextensions-apiserver v0.28.0 // indirect
 	k8s.io/client-go v0.28.3
 	k8s.io/component-base v0.28.1
 	k8s.io/klog/v2 v2.100.1
@@ -766,3 +763,9 @@ exclude (
 )
 
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
+
+// Submodules.
+// TODO(rfratto): Change all imports of github.com/grafana/river in favor of
+// importing github.com/grafana/alloy/syntax and change module and package
+// names to remove references of "river".
+replace github.com/grafana/river => ./syntax

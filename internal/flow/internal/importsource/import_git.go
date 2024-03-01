@@ -74,7 +74,7 @@ func NewImportGit(managedOpts component.Options, eval *vm.Evaluator, onContentCh
 func (im *ImportGit) Evaluate(scope *vm.Scope) error {
 	var arguments GitArguments
 	if err := im.eval.Evaluate(scope, &arguments); err != nil {
-		return fmt.Errorf("decoding River: %w", err)
+		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
 	if reflect.DeepEqual(im.args, arguments) {

@@ -63,7 +63,7 @@ func (args *HTTPArguments) SetToDefault() {
 func (im *ImportHTTP) Evaluate(scope *vm.Scope) error {
 	var arguments HTTPArguments
 	if err := im.eval.Evaluate(scope, &arguments); err != nil {
-		return fmt.Errorf("decoding River: %w", err)
+		return fmt.Errorf("decoding configuration: %w", err)
 	}
 	if im.managedRemoteHTTP == nil {
 		var err error

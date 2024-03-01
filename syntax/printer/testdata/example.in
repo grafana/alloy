@@ -1,0 +1,64 @@
+// This file tests a little bit of everything that the formatter should do. For
+// example, this block of comments itself ensures that the output retains
+// comments found in the source file.
+
+//
+// Whitespace tests
+//
+
+// Attributes should be given whitespace
+attr_1=15
+attr_2=30*2+5
+attr_3=field.access*2
+
+// Blocks with nothing inside of them should be truncated.
+empty.block {
+
+}
+
+empty.block "labeled" {
+
+}
+
+//
+// Alignment tests
+//
+
+// Sequences of attributes which aren't separated by a blank line should have
+// the equal sign aligned.
+short_name = true
+really_long_name = true
+
+extremely_long_name = true
+
+// Sequences of comments on aligned lines should also be aligned.
+short_name = "short value" // Align me
+really_long_name = "really long value" // Align me
+
+extremely_long_name = true // Unaligned
+
+//
+// Indentation tests
+//
+
+// Array literals, object literals, and blocks should all be indented properly.
+multiline_array = [
+0,
+1,
+]
+
+mulitiline_object = {
+foo = "bar",
+}
+
+some_block {
+attr = 15
+
+inner_block {
+attr = 20
+}
+}
+
+// Trailing comments should be retained in the output. If this comment gets
+// trimmed out, it usually indicates that a final flush is missing after
+// traversing the AST.

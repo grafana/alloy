@@ -64,7 +64,7 @@ func (sn *ServiceNode) Block() *ast.BlockStmt {
 // ServiceNode.
 func (sn *ServiceNode) UpdateBlock(b *ast.BlockStmt) {
 	if b != nil && !BlockComponentID(b).Equals([]string{sn.NodeID()}) {
-		panic("UpdateBlock called with a River block with a different block ID")
+		panic("UpdateBlock called with a block with a different block ID")
 	}
 
 	sn.mut.Lock()
@@ -97,7 +97,7 @@ func (sn *ServiceNode) Evaluate(scope *vm.Scope) error {
 	argsPointer := reflect.New(reflect.TypeOf(sn.def.ConfigType)).Interface()
 
 	if err := sn.eval.Evaluate(scope, argsPointer); err != nil {
-		return fmt.Errorf("decoding River: %w", err)
+		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
 	// args is always a pointer to the args type, so we want to deference it

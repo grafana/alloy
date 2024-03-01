@@ -181,7 +181,7 @@ func (cn *CustomComponentNode) evaluate(evalScope *vm.Scope) error {
 
 	var args map[string]any
 	if err := cn.eval.Evaluate(evalScope, &args); err != nil {
-		return fmt.Errorf("decoding River: %w", err)
+		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
 	cn.args = args

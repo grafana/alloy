@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	_ "github.com/grafana/agent/internal/component/module/string"
+	_ "github.com/grafana/agent/internal/flow/internal/testcomponents/module/string"
 )
 
 func TestUpdates_EmptyModule(t *testing.T) {
