@@ -70,7 +70,7 @@ Using the `--source-format=promtail` will convert the source configuration from 
 
 Nearly all [Promtail features][] are supported and can be converted to {{< param "PRODUCT_NAME" >}} configuration.
 
-If you have unsupported features in a source configuration, you will receive [errors][] when you convert to a flow configuration.
+If you have unsupported features in a source configuration, you will receive [errors][] when you convert to a {{< param "PRODUCT_NAME" >}} configuration.
 The converter will also raise warnings for configuration options that may require your attention.
 
 Refer to [Migrate from Promtail to {{< param "PRODUCT_NAME" >}}][migrate promtail] for a detailed migration guide.

@@ -433,8 +433,7 @@ retention directly to the data age itself, as the truncation logic works on
 _segments_, not the samples themselves. This makes data retention less
 predictable when the component receives a non-consistent rate of data.
 
-The [WAL block][] in Flow mode, or the [metrics config][] in Static mode
-contain some configurable parameters that can be used to control the tradeoff
+The [WAL block][] contains some configurable parameters that can be used to control the tradeoff
 between memory usage, disk usage, and data retention.
 
 The `truncate_frequency` or `wal_truncate_frequency` parameter configures the
@@ -496,18 +495,14 @@ To delete the corrupted WAL:
 1. Find and delete the contents of the `wal` directory.
 
    By default the `wal` directory is a subdirectory
-   of the `data-agent` directory located in the Grafana Agent working directory. The WAL data directory
-   may be different than the default depending on the [wal_directory][] setting in your Static configuration
-   file or the path specified by the Flow [command line flag][run] `--storage-path`.
+   of the `data-agent` directory located in the {{< param "PRODUCT_NAME" >}} working directory. The WAL data directory
+   may be different than the default depending on the path specified by the [command line flag][run] `--storage-path`.
 
    {{< admonition type="note" >}}
-   There is one `wal` directory per:
-
-   * Metrics instance running in Static mode
-   * `prometheus.remote_write` component running in Flow mode
+   There is one `wal` directory per `prometheus.remote_write` component.
    {{< /admonition >}}
 
-1. [Start][Stop] Grafana Agent and verify that the WAL is working correctly.
+1. [Start][Stop] {{< param "PRODUCT_NAME" >}} and verify that the WAL is working correctly.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
@@ -525,8 +520,6 @@ Refer to the linked documentation for more details.
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
 [snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)
-[WAL block]: /docs/agent/<ALLOY_VERSION>/flow/reference/components/prometheus.remote_write#wal-block
-[metrics config]: /docs/agent/<ALLOY_VERSION>/static/configuration/metrics-config
-[Stop]: /docs/agent/<ALLOY_VERSION>/flow/get-started/start-agent
-[wal_directory]: /docs/agent/<ALLOY_VERSION>/static/configuration/metrics-config
-[run]: /docs/agent/<ALLOY_VERSION>/flow/reference/cli/run
+[WAL block]: #wal-block
+[Stop]: ../../../get-started/start-agent/
+[run]: ../../../reference/cli/run/
