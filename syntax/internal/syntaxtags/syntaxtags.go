@@ -1,6 +1,6 @@
-// Package rivertags decodes a struct type into river object
-// and structural tags.
-package rivertags
+// Package syntaxtags decodes a struct type into syntax object and structural
+// tags.
+package syntaxtags
 
 import (
 	"fmt"
@@ -159,7 +159,7 @@ func Get(ty reflect.Type) []Field {
 	)
 
 	for _, field := range reflect.VisibleFields(ty) {
-		// River does not support embedding of fields
+		// Alloy's syntax does not support embedding of fields
 		if field.Anonymous {
 			panic(fmt.Sprintf("syntax: anonymous fields not supported %s", printPathToField(ty, field.Index)))
 		}

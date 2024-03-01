@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/river/ast"
 	"github.com/grafana/river/diag"
 	"github.com/grafana/river/internal/reflectutil"
-	"github.com/grafana/river/internal/rivertags"
+	"github.com/grafana/river/internal/syntaxtags"
 	"github.com/grafana/river/internal/value"
 )
 
@@ -110,7 +110,7 @@ func (st *structDecoder) Decode(stmts ast.Body, rv reflect.Value) error {
 }
 
 type decodeOptions struct {
-	Tags       map[string]rivertags.Field
+	Tags       map[string]syntaxtags.Field
 	EnumBlocks map[string]enumBlock
 
 	SeenAttrs, SeenBlocks, SeenEnums map[string]struct{}

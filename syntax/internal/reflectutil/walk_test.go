@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/grafana/river/internal/reflectutil"
-	"github.com/grafana/river/internal/rivertags"
+	"github.com/grafana/river/internal/syntaxtags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func TestDeeplyNested_Access(t *testing.T) {
 	s.Field1.Field2.Field3.Value = "Hello, world!"
 
 	rv := reflect.ValueOf(&s).Elem()
-	innerValue := reflectutil.GetOrAlloc(rv, rivertags.Field{Index: []int{0, 0, 0, 0}})
+	innerValue := reflectutil.GetOrAlloc(rv, syntaxtags.Field{Index: []int{0, 0, 0, 0}})
 	assert.True(t, innerValue.CanSet())
 	assert.Equal(t, reflect.String, innerValue.Kind())
 }
@@ -44,7 +44,7 @@ func TestDeeplyNested_Allocate(t *testing.T) {
 	var s Struct
 
 	rv := reflect.ValueOf(&s).Elem()
-	innerValue := reflectutil.GetOrAlloc(rv, rivertags.Field{Index: []int{0, 0, 0, 0}})
+	innerValue := reflectutil.GetOrAlloc(rv, syntaxtags.Field{Index: []int{0, 0, 0, 0}})
 	require.True(t, innerValue.CanSet())
 	require.Equal(t, reflect.String, innerValue.Kind())
 
@@ -66,7 +66,7 @@ func TestDeeplyNested_NoAllocate(t *testing.T) {
 	var s Struct
 
 	rv := reflect.ValueOf(&s).Elem()
-	innerValue := reflectutil.Get(rv, rivertags.Field{Index: []int{0, 0, 0, 0}})
+	innerValue := reflectutil.Get(rv, syntaxtags.Field{Index: []int{0, 0, 0, 0}})
 	assert.False(t, innerValue.CanSet())
 	assert.Equal(t, reflect.String, innerValue.Kind())
 }
