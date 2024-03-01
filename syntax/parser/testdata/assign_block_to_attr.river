@@ -1,0 +1,32 @@
+rw = prometheus/* ERROR "cannot use a block as an expression" */.remote_write "default" {
+  endpoint {
+    url = "some_url"
+	basic_auth {
+      username = "username"
+      password = "password"
+    }
+  }
+}
+
+attr_1 = 15
+attr_2 = 51
+
+block {
+	rw_2 = prometheus/* ERROR "cannot use a block as an expression" */.remote_write "other" {
+		endpoint {
+			url = "other_url"
+			basic_auth {
+				username = "username_2"
+				password = "password_2"
+			}
+		}
+	}
+}
+
+other_block {
+	// This is an expression which looks like it might be a block at first, but
+	// then isn't.
+	rw_3 = prometheus.remote_write "other" "other" /* ERROR "expected {, got STRING" */ 12345
+}
+
+attr_3 = 15

@@ -1,0 +1,4 @@
+attr = 1 + + /* ERROR "expected expression, got +" */ 2
+
+invalid_func_call = a(() /* ERROR "expected expression, got \)" */)
+invalid_access    = a.true /* ERROR "expected IDENT, got BOOL" */
