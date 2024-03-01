@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/module"
 	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/agent/internal/flow/internal/testcomponents/module"
 	"github.com/grafana/river/rivertypes"
 )
 

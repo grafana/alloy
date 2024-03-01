@@ -1,4 +1,4 @@
-package file
+package http
 
 import (
 	"context"
@@ -7,15 +7,15 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/local/file"
-	"github.com/grafana/agent/internal/component/module"
+	remote_http "github.com/grafana/agent/internal/component/remote/http"
 	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/agent/internal/flow/internal/testcomponents/module"
 	"github.com/grafana/river/rivertypes"
 )
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "module.file",
+		Name:      "module.http",
 		Stability: featuregate.StabilityBeta,
 		Args:      Arguments{},
 		Exports:   module.Exports{},
@@ -26,20 +26,19 @@ func init() {
 	})
 }
 
-// Arguments holds values which are used to configure the module.file component.
+// Arguments holds values which are used to configure the module.http component.
 type Arguments struct {
-	LocalFileArguments file.Arguments `river:",squash"`
+	RemoteHTTPArguments remote_http.Arguments `river:",squash"`
 
-	// Arguments to pass into the module.
 	Arguments map[string]any `river:"arguments,block,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
-func (a *Arguments) SetToDefault() {
-	a.LocalFileArguments = file.DefaultArguments
+func (args *Arguments) SetToDefault() {
+	args.RemoteHTTPArguments.SetToDefault()
 }
 
-// Component implements the module.file component.
+// Component implements the module.http component.
 type Component struct {
 	opts component.Options
 	mod  *module.ModuleComponent
@@ -48,9 +47,9 @@ type Component struct {
 	args    Arguments
 	content rivertypes.OptionalSecret
 
-	managedLocalFile *file.Component
-	inUpdate         atomic.Bool
-	isCreated        atomic.Bool
+	managedRemoteHTTP *remote_http.Component
+	inUpdate          atomic.Bool
+	isCreated         atomic.Bool
 }
 
 var (
@@ -58,7 +57,7 @@ var (
 	_ component.HealthComponent = (*Component)(nil)
 )
 
-// New creates a new module.file component.
+// New creates a new module.http component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	m, err := module.NewModuleComponent(o)
 	if err != nil {
@@ -72,7 +71,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	defer c.isCreated.Store(true)
 
-	c.managedLocalFile, err = c.newManagedLocalComponent(o)
+	c.managedRemoteHTTP, err = c.newManagedLocalComponent(o)
 	if err != nil {
 		return nil, err
 	}
@@ -82,11 +81,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	return c, nil
 }
 
-// NewManagedLocalComponent creates the new local.file managed component.
-func (c *Component) newManagedLocalComponent(o component.Options) (*file.Component, error) {
-	localFileOpts := o
-	localFileOpts.OnStateChange = func(e component.Exports) {
-		c.setContent(e.(file.Exports).Content)
+// NewManagedLocalComponent creates the new remote.http managed component.
+func (c *Component) newManagedLocalComponent(o component.Options) (*remote_http.Component, error) {
+	remoteHttpOpts := o
+	remoteHttpOpts.OnStateChange = func(e component.Exports) {
+		c.setContent(e.(remote_http.Exports).Content)
 
 		if !c.inUpdate.Load() && c.isCreated.Load() {
 			// Any errors found here are reported via component health
@@ -94,7 +93,7 @@ func (c *Component) newManagedLocalComponent(o component.Options) (*file.Compone
 		}
 	}
 
-	return file.New(localFileOpts, c.getArgs().LocalFileArguments)
+	return remote_http.New(remoteHttpOpts, c.getArgs().RemoteHTTPArguments)
 }
 
 // Run implements component.Component.
@@ -104,7 +103,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 	ch := make(chan error, 1)
 	go func() {
-		err := c.managedLocalFile.Run(ctx)
+		err := c.managedRemoteHTTP.Run(ctx)
 		if err != nil {
 			ch <- err
 		}
@@ -130,7 +129,7 @@ func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 	c.setArgs(newArgs)
 
-	err := c.managedLocalFile.Update(newArgs.LocalFileArguments)
+	err := c.managedRemoteHTTP.Update(newArgs.RemoteHTTPArguments)
 	if err != nil {
 		return err
 	}
@@ -143,11 +142,10 @@ func (c *Component) Update(args component.Arguments) error {
 // CurrentHealth implements component.HealthComponent.
 func (c *Component) CurrentHealth() component.Health {
 	leastHealthy := component.LeastHealthy(
-		c.managedLocalFile.CurrentHealth(),
+		c.managedRemoteHTTP.CurrentHealth(),
 		c.mod.CurrentHealth(),
 	)
 
-	// if both components are healthy - return c.mod's health, so we can have a stable Health.Message.
 	if leastHealthy.Health == component.HealthTypeHealthy {
 		return c.mod.CurrentHealth()
 	}

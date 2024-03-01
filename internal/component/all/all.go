@@ -57,10 +57,6 @@ import (
 	_ "github.com/grafana/agent/internal/component/loki/source/windowsevent"                 // Import loki.source.windowsevent
 	_ "github.com/grafana/agent/internal/component/loki/write"                               // Import loki.write
 	_ "github.com/grafana/agent/internal/component/mimir/rules/kubernetes"                   // Import mimir.rules.kubernetes
-	_ "github.com/grafana/agent/internal/component/module/file"                              // Import module.file
-	_ "github.com/grafana/agent/internal/component/module/git"                               // Import module.git
-	_ "github.com/grafana/agent/internal/component/module/http"                              // Import module.http
-	_ "github.com/grafana/agent/internal/component/module/string"                            // Import module.string
 	_ "github.com/grafana/agent/internal/component/otelcol/auth/basic"                       // Import otelcol.auth.basic
 	_ "github.com/grafana/agent/internal/component/otelcol/auth/bearer"                      // Import otelcol.auth.bearer
 	_ "github.com/grafana/agent/internal/component/otelcol/auth/headers"                     // Import otelcol.auth.headers
