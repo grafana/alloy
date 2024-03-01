@@ -31,7 +31,7 @@ func TestLinksToTypesSectionsUpdated(t *testing.T) {
 }
 
 func TestCompatibleComponentsPageUpdated(t *testing.T) {
-	path := filepath.Join(moduleRoot, "docs/sources/flow/reference/compatibility/_index.md")
+	path := filepath.Join(moduleRoot, "docs/sources/reference/compatibility/_index.md")
 	for _, typ := range metadata.AllTypes {
 		t.Run(typ.Name, func(t *testing.T) {
 			t.Run("exporters", func(t *testing.T) {
