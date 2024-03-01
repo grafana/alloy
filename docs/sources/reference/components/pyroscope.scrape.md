@@ -413,7 +413,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, this block i
 
 When the `delta` argument is `false`, the [pprof][] HTTP query will be instantaneous.
 
-W.md" >}}hen the `delta` argument is `true`:
+When the `delta` argument is `true`:
 * The [pprof][] HTTP query will run for a certain amount of time.
 * A `seconds` parameter is automatically added to the HTTP request.
 * The `seconds` used will be equal to `scrape_interval - 1`.
