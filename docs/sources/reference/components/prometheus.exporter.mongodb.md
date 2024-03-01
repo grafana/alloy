@@ -82,7 +82,7 @@ prometheus.remote_write "default" {
 }
 ```
 
-[scrape]: {{< relref "./prometheus.scrape.md" >}}
+[scrape]: ../prometheus.scrape/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

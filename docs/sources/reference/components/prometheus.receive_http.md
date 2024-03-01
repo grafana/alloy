@@ -8,9 +8,9 @@ title: prometheus.receive_http
 
 `prometheus.receive_http` listens for HTTP requests containing Prometheus metric samples and forwards them to other components capable of receiving metrics.
 
-The HTTP API exposed is compatible with [Prometheus `remote_write` API][prometheus-remote-write-docs]. This means that other [`prometheus.remote_write`][prometheus.remote_write] components can be used as a client and send requests to `prometheus.receive_http` which enables using {{< param "PRODUCT_ROOT_NAME" >}} as a proxy for prometheus metrics.
+The HTTP API exposed is compatible with [Prometheus `remote_write` API][prometheus-remote-write-docs]. This means that other [`prometheus.remote_write`][prometheus.remote_write] components can be used as a client and send requests to `prometheus.receive_http` which enables using {{< param "PRODUCT_ROOT_NAME" >}} as a proxy for Prometheus metrics.
 
-[prometheus.remote_write]: {{< relref "./prometheus.remote_write.md" >}}
+[prometheus.remote_write]: ../prometheus.remote_write/
 [prometheus-remote-write-docs]: https://prometheus.io/docs/prometheus/2.45/querying/api/#remote-write-receiver
 
 ## Usage
@@ -81,7 +81,7 @@ This example creates a `prometheus.receive_http` component which starts an HTTP 
 prometheus.receive_http "api" {
   http {
     listen_address = "0.0.0.0"
-    listen_port = 9999 
+    listen_port = 9999
   }
   forward_to = [prometheus.remote_write.local.receiver]
 }
@@ -90,7 +90,7 @@ prometheus.receive_http "api" {
 prometheus.remote_write "local" {
   endpoint {
     url = "http://mimir:9009/api/v1/push"
-    
+
     basic_auth {
       username = "example-user"
       password = "example-password"

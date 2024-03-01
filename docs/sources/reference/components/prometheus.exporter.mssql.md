@@ -122,7 +122,7 @@ Replace the following:
 - `USERNAME`: The username to use for authentication to the remote_write API.
 - `PASSWORD`: The password to use for authentication to the remote_write API.
 
-[scrape]: {{< relref "./prometheus.scrape.md" >}}
+[scrape]: ../prometheus.scrape/
 
 ## Custom metrics
 You can use the optional `query_config` parameter to retrieve custom Prometheus metrics for a MSSQL instance.

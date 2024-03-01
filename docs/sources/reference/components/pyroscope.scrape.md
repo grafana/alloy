@@ -37,7 +37,7 @@ The scraped performance profiles can be forwarded to components such as
 
 Multiple `pyroscope.scrape` components can be specified by giving them different labels.
 
-[debug UI]: {{< relref "../../tasks/debug.md" >}}
+[debug UI]: ../../../tasks/debug/
 
 ## Usage
 
@@ -405,7 +405,7 @@ APIs.
 
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, this block is a no-op.
 
-[using clustering]: {{< relref "../../concepts/clustering.md" >}}
+[using clustering]: ../../../concepts/clustering/
 
 ## Common configuration
 
@@ -413,7 +413,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, this block i
 
 When the `delta` argument is `false`, the [pprof][] HTTP query will be instantaneous.
 
-When the `delta` argument is `true`:
+W.md" >}}hen the `delta` argument is `true`:
 * The [pprof][] HTTP query will run for a certain amount of time.
 * A `seconds` parameter is automatically added to the HTTP request.
 * The `seconds` used will be equal to `scrape_interval - 1`.

@@ -38,8 +38,10 @@ Service graphs are useful for a number of use-cases:
 Since `otelcol.connector.servicegraph` has to process both sides of an edge,
 it needs to process all spans of a trace to function properly.
 If spans of a trace are spread out over multiple Agent instances, spans cannot be paired reliably.
-A solution to this problem is using [otelcol.exporter.loadbalancing]({{< relref "./otelcol.exporter.loadbalancing.md" >}})
+A solution to this problem is using [otelcol.exporter.loadbalancing][]
 in front of Agent instances running `otelcol.connector.servicegraph`.
+
+[otelcol.exporter.loadbalancing]: ../otelcol.exporter.loadbalancing/
 
 ## Usage
 

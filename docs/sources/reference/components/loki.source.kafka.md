@@ -66,7 +66,7 @@ All labels starting with `__` are removed prior to forwarding log entries. To
 keep these labels, relabel them using a [loki.relabel][] component and pass its
 `rules` export to the `relabel_rules` argument.
 
-[loki.relabel]: {{< relref "./loki.relabel.md" >}}
+[loki.relabel]: ../loki.relabel/
 
 ## Blocks
 

@@ -125,7 +125,7 @@ Replace the following:
 - `USERNAME`: The username to use for authentication to the remote_write API.
 - `PASSWORD`: The password to use for authentication to the remote_write API.
 
-[scrape]: {{< relref "./prometheus.scrape.md" >}}
+[scrape]: ../prometheus.scrape/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

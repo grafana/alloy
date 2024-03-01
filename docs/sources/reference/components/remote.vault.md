@@ -278,7 +278,7 @@ nonsensitive(remote.vault.LABEL.data.KEY_NAME)
 Using `nonsensitive` allows for using the exports of `remote.vault` for
 attributes in components that do not support secrets.
 
-[nonsensitive]: {{< relref "../stdlib/nonsensitive.md" >}}
+[nonsensitive]: ../../stdlib/nonsensitive/
 
 ## Component health
 

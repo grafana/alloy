@@ -239,7 +239,7 @@ of data in the WAL; samples aren't removed until they are at least as old as
 `min_keepalive_time`, and samples are forcibly removed if they are older than
 `max_keepalive_time`.
 
-[run]: {{< relref "../cli/run.md" >}}
+[run]: {../../cli/run/
 
 ## Exported fields
 

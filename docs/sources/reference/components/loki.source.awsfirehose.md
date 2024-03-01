@@ -80,7 +80,7 @@ The `relabel_rules` field can make use of the `rules` export value from a
 [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded
 to the list of receivers in `forward_to`.
 
-[loki.relabel]: {{< relref "./loki.relabel.md" >}}
+[loki.relabel]: ../loki.relabel/
 
 ## Blocks
 

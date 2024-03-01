@@ -8,10 +8,11 @@ description: Learn about prometheus.exporter.vsphere
 
 The `prometheus.exporter.vsphere` component embeds [`vmware_exporter`](https://github.com/grafana/vmware_exporter) to collect vSphere metrics
 
-> **NOTE**: We recommend to use [otelcol.receiver.vcenter][] instead.
+{{< admonition type="note" >}}
+We recommend to use [otelcol.receiver.vcenter][] instead.
 
-[otelcol.receiver.vcenter]: {{< relref "./otelcol.receiver.vcenter.md" >}}
-
+[otelcol.receiver.vcenter]: ./otelcol.receiver.vcenter/
+{{< /admonition >}}
 
 ## Usage
 
@@ -83,7 +84,7 @@ prometheus.remote_write "default" {
 }
 ```
 
-[scrape]: {{< relref "./prometheus.scrape.md" >}}
+[scrape]: ../prometheus.scrape/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

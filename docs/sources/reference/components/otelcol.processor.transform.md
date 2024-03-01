@@ -44,14 +44,14 @@ There are two ways of inputting strings in River configuration files:
 * Using backticks ([raw River strings][river-raw-strings]). No characters must be escaped.
   However, it's not possible to have backticks inside the string.
 
-For example, the OTTL statement `set(description, "Sum") where type == "Sum"` can be written as: 
+For example, the OTTL statement `set(description, "Sum") where type == "Sum"` can be written as:
 * A normal River string: `"set(description, \"Sum\") where type == \"Sum\""`.
 * A raw River string: ``` `set(description, "Sum") where type == "Sum"` ```.
 
 Raw strings are generally more convenient for writing OTTL statements.
 
-[river-strings]: {{< relref "../../concepts/config-language/expressions/types_and_values.md/#strings" >}}
-[river-raw-strings]: {{< relref "../../concepts/config-language/expressions/types_and_values.md/#raw-strings" >}}
+[river-strings]: ../../../concepts/config-language/expressions/types_and_values/#strings
+[river-raw-strings]: ../../../concepts/config-language/expressions/types_and_values/#raw-strings
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -63,19 +63,19 @@ will be redirected to the upstream repository.
 You can specify multiple `otelcol.processor.transform` components by giving them different labels.
 
 {{< admonition type="warning" >}}
-`otelcol.processor.transform` allows you to modify all aspects of your telemetry. Some specific risks are given below, 
-but this is not an exhaustive list. It is important to understand your data before using this processor.  
+`otelcol.processor.transform` allows you to modify all aspects of your telemetry. Some specific risks are given below,
+but this is not an exhaustive list. It is important to understand your data before using this processor.
 
-- [Unsound Transformations][]: Transformations between metric data types are not defined in the [metrics data model][]. 
-To use these functions, you must understand the incoming data and know that it can be meaningfully converted 
+- [Unsound Transformations][]: Transformations between metric data types are not defined in the [metrics data model][].
+To use these functions, you must understand the incoming data and know that it can be meaningfully converted
 to a new metric data type or can be used to create new metrics.
-  - Although OTTL allows you to use the `set` function with `metric.data_type`, 
+  - Although OTTL allows you to use the `set` function with `metric.data_type`,
     its implementation in the transform processor is a [no-op][].
     To modify a data type, you must use a specific function such as `convert_gauge_to_sum`.
 - [Identity Conflict][]: Transformation of metrics can potentially affect a metric's identity,
-  leading to an Identity Crisis. Be especially cautious when transforming a metric name and when reducing or changing 
+  leading to an Identity Crisis. Be especially cautious when transforming a metric name and when reducing or changing
   existing attributes. Adding new attributes is safe.
-- [Orphaned Telemetry][]: The processor allows you to modify `span_id`, `trace_id`, and `parent_span_id` for traces 
+- [Orphaned Telemetry][]: The processor allows you to modify `span_id`, `trace_id`, and `parent_span_id` for traces
   and `span_id`, and `trace_id` logs.  Modifying these fields could lead to orphaned spans or logs.
 
 [Unsound Transformations]: https://github.com/open-telemetry/opentelemetry-collector/blob/{{< param "OTEL_VERSION" >}}/docs/standard-warnings.md#unsound-transformations
@@ -561,8 +561,8 @@ Each statement is enclosed in backticks instead of quotation marks.
 This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
 each `"` with a `\"`, and each `\` with a `\\` inside a [normal][river-strings] River string.
 
-[river-strings]: {{< relref "../../concepts/config-language/expressions/types_and_values.md/#strings" >}}
-[river-raw-strings]: {{< relref "../../concepts/config-language/expressions/types_and_values.md/#raw-strings" >}}
+[river-strings]: ../../../concepts/config-language/expressions/types_and_values/#strings
+[river-raw-strings]: ../../../concepts/config-language/expressions/types_and_values/#raw-strings
 
 [traces protobuf]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/trace/v1/trace.proto
 [metrics protobuf]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/metrics/v1/metrics.proto
@@ -585,6 +585,7 @@ each `"` with a `\"`, and each `\` with a `\\` inside a [normal][river-strings] 
 [OTTL metric context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottlmetric/README.md
 [OTTL datapoint context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottldatapoint/README.md
 [OTTL log context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottllog/README.md
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

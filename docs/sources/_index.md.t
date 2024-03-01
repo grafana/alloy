@@ -24,7 +24,7 @@ processing, and delivery.
 {{< admonition type="note" >}}
 This page focuses mainly on [Flow mode](https://grafana.com/docs/alloy/<ALLOY_VERSION>/), the Terraform-inspired variant of {{< param "PRODUCT_NAME" >}}.
 
-For information on other variants of {{< param "PRODUCT_NAME" >}}, refer to [Introduction to {{< param "PRODUCT_NAME" >}}]({{< relref "./about.md" >}}).
+For information on other variants of {{< param "PRODUCT_NAME" >}}, refer to [Introduction to {{< param "PRODUCT_NAME" >}}](../about.md).
 {{< /admonition >}}
 
 {{< param "PRODUCT_NAME" >}} can collect, transform, and send data to:

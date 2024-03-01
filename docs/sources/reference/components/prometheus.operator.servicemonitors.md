@@ -187,7 +187,7 @@ fully consistent like hashmod sharding is).
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op, and
 `prometheus.operator.servicemonitors` scrapes every target it receives in its arguments.
 
-[using clustering]: {{< relref "../../concepts/clustering.md" >}}
+[using clustering]: ../../../concepts/clustering/
 
 ## Exported fields
 

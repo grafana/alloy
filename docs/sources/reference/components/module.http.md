@@ -38,16 +38,16 @@ module.http "LABEL" {
 
 The following arguments are supported:
 
-Name             | Type          | Description                                              | Default | Required
------------------|---------------|----------------------------------------------------------|---------|---------
-`url`            | `string`      | URL to poll.                                             |         | yes
-`method`         | `string`      | Define HTTP method for the request                       | `"GET"` | no
-`headers`        | `map(string)` | Custom headers for the request.                          | `{}`    | no
-`poll_frequency` | `duration`    | Frequency to poll the URL.                               | `"1m"`  | no
-`poll_timeout`   | `duration`    | Timeout when polling the URL.                            | `"10s"` | no
-`is_secret`      | `bool`        | Whether the response body should be treated as a secret. | false   | no
+Name             | Type          | Description                                                  | Default | Required
+-----------------|---------------|--------------------------------------------------------------|---------|---------
+`url`            | `string`      | URL to poll.                                                 |         | yes
+`method`         | `string`      | Define HTTP method for the request                           | `"GET"` | no
+`headers`        | `map(string)` | Custom headers for the request.                              | `{}`    | no
+`poll_frequency` | `duration`    | Frequency to poll the URL.                                   | `"1m"`  | no
+`poll_timeout`   | `duration`    | Timeout when polling the URL.                                | `"10s"` | no
+`is_secret`      | `bool`        | Whether the response body should be treated as a [secret][]. | false   | no
 
-[secret]: {{< relref "../../concepts/config-language/expressions/types_and_values.md#secrets" >}}
+[secret]: ../../../concepts/config-language/expressions/types_and_values/#secrets
 
 ## Blocks
 

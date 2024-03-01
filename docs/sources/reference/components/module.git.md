@@ -98,7 +98,7 @@ The attributes provided in the `arguments` block are validated based on the
 * Attributes in the `argument` block of the module loader will be rejected if
   they are not defined in the module source.
 
-[argument blocks]: {{< relref "../config-blocks/argument.md" >}}
+[argument blocks]: ../../config-blocks/argument/
 
 ## Exported fields
 
@@ -114,7 +114,7 @@ from the parent config via `module.git.COMPONENT_LABEL.exports.EXPORT_LABEL`.
 Values in `exports` correspond to [export blocks][] defined in the module
 source.
 
-[export blocks]: {{< relref "../config-blocks/export.md" >}}
+[export blocks]: ../../config-blocks/export/
 
 ## Component health
 

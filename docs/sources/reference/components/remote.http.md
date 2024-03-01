@@ -27,15 +27,15 @@ remote.http "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`url` | `string` | URL to poll. | | yes
-`method` | `string` | Define HTTP method for the request | `"GET"` | no
-`headers` | `map(string)` | Custom headers for the request. | `{}` | no
-`body`    | `string`      | The request body. | `""` | no
-`poll_frequency` | `duration` | Frequency to poll the URL. | `"1m"` | no
-`poll_timeout` | `duration` | Timeout when polling the URL. | `"10s"` | no
-`is_secret` | `bool` | Whether the response body should be treated as a secret. | false | no
+Name             | Type          | Description                                              | Default | Required
+-----------------|---------------|----------------------------------------------------------|---------|---------
+`url`            | `string`      | URL to poll.                                             |         | yes
+`method`         | `string`      | Define HTTP method for the request                       | `"GET"` | no
+`headers`        | `map(string)` | Custom headers for the request.                          | `{}`    | no
+`body`           | `string`      | The request body.                                        | `""`    | no
+`poll_frequency` | `duration`    | Frequency to poll the URL.                               | `"1m"`  | no
+`poll_timeout`   | `duration`    | Timeout when polling the URL.                            | `"10s"` | no
+`is_secret`      | `bool`        | Whether the response body should be treated as a secret. | false   | no
 
 When `remote.http` performs a poll operation, an HTTP `GET` request is made
 against the URL specified by the `url` argument. A poll is triggered by the
@@ -49,20 +49,20 @@ The poll is successful if the URL returns a `200 OK` response code. All other
 response codes are treated as errors and mark the component as unhealthy. After
 a successful poll, the response body from the URL is exported.
 
-[secret]: {{< relref "../../concepts/config-language/expressions/types_and_values.md#secrets" >}}
+[secret]: ../../../concepts/config-language/expressions/types_and_values/#secrets
 
 ## Blocks
 
 The following blocks are supported inside the definition of `remote.http`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-client | [client][] | HTTP client settings when connecting to the endpoint. | no
-client > basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the endpoint. | no
-client > authorization | [authorization][] | Configure generic authorization to the endpoint. | no
-client > oauth2 | [oauth2][] | Configure OAuth2 for authenticating to the endpoint. | no
-client > oauth2 > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
-client > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
+Hierarchy                    | Block             | Description                                              | Required
+-----------------------------|-------------------|----------------------------------------------------------|---------
+client                       | [client][]        | HTTP client settings when connecting to the endpoint.    | no
+client > basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no
+client > authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no
+client > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no
+client > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
+client > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `client >
 basic_auth` refers to an `basic_auth` block defined inside a `client` block.
