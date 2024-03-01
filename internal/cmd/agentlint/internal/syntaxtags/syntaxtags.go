@@ -1,5 +1,5 @@
-// Package rivertags exposes an Analyzer which lints river tags.
-package rivertags
+// Package syntaxtags exposes an Analyzer which lints Alloy syntax tags.
+package syntaxtags
 
 import (
 	"fmt"
@@ -12,17 +12,17 @@ import (
 )
 
 var Analyzer = &analysis.Analyzer{
-	Name: "rivertags",
-	Doc:  "perform validation checks on River tags",
+	Name: "syntaxtags",
+	Doc:  "perform validation checks on Alloy syntax tags",
 	Run:  run,
 }
 
 var noLintRegex = regexp.MustCompile(`//\s*nolint:(\S+)`)
 
 var (
-	riverTagRegex = regexp.MustCompile(`river:"([^"]*)"`)
-	jsonTagRegex  = regexp.MustCompile(`json:"([^"]*)"`)
-	yamlTagRegex  = regexp.MustCompile(`yaml:"([^"]*)"`)
+	syntaxTagRegex = regexp.MustCompile(`river:"([^"]*)"`)
+	jsonTagRegex   = regexp.MustCompile(`json:"([^"]*)"`)
+	yamlTagRegex   = regexp.MustCompile(`yaml:"([^"]*)"`)
 )
 
 // Rules for river tag linting:
@@ -53,12 +53,12 @@ func run(p *analysis.Pass) (interface{}, error) {
 		sNode := sInfo.Node
 		s := sInfo.Type
 
-		var hasRiverTags bool
+		var hasSyntaxTags bool
 
 		for i := 0; i < s.NumFields(); i++ {
-			matches := riverTagRegex.FindAllStringSubmatch(s.Tag(i), -1)
+			matches := syntaxTagRegex.FindAllStringSubmatch(s.Tag(i), -1)
 			if len(matches) > 0 {
-				hasRiverTags = true
+				hasSyntaxTags = true
 				break
 			}
 		}
@@ -68,7 +68,7 @@ func run(p *analysis.Pass) (interface{}, error) {
 			field := s.Field(i)
 			nodeField := lookupField(sNode, i)
 
-			// Ignore fields with //nolint:rivertags in them.
+			// Ignore fields with //nolint:syntaxtags in them.
 			if comments := nodeField.Comment; comments != nil {
 				for _, comment := range comments.List {
 					if lintingDisabled(comment.Text) {
@@ -77,8 +77,8 @@ func run(p *analysis.Pass) (interface{}, error) {
 				}
 			}
 
-			matches := riverTagRegex.FindAllStringSubmatch(s.Tag(i), -1)
-			if len(matches) == 0 && hasRiverTags {
+			matches := syntaxTagRegex.FindAllStringSubmatch(s.Tag(i), -1)
+			if len(matches) == 0 && hasSyntaxTags {
 				// If this struct has River tags, but this field only has json/yaml
 				// tags, emit an error.
 				jsonMatches := jsonTagRegex.FindAllStringSubmatch(s.Tag(i), -1)
@@ -87,7 +87,7 @@ func run(p *analysis.Pass) (interface{}, error) {
 				if len(jsonMatches) > 0 || len(yamlMatches) > 0 {
 					p.Report(analysis.Diagnostic{
 						Pos:      field.Pos(),
-						Category: "rivertags",
+						Category: "syntaxtags",
 						Message:  "field has yaml or json tags, but no river tags",
 					})
 				}
@@ -98,7 +98,7 @@ func run(p *analysis.Pass) (interface{}, error) {
 			} else if len(matches) > 1 {
 				p.Report(analysis.Diagnostic{
 					Pos:      field.Pos(),
-					Category: "rivertags",
+					Category: "syntaxtags",
 					Message:  "field should not have more than one river tag",
 				})
 			}
@@ -107,14 +107,14 @@ func run(p *analysis.Pass) (interface{}, error) {
 			if field.Anonymous() {
 				p.Report(analysis.Diagnostic{
 					Pos:      field.Pos(),
-					Category: "rivertags",
+					Category: "syntaxtags",
 					Message:  "river tags may not be given to anonymous fields",
 				})
 			}
 			if !field.Exported() {
 				p.Report(analysis.Diagnostic{
 					Pos:      field.Pos(),
-					Category: "rivertags",
+					Category: "syntaxtags",
 					Message:  "river tags may only be given to exported fields",
 				})
 			}
@@ -122,17 +122,17 @@ func run(p *analysis.Pass) (interface{}, error) {
 				// Report "a, b, c int `river:"name,attr"`" as invalid usage.
 				p.Report(analysis.Diagnostic{
 					Pos:      field.Pos(),
-					Category: "rivertags",
+					Category: "syntaxtags",
 					Message:  "river tags should not be inserted on field names separated by commas",
 				})
 			}
 
 			for _, match := range matches {
-				diagnostics := lintRiverTag(field, match[1])
+				diagnostics := lintSyntaxTag(field, match[1])
 				for _, diag := range diagnostics {
 					p.Report(analysis.Diagnostic{
 						Pos:      field.Pos(),
-						Category: "rivertags",
+						Category: "syntaxtags",
 						Message:  diag,
 					})
 				}
@@ -149,7 +149,7 @@ func lintingDisabled(comment string) bool {
 	for _, match := range matches {
 		// Iterate over A,B,C by comma and see if our linter is included.
 		for _, disabledLinter := range strings.Split(match[1], ",") {
-			if disabledLinter == "rivertags" {
+			if disabledLinter == "syntaxtags" {
 				return true
 			}
 		}
@@ -216,7 +216,7 @@ type structInfo struct {
 	Type *types.Struct
 }
 
-func lintRiverTag(ty *types.Var, tag string) (diagnostics []string) {
+func lintSyntaxTag(ty *types.Var, tag string) (diagnostics []string) {
 	if tag == "" {
 		diagnostics = append(diagnostics, "river tag should not be empty")
 		return
@@ -319,7 +319,7 @@ var fieldNameRegex = regexp.MustCompile("^[a-z][a-z0-9_]*$")
 
 func validateFieldName(name string) (diagnostics []string) {
 	if !fieldNameRegex.MatchString(name) {
-		msg := fmt.Sprintf("%q must be a valid river snake_case identifier", name)
+		msg := fmt.Sprintf("%q must be a valid syntax snake_case identifier", name)
 		diagnostics = append(diagnostics, msg)
 	}
 

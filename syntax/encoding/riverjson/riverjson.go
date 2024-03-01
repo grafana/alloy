@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/grafana/river/internal/reflectutil"
-	"github.com/grafana/river/internal/rivertags"
+	"github.com/grafana/river/internal/syntaxtags"
 	"github.com/grafana/river/internal/value"
 	"github.com/grafana/river/token/builder"
 )
@@ -39,7 +39,7 @@ func encodeStructAsBody(rv reflect.Value) jsonBody {
 
 	switch rv.Kind() {
 	case reflect.Struct:
-		fields := rivertags.Get(rv.Type())
+		fields := syntaxtags.Get(rv.Type())
 		defaults := reflect.New(rv.Type()).Elem()
 		if defaults.CanAddr() && defaults.Addr().Type().Implements(goRiverDefaulter) {
 			defaults.Addr().Interface().(value.Defaulter).SetToDefault()
@@ -85,7 +85,7 @@ func encodeStructAsBody(rv reflect.Value) jsonBody {
 // encodeFieldAsStatements encodes an individual field from a struct as a set
 // of statements. One field may map to multiple statements in the case of a
 // slice of blocks.
-func encodeFieldAsStatements(prefix []string, field rivertags.Field, fieldValue reflect.Value) []jsonStatement {
+func encodeFieldAsStatements(prefix []string, field syntaxtags.Field, fieldValue reflect.Value) []jsonStatement {
 	fieldName := strings.Join(field.Name, ".")
 
 	for fieldValue.Kind() == reflect.Pointer {
@@ -204,9 +204,9 @@ func mergeStringSlice(a, b []string) []string {
 
 // getBlockLabel returns the label for a given block.
 func getBlockLabel(rv reflect.Value) string {
-	tags := rivertags.Get(rv.Type())
+	tags := syntaxtags.Get(rv.Type())
 	for _, tag := range tags {
-		if tag.Flags&rivertags.FlagLabel != 0 {
+		if tag.Flags&syntaxtags.FlagLabel != 0 {
 			return reflectutil.Get(rv, tag).String()
 		}
 	}
@@ -222,7 +222,7 @@ func encodeEnumElementToStatements(prefix []string, enumElement reflect.Value) [
 		enumElement = enumElement.Elem()
 	}
 
-	fields := rivertags.Get(enumElement.Type())
+	fields := syntaxtags.Get(enumElement.Type())
 
 	statements := []jsonStatement{}
 

@@ -4,13 +4,13 @@ package main
 
 import (
 	"github.com/grafana/agent/internal/cmd/agentlint/internal/findcomponents"
-	"github.com/grafana/agent/internal/cmd/agentlint/internal/rivertags"
+	"github.com/grafana/agent/internal/cmd/agentlint/internal/syntaxtags"
 	"golang.org/x/tools/go/analysis/multichecker"
 )
 
 func main() {
 	multichecker.Main(
 		findcomponents.Analyzer,
-		rivertags.Analyzer,
+		syntaxtags.Analyzer,
 	)
 }

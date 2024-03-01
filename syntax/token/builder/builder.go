@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/grafana/river/internal/reflectutil"
-	"github.com/grafana/river/internal/rivertags"
+	"github.com/grafana/river/internal/syntaxtags"
 	"github.com/grafana/river/internal/value"
 	"github.com/grafana/river/token"
 )
@@ -156,9 +156,9 @@ func (b *Body) AppendFrom(goValue interface{}) {
 
 // getBlockLabel returns the label for a given block.
 func getBlockLabel(rv reflect.Value) string {
-	tags := rivertags.Get(rv.Type())
+	tags := syntaxtags.Get(rv.Type())
 	for _, tag := range tags {
-		if tag.Flags&rivertags.FlagLabel != 0 {
+		if tag.Flags&syntaxtags.FlagLabel != 0 {
 			return reflectutil.Get(rv, tag).String()
 		}
 	}
@@ -177,7 +177,7 @@ func (b *Body) encodeFields(rv reflect.Value) {
 		panic(fmt.Sprintf("syntax/token/builder: can only encode struct values to bodies, got %s", rv.Type()))
 	}
 
-	fields := rivertags.Get(rv.Type())
+	fields := syntaxtags.Get(rv.Type())
 	defaults := reflect.New(rv.Type()).Elem()
 	if defaults.CanAddr() && defaults.Addr().Type().Implements(goRiverDefaulter) {
 		defaults.Addr().Interface().(value.Defaulter).SetToDefault()
@@ -202,7 +202,7 @@ func (b *Body) encodeFields(rv reflect.Value) {
 	}
 }
 
-func (b *Body) encodeField(prefix []string, field rivertags.Field, fieldValue reflect.Value) {
+func (b *Body) encodeField(prefix []string, field syntaxtags.Field, fieldValue reflect.Value) {
 	fieldName := strings.Join(field.Name, ".")
 
 	for fieldValue.Kind() == reflect.Pointer {
@@ -243,7 +243,7 @@ func (b *Body) encodeField(prefix []string, field rivertags.Field, fieldValue re
 				// Recursively call encodeField for each element in the slice/array for
 				// non-zero blocks. The recursive call will hit the case below and add
 				// a new block for each field encountered.
-				if field.Flags&rivertags.FlagOptional != 0 && elem.IsZero() {
+				if field.Flags&syntaxtags.FlagOptional != 0 && elem.IsZero() {
 					continue
 				}
 				b.encodeField(prefix, field, elem)
@@ -293,7 +293,7 @@ func (b *Body) encodeEnumElement(prefix []string, enumElement reflect.Value) {
 		enumElement = enumElement.Elem()
 	}
 
-	fields := rivertags.Get(enumElement.Type())
+	fields := syntaxtags.Get(enumElement.Type())
 
 	// Find the first non-zero field and encode it.
 	for _, field := range fields {

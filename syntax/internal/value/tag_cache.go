@@ -3,7 +3,7 @@ package value
 import (
 	"reflect"
 
-	"github.com/grafana/river/internal/rivertags"
+	"github.com/grafana/river/internal/syntaxtags"
 )
 
 // tagsCache caches the river tags for a struct type. This is never cleared,
@@ -20,17 +20,17 @@ func getCachedTags(t reflect.Type) *objectFields {
 		return entry
 	}
 
-	ff := rivertags.Get(t)
+	ff := syntaxtags.Get(t)
 
 	// Build a tree of keys.
 	tree := &objectFields{
-		fields:       make(map[string]rivertags.Field),
+		fields:       make(map[string]syntaxtags.Field),
 		nestedFields: make(map[string]*objectFields),
 		keys:         []string{},
 	}
 
 	for _, f := range ff {
-		if f.Flags&rivertags.FlagLabel != 0 {
+		if f.Flags&syntaxtags.FlagLabel != 0 {
 			// Skip over label tags.
 			tree.labelField = f
 			continue
@@ -52,7 +52,7 @@ func getCachedTags(t reflect.Type) *objectFields {
 			inner, ok := node.nestedFields[name]
 			if !ok {
 				inner = &objectFields{
-					fields:       make(map[string]rivertags.Field),
+					fields:       make(map[string]syntaxtags.Field),
 					nestedFields: make(map[string]*objectFields),
 					keys:         []string{},
 				}
@@ -66,14 +66,14 @@ func getCachedTags(t reflect.Type) *objectFields {
 	return tree
 }
 
-// objectFields is a parsed tree of fields in rivertags. It forms a tree where
+// objectFields is a parsed tree of fields in syntaxtags. It forms a tree where
 // leaves are nested fields (e.g., for block names that have multiple name
 // fragments) and nodes are the fields themselves.
 type objectFields struct {
-	fields       map[string]rivertags.Field
+	fields       map[string]syntaxtags.Field
 	nestedFields map[string]*objectFields
 	keys         []string // Combination of fields + nestedFields
-	labelField   rivertags.Field
+	labelField   syntaxtags.Field
 }
 
 type objectKeyType int
@@ -103,7 +103,7 @@ func (of *objectFields) Len() int { return len(of.keys) }
 func (of *objectFields) Keys() []string { return of.keys }
 
 // Field gets a non-nested field. Returns false if name is a nested field.
-func (of *objectFields) Field(name string) (rivertags.Field, bool) {
+func (of *objectFields) Field(name string) (syntaxtags.Field, bool) {
 	f, ok := of.fields[name]
 	return f, ok
 }
@@ -116,6 +116,6 @@ func (of *objectFields) NestedField(name string) (*objectFields, bool) {
 }
 
 // LabelField returns the field used for the label (if any).
-func (of *objectFields) LabelField() (rivertags.Field, bool) {
+func (of *objectFields) LabelField() (syntaxtags.Field, bool) {
 	return of.labelField, of.labelField.Index != nil
 }

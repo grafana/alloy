@@ -3,12 +3,12 @@ package reflectutil
 import (
 	"reflect"
 
-	"github.com/grafana/river/internal/rivertags"
+	"github.com/grafana/river/internal/syntaxtags"
 )
 
 // GetOrAlloc returns the nested field of value corresponding to index.
 // GetOrAlloc panics if not given a struct.
-func GetOrAlloc(value reflect.Value, field rivertags.Field) reflect.Value {
+func GetOrAlloc(value reflect.Value, field syntaxtags.Field) reflect.Value {
 	return GetOrAllocIndex(value, field.Index)
 }
 
@@ -51,7 +51,7 @@ func deferencePointer(value reflect.Value) reflect.Value {
 // It is similar to [reflect/Value.FieldByIndex] but can handle traversing
 // through nil pointers. If Get traverses through a nil pointer, a non-settable
 // zero value for the final field is returned.
-func Get(value reflect.Value, field rivertags.Field) reflect.Value {
+func Get(value reflect.Value, field syntaxtags.Field) reflect.Value {
 	if len(field.Index) == 1 {
 		return value.Field(field.Index[0])
 	}

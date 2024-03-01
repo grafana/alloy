@@ -9,8 +9,8 @@ import (
 	"github.com/grafana/river/ast"
 	"github.com/grafana/river/diag"
 	"github.com/grafana/river/internal/reflectutil"
-	"github.com/grafana/river/internal/rivertags"
 	"github.com/grafana/river/internal/stdlib"
+	"github.com/grafana/river/internal/syntaxtags"
 	"github.com/grafana/river/internal/value"
 )
 
@@ -228,13 +228,13 @@ func (vm *Evaluator) evaluateMap(scope *Scope, assoc map[value.Value]ast.Node, n
 	return nil
 }
 
-func (vm *Evaluator) evaluateBlockLabel(node *ast.BlockStmt, tfs []rivertags.Field, rv reflect.Value) error {
+func (vm *Evaluator) evaluateBlockLabel(node *ast.BlockStmt, tfs []syntaxtags.Field, rv reflect.Value) error {
 	var (
-		labelField rivertags.Field
+		labelField syntaxtags.Field
 		foundField bool
 	)
 	for _, tf := range tfs {
-		if tf.Flags&rivertags.FlagLabel != 0 {
+		if tf.Flags&syntaxtags.FlagLabel != 0 {
 			labelField = tf
 			foundField = true
 			break

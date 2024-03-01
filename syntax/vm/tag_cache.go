@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grafana/river/internal/rivertags"
+	"github.com/grafana/river/internal/syntaxtags"
 )
 
 // tagsCache caches the river tags for a struct type. This is never cleared,
@@ -22,10 +22,10 @@ func getCachedTagInfo(t reflect.Type) *tagInfo {
 		return entry.(*tagInfo)
 	}
 
-	tfs := rivertags.Get(t)
+	tfs := syntaxtags.Get(t)
 	ti := &tagInfo{
 		Tags:       tfs,
-		TagLookup:  make(map[string]rivertags.Field, len(tfs)),
+		TagLookup:  make(map[string]syntaxtags.Field, len(tfs)),
 		EnumLookup: make(map[string]enumBlock), // The length is not known ahead of time
 	}
 
@@ -66,8 +66,8 @@ func deferenceType(ty reflect.Type) reflect.Type {
 }
 
 type tagInfo struct {
-	Tags      []rivertags.Field
-	TagLookup map[string]rivertags.Field
+	Tags      []syntaxtags.Field
+	TagLookup map[string]syntaxtags.Field
 
 	// EnumLookup maps enum blocks to the enum field. For example, an enum block
 	// called "foo.foo" and "foo.bar" will both map to the "foo" enum field.
@@ -75,6 +75,6 @@ type tagInfo struct {
 }
 
 type enumBlock struct {
-	EnumField  rivertags.Field // Field in the parent struct of the enum slice
-	BlockField rivertags.Field // Field in the enum struct for the enum block
+	EnumField  syntaxtags.Field // Field in the parent struct of the enum slice
+	BlockField syntaxtags.Field // Field in the enum struct for the enum block
 }
