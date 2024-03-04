@@ -1,25 +1,22 @@
-<p align="center"><img src="docs/sources/assets/logo_and_name.png" alt="Grafana Agent logo"></p>
+<p align="center"><img src="docs/sources/assets/logo_and_name.png" alt="Grafana Alloy logo"></p>
 
-Grafana Agent is a vendor-neutral, batteries-included telemetry collector with
+[Grafana Alloy][] is a vendor-neutral, batteries-included telemetry collector with
 configuration inspired by [Terraform][]. It is designed to be flexible,
 performant, and compatible with multiple ecosystems such as Prometheus and
 OpenTelemetry.
 
-Grafana Agent is based around **components**. Components are wired together to
+Grafana Alloy is based around **components**. Components are wired together to
 form programmable observability **pipelines** for telemetry collection,
 processing, and delivery.
 
-> **NOTE**: This page focuses mainly on "[Flow mode][Grafana Agent Flow]," the
-> Terraform-inspired revision of Grafana Agent.
-
-Grafana Agent can collect, transform, and send data to:
+Grafana Alloy can collect, transform, and send data to:
 
 * The [Prometheus][] ecosystem
 * The [OpenTelemetry][] ecosystem
 * The Grafana open source ecosystem ([Loki][], [Grafana][], [Tempo][], [Mimir][], [Pyroscope][])
 
 [Terraform]: https://terraform.io
-[Grafana Agent Flow]: https://grafana.com/docs/agent/latest/flow/
+[Grafana Alloy]: https://grafana.com/docs/alloy/latest/
 [Prometheus]: https://prometheus.io
 [OpenTelemetry]: https://opentelemetry.io
 [Loki]: https://github.com/grafana/loki
@@ -28,7 +25,7 @@ Grafana Agent can collect, transform, and send data to:
 [Mimir]: https://github.com/grafana/mimir
 [Pyroscope]: https://github.com/grafana/pyroscope
 
-## Why use Grafana Agent?
+## Why use Grafana Alloy?
 
 * **Vendor-neutral**: Fully compatible with the Prometheus, OpenTelemetry, and
   Grafana open source ecosystems.
@@ -36,29 +33,28 @@ Grafana Agent can collect, transform, and send data to:
   continuous profiles.
 * **Scalable**: Deploy on any number of machines to collect millions of active
   series and terabytes of logs.
-* **Battle-tested**: Grafana Agent extends the existing battle-tested code from
+* **Battle-tested**: Grafana Alloy extends the existing battle-tested code from
   the Prometheus and OpenTelemetry Collector projects.
 * **Powerful**: Write programmable pipelines with ease, and debug them using a
   [built-in UI][UI].
 * **Batteries included**: Integrate with systems like MySQL, Kubernetes, and
   Apache to get telemetry that's immediately useful.
 
-[UI]: https://grafana.com/docs/agent/latest/flow/monitoring/debugging/#grafana-agent-flow-ui
+[UI]: https://grafana.com/docs/alloy/latest/tasks/debug/#grafana-alloy-ui
 
 ## Getting started
 
 Check out our [documentation][] to see:
 
-* [Installation instructions][] for Grafana Agent Flow
-* Details about [Grafana Agent Flow][]
-* Steps for [Getting started][] with Grafana Agent Flow
-* The list of Grafana Agent Flow [Components][]
+* [Installation instructions][] for Grafana Alloy
+* Details about [Grafana Alloy][documentation]
+* Steps for [Getting started][] with Grafana Alloy
+* The list of Grafana Alloy [Components][]
 
-[documentation]: https://grafana.com/docs/agent/latest/
-[Installation instructions]: https://grafana.com/docs/agent/latest/flow/setup/install/
-[Grafana Agent Flow]: https://grafana.com/docs/agent/latest/flow/
-[Getting started]: https://grafana.com/docs/agent/latest/flow/getting_started/
-[Components]: https://grafana.com/docs/agent/latest/flow/reference/components/
+[documentation]: https://grafana.com/docs/alloy/
+[Installation instructions]: https://grafana.com/docs/alloy/latest/setup/install/
+[Getting started]: https://grafana.com/docs/alloy/latest/getting_started/
+[Components]: https://grafana.com/docs/alloy/latest/reference/components/
 
 ## Example
 
@@ -94,7 +90,7 @@ prometheus.remote_write "default" {
 ```
 
 We maintain an example [Docker Compose environment][] that can be used to
-launch dependencies to play with Grafana Agent locally.
+launch dependencies to play with Grafana Alloy locally.
 
 [Docker Compose environment]: ./example/docker-compose/
 
@@ -110,17 +106,17 @@ Patch and security releases may be created at any time.
 
 ## Community
 
-To engage with the Grafana Agent community:
+To engage with the Grafana Alloy community:
 
 * Chat with us on our community Slack channel. To invite yourself to the
-  Grafana Slack, visit <https://slack.grafana.com/> and join the `#agent`
+  Grafana Slack, visit <https://slack.grafana.com/> and join the `#alloy`
   channel.
 * Ask questions on the [Discussions page][].
 * [File an issue][] for bugs, issues, and feature suggestions.
 * Attend the monthly [community call][].
 
-[Discussions page]: https://github.com/grafana/agent/discussions
-[File an issue]: https://github.com/grafana/agent/issues/new
+[Discussions page]: https://github.com/grafana/alloy/discussions
+[File an issue]: https://github.com/grafana/alloy/issues/new
 [community call]: https://docs.google.com/document/d/1TqaZD1JPfNadZ4V81OCBPCG_TksDYGlNlGdMnTWUSpo
 
 ## Contribute
