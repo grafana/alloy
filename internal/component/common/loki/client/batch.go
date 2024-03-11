@@ -61,7 +61,7 @@ func newBatch(maxStreams int, entries ...loki.Entry) *batch {
 
 // add an entry to the batch
 func (b *batch) add(entry loki.Entry) error {
-	b.totalBytes += len(entry.Line)
+	b.totalBytes += entrySize(entry.Entry)
 
 	// Append the entry to an already existing stream (if any)
 	labels := labelsMapToString(entry.Labels, ReservedLabelTenantID)
@@ -150,8 +150,8 @@ func (b *batch) sizeBytes() int {
 
 // sizeBytesAfter returns the size of the batch after the input entry
 // will be added to the batch itself
-func (b *batch) sizeBytesAfter(line string) int {
-	return b.totalBytes + len(line)
+func (b *batch) sizeBytesAfter(entry logproto.Entry) int {
+	return b.totalBytes + entrySize(entry)
 }
 
 // age of the batch since its creation
@@ -200,4 +200,12 @@ func (b *batch) reportAsSentData(h SentDataMarkerHandler) {
 	for seg, data := range b.segmentCounter {
 		h.UpdateSentData(seg, data)
 	}
+}
+
+func entrySize(entry logproto.Entry) int {
+	structuredMetadataSize := 0
+	for _, label := range entry.StructuredMetadata {
+		structuredMetadataSize += label.Size()
+	}
+	return len(entry.Line) + structuredMetadataSize
 }

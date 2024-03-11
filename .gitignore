@@ -17,6 +17,7 @@ data-agent
 /dist.temp/
 /packaging/windows/LICENSE
 /packaging/windows/agent-windows-amd64.exe
+web/ui/build
 
 .DS_Store
 buildx-v*

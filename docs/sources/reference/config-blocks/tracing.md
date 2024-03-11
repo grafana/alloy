@@ -82,8 +82,7 @@ Name               | Type       | Description                                   
 `max_operations`   | `number`   | Limit number of operations which can have custom sampling. | `256`                              | no
 `refresh_interval` | `duration` | Frequency to poll the URL for new sampling strategies.     | `"1m"`                             | no
 
-The remote sampling strategies are retrieved from the URL specified by the `url` argument, and polled for updates on a timer.
-The frequency for how often polling occurs is controlled by the `refresh_interval` argument.
+The remote sampling strategies are retrieved from the URL specified by the `url` argument, and polled for updates on a timer. The frequency for how often polling occurs is controlled by the `refresh_interval` argument.
 
 Name               | Type           | Description                                                      | Default | Required
 -------------------|----------------|------------------------------------------------------------------|---------|---------

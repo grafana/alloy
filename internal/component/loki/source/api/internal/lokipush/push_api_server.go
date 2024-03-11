@@ -185,7 +185,9 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 			e := loki.Entry{
 				Labels: filtered.Clone(),
 				Entry: logproto.Entry{
-					Line: entry.Line,
+					Line:               entry.Line,
+					StructuredMetadata: entry.StructuredMetadata,
+					Parsed:             entry.Parsed,
 				},
 			}
 			if keepTimestamp {

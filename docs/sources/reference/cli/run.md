@@ -68,7 +68,7 @@ Components that are no longer defined in the configuration file after reloading 
 
 All components managed by the component controller are reevaluated after reloading.
 
-## Clustering (beta)
+## Clustering
 
 The `--cluster.enabled` command-line argument starts {{< param "PRODUCT_ROOT_NAME" >}} in [clustering][] mode.
 The rest of the `--cluster.*` command-line flags can be used to configure how nodes discover and connect to one another.

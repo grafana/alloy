@@ -23,6 +23,7 @@ import (
 	frelabel "github.com/grafana/agent/internal/component/common/relabel"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/river"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
@@ -79,6 +80,10 @@ regex = "dropme"
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(int64(i), 0),
 				Line:      "line" + strconv.Itoa(i),
+				StructuredMetadata: push.LabelsAdapter{
+					{Name: "i", Value: strconv.Itoa(i)},
+					{Name: "anotherMetaData", Value: "val"},
+				},
 			},
 		}
 	}
@@ -98,8 +103,17 @@ regex = "dropme"
 		"pushserver": "pushserver1",
 		"stream":     "stream1",
 	}
+
+	expectedStructuredMetadata := push.LabelsAdapter{
+		{Name: "i", Value: strconv.Itoa(0)},
+		{Name: "anotherMetaData", Value: "val"},
+	}
+
 	// Spot check the first value in the result to make sure relabel rules were applied properly
 	require.Equal(t, expectedLabels, eh.Received()[0].Labels)
+
+	// Spot check the first value in the result to make sure structured metadata was received properly
+	require.Equal(t, expectedStructuredMetadata, eh.Received()[0].StructuredMetadata)
 
 	// With keep timestamp enabled, verify timestamp
 	require.Equal(t, time.Unix(99, 0).Unix(), eh.Received()[99].Timestamp.Unix())

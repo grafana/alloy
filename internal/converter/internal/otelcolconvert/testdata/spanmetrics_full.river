@@ -1,0 +1,49 @@
+otelcol.receiver.otlp "default_traces" {
+	grpc { }
+
+	http { }
+
+	output {
+		metrics = [otelcol.exporter.otlp.default_metrics_backend.input]
+		logs    = []
+		traces  = [otelcol.exporter.otlp.default_traces_backend.input, otelcol.connector.spanmetrics.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default_metrics_backend" {
+	client {
+		endpoint = "database:44317"
+	}
+}
+
+otelcol.exporter.otlp "default_traces_backend" {
+	client {
+		endpoint = "database:34317"
+	}
+}
+
+otelcol.connector.spanmetrics "default" {
+	histogram {
+		explicit { }
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default_metrics_backend.input]
+	}
+}
+
+otelcol.exporter.otlp "foo_metrics_backend_two" {
+	client {
+		endpoint = "database:54317"
+	}
+}
+
+otelcol.connector.spanmetrics "foo_default" {
+	histogram {
+		explicit { }
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.foo_metrics_backend_two.input]
+	}
+}

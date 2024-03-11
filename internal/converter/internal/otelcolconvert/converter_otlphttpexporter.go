@@ -2,10 +2,12 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/agent/internal/component/otelcol"
+	"github.com/grafana/agent/internal/component/otelcol/auth"
 	"github.com/grafana/agent/internal/component/otelcol/exporter/otlphttp"
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
@@ -32,9 +34,17 @@ func (otlpHTTPExporterConverter) ConvertAndAppend(state *state, id component.Ins
 	var diags diag.Diagnostics
 
 	label := state.FlowComponentLabel()
+	overrideHook := func(val interface{}) interface{} {
+		switch val.(type) {
+		case auth.Handler:
+			ext := state.LookupExtension(cfg.(*otlphttpexporter.Config).Auth.AuthenticatorID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		}
+		return val
+	}
 
 	args := toOtelcolExporterOTLPHTTP(cfg.(*otlphttpexporter.Config))
-	block := common.NewBlockWithOverride([]string{"otelcol", "exporter", "otlphttp"}, label, args)
+	block := common.NewBlockWithOverrideFn([]string{"otelcol", "exporter", "otlphttp"}, label, args, overrideHook)
 
 	diags.Add(
 		diag.SeverityLevelInfo,
@@ -55,6 +65,11 @@ func toOtelcolExporterOTLPHTTP(cfg *otlphttpexporter.Config) *otlphttp.Arguments
 }
 
 func toHTTPClientArguments(cfg confighttp.HTTPClientSettings) otelcol.HTTPClientArguments {
+	var a *auth.Handler
+	if cfg.Auth != nil {
+		a = &auth.Handler{}
+	}
+
 	var mic *int
 	var ict *time.Duration
 	defaults := confighttp.NewDefaultHTTPClientSettings()
@@ -79,6 +94,6 @@ func toHTTPClientArguments(cfg confighttp.HTTPClientSettings) otelcol.HTTPClient
 		IdleConnTimeout:     ict,
 		DisableKeepAlives:   cfg.DisableKeepAlives,
 
-		// TODO(@tpaschalis): auth extension
+		Auth: a,
 	}
 }

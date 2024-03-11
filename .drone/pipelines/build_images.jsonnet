@@ -36,7 +36,7 @@ local locals = {
         'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
         'docker run --rm --privileged multiarch/qemu-user-static --reset -p yes',
         'docker buildx create --name multiarch --driver docker-container --use',
-        'docker buildx build --build-arg="GO_RUNTIME=golang:1.22.0-bullseye" --push --platform linux/amd64,linux/arm64 -t grafana/agent-build-image:$IMAGE_TAG ./build-image',
+        'docker buildx build --build-arg="GO_RUNTIME=golang:1.22.1-bullseye" --push --platform linux/amd64,linux/arm64 -t grafana/agent-build-image:$IMAGE_TAG ./build-image',
       ],
     }],
     volumes: [{
@@ -59,7 +59,7 @@ local locals = {
         'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
         'docker run --rm --privileged multiarch/qemu-user-static --reset -p yes',
         'docker buildx create --name multiarch --driver docker-container --use',
-        'docker buildx build --build-arg="GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.22-bullseye" --push --platform linux/amd64,linux/arm64 -t grafana/agent-build-image:$IMAGE_TAG ./build-image',
+        'docker buildx build --build-arg="GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.22.1-bullseye" --push --platform linux/amd64,linux/arm64 -t grafana/agent-build-image:$IMAGE_TAG ./build-image',
       ],
     }],
     volumes: [{

@@ -1,6 +1,7 @@
 package otelcolconvert
 
 import (
+	"cmp"
 	"fmt"
 
 	"go.opentelemetry.io/collector/component"
@@ -95,7 +96,12 @@ func createPipelineGroups(cfg pipelines.Config) ([]pipelineGroup, error) {
 		groups[key] = group
 	}
 
-	return maps.Values(groups), nil
+	res := maps.Values(groups)
+	slices.SortStableFunc(res, func(a, b pipelineGroup) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
+
+	return res, nil
 }
 
 // Receivers returns a set of unique IDs for receivers across all telemetry
@@ -168,9 +174,9 @@ func (group pipelineGroup) NextTraces(fromID component.InstanceID) []component.I
 
 func nextInPipeline(pipeline *pipelines.PipelineConfig, fromID component.InstanceID) []component.InstanceID {
 	switch fromID.Kind {
-	case component.KindReceiver:
-		// Receivers should either send to the first processor if one exists or to
-		// every exporter otherwise.
+	case component.KindReceiver, component.KindConnector:
+		// Receivers and connectors should either send to the first processor
+		// if one exists or to every exporter otherwise.
 		if len(pipeline.Processors) > 0 {
 			return []component.InstanceID{{Kind: component.KindProcessor, ID: pipeline.Processors[0]}}
 		}
@@ -180,10 +186,6 @@ func nextInPipeline(pipeline *pipelines.PipelineConfig, fromID component.Instanc
 		// Processors should send to the next processor if one exists or to every
 		// exporter otherwise.
 		processorIndex := slices.Index(pipeline.Processors, fromID.ID)
-		if processorIndex == -1 {
-			panic("nextInPipeline: received processor ID not in processor list")
-		}
-
 		if processorIndex+1 < len(pipeline.Processors) {
 			// Send to next processor.
 			return []component.InstanceID{{Kind: component.KindProcessor, ID: pipeline.Processors[processorIndex+1]}}

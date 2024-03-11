@@ -103,13 +103,13 @@ func TestModule(t *testing.T) {
 			name:                  "Duplicate argument config",
 			argumentModuleContent: argumentConfig + argumentConfig,
 			exportModuleContent:   exportStringConfig,
-			expectedErrorContains: "\"argument.username\" block already declared",
+			expectedErrorContains: "block argument.username already declared at t1:2:2",
 		},
 		{
 			name:                  "Duplicate export config",
 			argumentModuleContent: argumentConfig,
 			exportModuleContent:   exportStringConfig + exportStringConfig,
-			expectedErrorContains: "\"export.username\" block already declared",
+			expectedErrorContains: "block export.username already declared at t1:7:2",
 		},
 		{
 			name:                "Multiple exports but none are used but still exported",

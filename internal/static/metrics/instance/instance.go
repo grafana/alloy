@@ -409,7 +409,7 @@ func (i *Instance) initialize(ctx context.Context, reg prometheus.Registerer, cf
 		return fmt.Errorf("error creating WAL: %w", err)
 	}
 
-	i.writeHandler = remote.NewWriteHandler(i.logger, i.reg, i.wal)
+	i.writeHandler = remote.NewWriteHandler(i.logger, reg, i.wal)
 
 	i.discovery, err = i.newDiscoveryManager(ctx, cfg)
 	if err != nil {

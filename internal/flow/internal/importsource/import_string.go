@@ -14,12 +14,12 @@ import (
 type ImportString struct {
 	arguments       component.Arguments
 	eval            *vm.Evaluator
-	onContentChange func(string)
+	onContentChange func(map[string]string)
 }
 
 var _ ImportSource = (*ImportString)(nil)
 
-func NewImportString(eval *vm.Evaluator, onContentChange func(string)) *ImportString {
+func NewImportString(eval *vm.Evaluator, onContentChange func(map[string]string)) *ImportString {
 	return &ImportString{
 		eval:            eval,
 		onContentChange: onContentChange,
@@ -42,7 +42,7 @@ func (im *ImportString) Evaluate(scope *vm.Scope) error {
 	im.arguments = arguments
 
 	// notifies that the content has changed
-	im.onContentChange(arguments.Content.Value)
+	im.onContentChange(map[string]string{"import_string": arguments.Content.Value})
 
 	return nil
 }
@@ -57,4 +57,9 @@ func (im *ImportString) CurrentHealth() component.Health {
 	return component.Health{
 		Health: component.HealthTypeHealthy,
 	}
+}
+
+// Update the evaluator.
+func (im *ImportString) SetEval(eval *vm.Evaluator) {
+	im.eval = eval
 }

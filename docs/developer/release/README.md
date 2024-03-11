@@ -18,6 +18,7 @@ Once a release is scheduled, a release shepherd is determined. This person will 
 responsible for ownership of the following workflows:
 
 ## Release Candidate Publish
+0. [Ensure our OpenTelemetry Collector dependency has been updated](./0-ensure-otel-dep-updated.md)
 1. [Create Release Branch](./1-create-release-branch.md)
 2. [Cherry Pick Commits](./2-cherry-pick-commits.md)
 3. [Update Version in Code](./3-update-version-in-code.md)

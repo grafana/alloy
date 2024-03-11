@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/buger/jsonparser"
 	"github.com/go-kit/log"
 	"github.com/grafana/agent/internal/component/common/loki"
 	"github.com/grafana/agent/internal/component/common/loki/positions"
@@ -21,6 +20,7 @@ import (
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/multierror"
+	"github.com/grafana/jsonparser"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"

@@ -45,8 +45,6 @@ type Config struct {
 	// prevent HOL blocking in multitenant deployments.
 	DropRateLimitedBatches bool `yaml:"drop_rate_limited_batches"`
 
-	StreamLagLabels flagext.StringSliceCSV `yaml:"stream_lag_labels" doc:"deprecated"`
-
 	// Queue controls configuration parameters specific to the queue client
 	Queue QueueConfig
 }

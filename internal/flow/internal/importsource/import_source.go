@@ -32,11 +32,13 @@ type ImportSource interface {
 	Run(ctx context.Context) error
 	// CurrentHealth returns the current Health status of the running source.
 	CurrentHealth() component.Health
+	// Update evaluator
+	SetEval(eval *vm.Evaluator)
 }
 
 // NewImportSource creates a new ImportSource depending on the type.
 // onContentChange is used by the source when it receives new content.
-func NewImportSource(sourceType SourceType, managedOpts component.Options, eval *vm.Evaluator, onContentChange func(string)) ImportSource {
+func NewImportSource(sourceType SourceType, managedOpts component.Options, eval *vm.Evaluator, onContentChange func(map[string]string)) ImportSource {
 	switch sourceType {
 	case File:
 		return NewImportFile(managedOpts, eval, onContentChange)

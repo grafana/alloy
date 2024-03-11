@@ -1,0 +1,42 @@
+Import folder with passthrough, on update replace the file by another one.
+
+-- main.river --
+testcomponents.count "inc" {
+	frequency = "10ms"
+	max = 10
+}
+
+import.file "testImport" {
+	filename = "tmpTest"
+}
+
+testImport.a "cc" {
+	input = testcomponents.count.inc.count
+}
+
+testcomponents.summation "sum" {
+	input = testImport.a.cc.output
+}
+
+-- removed.river --
+declare "a" {
+	argument "input" {}
+
+	testcomponents.passthrough "pt" {
+		input = argument.input.value
+		lag = "1ms"
+	}
+
+	export "output" {
+		value = testcomponents.passthrough.pt.output
+	}
+}
+
+-- added.river --
+declare "a" {
+	argument "input" {}
+
+	export "output" {
+		value = -argument.input.value
+	}
+}

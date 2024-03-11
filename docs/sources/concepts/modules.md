@@ -28,8 +28,7 @@ You can't import a module that contains top-level blocks other than `declare` or
 
 Modules are imported into a _namespace_ where the top-level custom components of the imported module are exposed to the importing module.
 The label of the import block specifies the namespace of an import.
-For example, if a configuration contains a block called `import.file "my_module"`, then custom components defined by that module are exposed as `my_module.CUSTOM_COMPONENT_NAME`.
-Imported namespaces must be unique across a given importing module.
+For example, if a configuration contains a block called `import.file "my_module"`, then custom components defined by that module are exposed as `my_module.CUSTOM_COMPONENT_NAME`. Imported namespaces must be unique across a given importing module.
 
 If an import namespace matches the name of a built-in component namespace, such as `prometheus`, the built-in namespace is hidden from the importing module, and only components defined in the imported module may be used.
 

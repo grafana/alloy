@@ -210,6 +210,111 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 	}, 3*time.Second, 10*time.Millisecond)
 }
 
+func TestUpdates_ReloadConfig(t *testing.T) {
+	// We use this module in a Flow config below.
+	module := `
+	argument "input" {
+		optional = false
+	}
+
+	testcomponents.passthrough "pt" {
+		input = argument.input.value
+		lag = "1ms"
+	}
+
+	export "output" {
+		value = testcomponents.passthrough.pt.output
+	}
+`
+
+	// We send the count increments via module and to the summation component and verify that the updates propagate.
+	config := `
+	testcomponents.count "inc" {
+		frequency = "10ms"
+		max = 10
+	}
+
+	module.string "test" {
+		content = ` + strconv.Quote(module) + `
+		arguments {
+			input = testcomponents.count.inc.count
+		}
+	}
+
+	testcomponents.summation "sum" {
+		input = module.string.test.exports.output
+	}
+`
+
+	ctrl := flow.New(testOptions(t))
+	f, err := flow.ParseSource(t.Name(), []byte(config))
+	require.NoError(t, err)
+	require.NotNil(t, f)
+
+	err = ctrl.LoadSource(f, nil)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		ctrl.Run(ctx)
+		close(done)
+	}()
+	defer func() {
+		cancel()
+		<-done
+	}()
+
+	require.Eventually(t, func() bool {
+		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
+		return export.LastAdded == 10
+	}, 3*time.Second, 10*time.Millisecond)
+
+	// Reload with a new export.
+	module = `
+	argument "input" {
+		optional = false
+	}
+
+	testcomponents.passthrough "pt" {
+		input = argument.input.value
+		lag = "1ms"
+	}
+
+	export "output" {
+		value = -10
+	}
+`
+	config = `
+	testcomponents.count "inc" {
+		frequency = "10ms"
+		max = 10
+	}
+
+	module.string "test" {
+		content = ` + strconv.Quote(module) + `
+		arguments {
+			input = testcomponents.count.inc.count
+		}
+	}
+
+	testcomponents.summation "sum" {
+		input = module.string.test.exports.output
+	}
+`
+	f, err = flow.ParseSource(t.Name(), []byte(config))
+	require.NoError(t, err)
+	require.NotNil(t, f)
+
+	err = ctrl.LoadSource(f, nil)
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
+		return export.LastAdded == -10
+	}, 3*time.Second, 10*time.Millisecond)
+}
+
 func testOptions(t *testing.T) flow.Options {
 	t.Helper()
 	s, err := logging.New(os.Stderr, logging.DefaultOptions)

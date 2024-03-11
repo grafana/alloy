@@ -45,7 +45,7 @@ spec:
             name: geoip
       containers:
         - name: grafana-agent
-          image: docker.io/grafana/agent:v0.40.0
+          image: docker.io/grafana/agent:v0.40.2
           imagePullPolicy: IfNotPresent
           args:
             - run

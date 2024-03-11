@@ -182,9 +182,6 @@ type queueClient struct {
 
 // NewQueue creates a new queueClient.
 func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
-	if cfg.StreamLagLabels.String() != "" {
-		return nil, fmt.Errorf("client config stream_lag_labels is deprecated and the associated metric has been removed, stream_lag_labels: %+v", cfg.StreamLagLabels.String())
-	}
 	return newQueueClient(metrics, queueClientMetrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger, markerHandler)
 }
 
@@ -344,7 +341,7 @@ func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e lo
 
 	// If adding the entry to the batch will increase the size over the max
 	// size allowed, we do send the current batch and then create a new one
-	if batch.sizeBytesAfter(e.Line) > c.cfg.BatchSize {
+	if batch.sizeBytesAfter(e) > c.cfg.BatchSize {
 		c.sendQueue.enqueue(queuedBatch{
 			TenantID: tenantID,
 			Batch:    batch,

@@ -3,14 +3,10 @@ aliases:
 - ./reference/config-blocks/import.git/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/import.git/
 description: Learn about the import.git configuration block
-labels:
-  stage: beta
 title: import.git
 ---
 
 # import.git
-
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `import.git` block imports custom components from a Git repository and exposes them to the importer.
 `import.git` blocks must be given a label that determines the namespace where custom components are exposed.
@@ -41,7 +37,10 @@ You must set the `repository` attribute to a repository address that Git would r
 
 When provided, the `revision` attribute must be set to a valid branch, tag, or commit SHA within the repository.
 
-You must set the `path` attribute to a path accessible from the repository's root, such as `FILE_NAME.river` or `FOLDER_NAME/FILE_NAME.river`.
+You must set the `path` attribute to a path accessible from the repository's root.
+It can either be a River file such as `FILE_NAME.river` or `DIR_NAME/FILE_NAME.river` or
+a directory containing River files such as `DIR_NAME` or `.` if the River files are stored at the root
+of the repository.
 
 If `pull_frequency` isn't `"0s"`, the Git repository is pulled for updates at the frequency specified.
 If it's set to `"0s"`, the Git repository is pulled once on init.
@@ -81,6 +80,21 @@ import.git "math" {
   repository = "https://github.com/wildum/module.git"
   revision   = "master"
   path       = "math.river"
+}
+
+math.add "default" {
+  a = 15
+  b = 45
+}
+```
+
+This example imports custom components from a directory in a Git repository and uses a custom component to add two numbers:
+
+```river
+import.git "math" {
+  repository = "https://github.com/wildum/module.git"
+  revision   = "master"
+  path       = "modules"
 }
 
 math.add "default" {

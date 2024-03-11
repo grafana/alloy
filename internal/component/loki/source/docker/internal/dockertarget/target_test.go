@@ -95,7 +95,7 @@ func TestDockerTarget(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond, "Expected log lines were not found within the time limit.")
 
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.False(t, tgt.Ready())
+		assert.False(c, tgt.Ready())
 	}, 5*time.Second, 20*time.Millisecond, "Expected target to finish processing within the time limit.")
 
 	entryHandler.Clear()

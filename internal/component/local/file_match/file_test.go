@@ -116,6 +116,43 @@ func TestAddingFileInSubDir(t *testing.T) {
 	require.True(t, contains(foundFiles, "t3.txt"))
 }
 
+func TestAddingFileInAnExcludedSubDir(t *testing.T) {
+	dir := path.Join(os.TempDir(), "agent_testing", "t3")
+	os.MkdirAll(dir, 0755)
+	writeFile(t, dir, "t1.txt")
+	t.Cleanup(func() {
+		os.RemoveAll(dir)
+	})
+	included := []string{path.Join(dir, "**", "*.txt")}
+	excluded := []string{path.Join(dir, "subdir", "*.txt")}
+	c := createComponent(t, dir, included, excluded)
+	ct := context.Background()
+	ct, ccl := context.WithTimeout(ct, 40*time.Second)
+	defer ccl()
+	c.args.SyncPeriod = 10 * time.Millisecond
+	go c.Run(ct)
+	time.Sleep(20 * time.Millisecond)
+	writeFile(t, dir, "t2.txt")
+	subdir := path.Join(dir, "subdir")
+	os.Mkdir(subdir, 0755)
+	subdir2 := path.Join(dir, "subdir2")
+	os.Mkdir(subdir2, 0755)
+	time.Sleep(20 * time.Millisecond)
+	// This file will not be included, since it is in the excluded subdir
+	err := os.WriteFile(path.Join(subdir, "exclude_me.txt"), []byte("asdf"), 0664)
+	require.NoError(t, err)
+	// This file will be included, since it is in another subdir
+	err = os.WriteFile(path.Join(subdir2, "another.txt"), []byte("asdf"), 0664)
+	require.NoError(t, err)
+	time.Sleep(20 * time.Millisecond)
+	ct.Done()
+	foundFiles := c.getWatchedFiles()
+	require.Len(t, foundFiles, 3)
+	require.True(t, contains(foundFiles, "t1.txt"))
+	require.True(t, contains(foundFiles, "t2.txt"))
+	require.True(t, contains(foundFiles, "another.txt"))
+}
+
 func TestAddingRemovingFileInSubDir(t *testing.T) {
 	dir := path.Join(os.TempDir(), "agent_testing", "t3")
 	os.MkdirAll(dir, 0755)
@@ -201,23 +238,23 @@ func TestMultiLabels(t *testing.T) {
 	require.True(t, contains([]discovery.Target{foundFiles[1]}, "t1.txt"))
 }
 
+// createComponent creates a component with the given paths and labels. The paths and excluded slices are zipped together
+// to create the set of targets to pass to the component.
 func createComponent(t *testing.T, dir string, paths []string, excluded []string) *Component {
 	return createComponentWithLabels(t, dir, paths, excluded, nil)
 }
 
+// createComponentWithLabels creates a component with the given paths and labels. The paths and excluded slices are
+// zipped together to create the set of targets to pass to the component.
 func createComponentWithLabels(t *testing.T, dir string, paths []string, excluded []string, labels map[string]string) *Component {
 	tPaths := make([]discovery.Target, 0)
-	for _, p := range paths {
+	for i, p := range paths {
 		tar := discovery.Target{"__path__": p}
 		for k, v := range labels {
 			tar[k] = v
 		}
-		tPaths = append(tPaths, tar)
-	}
-	for _, p := range excluded {
-		tar := discovery.Target{"__path_exclude__": p}
-		for k, v := range labels {
-			tar[k] = v
+		if i < len(excluded) {
+			tar["__path_exclude__"] = excluded[i]
 		}
 		tPaths = append(tPaths, tar)
 	}

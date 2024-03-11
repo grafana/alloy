@@ -57,8 +57,9 @@ func TestBatch_add(t *testing.T) {
 			inputEntries: []loki.Entry{
 				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
 				{Labels: model.LabelSet{}, Entry: logEntries[1].Entry},
+				{Labels: model.LabelSet{}, Entry: logEntries[7].Entry},
 			},
-			expectedSizeBytes: len(logEntries[0].Entry.Line) + len(logEntries[1].Entry.Line),
+			expectedSizeBytes: entrySize(logEntries[0].Entry) + entrySize(logEntries[0].Entry) + entrySize(logEntries[7].Entry),
 		},
 		"multiple streams with multiple log entries": {
 			inputEntries: []loki.Entry{

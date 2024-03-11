@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,9 +28,7 @@ type ImportGit struct {
 	repo            *vcs.GitRepo
 	repoOpts        vcs.GitRepoOptions
 	args            GitArguments
-	onContentChange func(string)
-
-	lastContent string
+	onContentChange func(map[string]string)
 
 	argsChanged chan struct{}
 
@@ -61,7 +60,7 @@ func (args *GitArguments) SetToDefault() {
 	*args = DefaultGitArguments
 }
 
-func NewImportGit(managedOpts component.Options, eval *vm.Evaluator, onContentChange func(string)) *ImportGit {
+func NewImportGit(managedOpts component.Options, eval *vm.Evaluator, onContentChange func(map[string]string)) *ImportGit {
 	return &ImportGit{
 		opts:            managedOpts,
 		log:             managedOpts.Logger,
@@ -235,16 +234,45 @@ func (im *ImportGit) pollFile(ctx context.Context, args GitArguments) error {
 		return err
 	}
 
-	// Finally, configure our controller.
-	bb, err := im.repo.ReadFile(args.Path)
+	info, err := im.repo.Stat(args.Path)
 	if err != nil {
 		return err
 	}
-	content := string(bb)
-	if im.lastContent != content {
-		im.onContentChange(content)
-		im.lastContent = content
+
+	if info.IsDir() {
+		return im.handleDirectory(args.Path)
 	}
+
+	return im.handleFile(args.Path)
+}
+
+func (im *ImportGit) handleDirectory(path string) error {
+	filesInfo, err := im.repo.ReadDir(path)
+	if err != nil {
+		return err
+	}
+
+	content := make(map[string]string)
+	for _, fi := range filesInfo {
+		if fi.IsDir() || !strings.HasSuffix(fi.Name(), ".river") {
+			continue
+		}
+		bb, err := im.repo.ReadFile(filepath.Join(path, fi.Name()))
+		if err != nil {
+			return err
+		}
+		content[fi.Name()] = string(bb)
+	}
+	im.onContentChange(content)
+	return nil
+}
+
+func (im *ImportGit) handleFile(path string) error {
+	bb, err := im.repo.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	im.onContentChange(map[string]string{path: string(bb)})
 	return nil
 }
 
@@ -253,4 +281,9 @@ func (im *ImportGit) CurrentHealth() component.Health {
 	im.healthMut.RLock()
 	defer im.healthMut.RUnlock()
 	return im.health
+}
+
+// Update the evaluator.
+func (im *ImportGit) SetEval(eval *vm.Evaluator) {
+	im.eval = eval
 }

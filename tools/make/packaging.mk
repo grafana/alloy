@@ -211,7 +211,7 @@ dist-agent-installer: dist.temp/grafana-agent-windows-amd64.exe dist.temp/grafan
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	# quotes around mkdir are manadory. ref: https://github.com/grafana/agent/pull/5664#discussion_r1378796371
+	# quotes around mkdir are mandatory. ref: https://github.com/grafana/agent/pull/5664#discussion_r1378796371
 	"mkdir" -p dist
 	makensis -V4 -DVERSION=$(VERSION) -DOUT="../../../dist/grafana-agent-installer.exe" ./packaging/grafana-agent/windows/install_script.nsis
 endif

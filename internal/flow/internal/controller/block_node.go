@@ -11,14 +11,15 @@ import (
 type BlockNode interface {
 	dag.Node
 
-	// Block returns the current block of the managed config node.
+	// Block returns the current block managed by the node.
 	Block() *ast.BlockStmt
 
-	// Evaluate updates the arguments for the managed component
-	// by re-evaluating its River block with the provided scope. The managed component
-	// will be built the first time Evaluate is called.
+	// Evaluate updates the arguments by re-evaluating the River block with the provided scope.
 	//
 	// Evaluate will return an error if the River block cannot be evaluated or if
 	// decoding to arguments fails.
 	Evaluate(scope *vm.Scope) error
+
+	// UpdateBlock updates the River block used to construct arguments.
+	UpdateBlock(b *ast.BlockStmt)
 }

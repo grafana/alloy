@@ -1,19 +1,18 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/concepts/clustering/
 description: Learn about Grafana Alloy clustering concepts
-labels:
-  stage: beta
 menuTitle: Clustering
-title: Clustering (beta)
+title: Clustering
 weight: 500
 ---
 
-# Clustering (beta)
+# Clustering
 
 Clustering enables a fleet of {{< param "PRODUCT_ROOT_NAME" >}}s to work together for workload distribution and high availability.
 It helps create horizontally scalable deployments with minimal resource and operational overhead.
 
-To achieve this, {{< param "PRODUCT_NAME" >}} makes use of an eventually consistent model that assumes all participating {{< param "PRODUCT_ROOT_NAME" >}}s are interchangeable and converge on using the same configuration file.
+To achieve this, {{< param "PRODUCT_NAME" >}} makes use of an eventually consistent model that assumes all participating
+{{< param "PRODUCT_ROOT_NAME" >}}s are interchangeable and converge on using the same configuration file.
 
 The behavior of a standalone, non-clustered {{< param "PRODUCT_ROOT_NAME" >}} is the same as if it were a single-node cluster.
 
