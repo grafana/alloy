@@ -199,6 +199,13 @@ discovery.relabel "pod_logs" {
     replacement   = "/var/log/pods/*$1/*.log"
     target_label  = "__path__"
   }
+  rule {
+    action = "replace"
+    source_labels = ["__meta_kubernetes_pod_container_id"]
+    regex = "^(\\w+):\\/\\/.+$"
+    replacement = "$1"
+    target_label = "tmp_container_runtime"
+  }
 }
 
 local.file_match "pod_logs" {

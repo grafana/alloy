@@ -1,11 +1,12 @@
 package aws
 
 import (
+	"context"
 	"errors"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/ec2metadata"
-	"github.com/aws/aws-sdk-go/aws/session"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/component/discovery"
@@ -84,16 +85,18 @@ func (args *EC2Arguments) SetToDefault() {
 // Validate implements river.Validator.
 func (args *EC2Arguments) Validate() error {
 	if args.Region == "" {
-		sess, err := session.NewSession()
+		cfgCtx := context.TODO()
+		cfg, err := awsConfig.LoadDefaultConfig(cfgCtx)
 		if err != nil {
 			return err
 		}
-		metadata := ec2metadata.New(sess)
-		region, err := metadata.Region()
+
+		client := imds.NewFromConfig(cfg)
+		region, err := client.GetRegion(cfgCtx, &imds.GetRegionInput{})
 		if err != nil {
 			return errors.New("EC2 SD configuration requires a region")
 		}
-		args.Region = region
+		args.Region = region.Region
 	}
 	for _, f := range args.Filters {
 		if len(f.Values) == 0 {

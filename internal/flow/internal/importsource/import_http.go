@@ -23,10 +23,10 @@ type ImportHTTP struct {
 
 var _ ImportSource = (*ImportHTTP)(nil)
 
-func NewImportHTTP(managedOpts component.Options, eval *vm.Evaluator, onContentChange func(string)) *ImportHTTP {
+func NewImportHTTP(managedOpts component.Options, eval *vm.Evaluator, onContentChange func(map[string]string)) *ImportHTTP {
 	opts := managedOpts
 	opts.OnStateChange = func(e component.Exports) {
-		onContentChange(e.(remote_http.Exports).Content.Value)
+		onContentChange(map[string]string{opts.ID: e.(remote_http.Exports).Content.Value})
 	}
 	return &ImportHTTP{
 		managedOpts: opts,
@@ -100,4 +100,9 @@ func (im *ImportHTTP) Run(ctx context.Context) error {
 
 func (im *ImportHTTP) CurrentHealth() component.Health {
 	return im.managedRemoteHTTP.CurrentHealth()
+}
+
+// Update the evaluator.
+func (im *ImportHTTP) SetEval(eval *vm.Evaluator) {
+	im.eval = eval
 }

@@ -4,7 +4,7 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/agent-build-image:0.32.0 as build
+FROM --platform=$BUILDPLATFORM grafana/agent-build-image:0.33.0 as build
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
 ARG TARGETOS
@@ -30,7 +30,11 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     GOEXPERIMENT=${GOEXPERIMENT} \
     make agent
 
-FROM ubuntu:mantic
+FROM public.ecr.aws/ubuntu/ubuntu:mantic
+
+#Username and uid for grafana-agent user
+ARG UID=473
+ARG USERNAME="grafana-agent"
 
 LABEL org.opencontainers.image.source="https://github.com/grafana/agent"
 
@@ -44,6 +48,11 @@ EOF
 COPY --from=build /src/agent/build/grafana-agent /bin/grafana-agent
 COPY cmd/grafana-agent/example-config.river /etc/agent/agent.river
 
+# Create grafana-agent user in container, but do not set it as default
+RUN groupadd --gid $UID $USERNAME
+RUN useradd -m -u $UID -g $UID $USERNAME
+RUN chown -R $USERNAME:$USERNAME /etc/agent
+RUN chown -R $USERNAME:$USERNAME /bin/grafana-agent
 
 ENTRYPOINT ["/bin/grafana-agent"]
 ENV AGENT_DEPLOY_MODE=docker

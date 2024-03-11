@@ -21,8 +21,10 @@ import (
 	_ "github.com/grafana/agent/internal/flow/internal/testcomponents/module/string"
 )
 
-// The tests are using the .txtar files stored in the testdata folder.
+// use const to avoid lint error
+const mainFile = "main.river"
 
+// The tests are using the .txtar files stored in the testdata folder.
 type testImportFile struct {
 	description       string      // description at the top of the txtar file
 	main              string      // root config that the controller should load
@@ -45,7 +47,7 @@ func buildTestImportFile(t *testing.T, filename string) testImportFile {
 	tc.description = string(archive.Comment)
 	for _, riverConfig := range archive.Files {
 		switch riverConfig.Name {
-		case "main.river":
+		case mainFile:
 			tc.main = string(riverConfig.Data)
 		case "module.river":
 			tc.module = string(riverConfig.Data)
@@ -132,6 +134,90 @@ func TestImportHTTP(t *testing.T) {
 	}
 }
 
+type testImportFileFolder struct {
+	description string      // description at the top of the txtar file
+	main        string      // root config that the controller should load
+	module1     string      // module imported by the root config
+	module2     string      // another module imported by the root config
+	removed     string      // module will be removed in the dir on update
+	added       string      // module which will be added in the dir on update
+	update      *updateFile // update can be used to update the content of a file at runtime
+}
+
+func buildTestImportFileFolder(t *testing.T, filename string) testImportFileFolder {
+	archive, err := txtar.ParseFile(filename)
+	require.NoError(t, err)
+	var tc testImportFileFolder
+	tc.description = string(archive.Comment)
+	for _, riverConfig := range archive.Files {
+		switch riverConfig.Name {
+		case mainFile:
+			tc.main = string(riverConfig.Data)
+		case "module1.river":
+			tc.module1 = string(riverConfig.Data)
+		case "module2.river":
+			tc.module2 = string(riverConfig.Data)
+		case "added.river":
+			tc.added = string(riverConfig.Data)
+		case "removed.river":
+			tc.removed = string(riverConfig.Data)
+		case "update/module1.river":
+			require.Nil(t, tc.update)
+			tc.update = &updateFile{
+				name:         "module1.river",
+				updateConfig: string(riverConfig.Data),
+			}
+		case "update/module2.river":
+			require.Nil(t, tc.update)
+			tc.update = &updateFile{
+				name:         "module2.river",
+				updateConfig: string(riverConfig.Data),
+			}
+		}
+	}
+	return tc
+}
+
+func TestImportFileFolder(t *testing.T) {
+	directory := "./testdata/import_file_folder"
+	for _, file := range getTestFiles(directory, t) {
+		tc := buildTestImportFileFolder(t, filepath.Join(directory, file.Name()))
+		t.Run(tc.description, func(t *testing.T) {
+			dir := "tmpTest"
+			require.NoError(t, os.Mkdir(dir, 0700))
+			defer os.RemoveAll(dir)
+
+			if tc.module1 != "" {
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "module1.river"), []byte(tc.module1), 0700))
+			}
+
+			if tc.module2 != "" {
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "module2.river"), []byte(tc.module2), 0700))
+			}
+
+			if tc.removed != "" {
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "removed.river"), []byte(tc.removed), 0700))
+			}
+
+			// TODO: ideally we would like to check the health of the node but that's not yet possible for import nodes.
+			// We should expect that adding or removing files in the dir is gracefully handled and the node should be
+			// healthy once it polls the content of the dir again.
+			testConfig(t, tc.main, "", func() {
+				if tc.removed != "" {
+					os.Remove(filepath.Join(dir, "removed.river"))
+				}
+
+				if tc.added != "" {
+					require.NoError(t, os.WriteFile(filepath.Join(dir, "added.river"), []byte(tc.added), 0700))
+				}
+				if tc.update != nil {
+					require.NoError(t, os.WriteFile(filepath.Join(dir, tc.update.name), []byte(tc.update.updateConfig), 0700))
+				}
+			})
+		})
+	}
+}
+
 type testImportError struct {
 	description   string
 	main          string
@@ -145,7 +231,7 @@ func buildTestImportError(t *testing.T, filename string) testImportError {
 	tc.description = string(archive.Comment)
 	for _, riverConfig := range archive.Files {
 		switch riverConfig.Name {
-		case "main.river":
+		case mainFile:
 			tc.main = string(riverConfig.Data)
 		case "error":
 			tc.expectedError = string(riverConfig.Data)

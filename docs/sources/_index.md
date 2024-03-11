@@ -74,8 +74,14 @@ It is designed to be flexible, performant, and compatible with multiple ecosyste
 
 A new minor release is planned every six weeks for the entire {{< param "PRODUCT_NAME" >}}.
 
-The release cadence is best-effort: releases may be moved forwards or backwards if needed.
-The planned release dates for future minor releases do not change if one minor release is moved.
+The release cadence is best-effort: if necessary, releases may be performed
+outside of this cadence, or a scheduled release date can be moved forwards or
+backwards.
+
+Minor releases published on cadence include updating dependencies for upstream
+OpenTelemetry Collector code if new versions are available. Minor releases
+published outside of the release cadence may not include these dependency
+updates.
 
 Patch and security releases may be created at any time.
 

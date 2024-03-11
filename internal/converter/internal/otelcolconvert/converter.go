@@ -58,6 +58,9 @@ type state struct {
 	// converterLookup maps a converter key to the associated converter instance.
 	converterLookup map[converterKey]componentConverter
 
+	// extensionLookup maps OTel extensions to Flow component IDs.
+	extensionLookup map[component.ID]componentID
+
 	componentID     component.InstanceID // ID of the current component being converted.
 	componentConfig component.Config     // Config of the current component being converted.
 }
@@ -97,6 +100,9 @@ func (state *state) flowLabelForComponent(c component.InstanceID) string {
 	//
 	// 3. There is no other mechanism which constructs an OpenTelemetry
 	//    receiver, processor, or exporter component.
+	//
+	// 4. Extension components are created once per service and are agnostic to
+	//    pipelines.
 	//
 	// Considering the points above, the combination of group name and component
 	// name is all that's needed to form a unique label for a single input
@@ -175,6 +181,14 @@ func (state *state) nextInstances(c component.InstanceID, dataType component.Dat
 	default:
 		panic(fmt.Sprintf("otelcolconvert: unknown data type %q", dataType))
 	}
+}
+
+func (state *state) LookupExtension(id component.ID) componentID {
+	cid, ok := state.extensionLookup[id]
+	if !ok {
+		panic(fmt.Sprintf("no component name found for extension %q", id.Name()))
+	}
+	return cid
 }
 
 type componentID struct {

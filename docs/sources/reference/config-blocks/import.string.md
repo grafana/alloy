@@ -3,14 +3,10 @@ aliases:
 - ./reference/config-blocks/import.string/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/import.string/
 description: Learn about the import.string configuration block
-labels:
-  stage: beta
 title: import.string
 ---
 
 # import.string
-
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `import.string` block imports custom components from a string and exposes them to the importer.
 `import.string` blocks must be given a label that determines the namespace where custom components are exposed.

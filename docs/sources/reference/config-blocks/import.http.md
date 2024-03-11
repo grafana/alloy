@@ -3,14 +3,10 @@ aliases:
 - ./reference/config-blocks/import.http/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/import.http/
 description: Learn about the import.http configuration block
-labels:
-  stage: beta
 title: import.http
 ---
 
 # import.http
-
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `import.http` retrieves a module from an HTTP server.
 

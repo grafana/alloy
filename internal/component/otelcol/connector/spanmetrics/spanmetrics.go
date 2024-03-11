@@ -118,6 +118,17 @@ func convertAggregationTemporality(temporality string) (string, error) {
 	}
 }
 
+func FromOTelAggregationTemporality(temporality string) string {
+	switch temporality {
+	case "AGGREGATION_TEMPORALITY_DELTA":
+		return AggregationTemporalityDelta
+	case "AGGREGATION_TEMPORALITY_CUMULATIVE":
+		return AggregationTemporalityCumulative
+	default:
+		return ""
+	}
+}
+
 // Convert implements connector.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	dimensions := make([]spanmetricsconnector.Dimension, 0, len(args.Dimensions))

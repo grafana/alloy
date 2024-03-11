@@ -254,6 +254,8 @@ service:
   enabled: true
   # -- Service type
   type: ClusterIP
+  # -- NodePort port. Only takes effect when `service.type: NodePort`
+  nodePort: 31128
   # -- Cluster IP, can be set to None, empty "" or an IP address
   clusterIP: ''
   # -- Value for internal traffic policy. 'Cluster' or 'Local'

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/local/file"
+	filedetector "github.com/grafana/agent/internal/filedetector"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/river/rivertypes"
 	"github.com/stretchr/testify/require"
@@ -16,16 +17,16 @@ import (
 
 func TestFile(t *testing.T) {
 	t.Run("Polling change detector", func(t *testing.T) {
-		runFileTests(t, file.DetectorPoll)
+		runFileTests(t, filedetector.DetectorPoll)
 	})
 
 	t.Run("Event change detector", func(t *testing.T) {
-		runFileTests(t, file.DetectorFSNotify)
+		runFileTests(t, filedetector.DetectorFSNotify)
 	})
 }
 
 // runFileTests will run a suite of tests with the configured update type.
-func runFileTests(t *testing.T, ut file.Detector) {
+func runFileTests(t *testing.T, ut filedetector.Detector) {
 	newSuiteController := func(t *testing.T, filename string) *componenttest.Controller {
 		require.NoError(t, os.WriteFile(filename, []byte("First load!"), 0664))
 
@@ -100,7 +101,7 @@ func TestFile_ImmediateExports(t *testing.T) {
 	go func() {
 		err := tc.Run(componenttest.TestContext(t), file.Arguments{
 			Filename:      testFile,
-			Type:          file.DetectorPoll,
+			Type:          filedetector.DetectorPoll,
 			PollFrequency: 1 * time.Hour,
 		})
 		require.NoError(t, err)
@@ -125,7 +126,7 @@ func TestFile_ExistOnLoad(t *testing.T) {
 
 	err = tc.Run(canceledContext(), file.Arguments{
 		Filename:      testFile,
-		Type:          file.DetectorPoll,
+		Type:          filedetector.DetectorPoll,
 		PollFrequency: 1 * time.Hour,
 	})
 

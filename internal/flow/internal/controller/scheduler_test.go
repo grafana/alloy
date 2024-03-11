@@ -99,6 +99,7 @@ func (fr fakeRunnable) NodeID() string                 { return fr.ID }
 func (fr fakeRunnable) Run(ctx context.Context) error  { return fr.Component.Run(ctx) }
 func (fr fakeRunnable) Block() *ast.BlockStmt          { return nil }
 func (fr fakeRunnable) Evaluate(scope *vm.Scope) error { return nil }
+func (fr fakeRunnable) UpdateBlock(b *ast.BlockStmt)   {}
 
 type mockComponent struct {
 	RunFunc    func(ctx context.Context) error

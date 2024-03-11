@@ -59,6 +59,18 @@
     pluginVersion: '9.0.6',
   },
 
+  newNativeHistogramHeatmap(title=''):: $.newHeatmap(title) {
+    options+: {
+      cellGap: 0,
+      color: {
+        scheme: 'Spectral',
+      },
+      filterValues: {
+        le: 0.1,
+      },
+    },
+  },
+
   withMultiTooltip():: {
     options+: {
       tooltip+: { mode: 'multi' },
@@ -128,8 +140,8 @@
     }
   ),
 
-  newRow(title='', x=0, y=0, w=24, h=1, collapsed=false):: 
-    $.new(title, 'row') 
-    + $.withPosition({x: x, y: y, w: w, h: h })
-    + {collapsed: collapsed},
+  newRow(title='', x=0, y=0, w=24, h=1, collapsed=false)::
+    $.new(title, 'row')
+    + $.withPosition({ x: x, y: y, w: w, h: h })
+    + { collapsed: collapsed },
 }

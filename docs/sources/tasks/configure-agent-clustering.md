@@ -10,12 +10,6 @@ weight: 400
 
 You can configure {{< param "PRODUCT_NAME" >}} to run with [clustering][] so that individual {{< param "PRODUCT_ROOT_NAME" >}}s can work together for workload distribution and high availability.
 
-{{< admonition type="note" >}}
-Clustering is a [beta][] feature. Beta features are subject to breaking changes and may be replaced with equivalent functionality that covers the same use case.
-
-[beta]: ../../stability/#beta
-{{< /admonition >}}
-
 This topic describes how to add clustering to an existing installation.
 
 ## Configure {{% param "PRODUCT_NAME" %}} clustering with Helm Chart
@@ -34,7 +28,7 @@ To configure clustering:
 
    ```yaml
    agent:
-     clustering:"/docs/agent/ -> /docs/agent/<ALLOY_VERSION>/flow
+     clustering:
        enabled: true
    ```
 

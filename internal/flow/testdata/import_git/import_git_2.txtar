@@ -1,0 +1,20 @@
+Import passthrough module from a directory stored in a git repository.
+
+-- main.river --
+testcomponents.count "inc" {
+	frequency = "10ms"
+	max = 10
+}
+
+import.git "testImport" {
+	repository = "https://github.com/wildum/module.git"
+  	path = "passthrough"
+}
+
+testImport.a "cc" {
+	input = testcomponents.count.inc.count
+}
+
+testcomponents.summation "sum" {
+	input = testImport.a.cc.output
+}

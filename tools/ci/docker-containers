@@ -47,12 +47,10 @@ else
   BRANCH_TAG=$VERSION
 fi
 
-
 # Build all of our images.
 
 export BUILD_PLATFORMS=linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 export BUILD_PLATFORMS_BORINGCRYPTO=linux/amd64,linux/arm64
-
 
 case "$TARGET_CONTAINER" in
   agent)

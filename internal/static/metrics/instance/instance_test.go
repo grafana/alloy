@@ -258,7 +258,8 @@ func TestInstance_Recreate(t *testing.T) {
 	cfg.RemoteFlushDeadline = time.Hour
 
 	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
-	inst, err := New(prometheus.NewRegistry(), cfg, walDir, logger)
+	currentReg := prometheus.NewRegistry()
+	inst, err := New(currentReg, cfg, walDir, logger)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -278,7 +279,7 @@ func TestInstance_Recreate(t *testing.T) {
 
 	// Recreate the instance, no panic should happen.
 	require.NotPanics(t, func() {
-		inst, err := New(prometheus.NewRegistry(), cfg, walDir, logger)
+		inst, err := New(currentReg, cfg, walDir, logger)
 		require.NoError(t, err)
 		runInstance(t, inst)
 

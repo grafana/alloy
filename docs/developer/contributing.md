@@ -88,6 +88,11 @@ Compiling Grafana Agent on Linux requires extra dependencies:
 * [systemd headers](https://packages.debian.org/sid/libsystemd-dev) for Promtail
    * Can be installed on Debian-based distributions with: ```sudo apt-get install libsystemd-dev```
 
+### Compile on Windows
+Compiling Grafana Agent on Windows requires extra dependencies:
+
+* [tdm-gcc](https://jmeubank.github.io/tdm-gcc/download/) full 64 bit install for cgo compiliation.
+
 ## Pull Request Checklist
 
 Changes should be branched off of the `main` branch. It's recommended to rebase

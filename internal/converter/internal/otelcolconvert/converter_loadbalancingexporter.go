@@ -2,9 +2,11 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/agent/internal/component/otelcol"
+	"github.com/grafana/agent/internal/component/otelcol/auth"
 	"github.com/grafana/agent/internal/component/otelcol/exporter/loadbalancing"
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
@@ -30,9 +32,17 @@ func (loadbalancingExporterConverter) ConvertAndAppend(state *state, id componen
 	var diags diag.Diagnostics
 
 	label := state.FlowComponentLabel()
+	overrideHook := func(val interface{}) interface{} {
+		switch val.(type) {
+		case auth.Handler:
+			ext := state.LookupExtension(cfg.(*loadbalancingexporter.Config).Protocol.OTLP.Auth.AuthenticatorID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		}
+		return val
+	}
 
 	args := toLoadbalancingExporter(cfg.(*loadbalancingexporter.Config))
-	block := common.NewBlockWithOverride([]string{"otelcol", "exporter", "loadbalancing"}, label, args)
+	block := common.NewBlockWithOverrideFn([]string{"otelcol", "exporter", "loadbalancing"}, label, args, overrideHook)
 
 	diags.Add(
 		diag.SeverityLevelInfo,
@@ -54,6 +64,10 @@ func toLoadbalancingExporter(cfg *loadbalancingexporter.Config) *loadbalancing.A
 }
 
 func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
+	var a *auth.Handler
+	if cfg.OTLP.Auth != nil {
+		a = &auth.Handler{}
+	}
 	return loadbalancing.Protocol{
 		// NOTE(rfratto): this has a lot of overlap with converting the
 		// otlpexporter, but otelcol.exporter.loadbalancing uses custom types to
@@ -75,7 +89,7 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 				BalancerName:    cfg.OTLP.BalancerName,
 				Authority:       cfg.OTLP.Authority,
 
-				// TODO(rfratto): handle auth
+				Auth: a,
 			},
 		},
 	}

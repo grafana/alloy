@@ -36,18 +36,24 @@ func newControllerMetrics(id string) *controllerMetrics {
 
 	cm.componentEvaluationTime = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Name:        "agent_component_evaluation_seconds",
-			Help:        "Time spent performing component evaluation",
-			ConstLabels: map[string]string{"controller_id": id},
-			Buckets:     evaluationTimesBuckets,
+			Name:                            "agent_component_evaluation_seconds",
+			Help:                            "Time spent performing component evaluation",
+			ConstLabels:                     map[string]string{"controller_id": id},
+			Buckets:                         evaluationTimesBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: 1 * time.Hour,
 		},
 	)
 	cm.dependenciesWaitTime = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Name:        "agent_component_dependencies_wait_seconds",
-			Help:        "Time spent by components waiting to be evaluated after their dependency is updated.",
-			ConstLabels: map[string]string{"controller_id": id},
-			Buckets:     evaluationTimesBuckets,
+			Name:                            "agent_component_dependencies_wait_seconds",
+			Help:                            "Time spent by components waiting to be evaluated after their dependency is updated.",
+			ConstLabels:                     map[string]string{"controller_id": id},
+			Buckets:                         evaluationTimesBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: 1 * time.Hour,
 		},
 	)
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/featuregate"
+	filedetector "github.com/grafana/agent/internal/filedetector"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/river/rivertypes"
 )
@@ -41,7 +42,7 @@ type Arguments struct {
 	// Filename indicates the file to watch.
 	Filename string `river:"filename,attr"`
 	// Type indicates how to detect changes to the file.
-	Type Detector `river:"detector,attr,optional"`
+	Type filedetector.Detector `river:"detector,attr,optional"`
 	// PollFrequency determines the frequency to check for changes when Type is
 	// Poll.
 	PollFrequency time.Duration `river:"poll_frequency,attr,optional"`
@@ -53,7 +54,7 @@ type Arguments struct {
 // DefaultArguments provides the default arguments for the local.file
 // component.
 var DefaultArguments = Arguments{
-	Type:          DetectorFSNotify,
+	Type:          filedetector.DetectorFSNotify,
 	PollFrequency: time.Minute,
 }
 
@@ -237,14 +238,14 @@ func (c *Component) configureDetector() error {
 	}
 
 	switch c.args.Type {
-	case DetectorPoll:
-		c.detector = newPoller(pollerOptions{
+	case filedetector.DetectorPoll:
+		c.detector = filedetector.NewPoller(filedetector.PollerOptions{
 			Filename:      c.args.Filename,
 			ReloadFile:    reloadFile,
 			PollFrequency: c.args.PollFrequency,
 		})
-	case DetectorFSNotify:
-		c.detector, err = newFSNotify(fsNotifyOptions{
+	case filedetector.DetectorFSNotify:
+		c.detector, err = filedetector.NewFSNotify(filedetector.FSNotifyOptions{
 			Logger:        c.opts.Logger,
 			Filename:      c.args.Filename,
 			ReloadFile:    reloadFile,

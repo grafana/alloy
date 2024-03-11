@@ -19,6 +19,9 @@ spec:
   internalTrafficPolicy: {{.Values.service.internalTrafficPolicy}}
   ports:
     - name: http-metrics
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
       port: {{ .Values.agent.listenPort }}
       targetPort: {{ .Values.agent.listenPort }}
       protocol: "TCP"

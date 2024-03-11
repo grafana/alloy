@@ -338,9 +338,15 @@ func (l *Loader) splitComponentBlocks(blocks []*ast.BlockStmt) (componentBlocks,
 }
 
 func (l *Loader) populateDeclareNodes(g *dag.Graph, declareBlocks []*ast.BlockStmt) diag.Diagnostics {
-	var diags diag.Diagnostics
+	var (
+		diags    diag.Diagnostics
+		node     *DeclareNode
+		blockMap = make(map[string]*ast.BlockStmt, len(declareBlocks))
+	)
 	l.declareNodes = map[string]*DeclareNode{}
 	for _, declareBlock := range declareBlocks {
+		id := BlockComponentID(declareBlock).String()
+
 		if declareBlock.Label == declareType {
 			diags.Add(diag.Diagnostic{
 				Severity: diag.SeverityLevelError,
@@ -350,21 +356,38 @@ func (l *Loader) populateDeclareNodes(g *dag.Graph, declareBlocks []*ast.BlockSt
 			})
 			continue
 		}
-		// TODO: if node already exists in the graph, update the block
-		// instead of copying it.
-		node := NewDeclareNode(declareBlock)
-		if g.GetByID(node.NodeID()) != nil {
-			diags.Add(diag.Diagnostic{
-				Severity: diag.SeverityLevelError,
-				Message:  fmt.Sprintf("cannot add declare node %q; node with same ID already exists", node.NodeID()),
-			})
+
+		if diag, defined := blockAlreadyDefined(blockMap, id, declareBlock); defined {
+			diags = append(diags, diag)
 			continue
+		}
+
+		if exist := l.graph.GetByID(id); exist != nil {
+			node = exist.(*DeclareNode)
+			node.UpdateBlock(declareBlock)
+		} else {
+			node = NewDeclareNode(declareBlock)
 		}
 		l.componentNodeManager.customComponentReg.registerDeclare(declareBlock)
 		l.declareNodes[node.label] = node
 		g.Add(node)
 	}
 	return diags
+}
+
+// blockAlreadyDefined returns (diag, true) if the given id is already in the provided blockMap.
+// else it adds the block to the map and returns (empty diag, false).
+func blockAlreadyDefined(blockMap map[string]*ast.BlockStmt, id string, block *ast.BlockStmt) (diag.Diagnostic, bool) {
+	if orig, redefined := blockMap[id]; redefined {
+		return diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			Message:  fmt.Sprintf("block %s already declared at %s", id, ast.StartPos(orig).Position()),
+			StartPos: block.NamePos.Position(),
+			EndPos:   block.NamePos.Add(len(id) - 1).Position(),
+		}, true
+	}
+	blockMap[id] = block
+	return diag.Diagnostic{}, false
 }
 
 // populateServiceNodes adds service nodes to the graph.
@@ -441,24 +464,32 @@ func (l *Loader) populateServiceNodes(g *dag.Graph, serviceBlocks []*ast.BlockSt
 // populateConfigBlockNodes adds any config blocks to the graph.
 func (l *Loader) populateConfigBlockNodes(args map[string]any, g *dag.Graph, configBlocks []*ast.BlockStmt) diag.Diagnostics {
 	var (
-		diags   diag.Diagnostics
-		nodeMap = NewConfigNodeMap()
+		diags    diag.Diagnostics
+		nodeMap  = NewConfigNodeMap()
+		blockMap = make(map[string]*ast.BlockStmt, len(configBlocks))
 	)
 
 	for _, block := range configBlocks {
-		node, newConfigNodeDiags := NewConfigNode(block, l.globals)
-		diags = append(diags, newConfigNodeDiags...)
-
-		if g.GetByID(node.NodeID()) != nil {
-			configBlockStartPos := ast.StartPos(block).Position()
-			diags.Add(diag.Diagnostic{
-				Severity: diag.SeverityLevelError,
-				Message:  fmt.Sprintf("%q block already declared at %s", node.NodeID(), configBlockStartPos),
-				StartPos: configBlockStartPos,
-				EndPos:   ast.EndPos(block).Position(),
-			})
-
+		var (
+			node               BlockNode
+			newConfigNodeDiags diag.Diagnostics
+		)
+		id := BlockComponentID(block).String()
+		if diag, defined := blockAlreadyDefined(blockMap, id, block); defined {
+			diags = append(diags, diag)
 			continue
+		}
+		// Check the graph from the previous call to Load to see we can copy an
+		// existing instance of BlockNode.
+		if exist := l.graph.GetByID(id); exist != nil {
+			node = exist.(BlockNode)
+			node.UpdateBlock(block)
+		} else {
+			node, newConfigNodeDiags = NewConfigNode(block, l.globals)
+			diags = append(diags, newConfigNodeDiags...)
+			if diags.HasErrors() {
+				continue
+			}
 		}
 
 		nodeMapDiags := nodeMap.Append(node)
@@ -502,18 +533,10 @@ func (l *Loader) populateComponentNodes(g *dag.Graph, componentBlocks []*ast.Blo
 	)
 	for _, block := range componentBlocks {
 		id := BlockComponentID(block).String()
-
-		if orig, redefined := blockMap[id]; redefined {
-			diags.Add(diag.Diagnostic{
-				Severity: diag.SeverityLevelError,
-				Message:  fmt.Sprintf("Component %s already declared at %s", id, ast.StartPos(orig).Position()),
-				StartPos: block.NamePos.Position(),
-				EndPos:   block.NamePos.Add(len(id) - 1).Position(),
-			})
+		if diag, defined := blockAlreadyDefined(blockMap, id, block); defined {
+			diags = append(diags, diag)
 			continue
 		}
-		blockMap[id] = block
-
 		// Check the graph from the previous call to Load to see if we can copy an
 		// existing instance of ComponentNode.
 		if exist := l.graph.GetByID(id); exist != nil {

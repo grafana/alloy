@@ -1,6 +1,6 @@
 # This script does the following:
 #
-# 1. Installs grafana-agent--windows-amd64.exe, grafana-agent-service-amd64.exe, and logo.ico.
+# 1. Installs grafana-agent-windows-amd64.exe, grafana-agent-service-amd64.exe, and logo.ico.
 # 2. Creates a Start Menu shortcut.
 # 3. Builds an uninstaller.
 # 4. Adds uninstall information to the registry for Add/Remove Programs.
@@ -13,9 +13,9 @@ Unicode true
 !include .\macros.nsis
 
 !define APPNAME     "Grafana Agent"
-!define HELPURL     "https://grafana.com/docs/agent"
-!define UPDATEURL   "https://github.com/grafana/agent/releases"
-!define ABOUTURL    "https://github.com/grafana/agent"
+!define HELPURL     "https://grafana.com/docs/alloy/latest"
+!define UPDATEURL   "https://github.com/grafana/alloy/releases"
+!define ABOUTURL    "https://github.com/grafana/alloy"
 
 # Because we modify the registry and install a service that runs as
 # LocalSystem, we require admin permissions.
@@ -63,7 +63,13 @@ Section "install"
   Pop $0
 
   # Configure the out path and copy files to it.
-  SetOutPath "$INSTDIR"
+  IfFileExists "$INSTDIR" Exists NotExists
+  NotExists:
+    SetOutPath "$INSTDIR"
+    Call SetFolderPermissions
+  Exists:
+    SetOutPath "$INSTDIR"
+
   File "..\..\..\dist.temp\grafana-agent-windows-amd64.exe"
   File "..\..\..\dist.temp\grafana-agent-service-windows-amd64.exe"
   File "logo.ico"
@@ -109,6 +115,14 @@ Function CreateConfig
     Return
   CreateNewConfig:
     File "config.river"
+
+    # Set permissions on the config file
+    AccessControl::DisableFileInheritance "$INSTDIR\config.river"
+    AccessControl::SetFileOwner "$INSTDIR\config.river" "Administrators"
+    AccessControl::ClearOnFile  "$INSTDIR\config.river" "Administrators" "FullAccess"
+    AccessControl::SetOnFile    "$INSTDIR\config.river" "SYSTEM" "FullAccess"
+    AccessControl::GrantOnFile  "$INSTDIR\config.river" "Everyone" "ListDirectory"
+    AccessControl::GrantOnFile  "$INSTDIR\config.river" "Everyone" "ReadAttributes"
     Return
 FunctionEnd
 
@@ -162,6 +176,18 @@ Function InitializeRegistry
   ${EndIf}
 
   Return
+FunctionEnd
+
+Function SetFolderPermissions
+    # Set permissions on the install directory
+    AccessControl::DisableFileInheritance $INSTDIR
+    AccessControl::SetFileOwner $INSTDIR "Administrators"
+    AccessControl::ClearOnFile  $INSTDIR "Administrators" "FullAccess"
+    AccessControl::SetOnFile    $INSTDIR "SYSTEM" "FullAccess"
+    AccessControl::GrantOnFile  $INSTDIR "Everyone" "ListDirectory"
+    AccessControl::GrantOnFile  $INSTDIR "Everyone" "GenericExecute"
+    AccessControl::GrantOnFile  $INSTDIR "Everyone" "GenericRead"
+    AccessControl::GrantOnFile  $INSTDIR "Everyone" "ReadAttributes"
 FunctionEnd
 
 # Automatically called when uninstalling.

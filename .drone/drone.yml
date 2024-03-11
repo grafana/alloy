@@ -8,7 +8,7 @@ steps:
 - commands:
   - apt-get update -y && apt-get install -y libsystemd-dev
   - make lint
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Lint
 trigger:
   event:
@@ -23,7 +23,7 @@ platform:
 steps:
 - commands:
   - make GO_TAGS="nodocker" test
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Run Go tests
 trigger:
   event:
@@ -38,7 +38,7 @@ platform:
 steps:
 - commands:
   - K8S_USE_DOCKER_NETWORK=1 make test
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Run Go tests
   volumes:
   - name: docker
@@ -61,7 +61,7 @@ platform:
 steps:
 - commands:
   - go test -tags="nodocker,nonetwork" ./...
-  image: grafana/agent-build-image:0.32.0-windows
+  image: grafana/agent-build-image:0.33.0-windows
   name: Run Go tests
 trigger:
   ref:
@@ -76,7 +76,7 @@ platform:
 steps:
 - commands:
   - make agent-image
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Build container
   volumes:
   - name: docker
@@ -102,7 +102,7 @@ platform:
 steps:
 - commands:
   - '& "C:/Program Files/git/bin/bash.exe" ./tools/ci/docker-containers-windows agent'
-  image: grafana/agent-build-image:0.32.0-windows
+  image: grafana/agent-build-image:0.33.0-windows
   name: Build container
   volumes:
   - name: docker
@@ -129,7 +129,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=amd64 GOARM=
     make agent
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Build
 trigger:
   event:
@@ -146,7 +146,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=arm64 GOARM=
     make agent
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Build
 trigger:
   event:
@@ -163,7 +163,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=ppc64le GOARM=
     make agent
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Build
 trigger:
   event:
@@ -180,7 +180,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=s390x GOARM=
     make agent
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Build
 trigger:
   event:
@@ -196,7 +196,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets" GOOS=darwin GOARCH=amd64 GOARM= make agent
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Build
 trigger:
   event:
@@ -212,7 +212,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make agent
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Build
 trigger:
   event:
@@ -228,7 +228,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets" GOOS=windows GOARCH=amd64 GOARM= make agent
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Build
 trigger:
   event:
@@ -244,7 +244,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets" GOOS=freebsd GOARCH=amd64 GOARM= make agent
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Build
 trigger:
   event:
@@ -261,7 +261,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=amd64 GOARM=
     GOEXPERIMENT=boringcrypto make agent-boringcrypto
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Build
 trigger:
   event:
@@ -278,7 +278,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=arm64 GOARM=
     GOEXPERIMENT=boringcrypto make agent-boringcrypto
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Build
 trigger:
   event:
@@ -295,7 +295,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets" GOOS=windows GOARCH=amd64 GOARM= GOEXPERIMENT=cngcrypto
     make agent-windows-boringcrypto
-  image: grafana/agent-build-image:0.32.0-boringcrypto
+  image: grafana/agent-build-image:0.33.0-boringcrypto
   name: Build
 trigger:
   event:
@@ -311,7 +311,7 @@ steps:
 - commands:
   - DOCKER_OPTS="" make dist/grafana-agent-linux-amd64
   - DOCKER_OPTS="" make test-packages
-  image: grafana/agent-build-image:0.32.0
+  image: grafana/agent-build-image:0.33.0
   name: Test Linux system packages
   volumes:
   - name: docker
@@ -407,6 +407,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 118cf0f805912a99d8c268f18a179dbe69fa701fbf11f9a9effac933b63091e0
+hmac: 509aa746729e5eaf86e4cbb02b07f125399aabefcc3bf5b1693ea2cca2eaa4e1
 
 ...

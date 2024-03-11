@@ -1,4 +1,4 @@
-package file
+package filedetector
 
 import (
 	"context"
@@ -64,8 +64,8 @@ func (ut *Detector) UnmarshalText(text []byte) error {
 	return nil
 }
 
-type fsNotify struct {
-	opts   fsNotifyOptions
+type FSNotify struct {
+	opts   FSNotifyOptions
 	cancel context.CancelFunc
 
 	// watcherMut is needed to prevent race conditions on Windows. This can be
@@ -75,7 +75,7 @@ type fsNotify struct {
 	watcher    *fsnotify.Watcher
 }
 
-type fsNotifyOptions struct {
+type FSNotifyOptions struct {
 	Logger        log.Logger
 	Filename      string
 	ReloadFile    func()        // Callback to request file reload.
@@ -84,7 +84,7 @@ type fsNotifyOptions struct {
 
 // newFSNotify creates a new fsnotify detector which uses filesystem events to
 // detect that a file has changed.
-func newFSNotify(opts fsNotifyOptions) (*fsNotify, error) {
+func NewFSNotify(opts FSNotifyOptions) (*FSNotify, error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func newFSNotify(opts fsNotifyOptions) (*fsNotify, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	wd := &fsNotify{
+	wd := &FSNotify{
 		opts:    opts,
 		watcher: w,
 		cancel:  cancel,
@@ -108,7 +108,7 @@ func newFSNotify(opts fsNotifyOptions) (*fsNotify, error) {
 	return wd, nil
 }
 
-func (fsn *fsNotify) wait(ctx context.Context) {
+func (fsn *FSNotify) wait(ctx context.Context) {
 	pollTick := time.NewTicker(fsn.opts.PollFrequency)
 	defer pollTick.Stop()
 
@@ -150,7 +150,7 @@ func (fsn *fsNotify) wait(ctx context.Context) {
 	}
 }
 
-func (fsn *fsNotify) Close() error {
+func (fsn *FSNotify) Close() error {
 	fsn.watcherMut.Lock()
 	defer fsn.watcherMut.Unlock()
 
@@ -158,22 +158,22 @@ func (fsn *fsNotify) Close() error {
 	return fsn.watcher.Close()
 }
 
-type poller struct {
-	opts   pollerOptions
+type Poller struct {
+	opts   PollerOptions
 	cancel context.CancelFunc
 }
 
-type pollerOptions struct {
+type PollerOptions struct {
 	Filename      string
 	ReloadFile    func() // Callback to request file reload.
 	PollFrequency time.Duration
 }
 
 // newPoller creates a new poll-based file update detector.
-func newPoller(opts pollerOptions) *poller {
+func NewPoller(opts PollerOptions) *Poller {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	pw := &poller{
+	pw := &Poller{
 		opts:   opts,
 		cancel: cancel,
 	}
@@ -182,7 +182,7 @@ func newPoller(opts pollerOptions) *poller {
 	return pw
 }
 
-func (p *poller) run(ctx context.Context) {
+func (p *Poller) run(ctx context.Context) {
 	t := time.NewTicker(p.opts.PollFrequency)
 	defer t.Stop()
 
@@ -200,7 +200,7 @@ func (p *poller) run(ctx context.Context) {
 }
 
 // Close terminates the poller.
-func (p *poller) Close() error {
+func (p *Poller) Close() error {
 	p.cancel()
 	return nil
 }

@@ -11,12 +11,6 @@ weight: 500
 A good predictor for the size of an {{< param "PRODUCT_NAME" >}} deployment is the number of Prometheus targets each {{< param "PRODUCT_ROOT_NAME" >}} scrapes.
 [Clustering][] with target auto-distribution allows a fleet of {{< param "PRODUCT_ROOT_NAME" >}}s to work together to dynamically distribute their scrape load, providing high-availability.
 
-{{< admonition type="note" >}}
-Clustering is a [beta][] feature. Beta features are subject to breaking changes and may be replaced with equivalent functionality that covers the same use case.
-
-[beta]: ../../stability/#beta
-{{< /admonition >}}
-
 ## Before you begin
 
 - Familiarize yourself with how to [configure][] existing {{< param "PRODUCT_NAME" >}} installations.
