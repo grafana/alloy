@@ -229,7 +229,7 @@ generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd operations/helm/charts/grafana-agent && helm-docs
+	cd operations/helm/charts/alloy && helm-docs
 endif
 
 generate-helm-tests:

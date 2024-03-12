@@ -1,0 +1,11 @@
+apiVersion: v2
+name: alloy
+description: 'Grafana Alloy'
+type: application
+version: 0.36.0
+appVersion: 'v0.40.2'
+
+dependencies:
+  - name: crds
+    version: "0.0.0"
+    condition: crds.create

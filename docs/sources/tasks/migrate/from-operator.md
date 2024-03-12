@@ -279,7 +279,7 @@ However, all static mode integrations have an equivalent component in the [`prom
 The [reference documentation][component documentation] should help convert those integrations to their {{< param "PRODUCT_NAME" >}} equivalent.
 
 <!-- ToDo: Validate path -->
-[default values]: https://github.com/grafana/alloy/blob/main/operations/helm/charts/grafana-agent/values.yaml
+[default values]: https://github.com/grafana/alloy/blob/main/operations/helm/charts/alloy/values.yaml
 [clustering]: ../../../concepts/clustering/
 [deployment guide]: ../../../get-started/deploy-alloy
 <!-- ToDo: check link syntax -->

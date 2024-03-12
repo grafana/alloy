@@ -19,7 +19,7 @@ To configure {{< param "PRODUCT_NAME" >}} on Kubernetes, perform the following s
 1. Run the following command in a terminal to upgrade your {{< param "PRODUCT_NAME" >}} installation:
 
    ```shell
-   helm upgrade RELEASE_NAME grafana/grafana-agent -f VALUES_PATH
+   helm upgrade RELEASE_NAME grafana/alloy -f VALUES_PATH
    ```
 
    1. Replace `RELEASE_NAME` with the name you used for your {{< param "PRODUCT_NAME" >}} installation.
@@ -38,12 +38,12 @@ The following is an example snippet of a `kustomization` that disables this beha
 
 ```yaml
 configMapGenerator:
-  - name: grafana-agent
+  - name: alloy
     files:
       - config.river
     options:
       disableNameSuffixHash: true
 ```
-[values.yaml]: https://raw.githubusercontent.com/grafana/agent/main/operations/helm/charts/grafana-agent/values.yaml
-[Helm chart]: https://github.com/grafana/agent/tree/main/operations/helm/charts/grafana-agent
+[values.yaml]: https://raw.githubusercontent.com/grafana/alloy/main/operations/helm/charts/alloy/values.yaml
+[Helm chart]: https://github.com/grafana/alloy/tree/main/operations/helm/charts/alloy
 [Kustomize]: https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/
