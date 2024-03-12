@@ -1,0 +1,50 @@
+{{- if eq .Values.controller.type "statefulset" }}
+{{- if .Values.enableStatefulSetAutoDeletePVC }}
+{{- fail "Value 'enableStatefulSetAutoDeletePVC' should be nested inside 'controller' options." }}
+{{- end }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "alloy.fullname" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+  {{- with .Values.controller.extraAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.controller.autoscaling.enabled }}
+  replicas: {{ .Values.controller.replicas }}
+  {{- end }}
+  {{- if .Values.controller.parallelRollout }}
+  podManagementPolicy: Parallel
+  {{- end }}
+  {{- if ge (int .Capabilities.KubeVersion.Minor) 22 }}
+  minReadySeconds: 10
+  {{- end }}
+  serviceName: {{ include "alloy.fullname" . }}
+  selector:
+    matchLabels:
+      {{- include "alloy.selectorLabels" . | nindent 6 }}
+  template:
+    {{- include "alloy.pod-template" . | nindent 4 }}
+  {{- with .Values.controller.updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.controller.volumeClaimTemplates }}
+  volumeClaimTemplates:
+    {{- range . }}
+    - {{ toYaml . | nindent 6 }}
+    {{- end }}
+  {{- end }}
+  {{- if and (semverCompare ">= 1.23-0" .Capabilities.KubeVersion.Version) (.Values.controller.enableStatefulSetAutoDeletePVC) }}
+  {{- /*
+    Data on the read nodes is easy to replace, so we want to always delete PVCs to make
+    operation easier, and will rely on re-fetching data when needed.
+  */}}
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete
+    whenScaled: Delete
+  {{- end }}
+{{- end }}

@@ -130,7 +130,7 @@ jobs:
 
       # Note that this creates a release in grafana/helm-charts with a new tag.
       # The tag name in grafana/helm-charts is <package>-<version>, while the
-      # tag name for grafana/agent is helm-chart/<version>.
+      # tag name for grafana/alloy is helm-chart/<version>.
       - name: Make github release
         uses: softprops/action-gh-release@v1
         with:

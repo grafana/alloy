@@ -10,7 +10,7 @@ jobs:
       - name: Regenerate docs
         run: |
           docker run --rm \
-            -v "$(pwd)/operations/helm/charts/grafana-agent:/helm-docs" \
+            -v "$(pwd)/operations/helm/charts/alloy:/helm-docs" \
             -u "$(id -u)" \
             jnorwood/helm-docs
           if ! git diff --exit-code; then

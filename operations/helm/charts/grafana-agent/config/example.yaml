@@ -1,3 +1,0 @@
-server:
-  log_level: info
-  log_format: logfmt

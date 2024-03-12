@@ -1,0 +1,35 @@
+{{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
+{{- if .Values.service.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "alloy.fullname" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if .Values.service.clusterIP }}
+  clusterIP: {{ .Values.service.clusterIP }}
+  {{- end }}
+  selector:
+    {{- include "alloy.selectorLabels" . | nindent 4 }}
+  internalTrafficPolicy: {{.Values.service.internalTrafficPolicy}}
+  ports:
+    - name: http-metrics
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
+      port: {{ $values.listenPort }}
+      targetPort: {{ $values.listenPort }}
+      protocol: "TCP"
+{{- range $portMap := $values.extraPorts }}
+    - name: {{ $portMap.name }}
+      port: {{ $portMap.port }}
+      targetPort: {{ $portMap.targetPort }}
+      protocol: {{ coalesce $portMap.protocol "TCP" }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,34 @@
+---
+# Source: alloy/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: alloy
+  labels:
+    helm.sh/chart: alloy
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/instance: alloy
+    app.kubernetes.io/version: "vX.Y.Z"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: statefulset
+    name: alloy
+  minReplicas: 1
+  maxReplicas: 5
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+    scaleUp:
+      stabilizationWindowSeconds: 0
+  metrics:
+    # Changing the order of the metrics will cause ArgoCD to go into a sync loop
+    # memory needs to be first.
+    # More info in: https://github.com/argoproj/argo-cd/issues/1079
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

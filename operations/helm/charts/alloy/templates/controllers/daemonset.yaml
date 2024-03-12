@@ -1,0 +1,25 @@
+{{- if eq .Values.controller.type "daemonset" }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "alloy.fullname" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+  {{- with .Values.controller.extraAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if ge (int .Capabilities.KubeVersion.Minor) 22 }}
+  minReadySeconds: 10
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "alloy.selectorLabels" . | nindent 6 }}
+  template:
+    {{- include "alloy.pod-template" . | nindent 4 }}
+  {{- with .Values.controller.updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

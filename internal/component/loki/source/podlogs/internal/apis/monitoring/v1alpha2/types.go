@@ -8,8 +8,8 @@ import (
 // +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:path="podlogs"
-// +kubebuilder:resource:path="podlogs"
-// +kubebuilder:resource:categories="grafana-agent"
+// +kubebuilder:resource:categories="grafana-alloy"
+// +kubebuilder:resource:categories="alloy"
 
 // PodLogs defines how to collect logs for a Pod.
 type PodLogs struct {
