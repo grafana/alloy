@@ -1,17 +1,18 @@
+{{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
 {{- if and .Values.service.enabled .Values.serviceMonitor.enabled -}}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "grafana-agent.fullname" . }}
+  name: {{ include "alloy.fullname" . }}
   labels:
-    {{- include "grafana-agent.labels" . | nindent 4 }}
+    {{- include "alloy.labels" . | nindent 4 }}
     {{- with .Values.serviceMonitor.additionalLabels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
   endpoints:
   - port: http-metrics
-    scheme: {{ .Values.agent.listenScheme | lower }}
+    scheme: {{ $values.listenScheme | lower }}
     honorLabels: true
     {{- if .Values.serviceMonitor.interval }}
     interval: {{ .Values.serviceMonitor.interval }}
@@ -30,5 +31,5 @@ spec:
     {{- end }}
   selector:
     matchLabels:
-      {{- include "grafana-agent.selectorLabels" . | nindent 6 }}
+      {{- include "alloy.selectorLabels" . | nindent 6 }}
 {{- end }}

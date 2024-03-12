@@ -1,15 +1,16 @@
-{{- if and (eq .Values.agent.mode "flow") (.Values.agent.clustering.enabled) -}}
+{{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
+{{- if $values.clustering.enabled -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "grafana-agent.fullname" . }}-cluster
+  name: {{ include "alloy.fullname" . }}-cluster
   labels:
-    {{- include "grafana-agent.labels" . | nindent 4 }}
+    {{- include "alloy.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   clusterIP: 'None'
   selector:
-    {{- include "grafana-agent.selectorLabels" . | nindent 4 }}
+    {{- include "alloy.selectorLabels" . | nindent 4 }}
   ports:
     # Do not include the -metrics suffix in the port name, otherwise metrics
     # can be double-collected with the non-headless Service if it's also
@@ -18,10 +19,10 @@ spec:
     # This service should only be used for clustering, and not metric
     # collection.
     - name: http
-      port: {{ .Values.agent.listenPort }}
-      targetPort: {{ .Values.agent.listenPort }}
+      port: {{ $values.listenPort }}
+      targetPort: {{ $values.listenPort }}
       protocol: "TCP"
-  {{- range $portMap := .Values.agent.extraPorts }}
+  {{- range $portMap := $values.extraPorts }}
     - name: {{ $portMap.name }}
       port: {{ $portMap.port }}
       targetPort: {{ $portMap.targetPort }}

@@ -1,10 +1,10 @@
-# Grafana Agent Helm chart
+# Grafana Alloy Helm chart
 
 {{ template "chart.typeBadge" . }}{{ template "chart.versionBadge" . }}{{ template "chart.appVersionBadge" . }}
 
-Helm chart for deploying [Grafana Agent][] to Kubernetes.
+Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
-[Grafana Agent]: https://grafana.com/docs/agent/latest/
+[Grafana Alloy]: https://grafana.com/docs/alloy/latest/
 
 ## Usage
 
@@ -19,9 +19,9 @@ helm repo update
 
 To install the chart with the release name my-release:
 
-`helm install my-release grafana/grafana-agent`
+`helm install my-release grafana/alloy`
 
-This chart installs one instance of Grafana Agent into your Kubernetes cluster
+This chart installs one instance of Grafana Alloy into your Kubernetes cluster
 using a specific Kubernetes controller. By default, DaemonSet is used. The
 `controller.type` value can be used to change the controller to either a
 StatefulSet or Deployment.
@@ -29,29 +29,21 @@ StatefulSet or Deployment.
 Creating multiple installations of the Helm chart with different controllers is
 useful if just using the default DaemonSet isn't sufficient.
 
-## Flow mode is the default
-
-By default, [Grafana Agent Flow][Flow] is deployed. To opt out of Flow mode and
-use the older mode (called "static mode"), set the `agent.mode` value to
-`static`.
-
-[Flow]: https://grafana.com/docs/agent/latest/flow/
-
 {{ template "chart.valuesSection" . }}
 
-### agent.extraArgs
+### alloy.extraArgs
 
-`agent.extraArgs` allows for passing extra arguments to the Grafana Agent
-container. The list of available arguments is documented on [agent run][].
+`alloy.extraArgs` allows for passing extra arguments to the Grafana Alloy
+container. The list of available arguments is documented on [alloy run][].
 
-> **WARNING**: Using `agent.extraArgs` does not have a stable API. Things may
+> **WARNING**: Using `alloy.extraArgs` does not have a stable API. Things may
 > break between Chart upgrade if an argument gets added to the template.
 
-[agent run]: https://grafana.com/docs/agent/latest/flow/reference/cli/run/
+[alloy run]: https://grafana.com/docs/alloy/latest/reference/cli/run/
 
-### agent.extraPorts
+### alloy.extraPorts
 
-`agent.extraPorts` allows for configuring specific open ports.
+`alloy.extraPorts` allows for configuring specific open ports.
 
 The detained specification of ports can be found at the [Kubernetes Pod documents](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#ports).
 
@@ -64,28 +56,28 @@ Port numbers specified must be 0 < x < 65535.
 | name | name | If specified, this must be an `IANA_SVC_NAME` and unique within the pod. Each named port in a pod must have a unique name. Name for the port that can be referred to by services.
 | protocol | protocol | Must be UDP, TCP, or SCTP. Defaults to "TCP". |
 
-### agent.listenAddr
+### alloy.listenAddr
 
-`agent.listenAddr` allows for restricting which address the agent listens on
+`alloy.listenAddr` allows for restricting which address Alloy listens on
 for network traffic on its HTTP server. By default, this is `0.0.0.0` to allow
 its UI to be exposed when port-forwarding and to expose its metrics to other
-agents in the cluster.
+Alloy instances in the cluster.
 
-### agent.configMap.config
+### alloy.configMap.config
 
-`agent.configMap.content` holds the Grafana Agent configuration to use.
+`alloy.configMap.content` holds the Grafana Alloy configuration to use.
 
-If `agent.configMap.content` is not provided, a [default configuration file][default-config] is
-used. When provided, `agent.configMap.content` must hold a valid River configuration file.
+If `alloy.configMap.content` is not provided, a [default configuration file][default-config] is
+used. When provided, `alloy.configMap.content` must hold a valid River configuration file.
 
 [default-config]: ./config/example.river
 
-### agent.securityContext
+### alloy.securityContext
 
-`agent.securityContext` sets the securityContext passed to the Grafana
-Agent container.
+`alloy.securityContext` sets the securityContext passed to the Grafana
+Alloy container.
 
-By default, Grafana Agent containers are not able to collect telemetry from the
+By default, Grafana Alloy containers are not able to collect telemetry from the
 host node or other specific types of privileged telemetry data. See [Collecting
 logs from other containers][#collecting-logs-from-other-containers] and
 [Collecting host node telemetry][#collecting-host-node-telemetry] below for
@@ -94,24 +86,21 @@ more information on how to enable these capabilities.
 ### rbac.create
 
 `rbac.create` enables the creation of ClusterRole and ClusterRoleBindings for
-the Grafana Agent containers to use. The default permission set allows Flow
+the Grafana Alloy containers to use. The default permission set allows Flow
 components like [discovery.kubernetes][] to work properly.
 
-[discovery.kubernetes]: https://grafana.com/docs/agent/latest/flow/reference/components/discovery.kubernetes/
+[discovery.kubernetes]: https://grafana.com/docs/alloy/latest/reference/components/discovery.kubernetes/
 
 ### controller.autoscaling
 
 `controller.autoscaling.enabled` enables the creation of a HorizontalPodAutoscaler. It is only used when `controller.type` is set to `deployment` or `statefulset`.
 
-`controller.autoscaling` is intended to be used with an
-[app_agent_receiver-configured][app_agent_receiver] Grafana Agent or for
-[clustered][] mode.
+`controller.autoscaling` is intended to be used with [clustered][] mode.
 
-> **WARNING**: Using `controller.autoscaling` for any other Grafana Agent
+> **WARNING**: Using `controller.autoscaling` for any other Grafana Alloy
 > configuration could lead to redundant or double telemetry collection.
 
-[app_agent_receiver]: https://grafana.com/docs/agent/latest/configuration/integrations/integrations-next/app-agent-receiver-config/
-[clustered]: https://grafana.com/docs/agent/latest/flow/reference/cli/run/#clustered-mode-experimental
+[clustered]: https://grafana.com/docs/alloy/latest/reference/cli/run/#clustered-mode
 
 When using autoscaling with a StatefulSet controller and have enabled
 volumeClaimTemplates to be created alongside the StatefulSet, it is possible to
@@ -121,39 +110,33 @@ Kubernetes version `>=1.23-0` and your cluster has the
 `enableStatefulSetAutoDeletePVC` to true to automatically delete stale PVCs.
 
 Using `controller.autoscaling` requires the target metric (cpu/memory) to have
-its resource requests set up for both the agent and config-reloader containers
+its resource requests set up for both the Alloy and config-reloader containers
 so that the HPA can use them to calculate the replica count from the actual
 resource utilization.
 
 ## Collecting logs from other containers
 
 There are two ways to collect logs from other containers within the cluster
-the agent is deployed in.
+Alloy is deployed in.
 
-### Versions >= 0.31.x
+### loki.source.kubernetes
 
-The [loki.source.kubernetes][] component introduced in 0.31.0 may be used to
-collect logs as an alternative to tailing files from the host. This component
-does not require mounting the hosts filesystem into the Agent, nor requires
-additional security contexts to work correctly.
-
-However, `loki.source.kubernetes` is experimental and may have issues not
-present in the file-based approach.
+The [loki.source.kubernetes][] component may be used to collect logs from
+containers using the Kubernetes API. This component does not require mounting
+the hosts filesystem into the Agent, nor requires additional security contexts
+to work correctly.
 
 [loki.source.kubernetes]: https://grafana.com/docs/agent/latest/flow/reference/components/loki.source.kubernetes/
 
-### Versions < 0.31.x
+### File-based collection
 
-For those running the Agent on versions prior to 0.31.0, the only way to collect logs
-from other containers is to mount `/var/lib/docker/containers` from the host and read
-the log files directly.
+Logs may also be collected by mounting the host's filesystem into the Alloy
+container, bypassing the need to communicate with the Kubrnetes API.
 
-This capability is disabled by default.
+To mount logs from other containers to Grafana Alloy directly:
 
-To expose logs from other containers to Grafana Agent:
-
-* Set `agent.mounts.dockercontainers` to `true`.
-* Set `agent.securityContext` to:
+* Set `alloy.mounts.dockercontainers` to `true`.
+* Set `alloy.securityContext` to:
   ```yaml
   privileged: true
   runAsUser: 0
@@ -162,13 +145,13 @@ To expose logs from other containers to Grafana Agent:
 ## Collecting host node telemetry
 
 Telemetry from the host, such as host-specific log files (from `/var/logs`) or
-metrics from `/proc` and `/sys` are not accessible to Grafana Agent containers.
+metrics from `/proc` and `/sys` are not accessible to Grafana Alloy containers.
 
-To expose this information to Grafana Agent for telemetry collection:
+To expose this information to Grafana Alloy for telemetry collection:
 
-* Set `agent.mounts.dockercontainers` to `true`.
+* Set `alloy.mounts.dockercontainers` to `true`.
 * Mount `/proc` and `/sys` from the host into the container.
-* Set `agent.securityContext` to:
+* Set `alloy.securityContext` to:
   ```yaml
   privileged: true
   runAsUser: 0

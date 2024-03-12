@@ -1,6 +1,6 @@
 apiVersion: v2
 name: grafana-agent
-description: 'Grafana Agent'
+description: 'Grafana Alloy'
 type: application
 version: 0.36.0
 appVersion: 'v0.40.2'

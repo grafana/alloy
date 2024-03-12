@@ -1,12 +1,13 @@
-{{- define "grafana-agent.pod-template" -}}
+{{- define "alloy.pod-template" -}}
+{{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
 metadata:
   annotations:
-    kubectl.kubernetes.io/default-container: grafana-agent
+    kubectl.kubernetes.io/default-container: alloy
     {{- with .Values.controller.podAnnotations }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
   labels:
-    {{- include "grafana-agent.selectorLabels" . | nindent 4 }}
+    {{- include "alloy.selectorLabels" . | nindent 4 }}
     {{- with .Values.controller.podLabels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -15,7 +16,7 @@ spec:
   securityContext:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  serviceAccountName: {{ include "grafana-agent.serviceAccountName" . }}
+  serviceAccountName: {{ include "alloy.serviceAccountName" . }}
   {{- if or .Values.global.image.pullSecrets .Values.image.pullSecrets }}
   imagePullSecrets:
     {{- if .Values.global.image.pullSecrets }}
@@ -31,8 +32,8 @@ spec:
     {{- end }}
   {{- end }}
   containers:
-    {{- include "grafana-agent.container" . | nindent 4 }}
-    {{- include "grafana-agent.watch-container" . | nindent 4 }}
+    {{- include "alloy.container" . | nindent 4 }}
+    {{- include "alloy.watch-container" . | nindent 4 }}
     {{- with .Values.controller.extraContainers }}
     {{- toYaml . | nindent 4 }}
     {{- end}}
@@ -65,13 +66,13 @@ spec:
   volumes:
     - name: config
       configMap:
-        name: {{ include "grafana-agent.config-map.name" . }}
-    {{- if .Values.agent.mounts.varlog }}
+        name: {{ include "alloy.config-map.name" . }}
+    {{- if $values.mounts.varlog }}
     - name: varlog
       hostPath:
         path: /var/log
     {{- end }}
-    {{- if .Values.agent.mounts.dockercontainers }}
+    {{- if $values.mounts.dockercontainers }}
     - name: dockercontainers
       hostPath:
         path: /var/lib/docker/containers

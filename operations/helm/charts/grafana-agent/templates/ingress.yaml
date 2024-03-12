@@ -1,19 +1,19 @@
 {{- if .Values.ingress.enabled -}}
-{{- $ingressApiIsStable := eq (include "grafana-agent.ingress.isStable" .) "true" -}}
-{{- $ingressSupportsIngressClassName := eq (include "grafana-agent.ingress.supportsIngressClassName" .) "true" -}}
-{{- $ingressSupportsPathType := eq (include "grafana-agent.ingress.supportsPathType" .) "true" -}}
-{{- $fullName := include "grafana-agent.fullname" . -}}
+{{- $ingressApiIsStable := eq (include "alloy.ingress.isStable" .) "true" -}}
+{{- $ingressSupportsIngressClassName := eq (include "alloy.ingress.supportsIngressClassName" .) "true" -}}
+{{- $ingressSupportsPathType := eq (include "alloy.ingress.supportsPathType" .) "true" -}}
+{{- $fullName := include "alloy.fullname" . -}}
 {{- $servicePort := .Values.ingress.faroPort -}}
 {{- $ingressPath := .Values.ingress.path -}}
 {{- $ingressPathType := .Values.ingress.pathType -}}
 {{- $extraPaths := .Values.ingress.extraPaths -}}
-apiVersion: {{ include "grafana-agent.ingress.apiVersion" . }}
+apiVersion: {{ include "alloy.ingress.apiVersion" . }}
 kind: Ingress
 metadata:
   name: {{ $fullName }}
-  namespace: {{ include "grafana-agent.namespace" . }}
+  namespace: {{ include "alloy.namespace" . }}
   labels:
-    {{- include "grafana-agent.labels" . | nindent 4 }}
+    {{- include "alloy.labels" . | nindent 4 }}
     {{- with .Values.ingress.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

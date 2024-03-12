@@ -2,9 +2,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "grafana-agent.fullname" . }}
+  name: {{ include "alloy.fullname" . }}
   labels:
-    {{- include "grafana-agent.labels" . | nindent 4 }}
+    {{- include "alloy.labels" . | nindent 4 }}
 rules:
   # Rules which allow discovery.kubernetes to function.
   - apiGroups:
@@ -96,15 +96,15 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "grafana-agent.fullname" . }}
+  name: {{ include "alloy.fullname" . }}
   labels:
-    {{- include "grafana-agent.labels" . | nindent 4 }}
+    {{- include "alloy.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "grafana-agent.fullname" . }}
+  name: {{ include "alloy.fullname" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "grafana-agent.serviceAccountName" . }}
+    name: {{ include "alloy.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 {{- end }}

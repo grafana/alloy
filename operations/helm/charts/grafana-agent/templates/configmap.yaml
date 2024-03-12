@@ -1,22 +1,15 @@
-{{- if .Values.agent.configMap.create }}
+{{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
+{{- if $values.configMap.create }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "grafana-agent.fullname" . }}
+  name: {{ include "alloy.fullname" . }}
   labels:
-    {{- include "grafana-agent.labels" . | nindent 4 }}
+    {{- include "alloy.labels" . | nindent 4 }}
 data:
-  {{- if eq .Values.agent.mode "flow" }}
-  {{- if .Values.agent.configMap.content }}
-  config.river: |- {{- (tpl  .Values.agent.configMap.content .) | nindent 4 }}
+  {{- if $values.configMap.content }}
+  config.river: |- {{- (tpl  $values.configMap.content .) | nindent 4 }}
   {{- else }}
   config.river: |- {{- .Files.Get "config/example.river" | trim | nindent 4 }}
-  {{- end }}
-  {{- else if eq .Values.agent.mode "static" }}
-  {{- if .Values.agent.configMap.content }}
-  config.yaml: |- {{- (tpl .Values.agent.configMap.content .) | nindent 4 }}
-  {{- else }}
-  config.yaml: |- {{- .Files.Get "config/example.yaml" | trim | nindent 4 }}
-  {{- end }}
   {{- end }}
 {{- end }}

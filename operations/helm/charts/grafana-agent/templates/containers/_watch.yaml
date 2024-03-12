@@ -1,4 +1,5 @@
-{{- define "grafana-agent.watch-container" -}}
+{{- define "alloy.watch-container" -}}
+{{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
 {{- if .Values.configReloader.enabled -}}
 - name: config-reloader
   image: {{ .Values.global.image.registry | default .Values.configReloader.image.registry }}/{{ .Values.configReloader.image.repository }}{{ include "config-reloader.imageId" . }}
@@ -7,12 +8,12 @@
     {{- toYaml .Values.configReloader.customArgs | nindent 4 }}
   {{- else }}
   args:
-    - --volume-dir=/etc/agent
-    - --webhook-url=http://localhost:{{ .Values.agent.listenPort }}/-/reload
+    - --volume-dir=/etc/alloy
+    - --webhook-url=http://localhost:{{ $values.listenPort }}/-/reload
   {{- end }}
   volumeMounts:
     - name: config
-      mountPath: /etc/agent
+      mountPath: /etc/alloy
   {{- with .Values.configReloader.resources }}
   resources:
     {{- toYaml . | nindent 4 }}

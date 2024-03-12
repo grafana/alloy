@@ -19,7 +19,7 @@ spec:
   template:
     metadata:
       annotations:
-        kubectl.kubernetes.io/default-container: grafana-agent
+        kubectl.kubernetes.io/default-container: alloy
       labels:
         app.kubernetes.io/name: grafana-agent
         app.kubernetes.io/instance: grafana-agent
@@ -44,18 +44,16 @@ spec:
           - emptyDir: {}
             name: geoip
       containers:
-        - name: grafana-agent
-          image: docker.io/grafana/agent:v0.40.2
+        - name: alloy
+          image: docker.io/grafana/alloy:v0.40.2
           imagePullPolicy: IfNotPresent
           args:
             - run
-            - /etc/agent/config.river
-            - --storage.path=/tmp/agent
+            - /etc/alloy/config.river
+            - --storage.path=/tmp/alloy
             - --server.http.listen-addr=0.0.0.0:80
             - --server.http.ui-path-prefix=/
           env:
-            - name: AGENT_MODE
-              value: flow
             - name: AGENT_DEPLOY_MODE
               value: "helm"
             - name: HOSTNAME
@@ -74,18 +72,18 @@ spec:
             timeoutSeconds: 1
           volumeMounts:
             - name: config
-              mountPath: /etc/agent
+              mountPath: /etc/alloy
             -
               mountPath: /etc/geoip
               name: geoip
         - name: config-reloader
           image: ghcr.io/jimmidyson/configmap-reload:v0.12.0
           args:
-            - --volume-dir=/etc/agent
+            - --volume-dir=/etc/alloy
             - --webhook-url=http://localhost:80/-/reload
           volumeMounts:
             - name: config
-              mountPath: /etc/agent
+              mountPath: /etc/alloy
           resources:
             requests:
               cpu: 1m

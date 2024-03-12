@@ -1,6 +1,6 @@
 # Helm charts
 
-This directory contains Helm charts for Grafana Agent.
+This directory contains Helm charts for Grafana Alloy.
 
 ## Testing
 

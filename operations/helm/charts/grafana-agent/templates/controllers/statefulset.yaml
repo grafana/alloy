@@ -5,9 +5,9 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "grafana-agent.fullname" . }}
+  name: {{ include "alloy.fullname" . }}
   labels:
-    {{- include "grafana-agent.labels" . | nindent 4 }}
+    {{- include "alloy.labels" . | nindent 4 }}
   {{- with .Values.controller.extraAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -22,12 +22,12 @@ spec:
   {{- if ge (int .Capabilities.KubeVersion.Minor) 22 }}
   minReadySeconds: 10
   {{- end }}
-  serviceName: {{ include "grafana-agent.fullname" . }}
+  serviceName: {{ include "alloy.fullname" . }}
   selector:
     matchLabels:
-      {{- include "grafana-agent.selectorLabels" . | nindent 6 }}
+      {{- include "alloy.selectorLabels" . | nindent 6 }}
   template:
-    {{- include "grafana-agent.pod-template" . | nindent 4 }}
+    {{- include "alloy.pod-template" . | nindent 4 }}
   {{- with .Values.controller.updateStrategy }}
   updateStrategy:
     {{- toYaml . | nindent 4 }}

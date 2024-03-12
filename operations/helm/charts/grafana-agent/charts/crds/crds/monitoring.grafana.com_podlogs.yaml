@@ -10,7 +10,8 @@ spec:
   group: monitoring.grafana.com
   names:
     categories:
-    - grafana-agent
+    - grafana-alloy
+    - alloy
     kind: PodLogs
     listKind: PodLogsList
     plural: podlogs

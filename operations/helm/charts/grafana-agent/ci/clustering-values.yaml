@@ -1,5 +1,4 @@
 agent:
-  mode: 'flow'
   clustering:
     enabled: true
 

@@ -15,17 +15,16 @@ global:
     # -- Optional set of global image pull secrets.
     pullSecrets: []
 
-  # -- Security context to apply to the Grafana Agent pod.
+  # -- Security context to apply to the Grafana Alloy pod.
   podSecurityContext: {}
 
 crds:
   # -- Whether to install CRDs for monitoring.
   create: true
 
-# Various agent settings.
-agent:
-  # -- Mode to run Grafana Agent in. Can be "flow" or "static".
-  mode: 'flow'
+## Various Alloy settings. For backwards compatibility with the grafana-agent
+## chart, this field may also be called "agent".
+alloy:
   configMap:
     # -- Create a new ConfigMap for the config file.
     create: true
@@ -38,13 +37,12 @@ agent:
     key: null
 
   clustering:
-    # -- Deploy agents in a cluster to allow for load distribution. Only
-    # applies when agent.mode=flow.
+    # -- Deploy Alloy in a cluster to allow for load distribution.
     enabled: false
 
-  # -- Path to where Grafana Agent stores data (for example, the Write-Ahead Log).
+  # -- Path to where Grafana Alloy stores data (for example, the Write-Ahead Log).
   # By default, data is lost between reboots.
-  storagePath: /tmp/agent
+  storagePath: /tmp/alloy
 
   # -- Address to listen for traffic on. 0.0.0.0 exposes the UI to other
   # containers.
@@ -60,19 +58,19 @@ agent:
   uiPathPrefix: /
 
   # -- Enables sending Grafana Labs anonymous usage stats to help improve Grafana
-  # Agent.
+  # Alloy.
   enableReporting: true
 
-  # -- Extra environment variables to pass to the agent container.
+  # -- Extra environment variables to pass to the Alloy container.
   extraEnv: []
 
   # -- Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core
   envFrom: []
 
-  # -- Extra args to pass to `agent run`: https://grafana.com/docs/agent/latest/flow/reference/cli/run/
+  # -- Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/
   extraArgs: []
 
-  # -- Extra ports to expose on the Agent
+  # -- Extra ports to expose on the Alloy container.
   extraPorts: []
   # - name: "faro"
   #   port: 12347
@@ -86,37 +84,37 @@ agent:
     # collection.
     dockercontainers: false
 
-    # -- Extra volume mounts to add into the Grafana Agent container. Does not
+    # -- Extra volume mounts to add into the Grafana Alloy container. Does not
     # affect the watch container.
     extra: []
 
-  # -- Security context to apply to the Grafana Agent container.
+  # -- Security context to apply to the Grafana Alloy container.
   securityContext: {}
 
-  # -- Resource requests and limits to apply to the Grafana Agent container.
+  # -- Resource requests and limits to apply to the Grafana Alloy container.
   resources: {}
 
 image:
-  # -- Grafana Agent image registry (defaults to docker.io)
+  # -- Grafana Alloy image registry (defaults to docker.io)
   registry: "docker.io"
-  # -- Grafana Agent image repository.
-  repository: grafana/agent
-  # -- (string) Grafana Agent image tag. When empty, the Chart's appVersion is
+  # -- Grafana Alloy image repository.
+  repository: grafana/alloy
+  # -- (string) Grafana Alloy image tag. When empty, the Chart's appVersion is
   # used.
   tag: null
-  # -- Grafana Agent image's SHA256 digest (either in format "sha256:XYZ" or "XYZ"). When set, will override `image.tag`.
+  # -- Grafana Alloy image's SHA256 digest (either in format "sha256:XYZ" or "XYZ"). When set, will override `image.tag`.
   digest: null
-  # -- Grafana Agent image pull policy.
+  # -- Grafana Alloy image pull policy.
   pullPolicy: IfNotPresent
   # -- Optional set of image pull secrets.
   pullSecrets: []
 
 rbac:
-  # -- Whether to create RBAC resources for the agent.
+  # -- Whether to create RBAC resources for Alloy.
   create: true
 
 serviceAccount:
-  # -- Whether to create a service account for the Grafana Agent deployment.
+  # -- Whether to create a service account for the Grafana Alloy deployment.
   create: true
   # -- Additional labels to add to the created service account.
   additionalLabels: {}
@@ -128,7 +126,7 @@ serviceAccount:
 
 # Options for the extra controller used for config reloading.
 configReloader:
-  # -- Enables automatically reloading when the agent config changes.
+  # -- Enables automatically reloading when the Alloy config changes.
   enabled: true
   image:
     # -- Config reloader image registry (defaults to docker.io)
@@ -150,7 +148,7 @@ configReloader:
   securityContext: {}
 
 controller:
-  # -- Type of controller to use for deploying Grafana Agent in the cluster.
+  # -- Type of controller to use for deploying Grafana Alloy in the cluster.
   # Must be one of 'daemonset', 'deployment', or 'statefulset'.
   type: 'daemonset'
 
@@ -176,16 +174,16 @@ controller:
   # -- Update strategy for updating deployed Pods.
   updateStrategy: {}
 
-  # -- nodeSelector to apply to Grafana Agent pods.
+  # -- nodeSelector to apply to Grafana Alloy pods.
   nodeSelector: {}
 
-  # -- Tolerations to apply to Grafana Agent pods.
+  # -- Tolerations to apply to Grafana Alloy pods.
   tolerations: []
 
-  # -- Topology Spread Constraints to apply to Grafana Agent pods.
+  # -- Topology Spread Constraints to apply to Grafana Alloy pods.
   topologySpreadConstraints: []
 
-  # -- priorityClassName to apply to Grafana Agent pods.
+  # -- priorityClassName to apply to Grafana Alloy pods.
   priorityClassName: ''
 
   # -- Extra pod annotations to add.
@@ -235,7 +233,7 @@ controller:
   affinity: {}
 
   volumes:
-    # -- Extra volumes to add to the Grafana Agent pod.
+    # -- Extra volumes to add to the Grafana Alloy pod.
     extra: []
 
   # -- volumeClaimTemplates to add when controller.type is 'statefulset'.
@@ -246,7 +244,7 @@ controller:
   ##
   initContainers: []
 
-  # -- Additional containers to run alongside the agent container and initContainers.
+  # -- Additional containers to run alongside the Alloy container and initContainers.
   extraContainers: []
 
 service:
@@ -289,7 +287,7 @@ serviceMonitor:
   #   replacement: $1
   #   action: replace
 ingress:
-  # -- Enables ingress for the agent (faro port)
+  # -- Enables ingress for Alloy (Faro port)
   enabled: false
   # For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
   # See https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/#specifying-the-class-of-an-ingress
