@@ -52,7 +52,7 @@ func runCommand() *cobra.Command {
 		inMemoryAddr:          "agent.internal:12345",
 		httpListenAddr:        "127.0.0.1:12345",
 		storagePath:           "data-agent/",
-		minStability:          featuregate.StabilityExperimental,
+		minStability:          featuregate.StabilityStable,
 		uiPrefix:              "/",
 		disableReporting:      false,
 		enablePprof:           true,
