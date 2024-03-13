@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/agent/internal/component"
+	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/service"
 	http_service "github.com/grafana/agent/internal/service/http"
@@ -162,6 +163,7 @@ func (s *Service) Definition() service.Definition {
 			// Cluster depends on the HTTP service to work properly.
 			http_service.ServiceName,
 		},
+		Stability: featuregate.StabilityStable,
 	}
 }
 

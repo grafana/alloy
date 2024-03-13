@@ -30,7 +30,7 @@ type GitRepo struct {
 // managed at storagePath.
 //
 // If storagePath is empty on disk, NewGitRepo initializes GitRepo by cloning
-// the repository. Otherwise, NewGitRepo will do a fetch.
+// the repository. Otherwise, NewGitRepo will do a pull.
 //
 // After GitRepo is initialized, it checks out to the Revision specified in
 // GitRepoOptions.
@@ -58,13 +58,20 @@ func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*
 		}
 	}
 
-	// Fetch the latest contents. This may be a no-op if we just did a clone.
-	fetchRepoErr := repo.FetchContext(ctx, &git.FetchOptions{
+	// Pulls the latest contents. This may be a no-op if we just did a clone.
+	wt, err := repo.Worktree()
+	if err != nil {
+		return nil, DownloadFailedError{
+			Repository: opts.Repository,
+			Inner:      err,
+		}
+	}
+	pullRepoErr := wt.PullContext(ctx, &git.PullOptions{
 		RemoteName: "origin",
 		Force:      true,
 		Auth:       opts.Auth.Convert(),
 	})
-	if fetchRepoErr != nil && !errors.Is(fetchRepoErr, git.NoErrAlreadyUpToDate) {
+	if pullRepoErr != nil && !errors.Is(pullRepoErr, git.NoErrAlreadyUpToDate) {
 		workTree, err := repo.Worktree()
 		if err != nil {
 			return nil, err
@@ -75,7 +82,7 @@ func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*
 				workTree: workTree,
 			}, UpdateFailedError{
 				Repository: opts.Repository,
-				Inner:      fetchRepoErr,
+				Inner:      pullRepoErr,
 			}
 	}
 
@@ -109,19 +116,19 @@ func isRepoCloned(dir string) bool {
 	return dirError == nil && len(fi) > 0
 }
 
-// Update updates the repository by fetching new content and re-checking out to
+// Update updates the repository by pulling new content and re-checking out to
 // latest version of Revision.
 func (repo *GitRepo) Update(ctx context.Context) error {
 	var err error
-	fetchRepoErr := repo.repo.FetchContext(ctx, &git.FetchOptions{
+	pullRepoErr := repo.workTree.PullContext(ctx, &git.PullOptions{
 		RemoteName: "origin",
 		Force:      true,
 		Auth:       repo.opts.Auth.Convert(),
 	})
-	if fetchRepoErr != nil && !errors.Is(fetchRepoErr, git.NoErrAlreadyUpToDate) {
+	if pullRepoErr != nil && !errors.Is(pullRepoErr, git.NoErrAlreadyUpToDate) {
 		return UpdateFailedError{
 			Repository: repo.opts.Repository,
-			Inner:      fetchRepoErr,
+			Inner:      pullRepoErr,
 		}
 	}
 

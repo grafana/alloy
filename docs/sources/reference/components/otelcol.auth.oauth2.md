@@ -32,16 +32,25 @@ otelcol.auth.oauth2 "LABEL" {
 
 ## Arguments
 
-Name              | Type                | Description                                                | Default | Required
-------------------|---------------------|------------------------------------------------------------|---------|---------
-`client_id`       | `string`            | The client identifier issued to the client.                |         | yes
-`client_secret`   | `secret`            | The secret string associated with the client identifier.   |         | yes
-`token_url`       | `string`            | The server endpoint URL from which to get tokens.          |         | yes
-`endpoint_params` | `map(list(string))` | Additional parameters that are sent to the token endpoint. | `{}`    | no
-`scopes`          | `list(string)`      | Requested permissions associated for the client.           | `[]`    | no
-`timeout`         | `duration`          | The timeout on the client connecting to `token_url`.       | `"0s"`  | no
+Name                 | Type                | Description                                                                        | Default | Required
+-------------------- | ------------------- | ---------------------------------------------------------------------------------- | ------- | --------
+`client_id`          | `string`            | The client identifier issued to the client.                                        |         | no
+`client_id_file`     | `string`            | The file path to retrieve the client identifier issued to the client.              |         | no
+`client_secret`      | `secret`            | The secret string associated with the client identifier.                           |         | no
+`client_secret_file` | `secret`            | The file path to retrieve the secret string associated with the client identifier. |         | no
+`token_url`          | `string`            | The server endpoint URL from which to get tokens.                                  |         | yes
+`endpoint_params`    | `map(list(string))` | Additional parameters that are sent to the token endpoint.                         | `{}`    | no
+`scopes`             | `list(string)`      | Requested permissions associated for the client.                                   | `[]`    | no
+`timeout`            | `duration`          | The timeout on the client connecting to `token_url`.                               | `"0s"`  | no
 
 The `timeout` argument is used both for requesting initial tokens and for refreshing tokens. `"0s"` implies no timeout.
+
+At least one of the `client_id` and `client_id_file` pair of arguments must be
+set. In case both are set, `client_id_file` takes precedence.
+
+Similarly, at least one of the `client_secret` and `client_secret_file` pair of
+arguments must be set. In case both are set, `client_secret_file` also takes
+precedence.
 
 ## Blocks
 

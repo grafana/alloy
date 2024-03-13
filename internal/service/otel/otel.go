@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/service"
 	"github.com/grafana/agent/internal/util"
 )
@@ -50,6 +51,7 @@ func (*Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: nil, // otel does not accept configuration
 		DependsOn:  []string{},
+		Stability:  featuregate.StabilityStable,
 	}
 }
 

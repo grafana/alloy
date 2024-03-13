@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/grafana/agent/internal/component"
+	"github.com/grafana/agent/internal/featuregate"
 )
 
 // Definition describes an individual Flow service. Services have unique names
@@ -35,6 +36,14 @@ type Definition struct {
 	// or a named service doesn't exist), it is treated as a fatal
 	// error and the root Flow module will exit.
 	DependsOn []string
+
+	// Stability is the overall stability level of the service. This is used to
+	// make sure the user is not accidentally configuring a service that is not
+	// yet stable - users need to explicitly enable less-than-stable services
+	// via, for example, a command-line flag. If a service is not stable enough,
+	// an attempt to configure it via the controller will fail.
+	// This field must be set to a non-zero value.
+	Stability featuregate.Stability
 }
 
 // Host is a controller for services and Flow components.

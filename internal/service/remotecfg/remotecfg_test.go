@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -76,7 +77,9 @@ func TestAPIResponse(t *testing.T) {
 	env.svc.asClient = client
 
 	// Mock client to return a valid response.
+	client.mut.Lock()
 	client.getConfigFunc = buildGetConfigHandler(cfg1)
+	client.mut.Unlock()
 
 	// Run the service.
 	go func() {
@@ -90,9 +93,9 @@ func TestAPIResponse(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 
 	// Update the response returned by the API.
-	env.svc.mut.Lock()
+	client.mut.Lock()
 	client.getConfigFunc = buildGetConfigHandler(cfg2)
-	env.svc.mut.Unlock()
+	client.mut.Unlock()
 
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
@@ -177,29 +180,33 @@ func (f fakeHost) NewController(id string) service.Controller {
 }
 
 type agentClient struct {
+	mut           sync.RWMutex
 	getConfigFunc func(context.Context, *connect.Request[agentv1.GetConfigRequest]) (*connect.Response[agentv1.GetConfigResponse], error)
 }
 
-func (ag agentClient) GetConfig(ctx context.Context, req *connect.Request[agentv1.GetConfigRequest]) (*connect.Response[agentv1.GetConfigResponse], error) {
+func (ag *agentClient) GetConfig(ctx context.Context, req *connect.Request[agentv1.GetConfigRequest]) (*connect.Response[agentv1.GetConfigResponse], error) {
+	ag.mut.RLock()
+	defer ag.mut.RUnlock()
+
 	if ag.getConfigFunc != nil {
 		return ag.getConfigFunc(ctx, req)
 	}
 
 	panic("getConfigFunc not set")
 }
-func (ag agentClient) GetAgent(context.Context, *connect.Request[agentv1.GetAgentRequest]) (*connect.Response[agentv1.Agent], error) {
+func (ag *agentClient) GetAgent(context.Context, *connect.Request[agentv1.GetAgentRequest]) (*connect.Response[agentv1.Agent], error) {
 	return nil, nil
 }
-func (ag agentClient) CreateAgent(context.Context, *connect.Request[agentv1.CreateAgentRequest]) (*connect.Response[agentv1.Agent], error) {
+func (ag *agentClient) CreateAgent(context.Context, *connect.Request[agentv1.CreateAgentRequest]) (*connect.Response[agentv1.Agent], error) {
 	return nil, nil
 }
-func (ag agentClient) UpdateAgent(context.Context, *connect.Request[agentv1.UpdateAgentRequest]) (*connect.Response[agentv1.Agent], error) {
+func (ag *agentClient) UpdateAgent(context.Context, *connect.Request[agentv1.UpdateAgentRequest]) (*connect.Response[agentv1.Agent], error) {
 	return nil, nil
 }
-func (ag agentClient) DeleteAgent(context.Context, *connect.Request[agentv1.DeleteAgentRequest]) (*connect.Response[agentv1.DeleteAgentResponse], error) {
+func (ag *agentClient) DeleteAgent(context.Context, *connect.Request[agentv1.DeleteAgentRequest]) (*connect.Response[agentv1.DeleteAgentResponse], error) {
 	return nil, nil
 }
-func (ag agentClient) ListAgents(context.Context, *connect.Request[agentv1.ListAgentsRequest]) (*connect.Response[agentv1.Agents], error) {
+func (ag *agentClient) ListAgents(context.Context, *connect.Request[agentv1.ListAgentsRequest]) (*connect.Response[agentv1.Agents], error) {
 	return nil, nil
 }
 

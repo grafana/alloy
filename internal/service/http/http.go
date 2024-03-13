@@ -16,6 +16,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/grafana/agent/internal/component"
+	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/service"
@@ -128,6 +129,7 @@ func (s *Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  nil, // http has no dependencies.
+		Stability:  featuregate.StabilityStable,
 	}
 }
 

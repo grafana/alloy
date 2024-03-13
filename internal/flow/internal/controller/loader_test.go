@@ -1,6 +1,7 @@
 package controller_test
 
 import (
+	"context"
 	"errors"
 	"os"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/grafana/agent/internal/flow/internal/controller"
 	"github.com/grafana/agent/internal/flow/internal/dag"
 	"github.com/grafana/agent/internal/flow/logging"
+	"github.com/grafana/agent/internal/service"
 	"github.com/grafana/river/ast"
 	"github.com/grafana/river/diag"
 	"github.com/grafana/river/parser"
@@ -316,6 +318,60 @@ func TestLoader(t *testing.T) {
 	})
 }
 
+func TestLoader_Services(t *testing.T) {
+	testFile := `
+		testsvc { }
+	`
+
+	testService := &fakeService{
+		DefinitionFunc: func() service.Definition {
+			return service.Definition{
+				Name: "testsvc",
+				ConfigType: struct {
+					Name string `river:"name,attr,optional"`
+				}{},
+				Stability: featuregate.StabilityBeta,
+			}
+		},
+	}
+
+	newLoaderOptionsWithStability := func(stability featuregate.Stability) controller.LoaderOptions {
+		l, _ := logging.New(os.Stderr, logging.DefaultOptions)
+		return controller.LoaderOptions{
+			ComponentGlobals: controller.ComponentGlobals{
+				Logger:            l,
+				TraceProvider:     noop.NewTracerProvider(),
+				DataPath:          t.TempDir(),
+				MinStability:      stability,
+				OnBlockNodeUpdate: func(cn controller.BlockNode) { /* no-op */ },
+				Registerer:        prometheus.NewRegistry(),
+				NewModuleController: func(id string) controller.ModuleController {
+					return nil
+				},
+			},
+			Services: []service.Service{testService},
+		}
+	}
+
+	t.Run("Load with service at correct stability level", func(t *testing.T) {
+		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityBeta))
+		diags := applyFromContent(t, l, []byte(testFile), nil, nil)
+		require.NoError(t, diags.ErrorOrNil())
+	})
+
+	t.Run("Load with service below minimum stabilty level", func(t *testing.T) {
+		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityStable))
+		diags := applyFromContent(t, l, []byte(testFile), nil, nil)
+		require.ErrorContains(t, diags.ErrorOrNil(), `block "testsvc" is at stability level "beta", which is below the minimum allowed stability level "stable"`)
+	})
+
+	t.Run("Load with undefined minimum stability level", func(t *testing.T) {
+		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityUndefined))
+		diags := applyFromContent(t, l, []byte(testFile), nil, nil)
+		require.ErrorContains(t, diags.ErrorOrNil(), `stability levels must be defined: got "beta" as stability of block "testsvc" and <invalid_stability_level> as the minimum stability level`)
+	})
+}
+
 // TestScopeWithFailingComponent is used to ensure that the scope is filled out, even if the component
 // fails to properly start.
 func TestScopeWithFailingComponent(t *testing.T) {
@@ -472,4 +528,38 @@ func (f fakeModuleController) ClearModuleIDs() {
 
 func (f fakeModuleController) NewCustomComponent(id string, export component.ExportFunc) (controller.CustomComponent, error) {
 	return nil, nil
+}
+
+type fakeService struct {
+	DefinitionFunc func() service.Definition // Required.
+	RunFunc        func(ctx context.Context, host service.Host) error
+	UpdateFunc     func(newConfig any) error
+	DataFunc       func() any
+}
+
+func (fs *fakeService) Definition() service.Definition {
+	return fs.DefinitionFunc()
+}
+
+func (fs *fakeService) Run(ctx context.Context, host service.Host) error {
+	if fs.RunFunc != nil {
+		return fs.RunFunc(ctx, host)
+	}
+
+	<-ctx.Done()
+	return nil
+}
+
+func (fs *fakeService) Update(newConfig any) error {
+	if fs.UpdateFunc != nil {
+		return fs.UpdateFunc(newConfig)
+	}
+	return nil
+}
+
+func (fs *fakeService) Data() any {
+	if fs.DataFunc != nil {
+		return fs.DataFunc()
+	}
+	return nil
 }
