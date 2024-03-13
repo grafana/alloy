@@ -28,7 +28,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.podlogs",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityStable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

@@ -18,7 +18,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.span",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityStable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 

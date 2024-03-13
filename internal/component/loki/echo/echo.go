@@ -13,7 +13,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.echo",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityStable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 

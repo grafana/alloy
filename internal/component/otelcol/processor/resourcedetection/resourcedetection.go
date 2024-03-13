@@ -33,7 +33,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.resourcedetection",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityStable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
