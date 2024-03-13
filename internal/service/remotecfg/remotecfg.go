@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/agent-remote-config/api/gen/proto/go/agent/v1/agentv1connect"
 	"github.com/grafana/agent/internal/agentseed"
 	"github.com/grafana/agent/internal/component/common/config"
+	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/service"
 	"github.com/grafana/river"
@@ -128,6 +129,7 @@ func (s *Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  nil, // remotecfg has no dependencies.
+		Stability:  featuregate.StabilityBeta,
 	}
 }
 

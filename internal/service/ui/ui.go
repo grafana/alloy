@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"github.com/gorilla/mux"
+	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/service"
 	http_service "github.com/grafana/agent/internal/service/http"
 	"github.com/grafana/agent/internal/web/api"
@@ -46,6 +47,7 @@ func (s *Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: nil, // ui does not accept configuration
 		DependsOn:  []string{http_service.ServiceName},
+		Stability:  featuregate.StabilityStable,
 	}
 }
 

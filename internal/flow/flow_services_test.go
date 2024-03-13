@@ -63,6 +63,7 @@ func TestServices_Configurable(t *testing.T) {
 				return service.Definition{
 					Name:       "fake",
 					ConfigType: ServiceOptions{},
+					Stability:  featuregate.StabilityBeta,
 				}
 			},
 
@@ -117,6 +118,7 @@ func TestServices_Configurable_Optional(t *testing.T) {
 				return service.Definition{
 					Name:       "fake",
 					ConfigType: ServiceOptions{},
+					Stability:  featuregate.StabilityBeta,
 				}
 			},
 

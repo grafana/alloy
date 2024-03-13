@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	agent_service "github.com/grafana/agent/internal/service"
 	flow_service "github.com/grafana/agent/internal/service"
@@ -67,6 +68,7 @@ func (s *service) Definition() agent_service.Definition {
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  nil,
+		Stability:  featuregate.StabilityStable,
 	}
 }
 

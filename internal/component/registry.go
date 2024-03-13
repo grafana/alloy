@@ -124,7 +124,7 @@ type Registration struct {
 	// sure the user is not accidentally using a component that is not yet stable - users
 	// need to explicitly enable less-than-stable components via, for example, a command-line flag.
 	// If a component is not stable enough, an attempt to create it via the controller will fail.
-	// The default stability level is Experimental.
+	// This field must be set to a non-zero value.
 	Stability featuregate.Stability
 
 	// An example Arguments value that the registered component expects to

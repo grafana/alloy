@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/internal/dag"
 	"github.com/grafana/agent/internal/flow/internal/worker"
 	"github.com/grafana/agent/internal/flow/logging/level"
@@ -440,6 +441,19 @@ func (l *Loader) populateServiceNodes(g *dag.Graph, serviceBlocks []*ast.BlockSt
 		}
 
 		node := g.GetByID(blockID).(*ServiceNode)
+
+		// Don't permit configuring services that have a lower stability level than
+		// what is currently enabled.
+		nodeStability := node.Service().Definition().Stability
+		if err := featuregate.CheckAllowed(nodeStability, l.globals.MinStability, fmt.Sprintf("block %q", blockID)); err != nil {
+			diags.Add(diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				Message:  err.Error(),
+				StartPos: ast.StartPos(block).Position(),
+				EndPos:   ast.EndPos(block).Position(),
+			})
+			continue
+		}
 
 		// Blocks assigned to services are reset to nil in the previous loop.
 		//

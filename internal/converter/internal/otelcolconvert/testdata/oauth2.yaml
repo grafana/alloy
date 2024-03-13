@@ -1,0 +1,61 @@
+extensions:
+  oauth2client/noop: # this extension is not defined in services and shouldn't be converted
+    client_id: dummyclientid
+    client_secret: dummyclientsecret
+    token_url: https://example.com/oauth2/default/v1/token
+  oauth2client:
+    client_id: someclientid
+    client_secret: someclientsecret
+    endpoint_params:
+      audience: someaudience
+    token_url: https://example.com/oauth2/default/v1/token
+    scopes: ["api.metrics"]
+    # tls settings for the token client
+    tls:
+      insecure: true
+      ca_file: /var/lib/mycert.pem
+      cert_file: certfile
+      key_file: keyfile
+    # timeout for the token client
+    timeout: 2s
+    
+receivers:
+  otlp:
+    protocols:
+      grpc:
+
+exporters:
+  otlphttp/noauth:
+    # Our defaults have drifted from upstream, so we explicitly set our
+    # defaults below for queue_size.
+    endpoint: database:4318
+    sending_queue:
+      queue_size: 5000
+      
+  otlp/withauth:
+    tls:
+      ca_file: /tmp/certs/ca.pem
+    auth:
+      authenticator: oauth2client
+    # Our defaults have drifted from upstream, so we explicitly set our
+    # defaults below (balancer_name and queue_size).
+    endpoint: database:4317
+    balancer_name: pick_first
+    sending_queue:
+      queue_size: 5000
+
+service:
+  extensions: [oauth2client]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp/withauth, otlphttp/noauth]
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp/withauth, otlphttp/noauth]
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp/withauth, otlphttp/noauth]

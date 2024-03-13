@@ -46,12 +46,12 @@ func (ds Diagnostics) Error() string {
 	return sb.String()
 }
 
-func (ds Diagnostics) GenerateReport(writer io.Writer, reportType string) error {
+func (ds Diagnostics) GenerateReport(writer io.Writer, reportType string, bypassErrors bool) error {
 	switch reportType {
 	case Text:
-		return generateTextReport(writer, ds)
+		return generateTextReport(writer, ds, bypassErrors)
 	default:
-		return fmt.Errorf("Invalid diagnostic report type %q", reportType)
+		return fmt.Errorf("invalid diagnostic report type %q", reportType)
 	}
 }
 
@@ -65,4 +65,13 @@ func (ds *Diagnostics) RemoveDiagsBySeverity(severity Severity) {
 	}
 
 	*ds = newDiags
+}
+
+func (ds *Diagnostics) HasSeverityLevel(severity Severity) bool {
+	for _, diag := range *ds {
+		if diag.Severity == severity {
+			return true
+		}
+	}
+	return false
 }

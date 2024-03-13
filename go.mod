@@ -1,6 +1,12 @@
 module github.com/grafana/agent
 
-go 1.21.0
+go 1.22.1
+
+retract (
+	v1.3.191 // Published accidentally
+	v1.2.99 // Published accidentally
+	v1.2.99-rc1 // Published accidentally
+)
 
 require (
 	cloud.google.com/go/pubsub v1.33.0

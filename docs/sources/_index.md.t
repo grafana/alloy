@@ -12,7 +12,7 @@ cascade:
 
 # {{% param "PRODUCT_NAME" %}}
 
-{{< param "PRODUCT_NAME" >}} is a vendor-neutral, batteries-included telemetry collector with configuration inspired by [Terraform][].
+{{< param "PRODUCT_NAME" >}} is an OpenTelemetry Collector distribution with configuration inspired by [Terraform][].
 It is designed to be flexible, performant, and compatible with multiple ecosystems such as Prometheus and OpenTelemetry.
 
 {{< param "PRODUCT_NAME" >}} is based around **components**. Components are wired together to form programmable observability **pipelines** for telemetry collection, processing, and delivery.

@@ -1,9 +1,8 @@
 <p align="center"><img src="docs/sources/assets/logo_and_name.png" alt="Grafana Alloy logo"></p>
 
-[Grafana Alloy][] is a vendor-neutral, batteries-included telemetry collector with
-configuration inspired by [Terraform][]. It is designed to be flexible,
-performant, and compatible with multiple ecosystems such as Prometheus and
-OpenTelemetry.
+[Grafana Alloy][] is an OpenTelemetry Collector distribution with configuration
+inspired by [Terraform][]. It is designed to be flexible, performant, and
+compatible with multiple ecosystems such as Prometheus and OpenTelemetry.
 
 Grafana Alloy is based around **components**. Components are wired together to
 form programmable observability **pipelines** for telemetry collection,

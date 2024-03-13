@@ -163,7 +163,7 @@ func generateConvertReport(diags convert_diag.Diagnostics, fc *flowConvert) erro
 		}
 		defer file.Close()
 
-		return diags.GenerateReport(file, convert_diag.Text)
+		return diags.GenerateReport(file, convert_diag.Text, fc.bypassErrors)
 	}
 
 	return nil

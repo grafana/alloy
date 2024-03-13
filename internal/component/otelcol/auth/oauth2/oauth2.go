@@ -31,13 +31,15 @@ func init() {
 
 // Arguments configures the otelcol.auth.oauth2 component.
 type Arguments struct {
-	ClientID       string                     `river:"client_id,attr"`
-	ClientSecret   rivertypes.Secret          `river:"client_secret,attr"`
-	TokenURL       string                     `river:"token_url,attr"`
-	EndpointParams url.Values                 `river:"endpoint_params,attr,optional"`
-	Scopes         []string                   `river:"scopes,attr,optional"`
-	TLSSetting     otelcol.TLSClientArguments `river:"tls,block,optional"`
-	Timeout        time.Duration              `river:"timeout,attr,optional"`
+	ClientID         string                     `river:"client_id,attr,optional"`
+	ClientIDFile     string                     `river:"client_id_file,attr,optional"`
+	ClientSecret     rivertypes.Secret          `river:"client_secret,attr,optional"`
+	ClientSecretFile string                     `river:"client_secret_file,attr,optional"`
+	TokenURL         string                     `river:"token_url,attr"`
+	EndpointParams   url.Values                 `river:"endpoint_params,attr,optional"`
+	Scopes           []string                   `river:"scopes,attr,optional"`
+	TLSSetting       otelcol.TLSClientArguments `river:"tls,block,optional"`
+	Timeout          time.Duration              `river:"timeout,attr,optional"`
 }
 
 var _ auth.Arguments = Arguments{}
@@ -45,13 +47,15 @@ var _ auth.Arguments = Arguments{}
 // Convert implements auth.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &oauth2clientauthextension.Config{
-		ClientID:       args.ClientID,
-		ClientSecret:   configopaque.String(args.ClientSecret),
-		TokenURL:       args.TokenURL,
-		EndpointParams: args.EndpointParams,
-		Scopes:         args.Scopes,
-		TLSSetting:     *args.TLSSetting.Convert(),
-		Timeout:        args.Timeout,
+		ClientID:         args.ClientID,
+		ClientIDFile:     args.ClientIDFile,
+		ClientSecret:     configopaque.String(args.ClientSecret),
+		ClientSecretFile: args.ClientSecretFile,
+		TokenURL:         args.TokenURL,
+		EndpointParams:   args.EndpointParams,
+		Scopes:           args.Scopes,
+		TLSSetting:       *args.TLSSetting.Convert(),
+		Timeout:          args.Timeout,
 	}, nil
 }
 

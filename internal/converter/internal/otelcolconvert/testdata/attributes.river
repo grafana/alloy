@@ -1,0 +1,64 @@
+otelcol.receiver.otlp "default" {
+	grpc { }
+
+	http { }
+
+	output {
+		metrics = [otelcol.processor.attributes.default_example.input]
+		logs    = [otelcol.processor.attributes.default_example.input]
+		traces  = [otelcol.processor.attributes.default_example.input]
+	}
+}
+
+otelcol.processor.attributes "default_example" {
+	action {
+		key    = "db.table"
+		action = "delete"
+	}
+
+	action {
+		key    = "redacted_span"
+		value  = true
+		action = "upsert"
+	}
+
+	action {
+		key            = "copy_key"
+		from_attribute = "key_original"
+		action         = "update"
+	}
+
+	action {
+		key    = "account_id"
+		value  = 2245
+		action = "insert"
+	}
+
+	action {
+		key    = "account_password"
+		action = "delete"
+	}
+
+	action {
+		key    = "account_email"
+		action = "hash"
+	}
+
+	action {
+		key            = "http.status_code"
+		converted_type = "int"
+		action         = "convert"
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+		logs    = [otelcol.exporter.otlp.default.input]
+		traces  = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
