@@ -27,7 +27,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.receiver.prometheus",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityStable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 

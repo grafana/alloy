@@ -25,7 +25,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.loadbalancing",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityStable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 

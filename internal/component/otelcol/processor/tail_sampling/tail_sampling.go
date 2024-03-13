@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.tail_sampling",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityStable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 

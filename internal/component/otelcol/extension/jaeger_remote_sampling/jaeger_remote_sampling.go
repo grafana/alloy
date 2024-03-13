@@ -16,7 +16,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.extension.jaeger_remote_sampling",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityStable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

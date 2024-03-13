@@ -32,7 +32,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "mimir.rules.kubernetes",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityStable,
 		Args:      Arguments{},
 		Exports:   nil,
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {

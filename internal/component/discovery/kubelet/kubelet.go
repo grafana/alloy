@@ -61,7 +61,7 @@ var (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.kubelet",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityStable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
