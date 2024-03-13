@@ -17,7 +17,7 @@ import (
 
 var (
 	httpClient    = http.Client{Timeout: 5 * time.Second}
-	usageStatsURL = "https://stats.grafana.org/agent-usage-report"
+	usageStatsURL = "https://stats.grafana.org/alloy-usage-report"
 )
 
 // Report is the payload to be sent to stats.grafana.org
