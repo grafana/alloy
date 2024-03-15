@@ -175,6 +175,11 @@ func validateIntegrationsV2(integrationsConfig *v2.SubsystemOptions) diag.Diagno
 		case *eventhandler_v2.Config:
 		case *snmp_exporter_v2.Config:
 		case *vmware_exporter_v2.Config:
+			diags.AddWithDetail(
+				diag.SeverityLevelError,
+				"Support for the vsphere integration has been removed in Grafana Alloy v1.0, and conversion will not be performed.",
+				"To achieve similar functionality, consider creating an otelcol.receiver.vcenter component and converting generated metrics to a Prometheus pipeline using otelcol.exporter.prometheus.",
+			)
 		case *metricsutils_v2.ConfigShim:
 			switch v1_itg := itg.Orig.(type) {
 			case *azure_exporter.Config:
