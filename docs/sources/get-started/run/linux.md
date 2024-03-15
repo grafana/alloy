@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/run/linux/
-description: Learn how to run Grafana Agent Flow on Linux
+description: Learn how to run Grafana Alloy on Linux
 menuTitle: Linux
-title: Run Grafana Agent Flow on Linux
+title: Run Grafana Alloy on Linux
 weight: 300
 ---
 
@@ -15,13 +15,13 @@ weight: 300
 To start {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-sudo systemctl start grafana-agent-flow
+sudo systemctl start grafana-alloy
 ```
 
 (Optional) To verify that the service is running, run the following command in a terminal window:
 
 ```shell
-sudo systemctl status grafana-agent-flow
+sudo systemctl status grafana-alloy
 ```
 
 ## Configure {{% param "PRODUCT_NAME" %}} to start at boot
@@ -29,7 +29,7 @@ sudo systemctl status grafana-agent-flow
 To automatically run {{< param "PRODUCT_NAME" >}} when the system starts, run the following command in a terminal window:
 
 ```shell
-sudo systemctl enable grafana-agent-flow.service
+sudo systemctl enable grafana-alloy.service
 ```
 
 ## Restart {{% param "PRODUCT_NAME" %}}
@@ -37,7 +37,7 @@ sudo systemctl enable grafana-agent-flow.service
 To restart {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-sudo systemctl restart grafana-agent-flow
+sudo systemctl restart grafana-alloy
 ```
 
 ## Stop {{% param "PRODUCT_NAME" %}}
@@ -45,7 +45,7 @@ sudo systemctl restart grafana-agent-flow
 To stop {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-sudo systemctl stop grafana-agent-flow
+sudo systemctl stop grafana-alloy
 ```
 
 ## View {{% param "PRODUCT_NAME" %}} logs on Linux
@@ -53,7 +53,7 @@ sudo systemctl stop grafana-agent-flow
 To view {{< param "PRODUCT_NAME" >}} log files, run the following command in a terminal window:
 
 ```shell
-sudo journalctl -u grafana-agent-flow
+sudo journalctl -u grafana-alloy
 ```
 
 ## Next steps

@@ -33,7 +33,7 @@ To install {{< param "PRODUCT_NAME" >}} on macOS, run the following commands in 
 1. Install {{< param "PRODUCT_NAME" >}}:
 
    ```shell
-   brew install grafana-agent-flow
+   brew install grafana-alloy
    ```
 
 ## Upgrade
@@ -43,13 +43,13 @@ To upgrade {{< param "PRODUCT_NAME" >}} on macOS, run the following commands in 
 1. Upgrade {{< param "PRODUCT_NAME" >}}:
 
    ```shell
-   brew upgrade grafana-agent-flow
+   brew upgrade grafana-alloy
    ```
 
 1. Restart {{< param "PRODUCT_NAME" >}}:
 
    ```shell
-   brew services restart grafana-agent-flow
+   brew services restart grafana-alloy
    ```
 
 ## Uninstall
@@ -57,7 +57,7 @@ To upgrade {{< param "PRODUCT_NAME" >}} on macOS, run the following commands in 
 To uninstall {{< param "PRODUCT_NAME" >}} on macOS, run the following command in a terminal window:
 
 ```shell
-brew uninstall grafana-agent-flow
+brew uninstall grafana-alloy
 ```
 
 ## Next steps

@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/
-description: Learn how to install Grafana Agent Flow
+description: Learn how to install Grafana Alloy
 menuTitle: Install
-title: Install Grafana Agent Flow
+title: Install Grafana Alloy
 weight: 50
 ---
 

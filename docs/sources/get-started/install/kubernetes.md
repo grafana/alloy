@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/kubernetes/
-description: Learn how to deploy Grafana Agent Flow on Kubernetes
+description: Learn how to deploy Grafana Alloy on Kubernetes
 menuTitle: Kubernetes
-title: Deploy Grafana Agent Flow on Kubernetes
+title: Deploy Grafana Alloy on Kubernetes
 weight: 200
 ---
 
@@ -35,12 +35,12 @@ To deploy {{< param "PRODUCT_ROOT_NAME" >}} on Kubernetes using Helm, run the fo
 1. Install {{< param "PRODUCT_ROOT_NAME" >}}:
 
    ```shell
-   helm install <RELEASE_NAME> grafana/grafana-agent
+   helm install <RELEASE_NAME> grafana/grafana-alloy
    ```
 
    Replace the following:
 
-   -  _`<RELEASE_NAME>`_: The name to use for your {{< param "PRODUCT_ROOT_NAME" >}} installation, such as `grafana-agent-flow`.
+   -  _`<RELEASE_NAME>`_: The name to use for your {{< param "PRODUCT_ROOT_NAME" >}} installation, such as `grafana-alloy`.
 
 For more information on the {{< param "PRODUCT_ROOT_NAME" >}} Helm chart, refer to the Helm chart documentation on [Artifact Hub][].
 
@@ -49,5 +49,5 @@ For more information on the {{< param "PRODUCT_ROOT_NAME" >}} Helm chart, refer 
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Helm]: https://helm.sh
-[Artifact Hub]: https://artifacthub.io/packages/helm/grafana/grafana-agent
+[Artifact Hub]: https://artifacthub.io/packages/helm/grafana/grafana-alloy
 [Configure]: ../../../tasks/configure/configure-kubernetes/

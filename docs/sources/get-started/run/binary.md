@@ -15,7 +15,7 @@ If you [downloaded][InstallBinary] the standalone binary, you must run {{< param
 To start {{< param "PRODUCT_NAME" >}} on Linux, macOS, or FreeBSD, run the following command in a terminal window:
 
 ```shell
-AGENT_MODE=flow <BINARY_PATH> run <CONFIG_PATH>
+<BINARY_PATH> run <CONFIG_PATH>
 ```
 
 Replace the following:
@@ -28,7 +28,6 @@ Replace the following:
 To start {{< param "PRODUCT_NAME" >}} on Windows, run the following commands in a command prompt:
 
 ```cmd
-set AGENT_MODE=flow
 <BINARY_PATH> run <CONFIG_PATH>
 ```
 
@@ -45,26 +44,26 @@ You can set up and manage the standalone binary for {{< param "PRODUCT_NAME" >}}
 These steps assume you have a default systemd and {{< param "PRODUCT_NAME" >}} configuration.
 {{< /admonition >}}
 
-1. To create a new user called `grafana-agent-flow` run the following command in a terminal window:
+1. To create a new user called `grafana-alloy` run the following command in a terminal window:
 
    ```shell
-   sudo useradd --no-create-home --shell /bin/false grafana-agent-flow
+   sudo useradd --no-create-home --shell /bin/false grafana-alloy
    ```
 
-1. Create a service file in `/etc/systemd/system` called `grafana-agent-flow.service` with the following contents:
+1. Create a service file in `/etc/systemd/system` called `grafana-alloy.service` with the following contents:
 
    ```systemd
    [Unit]
    Description=Vendor-neutral programmable observability pipelines.
-   Documentation=https://grafana.com/docs/agent/latest/flow/
+   Documentation=https://grafana.com/docs/alloy/
    Wants=network-online.target
    After=network-online.target
 
    [Service]
    Restart=always
-   User=grafana-agent-flow
+   User=grafana-alloy
    Environment=HOSTNAME=%H
-   EnvironmentFile=/etc/default/grafana-agent-flow
+   EnvironmentFile=/etc/default/grafana-alloy
    WorkingDirectory=<WORKING_DIRECTORY>
    ExecStart=<BINARY_PATH> run $CUSTOM_ARGS --storage.path=<WORKING_DIRECTORY> $CONFIG_FILE
    ExecReload=/usr/bin/env kill -HUP $MAINPID
@@ -78,20 +77,20 @@ These steps assume you have a default systemd and {{< param "PRODUCT_NAME" >}} c
    Replace the following:
 
     * _`<BINARY_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary file.
-    * _`<WORKING_DIRECTORY>`_: The path to a working directory, for example `/var/lib/grafana-agent-flow`.
+    * _`<WORKING_DIRECTORY>`_: The path to a working directory, for example `/var/lib/grafana-alloy`.
 
-1. Create an environment file in `/etc/default/` called `grafana-agent-flow` with the following contents:
+1. Create an environment file in `/etc/default/` called `grafana-alloy` with the following contents:
 
    ```shell
    ## Path:
-   ## Description: Grafana Agent Flow settings
+   ## Description: Grafana Alloy settings
    ## Type:        string
    ## Default:     ""
-   ## ServiceRestart: grafana-agent-flow
+   ## ServiceRestart: grafana-alloy
    #
-   # Command line options for grafana-agent
+   # Command line options for grafana-alloy
    #
-   # The configuration file holding the Grafana Agent Flow configuration.
+   # The configuration file holding the Grafana Alloy configuration.
    CONFIG_FILE="<CONFIG_PATH>"
 
    # User-defined arguments to pass to the run command.
