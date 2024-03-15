@@ -46,7 +46,7 @@ Name             | Type                 | Description                           
 
 If the `url` is not set, then the service block is a no-op.
 
-If not set, the self-reported `id` that {{< param "PRODUCT_NAME" >}} uses is a randomly generated, anonymous unique ID (UUID) that is stored as an `agent_seed.json` file in {{< param "PRODUCT_NAME" >}}'s storage path so that it can persist across restarts.
+If not set, the self-reported `id` that {{< param "PRODUCT_NAME" >}} uses is a randomly generated, anonymous unique ID (UUID) that is stored as an `alloy_seed.json` file in {{< param "PRODUCT_NAME" >}}'s storage path so that it can persist across restarts.
 
 The `id` and `metadata` fields are used in the periodic request sent to the
 remote endpoint so that the API can decide what configuration to serve.
@@ -82,7 +82,7 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-[API definition]: https://github.com/grafana/agent-remote-config
+[API definition]: https://github.com/grafana/alloy-remote-config
 [beta]: ../../../stability/#beta
 [basic_auth]: #basic_auth-block
 [authorization]: #authorization-block
