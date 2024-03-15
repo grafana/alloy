@@ -762,29 +762,3 @@ prometheus.scrape "integrations_snmp" {
 	forward_to = [prometheus.remote_write.metrics_default.receiver]
 	job_name   = "integrations/snmp"
 }
-
-prometheus.exporter.vsphere "integrations_vsphere" {
-	vsphere_url      = "https://127.0.0.1:8989/sdk"
-	vsphere_user     = "user"
-	vsphere_password = "pass"
-}
-
-discovery.relabel "integrations_vsphere" {
-	targets = prometheus.exporter.vsphere.integrations_vsphere.targets
-
-	rule {
-		target_label = "instance"
-		replacement  = "vsphere"
-	}
-
-	rule {
-		target_label = "job"
-		replacement  = "integrations/vsphere"
-	}
-}
-
-prometheus.scrape "integrations_vsphere" {
-	targets    = discovery.relabel.integrations_vsphere.output
-	forward_to = [prometheus.remote_write.metrics_default.receiver]
-	job_name   = "integrations/vsphere"
-}

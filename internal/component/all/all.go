@@ -117,7 +117,6 @@ import (
 	_ "github.com/grafana/agent/internal/component/prometheus/exporter/squid"                // Import prometheus.exporter.squid
 	_ "github.com/grafana/agent/internal/component/prometheus/exporter/statsd"               // Import prometheus.exporter.statsd
 	_ "github.com/grafana/agent/internal/component/prometheus/exporter/unix"                 // Import prometheus.exporter.unix
-	_ "github.com/grafana/agent/internal/component/prometheus/exporter/vsphere"              // Import prometheus.exporter.vsphere
 	_ "github.com/grafana/agent/internal/component/prometheus/exporter/windows"              // Import prometheus.exporter.windows
 	_ "github.com/grafana/agent/internal/component/prometheus/operator/podmonitors"          // Import prometheus.operator.podmonitors
 	_ "github.com/grafana/agent/internal/component/prometheus/operator/probes"               // Import prometheus.operator.probes

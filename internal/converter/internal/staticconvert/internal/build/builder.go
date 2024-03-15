@@ -45,7 +45,6 @@ import (
 	eventhandler_v2 "github.com/grafana/agent/internal/static/integrations/v2/eventhandler"
 	metricsutils_v2 "github.com/grafana/agent/internal/static/integrations/v2/metricsutils"
 	snmp_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/snmp_exporter"
-	vmware_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/vmware_exporter"
 	"github.com/grafana/agent/internal/static/integrations/windows_exporter"
 	"github.com/grafana/river/scanner"
 	"github.com/grafana/river/token/builder"
@@ -238,9 +237,6 @@ func (b *IntegrationsConfigBuilder) appendV2Integrations() {
 			b.appendEventHandlerV2(itg)
 		case *snmp_exporter_v2.Config:
 			exports = b.appendSnmpExporterV2(itg)
-			commonConfig = itg.Common
-		case *vmware_exporter_v2.Config:
-			exports = b.appendVmwareExporterV2(itg)
 			commonConfig = itg.Common
 		case *metricsutils_v2.ConfigShim:
 			commonConfig = itg.Common
