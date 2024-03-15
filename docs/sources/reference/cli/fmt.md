@@ -16,8 +16,7 @@ The `fmt` command formats a given {{< param "PRODUCT_NAME" >}} configuration fil
 
 Usage:
 
-* `AGENT_MODE=flow grafana-agent fmt [FLAG ...] FILE_NAME`
-* `grafana-agent-flow fmt [FLAG ...] FILE_NAME`
+* `grafana-alloy fmt [FLAG ...] FILE_NAME`
 
    Replace the following:
 

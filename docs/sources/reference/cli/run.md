@@ -16,8 +16,7 @@ The `run` command runs {{< param "PRODUCT_NAME" >}} in the foreground until an i
 
 Usage:
 
-* `AGENT_MODE=flow grafana-agent run [FLAG ...] PATH_NAME`
-* `grafana-agent-flow run [FLAG ...] PATH_NAME`
+* `grafana-alloy run [FLAG ...] PATH_NAME`
 
    Replace the following:
 
@@ -38,10 +37,10 @@ The HTTP server is also exposes a UI at `/` for debugging running components.
 The following flags are supported:
 
 * `--server.http.enable-pprof`: Enable /debug/pprof profiling endpoints. (default `true`).
-* `--server.http.memory-addr`: Address to listen for [in-memory HTTP traffic][] on (default `agent.internal:12345`).
+* `--server.http.memory-addr`: Address to listen for [in-memory HTTP traffic][] on (default `alloy.internal:12345`).
 * `--server.http.listen-addr`: Address to listen for HTTP traffic on (default `127.0.0.1:12345`).
 * `--server.http.ui-path-prefix`: Base path where the UI is exposed (default `/`).
-* `--storage.path`: Base directory where components can store data (default `data-agent/`).
+* `--storage.path`: Base directory where components can store data (default `data-alloy/`).
 * `--disable-reporting`: Disable [data collection][] (default `false`).
 * `--cluster.enabled`: Start {{< param "PRODUCT_NAME" >}} in clustered mode (default `false`).
 * `--cluster.node-name`: The name to use for this node (defaults to the environment's hostname).
@@ -138,7 +137,7 @@ with caution because the resulting conversion may not be equivalent to the
 original configuration.
 
 Include `--config.extra-args` to pass additional command line flags from the original format to the converter.
-Refer to [grafana-agent-flow convert][] for more details on how `extra-args` work.
+Refer to [grafana-alloy convert][] for more details on how `extra-args` work.
 
 [grafana-alloy convert]: ../convert/
 [clustering]:  ../../../concepts/clustering/
