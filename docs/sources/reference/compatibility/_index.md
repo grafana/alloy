@@ -105,7 +105,6 @@ The following components, grouped by namespace, _export_ Targets.
 - [prometheus.exporter.squid](../components/prometheus.exporter.squid)
 - [prometheus.exporter.statsd](../components/prometheus.exporter.statsd)
 - [prometheus.exporter.unix](../components/prometheus.exporter.unix)
-- [prometheus.exporter.vsphere](../components/prometheus.exporter.vsphere)
 - [prometheus.exporter.windows](../components/prometheus.exporter.windows)
 {{< /collapse >}}
 
