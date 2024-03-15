@@ -20,6 +20,7 @@ Usage:
 
 * `AGENT_MODE=flow grafana-agent convert [<FLAG> ...] <FILE_NAME>`
 * `grafana-agent-flow convert [<FLAG> ...] <FILE_NAME>`
+* `grafana-alloy convert [<FLAG> ...] <FILE_NAME>`
 
    Replace the following:
 

@@ -38,12 +38,16 @@ This conversion will enable you to take full advantage of the many additional fe
 
    {{< code >}}
 
-   ```static-binary
+   ```agent-static-binary
    AGENT_MODE=flow grafana-agent convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
-   ```flow-binary
+   ```agent-flow-binary
    grafana-agent-flow convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```
+
+```alloy-binary
+   grafana-alloy convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
    {{< /code >}}

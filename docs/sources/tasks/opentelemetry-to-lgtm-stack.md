@@ -270,14 +270,14 @@ loki.write "grafana_cloud_loki" {
 Running {{< param "PRODUCT_NAME" >}} now will give you the following:
 
 ```
-AGENT_MODE=flow ./grafana-agent run agent-config.river
-AGENT_MODE=flow ./grafana-agent run agent-config.river
+./grafana-alloy run alloy-config.river
+./grafana-alloy run alloy-config.river
 ts=2023-05-09T09:37:15.300959Z level=info msg="running usage stats reporter"
 ts=2023-05-09T09:37:15.300958Z level=info msg="now listening for http traffic" addr=127.0.0.1:12345
 ts=2023-05-09T09:37:15.301104Z level=info trace_id=6466516c9e1a556422df7a84c0ade6b0 msg="starting complete graph evaluation"
 ts=2023-05-09T09:37:15.301307Z level=info trace_id=6466516c9e1a556422df7a84c0ade6b0 msg="finished node evaluation" node_id=loki.write.grafana_cloud_loki duration=188.209µs
 ts=2023-05-09T09:37:15.301334Z level=info trace_id=6466516c9e1a556422df7a84c0ade6b0 msg="finished node evaluation" node_id=otelcol.exporter.loki.grafana_cloud_loki duration=18.791µs
-ts=2023-05-09T09:37:15.303138Z component=prometheus.remote_write.grafana_cloud_prometheus level=info subcomponent=wal msg="replaying WAL, this may take a while" dir=data-agent/prometheus.remote_write.grafana_cloud_prometheus/wal
+ts=2023-05-09T09:37:15.303138Z component=prometheus.remote_write.grafana_cloud_prometheus level=info subcomponent=wal msg="replaying WAL, this may take a while" dir=data-alloy/prometheus.remote_write.grafana_cloud_prometheus/wal
 ts=2023-05-09T09:37:15.303257Z component=prometheus.remote_write.grafana_cloud_prometheus level=info subcomponent=wal msg="WAL segment loaded" segment=0 maxSegment=1
 ts=2023-05-09T09:37:15.303302Z component=prometheus.remote_write.grafana_cloud_prometheus level=info subcomponent=wal msg="WAL segment loaded" segment=1 maxSegment=1
 ts=2023-05-09T09:37:15.303507Z component=prometheus.remote_write.grafana_cloud_prometheus subcomponent=rw level=info remote_name=7f623a url=https://prometheus-us-central1.grafana.net/api/prom/push msg="Starting WAL watcher" queue=7f623a
@@ -299,7 +299,7 @@ ts=2023-05-09T09:37:15.304109Z component=otelcol.receiver.otlp.default level=inf
 ts=2023-05-09T09:37:15.304234Z component=otelcol.receiver.otlp.default level=info msg="Starting HTTP server" endpoint=0.0.0.0:4318
 ```
 
-You can now check the pipeline graphically by visiting [http://localhost:12345/graph][]
+You can check the pipeline graphically by visiting [http://localhost:12345/graph][]
 
 ![](../../../assets/tasks/otlp-lgtm-graph.png)
 

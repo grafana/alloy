@@ -403,8 +403,8 @@ prometheus.scrape "custom_targets" {
       __metrics_path__ = "/custom-metrics–path",
     },
     {
-      __address__ = "grafana-agent:12345",
-      application = "grafana-agent",
+      __address__ = "grafana-alloy:12345",
+      application = "grafana-alloy",
       environment = "production",
     },
   ]
