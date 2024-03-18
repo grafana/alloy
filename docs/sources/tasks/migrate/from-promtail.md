@@ -46,6 +46,10 @@ This conversion will enable you to take full advantage of the many additional fe
    grafana-agent-flow convert --source-format=promtail --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
+   ```alloy-binary
+   grafana-alloy convert --source-format=promtail --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```
+
    {{< /code >}}
 
 
@@ -75,6 +79,10 @@ This conversion will enable you to take full advantage of the many additional fe
    grafana-agent-flow convert --source-format=promtail --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
+      ```alloy-binary
+   grafana-alloy convert --source-format=promtail --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```
+
    {{< /code >}}
 
    Replace the following:
@@ -91,6 +99,10 @@ This conversion will enable you to take full advantage of the many additional fe
 
    ```flow-binary
    grafana-agent-flow convert --source-format=promtail --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```
+
+      ```alloy-binary
+   grafana-alloy convert --source-format=promtail --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
    {{< /code >}}
@@ -161,6 +173,10 @@ AGENT_MODE=flow grafana-agent convert --source-format=promtail --output=<OUTPUT_
 
 ```flow-binary
 grafana-agent-flow convert --source-format=promtail --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+```
+
+```alloy-binary
+grafana-alloy convert --source-format=promtail --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
 ```
 
 {{< /code >}}

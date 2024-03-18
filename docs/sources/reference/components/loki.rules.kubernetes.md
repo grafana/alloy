@@ -47,7 +47,7 @@ Name                    | Type       | Description                              
 `tenant_id`             | `string`   | Loki tenant ID.                                                                      |         | no
 `use_legacy_routes`     | `bool`     | Whether to use deprecated ruler API endpoints.                                       | false   | no
 `sync_interval`         | `duration` | Amount of time between reconciliations with Loki.                                    | "30s"   | no
-`loki_namespace_prefix` | `string`   | Prefix used to differentiate multiple {{< param "PRODUCT_ROOT_NAME" >}} deployments. | "agent" | no
+`loki_namespace_prefix` | `string`   | Prefix used to differentiate multiple {{< param "PRODUCT_ROOT_NAME" >}} deployments. | "alloy" | no
 `bearer_token`          | `secret`   | Bearer token to authenticate with.                                                   |         | no
 `bearer_token_file`     | `string`   | File containing a bearer token to authenticate with.                                 |         | no
 `proxy_url`             | `string`   | HTTP proxy to proxy requests through.                                                |         | no
@@ -188,7 +188,7 @@ Metric Name                                  | Type        | Description
 
 This example creates a `loki.rules.kubernetes` component that loads discovered
 rules to a local Loki instance under the `team-a` tenant. Only namespaces and
-rules with the `agent` label set to `yes` are included.
+rules with the `alloy` label set to `yes` are included.
 
 ```river
 loki.rules.kubernetes "local" {
@@ -197,13 +197,13 @@ loki.rules.kubernetes "local" {
 
     rule_namespace_selector {
         match_labels = {
-            agent = "yes",
+            alloy = "yes",
         }
     }
 
     rule_selector {
         match_labels = {
-            agent = "yes",
+            alloy = "yes",
         }
     }
 }
@@ -230,13 +230,13 @@ The following example is an RBAC configuration for Kubernetes. It authorizes {{<
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: grafana-agent
+  name: grafana-alloy
   namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: grafana-agent
+  name: grafana-alloy
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -248,13 +248,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: grafana-agent
+  name: grafana-alloy
 subjects:
 - kind: ServiceAccount
-  name: grafana-agent
+  name: grafana-alloy
   namespace: default
 roleRef:
   kind: ClusterRole
-  name: grafana-agent
+  name: grafana-alloy
   apiGroup: rbac.authorization.k8s.io
 ```

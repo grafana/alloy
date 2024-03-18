@@ -272,17 +272,17 @@ stage.eventlogmessage {
 
 Given the following log line:
 ```
-{"event_id": 1, "Overwritten": "old", "message": "Message type:\r\nOverwritten: new\r\nImage: C:\\Users\\User\\agent.exe"}
+{"event_id": 1, "Overwritten": "old", "message": "Message type:\r\nOverwritten: new\r\nImage: C:\\Users\\User\\alloy.exe"}
 ```
 
 The first stage would create the following key-value pairs in the set of extracted data:
 
-- `message`: `Message type:\r\nOverwritten: new\r\nImage: C:\Users\User\agent.exe`
+- `message`: `Message type:\r\nOverwritten: new\r\nImage: C:\Users\User\alloy.exe`
 - `Overwritten`: `old`
 
 The second stage will parse the value of `message` from the extracted data and append/overwrite the following key-value pairs to the set of extracted data:
 
-- `Image`: `C:\\Users\\User\\agent.exe`
+- `Image`: `C:\\Users\\User\\alloy.exe`
 - `Message_type`: (empty string)
 - `Overwritten`: `new`
 
@@ -309,7 +309,7 @@ The map key defines the name with which the data is extracted, while the map val
 Here's a given log line and two JSON stages to run.
 
 ```river
-{"log":"log message\n","extra":"{\"user\":\"agent\"}"}
+{"log":"log message\n","extra":"{\"user\":\"alloy\"}"}
 
 loki.process "username" {
   stage.json {
@@ -327,12 +327,12 @@ In this example, the first stage uses the log line as the source and populates t
 An empty expression means using the same value as the key (so `extra="extra"`).
 ```
 output: log message\n
-extra: {"user": "agent"}
+extra: {"user": "alloy"}
 ```
 
 The second stage uses the value in `extra` as the input and appends the following key-value pair to the set of extracted data.
 ```
-username: agent
+username: alloy
 ```
 
 {{< admonition type="note" >}}
@@ -342,8 +342,8 @@ If you don't use quotes to wrap a string that contains a hyphen, you will get er
 
 You can use one of two options to circumvent this issue:
 
-1. An escaped double quote. For example: `http_user_agent = "\"request_User-Agent\""`
-1. A backtick quote. For example: ``http_user_agent = `"request_User-Agent"` ``
+1. An escaped double quote. For example: `http_user_alloy = "\"request_User-Alloy\""`
+1. A backtick quote. For example: ``http_user_alloy = `"request_User-Alloy"` ``
 {{< /admonition >}}
 
 ### stage.label_drop block
@@ -584,7 +584,7 @@ The final output stage changes the contents of the log line to be the value of `
 ### stage.metrics block
 
 The `stage.metrics` inner block configures stage that allows to define and update metrics based on values from the shared extracted map.
-The created metrics are available at the Agent's root /metrics endpoint.
+The created metrics are available at {{< param "PRODUCT_NAME" >}}'s root /metrics endpoint.
 
 The `stage.metrics` block does not support any arguments and is only configured via a number of nested inner `metric.*` blocks, one for each metric that should be generated.
 
@@ -1055,7 +1055,7 @@ The `replace` field can use a set of templating functions, by utilizing Go's [te
 Let's see how this works with named capture groups with a sample log line and stage.
 
 ```
-11.11.11.11 - agent [01/Jan/2023:00:00:01 +0200]
+11.11.11.11 - alloy [01/Jan/2023:00:00:01 +0200]
 
 stage.replace {
     expression = "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\]"
