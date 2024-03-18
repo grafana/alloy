@@ -18,8 +18,6 @@ The `convert` command converts a supported configuration format to {{< param "PR
 
 Usage:
 
-* `AGENT_MODE=flow grafana-agent convert [<FLAG> ...] <FILE_NAME>`
-* `grafana-agent-flow convert [<FLAG> ...] <FILE_NAME>`
 * `grafana-alloy convert [<FLAG> ...] <FILE_NAME>`
 
    Replace the following:
