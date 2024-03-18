@@ -12,8 +12,19 @@ cascade:
 
 # {{% param "PRODUCT_NAME" %}}
 
-{{< param "PRODUCT_NAME" >}} is an OpenTelemetry Collector distribution with configuration inspired by [Terraform][].
-It is designed to be flexible, performant, and compatible with multiple ecosystems such as Prometheus and OpenTelemetry.
+{{< param "PRODUCT_NAME" >}} is a distribution of the [OpenTelemetry][] (OTel) Collector, and it is fully compatible with the Open Telemetry Protocol (OTLP). It offers native pipelines for both OTel and Prometheus telemetry, supporting metrics, logs, traces, and profiles.
+
+{{< param "PRODUCT_NAME" >}} is designed to be much more than just a simple telemetry collector. Some of {{< param "PRODUCT_NAME" >}}'s features include:
+
+* Modules to help you quickly build production-ready pipelines.
+* Frameworks that can pull configurations from Git, S3, HTTP endpoints, and just about any other source.
+* Clustering support to help you create horizontally scalable deployments with minimal resource and operational overhead.
+* Security features to help you manage authentication credentials and connect to HashiCorp Vaults.
+* Debugging support and an embedded user interface to help you troubleshoot configuration problems.
+
+{{< param "PRODUCT_NAME" >}} is vendor-agnostic and fully compatible with the OTel collector or [Prometheus][] Agent. You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructure and you can pair it with Grafana Cloud or a backend from any other vendor. {{< param "PRODUCT_NAME" >}} is flexible and can easily meet your needs in on-prem, cloud-only, or a mix of both.
+
+
 
 {{< param "PRODUCT_NAME" >}} is based around **components**. Components are wired together to form programmable observability **pipelines** for telemetry collection, processing, and delivery.
 
