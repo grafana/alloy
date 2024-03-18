@@ -51,7 +51,7 @@ A River file is comprised of three things:
 The default log level is `info` and the default log format is `logfmt`.
     {{< /admonition >}}
 
-    Try pasting this into `config.river` and running `/path/to/agent run config.river` to see what happens.
+    Try pasting this into `config.river` and running `/path/to/alloy run config.river` to see what happens.
 
     Congratulations, you've just written your first River file! You've also just written your first {{< param "PRODUCT_NAME" >}} configuration file. This configuration won't do anything, so let's add some components to it.
 
@@ -150,7 +150,7 @@ prometheus.remote_write "local_prom" {
 Run {{< param "PRODUCT_NAME" >}} with:
 
 ```bash
-/path/to/agent run config.river
+/path/to/alloy run config.river
 ```
 
 Navigate to [http://localhost:3000/explore][] in your browser.
@@ -212,7 +212,7 @@ You may find the [concat][] standard library function useful.
 You can run {{< param "PRODUCT_NAME" >}} with the new configuration file by running:
 
 ```bash
-/path/to/agent run config.river
+/path/to/alloy run config.river
 ```
 
 Navigate to [http://localhost:3000/explore][] in your browser.
@@ -272,7 +272,7 @@ You might have noticed that running {{< param "PRODUCT_NAME" >}} with the config
 This directory is where components can store data, such as the `prometheus.exporter.unix` component storing its WAL (Write Ahead Log).
 If you look in the directory, do you notice anything interesting? The directory for each component is the fully qualified name.
 
-If you'd like to store the data elsewhere, you can specify a different directory by supplying the `--storage.path` flag to {{< param "PRODUCT_ROOT_NAME" >}}'s run command, for example, `/path/to/agent run config.river --storage.path /etc/grafana-agent`.
+If you'd like to store the data elsewhere, you can specify a different directory by supplying the `--storage.path` flag to {{< param "PRODUCT_ROOT_NAME" >}}'s run command, for example, `/path/to/alloy run config.river --storage.path /etc/grafana-alloy`.
 Generally, you can use a persistent directory for this, as some components may use the data stored in this directory to perform their function.
 
 In the next tutorial, you will look at how to configure {{< param "PRODUCT_NAME" >}} to collect logs from a file and send them to Loki.
