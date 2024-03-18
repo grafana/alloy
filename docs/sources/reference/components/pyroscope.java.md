@@ -43,10 +43,10 @@ After component startup, `pyroscope.java` creates a temporary directory under `t
 async-profiler binaries for both glibc and musl into the directory with the following layout.
 
 ```
-/tmp/grafana-agent-asprof-glibc-{SHA1}/bin/asprof
-/tmp/grafana-agent-asprof-glibc-{SHA1}/lib/libasyncProfiler.so
-/tmp/grafana-agent-asprof-musl-{SHA1}/bin/asprof
-/tmp/grafana-agent-asprof-musl-{SHA1}/lib/libasyncProfiler.so
+/tmp/grafana-alloy-asprof-glibc-{SHA1}/bin/asprof
+/tmp/grafana-alloy-asprof-glibc-{SHA1}/lib/libasyncProfiler.so
+/tmp/grafana-alloy-asprof-musl-{SHA1}/bin/asprof
+/tmp/grafana-alloy-asprof-musl-{SHA1}/lib/libasyncProfiler.so
 ```
 
 After process profiling startup, the component detects libc type and copies according `libAsyncProfiler.so` into the

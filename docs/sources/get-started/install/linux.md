@@ -57,15 +57,15 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt' | sudo tee /etc/yum.repos.d/grafana.
 
    {{< code >}}
    ```debian-ubuntu
-   sudo apt-get install grafana-agent-flow
+   sudo apt-get install grafana-alloy
    ```
 
    ```rhel-fedora
-   sudo dnf install grafana-agent-flow
+   sudo dnf install grafana-alloy
    ```
 
    ```suse-opensuse
-   sudo zypper install grafana-agent-flow
+   sudo zypper install grafana-alloy
    ```
    {{< /code >}}
 
@@ -76,22 +76,22 @@ To uninstall {{< param "PRODUCT_NAME" >}} on Linux, run the following commands i
 1. Stop the systemd service for {{< param "PRODUCT_NAME" >}}.
 
    ```All-distros
-   sudo systemctl stop grafana-agent-flow
+   sudo systemctl stop grafana-alloy
    ```
 
 1. Uninstall {{< param "PRODUCT_NAME" >}}.
 
    {{< code >}}
    ```debian-ubuntu
-   sudo apt-get remove grafana-agent-flow
+   sudo apt-get remove grafana-alloy
    ```
 
    ```rhel-fedora
-   sudo dnf remove grafana-agent-flow
+   sudo dnf remove grafana-alloy
    ```
 
    ```suse-opensuse
-   sudo zypper remove grafana-agent-flow
+   sudo zypper remove grafana-alloy
    ```
    {{< /code >}}
 

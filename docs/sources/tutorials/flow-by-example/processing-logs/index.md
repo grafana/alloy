@@ -325,7 +325,7 @@ Now that you have all of the pieces, let's run {{< param "PRODUCT_ROOT_NAME" >}}
 Modify `config.river` with the config from the previous example and start {{< param "PRODUCT_ROOT_NAME" >}} with:
 
 ```bash
-/path/to/agent run config.river
+/path/to/alloy run config.river
 ```
 
 To get the current time in `RFC3339` format, you can run:

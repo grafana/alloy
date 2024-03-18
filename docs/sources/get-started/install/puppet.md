@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/puppet/
-description: Learn how to install Grafana Agent Flow with Puppet
+description: Learn how to install Grafana Alloy with Puppet
 menuTitle: Puppet
-title: Install Grafana Agent Flow with Puppet
+title: Install Grafana Alloy with Puppet
 weight: 560
 ---
 
@@ -49,13 +49,13 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
               id     => 'B53AE77BADB630A683046005963FA27710458545',
               source => 'https://apt.grafana.com/gpg.key',
             },
-          } -> package { 'grafana-agent-flow':
+          } -> package { 'grafana-alloy':
             require => Exec['apt_update'],
-          } -> service { 'grafana-agent-flow':
+          } -> service { 'grafana-alloy':
             ensure    => running,
-            name      => 'grafana-agent-flow',
+            name      => 'grafana-alloy',
             enable    => true,
-            subscribe => Package['grafana-agent-flow'],
+            subscribe => Package['grafana-alloy'],
           }
         }
         'redhat': {
@@ -68,12 +68,12 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
             enabled  => '1',
             gpgcheck => '1',
             target   => '/etc/yum.repo.d/grafana.repo',
-          } -> package { 'grafana-agent-flow':
-          } -> service { 'grafana-agent-flow':
+          } -> package { 'grafana-alloy':
+          } -> service { 'grafana-alloy':
             ensure    => running,
-            name      => 'grafana-agent-flow',
+            name      => 'grafana-alloy',
             enable    => true,
-            subscribe => Package['grafana-agent-flow'],
+            subscribe => Package['grafana-alloy'],
           }
         }
         default: {
@@ -86,7 +86,7 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
 1. To use this class in a module, add the following line to the module's `init.pp` file:
 
     ```ruby
-    include grafana_agent::grafana_agent_flow
+    include grafana_alloy::grafana_alloy
     ```
 
 ## Configuration

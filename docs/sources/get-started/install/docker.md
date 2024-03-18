@@ -31,11 +31,10 @@ To run {{< param "PRODUCT_NAME" >}} as a Linux Docker container, run the followi
 
 ```shell
 docker run \
-  -e AGENT_MODE=flow \
-  -v <CONFIG_FILE_PATH>:/etc/agent/config.river \
+  -v <CONFIG_FILE_PATH>:/etc/alloy/config.river \
   -p 12345:12345 \
-  grafana/agent:latest \
-    run --server.http.listen-addr=0.0.0.0:12345 /etc/agent/config.river
+  grafana/alloy:latest \
+    run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.river
 ```
 
 Replace the following:
@@ -56,11 +55,10 @@ To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the follo
 
 ```shell
 docker run \
-  -e AGENT_MODE=flow \
-  -v <CONFIG_FILE_PATH>:C:\etc\grafana-agent\config.river \
+  -v <CONFIG_FILE_PATH>:C:\etc\grafana-alloy\config.river \
   -p 12345:12345 \
-  grafana/agent:latest-windows \
-    run --server.http.listen-addr=0.0.0.0:12345 C:\etc\grafana-agent\config.river
+  grafana/alloy:latest-windows \
+    run --server.http.listen-addr=0.0.0.0:12345 C:\etc\grafana-alloy\config.river
 ```
 
 Replace the following:
@@ -83,4 +81,4 @@ To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to
 [Windows containers]: #run-a-windows-docker-container
 [Docker]: https://docker.io
 [run]: ../../../reference/cli/run/
-[UI]: ../../../tasks/debug/#grafana-agent-flow-ui
+[UI]: ../../../tasks/debug/#grafana-alloy-ui

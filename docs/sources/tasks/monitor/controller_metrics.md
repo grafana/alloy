@@ -11,17 +11,17 @@ The {{< param "PRODUCT_NAME" >}} [component controller][] exposes Prometheus met
 
 Metrics for the controller are exposed at the `/metrics` HTTP endpoint of the {{< param "PRODUCT_NAME" >}} HTTP server, which defaults to listening on `http://localhost:12345`.
 
-> The documentation for the [`grafana-agent run`][grafana-agent run] command describes how to modify the address {{< param "PRODUCT_NAME" >}} listens on for HTTP traffic.
+> The documentation for the [`grafana-alloy run`][grafana-alloy run] command describes how to modify the address {{< param "PRODUCT_NAME" >}} listens on for HTTP traffic.
 
 The controller exposes the following metrics:
 
-* `agent_component_controller_evaluating` (Gauge): Set to `1` whenever the  component controller is currently evaluating components.
+* `alloy_component_controller_evaluating` (Gauge): Set to `1` whenever the  component controller is currently evaluating components.
   This value may be misrepresented depending on how fast evaluations complete or how often evaluations occur.
-* `agent_component_controller_running_components` (Gauge): The current number of running components by health.
+* `alloy_component_controller_running_components` (Gauge): The current number of running components by health.
    The health is represented in the `health_type` label.
-* `agent_component_evaluation_seconds` (Histogram): The time it takes to evaluate components after one of their dependencies is updated.
-* `agent_component_dependencies_wait_seconds` (Histogram): Time spent by components waiting to be evaluated after one of their dependencies is updated.
-* `agent_component_evaluation_queue_size` (Gauge): The current number of component evaluations waiting to be performed.
+* `alloy_component_evaluation_seconds` (Histogram): The time it takes to evaluate components after one of their dependencies is updated.
+* `alloy_component_dependencies_wait_seconds` (Histogram): Time spent by components waiting to be evaluated after one of their dependencies is updated.
+* `alloy_component_evaluation_queue_size` (Gauge): The current number of component evaluations waiting to be performed.
 
 [component controller]: ../../../concepts/component_controller/
-[grafana-agent run]: ../../../reference/cli/run/
+[grafana-alloy run]: ../../../reference/cli/run/

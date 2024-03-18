@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/binary/
-description: Learn how to install Grafana Agent Flow as a standalone binary
+description: Learn how to install Grafana Alloy as a standalone binary
 menuTitle: Standalone
-title: Install Grafana Agent Flow as a standalone binary
+title: Install Grafana Alloy as a standalone binary
 weight: 600
 ---
 
@@ -23,7 +23,7 @@ To download {{< param "PRODUCT_NAME" >}} as a standalone binary, perform the fol
 
 1. Scroll down to the **Assets** section.
 
-1. Download the `grafana-agent` zip file that matches your operating system and machine's architecture.
+1. Download the `grafana-alloy` zip file that matches your operating system and machine's architecture.
 
 1. Extract the package contents into a directory.
 

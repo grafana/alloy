@@ -38,12 +38,16 @@ This conversion will enable you to take full advantage of the many additional fe
 
    {{< code >}}
 
-   ```static-binary
+   ```agent-static-binary
    AGENT_MODE=flow grafana-agent convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
-   ```flow-binary
+   ```agent-flow-binary
    grafana-agent-flow convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```
+
+```alloy-binary
+   grafana-alloy convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
    {{< /code >}}
@@ -75,6 +79,10 @@ This conversion will enable you to take full advantage of the many additional fe
    grafana-agent-flow convert --source-format=prometheus --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
+   ```alloy-binary
+   grafana-alloy convert --source-format=prometheus --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```
+
    {{< /code >}}
 
    Replace the following:
@@ -92,6 +100,10 @@ This conversion will enable you to take full advantage of the many additional fe
 
    ```flow-binary
    grafana-agent-flow convert --source-format=prometheus --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```
+
+   ```alloy-binary
+   grafana-alloy convert --source-format=prometheus --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
    {{< /code >}}
@@ -130,11 +142,11 @@ Your configuration file must be a valid Prometheus configuration file rather tha
 1. Refer to [Debug {{< param "PRODUCT_NAME" >}}][DebuggingUI] for more information about a running {{< param "PRODUCT_NAME" >}}.
 
 1. If your Prometheus configuration can't be converted and loaded directly into {{< param "PRODUCT_NAME" >}}, diagnostic information is sent to `stderr`.
-   You can bypass any non-critical issues and start the Agent by including the `--config.bypass-conversion-errors` flag in addition to `--config.format=prometheus`.
+   You can bypass any non-critical issues and start {{< param "PRODUCT_NAME" >}} by including the `--config.bypass-conversion-errors` flag in addition to `--config.format=prometheus`.
 
    {{< admonition type="caution" >}}
    If you bypass the errors, the behavior of the converted configuration may not match the original Prometheus configuration.
-   Do not use this flag in a production environment.
+   Don't use this flag in a production environment.
    {{< /admonition >}}
 
 ## Example
@@ -170,6 +182,10 @@ AGENT_MODE=flow grafana-agent convert --source-format=prometheus --output=<OUTPU
 
 ```flow-binary
 grafana-agent-flow convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+```
+
+```alloy-binary
+grafana-alloy convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
 ```
 
 {{< /code >}}

@@ -21,14 +21,16 @@ loads them into a Mimir instance.
 * Compatible with the `PrometheusRule` CRD from the [prometheus-operator][].
 * This component accesses the Kubernetes REST API from [within a Pod][].
 
-> **NOTE**: This component requires [Role-based access control (RBAC)][] to be setup
-> in Kubernetes in order for the Agent to access it via the Kubernetes REST API.
-> For an example RBAC configuration please click [here](#example).
+{{< admonition type="note" >}}
+This component requires [Role-based access control (RBAC)][] to be set up
+in Kubernetes in order for {{< param "PRODUCT_NAME" >}} to access it via the Kubernetes REST API.
+
+[Role-based access control (RBAC)]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+{{< /admonition >}}
 
 [Kubernetes label selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
 [prometheus-operator]: https://prometheus-operator.dev/
 [within a Pod]: https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/
-[Role-based access control (RBAC)]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 
 ## Usage
 
@@ -49,7 +51,7 @@ Name                     | Type                | Description                    
 `use_legacy_routes`      | `bool`              | Whether to use [deprecated][gem-2_2] ruler API endpoints.                                        | false         | no
 `prometheus_http_prefix` | `string`            | Path prefix for [Mimir's Prometheus endpoint][gem-path-prefix].                                  | `/prometheus` | no
 `sync_interval`          | `duration`          | Amount of time between reconciliations with Mimir.                                               | "30s"         | no
-`mimir_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.                  | "agent"       | no
+`mimir_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.                  | "alloy"       | no
 `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |               | no
 `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |               | no
 `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no
@@ -205,7 +207,7 @@ Metric Name                                   | Type        | Description
 
 This example creates a `mimir.rules.kubernetes` component that loads discovered
 rules to a local Mimir instance under the `team-a` tenant. Only namespaces and
-rules with the `agent` label set to `yes` are included.
+rules with the `alloy` label set to `yes` are included.
 
 ```river
 mimir.rules.kubernetes "local" {
@@ -214,13 +216,13 @@ mimir.rules.kubernetes "local" {
 
     rule_namespace_selector {
         match_labels = {
-            agent = "yes",
+            alloy = "yes",
         }
     }
 
     rule_selector {
         match_labels = {
-            agent = "yes",
+            alloy = "yes",
         }
     }
 }
@@ -241,19 +243,19 @@ mimir.rules.kubernetes "default" {
 }
 ```
 
-The following example is an RBAC configuration for Kubernetes. It authorizes the Agent to query the Kubernetes REST API:
+The following example is an RBAC configuration for Kubernetes. It authorizes {{< param "PRODUCT_NAME" >}} to query the Kubernetes REST API:
 
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: grafana-agent
+  name: grafana-alloy
   namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: grafana-agent
+  name: grafana-alloy
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -265,13 +267,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: grafana-agent
+  name: grafana-alloy
 subjects:
 - kind: ServiceAccount
-  name: grafana-agent
+  name: grafana-alloy
   namespace: default
 roleRef:
   kind: ClusterRole
-  name: grafana-agent
+  name: grafana-alloy
   apiGroup: rbac.authorization.k8s.io
 ```

@@ -41,5 +41,5 @@ To distribute Prometheus metrics scrape load with clustering:
 [Clustering]: ../../concepts/clustering/
 [configure]: ../configure/
 [Configure Prometheus metrics collection]: ../collect-prometheus-metrics/
-[Configure clustering]: ../configure-agent-clustering/
+[Configure clustering]: ../configure-alloy-clustering/
 [UI]: ../debug/#component-detail-page

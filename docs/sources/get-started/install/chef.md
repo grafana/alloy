@@ -66,26 +66,26 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
     end
     ```
 
-1. Add the following resources to install and enable the `grafana-agent-flow` service:
+1. Add the following resources to install and enable the `grafana-alloy` service:
 
     ```ruby
-    package 'grafana-agent-flow' do
+    package 'grafana-alloy' do
       action :install
       flush_cache [ :before ] if platform_family?('amazon', 'rhel', 'fedora')
-      notifies :restart, 'service[grafana-agent-flow]', :delayed
+      notifies :restart, 'service[grafana-alloy]', :delayed
     end
 
-    service 'grafana-agent-flow' do
-      service_name 'grafana-agent-flow'
+    service 'grafana-alloy' do
+      service_name 'grafana-alloy'
       action [:enable, :start]
     end
     ```
 
 ## Configuration
 
-The `grafana-agent-flow` package installs a default configuration file that doesn't send telemetry anywhere.
+The `grafana-alloy` package installs a default configuration file that doesn't send telemetry anywhere.
 
-The default configuration file location is `/etc/grafana-agent-flow.river`. You can replace this file with your own configuration or create a new configuration file for the service to use.
+The default configuration file location is `/etc/grafana-alloy.river`. You can replace this file with your own configuration or create a new configuration file for the service to use.
 
 ## Next steps
 

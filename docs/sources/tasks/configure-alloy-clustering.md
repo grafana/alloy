@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/configure-agent-clustering/
+canonical: https://grafana.com/docs/alloy/latest/tasks/configure-alloy-clustering/
 description: Learn how to configure Grafana Alloy clustering in an existing installation
 menuTitle: Configure clustering
 title: Configure Grafana Alloy clustering in an existing installation
@@ -24,10 +24,10 @@ This section guides you through enabling clustering when {{< param "PRODUCT_NAME
 
 To configure clustering:
 
-1. Amend your existing `values.yaml` file to add `clustering.enabled=true` inside the `agent` block.
+1. Amend your existing `values.yaml` file to add `clustering.enabled=true` inside the `alloy` block.
 
    ```yaml
-   agent:
+   alloy:
      clustering:
        enabled: true
    ```

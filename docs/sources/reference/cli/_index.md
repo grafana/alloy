@@ -4,7 +4,7 @@ aliases:
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/
 description: Learn about the Grafana Alloy command line interface
 menuTitle: Command-line interface
-title: The Grafana Agent command-line interface
+title: The Grafana Alloy command-line interface
 weight: 100
 ---
 
@@ -20,7 +20,7 @@ Available commands:
 * [`fmt`][fmt]: Format a {{< param "PRODUCT_NAME" >}} configuration file.
 * [`run`][run]: Start {{< param "PRODUCT_NAME" >}}, given a configuration file.
 * [`tools`][tools]: Read the WAL and provide statistical information.
-* `completion`: Generate shell completion for the `grafana-agent-flow` CLI.
+* `completion`: Generate shell completion for the `grafana-alloy` CLI.
 * `help`: Print help for supported commands.
 
 [run]: ./run/

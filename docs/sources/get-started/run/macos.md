@@ -15,7 +15,7 @@ weight: 400
 To start {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-brew services start grafana-agent-flow
+brew services start grafana-alloy
 ```
 
 {{< param "PRODUCT_NAME" >}} automatically runs when the system starts.
@@ -23,7 +23,7 @@ brew services start grafana-agent-flow
 (Optional) To verify that the service is running, run the following command in a terminal window:
 
 ```shell
-brew services info grafana-agent-flow
+brew services info grafana-alloy
 ```
 
 ## Restart {{% param "PRODUCT_NAME" %}}
@@ -31,7 +31,7 @@ brew services info grafana-agent-flow
 To restart {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-brew services restart grafana-agent-flow
+brew services restart grafana-alloy
 ```
 
 ## Stop {{% param "PRODUCT_NAME" %}}
@@ -39,12 +39,12 @@ brew services restart grafana-agent-flow
 To stop {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-brew services stop grafana-agent-flow
+brew services stop grafana-alloy
 ```
 
 ## View {{% param "PRODUCT_NAME" %}} logs on macOS
 
-By default, logs are written to `$(brew --prefix)/var/log/grafana-agent-flow.log` and `$(brew --prefix)/var/log/grafana-agent-flow.err.log`.
+By default, logs are written to `$(brew --prefix)/var/log/grafana-alloy.log` and `$(brew --prefix)/var/log/grafana-alloy.err.log`.
 
 If you followed [Configure the {{< param "PRODUCT_NAME" >}} service][ConfigureService] and changed the path where logs are written, refer to your current copy of the {{< param "PRODUCT_NAME" >}} formula to locate your log files.
 

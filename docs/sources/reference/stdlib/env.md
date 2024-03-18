@@ -15,7 +15,7 @@ If the environment variable does not exist, `env` returns an empty string.
 
 ```
 > env("HOME")
-"/home/grafana-agent"
+"/home/grafana-alloy"
 
 > env("DOES_NOT_EXIST")
 ""

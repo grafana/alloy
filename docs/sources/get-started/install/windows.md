@@ -18,13 +18,13 @@ To do a standard graphical install of {{< param "PRODUCT_NAME" >}} on Windows, p
 
 1. Scroll down to the **Assets** section.
 
-1. Download the file called `grafana-agent-flow-installer.exe.zip`.
+1. Download the file called `grafana-alloy-installer.exe.zip`.
 
 1. Unzip the downloaded file.
 
-1. Double-click on `grafana-agent-installer.exe` to install {{< param "PRODUCT_NAME" >}}.
+1. Double-click on `grafana-alloy-installer.exe` to install {{< param "PRODUCT_NAME" >}}.
 
-{{< param "PRODUCT_NAME" >}} is installed into the default directory `C:\Program Files\Grafana Agent Flow`.
+{{< param "PRODUCT_NAME" >}} is installed into the default directory `C:\Program Files\Grafana Alloy`.
 
 ## Silent install
 
@@ -34,7 +34,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 1. Scroll down to the **Assets** section.
 
-1. Download the file called `grafana-agent-flow-installer.exe.zip`.
+1. Download the file called `grafana-alloy-installer.exe.zip`.
 
 1. Unzip the downloaded file.
 
@@ -57,10 +57,10 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 ## Service Configuration
 
-{{< param "PRODUCT_NAME" >}} uses the Windows Registry `HKLM\Software\Grafana\Grafana Agent Flow` for service configuration.
+{{< param "PRODUCT_NAME" >}} uses the Windows Registry `HKLM\Software\Grafana\Grafana Alloy` for service configuration.
 
-* `Arguments` (Type `REG_MULTI_SZ`) Each value represents a binary argument for grafana-agent-flow binary.
-* `Environment` (Type `REG_MULTI_SZ`) Each value represents a environment value `KEY=VALUE` for grafana-agent-flow binary.
+* `Arguments` (Type `REG_MULTI_SZ`) Each value represents a binary argument for grafana-alloy binary.
+* `Environment` (Type `REG_MULTI_SZ`) Each value represents a environment value `KEY=VALUE` for grafana-alloy binary.
 
 ## Uninstall
 

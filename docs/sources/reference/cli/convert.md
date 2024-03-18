@@ -18,8 +18,7 @@ The `convert` command converts a supported configuration format to {{< param "PR
 
 Usage:
 
-* `AGENT_MODE=flow grafana-agent convert [<FLAG> ...] <FILE_NAME>`
-* `grafana-agent-flow convert [<FLAG> ...] <FILE_NAME>`
+* `grafana-alloy convert [<FLAG> ...] <FILE_NAME>`
 
    Replace the following:
 
@@ -80,12 +79,12 @@ Refer to [Migrate from Promtail to {{< param "PRODUCT_NAME" >}}][migrate promtai
 Using the `--source-format=static` will convert the source configuration from a [Grafana Agent Static][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
 
 Include `--extra-args` for passing additional command line flags from the original format.
-For example, `--extra-args="-enable-features=integrations-next"` will convert a Grafana Agent Static [integrations-next][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+For example, `--extra-args="-enable-features=integrations-next"` converts a Grafana Agent Static [integrations-next][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
 You can also expand environment variables with `--extra-args="-config.expand-env"`.
 You can combine multiple command line flags with a space between each flag, for example `--extra-args="-enable-features=integrations-next -config.expand-env"`.
 
 If you have unsupported features in a Grafana Agent Static mode source configuration, you will receive [errors][] when you convert to a {{< param "PRODUCT_NAME" >}} configuration.
-The converter will also raise warnings for configuration options that may require your attention.
+The converter also raises warnings for configuration options that may require your attention.
 
 Refer to [Migrate from Grafana Agent Static to {{< param "PRODUCT_NAME" >}}][migrate static] for a detailed migration guide.
 

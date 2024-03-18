@@ -10,12 +10,12 @@ weight: 400
 
 To configure {{< param "PRODUCT_NAME" >}} on macOS, perform the following steps:
 
-1. Edit the default configuration file at `$(brew --prefix)/etc/grafana-agent-flow/config.river`.
+1. Edit the default configuration file at `$(brew --prefix)/etc/grafana-alloy/config.river`.
 
 1. Run the following command in a terminal to restart the {{< param "PRODUCT_NAME" >}} service:
 
    ```shell
-   brew services restart grafana-agent-flow
+   brew services restart grafana-alloy
    ```
 
 ## Configure the {{% param "PRODUCT_NAME" %}} service
@@ -29,7 +29,7 @@ To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the foll
 1. Run the following command in a terminal:
 
    ```shell
-   brew edit grafana-agent-flow
+   brew edit grafana-alloy
    ```
 
    This will open the {{< param "PRODUCT_NAME" >}} Homebrew Formula in an editor.
@@ -45,13 +45,13 @@ To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the foll
 1. Reinstall the {{< param "PRODUCT_NAME" >}} Formula by running the following command in a terminal:
 
    ```shell
-   brew reinstall grafana-agent-flow
+   brew reinstall grafana-alloy
    ```
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service by running the command in a terminal:
 
    ```shell
-   brew services restart grafana-agent-flow
+   brew services restart grafana-aalloy
    ```
 
 ## Expose the UI to other machines
@@ -61,7 +61,7 @@ This prevents other machines on the network from being able to access the [UI fo
 
 To expose the UI to other machines, complete the following steps:
 
-1. Follow [Configure the {{< param "PRODUCT_NAME" >}} service](#configure-the-grafana-agent-flow-service)
+1. Follow [Configure the {{< param "PRODUCT_NAME" >}} service](#configure-the-grafana-alloy-service)
    to edit command line flags passed to {{< param "PRODUCT_NAME" >}}, including the
    following customizations:
 

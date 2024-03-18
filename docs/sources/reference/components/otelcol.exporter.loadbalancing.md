@@ -65,8 +65,8 @@ Name          | Type     | Description                          | Default     | 
 
 The `routing_key` attribute determines how to route signals across endpoints. Its value could be one of the following:
 * `"service"`: spans with the same `service.name` will be exported to the same backend.
-This is useful when using processors like the span metrics, so all spans for each service are sent to consistent Agent instances
-for metric collection. Otherwise, metrics for the same services would be sent to different Agents, making aggregations inaccurate.
+This is useful when using processors like the span metrics, so all spans for each service are sent to consistent {{< param "PRODUCT_NAME" >}} instances
+for metric collection. Otherwise, metrics for the same services would be sent to different instances, making aggregations inaccurate.
 * `"traceID"`: spans belonging to the same traceID will be exported to the same backend.
 
 ## Blocks
@@ -124,8 +124,8 @@ Name        | Type           | Description                     | Default | Requi
 
 ### dns block
 
-The `dns` block periodically resolves an IP address via the DNS `hostname` attribute. This IP address 
-and the port specified via the `port` attribute will then be used by the gRPC exporter 
+The `dns` block periodically resolves an IP address via the DNS `hostname` attribute. This IP address
+and the port specified via the `port` attribute will then be used by the gRPC exporter
 as the endpoint to which to export data to.
 
 The following arguments are supported:
@@ -139,8 +139,8 @@ Name       | Type       | Description                                           
 
 ### kubernetes block
 
-You can use the `kubernetes` block to load balance across the pods of a Kubernetes service. 
-The Kubernetes API notifies {{< param "PRODUCT_NAME" >}} whenever a new pod is added or removed from the service. 
+You can use the `kubernetes` block to load balance across the pods of a Kubernetes service.
+The Kubernetes API notifies {{< param "PRODUCT_NAME" >}} whenever a new pod is added or removed from the service.
 The `kubernetes` resolver has a much faster response time than the `dns` resolver because it doesn't require polling.
 
 The following arguments are supported:
@@ -150,10 +150,10 @@ Name      | Type           | Description                                        
 `service` | `string`       | Kubernetes service to resolve.                              |          | yes
 `ports`   | `list(number)` | Ports to use with the IP addresses resolved from `service`. | `[4317]` | no
 
-If no namespace is specified inside `service`, an attempt will be made to infer the namespace for this Agent. 
+If no namespace is specified inside `service`, an attempt will be made to infer the namespace for this {{< param "PRODUCT_NAME" >}}.
 If this fails, the `default` namespace will be used.
 
-Each of the ports listed in `ports` will be used with each of the IPs resolved from `service`. 
+Each of the ports listed in `ports` will be used with each of the IPs resolved from `service`.
 
 The "get", "list", and "watch" [roles](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-example)
 must be granted in Kubernetes for the resolver to work.
@@ -169,7 +169,7 @@ The `otlp` block configures OTLP-related settings for exporting.
 
 ### client block
 
-The `client` block configures the gRPC client used by the component. 
+The `client` block configures the gRPC client used by the component.
 The endpoints used by the client block are the ones from the `resolver` block
 
 The following arguments are supported:
@@ -333,10 +333,10 @@ Unfortunately, this can also lead to side effects.
 For example, if `otelcol.connector.spanmetrics` is configured to generate exemplars, the tail sampling {{< param "PRODUCT_ROOT_NAME" >}}s might drop the trace that the exemplar points to.
 There is no coordination between the tail sampling {{< param "PRODUCT_ROOT_NAME" >}}s and the span metrics {{< param "PRODUCT_ROOT_NAME" >}}s to make sure trace IDs for exemplars are kept.
 
-<!-- 
+<!--
 TODO: Add a troubleshooting section?
 1. Use GODEBUG for DNS resolver logging
-2. Enable debug logging on the Agent
+2. Enable debug logging on Alloy
 3. gRPC debug env variables?
  -->
 
@@ -382,14 +382,14 @@ otelcol.exporter.loadbalancing "default" {
 
 ### DNS resolver
 
-When configured with a `dns` resolver, `otelcol.exporter.loadbalancing` will do a DNS lookup 
+When configured with a `dns` resolver, `otelcol.exporter.loadbalancing` will do a DNS lookup
 on regular intervals. Spans are exported to the addresses the DNS lookup returned.
 
 ```river
 otelcol.exporter.loadbalancing "default" {
     resolver {
         dns {
-            hostname = "grafana-agent-traces-sampling.grafana-cloud-monitoring.svc.cluster.local"
+            hostname = "grafana-alloy-traces-sampling.grafana-cloud-monitoring.svc.cluster.local"
             port     = "34621"
             interval = "5s"
             timeout  = "1s"
@@ -441,7 +441,7 @@ spec:
       containers:
       - env:
         - name: ENDPOINT
-          value: agent-traces-lb.grafana-cloud-monitoring.svc.cluster.local:9411
+          value: alloy-traces-lb.grafana-cloud-monitoring.svc.cluster.local:9411
         image: ghcr.io/grafana/xk6-client-tracing:v0.0.2
         imagePullPolicy: IfNotPresent
         name: k6-trace-generator
@@ -449,23 +449,23 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: agent-traces-lb
+  name: alloy-traces-lb
   namespace: grafana-cloud-monitoring
 spec:
   clusterIP: None
   ports:
-  - name: agent-traces-otlp-grpc
+  - name: alloy-traces-otlp-grpc
     port: 9411
     protocol: TCP
     targetPort: 9411
   selector:
-    name: agent-traces-lb
+    name: alloy-traces-lb
   type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: agent-traces-lb
+  name: alloy-traces-lb
   namespace: grafana-cloud-monitoring
 spec:
   minReadySeconds: 10
@@ -473,59 +473,56 @@ spec:
   revisionHistoryLimit: 1
   selector:
     matchLabels:
-      name: agent-traces-lb
+      name: alloy-traces-lb
   template:
     metadata:
       labels:
-        name: agent-traces-lb
+        name: alloy-traces-lb
     spec:
       containers:
       - args:
         - run
-        - /etc/agent/agent_lb.river
+        - /etc/alloy/alloy_lb.river
         command:
-        - /bin/grafana-agent
-        env:
-        - name: AGENT_MODE
-          value: flow
-        image: grafana/agent:v0.38.0
+        - /bin/grafana-alloy
+        image: grafana/alloy:v1.0
         imagePullPolicy: IfNotPresent
-        name: agent-traces
+        name: alloy-traces
         ports:
         - containerPort: 9411
           name: otlp-grpc
           protocol: TCP
         - containerPort: 34621
-          name: agent-lb
+          name: alloy-lb
           protocol: TCP
         volumeMounts:
-        - mountPath: /etc/agent
-          name: agent-traces
+        - mountPath: /etc/alloy
+          name: alloy-traces
       volumes:
       - configMap:
-          name: agent-traces
-        name: agent-traces
+          name: alloy-traces
+        name: alloy-traces
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: agent-traces-sampling
+  name: alloy-traces-sampling
   namespace: grafana-cloud-monitoring
 spec:
   clusterIP: None
   ports:
-  - name: agent-lb
+  - name: alloy-lb
     port: 34621
     protocol: TCP
-    targetPort: agent-lb
+    targetPort: alloy-lb
   selector:
-    name: agent-traces-sampling
+    name: alloy-traces-sampling
   type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: agent-traces-sampling
+  name: alloy-traces-sampling
   namespace: grafana-cloud-monitoring
 spec:
   minReadySeconds: 10
@@ -533,46 +530,43 @@ spec:
   revisionHistoryLimit: 1
   selector:
     matchLabels:
-      name: agent-traces-sampling
+      name: alloy-traces-sampling
   template:
     metadata:
       labels:
-        name: agent-traces-sampling
+        name: alloy-traces-sampling
     spec:
       containers:
       - args:
         - run
-        - /etc/agent/agent_sampling.river
+        - /etc/alloy/alloy_sampling.river
         command:
-        - /bin/grafana-agent
-        env:
-        - name: AGENT_MODE
-          value: flow
-        image: grafana/agent:v0.38.0
+        - /bin/grafana-alloy
+        image: grafana/alloy:v1.0
         imagePullPolicy: IfNotPresent
-        name: agent-traces
+        name: alloy-traces
         ports:
         - containerPort: 9411
           name: otlp-grpc
           protocol: TCP
         - containerPort: 34621
-          name: agent-lb
+          name: alloy-lb
           protocol: TCP
         volumeMounts:
-        - mountPath: /etc/agent
-          name: agent-traces
+        - mountPath: /etc/alloy
+          name: alloy-traces
       volumes:
       - configMap:
-          name: agent-traces
-        name: agent-traces
+          name: alloy-traces
+        name: alloy-traces
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: agent-traces
+  name: alloy-traces
   namespace: grafana-cloud-monitoring
 data:
-  agent_lb.river: |
+  alloy_lb.river: |
     otelcol.receiver.otlp "default" {
       grpc {
         endpoint = "0.0.0.0:9411"
@@ -589,7 +583,7 @@ data:
     otelcol.exporter.loadbalancing "default" {
       resolver {
         dns {
-          hostname = "agent-traces-sampling.grafana-cloud-monitoring.svc.cluster.local"
+          hostname = "alloy-traces-sampling.grafana-cloud-monitoring.svc.cluster.local"
           port = "34621"
         }
       }
@@ -604,7 +598,7 @@ data:
       }
     }
 
-  agent_sampling.river: |
+  alloy_sampling.river: |
     otelcol.receiver.otlp "default" {
       grpc {
         endpoint = "0.0.0.0:34621"
@@ -637,28 +631,28 @@ You can use [k3d][] to start the example:
 
 <!-- TODO: Link to the k3d page -->
 ```bash
-k3d cluster create grafana-agent-lb-test
+k3d cluster create grafana-alloy-lb-test
 kubectl apply -f kubernetes_config.yaml
 ```
 
 To delete the cluster, run:
 
 ```bash
-k3d cluster delete grafana-agent-lb-test
+k3d cluster delete grafana-alloy-lb-test
 ```
 
 [k3d]: https://k3d.io/v5.6.0/
 
 ### Kubernetes resolver
 
-When you configure `otelcol.exporter.loadbalancing`  with a `kubernetes` resolver, the Kubernetes API notifies {{< param "PRODUCT_NAME" >}} whenever a new pod is added or removed from the service. 
+When you configure `otelcol.exporter.loadbalancing`  with a `kubernetes` resolver, the Kubernetes API notifies {{< param "PRODUCT_NAME" >}} whenever a new pod is added or removed from the service.
 Spans are exported to the addresses from the Kubernetes API, combined with all the possible `ports`.
 
 ```river
 otelcol.exporter.loadbalancing "default" {
     resolver {
         kubernetes {
-            service = "grafana-agent-traces-headless"
+            service = "grafana-alloy-traces-headless"
             ports   = [ 34621 ]
         }
     }
@@ -694,13 +688,13 @@ metadata:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: agent-traces
+  name: alloy-traces
   namespace: grafana-cloud-monitoring
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: agent-traces-role
+  name: alloy-traces-role
   namespace: grafana-cloud-monitoring
 rules:
 - apiGroups:
@@ -715,15 +709,15 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: agent-traces-rolebinding
+  name: alloy-traces-rolebinding
   namespace: grafana-cloud-monitoring
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: agent-traces-role
+  name: alloy-traces-role
 subjects:
 - kind: ServiceAccount
-  name: agent-traces
+  name: alloy-traces
   namespace: grafana-cloud-monitoring
 ---
 apiVersion: apps/v1
@@ -746,7 +740,7 @@ spec:
       containers:
       - env:
         - name: ENDPOINT
-          value: agent-traces-lb.grafana-cloud-monitoring.svc.cluster.local:9411
+          value: alloy-traces-lb.grafana-cloud-monitoring.svc.cluster.local:9411
         image: ghcr.io/grafana/xk6-client-tracing:v0.0.2
         imagePullPolicy: IfNotPresent
         name: k6-trace-generator
@@ -754,23 +748,23 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: agent-traces-lb
+  name: alloy-traces-lb
   namespace: grafana-cloud-monitoring
 spec:
   clusterIP: None
   ports:
-  - name: agent-traces-otlp-grpc
+  - name: alloy-traces-otlp-grpc
     port: 9411
     protocol: TCP
     targetPort: 9411
   selector:
-    name: agent-traces-lb
+    name: alloy-traces-lb
   type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: agent-traces-lb
+  name: alloy-traces-lb
   namespace: grafana-cloud-monitoring
 spec:
   minReadySeconds: 10
@@ -778,56 +772,53 @@ spec:
   revisionHistoryLimit: 1
   selector:
     matchLabels:
-      name: agent-traces-lb
+      name: alloy-traces-lb
   template:
     metadata:
       labels:
-        name: agent-traces-lb
+        name: alloy-traces-lb
     spec:
       containers:
       - args:
         - run
-        - /etc/agent/agent_lb.river
+        - /etc/alloy/alloy_lb.river
         command:
-        - /bin/grafana-agent
-        env:
-        - name: AGENT_MODE
-          value: flow
-        image: grafana/agent:v0.38.0
+        - /bin/grafana-alloy
+        image: grafana/alloy:v1.0
         imagePullPolicy: IfNotPresent
-        name: agent-traces
+        name: alloy-traces
         ports:
         - containerPort: 9411
           name: otlp-grpc
           protocol: TCP
         volumeMounts:
-        - mountPath: /etc/agent
-          name: agent-traces
-      serviceAccount: agent-traces
+        - mountPath: /etc/alloy
+          name: alloy-traces
+      serviceAccount: alloy-traces
       volumes:
       - configMap:
-          name: agent-traces
-        name: agent-traces
+          name: alloy-traces
+        name: alloy-traces
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: agent-traces-sampling
+  name: alloy-traces-sampling
   namespace: grafana-cloud-monitoring
 spec:
   ports:
-  - name: agent-lb
+  - name: alloy-lb
     port: 34621
     protocol: TCP
-    targetPort: agent-lb
+    targetPort: alloy-lb
   selector:
-    name: agent-traces-sampling
+    name: alloy-traces-sampling
   type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: agent-traces-sampling
+  name: alloy-traces-sampling
   namespace: grafana-cloud-monitoring
 spec:
   minReadySeconds: 10
@@ -835,43 +826,40 @@ spec:
   revisionHistoryLimit: 1
   selector:
     matchLabels:
-      name: agent-traces-sampling
+      name: alloy-traces-sampling
   template:
     metadata:
       labels:
-        name: agent-traces-sampling
+        name: alloy-traces-sampling
     spec:
       containers:
       - args:
         - run
-        - /etc/agent/agent_sampling.river
+        - /etc/alloy/alloy_sampling.river
         command:
-        - /bin/grafana-agent
-        env:
-        - name: AGENT_MODE
-          value: flow
-        image: grafana/agent:v0.38.0
+        - /bin/grafana-alloy
+        image: grafana/alloy:v1.0
         imagePullPolicy: IfNotPresent
-        name: agent-traces
+        name: alloy-traces
         ports:
         - containerPort: 34621
-          name: agent-lb
+          name: alloy-lb
           protocol: TCP
         volumeMounts:
-        - mountPath: /etc/agent
-          name: agent-traces
+        - mountPath: /etc/alloy
+          name: alloy-traces
       volumes:
       - configMap:
-          name: agent-traces
-        name: agent-traces
+          name: alloy-traces
+        name: alloy-traces
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: agent-traces
+  name: alloy-traces
   namespace: grafana-cloud-monitoring
 data:
-  agent_lb.river: |
+  alloy_lb.river: |
     otelcol.receiver.otlp "default" {
       grpc {
         endpoint = "0.0.0.0:9411"
@@ -888,7 +876,7 @@ data:
     otelcol.exporter.loadbalancing "default" {
       resolver {
         kubernetes {
-          service = "agent-traces-sampling"
+          service = "alloy-traces-sampling"
           ports = ["34621"]
         }
       }
@@ -903,7 +891,7 @@ data:
       }
     }
 
-  agent_sampling.river: |
+  alloy_sampling.river: |
     otelcol.receiver.otlp "default" {
       grpc {
         endpoint = "0.0.0.0:34621"
@@ -936,14 +924,14 @@ You must fill in the correct OTLP credentials prior to running the example.
 You can use [k3d][] to start the example:
 
 ```bash
-k3d cluster create grafana-agent-lb-test
+k3d cluster create grafana-alloy-lb-test
 kubectl apply -f kubernetes_config.yaml
 ```
 
 To delete the cluster, run:
 
 ```bash
-k3d cluster delete grafana-agent-lb-test
+k3d cluster delete grafana-alloy-lb-test
 ```
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
