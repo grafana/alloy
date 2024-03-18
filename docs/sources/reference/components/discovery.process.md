@@ -2,6 +2,8 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.process/
 description: Learn about discovery.process
 title: discovery.process
+labels:
+  stage: beta
 ---
 
 # discovery.process
