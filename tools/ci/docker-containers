@@ -9,8 +9,8 @@ set -euxo pipefail
 
 RELEASE_AGENT_IMAGE=grafana/agent
 RELEASE_AGENTBORINGCRYPTO_IMAGE=grafana/agent-boringcrypto
-DEVELOPMENT_AGENT_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev
-DEVELOPMENT_AGENTBORINGCRYPTO_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-boringcrypto-dev
+DEVELOPMENT_AGENT_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
+DEVELOPMENT_AGENTBORINGCRYPTO_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy-boringcrypto
 
 DEFAULT_AGENT_IMAGE=${RELEASE_AGENT_IMAGE}
 DEFAULT_AGENTBORINGCRYPTO_IMAGE=${RELEASE_AGENTBORINGCRYPTO_IMAGE}
