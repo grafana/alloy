@@ -123,13 +123,13 @@ To engage with the Alloy community:
   Grafana Slack, visit <https://slack.grafana.com/> and join the `#alloy`
   channel.
 
-* Ask questions on the [Grafana community website][community].
+* Ask questions on the [Discussions page][discussions].
 
 * [File an issue][issue] for bugs, issues, and feature suggestions.
 
 * Attend the monthly [community call][community-call].
 
-[community]: https://community.grafana.com
+[discussions]: https://github.com/grafana/agent/discussions
 [issue]: https://github.com/grafana/alloy/issues/new
 [community-call]: https://docs.google.com/document/d/1TqaZD1JPfNadZ4V81OCBPCG_TksDYGlNlGdMnTWUSpo
 
