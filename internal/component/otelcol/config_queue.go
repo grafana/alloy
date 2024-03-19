@@ -21,16 +21,12 @@ var DefaultQueueArguments = QueueArguments{
 	Enabled:      true,
 	NumConsumers: 10,
 
-	// Copied from [upstream]:
+	// Copied from [upstream](https://github.com/open-telemetry/opentelemetry-collector/blob/241334609fc47927b4a8533dfca28e0f65dad9fe/exporter/exporterhelper/queue_sender.go#L50-L53)
 	//
-	// 5000 queue elements at 100 requests/sec gives about 50 seconds of survival
-	// of destination outage. This is a pretty decent value for production. Users
-	// should calculate this from the perspective of how many seconds to buffer
-	// in case of a backend outage and multiply that by the number of requests
-	// per second.
-	//
-	// [upstream]: https://github.com/open-telemetry/opentelemetry-collector/blob/ff73e49f74d8fd8c57a849aa3ff23ae1940cc16a/exporter/exporterhelper/queued_retry.go#L62-L65
-	QueueSize: 5000,
+	// By default, batches are 8192 spans, for a total of up to 8 million spans in the queue
+	// This can be estimated at 1-4 GB worth of maximum memory usage
+	// This default is probably still too high, and may be adjusted further down in a future release
+	QueueSize: 1000,
 }
 
 // SetToDefault implements river.Defaulter.

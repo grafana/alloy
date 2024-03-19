@@ -1,0 +1,45 @@
+extensions:
+  headers_setter:
+    headers:
+      - action: insert
+        key: X-Scope-OrgID
+        from_context: tenant_id
+      - action: upsert
+        key: User-ID
+        value: user_id
+      - action: update
+        key: User-ID
+        value: user_id
+      - action: delete
+        key: Some-Header
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp:
+    # Our defaults have drifted from upstream, so we explicitly set our
+    # defaults below (balancer_name).
+    endpoint: database:4317
+    auth:
+      authenticator: headers_setter
+    balancer_name: pick_first
+
+service:
+  extensions: [ headers_setter ]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]

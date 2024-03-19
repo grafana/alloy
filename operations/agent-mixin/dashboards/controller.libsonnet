@@ -276,7 +276,7 @@ local filename = 'agent-flow-controller.json';
       //
       // This panel supports both native and classic histograms, though it only shows one at a time.
       (
-        panel.newNativeHistogramHeatmap('Component evaluation histogram') +
+        panel.newNativeHistogramHeatmap('Component evaluation histogram', 's') +
         panel.withDescription(|||
           Detailed histogram view of how long component evaluations take.
 
@@ -301,7 +301,7 @@ local filename = 'agent-flow-controller.json';
       //
       // This panel supports both native and classic histograms, though it only shows one at a time.
       (
-        panel.newNativeHistogramHeatmap('Component dependency wait histogram') +
+        panel.newNativeHistogramHeatmap('Component dependency wait histogram', 's') +
         panel.withDescription(|||
           Detailed histogram of how long components wait to be evaluated after their dependency is updated.
 

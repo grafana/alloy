@@ -8,9 +8,6 @@ exporters:
     routing_key: "service"
     protocol:
       otlp:
-        balancer_name: pick_first
-        sending_queue:
-          queue_size: 5000
     resolver:
       static:
         hostnames:

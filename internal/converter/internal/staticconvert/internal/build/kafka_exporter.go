@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/river/rivertypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendKafkaExporter(config *kafka_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendKafkaExporter(config *kafka_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toKafkaExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "kafka")
 }

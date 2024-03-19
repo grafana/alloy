@@ -18,7 +18,7 @@ import (
 )
 
 /* Most recent performance results on M2 Macbook Air:
-$ go test -count=1 -benchmem ./pkg/flow/logging -run ^$ -bench BenchmarkLogging_
+$ go test -count=1 -benchmem ./internal/flow/logging -run ^$ -bench BenchmarkLogging_
 goos: darwin
 goarch: arm64
 pkg: github.com/grafana/agent/internal/flow/logging

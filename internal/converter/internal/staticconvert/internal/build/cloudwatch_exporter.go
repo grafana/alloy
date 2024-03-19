@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations/cloudwatch_exporter"
 )
 
-func (b *IntegrationsConfigBuilder) appendCloudwatchExporter(config *cloudwatch_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendCloudwatchExporter(config *cloudwatch_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toCloudwatchExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "cloudwatch")
 }

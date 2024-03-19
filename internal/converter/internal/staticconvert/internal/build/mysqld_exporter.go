@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/river/rivertypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendMysqldExporter(config *mysqld_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendMysqldExporter(config *mysqld_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toMysqldExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "mysql")
 }

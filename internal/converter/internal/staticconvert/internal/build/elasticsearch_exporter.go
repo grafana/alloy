@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/river/rivertypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendElasticsearchExporter(config *elasticsearch_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendElasticsearchExporter(config *elasticsearch_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toElasticsearchExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "elasticsearch")
 }

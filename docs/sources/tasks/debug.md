@@ -105,6 +105,11 @@ To debug issues when using [clustering][], check for the following symptoms.
 - **Node stuck in terminating state**: The node attempted to gracefully shut down and set its state to Terminating, but it has not completely gone away.
   Check the clustering page to view the state of the peers and verify that the terminating {{< param "PRODUCT_ROOT_NAME" >}} has been shut down.
 
+{{< admonition type="note" >}}
+Some issues that appear to be clustering issues may be symptoms of other issues, for example, problems with scraping or service discovery can result in missing metrics for an agent that can be interpreted as a node not joining the cluster.
+{{< /admonition >}}
+
 [logging]: ../../reference/config-blocks/logging/
 [clustering]: ../../concepts/clustering/
 [secret]: ../../concepts/config-language/expressions/types_and_values/#secrets
+

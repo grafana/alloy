@@ -44,10 +44,6 @@ integrations:
           outcome: "$3"
           job: "${1}_server"
 
-traces:
-  configs:
-    - name: trace_config
-
 logs:
   positions_directory: /path
   global:
@@ -55,6 +51,19 @@ logs:
       min_poll_frequency: 250ms
   configs:
     - name: log_config
+
+traces:
+  configs:
+    - name: trace_config
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+            http:
+      remote_write:
+        - endpoint: http://localhost:1234/write
+      automatic_logging:
+        backend: "something else"
 
 agent_management:
   host: host_name

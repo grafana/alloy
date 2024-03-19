@@ -285,6 +285,11 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.GRPCClientSettings {
 		auth = &otelconfigauth.Authentication{AuthenticatorID: args.Auth.ID}
 	}
 
+	balancerName := args.BalancerName
+	if balancerName == "" {
+		balancerName = otelcol.DefaultBalancerName
+	}
+
 	return &otelconfiggrpc.GRPCClientSettings{
 		Compression: args.Compression.Convert(),
 
@@ -295,7 +300,7 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.GRPCClientSettings {
 		WriteBufferSize: int(args.WriteBufferSize),
 		WaitForReady:    args.WaitForReady,
 		Headers:         opaqueHeaders,
-		BalancerName:    args.BalancerName,
+		BalancerName:    balancerName,
 		Authority:       args.Authority,
 
 		Auth: auth,
@@ -317,7 +322,7 @@ var DefaultGRPCClientArguments = GRPCClientArguments{
 	Headers:         map[string]string{},
 	Compression:     otelcol.CompressionTypeGzip,
 	WriteBufferSize: 512 * 1024,
-	BalancerName:    "pick_first",
+	BalancerName:    otelcol.DefaultBalancerName,
 }
 
 // SetToDefault implements river.Defaulter.

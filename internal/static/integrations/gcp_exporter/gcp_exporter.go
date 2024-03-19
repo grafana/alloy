@@ -14,6 +14,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/multierror"
 	"github.com/prometheus-community/stackdriver_exporter/collectors"
+	"github.com/prometheus-community/stackdriver_exporter/delta"
 	"github.com/prometheus-community/stackdriver_exporter/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2/google"
@@ -105,8 +106,8 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 				AggregateDeltas: true,
 			},
 			l,
-			collectors.NewInMemoryDeltaCounterStore(l, 30*time.Minute),
-			collectors.NewInMemoryDeltaDistributionStore(l, 30*time.Minute),
+			delta.NewInMemoryCounterStore(l, 30*time.Minute),
+			delta.NewInMemoryHistogramStore(l, 30*time.Minute),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create monitoring collector: %w", err)

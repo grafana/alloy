@@ -43,7 +43,7 @@ var _ receiver.Arguments = Arguments{}
 // Default server settings.
 var DefaultArguments = Arguments{
 	GRPC: otelcol.GRPCServerArguments{
-		Endpoint:  "0.0.0.0:4317",
+		Endpoint:  "0.0.0.0:55678",
 		Transport: "tcp",
 
 		ReadBufferSize: 512 * units.Kibibyte,

@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/river/rivertypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendBlackboxExporter(config *blackbox_exporter.Config) discovery.Exports {
+func (b *ConfigBuilder) appendBlackboxExporter(config *blackbox_exporter.Config) discovery.Exports {
 	args := toBlackboxExporter(config)
 	return b.appendExporterBlock(args, config.Name(), nil, "blackbox")
 }
@@ -27,7 +27,7 @@ func toBlackboxExporter(config *blackbox_exporter.Config) *blackbox.Arguments {
 	}
 }
 
-func (b *IntegrationsConfigBuilder) appendBlackboxExporterV2(config *blackbox_exporter_v2.Config) discovery.Exports {
+func (b *ConfigBuilder) appendBlackboxExporterV2(config *blackbox_exporter_v2.Config) discovery.Exports {
 	args := toBlackboxExporterV2(config)
 	return b.appendExporterBlock(args, config.Name(), config.Common.InstanceKey, "blackbox")
 }

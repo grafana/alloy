@@ -655,7 +655,7 @@ func formatPolicies(cfg []policy) ([]map[string]interface{}, error) {
 	return policies, nil
 }
 
-func (c *InstanceConfig) otelConfig() (*otelcol.Config, error) {
+func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 	otelMapStructure := map[string]interface{}{}
 
 	if len(c.Receivers) == 0 {

@@ -5,14 +5,7 @@ import (
 
 	"github.com/grafana/river"
 	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/util/workqueue"
 )
-
-func TestEventTypeIsHashable(t *testing.T) {
-	// This test is here to ensure that the EventType type is hashable according to the workqueue implementation
-	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-	queue.AddRateLimited(event{})
-}
 
 func TestRiverConfig(t *testing.T) {
 	var exampleRiverConfig = `

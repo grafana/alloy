@@ -43,6 +43,18 @@ type Arguments struct {
 	Output *otelcol.ConsumerArguments `river:"output,block"`
 }
 
+// SetToDefault implements river.Defaulter.
+func (args *Arguments) SetToDefault() {
+	// These are default excludes from upstream opentelemetry-collector-contrib
+	// Source: https://github.com/open-telemetry/opentelemetry-collector-contrib/blame/main/processor/k8sattributesprocessor/factory.go#L21
+	args.Exclude = ExcludeConfig{
+		Pods: []ExcludePodConfig{
+			{Name: "jaeger-agent"},
+			{Name: "jaeger-collector"},
+		},
+	}
+}
+
 // Validate implements river.Validator.
 func (args *Arguments) Validate() error {
 	cfg, err := args.Convert()

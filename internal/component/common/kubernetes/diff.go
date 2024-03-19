@@ -1,4 +1,4 @@
-package rules
+package kubernetes
 
 import (
 	"bytes"
@@ -7,27 +7,27 @@ import (
 	"gopkg.in/yaml.v3" // Used for prometheus rulefmt compatibility instead of gopkg.in/yaml.v2
 )
 
-type ruleGroupDiffKind string
+type RuleGroupDiffKind string
 
 const (
-	ruleGroupDiffKindAdd    ruleGroupDiffKind = "add"
-	ruleGroupDiffKindRemove ruleGroupDiffKind = "remove"
-	ruleGroupDiffKindUpdate ruleGroupDiffKind = "update"
+	RuleGroupDiffKindAdd    RuleGroupDiffKind = "add"
+	RuleGroupDiffKindRemove RuleGroupDiffKind = "remove"
+	RuleGroupDiffKindUpdate RuleGroupDiffKind = "update"
 )
 
-type ruleGroupDiff struct {
-	Kind    ruleGroupDiffKind
+type RuleGroupDiff struct {
+	Kind    RuleGroupDiffKind
 	Actual  rulefmt.RuleGroup
 	Desired rulefmt.RuleGroup
 }
 
-type ruleGroupsByNamespace map[string][]rulefmt.RuleGroup
-type ruleGroupDiffsByNamespace map[string][]ruleGroupDiff
+type RuleGroupsByNamespace map[string][]rulefmt.RuleGroup
+type RuleGroupDiffsByNamespace map[string][]RuleGroupDiff
 
-func diffRuleState(desired, actual ruleGroupsByNamespace) ruleGroupDiffsByNamespace {
+func DiffRuleState(desired, actual RuleGroupsByNamespace) RuleGroupDiffsByNamespace {
 	seenNamespaces := map[string]bool{}
 
-	diff := make(ruleGroupDiffsByNamespace)
+	diff := make(RuleGroupDiffsByNamespace)
 
 	for namespace, desiredRuleGroups := range desired {
 		seenNamespaces[namespace] = true
@@ -55,8 +55,8 @@ func diffRuleState(desired, actual ruleGroupsByNamespace) ruleGroupDiffsByNamesp
 	return diff
 }
 
-func diffRuleNamespaceState(desired []rulefmt.RuleGroup, actual []rulefmt.RuleGroup) []ruleGroupDiff {
-	var diff []ruleGroupDiff
+func diffRuleNamespaceState(desired []rulefmt.RuleGroup, actual []rulefmt.RuleGroup) []RuleGroupDiff {
+	var diff []RuleGroupDiff
 
 	seenGroups := map[string]bool{}
 
@@ -70,8 +70,8 @@ desiredGroups:
 					continue desiredGroups
 				}
 
-				diff = append(diff, ruleGroupDiff{
-					Kind:    ruleGroupDiffKindUpdate,
+				diff = append(diff, RuleGroupDiff{
+					Kind:    RuleGroupDiffKindUpdate,
 					Actual:  actualRuleGroup,
 					Desired: desiredRuleGroup,
 				})
@@ -79,8 +79,8 @@ desiredGroups:
 			}
 		}
 
-		diff = append(diff, ruleGroupDiff{
-			Kind:    ruleGroupDiffKindAdd,
+		diff = append(diff, RuleGroupDiff{
+			Kind:    RuleGroupDiffKindAdd,
 			Desired: desiredRuleGroup,
 		})
 	}
@@ -90,8 +90,8 @@ desiredGroups:
 			continue
 		}
 
-		diff = append(diff, ruleGroupDiff{
-			Kind:   ruleGroupDiffKindRemove,
+		diff = append(diff, RuleGroupDiff{
+			Kind:   RuleGroupDiffKindRemove,
 			Actual: actualRuleGroup,
 		})
 	}

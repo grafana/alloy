@@ -218,8 +218,6 @@ func validateIntegrationsV2(integrationsConfig *v2.SubsystemOptions) diag.Diagno
 func validateTraces(tracesConfig traces.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	diags.AddAll(common.ValidateSupported(common.NotDeepEquals, tracesConfig, traces.Config{}, "traces", ""))
-
 	return diags
 }
 

@@ -1,0 +1,27 @@
+traces:
+  configs:
+    - name: trace_config_1
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+            http:
+      remote_write:
+        - endpoint: http://localhost:1234/write
+      attributes:
+        actions:
+          - key: db.table
+            action: delete
+    - name: trace_config_2
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+            http:
+      remote_write:
+        - endpoint: http://localhost:1234/write
+      attributes:
+        actions:
+          - key: redacted_span
+            value: true
+            action: upsert

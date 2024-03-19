@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/static/server"
 )
 
-func (b *IntegrationsConfigBuilder) appendLogging(config *server.Config) {
+func (b *ConfigBuilder) appendLogging(config *server.Config) {
 	args := toLogging(config)
 	if !reflect.DeepEqual(*args, logging.DefaultOptions) {
 		b.f.Body().AppendBlock(common.NewBlockWithOverride(
