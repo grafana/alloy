@@ -134,7 +134,7 @@ jobs:
       # The tag name in grafana/helm-charts is <package>-<version>, while the
       # tag name for grafana/alloy is helm-chart/<version>.
       - name: Make github release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: ${{ steps.parse-chart.outputs.packagename }}
           repository: grafana/helm-charts
