@@ -44,6 +44,11 @@ else
   VERSION=$(./tools/image-tag)
 fi
 
+# The TAG_VERSION is the version to use for the Docker tag. It is sanitized to
+# force it to be a valid tag name; ./tools/image-tag can emit characters that
+# are valid for semver but invalid for Docker tags, such as +.
+TAG_VERSION=${VERSION//+/-}
+
 # We also need to know which "branch tag" to update. Branch tags are used as a
 # secondary tag for Docker containers. The branch tag is "latest" when being
 # tagged from a stable release (i.e., not a release candidate).
@@ -54,7 +59,7 @@ fi
 if [ -n "$DRONE_TAG" ] && [[ "$DRONE_TAG" != *"-rc."* ]]; then
   BRANCH_TAG=latest
 else
-  BRANCH_TAG=$VERSION
+  BRANCH_TAG=$TAG_VERSION
 fi
 
 # Build all of our images.
@@ -68,21 +73,21 @@ case "$TARGET_CONTAINER" in
       --platform $BUILD_PLATFORMS     \
       --build-arg RELEASE_BUILD=1     \
       --build-arg VERSION="$VERSION"  \
-      -t "$AGENT_IMAGE:$VERSION"      \
+      -t "$AGENT_IMAGE:$TAG_VERSION"  \
       -t "$AGENT_IMAGE:$BRANCH_TAG"   \
       -f cmd/grafana-agent/Dockerfile \
       .
     ;;
 
   agent-boringcrypto)
-    docker buildx build --push        \
-      --platform $BUILD_PLATFORMS_BORINGCRYPTO     \
-      --build-arg RELEASE_BUILD=1     \
-      --build-arg VERSION="$VERSION"  \
-      --build-arg GOEXPERIMENT=boringcrypto \
-      -t "$AGENT_BORINGCRYPTO_IMAGE:$VERSION"      \
-      -t "$AGENT_BORINGCRYPTO_IMAGE:$BRANCH_TAG"   \
-      -f cmd/grafana-agent/Dockerfile \
+    docker buildx build --push                    \
+      --platform $BUILD_PLATFORMS_BORINGCRYPTO    \
+      --build-arg RELEASE_BUILD=1                 \
+      --build-arg VERSION="$VERSION"              \
+      --build-arg GOEXPERIMENT=boringcrypto       \
+      -t "$AGENT_BORINGCRYPTO_IMAGE:$TAG_VERSION" \
+      -t "$AGENT_BORINGCRYPTO_IMAGE:$BRANCH_TAG"  \
+      -f cmd/grafana-agent/Dockerfile             \
       .
     ;;
 
