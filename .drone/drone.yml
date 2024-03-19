@@ -303,6 +303,49 @@ trigger:
 type: docker
 ---
 kind: pipeline
+name: Publish development Linux agent container
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  failure: ignore
+  image: grafana/agent-build-image:0.40.2
+  name: Configure QEMU
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+- commands:
+  - mkdir -p $HOME/.docker
+  - printenv GCR_CREDS > $HOME/.docker/config.json
+  - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
+  - docker buildx create --name multiarch-agent-agent-${DRONE_COMMIT_SHA} --driver
+    docker-container --use
+  - DEVELOPMENT=1 ./tools/ci/docker-containers agent
+  - docker buildx rm multiarch-agent-agent-${DRONE_COMMIT_SHA}
+  environment:
+    DOCKER_LOGIN:
+      from_secret: docker_login
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+    GCR_CREDS:
+      from_secret: gcr_admin
+  image: grafana/agent-build-image:0.40.2
+  name: Publish container
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+trigger:
+  ref:
+  - refs/heads/main
+type: docker
+volumes:
+- host:
+    path: /var/run/docker.sock
+  name: docker
+---
+kind: pipeline
 name: Test Linux system packages
 platform:
   arch: amd64
@@ -407,6 +450,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 59c741cd4e3cd3f555cbf0165da386b269a7f54987fe5a2aba621edc6ebb09a5
+hmac: eb4c87d4abc880513c7c2977c46910fa96041461aa2edea16a7970f5c145dd01
 
 ...

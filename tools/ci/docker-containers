@@ -7,6 +7,14 @@
 # from a Drone trigger.
 set -euxo pipefail
 
+RELEASE_AGENT_IMAGE=grafana/agent
+RELEASE_AGENTBORINGCRYPTO_IMAGE=grafana/agent-boringcrypto
+DEVELOPMENT_AGENT_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev
+DEVELOPMENT_AGENTBORINGCRYPTO_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-boringcrypto-dev
+
+DEFAULT_AGENT_IMAGE=${RELEASE_AGENT_IMAGE}
+DEFAULT_AGENTBORINGCRYPTO_IMAGE=${RELEASE_AGENTBORINGCRYPTO_IMAGE}
+
 # Environment variables used throughout this script. These must be set
 # otherwise bash will fail with an "unbound variable" error because of the `set
 # -u` flag on the above line.
@@ -15,10 +23,15 @@ set -euxo pipefail
 # empty string.
 export TARGET_CONTAINER=${1:-}
 export DRONE_TAG=${DRONE_TAG:-}
-export DRONE_BRANCH=${DRONE_BRANCH:-}
+export DEVELOPMENT=${DEVELOPMENT:-}
 
-export AGENT_IMAGE=grafana/agent
-export AGENT_BORINGCRYPTO_IMAGE=grafana/agent-boringcrypto
+if [ -n "$DEVELOPMENT" ]; then
+  DEFAULT_AGENT_IMAGE=${DEVELOPMENT_AGENT_IMAGE}
+  DEFAULT_AGENTBORINGCRYPTO_IMAGE=${DEVELOPMENT_AGENTBORINGCRYPTO_IMAGE}
+fi
+
+export AGENT_IMAGE=${DEFAULT_AGENT_IMAGE}
+export AGENT_BORINGCRYPTO_IMAGE=${DEFAULT_AGENTBORINGCRYPTO_IMAGE}
 
 # We need to determine what version to assign to built binaries. If containers
 # are being built from a Drone tag trigger, we force the version to come from the
@@ -33,16 +46,13 @@ fi
 
 # We also need to know which "branch tag" to update. Branch tags are used as a
 # secondary tag for Docker containers. The branch tag is "latest" when being
-# tagged from a stable release (i.e., not a release candidate) or the Drone
-# branch when coming from a Drone job.
+# tagged from a stable release (i.e., not a release candidate).
 #
 # If we're not running from drone, we'll set the branch tag to match the
 # version. This effectively acts as a no-op because it will tag the same Docker
 # image twice.
 if [ -n "$DRONE_TAG" ] && [[ "$DRONE_TAG" != *"-rc."* ]]; then
   BRANCH_TAG=latest
-elif [ -n "$DRONE_BRANCH" ]; then
-  BRANCH_TAG=$DRONE_BRANCH
 else
   BRANCH_TAG=$VERSION
 fi
