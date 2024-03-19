@@ -12,8 +12,15 @@ cascade:
 
 # {{% param "PRODUCT_NAME" %}}
 
-{{< param "PRODUCT_NAME" >}} is an OpenTelemetry Collector distribution with configuration inspired by [Terraform][].
-It is designed to be flexible, performant, and compatible with multiple ecosystems such as Prometheus and OpenTelemetry.
+{{< param "PRODUCT_NAME" >}} is a distribution of the [OpenTelemetry][] (OTel) Collector. {{< param "PRODUCT_NAME" >}} is vendor-agnostic and fully compatible with the Open Telemetry Protocol (OTLP) and [Prometheus][] Agent. You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructure and you can pair it with Grafana Cloud or a backend from any other vendor. {{< param "PRODUCT_NAME" >}} is flexible and can easily meet your needs in on-prem, cloud-only, or a mix of both. {{< param "PRODUCT_NAME" >}} offers native pipelines for both OTel and Prometheus telemetry, supporting metrics, logs, traces, and profiles.
+
+Some of the features in {{< param "PRODUCT_NAME" >}} include:
+
+* Modules to help you quickly build production-ready pipelines.
+* Frameworks that can pull configurations from Git, S3, HTTP endpoints, and just about any oSome of the featurther source.
+* Clustering support to help you create horizontally scalable deployments with minimal resource and operational overhead.
+* Security features to help you manage authentication credentials and connect to HashiCorp Vaults.
+* Debugging support and an embedded user interface to help you troubleshoot configuration problems.
 
 {{< param "PRODUCT_NAME" >}} is based around **components**. Components are wired together to form programmable observability **pipelines** for telemetry collection, processing, and delivery.
 
@@ -31,22 +38,6 @@ It is designed to be flexible, performant, and compatible with multiple ecosyste
 * **Battle-tested**: {{< param "PRODUCT_NAME" >}} extends the existing battle-tested code from the Prometheus and OpenTelemetry Collector projects.
 * **Powerful**: Write programmable pipelines with ease, and debug them using a [built-in UI][UI].
 * **Batteries included**: Integrate with systems like MySQL, Kubernetes, and Apache to get telemetry that's immediately useful.
-
-<!--
-## Getting started
-
-* Choose a [variant][variants] of {{< param "PRODUCT_NAME" >}} to run.
-* Refer to the documentation for the variant to use:
-  * [Static mode][]
-  * [Static mode Kubernetes operator][]
-  * [Flow mode][]
-
-[variants]: ./about/
-[Static mode]: https://grafana.com/docs/agent/static/
-[Static mode Kubernetes operator]: https://grafana.com/docs/agent/operator/
-[Flow mode]: https://grafana.com/docs/agent/flow/
-
--->
 
 ## Supported platforms
 
@@ -72,7 +63,7 @@ It is designed to be flexible, performant, and compatible with multiple ecosyste
 
 ## Release cadence
 
-A new minor release is planned every six weeks for the entire {{< param "PRODUCT_NAME" >}}.
+A new minor release is planned every six weeks.
 
 The release cadence is best-effort: if necessary, releases may be performed
 outside of this cadence, or a scheduled release date can be moved forwards or
