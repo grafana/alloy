@@ -1,0 +1,13 @@
+# This file is used to determine what version of Grafana Alloy this branch
+# represents. For the main branch, this version represents the version being
+# developed. For release branches, this version represents the release version
+# being worked on.
+#
+# The string in this file MUST be a valid semantic version prefixed with "v",
+# without any pre-release or build information.
+#
+# This file is ignored when building binaries from a Git tag.
+#
+# Lines starting with "#" and blank lines are ignored.
+
+v1.0.0
