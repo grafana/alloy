@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/river/rivertypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendPostgresExporter(config *postgres_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendPostgresExporter(config *postgres_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toPostgresExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "postgres")
 }

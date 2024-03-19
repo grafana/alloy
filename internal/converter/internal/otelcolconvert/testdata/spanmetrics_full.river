@@ -32,18 +32,18 @@ otelcol.connector.spanmetrics "default" {
 	}
 }
 
-otelcol.exporter.otlp "foo_metrics_backend_two" {
+otelcol.exporter.otlp "_2_metrics_backend_2" {
 	client {
 		endpoint = "database:54317"
 	}
 }
 
-otelcol.connector.spanmetrics "foo_default" {
+otelcol.connector.spanmetrics "_2_default" {
 	histogram {
 		explicit { }
 	}
 
 	output {
-		metrics = [otelcol.exporter.otlp.foo_metrics_backend_two.input]
+		metrics = [otelcol.exporter.otlp._2_metrics_backend_2.input]
 	}
 }

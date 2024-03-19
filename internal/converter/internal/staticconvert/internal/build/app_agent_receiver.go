@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/river/scanner"
 )
 
-func (b *IntegrationsConfigBuilder) appendAppAgentReceiverV2(config *app_agent_receiver_v2.Config) {
+func (b *ConfigBuilder) appendAppAgentReceiverV2(config *app_agent_receiver_v2.Config) {
 	args := toAppAgentReceiverV2(config)
 
 	compLabel, err := scanner.SanitizeIdentifier(b.formatJobName(config.Name(), nil))

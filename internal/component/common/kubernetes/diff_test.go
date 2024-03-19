@@ -1,4 +1,4 @@
-package rules
+package kubernetes
 
 import (
 	"fmt"
@@ -42,7 +42,7 @@ groups:
 		name     string
 		desired  map[string][]rulefmt.RuleGroup
 		actual   map[string][]rulefmt.RuleGroup
-		expected map[string][]ruleGroupDiff
+		expected map[string][]RuleGroupDiff
 	}
 
 	testCases := []testCase{
@@ -50,7 +50,7 @@ groups:
 			name:     "empty sets",
 			desired:  map[string][]rulefmt.RuleGroup{},
 			actual:   map[string][]rulefmt.RuleGroup{},
-			expected: map[string][]ruleGroupDiff{},
+			expected: map[string][]RuleGroupDiff{},
 		},
 		{
 			name: "add rule group",
@@ -58,10 +58,10 @@ groups:
 				managedNamespace: ruleGroupsA,
 			},
 			actual: map[string][]rulefmt.RuleGroup{},
-			expected: map[string][]ruleGroupDiff{
+			expected: map[string][]RuleGroupDiff{
 				managedNamespace: {
 					{
-						Kind:    ruleGroupDiffKindAdd,
+						Kind:    RuleGroupDiffKindAdd,
 						Desired: ruleGroupsA[0],
 					},
 				},
@@ -73,10 +73,10 @@ groups:
 			actual: map[string][]rulefmt.RuleGroup{
 				managedNamespace: ruleGroupsA,
 			},
-			expected: map[string][]ruleGroupDiff{
+			expected: map[string][]RuleGroupDiff{
 				managedNamespace: {
 					{
-						Kind:   ruleGroupDiffKindRemove,
+						Kind:   RuleGroupDiffKindRemove,
 						Actual: ruleGroupsA[0],
 					},
 				},
@@ -90,10 +90,10 @@ groups:
 			actual: map[string][]rulefmt.RuleGroup{
 				managedNamespace: ruleGroupsAModified,
 			},
-			expected: map[string][]ruleGroupDiff{
+			expected: map[string][]RuleGroupDiff{
 				managedNamespace: {
 					{
-						Kind:    ruleGroupDiffKindUpdate,
+						Kind:    RuleGroupDiffKindUpdate,
 						Desired: ruleGroupsA[0],
 						Actual:  ruleGroupsAModified[0],
 					},
@@ -108,28 +108,28 @@ groups:
 			actual: map[string][]rulefmt.RuleGroup{
 				managedNamespace: ruleGroupsA,
 			},
-			expected: map[string][]ruleGroupDiff{},
+			expected: map[string][]RuleGroupDiff{},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			actual := diffRuleState(tc.desired, tc.actual)
+			actual := DiffRuleState(tc.desired, tc.actual)
 			requireEqualRuleDiffs(t, tc.expected, actual)
 		})
 	}
 }
 
-func requireEqualRuleDiffs(t *testing.T, expected, actual map[string][]ruleGroupDiff) {
+func requireEqualRuleDiffs(t *testing.T, expected, actual map[string][]RuleGroupDiff) {
 	require.Equal(t, len(expected), len(actual))
 
-	var summarizeDiff = func(diff ruleGroupDiff) string {
+	var summarizeDiff = func(diff RuleGroupDiff) string {
 		switch diff.Kind {
-		case ruleGroupDiffKindAdd:
+		case RuleGroupDiffKindAdd:
 			return fmt.Sprintf("add: %s", diff.Desired.Name)
-		case ruleGroupDiffKindRemove:
+		case RuleGroupDiffKindRemove:
 			return fmt.Sprintf("remove: %s", diff.Actual.Name)
-		case ruleGroupDiffKindUpdate:
+		case RuleGroupDiffKindUpdate:
 			return fmt.Sprintf("update: %s", diff.Desired.Name)
 		}
 		panic("unreachable")

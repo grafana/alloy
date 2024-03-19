@@ -7,7 +7,7 @@ import (
 	agent_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/agent"
 )
 
-func (b *IntegrationsConfigBuilder) appendAgentExporter(config *agent_exporter.Config) discovery.Exports {
+func (b *ConfigBuilder) appendAgentExporter(config *agent_exporter.Config) discovery.Exports {
 	args := toAgentExporter(config)
 	return b.appendExporterBlock(args, config.Name(), nil, "self")
 }
@@ -16,7 +16,7 @@ func toAgentExporter(config *agent_exporter.Config) *self.Arguments {
 	return &self.Arguments{}
 }
 
-func (b *IntegrationsConfigBuilder) appendAgentExporterV2(config *agent_exporter_v2.Config) discovery.Exports {
+func (b *ConfigBuilder) appendAgentExporterV2(config *agent_exporter_v2.Config) discovery.Exports {
 	args := toAgentExporterV2(config)
 	return b.appendExporterBlock(args, config.Name(), config.Common.InstanceKey, "self")
 }

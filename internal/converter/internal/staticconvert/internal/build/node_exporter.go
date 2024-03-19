@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations/node_exporter"
 )
 
-func (b *IntegrationsConfigBuilder) appendNodeExporter(config *node_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendNodeExporter(config *node_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toNodeExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "unix")
 }

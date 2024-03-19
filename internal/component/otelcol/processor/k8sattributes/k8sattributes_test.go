@@ -313,13 +313,30 @@ func Test_Passthrough(t *testing.T) {
 }
 
 func Test_Exclude(t *testing.T) {
-	cfg := `
+	t.Run("default excludes", func(t *testing.T) {
+		cfg := `
+			exclude { }
+			output {
+				// no-op: will be overridden by test code.
+			}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		exclude := &otelObj.Exclude
+		require.Len(t, exclude.Pods, 2)
+		require.Equal(t, "jaeger-agent", exclude.Pods[0].Name)
+		require.Equal(t, "jaeger-collector", exclude.Pods[1].Name)
+	})
+	t.Run("custom excludes", func(t *testing.T) {
+		cfg := `
 		exclude {
 			pod {
-				name = "jaeger-agent"
-			}
-			pod {
-				name = "jaeger-collector"
+				name = "grafana-agent"
 			}
 		}
 
@@ -327,15 +344,15 @@ func Test_Exclude(t *testing.T) {
 			// no-op: will be overridden by test code.
 		}
 	`
-	var args k8sattributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+		var args k8sattributes.Arguments
+		require.NoError(t, river.Unmarshal([]byte(cfg), &args))
 
-	convertedArgs, err := args.Convert()
-	require.NoError(t, err)
-	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
 
-	exclude := &otelObj.Exclude
-	require.Len(t, exclude.Pods, 2)
-	require.Equal(t, "jaeger-agent", exclude.Pods[0].Name)
-	require.Equal(t, "jaeger-collector", exclude.Pods[1].Name)
+		exclude := &otelObj.Exclude
+		require.Len(t, exclude.Pods, 1)
+		require.Equal(t, "grafana-agent", exclude.Pods[0].Name)
+	})
 }

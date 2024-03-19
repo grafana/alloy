@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations/memcached_exporter"
 )
 
-func (b *IntegrationsConfigBuilder) appendMemcachedExporter(config *memcached_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendMemcachedExporter(config *memcached_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toMemcachedExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "memcached")
 }

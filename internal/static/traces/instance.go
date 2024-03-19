@@ -94,7 +94,7 @@ func (i *Instance) stop() {
 
 func (i *Instance) buildAndStartPipeline(ctx context.Context, cfg InstanceConfig, logs *logs.Logs, instManager instance.Manager, reg prom_client.Registerer) error {
 	// create component factories
-	otelConfig, err := cfg.otelConfig()
+	otelConfig, err := cfg.OtelConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load otelConfig from agent traces config: %w", err)
 	}

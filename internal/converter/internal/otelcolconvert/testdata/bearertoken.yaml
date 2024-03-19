@@ -1,0 +1,42 @@
+extensions:
+  bearertokenauth/fromfile:
+    token: "somerandomtoken"  # this will be ignored in lieu of the filename field.
+    filename: "file-containing.token"
+  bearertokenauth/withscheme:
+    scheme: "CustomScheme"
+    token: "randomtoken"
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp/withauth:
+    # Our defaults have drifted from upstream, so we explicitly set our
+    # defaults below (balancer_name).
+    endpoint: database:4317
+    auth:
+      authenticator: bearertokenauth/fromfile
+    balancer_name: pick_first
+  otlphttp/withauth:
+    endpoint: database:4318
+    auth:
+      authenticator: bearertokenauth/withscheme
+
+service:
+  extensions: [bearertokenauth/fromfile, bearertokenauth/withscheme]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp/withauth, otlphttp/withauth]
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp/withauth, otlphttp/withauth]
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp/withauth, otlphttp/withauth]

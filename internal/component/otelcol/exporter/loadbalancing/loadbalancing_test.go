@@ -20,14 +20,10 @@ func TestConfigConversion(t *testing.T) {
 		defaultRetrySettings   = exporterhelper.NewDefaultRetrySettings()
 		defaultTimeoutSettings = exporterhelper.NewDefaultTimeoutSettings()
 
-		// TODO(rfratto): resync defaults with upstream.
-		//
-		// We have drifted from the upstream defaults, which have decreased the
-		// default queue_size to 1000 since we introduced the defaults.
 		defaultQueueSettings = exporterhelper.QueueSettings{
 			Enabled:      true,
 			NumConsumers: 10,
-			QueueSize:    5000,
+			QueueSize:    1000,
 		}
 
 		defaultProtocol = loadbalancingexporter.Protocol{
@@ -37,7 +33,7 @@ func TestConfigConversion(t *testing.T) {
 					Compression:     "gzip",
 					WriteBufferSize: 512 * 1024,
 					Headers:         map[string]configopaque.String{},
-					BalancerName:    "pick_first",
+					BalancerName:    otelcol.DefaultBalancerName,
 				},
 				RetrySettings:   defaultRetrySettings,
 				TimeoutSettings: defaultTimeoutSettings,
@@ -131,7 +127,7 @@ func TestConfigConversion(t *testing.T) {
 							Compression:     "gzip",
 							WriteBufferSize: 512 * 1024,
 							Headers:         map[string]configopaque.String{},
-							BalancerName:    "pick_first",
+							BalancerName:    otelcol.DefaultBalancerName,
 							Authority:       "authority",
 						},
 					},

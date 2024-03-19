@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations/statsd_exporter"
 )
 
-func (b *IntegrationsConfigBuilder) appendStatsdExporter(config *statsd_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendStatsdExporter(config *statsd_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toStatsdExporter(config)
 
 	if config.MappingConfig != nil {

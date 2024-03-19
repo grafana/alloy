@@ -157,6 +157,7 @@ func (args ExcludeConfig) convert() map[string]interface{} {
 	for _, pod := range args.Pods {
 		pods = append(pods, pod.convert())
 	}
+
 	result["pods"] = pods
 
 	return result

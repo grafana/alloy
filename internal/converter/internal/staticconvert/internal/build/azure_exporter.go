@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations/azure_exporter"
 )
 
-func (b *IntegrationsConfigBuilder) appendAzureExporter(config *azure_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendAzureExporter(config *azure_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toAzureExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "azure")
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/static/server"
 )
 
-func (b *IntegrationsConfigBuilder) appendServer(config *server.Config) {
+func (b *ConfigBuilder) appendServer(config *server.Config) {
 	args := toServer(config)
 	if !reflect.DeepEqual(*args.TLS, http.TLSArguments{}) {
 		b.f.Body().AppendBlock(common.NewBlockWithOverride(

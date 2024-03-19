@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/river/rivertypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendGithubExporter(config *github_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendGithubExporter(config *github_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toGithubExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "github")
 }

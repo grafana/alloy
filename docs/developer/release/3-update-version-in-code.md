@@ -40,9 +40,9 @@ The project must be updated to reference the upcoming release tag whenever a new
     - Stable Release example PR [here](https://github.com/grafana/agent/pull/3119)
     - Patch Release example PR [here](https://github.com/grafana/agent/pull/3191)
 
-4. Create a branch from `release/VERSION_PREFIX` for [grafana/agent](https://github.com/grafana/agent).
+4. If one doesn't exist yet, create a branch called `release/VERSION_PREFIX` for [grafana/alloy](https://github.com/grafana/alloy).
 
-5. Cherry pick the commit on main from the merged PR in Step 3 from main into the new branch from Step 4:
+5. Cherry pick the commit on main from the merged PR in Step 3 from main into the branch from Step 4:
 
     ```
     git cherry-pick -x COMMIT_SHA

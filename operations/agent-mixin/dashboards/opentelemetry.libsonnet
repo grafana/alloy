@@ -39,8 +39,9 @@ local stackedPanelMixin = {
       (
         panel.new(title='Accepted spans', type='timeseries') +
         panel.withDescription(|||
-         Number of spans successfully pushed into the pipeline.
-       |||) +
+          Number of spans successfully pushed into the pipeline.
+        |||) +
+        stackedPanelMixin +
         panel.withPosition({ x: 0, y: 0, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
@@ -58,19 +59,19 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of spans that could not be pushed into the pipeline.
         |||) +
+        stackedPanelMixin +
         panel.withPosition({ x: 8, y: 0, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
             expr=|||
-             rate(receiver_refused_spans_ratio_total{cluster="$cluster", namespace="$namespace", instance=~"$instance"}[$__rate_interval])
+              rate(receiver_refused_spans_ratio_total{cluster="$cluster", namespace="$namespace", instance=~"$instance"}[$__rate_interval])
             |||,
             legendFormat='{{ pod }} / {{ transport }}',
           ),
         ])
       ),
       (
-        panel.newHeatmap('RPC server duration (traces)') +
-        panel.withUnit('milliseconds') +
+        panel.newHeatmap('RPC server duration', 'ms') +
         panel.withDescription(|||
           The duration of inbound RPCs.
         |||) +
@@ -86,13 +87,14 @@ local stackedPanelMixin = {
 
       // "Batching" row
       (
-        panel.new('Batching [otelcol.processor.batch]', 'row') +
+        panel.new('Batching of logs, metrics, and traces [otelcol.processor.batch]', 'row') +
         panel.withPosition({ h: 1, w: 24, x: 0, y: 10 })
       ),
       (
-        panel.newHeatmap('Number of units in the batch') +
+        panel.newHeatmap('Number of units in the batch', 'short') +
+        panel.withUnit('short') +
         panel.withDescription(|||
-          Number of units in the batch
+          Number of spans, metric datapoints, or log lines in a batch
         |||) +
         panel.withPosition({ x: 0, y: 10, w: 8, h: 10 }) +
         panel.withQueries([
@@ -105,6 +107,9 @@ local stackedPanelMixin = {
       ),
       (
         panel.new(title='Distinct metadata values', type='timeseries') +
+        //TODO: Clarify what metadata means. I think it's the metadata in the HTTP headers?
+        //TODO: Mention that if this metric is too high, it could hit the metadata_cardinality_limit
+        //TODO: MAke a metric for the current value of metadata_cardinality_limit and create an alert if the actual cardinality reaches it?
         panel.withDescription(|||
           Number of distinct metadata value combinations being processed
         |||) +
@@ -112,7 +117,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr=|||
-             processor_batch_metadata_cardinality_ratio{cluster="$cluster", namespace="$namespace", instance=~"$instance"}
+              processor_batch_metadata_cardinality_ratio{cluster="$cluster", namespace="$namespace", instance=~"$instance"}
             |||,
             legendFormat='{{ pod }}',
           ),
@@ -127,7 +132,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr=|||
-             rate(processor_batch_timeout_trigger_send_ratio_total{cluster="$cluster", namespace="$namespace", instance=~"$instance"}[$__rate_interval])
+              rate(processor_batch_timeout_trigger_send_ratio_total{cluster="$cluster", namespace="$namespace", instance=~"$instance"}[$__rate_interval])
             |||,
             legendFormat='{{ pod }}',
           ),
@@ -144,6 +149,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of spans successfully sent to destination.
         |||) +
+        stackedPanelMixin +
         panel.withPosition({ x: 0, y: 20, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
@@ -159,6 +165,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of spans in failed attempts to send to destination.
         |||) +
+        stackedPanelMixin +
         panel.withPosition({ x: 8, y: 20, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(

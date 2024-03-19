@@ -13,7 +13,7 @@ import (
 	"github.com/grafana/river/scanner"
 )
 
-func (b *IntegrationsConfigBuilder) appendEventHandlerV2(config *eventhandler_v2.Config) {
+func (b *ConfigBuilder) appendEventHandlerV2(config *eventhandler_v2.Config) {
 	compLabel, err := scanner.SanitizeIdentifier(b.formatJobName(config.Name(), nil))
 	if err != nil {
 		b.diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to sanitize job name: %s", err))
@@ -44,7 +44,7 @@ func (b *IntegrationsConfigBuilder) appendEventHandlerV2(config *eventhandler_v2
 	))
 }
 
-func (b *IntegrationsConfigBuilder) injectExtraLabels(config *eventhandler_v2.Config, receiver common.ConvertLogsReceiver, compLabel string) common.ConvertLogsReceiver {
+func (b *ConfigBuilder) injectExtraLabels(config *eventhandler_v2.Config, receiver common.ConvertLogsReceiver, compLabel string) common.ConvertLogsReceiver {
 	var relabelConfigs []*flow_relabel.Config
 	for _, extraLabel := range config.ExtraLabels {
 		defaultConfig := flow_relabel.DefaultRelabelConfig

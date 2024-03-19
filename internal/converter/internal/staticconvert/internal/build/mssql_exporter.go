@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/river/rivertypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendMssqlExporter(config *mssql_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendMssqlExporter(config *mssql_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toMssqlExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "mssql")
 }

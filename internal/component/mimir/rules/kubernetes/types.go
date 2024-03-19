@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/common/config"
+	"github.com/grafana/agent/internal/component/common/kubernetes"
 )
 
 type Arguments struct {
@@ -16,8 +17,8 @@ type Arguments struct {
 	SyncInterval         time.Duration           `river:"sync_interval,attr,optional"`
 	MimirNameSpacePrefix string                  `river:"mimir_namespace_prefix,attr,optional"`
 
-	RuleSelector          LabelSelector `river:"rule_selector,block,optional"`
-	RuleNamespaceSelector LabelSelector `river:"rule_namespace_selector,block,optional"`
+	RuleSelector          kubernetes.LabelSelector `river:"rule_selector,block,optional"`
+	RuleNamespaceSelector kubernetes.LabelSelector `river:"rule_namespace_selector,block,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -43,15 +44,4 @@ func (args *Arguments) Validate() error {
 
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	return args.HTTPClientConfig.Validate()
-}
-
-type LabelSelector struct {
-	MatchLabels      map[string]string `river:"match_labels,attr,optional"`
-	MatchExpressions []MatchExpression `river:"match_expression,block,optional"`
-}
-
-type MatchExpression struct {
-	Key      string   `river:"key,attr"`
-	Operator string   `river:"operator,attr"`
-	Values   []string `river:"values,attr,optional"`
 }

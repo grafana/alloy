@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/river/rivertypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendMongodbExporter(config *mongodb_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendMongodbExporter(config *mongodb_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toMongodbExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "mongodb")
 }

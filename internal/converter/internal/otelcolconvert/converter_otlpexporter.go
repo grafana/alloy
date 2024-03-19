@@ -92,6 +92,13 @@ func toGRPCClientArguments(cfg configgrpc.GRPCClientSettings) otelcol.GRPCClient
 	if cfg.Auth != nil {
 		a = &auth.Handler{}
 	}
+
+	// Set default value for `balancer_name` to sync up with upstream's
+	balancerName := cfg.BalancerName
+	if balancerName == "" {
+		balancerName = otelcol.DefaultBalancerName
+	}
+
 	return otelcol.GRPCClientArguments{
 		Endpoint: cfg.Endpoint,
 
@@ -104,7 +111,7 @@ func toGRPCClientArguments(cfg configgrpc.GRPCClientSettings) otelcol.GRPCClient
 		WriteBufferSize: units.Base2Bytes(cfg.WriteBufferSize),
 		WaitForReady:    cfg.WaitForReady,
 		Headers:         toHeadersMap(cfg.Headers),
-		BalancerName:    cfg.BalancerName,
+		BalancerName:    balancerName,
 		Authority:       cfg.Authority,
 
 		Auth: a,

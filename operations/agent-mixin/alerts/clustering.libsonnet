@@ -7,23 +7,22 @@ alert.newGroup(
     alert.newRule(
       'ClusterNotConverging',
       'stddev by (cluster, namespace) (sum without (state) (cluster_node_peers)) != 0',
-      'Cluster is not converging.',
+      'Cluster is not converging: nodes report different number of peers in the cluster.',
       '10m',
     ),
 
-    // Cluster has entered a split brain state.
     alert.newRule(
-      'ClusterSplitBrain',
-      // Assert that the set of known peers (regardless of state) for an
-      // agent matches the same number of running agents in the same cluster
-      // and namespace.
+      'ClusterNodeCountMismatch',
+      // Assert that the number of known peers (regardless of state) reported by each
+      // agent matches the number of running agents in the same cluster
+      // and namespace as reported by a count of Prometheus metrics.
       |||
         sum without (state) (cluster_node_peers) !=
         on (cluster, namespace) group_left
         count by (cluster, namespace) (cluster_node_info)
       |||,
-      'Cluster nodes have entered a split brain state.',
-      '10m',
+      'Nodes report different number of peers vs. the count of observed agent metrics. Some agent metrics may be missing or the cluster is in a split brain state.',
+      '15m',
     ),
 
     // Nodes health score is not zero.
@@ -32,7 +31,7 @@ alert.newGroup(
       |||
         cluster_node_gossip_health_score > 0
       |||,
-      'Cluster node is reporting a health score > 0.',
+      'Cluster node is reporting a gossip protocol health score > 0.',
       '10m',
     ),
 

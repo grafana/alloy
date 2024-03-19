@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations/gcp_exporter"
 )
 
-func (b *IntegrationsConfigBuilder) appendGcpExporter(config *gcp_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendGcpExporter(config *gcp_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toGcpExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "gcp")
 }

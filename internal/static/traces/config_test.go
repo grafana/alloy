@@ -1510,7 +1510,7 @@ service:
 			err := yaml.Unmarshal([]byte(tc.cfg), &cfg)
 			require.NoError(t, err)
 			// check error
-			actualConfig, err := cfg.otelConfig()
+			actualConfig, err := cfg.OtelConfig()
 			if tc.expectedError {
 				assert.Error(t, err)
 				return
@@ -1733,7 +1733,7 @@ load_balancing:
 			require.NoError(t, err)
 
 			// check error
-			actualConfig, err := cfg.otelConfig()
+			actualConfig, err := cfg.OtelConfig()
 			require.NoError(t, err)
 
 			require.Equal(t, len(tc.expectedProcessors), len(actualConfig.Service.Pipelines))
@@ -1892,7 +1892,7 @@ remote_write:
 	cfg := InstanceConfig{}
 	err := yaml.Unmarshal([]byte(test), &cfg)
 	assert.Nil(t, err)
-	otel, err := cfg.otelConfig()
+	otel, err := cfg.OtelConfig()
 	assert.Nil(t, err)
 	assert.Contains(t, otel.Service.Pipelines[component.NewID("traces")].Receivers, component.NewID(pushreceiver.TypeStr))
 }

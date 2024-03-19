@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/river/rivertypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendOracledbExporter(config *oracledb_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendOracledbExporter(config *oracledb_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toOracledbExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "oracledb")
 }

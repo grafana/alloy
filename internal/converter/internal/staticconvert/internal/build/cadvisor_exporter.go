@@ -8,7 +8,7 @@ import (
 	cadvisor_integration "github.com/grafana/agent/internal/static/integrations/cadvisor"
 )
 
-func (b *IntegrationsConfigBuilder) appendCadvisorExporter(config *cadvisor_integration.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendCadvisorExporter(config *cadvisor_integration.Config, instanceKey *string) discovery.Exports {
 	args := toCadvisorExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "cadvisor")
 }

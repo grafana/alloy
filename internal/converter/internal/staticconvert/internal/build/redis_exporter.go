@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/river/rivertypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendRedisExporter(config *redis_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendRedisExporter(config *redis_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toRedisExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "redis")
 }
