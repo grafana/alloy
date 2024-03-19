@@ -15,7 +15,7 @@ jobs:
       - name: Create test Windows build image
         uses: mr-smithers-excellent/docker-build-push@v6
         with:
-          image: grafana/agent-build-image
+          image: grafana/alloy-build-image
           tags: latest
           registry: docker.io
           pushImage: false

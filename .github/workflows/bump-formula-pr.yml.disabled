@@ -4,33 +4,6 @@ on:
     types: [released]
 
 jobs:
-  homebrew-core:
-    name: homebrew-core
-    runs-on: ubuntu-latest
-    steps:
-    - name: Get latest release
-      uses: rez0n/actions-github-release@main
-      id: latest_release
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        repository: "${{ github.repository }}"
-        type: "stable"
-
-    - name: Update Homebrew formula
-      if: 'steps.latest_release.outputs.release_id == github.event.release.id'
-      uses: dawidd6/action-homebrew-bump-formula@v3
-      with:
-        # Required, custom GitHub access token with the 'public_repo' and 'workflow' scopes
-        token: ${{secrets.HOMEBREW_FORMULA_GH_TOKEN}}
-        # Formula name, required
-        formula: grafana-agent
-        # Optional, will be determined automatically
-        tag: ${{github.ref}}
-        # Optional, will be determined automatically
-        revision: ${{github.sha}}
-        # Optional, if don't want to check for already open PRs
-        force: false # true
-
   homebrew-grafana:
     name: homebrew-grafana
     runs-on: ubuntu-latest
@@ -52,7 +25,7 @@ jobs:
         # Optional, defaults to homebrew/core
         tap: grafana/grafana
         # Formula name, required
-        formula: grafana-agent-flow
+        formula: alloy
         # Optional, will be determined automatically
         tag: ${{github.ref}}
         # Optional, will be determined automatically
