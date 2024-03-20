@@ -109,10 +109,9 @@ The preceding example has two blocks:
 
 You can use one or all of the following tools to help you write configuration files in River.
 
-* Experimental editor support for
-  * [vim](https://github.com/rfratto/vim-river)
-  * [VSCode](https://github.com/rfratto/vscode-river)
-  * [river-mode](https://github.com/jdbaldry/river-mode) for Emacs
+* Editor support for:
+  * [VSCode](https://github.com/grafana/vscode-alloy)
+  * [Vim/Neovim](https://github.com/grafana/vim-alloy)
 * Code formatting using the [`agent fmt` command][fmt]
 
 You can also start developing your own tooling using the {{< param "PRODUCT_ROOT_NAME" >}} repository as a go package or use the
