@@ -324,33 +324,6 @@ prometheus.scrape "integrations_elasticsearch_exporter" {
 	}
 }
 
-prometheus.exporter.gcp "integrations_gcp_exporter" {
-	project_ids      = ["<project_id>"]
-	metrics_prefixes = ["loadbalancing.googleapis.com/https/request_bytes_count", "loadbalancing.googleapis.com/https/total_latencies"]
-	extra_filters    = ["loadbalancing.googleapis.com:resource.labels.backend_target_name=\"sample-value\""]
-}
-
-discovery.relabel "integrations_gcp_exporter" {
-	targets = prometheus.exporter.gcp.integrations_gcp_exporter.targets
-
-	rule {
-		target_label = "job"
-		replacement  = "integrations/gcp_exporter"
-	}
-}
-
-prometheus.scrape "integrations_gcp_exporter" {
-	targets    = discovery.relabel.integrations_gcp_exporter.output
-	forward_to = [prometheus.remote_write.integrations.receiver]
-	job_name   = "integrations/gcp_exporter"
-
-	tls_config {
-		ca_file   = "/something7.cert"
-		cert_file = "/something8.cert"
-		key_file  = "/something9.cert"
-	}
-}
-
 prometheus.exporter.github "integrations_github_exporter" {
 	repositories = ["grafana/agent", "grafana/agent-modules"]
 	api_token    = "ABCDEFGH-1234-ABCD-1234-ABCDEFGHIJKL"
@@ -773,6 +746,33 @@ prometheus.scrape "integrations_statsd_exporter" {
 	targets    = discovery.relabel.integrations_statsd_exporter.output
 	forward_to = [prometheus.remote_write.integrations.receiver]
 	job_name   = "integrations/statsd_exporter"
+
+	tls_config {
+		ca_file   = "/something7.cert"
+		cert_file = "/something8.cert"
+		key_file  = "/something9.cert"
+	}
+}
+
+prometheus.exporter.gcp "integrations_gcp_exporter" {
+	project_ids      = ["<project_id>"]
+	metrics_prefixes = ["loadbalancing.googleapis.com/https/request_bytes_count", "loadbalancing.googleapis.com/https/total_latencies"]
+	extra_filters    = ["loadbalancing.googleapis.com:resource.labels.backend_target_name=\"sample-value\""]
+}
+
+discovery.relabel "integrations_gcp_exporter" {
+	targets = prometheus.exporter.gcp.integrations_gcp_exporter.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/gcp_exporter"
+	}
+}
+
+prometheus.scrape "integrations_gcp_exporter" {
+	targets    = discovery.relabel.integrations_gcp_exporter.output
+	forward_to = [prometheus.remote_write.integrations.receiver]
+	job_name   = "integrations/gcp_exporter"
 
 	tls_config {
 		ca_file   = "/something7.cert"

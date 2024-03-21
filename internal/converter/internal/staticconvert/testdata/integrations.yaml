@@ -148,7 +148,7 @@ integrations:
     scrape_integration: true
   postgres_exporter:
     enabled: true
-    data_source_names: 
+    data_source_names:
     - postgres://postgres:password@localhost:5432/postgres?sslmode=disable
     relabel_configs:
     - source_labels: [__address__]

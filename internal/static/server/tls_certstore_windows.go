@@ -59,66 +59,6 @@ func NewWinCertStoreHandler(cfg WindowsCertificateFilter, clientAuth tls.ClientA
 	return cn, nil
 }
 
-func (l *tlsListener) applyWindowsCertificateStore(c TLSConfig) error {
-
-	// Restrict normal TLS options when using windows certificate store
-	if c.TLSCertPath != "" {
-		return fmt.Errorf("at most one of cert_file and windows_certificate_filter can be configured")
-	}
-	if c.TLSKeyPath != "" {
-		return fmt.Errorf("at most one of cert_key and windows_certificate_filter can be configured")
-	}
-	if c.WindowsCertificateFilter.Server == nil {
-		return fmt.Errorf("windows certificate filter requires a server block defined")
-	}
-
-	var subjectRegEx *regexp.Regexp
-	var err error
-	if c.WindowsCertificateFilter.Client != nil && c.WindowsCertificateFilter.Client.SubjectRegEx != "" {
-		subjectRegEx, err = regexp.Compile(c.WindowsCertificateFilter.Client.SubjectRegEx)
-		if err != nil {
-			return fmt.Errorf("error compiling subject common name regular expression: %w", err)
-		}
-	}
-
-	// If there is an existing windows certhandler stop it.
-	if l.windowsCertHandler != nil {
-		l.windowsCertHandler.Stop()
-	}
-
-	cn := &WinCertStoreHandler{
-		cfg:          *c.WindowsCertificateFilter,
-		subjectRegEx: subjectRegEx,
-		log:          l.log,
-		shutdown:     make(chan struct{}),
-	}
-
-	err = cn.refreshCerts()
-	if err != nil {
-		return err
-	}
-
-	config := &tls.Config{
-		VerifyPeerCertificate: cn.VerifyPeer,
-		GetCertificate:        cn.CertificateHandler,
-		MaxVersion:            uint16(c.MaxVersion),
-		MinVersion:            uint16(c.MinVersion),
-	}
-
-	ca, err := GetClientAuthFromString(c.ClientAuth)
-	if err != nil {
-		return err
-	}
-	config.ClientAuth = ca
-	cn.clientAuth = ca
-	// Kick off the refresh handler
-	go cn.startUpdateTimer()
-	l.windowsCertHandler = cn
-	l.tlsConfig = config
-	l.cfg = c
-	return nil
-}
-
 // Run runs the filter refresh. Stop should be called when done.
 func (c *WinCertStoreHandler) Run() {
 	go c.startUpdateTimer()
