@@ -205,7 +205,7 @@ the defaults documented in [profile.mutex][] will be used.
 [profile.godeltaprof_block]: #profilegodeltaprof_block-block
 [profile.custom]: #profilecustom-block
 [pprof]: https://github.com/google/pprof/blob/main/doc/README.md
-[clustering]: #clustering-beta
+[clustering]: #clustering-block
 
 [fgprof]: https://github.com/felixge/fgprof
 [godeltaprof]: https://github.com/grafana/pyroscope-go/tree/main/godeltaprof
@@ -384,7 +384,7 @@ Name | Type | Description | Default | Required
 When the `delta` argument is `true`, a `seconds` query parameter is
 automatically added to requests. The `seconds` used will be equal to `scrape_interval - 1`.
 
-### clustering (beta)
+### clustering block
 
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------

@@ -65,55 +65,56 @@ type StoreConfig struct {
 	TTL time.Duration `river:"ttl,attr,optional"`
 }
 
+func (sc *StoreConfig) SetToDefault() {
+	*sc = StoreConfig{
+		MaxItems: 1000,
+		TTL:      2 * time.Second,
+	}
+}
+
 var (
 	_ river.Validator = (*Arguments)(nil)
 	_ river.Defaulter = (*Arguments)(nil)
 )
 
-// DefaultArguments holds default settings for Arguments.
-var DefaultArguments = Arguments{
-	LatencyHistogramBuckets: []time.Duration{
-		2 * time.Millisecond,
-		4 * time.Millisecond,
-		6 * time.Millisecond,
-		8 * time.Millisecond,
-		10 * time.Millisecond,
-		50 * time.Millisecond,
-		100 * time.Millisecond,
-		200 * time.Millisecond,
-		400 * time.Millisecond,
-		800 * time.Millisecond,
-		1 * time.Second,
-		1400 * time.Millisecond,
-		2 * time.Second,
-		5 * time.Second,
-		10 * time.Second,
-		15 * time.Second,
-	},
-	Dimensions: []string{},
-	Store: StoreConfig{
-		MaxItems: 1000,
-		TTL:      2 * time.Second,
-	},
-	CacheLoop:           1 * time.Minute,
-	StoreExpirationLoop: 2 * time.Second,
-	//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
-	// the "processor.servicegraph.virtualNode" feature gate.
-	// VirtualNodePeerAttributes: []string{
-	// 	semconv.AttributeDBName,
-	// 	semconv.AttributeNetSockPeerAddr,
-	// 	semconv.AttributeNetPeerName,
-	// 	semconv.AttributeRPCService,
-	// 	semconv.AttributeNetSockPeerName,
-	// 	semconv.AttributeNetPeerName,
-	// 	semconv.AttributeHTTPURL,
-	// 	semconv.AttributeHTTPTarget,
-	// },
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		LatencyHistogramBuckets: []time.Duration{
+			2 * time.Millisecond,
+			4 * time.Millisecond,
+			6 * time.Millisecond,
+			8 * time.Millisecond,
+			10 * time.Millisecond,
+			50 * time.Millisecond,
+			100 * time.Millisecond,
+			200 * time.Millisecond,
+			400 * time.Millisecond,
+			800 * time.Millisecond,
+			1 * time.Second,
+			1400 * time.Millisecond,
+			2 * time.Second,
+			5 * time.Second,
+			10 * time.Second,
+			15 * time.Second,
+		},
+		Dimensions:          []string{},
+		CacheLoop:           1 * time.Minute,
+		StoreExpirationLoop: 2 * time.Second,
+		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
+		// the "processor.servicegraph.virtualNode" feature gate.
+		// VirtualNodePeerAttributes: []string{
+		// 	semconv.AttributeDBName,
+		// 	semconv.AttributeNetSockPeerAddr,
+		// 	semconv.AttributeNetPeerName,
+		// 	semconv.AttributeRPCService,
+		// 	semconv.AttributeNetSockPeerName,
+		// 	semconv.AttributeNetPeerName,
+		// 	semconv.AttributeHTTPURL,
+		// 	semconv.AttributeHTTPTarget,
+		// },
+	}
+	args.Store.SetToDefault()
 }
 
 // Validate implements river.Validator.

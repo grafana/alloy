@@ -19,28 +19,26 @@ type Config struct {
 	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
 }
 
-var DefaultArguments = Config{
-	HostnameSources: []string{"dns", "os"},
-	ResourceAttributes: ResourceAttributesConfig{
-		HostArch:           rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUCacheL2Size: rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUFamily:      rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUModelID:     rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUModelName:   rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUStepping:    rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUVendorID:    rac.ResourceAttributeConfig{Enabled: false},
-		HostID:             rac.ResourceAttributeConfig{Enabled: false},
-		HostName:           rac.ResourceAttributeConfig{Enabled: true},
-		OsDescription:      rac.ResourceAttributeConfig{Enabled: false},
-		OsType:             rac.ResourceAttributeConfig{Enabled: true},
-	},
-}
-
 var _ river.Defaulter = (*Config)(nil)
 
 // SetToDefault implements river.Defaulter.
 func (c *Config) SetToDefault() {
-	*c = DefaultArguments
+	*c = Config{
+		HostnameSources: []string{"dns", "os"},
+		ResourceAttributes: ResourceAttributesConfig{
+			HostArch:           rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUCacheL2Size: rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUFamily:      rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUModelID:     rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUModelName:   rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUStepping:    rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUVendorID:    rac.ResourceAttributeConfig{Enabled: false},
+			HostID:             rac.ResourceAttributeConfig{Enabled: false},
+			HostName:           rac.ResourceAttributeConfig{Enabled: true},
+			OsDescription:      rac.ResourceAttributeConfig{Enabled: false},
+			OsType:             rac.ResourceAttributeConfig{Enabled: true},
+		},
+	}
 }
 
 // Validate config

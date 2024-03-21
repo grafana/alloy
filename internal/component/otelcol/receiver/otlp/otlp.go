@@ -71,9 +71,8 @@ var _ receiver.Arguments = Arguments{}
 
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = Arguments{
-		DebugMetrics: otelcol.DefaultDebugMetricsArguments,
-	}
+	*args = Arguments{}
+	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements receiver.Arguments.
@@ -107,26 +106,6 @@ type (
 	GRPCServerArguments otelcol.GRPCServerArguments
 )
 
-// Default server settings.
-var (
-	DefaultGRPCServerArguments = GRPCServerArguments{
-		Endpoint:  "0.0.0.0:4317",
-		Transport: "tcp",
-
-		ReadBufferSize: 512 * units.Kibibyte,
-		// We almost write 0 bytes, so no need to tune WriteBufferSize.
-	}
-
-	DefaultHTTPConfigArguments = HTTPConfigArguments{
-		HTTPServerArguments: &otelcol.HTTPServerArguments{
-			Endpoint: "0.0.0.0:4318",
-		},
-		MetricsURLPath: "/v1/metrics",
-		LogsURLPath:    "/v1/logs",
-		TracesURLPath:  "/v1/traces",
-	}
-)
-
 // Validate implements river.Validator.
 func (args *Arguments) Validate() error {
 	if args.HTTP != nil {
@@ -155,12 +134,25 @@ func validateURL(url string, urlName string) error {
 
 // SetToDefault implements river.Defaulter.
 func (args *GRPCServerArguments) SetToDefault() {
-	*args = DefaultGRPCServerArguments
+	*args = GRPCServerArguments{
+		Endpoint:  "0.0.0.0:4317",
+		Transport: "tcp",
+
+		ReadBufferSize: 512 * units.Kibibyte,
+		// We almost write 0 bytes, so no need to tune WriteBufferSize.
+	}
 }
 
 // SetToDefault implements river.Defaulter.
 func (args *HTTPConfigArguments) SetToDefault() {
-	*args = DefaultHTTPConfigArguments
+	*args = HTTPConfigArguments{
+		HTTPServerArguments: &otelcol.HTTPServerArguments{
+			Endpoint: "0.0.0.0:4318",
+		},
+		MetricsURLPath: "/v1/metrics",
+		LogsURLPath:    "/v1/logs",
+		TracesURLPath:  "/v1/traces",
+	}
 }
 
 // DebugMetricsConfig implements receiver.Arguments.

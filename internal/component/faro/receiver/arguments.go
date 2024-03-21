@@ -10,33 +10,6 @@ import (
 	"github.com/grafana/river/rivertypes"
 )
 
-// Defaults for various arguments.
-var (
-	DefaultArguments = Arguments{
-		Server:     DefaultServerArguments,
-		SourceMaps: DefaultSourceMapsArguments,
-	}
-
-	DefaultServerArguments = ServerArguments{
-		Host:                  "127.0.0.1",
-		Port:                  12347,
-		RateLimiting:          DefaultRateLimitingArguments,
-		MaxAllowedPayloadSize: 5 * units.MiB,
-	}
-
-	DefaultRateLimitingArguments = RateLimitingArguments{
-		Enabled:   true,
-		Rate:      50,
-		BurstSize: 100,
-	}
-
-	DefaultSourceMapsArguments = SourceMapsArguments{
-		Download:            true,
-		DownloadFromOrigins: []string{"*"},
-		DownloadTimeout:     time.Second,
-	}
-)
-
 // Arguments configures the app_agent_receiver component.
 type Arguments struct {
 	LogLabels map[string]string `river:"extra_log_labels,attr,optional"`
@@ -49,7 +22,10 @@ type Arguments struct {
 var _ river.Defaulter = (*Arguments)(nil)
 
 // SetToDefault applies default settings.
-func (args *Arguments) SetToDefault() { *args = DefaultArguments }
+func (args *Arguments) SetToDefault() {
+	args.Server.SetToDefault()
+	args.SourceMaps.SetToDefault()
+}
 
 // ServerArguments configures the HTTP server where telemetry information will
 // be sent from Faro clients.
@@ -63,11 +39,28 @@ type ServerArguments struct {
 	RateLimiting RateLimitingArguments `river:"rate_limiting,block,optional"`
 }
 
+func (s *ServerArguments) SetToDefault() {
+	*s = ServerArguments{
+		Host:                  "127.0.0.1",
+		Port:                  12347,
+		MaxAllowedPayloadSize: 5 * units.MiB,
+	}
+	s.RateLimiting.SetToDefault()
+}
+
 // RateLimitingArguments configures rate limiting for the HTTP server.
 type RateLimitingArguments struct {
 	Enabled   bool    `river:"enabled,attr,optional"`
 	Rate      float64 `river:"rate,attr,optional"`
 	BurstSize float64 `river:"burst_size,attr,optional"`
+}
+
+func (r *RateLimitingArguments) SetToDefault() {
+	*r = RateLimitingArguments{
+		Enabled:   true,
+		Rate:      50,
+		BurstSize: 100,
+	}
 }
 
 // SourceMapsArguments configures how app_agent_receiver will retrieve source
@@ -77,6 +70,14 @@ type SourceMapsArguments struct {
 	DownloadFromOrigins []string            `river:"download_from_origins,attr,optional"`
 	DownloadTimeout     time.Duration       `river:"download_timeout,attr,optional"`
 	Locations           []LocationArguments `river:"location,block,optional"`
+}
+
+func (s *SourceMapsArguments) SetToDefault() {
+	*s = SourceMapsArguments{
+		Download:            true,
+		DownloadFromOrigins: []string{"*"},
+		DownloadTimeout:     time.Second,
+	}
 }
 
 // LocationArguments specifies an individual location where source maps will be loaded.

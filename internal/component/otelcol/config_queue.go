@@ -16,22 +16,19 @@ type QueueArguments struct {
 	// TODO(rfratto): queues can send to persistent storage through an extension.
 }
 
-// DefaultQueueArguments holds default settings for QueueArguments.
-var DefaultQueueArguments = QueueArguments{
-	Enabled:      true,
-	NumConsumers: 10,
-
-	// Copied from [upstream](https://github.com/open-telemetry/opentelemetry-collector/blob/241334609fc47927b4a8533dfca28e0f65dad9fe/exporter/exporterhelper/queue_sender.go#L50-L53)
-	//
-	// By default, batches are 8192 spans, for a total of up to 8 million spans in the queue
-	// This can be estimated at 1-4 GB worth of maximum memory usage
-	// This default is probably still too high, and may be adjusted further down in a future release
-	QueueSize: 1000,
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *QueueArguments) SetToDefault() {
-	*args = DefaultQueueArguments
+	*args = QueueArguments{
+		Enabled:      true,
+		NumConsumers: 10,
+
+		// Copied from [upstream](https://github.com/open-telemetry/opentelemetry-collector/blob/241334609fc47927b4a8533dfca28e0f65dad9fe/exporter/exporterhelper/queue_sender.go#L50-L53)
+		//
+		// By default, batches are 8192 spans, for a total of up to 8 million spans in the queue
+		// This can be estimated at 1-4 GB worth of maximum memory usage
+		// This default is probably still too high, and may be adjusted further down in a future release
+		QueueSize: 1000,
+	}
 }
 
 // Convert converts args into the upstream type.

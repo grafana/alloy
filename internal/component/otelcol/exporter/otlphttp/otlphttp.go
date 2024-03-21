@@ -48,17 +48,13 @@ type Arguments struct {
 
 var _ exporter.Arguments = Arguments{}
 
-// DefaultArguments holds default values for Arguments.
-var DefaultArguments = Arguments{
-	Queue:        otelcol.DefaultQueueArguments,
-	Retry:        otelcol.DefaultRetryArguments,
-	Client:       DefaultHTTPClientArguments,
-	DebugMetrics: otelcol.DefaultDebugMetricsArguments,
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{}
+	args.Queue.SetToDefault()
+	args.Retry.SetToDefault()
+	args.Client.SetToDefault()
+	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements exporter.Arguments.
@@ -102,11 +98,17 @@ type HTTPClientArguments otelcol.HTTPClientArguments
 
 // Default server settings.
 var (
-	DefaultMaxIddleConns       = 100
-	DefaultIdleConnTimeout     = 90 * time.Second
-	DefaultHTTPClientArguments = HTTPClientArguments{
-		MaxIdleConns:    &DefaultMaxIddleConns,
-		IdleConnTimeout: &DefaultIdleConnTimeout,
+	DefaultMaxIdleConns    = 100
+	DefaultIdleConnTimeout = 90 * time.Second
+)
+
+// SetToDefault implements river.Defaulter.
+func (args *HTTPClientArguments) SetToDefault() {
+	maxIdleConns := DefaultMaxIdleConns
+	idleConnTimeout := DefaultIdleConnTimeout
+	*args = HTTPClientArguments{
+		MaxIdleConns:    &maxIdleConns,
+		IdleConnTimeout: &idleConnTimeout,
 
 		Timeout:         30 * time.Second,
 		Headers:         map[string]string{},
@@ -114,9 +116,4 @@ var (
 		ReadBufferSize:  0,
 		WriteBufferSize: 512 * 1024,
 	}
-)
-
-// SetToDefault implements river.Defaulter.
-func (args *HTTPClientArguments) SetToDefault() {
-	*args = DefaultHTTPClientArguments
 }

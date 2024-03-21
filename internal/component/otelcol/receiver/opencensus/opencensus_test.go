@@ -54,10 +54,12 @@ func TestDefaultArguments_UnmarshalRiver(t *testing.T) {
 
 	require.True(t, ok)
 
+	var defaultArgs opencensus.Arguments
+	defaultArgs.SetToDefault()
 	// Check the gRPC arguments
-	require.Equal(t, opencensus.DefaultArguments.GRPC.Endpoint, otelArgs.NetAddr.Endpoint)
-	require.Equal(t, opencensus.DefaultArguments.GRPC.Transport, otelArgs.NetAddr.Transport)
-	require.Equal(t, int(opencensus.DefaultArguments.GRPC.ReadBufferSize), otelArgs.ReadBufferSize)
+	require.Equal(t, defaultArgs.GRPC.Endpoint, otelArgs.NetAddr.Endpoint)
+	require.Equal(t, defaultArgs.GRPC.Transport, otelArgs.NetAddr.Transport)
+	require.Equal(t, int(defaultArgs.GRPC.ReadBufferSize), otelArgs.ReadBufferSize)
 }
 
 func TestArguments_UnmarshalRiver(t *testing.T) {

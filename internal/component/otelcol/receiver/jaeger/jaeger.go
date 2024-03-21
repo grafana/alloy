@@ -44,9 +44,8 @@ var _ receiver.Arguments = Arguments{}
 
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = Arguments{
-		DebugMetrics: otelcol.DefaultDebugMetricsArguments,
-	}
+	*args = Arguments{}
+	args.DebugMetrics.SetToDefault()
 }
 
 // Validate implements river.Validator.

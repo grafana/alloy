@@ -43,15 +43,12 @@ var (
 	_ connector.Arguments = (*Arguments)(nil)
 )
 
-// DefaultArguments holds default settings for Arguments.
-var DefaultArguments = Arguments{
-	HostIdentifiers:      []string{"host.id"},
-	MetricsFlushInterval: 60 * time.Second,
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		HostIdentifiers:      []string{"host.id"},
+		MetricsFlushInterval: 60 * time.Second,
+	}
 }
 
 // Validate implements river.Validator.

@@ -78,17 +78,15 @@ type Arguments struct {
 	Namespaces       []string                `river:"namespaces,attr,optional"`
 }
 
-// DefaultConfig holds defaults for SDConfig.
-var DefaultConfig = Arguments{
-	URL: config.URL{
-		URL: defaultKubeletURL,
-	},
-	HTTPClientConfig: config.DefaultHTTPClientConfig,
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultConfig
+	cloneDefaultKubeletUrl := *defaultKubeletURL
+	*args = Arguments{
+		URL: config.URL{
+			URL: &cloneDefaultKubeletUrl,
+		},
+		HTTPClientConfig: config.DefaultHTTPClientConfig,
+	}
 }
 
 // Validate implements river.Validator.

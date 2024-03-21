@@ -55,7 +55,9 @@ otelcol.receiver.otlp "default" {
 		include_metadata = true
 	}
 
-	http { }
+	http {
+		include_metadata = true
+	}
 
 	output {
 		metrics = []

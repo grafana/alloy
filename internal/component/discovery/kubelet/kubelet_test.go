@@ -51,7 +51,9 @@ func TestPodDeletion(t *testing.T) {
 		Items: []v1.Pod{pod2},
 	}
 
-	kubeletDiscovery, err := NewKubeletDiscovery(DefaultConfig)
+	var args Arguments
+	args.SetToDefault()
+	kubeletDiscovery, err := NewKubeletDiscovery(args)
 	require.NoError(t, err)
 
 	_, err = kubeletDiscovery.refresh(podList1)
@@ -100,7 +102,9 @@ func TestDiscoveryPodWithoutPod(t *testing.T) {
 		Items: []v1.Pod{pod1, pod2},
 	}
 
-	kubeletDiscovery, err := NewKubeletDiscovery(DefaultConfig)
+	var args Arguments
+	args.SetToDefault()
+	kubeletDiscovery, err := NewKubeletDiscovery(args)
 	require.NoError(t, err)
 
 	_, err = kubeletDiscovery.refresh(podList1)
@@ -109,7 +113,9 @@ func TestDiscoveryPodWithoutPod(t *testing.T) {
 }
 
 func TestWithDefaultKubeletHost(t *testing.T) {
-	kubeletDiscovery, err := NewKubeletDiscovery(DefaultConfig)
+	var args Arguments
+	args.SetToDefault()
+	kubeletDiscovery, err := NewKubeletDiscovery(args)
 	require.NoError(t, err)
 	require.Equal(t, "https://localhost:10250/pods", kubeletDiscovery.url)
 }

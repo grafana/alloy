@@ -41,21 +41,19 @@ type Arguments struct {
 	Regions                  []string `river:"regions,attr,optional"`
 }
 
-var DefaultArguments = Arguments{
-	Timespan:              "PT1M",
-	MetricNameTemplate:    "azure_{type}_{metric}_{aggregation}_{unit}",
-	MetricHelpTemplate:    "Azure metric {metric} for {type} with aggregation {aggregation} as {unit}",
-	IncludedResourceTags:  []string{"owner"},
-	AzureCloudEnvironment: "azurecloud",
-	// Dimensions do not always apply to all metrics for a service, which requires you to configure multiple exporters
-	//  to fully monitor a service which is tedious. Turning off validation eliminates this complexity. The underlying
-	//  sdk will only give back the dimensions which are valid for particular metrics.
-	ValidateDimensions: false,
-}
-
 // SetToDefault implements river.Defaulter.
 func (a *Arguments) SetToDefault() {
-	*a = DefaultArguments
+	*a = Arguments{
+		Timespan:              "PT1M",
+		MetricNameTemplate:    "azure_{type}_{metric}_{aggregation}_{unit}",
+		MetricHelpTemplate:    "Azure metric {metric} for {type} with aggregation {aggregation} as {unit}",
+		IncludedResourceTags:  []string{"owner"},
+		AzureCloudEnvironment: "azurecloud",
+		// Dimensions do not always apply to all metrics for a service, which requires you to configure multiple exporters
+		//  to fully monitor a service which is tedious. Turning off validation eliminates this complexity. The underlying
+		//  sdk will only give back the dimensions which are valid for particular metrics.
+		ValidateDimensions: false,
+	}
 }
 
 // Validate implements river.Validator.
