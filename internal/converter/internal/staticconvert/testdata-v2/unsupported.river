@@ -16,10 +16,6 @@ loki.write "logs_log_config" {
 	external_labels = {}
 }
 
-loki.source.kubernetes_events "integrations_eventhandler" {
-	forward_to = [loki.write.logs_log_config.receiver]
-}
-
 faro.receiver "integrations_app_agent_receiver" {
 	extra_log_labels = {}
 
@@ -44,4 +40,8 @@ faro.receiver "integrations_app_agent_receiver" {
 		logs   = []
 		traces = []
 	}
+}
+
+loki.source.kubernetes_events "integrations_eventhandler" {
+	forward_to = [loki.write.logs_log_config.receiver]
 }

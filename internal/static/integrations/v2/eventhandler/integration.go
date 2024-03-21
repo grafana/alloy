@@ -1,6 +1,8 @@
 package eventhandler
 
 import (
+	"context"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/agent/internal/static/integrations/v2"
 	"github.com/prometheus/prometheus/model/labels"
@@ -13,7 +15,7 @@ var DefaultConfig = Config{
 	LogsInstance:   "default",
 	InformerResync: 120,
 	FlushInterval:  10,
-	LogFormat:      logFormatFmt,
+	LogFormat:      "logfmt",
 }
 
 // Config configures the eventhandler integration
@@ -71,9 +73,20 @@ func (c *Config) Identifier(globals integrations.Globals) (string, error) {
 
 // NewIntegration converts this config into an instance of an integration.
 func (c *Config) NewIntegration(l log.Logger, globals integrations.Globals) (integrations.Integration, error) {
-	return newEventHandler(l, globals, c)
+	// NOTE(rfratto): the eventhandler integration is never run, and all the
+	// logic has been moved to the loki.source.kubernetes_events component.
+	//
+	// This function is never called, but still exists for config conversion.
+	return stubIntegration{}, nil
 }
 
 func init() {
 	integrations.Register(&Config{}, integrations.TypeSingleton)
+}
+
+type stubIntegration struct{}
+
+func (stubIntegration) RunIntegration(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
 }
