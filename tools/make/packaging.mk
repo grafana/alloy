@@ -150,7 +150,7 @@ define generate_agent_fpm =
 		--config-files $(AGENT_ENVIRONMENT_FILE_$(1)) \
 		--rpm-rpmbuild-define "_build_id_links none" \
 		--package $(4) \
-			dist.temp/grafana-agent-linux-$(3)=/usr/bin/grafana-agent \
+			dist/grafana-agent-linux-$(3)=/usr/bin/grafana-agent \
 			packaging/grafana-agent-/grafana-agent.river=/etc/grafana-agent.river \
 			packaging/grafana-agent-/environment-file=$(AGENT_ENVIRONMENT_FILE_$(1)) \
 			packaging/grafana-agent-/$(1)/grafana-agent.service=/usr/lib/systemd/system/grafana-agent.service
@@ -167,7 +167,7 @@ dist-agent-packages: dist-agent-packages-amd64   \
                      dist-agent-packages-s390x
 
 .PHONY: dist-agent-packages-amd64
-dist-agent-packages-amd64: dist.temp/grafana-agent-linux-amd64
+dist-agent-packages-amd64: dist/grafana-agent-linux-amd64
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -176,7 +176,7 @@ else
 endif
 
 .PHONY: dist-agent-packages-arm64
-dist-agent-packages-arm64: dist.temp/grafana-agent-linux-arm64
+dist-agent-packages-arm64: dist/grafana-agent-linux-arm64
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -185,7 +185,7 @@ else
 endif
 
 .PHONY: dist-agent-packages-ppc64le
-dist-agent-packages-ppc64le: dist.temp/grafana-agent-linux-ppc64le
+dist-agent-packages-ppc64le: dist/grafana-agent-linux-ppc64le
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -194,7 +194,7 @@ else
 endif
 
 .PHONY: dist-agent-packages-s390x
-dist-agent-packages-s390x: dist.temp/grafana-agent-linux-s390x
+dist-agent-packages-s390x: dist/grafana-agent-linux-s390x
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -207,7 +207,7 @@ endif
 #
 
 .PHONY: dist-agent-installer
-dist-agent-installer: dist.temp/grafana-agent-windows-amd64.exe dist.temp/grafana-agent-service-windows-amd64.exe
+dist-agent-installer: dist/grafana-agent-windows-amd64.exe dist.temp/grafana-agent-service-windows-amd64.exe
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
