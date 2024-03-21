@@ -86,6 +86,50 @@ type MetricsConfig struct {
 	VcenterVMNetworkUsage           MetricConfig `river:"vcenter.vm.network.usage,block,optional"`
 }
 
+func (args *MetricsConfig) SetToDefault() {
+	*args = MetricsConfig{
+		VcenterClusterCPUEffective:      MetricConfig{Enabled: true},
+		VcenterClusterCPULimit:          MetricConfig{Enabled: true},
+		VcenterClusterHostCount:         MetricConfig{Enabled: true},
+		VcenterClusterMemoryEffective:   MetricConfig{Enabled: true},
+		VcenterClusterMemoryLimit:       MetricConfig{Enabled: true},
+		VcenterClusterMemoryUsed:        MetricConfig{Enabled: true},
+		VcenterClusterVMCount:           MetricConfig{Enabled: true},
+		VcenterDatastoreDiskUsage:       MetricConfig{Enabled: true},
+		VcenterDatastoreDiskUtilization: MetricConfig{Enabled: true},
+		VcenterHostCPUUsage:             MetricConfig{Enabled: true},
+		VcenterHostCPUUtilization:       MetricConfig{Enabled: true},
+		VcenterHostDiskLatencyAvg:       MetricConfig{Enabled: true},
+		VcenterHostDiskLatencyMax:       MetricConfig{Enabled: true},
+		VcenterHostDiskThroughput:       MetricConfig{Enabled: true},
+		VcenterHostMemoryUsage:          MetricConfig{Enabled: true},
+		VcenterHostMemoryUtilization:    MetricConfig{Enabled: true},
+		VcenterHostNetworkPacketCount:   MetricConfig{Enabled: true},
+		VcenterHostNetworkPacketErrors:  MetricConfig{Enabled: true},
+		VcenterHostNetworkThroughput:    MetricConfig{Enabled: true},
+		VcenterHostNetworkUsage:         MetricConfig{Enabled: true},
+		VcenterResourcePoolCPUShares:    MetricConfig{Enabled: true},
+		VcenterResourcePoolCPUUsage:     MetricConfig{Enabled: true},
+		VcenterResourcePoolMemoryShares: MetricConfig{Enabled: true},
+		VcenterResourcePoolMemoryUsage:  MetricConfig{Enabled: true},
+		VcenterVMCPUUsage:               MetricConfig{Enabled: true},
+		VcenterVMCPUUtilization:         MetricConfig{Enabled: true},
+		VcenterVMDiskLatencyAvg:         MetricConfig{Enabled: true},
+		VcenterVMDiskLatencyMax:         MetricConfig{Enabled: true},
+		VcenterVMDiskThroughput:         MetricConfig{Enabled: true},
+		VcenterVMDiskUsage:              MetricConfig{Enabled: true},
+		VcenterVMDiskUtilization:        MetricConfig{Enabled: true},
+		VcenterVMMemoryBallooned:        MetricConfig{Enabled: true},
+		VcenterVMMemorySwapped:          MetricConfig{Enabled: true},
+		VcenterVMMemorySwappedSsd:       MetricConfig{Enabled: true},
+		VcenterVMMemoryUsage:            MetricConfig{Enabled: true},
+		VcenterVMMemoryUtilization:      MetricConfig{Enabled: false},
+		VcenterVMNetworkPacketCount:     MetricConfig{Enabled: true},
+		VcenterVMNetworkThroughput:      MetricConfig{Enabled: true},
+		VcenterVMNetworkUsage:           MetricConfig{Enabled: true},
+	}
+}
+
 func (args *MetricsConfig) Convert() map[string]interface{} {
 	if args == nil {
 		return nil
@@ -157,6 +201,18 @@ type ResourceAttributesConfig struct {
 	VcenterVMName                    ResourceAttributeConfig `river:"vcenter.vm.name,block,optional"`
 }
 
+func (args *ResourceAttributesConfig) SetToDefault() {
+	*args = ResourceAttributesConfig{
+		VcenterClusterName:               ResourceAttributeConfig{Enabled: true},
+		VcenterDatastoreName:             ResourceAttributeConfig{Enabled: true},
+		VcenterHostName:                  ResourceAttributeConfig{Enabled: true},
+		VcenterResourcePoolInventoryPath: ResourceAttributeConfig{Enabled: true},
+		VcenterResourcePoolName:          ResourceAttributeConfig{Enabled: true},
+		VcenterVMID:                      ResourceAttributeConfig{Enabled: true},
+		VcenterVMName:                    ResourceAttributeConfig{Enabled: true},
+	}
+}
+
 func (args *ResourceAttributesConfig) Convert() map[string]interface{} {
 	if args == nil {
 		return nil
@@ -178,6 +234,12 @@ func (args *ResourceAttributesConfig) Convert() map[string]interface{} {
 type MetricsBuilderConfig struct {
 	Metrics            MetricsConfig            `river:"metrics,block,optional"`
 	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+}
+
+func (mbc *MetricsBuilderConfig) SetToDefault() {
+	*mbc = MetricsBuilderConfig{}
+	mbc.Metrics.SetToDefault()
+	mbc.ResourceAttributes.SetToDefault()
 }
 
 func (args *MetricsBuilderConfig) Convert() map[string]interface{} {
@@ -213,69 +275,13 @@ type Arguments struct {
 
 var _ receiver.Arguments = Arguments{}
 
-var (
-	// DefaultArguments holds default values for Arguments.
-	DefaultArguments = Arguments{
-		ScraperControllerArguments: otelcol.DefaultScraperControllerArguments,
-		MetricsBuilderConfig: MetricsBuilderConfig{
-			Metrics: MetricsConfig{
-				VcenterClusterCPUEffective:      MetricConfig{Enabled: true},
-				VcenterClusterCPULimit:          MetricConfig{Enabled: true},
-				VcenterClusterHostCount:         MetricConfig{Enabled: true},
-				VcenterClusterMemoryEffective:   MetricConfig{Enabled: true},
-				VcenterClusterMemoryLimit:       MetricConfig{Enabled: true},
-				VcenterClusterMemoryUsed:        MetricConfig{Enabled: true},
-				VcenterClusterVMCount:           MetricConfig{Enabled: true},
-				VcenterDatastoreDiskUsage:       MetricConfig{Enabled: true},
-				VcenterDatastoreDiskUtilization: MetricConfig{Enabled: true},
-				VcenterHostCPUUsage:             MetricConfig{Enabled: true},
-				VcenterHostCPUUtilization:       MetricConfig{Enabled: true},
-				VcenterHostDiskLatencyAvg:       MetricConfig{Enabled: true},
-				VcenterHostDiskLatencyMax:       MetricConfig{Enabled: true},
-				VcenterHostDiskThroughput:       MetricConfig{Enabled: true},
-				VcenterHostMemoryUsage:          MetricConfig{Enabled: true},
-				VcenterHostMemoryUtilization:    MetricConfig{Enabled: true},
-				VcenterHostNetworkPacketCount:   MetricConfig{Enabled: true},
-				VcenterHostNetworkPacketErrors:  MetricConfig{Enabled: true},
-				VcenterHostNetworkThroughput:    MetricConfig{Enabled: true},
-				VcenterHostNetworkUsage:         MetricConfig{Enabled: true},
-				VcenterResourcePoolCPUShares:    MetricConfig{Enabled: true},
-				VcenterResourcePoolCPUUsage:     MetricConfig{Enabled: true},
-				VcenterResourcePoolMemoryShares: MetricConfig{Enabled: true},
-				VcenterResourcePoolMemoryUsage:  MetricConfig{Enabled: true},
-				VcenterVMCPUUsage:               MetricConfig{Enabled: true},
-				VcenterVMCPUUtilization:         MetricConfig{Enabled: true},
-				VcenterVMDiskLatencyAvg:         MetricConfig{Enabled: true},
-				VcenterVMDiskLatencyMax:         MetricConfig{Enabled: true},
-				VcenterVMDiskThroughput:         MetricConfig{Enabled: true},
-				VcenterVMDiskUsage:              MetricConfig{Enabled: true},
-				VcenterVMDiskUtilization:        MetricConfig{Enabled: true},
-				VcenterVMMemoryBallooned:        MetricConfig{Enabled: true},
-				VcenterVMMemorySwapped:          MetricConfig{Enabled: true},
-				VcenterVMMemorySwappedSsd:       MetricConfig{Enabled: true},
-				VcenterVMMemoryUsage:            MetricConfig{Enabled: true},
-				VcenterVMMemoryUtilization:      MetricConfig{Enabled: false},
-				VcenterVMNetworkPacketCount:     MetricConfig{Enabled: true},
-				VcenterVMNetworkThroughput:      MetricConfig{Enabled: true},
-				VcenterVMNetworkUsage:           MetricConfig{Enabled: true},
-			},
-			ResourceAttributes: ResourceAttributesConfig{
-				VcenterClusterName:               ResourceAttributeConfig{Enabled: true},
-				VcenterDatastoreName:             ResourceAttributeConfig{Enabled: true},
-				VcenterHostName:                  ResourceAttributeConfig{Enabled: true},
-				VcenterResourcePoolInventoryPath: ResourceAttributeConfig{Enabled: true},
-				VcenterResourcePoolName:          ResourceAttributeConfig{Enabled: true},
-				VcenterVMID:                      ResourceAttributeConfig{Enabled: true},
-				VcenterVMName:                    ResourceAttributeConfig{Enabled: true},
-			},
-		},
-		DebugMetrics: otelcol.DefaultDebugMetricsArguments,
-	}
-)
-
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		ScraperControllerArguments: otelcol.DefaultScraperControllerArguments,
+	}
+	args.MetricsBuilderConfig.SetToDefault()
+	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements receiver.Arguments.

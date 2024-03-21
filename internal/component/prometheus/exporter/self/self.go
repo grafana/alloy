@@ -30,12 +30,9 @@ type Arguments struct{}
 // Exports holds the values exported by the prometheus.exporter.self component.
 type Exports struct{}
 
-// DefaultArguments defines the default settings
-var DefaultArguments = Arguments{}
-
 // SetToDefault implements river.Defaulter
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{}
 }
 
 func (a *Arguments) Convert() *agent.Config {

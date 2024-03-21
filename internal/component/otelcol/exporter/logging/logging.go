@@ -38,17 +38,14 @@ type Arguments struct {
 
 var _ exporter.Arguments = Arguments{}
 
-// DefaultArguments holds default values for Arguments.
-var DefaultArguments = Arguments{
-	Verbosity:          configtelemetry.LevelNormal,
-	SamplingInitial:    2,
-	SamplingThereafter: 500,
-	DebugMetrics:       otelcol.DefaultDebugMetricsArguments,
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		Verbosity:          configtelemetry.LevelNormal,
+		SamplingInitial:    2,
+		SamplingThereafter: 500,
+	}
+	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements exporter.Arguments.

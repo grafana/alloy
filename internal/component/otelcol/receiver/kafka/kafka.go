@@ -54,43 +54,25 @@ type Arguments struct {
 
 var _ receiver.Arguments = Arguments{}
 
-// DefaultArguments holds default values for Arguments.
-var DefaultArguments = Arguments{
-	// We use the defaults from the upstream OpenTelemetry Collector component
-	// for compatibility, even though that means using a client and group ID of
-	// "otel-collector".
-
-	Topic:         "otlp_spans",
-	Encoding:      "otlp_proto",
-	Brokers:       []string{"localhost:9092"},
-	ClientID:      "otel-collector",
-	GroupID:       "otel-collector",
-	InitialOffset: "latest",
-	Metadata: MetadataArguments{
-		IncludeAllTopics: true,
-		Retry: MetadataRetryArguments{
-			MaxRetries: 3,
-			Backoff:    250 * time.Millisecond,
-		},
-	},
-	AutoCommit: AutoCommitArguments{
-		Enable:   true,
-		Interval: time.Second,
-	},
-	MessageMarking: MessageMarkingArguments{
-		AfterExecution:      false,
-		IncludeUnsuccessful: false,
-	},
-	HeaderExtraction: HeaderExtraction{
-		ExtractHeaders: false,
-		Headers:        []string{},
-	},
-	DebugMetrics: otelcol.DefaultDebugMetricsArguments,
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		// We use the defaults from the upstream OpenTelemetry Collector component
+		// for compatibility, even though that means using a client and group ID of
+		// "otel-collector".
+
+		Topic:         "otlp_spans",
+		Encoding:      "otlp_proto",
+		Brokers:       []string{"localhost:9092"},
+		ClientID:      "otel-collector",
+		GroupID:       "otel-collector",
+		InitialOffset: "latest",
+	}
+	args.Metadata.SetToDefault()
+	args.AutoCommit.SetToDefault()
+	args.MessageMarking.SetToDefault()
+	args.HeaderExtraction.SetToDefault()
+	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements receiver.Arguments.
@@ -247,6 +229,16 @@ type MetadataArguments struct {
 	Retry            MetadataRetryArguments `river:"retry,block,optional"`
 }
 
+func (args *MetadataArguments) SetToDefault() {
+	*args = MetadataArguments{
+		IncludeAllTopics: true,
+		Retry: MetadataRetryArguments{
+			MaxRetries: 3,
+			Backoff:    250 * time.Millisecond,
+		},
+	}
+}
+
 // Convert converts args into the upstream type.
 func (args MetadataArguments) Convert() kafkaexporter.Metadata {
 	return kafkaexporter.Metadata{
@@ -278,6 +270,13 @@ type AutoCommitArguments struct {
 	Interval time.Duration `river:"interval,attr,optional"`
 }
 
+func (args *AutoCommitArguments) SetToDefault() {
+	*args = AutoCommitArguments{
+		Enable:   true,
+		Interval: time.Second,
+	}
+}
+
 // Convert converts args into the upstream type.
 func (args AutoCommitArguments) Convert() kafkareceiver.AutoCommit {
 	return kafkareceiver.AutoCommit{
@@ -292,6 +291,13 @@ type MessageMarkingArguments struct {
 	IncludeUnsuccessful bool `river:"include_unsuccessful,attr,optional"`
 }
 
+func (args *MessageMarkingArguments) SetToDefault() {
+	*args = MessageMarkingArguments{
+		AfterExecution:      false,
+		IncludeUnsuccessful: false,
+	}
+}
+
 // Convert converts args into the upstream type.
 func (args MessageMarkingArguments) Convert() kafkareceiver.MessageMarking {
 	return kafkareceiver.MessageMarking{
@@ -303,6 +309,13 @@ func (args MessageMarkingArguments) Convert() kafkareceiver.MessageMarking {
 type HeaderExtraction struct {
 	ExtractHeaders bool     `river:"extract_headers,attr,optional"`
 	Headers        []string `river:"headers,attr,optional"`
+}
+
+func (h *HeaderExtraction) SetToDefault() {
+	*h = HeaderExtraction{
+		ExtractHeaders: false,
+		Headers:        []string{},
+	}
 }
 
 // Convert converts HeaderExtraction into the upstream type.

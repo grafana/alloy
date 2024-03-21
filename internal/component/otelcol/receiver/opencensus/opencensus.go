@@ -40,21 +40,18 @@ type Arguments struct {
 
 var _ receiver.Arguments = Arguments{}
 
-// Default server settings.
-var DefaultArguments = Arguments{
-	GRPC: otelcol.GRPCServerArguments{
-		Endpoint:  "0.0.0.0:55678",
-		Transport: "tcp",
-
-		ReadBufferSize: 512 * units.Kibibyte,
-		// We almost write 0 bytes, so no need to tune WriteBufferSize.
-	},
-	DebugMetrics: otelcol.DefaultDebugMetricsArguments,
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		GRPC: otelcol.GRPCServerArguments{
+			Endpoint:  "0.0.0.0:55678",
+			Transport: "tcp",
+
+			ReadBufferSize: 512 * units.Kibibyte,
+			// We almost write 0 bytes, so no need to tune WriteBufferSize.
+		},
+	}
+	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements receiver.Arguments.

@@ -19,7 +19,6 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/gcp"
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/heroku"
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
-	kubernetes_node "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/openshift"
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/system"
 	"github.com/grafana/agent/internal/featuregate"
@@ -114,21 +113,11 @@ type DetectorConfig struct {
 	OpenShiftConfig openshift.Config `river:"openshift,block,optional"`
 
 	// KubernetesNode contains user-specified configurations for the K8SNode detector
-	KubernetesNodeConfig kubernetes_node.Config `river:"kubernetes_node,block,optional"`
+	KubernetesNodeConfig k8snode.Config `river:"kubernetes_node,block,optional"`
 }
 
-var (
-	_ processor.Arguments = Arguments{}
-	_ river.Validator     = (*Arguments)(nil)
-	_ river.Defaulter     = (*Arguments)(nil)
-)
-
-// DefaultArguments holds default settings for Arguments.
-var DefaultArguments = Arguments{
-	Detectors: []string{"env"},
-	Override:  true,
-	Timeout:   5 * time.Second,
-	DetectorConfig: DetectorConfig{
+func (dc *DetectorConfig) SetToDefault() {
+	*dc = DetectorConfig{
 		EC2Config:              ec2.DefaultArguments,
 		ECSConfig:              ecs.DefaultArguments,
 		EKSConfig:              eks.DefaultArguments,
@@ -140,15 +129,26 @@ var DefaultArguments = Arguments{
 		DockerConfig:           docker.DefaultArguments,
 		GcpConfig:              gcp.DefaultArguments,
 		HerokuConfig:           heroku.DefaultArguments,
-		SystemConfig:           system.DefaultArguments,
 		OpenShiftConfig:        openshift.DefaultArguments,
-		KubernetesNodeConfig:   kubernetes_node.DefaultArguments,
-	},
+		KubernetesNodeConfig:   k8snode.DefaultArguments,
+	}
+	dc.SystemConfig.SetToDefault()
 }
+
+var (
+	_ processor.Arguments = Arguments{}
+	_ river.Validator     = (*Arguments)(nil)
+	_ river.Defaulter     = (*Arguments)(nil)
+)
 
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		Detectors: []string{"env"},
+		Override:  true,
+		Timeout:   5 * time.Second,
+	}
+	args.DetectorConfig.SetToDefault()
 }
 
 // Validate implements river.Validator.

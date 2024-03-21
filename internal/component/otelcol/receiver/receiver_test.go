@@ -129,5 +129,7 @@ func (fa fakeReceiverArgs) NextConsumers() *otelcol.ConsumerArguments {
 }
 
 func (fa fakeReceiverArgs) DebugMetricsConfig() otelcol.DebugMetricsArguments {
-	return otelcol.DefaultDebugMetricsArguments
+	var args otelcol.DebugMetricsArguments
+	args.SetToDefault()
+	return args
 }

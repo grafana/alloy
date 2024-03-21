@@ -45,21 +45,18 @@ var (
 	_ river.Validator = (*Arguments)(nil)
 )
 
-// DefaultArguments holds default settings for Arguments.
-var DefaultArguments = Arguments{
-	OperationType: promsdconsumer.OperationTypeUpsert,
-	PodAssociations: []string{
-		promsdconsumer.PodAssociationIPLabel,
-		promsdconsumer.PodAssociationOTelIPLabel,
-		promsdconsumer.PodAssociationk8sIPLabel,
-		promsdconsumer.PodAssociationHostnameLabel,
-		promsdconsumer.PodAssociationConnectionIP,
-	},
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		OperationType: promsdconsumer.OperationTypeUpsert,
+		PodAssociations: []string{
+			promsdconsumer.PodAssociationIPLabel,
+			promsdconsumer.PodAssociationOTelIPLabel,
+			promsdconsumer.PodAssociationk8sIPLabel,
+			promsdconsumer.PodAssociationHostnameLabel,
+			promsdconsumer.PodAssociationConnectionIP,
+		},
+	}
 }
 
 // Validate implements river.Validator.

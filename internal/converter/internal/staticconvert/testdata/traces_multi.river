@@ -3,7 +3,9 @@ otelcol.receiver.otlp "trace_config_1_default" {
 		include_metadata = true
 	}
 
-	http { }
+	http {
+		include_metadata = true
+	}
 
 	output {
 		metrics = []
@@ -40,7 +42,9 @@ otelcol.receiver.otlp "trace_config_2_default" {
 		include_metadata = true
 	}
 
-	http { }
+	http {
+		include_metadata = true
+	}
 
 	output {
 		metrics = []

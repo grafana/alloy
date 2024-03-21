@@ -26,30 +26,6 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
-// DefaultArguments holds non-zero default options for Arguments when it is
-// unmarshaled from river.
-var DefaultArguments = Arguments{
-	StoreContainerLabels:       true,
-	AllowlistedContainerLabels: []string{""},
-	EnvMetadataAllowlist:       []string{""},
-	RawCgroupPrefixAllowlist:   []string{""},
-	ResctrlInterval:            0,
-	StorageDuration:            2 * time.Minute,
-
-	ContainerdHost:      "/run/containerd/containerd.sock",
-	ContainerdNamespace: "k8s.io",
-
-	// TODO(@tpaschalis) Do we need the default cert/key/ca since tls is disabled by default?
-	DockerHost:    "unix:///var/run/docker.sock",
-	UseDockerTLS:  false,
-	DockerTLSCert: "cert.pem",
-	DockerTLSKey:  "key.pem",
-	DockerTLSCA:   "ca.pem",
-
-	DockerOnly:             false,
-	DisableRootCgroupStats: false,
-}
-
 // Arguments configures the prometheus.exporter.cadvisor component.
 type Arguments struct {
 	StoreContainerLabels       bool          `river:"store_container_labels,attr,optional"`
@@ -74,7 +50,27 @@ type Arguments struct {
 
 // SetToDefault implements river.Defaulter.
 func (a *Arguments) SetToDefault() {
-	*a = DefaultArguments
+	*a = Arguments{
+		StoreContainerLabels:       true,
+		AllowlistedContainerLabels: []string{""},
+		EnvMetadataAllowlist:       []string{""},
+		RawCgroupPrefixAllowlist:   []string{""},
+		ResctrlInterval:            0,
+		StorageDuration:            2 * time.Minute,
+
+		ContainerdHost:      "/run/containerd/containerd.sock",
+		ContainerdNamespace: "k8s.io",
+
+		// TODO(@tpaschalis) Do we need the default cert/key/ca since tls is disabled by default?
+		DockerHost:    "unix:///var/run/docker.sock",
+		UseDockerTLS:  false,
+		DockerTLSCert: "cert.pem",
+		DockerTLSKey:  "key.pem",
+		DockerTLSCA:   "ca.pem",
+
+		DockerOnly:             false,
+		DisableRootCgroupStats: false,
+	}
 }
 
 // Convert returns the upstream-compatible configuration struct.

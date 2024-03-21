@@ -24,19 +24,16 @@ var (
 	_ river.Validator = (*RetryArguments)(nil)
 )
 
-// DefaultRetryArguments holds default settings for RetryArguments.
-var DefaultRetryArguments = RetryArguments{
-	Enabled:             true,
-	InitialInterval:     5 * time.Second,
-	RandomizationFactor: 0.5,
-	Multiplier:          1.5,
-	MaxInterval:         30 * time.Second,
-	MaxElapsedTime:      5 * time.Minute,
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *RetryArguments) SetToDefault() {
-	*args = DefaultRetryArguments
+	*args = RetryArguments{
+		Enabled:             true,
+		InitialInterval:     5 * time.Second,
+		RandomizationFactor: 0.5,
+		Multiplier:          1.5,
+		MaxInterval:         30 * time.Second,
+		MaxElapsedTime:      5 * time.Minute,
+	}
 }
 
 // Validate returns an error if args is invalid.
