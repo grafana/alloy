@@ -4,6 +4,9 @@ description: Grafana Alloy is a flexible, performant, vendor-neutral, telemetry 
 menuTitle: Introduction
 title: Introduction to Grafana Alloy
 weight: 10
+_build:
+  list: false
+noindex: true
 ---
 
 # Introduction to {{% param "PRODUCT_NAME" %}}

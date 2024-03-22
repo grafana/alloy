@@ -3,6 +3,9 @@ canonical: https://grafana.com/docs/alloy/latest/stability/
 description: Grafana Alloy features fall into one of three stability categories, experimental, beta, or stable
 title: Stability
 weight: 600
+_build:
+  list: false
+noindex: true
 ---
 
 # Stability
