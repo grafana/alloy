@@ -252,57 +252,6 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Build agent-boringcrypto (Linux amd64 boringcrypto)
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - make generate-ui
-  - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=amd64 GOARM=
-    GOEXPERIMENT=boringcrypto make agent-boringcrypto
-  image: grafana/agent-build-image:0.40.2
-  name: Build
-trigger:
-  event:
-  - pull_request
-type: docker
----
-kind: pipeline
-name: Build agent-boringcrypto (Linux arm64 boringcrypto)
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - make generate-ui
-  - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=arm64 GOARM=
-    GOEXPERIMENT=boringcrypto make agent-boringcrypto
-  image: grafana/agent-build-image:0.40.2
-  name: Build
-trigger:
-  event:
-  - pull_request
-type: docker
----
-kind: pipeline
-name: Build agent-windows-boringcrypto (Windows amd64)
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - make generate-ui
-  - GO_TAGS="builtinassets" GOOS=windows GOARCH=amd64 GOARM= GOEXPERIMENT=cngcrypto
-    make agent-windows-boringcrypto
-  image: grafana/agent-build-image:0.40.2-boringcrypto
-  name: Build
-trigger:
-  event:
-  - pull_request
-type: docker
----
-kind: pipeline
 name: Publish development Linux agent container
 platform:
   arch: amd64
@@ -450,6 +399,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: eb4c87d4abc880513c7c2977c46910fa96041461aa2edea16a7970f5c145dd01
+hmac: 2088d828b5aeec4f38008f932b1402a03745e941ba06c6c4d72a96d42dfb7f01
 
 ...

@@ -23,15 +23,12 @@
 ##
 ##   binaries                        Compiles all binaries.
 ##   agent                           Compiles cmd/grafana-agent to $(AGENT_BINARY)
-##   agent-boringcrypto              Compiles cmd/grafana-agent with GOEXPERIMENT=boringcrypto to $(AGENT_BORINGCRYPTO_BINARY)
-##   agent-windows-boringcrypto      Compiles cmd/grafana-agent to $(AGENT_BORINGCRYPTO_BINARY)
 ##   agent-service                   Compiles cmd/grafana-agent-service to $(SERVICE_BINARY)
 ##
 ## Targets for building Docker images:
 ##
 ##   images                   Builds all Docker images.
 ##   agent-image              Builds agent Docker image.
-##   agent-boringcrypto-image Builds agent Docker image with boringcrypto.
 ##
 ## Targets for packaging:
 ##
@@ -60,30 +57,25 @@
 ##
 ## Environment variables:
 ##
-##   USE_CONTAINER                      Set to 1 to enable proxying commands to build container
-##   AGENT_IMAGE                        Image name:tag built by `make agent-image`
-##   BUILD_IMAGE                        Image name:tag used by USE_CONTAINER=1
-##   AGENT_BINARY                       Output path of `make agent` (default build/grafana-agent)
-##   AGENT_BORINGCRYPTO_BINARY          Output path of `make agent-boringcrypto` (default build/grafana-agent-boringcrypto)
-##   AGENT_BORINGCRYPTO_WINDOWS_BINARY  Output path of `make agent-windows-boringcrypto` (default build/grafana-agent-windows-boringcrypto.exe)
-##   SERVICE_BINARY                     Output path of `make agent-service` (default build/grafana-agent-service)
-##   GOOS                               Override OS to build binaries for
-##   GOARCH                             Override target architecture to build binaries for
-##   GOARM                              Override ARM version (6 or 7) when GOARCH=arm
-##   CGO_ENABLED                        Set to 0 to disable Cgo for binaries.
-##   RELEASE_BUILD                      Set to 1 to build release binaries.
-##   VERSION                            Version to inject into built binaries.
-##   GO_TAGS                            Extra tags to use when building.
-##   DOCKER_PLATFORM                    Overrides platform to build Docker images for (defaults to host platform).
-##   GOEXPERIMENT                       Used to enable features, most likely boringcrypto via GOEXPERIMENT=boringcrypto.
+##   USE_CONTAINER      Set to 1 to enable proxying commands to build container
+##   AGENT_IMAGE        Image name:tag built by `make agent-image`
+##   BUILD_IMAGE        Image name:tag used by USE_CONTAINER=1
+##   AGENT_BINARY       Output path of `make agent` (default build/grafana-agent)
+##   SERVICE_BINARY     Output path of `make agent-service` (default build/grafana-agent-service)
+##   GOOS               Override OS to build binaries for
+##   GOARCH             Override target architecture to build binaries for
+##   GOARM              Override ARM version (6 or 7) when GOARCH=arm
+##   CGO_ENABLED        Set to 0 to disable Cgo for binaries.
+##   RELEASE_BUILD      Set to 1 to build release binaries.
+##   VERSION            Version to inject into built binaries.
+##   GO_TAGS            Extra tags to use when building.
+##   DOCKER_PLATFORM    Overrides platform to build Docker images for (defaults to host platform).
+##   GOEXPERIMENT       Used to enable Go features behind feature flags.
 
 include tools/make/*.mk
 
 AGENT_IMAGE                             ?= grafana/agent:latest
-AGENT_BORINGCRYPTO_IMAGE                ?= grafana/agent-boringcrypto:latest
 AGENT_BINARY                            ?= build/grafana-agent
-AGENT_BORINGCRYPTO_BINARY               ?= build/grafana-agent-boringcrypto
-AGENT_BORINGCRYPTO_WINDOWS_BINARY       ?= build/grafana-agent-windows-boringcrypto.exe
 SERVICE_BINARY                          ?= build/grafana-agent-service
 AGENTLINT_BINARY                        ?= build/agentlint
 GOOS                                    ?= $(shell go env GOOS)
@@ -98,7 +90,7 @@ GOEXPERIMENT                            ?= $(shell go env GOEXPERIMENT)
 PROPAGATE_VARS := \
     AGENT_IMAGE \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
-    AGENT_BINARY AGENT_BORINGCRYPTO_BINARY \
+    AGENT_BINARY \
     VERSION GO_TAGS GOEXPERIMENT
 
 #
@@ -159,28 +151,14 @@ integration-test:
 # Targets for building binaries
 #
 
-.PHONY: binaries agent agent-boringcrypto
-binaries: agent agent-boringcrypto
+.PHONY: binaries agent
+binaries: agent
 
 agent:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	$(GO_ENV) go build $(GO_FLAGS) -o $(AGENT_BINARY) ./cmd/grafana-agent
-endif
-
-agent-boringcrypto:
-ifeq ($(USE_CONTAINER),1)
-	$(RERUN_IN_CONTAINER)
-else
-	GOEXPERIMENT=boringcrypto $(GO_ENV) go build $(GO_FLAGS) -o $(AGENT_BORINGCRYPTO_BINARY) ./cmd/grafana-agent
-endif
-
-agent-windows-boringcrypto:
-ifeq ($(USE_CONTAINER),1)
-	$(RERUN_IN_CONTAINER)
-else
-	GOEXPERIMENT=cngcrypto $(GO_ENV) go build $(GO_FLAGS) -tags cngcrypto -o $(AGENT_BORINGCRYPTO_WINDOWS_BINARY) ./cmd/grafana-agent
 endif
 
 # agent-service is not included in binaries since it's Windows-only.
@@ -208,13 +186,11 @@ ifneq ($(DOCKER_PLATFORM),)
 DOCKER_FLAGS += --platform=$(DOCKER_PLATFORM)
 endif
 
-.PHONY: images agent-image agent-boringcrypto-image
-images: agent-image agent-boringcrypto-image
+.PHONY: images agent-image
+images: agent-image
 
 agent-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(AGENT_IMAGE) -f cmd/grafana-agent/Dockerfile .
-agent-boringcrypto-image:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) --build-arg GOEXPERIMENT=boringcrypto -t $(AGENT_BORINGCRYPTO_IMAGE) -f cmd/grafana-agent/Dockerfile .
 
 #
 # Targets for generating assets
