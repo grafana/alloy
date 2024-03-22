@@ -8,12 +8,9 @@
 set -euxo pipefail
 
 RELEASE_AGENT_IMAGE=grafana/agent
-RELEASE_AGENTBORINGCRYPTO_IMAGE=grafana/agent-boringcrypto
 DEVELOPMENT_AGENT_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
-DEVELOPMENT_AGENTBORINGCRYPTO_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy-boringcrypto
 
 DEFAULT_AGENT_IMAGE=${RELEASE_AGENT_IMAGE}
-DEFAULT_AGENTBORINGCRYPTO_IMAGE=${RELEASE_AGENTBORINGCRYPTO_IMAGE}
 
 # Environment variables used throughout this script. These must be set
 # otherwise bash will fail with an "unbound variable" error because of the `set
@@ -27,11 +24,9 @@ export DEVELOPMENT=${DEVELOPMENT:-}
 
 if [ -n "$DEVELOPMENT" ]; then
   DEFAULT_AGENT_IMAGE=${DEVELOPMENT_AGENT_IMAGE}
-  DEFAULT_AGENTBORINGCRYPTO_IMAGE=${DEVELOPMENT_AGENTBORINGCRYPTO_IMAGE}
 fi
 
 export AGENT_IMAGE=${DEFAULT_AGENT_IMAGE}
-export AGENT_BORINGCRYPTO_IMAGE=${DEFAULT_AGENTBORINGCRYPTO_IMAGE}
 
 # We need to determine what version to assign to built binaries. If containers
 # are being built from a Drone tag trigger, we force the version to come from the
@@ -65,7 +60,6 @@ fi
 # Build all of our images.
 
 export BUILD_PLATFORMS=linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
-export BUILD_PLATFORMS_BORINGCRYPTO=linux/amd64,linux/arm64
 
 case "$TARGET_CONTAINER" in
   agent)
@@ -79,20 +73,8 @@ case "$TARGET_CONTAINER" in
       .
     ;;
 
-  agent-boringcrypto)
-    docker buildx build --push                    \
-      --platform $BUILD_PLATFORMS_BORINGCRYPTO    \
-      --build-arg RELEASE_BUILD=1                 \
-      --build-arg VERSION="$VERSION"              \
-      --build-arg GOEXPERIMENT=boringcrypto       \
-      -t "$AGENT_BORINGCRYPTO_IMAGE:$TAG_VERSION" \
-      -t "$AGENT_BORINGCRYPTO_IMAGE:$BRANCH_TAG"  \
-      -f cmd/grafana-agent/Dockerfile             \
-      .
-    ;;
-
   *)
-    echo "Usage: $0 agent|agent-boringcrypto"
+    echo "Usage: $0 agent"
     exit 1
     ;;
 esac

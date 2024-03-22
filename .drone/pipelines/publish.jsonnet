@@ -6,8 +6,7 @@ local ghTokenFilename = '/drone/src/gh-token.txt';
 // job_names gets the list of job names for use in depends_on.
 local job_names = function(jobs) std.map(function(job) job.name, jobs);
 
-local linux_containers = ['agent', 'agent-boringcrypto'];
-local dev_linux_containers = ['agent'];  // TODO(rfratto): add boringcrypto after figuring out what to do with it
+local linux_containers = ['agent'];
 
 local linux_containers_dev_jobs = std.map(function(container) (
   pipelines.linux('Publish development Linux %s container' % container) {
@@ -59,7 +58,7 @@ local linux_containers_dev_jobs = std.map(function(container) (
       host: { path: '/var/run/docker.sock' },
     }],
   }
-), dev_linux_containers);
+), linux_containers);
 
 
 local linux_containers_jobs = std.map(function(container) (

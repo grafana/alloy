@@ -27,9 +27,7 @@ dist-agent-binaries: dist/grafana-agent-linux-amd64                    \
                      dist/grafana-agent-darwin-amd64                   \
                      dist/grafana-agent-darwin-arm64                   \
                      dist/grafana-agent-windows-amd64.exe              \
-                     dist/grafana-agent-windows-boringcrypto-amd64.exe \
-                     dist/grafana-agent-freebsd-amd64                  \
-                     dist/grafana-agent-linux-arm64-boringcrypto
+                     dist/grafana-agent-freebsd-amd64
 
 dist/grafana-agent-linux-amd64: GO_TAGS += netgo builtinassets promtail_journal_enabled
 dist/grafana-agent-linux-amd64: GOOS    := linux
@@ -83,30 +81,10 @@ dist/grafana-agent-windows-amd64.exe: generate-ui
 #
 # TODO(rfratto): add netgo back to Windows builds if a version of Go is
 # released which natively supports resolving DNS short names on Windows.
-dist/grafana-agent-windows-boringcrypto-amd64.exe: GO_TAGS += builtinassets
-dist/grafana-agent-windows-boringcrypto-amd64.exe: GOOS    := windows
-dist/grafana-agent-windows-boringcrypto-amd64.exe: GOARCH  := amd64
-dist/grafana-agent-windows-boringcrypto-amd64.exe: generate-ui
-	$(PACKAGING_VARS) AGENT_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agent
-
 dist/grafana-agent-freebsd-amd64: GO_TAGS += netgo builtinassets
 dist/grafana-agent-freebsd-amd64: GOOS    := freebsd
 dist/grafana-agent-freebsd-amd64: GOARCH  := amd64
 dist/grafana-agent-freebsd-amd64: generate-ui
-	$(PACKAGING_VARS) AGENT_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agent
-
-dist/grafana-agent-linux-amd64-boringcrypto: GO_TAGS      += netgo builtinassets promtail_journal_enabled
-dist/grafana-agent-linux-amd64-boringcrypto: GOOS         := linux
-dist/grafana-agent-linux-amd64-boringcrypto: GOARCH       := amd64
-dist/grafana-agent-linux-amd64-boringcrypto: GOEXPERIMENT := boringcrypto
-dist/grafana-agent-linux-amd64-boringcrypto: generate-ui
-	$(PACKAGING_VARS) AGENT_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agent
-
-dist/grafana-agent-linux-arm64-boringcrypto: GO_TAGS      += netgo builtinassets promtail_journal_enabled
-dist/grafana-agent-linux-arm64-boringcrypto: GOOS         := linux
-dist/grafana-agent-linux-arm64-boringcrypto: GOARCH       := arm64
-dist/grafana-agent-linux-arm64-boringcrypto: GOEXPERIMENT := boringcrypto
-dist/grafana-agent-linux-arm64-boringcrypto: generate-ui
 	$(PACKAGING_VARS) AGENT_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) agent
 
 #
