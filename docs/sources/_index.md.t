@@ -8,6 +8,9 @@ cascade:
   OTEL_VERSION: v0.87.0
   PRODUCT_NAME: Grafana Alloy
   PRODUCT_ROOT_NAME: Alloy
+  _build:
+    list: false
+  noindex: true
 ---
 
 # {{% param "PRODUCT_NAME" %}}
@@ -31,22 +34,6 @@ It is designed to be flexible, performant, and compatible with multiple ecosyste
 * **Battle-tested**: {{< param "PRODUCT_NAME" >}} extends the existing battle-tested code from the Prometheus and OpenTelemetry Collector projects.
 * **Powerful**: Write programmable pipelines with ease, and debug them using a [built-in UI][UI].
 * **Batteries included**: Integrate with systems like MySQL, Kubernetes, and Apache to get telemetry that's immediately useful.
-
-<!--
-## Getting started
-
-* Choose a [variant][variants] of {{< param "PRODUCT_NAME" >}} to run.
-* Refer to the documentation for the variant to use:
-  * [Static mode][]
-  * [Static mode Kubernetes operator][]
-  * [Flow mode][]
-
-[variants]: ./about/
-[Static mode]: https://grafana.com/docs/agent/static/
-[Static mode Kubernetes operator]: https://grafana.com/docs/agent/operator/
-[Flow mode]: https://grafana.com/docs/agent/flow/
-
--->
 
 ## Supported platforms
 
