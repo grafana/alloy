@@ -387,6 +387,9 @@ func getEnabledComponentsFunc(f *flow.Flow) func() map[string]interface{} {
 		components := component.GetAllComponents(f, component.InfoOptions{})
 		componentNames := map[string]struct{}{}
 		for _, c := range components {
+			if c.Type != component.TypeBuiltin {
+				continue
+			}
 			componentNames[c.ComponentName] = struct{}{}
 		}
 		return map[string]interface{}{"enabled-components": maps.Keys(componentNames)}
