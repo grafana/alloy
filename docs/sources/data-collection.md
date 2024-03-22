@@ -4,6 +4,9 @@ description: Grafana Alloy data collection
 menuTitle: Data collection
 title: Grafana Alloy data collection
 weight: 900
+_build:
+  list: false
+noindex: true
 ---
 
 # {{% param "PRODUCT_NAME" %}} Data collection
