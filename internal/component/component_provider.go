@@ -3,6 +3,7 @@ package component
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -73,12 +74,38 @@ func (id ID) String() string {
 	return id.ModuleID + "/" + id.LocalID
 }
 
+// Type denotes a type of component.
+type Type int
+
+const (
+	// TypeInvalid is an invalid value for Type.
+	TypeInvalid Type = iota
+	TypeBuiltin      // TypeBuiltin represents builtin components.
+	TypeCustom       // TypeCustom represents custom components defined using `declare`.
+)
+
+// String returns a string representation of the component type.
+func (t Type) String() string {
+	switch t {
+	case TypeInvalid:
+		return "<invalid>"
+	case TypeBuiltin:
+		return "builtin"
+	case TypeCustom:
+		return "custom"
+	default:
+		return fmt.Sprintf("Type(%d)", t)
+	}
+}
+
 // Info ia detailed information about a component.
 type Info struct {
 	// Component is the instance of the component. Component may be nil if a
 	// component exists in the controller's DAG but it has not been successfully
 	// evaluated yet.
 	Component Component
+
+	Type Type // Type of the component.
 
 	// ModuleIDs includes the list of current module IDs that the component is
 	// running. Module IDs are always globally unique.
