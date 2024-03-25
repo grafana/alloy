@@ -1,4 +1,4 @@
-local river = import './main.libsonnet';
+local alloy = import './main.libsonnet';
 
 // The expectations below have to have sorted fields, since Jsonnet won't give
 // you the fields back in the original order.
@@ -27,7 +27,7 @@ local tests = [
   {
     name: 'Exprs',
     input: {
-      expr_attr: river.expr('prometheus.remote_write.default.receiver'),
+      expr_attr: alloy.expr('prometheus.remote_write.default.receiver'),
     },
     expect: |||
       expr_attr = prometheus.remote_write.default.receiver
@@ -36,11 +36,11 @@ local tests = [
   {
     name: 'Blocks',
     input: {
-      [river.block('labeled_block', 'foobar')]: {
+      [alloy.block('labeled_block', 'foobar')]: {
         attr_1: 15,
         attr_2: 30,
       },
-      [river.block('unlabeled_block')]: {
+      [alloy.block('unlabeled_block')]: {
         attr_1: 15,
         attr_2: 30,
       },
@@ -59,11 +59,11 @@ local tests = [
   {
     name: 'Ordered blocks',
     input: {
-      [river.block('labeled_block', 'foobar', index=1)]: {
+      [alloy.block('labeled_block', 'foobar', index=1)]: {
         attr_1: 15,
         attr_2: 30,
       },
-      [river.block('unlabeled_block', index=0)]: {
+      [alloy.block('unlabeled_block', index=0)]: {
         attr_1: 15,
         attr_2: 30,
       },
@@ -82,10 +82,10 @@ local tests = [
   {
     name: 'Nested blocks',
     input: {
-      [river.block('outer.block')]: {
+      [alloy.block('outer.block')]: {
         attr_1: 15,
         attr_2: 30,
-        [river.block('inner.block')]: {
+        [alloy.block('inner.block')]: {
           attr_3: 45,
           attr_4: 60,
         },
@@ -106,10 +106,10 @@ local tests = [
     name: 'Complex example',
     input: {
       attr_1: 'Hello, world!',
-      [river.block('some_block', 'foobar')]: {
+      [alloy.block('some_block', 'foobar')]: {
         attr_1: [0, 1, 2, 3],
         attr_2: { first_name: 'John', last_name: 'Smith' },
-        expr: river.expr('env("HOME")'),
+        expr: alloy.expr('env("HOME")'),
       },
     },
     expect: |||
@@ -129,13 +129,13 @@ local tests = [
     input: {
       attr_1: 'Hello, world!',
 
-      [river.block('outer_block')]: {
+      [alloy.block('outer_block')]: {
         attr_1: 53,
-        [river.block('inner_block', 'labeled')]: [
+        [alloy.block('inner_block', 'labeled')]: [
           { bool: true },
           { bool: false },
         ],
-        [river.block('inner_block', 'other_label')]: [
+        [alloy.block('inner_block', 'other_label')]: [
           { bool: true },
           { bool: false },
         ],
@@ -163,7 +163,7 @@ local tests = [
   {
     name: 'Indented literals',
     input: {
-      attr_1: river.expr('concat([%s])' % river.manifestRiverValue({ hello: 'world' })),
+      attr_1: alloy.expr('concat([%s])' % alloy.manifestAlloyValue({ hello: 'world' })),
     },
     expect: |||
       attr_1 = concat([{
@@ -174,7 +174,7 @@ local tests = [
   {
     name: 'Pruned expressions',
     input: std.prune({
-      expr: river.expr('env("HOME")'),
+      expr: alloy.expr('env("HOME")'),
     }),
     expect: |||
       expr = env("HOME")
@@ -183,7 +183,7 @@ local tests = [
 ];
 
 std.map(function(test) (
-  assert river.manifestRiver(test.input) == test.expect : (
+  assert alloy.manifestAlloy(test.input) == test.expect : (
     |||
       %s FAILED
 
@@ -194,7 +194,7 @@ std.map(function(test) (
       ACTUAL
       ======
       %s
-    ||| % [test.name, test.expect, river.manifestRiver(test.input)]
+    ||| % [test.name, test.expect, alloy.manifestAlloy(test.input)]
   );
   '%s: PASS' % test.name
 ), tests)
