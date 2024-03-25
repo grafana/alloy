@@ -28,10 +28,10 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
       tasks:
         - name: Install Grafana Alloy
           ansible.builtin.include_role:
-            name: grafana.grafana.grafana_alloy
+            name: grafana.grafana.alloy
           vars:
             # Destination file name
-            grafana_alloy_config_filename: config.river
+            grafana_alloy_config_filename: config.alloy
             # Local file to copy
             grafana_alloy_provisioned_config_file:  "<path-to-config-file-on-localhost>"
             grafana_alloy_flags_extra:
@@ -52,20 +52,20 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
 To verify that the {{< param "PRODUCT_NAME" >}} service on the target machine is `active` and `running`, open a terminal window and run the following command:
 
 ```shell
-$ sudo systemctl status grafana-alloy.service
+$ sudo systemctl status alloy.service
 ```
 
 If the service is `active` and `running`, the output should look similar to this:
 
 ```
-grafana-alloy.service - Grafana Alloy
-  Loaded: loaded (/etc/systemd/system/grafana-alloy.service; enabled; vendor preset: enabled)
+alloy.service - Grafana Alloy
+  Loaded: loaded (/etc/systemd/system/alloy.service; enabled; vendor preset: enabled)
   Active: active (running) since Wed 2022-07-20 09:56:15 UTC; 36s ago
 Main PID: 3176 (alloy-linux-amd)
   Tasks: 8 (limit: 515)
   Memory: 92.5M
     CPU: 380ms
-  CGroup: /system.slice/grafana-alloy.service
+  CGroup: /system.slice/alloy.service
     └─3176 /usr/local/bin/alloy-linux-amd64 --config.file=/etc/grafana-cloud/alloy-config.yaml
 ```
 

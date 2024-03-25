@@ -16,7 +16,7 @@ The `run` command runs {{< param "PRODUCT_NAME" >}} in the foreground until an i
 
 Usage:
 
-* `grafana-alloy run [FLAG ...] PATH_NAME`
+* `alloy run [FLAG ...] PATH_NAME`
 
    Replace the following:
 
@@ -129,7 +129,7 @@ The current state of a clustered {{< param "PRODUCT_ROOT_NAME" >}} is shown on t
 ## Configuration conversion (beta)
 
 When you use the `--config.format` command-line argument with a value other than `alloy`, {{< param "PRODUCT_ROOT_NAME" >}} converts the configuration file from the source format to River and immediately starts running with the new configuration.
-This conversion uses the converter API described in the [grafana-alloy convert][] docs.
+This conversion uses the converter API described in the [alloy convert][] docs.
 
 If you include the `--config.bypass-conversion-errors` command-line argument,
 {{< param "PRODUCT_NAME" >}} will ignore any errors from the converter. Use this argument
@@ -137,9 +137,9 @@ with caution because the resulting conversion may not be equivalent to the
 original configuration.
 
 Include `--config.extra-args` to pass additional command line flags from the original format to the converter.
-Refer to [grafana-alloy convert][] for more details on how `extra-args` work.
+Refer to [alloy convert][] for more details on how `extra-args` work.
 
-[grafana-alloy convert]: ../convert/
+[alloy convert]: ../convert/
 [clustering]:  ../../../concepts/clustering/
 [go-discover]: https://github.com/hashicorp/go-discover
 [in-memory HTTP traffic]: ../../../concepts/component_controller/#in-memory-traffic

@@ -44,13 +44,13 @@ You can set up and manage the standalone binary for {{< param "PRODUCT_NAME" >}}
 These steps assume you have a default systemd and {{< param "PRODUCT_NAME" >}} configuration.
 {{< /admonition >}}
 
-1. To create a new user called `grafana-alloy` run the following command in a terminal window:
+1. To create a new user called `alloy` run the following command in a terminal window:
 
    ```shell
-   sudo useradd --no-create-home --shell /bin/false grafana-alloy
+   sudo useradd --no-create-home --shell /bin/false alloy
    ```
 
-1. Create a service file in `/etc/systemd/system` called `grafana-alloy.service` with the following contents:
+1. Create a service file in `/etc/systemd/system` called `alloy.service` with the following contents:
 
    ```systemd
    [Unit]
@@ -61,9 +61,9 @@ These steps assume you have a default systemd and {{< param "PRODUCT_NAME" >}} c
 
    [Service]
    Restart=always
-   User=grafana-alloy
+   User=alloy
    Environment=HOSTNAME=%H
-   EnvironmentFile=/etc/default/grafana-alloy
+   EnvironmentFile=/etc/default/alloy
    WorkingDirectory=<WORKING_DIRECTORY>
    ExecStart=<BINARY_PATH> run $CUSTOM_ARGS --storage.path=<WORKING_DIRECTORY> $CONFIG_FILE
    ExecReload=/usr/bin/env kill -HUP $MAINPID
@@ -77,18 +77,18 @@ These steps assume you have a default systemd and {{< param "PRODUCT_NAME" >}} c
    Replace the following:
 
     * _`<BINARY_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary file.
-    * _`<WORKING_DIRECTORY>`_: The path to a working directory, for example `/var/lib/grafana-alloy`.
+    * _`<WORKING_DIRECTORY>`_: The path to a working directory, for example `/var/lib/alloy`.
 
-1. Create an environment file in `/etc/default/` called `grafana-alloy` with the following contents:
+1. Create an environment file in `/etc/default/` called `alloy` with the following contents:
 
    ```shell
    ## Path:
    ## Description: Grafana Alloy settings
    ## Type:        string
    ## Default:     ""
-   ## ServiceRestart: grafana-alloy
+   ## ServiceRestart: alloy
    #
-   # Command line options for grafana-alloy
+   # Command line options for alloy
    #
    # The configuration file holding the Grafana Alloy configuration.
    CONFIG_FILE="<CONFIG_PATH>"

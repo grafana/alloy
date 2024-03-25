@@ -18,7 +18,7 @@ The `convert` command converts a supported configuration format to {{< param "PR
 
 Usage:
 
-* `grafana-alloy convert [<FLAG> ...] <FILE_NAME>`
+* `alloy convert [<FLAG> ...] <FILE_NAME>`
 
    Replace the following:
 

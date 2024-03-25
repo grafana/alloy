@@ -15,13 +15,13 @@ weight: 300
 To start {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-sudo systemctl start grafana-alloy
+sudo systemctl start alloy
 ```
 
 (Optional) To verify that the service is running, run the following command in a terminal window:
 
 ```shell
-sudo systemctl status grafana-alloy
+sudo systemctl status alloy
 ```
 
 ## Configure {{% param "PRODUCT_NAME" %}} to start at boot
@@ -29,7 +29,7 @@ sudo systemctl status grafana-alloy
 To automatically run {{< param "PRODUCT_NAME" >}} when the system starts, run the following command in a terminal window:
 
 ```shell
-sudo systemctl enable grafana-alloy.service
+sudo systemctl enable alloy.service
 ```
 
 ## Restart {{% param "PRODUCT_NAME" %}}
@@ -37,7 +37,7 @@ sudo systemctl enable grafana-alloy.service
 To restart {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-sudo systemctl restart grafana-alloy
+sudo systemctl restart alloy
 ```
 
 ## Stop {{% param "PRODUCT_NAME" %}}
@@ -45,7 +45,7 @@ sudo systemctl restart grafana-alloy
 To stop {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-sudo systemctl stop grafana-alloy
+sudo systemctl stop alloy
 ```
 
 ## View {{% param "PRODUCT_NAME" %}} logs on Linux
@@ -53,7 +53,7 @@ sudo systemctl stop grafana-alloy
 To view {{< param "PRODUCT_NAME" >}} log files, run the following command in a terminal window:
 
 ```shell
-sudo journalctl -u grafana-alloy
+sudo journalctl -u alloy
 ```
 
 ## Next steps

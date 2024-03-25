@@ -637,7 +637,7 @@ The "get", "watch", and "list" permissions are required:
 ```yaml
 kind: ClusterRole
 metadata:
-  name: grafana-agent
+  name: alloy
 rules:
 - apiGroups: ["config.openshift.io"]
   resources: ["infrastructures", "infrastructures/status"]
@@ -691,7 +691,7 @@ The "get" and "list" permissions are required:
 ```yaml
 kind: ClusterRole
 metadata:
-  name: grafana-agent
+  name: alloy
 rules:
   - apiGroups: [""]
     resources: ["nodes"]

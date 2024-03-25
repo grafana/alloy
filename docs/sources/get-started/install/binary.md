@@ -23,7 +23,7 @@ To download {{< param "PRODUCT_NAME" >}} as a standalone binary, perform the fol
 
 1. Scroll down to the **Assets** section.
 
-1. Download the `grafana-alloy` zip file that matches your operating system and machine's architecture.
+1. Download the `alloy` zip file that matches your operating system and machine's architecture.
 
 1. Extract the package contents into a directory.
 

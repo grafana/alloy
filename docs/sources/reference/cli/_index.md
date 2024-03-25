@@ -10,7 +10,7 @@ weight: 100
 
 # The {{% param "PRODUCT_ROOT_NAME" %}} command-line interface
 
-The `grafana-alloy` binary exposes a command-line interface with subcommands to perform various operations.
+The `alloy` binary exposes a command-line interface with subcommands to perform various operations.
 
 The most common subcommand is [`run`][run] which accepts a configuration file and starts {{< param "PRODUCT_NAME" >}}.
 
@@ -20,7 +20,7 @@ Available commands:
 * [`fmt`][fmt]: Format a {{< param "PRODUCT_NAME" >}} configuration file.
 * [`run`][run]: Start {{< param "PRODUCT_NAME" >}}, given a configuration file.
 * [`tools`][tools]: Read the WAL and provide statistical information.
-* `completion`: Generate shell completion for the `grafana-alloy` CLI.
+* `completion`: Generate shell completion for the `alloy` CLI.
 * `help`: Print help for supported commands.
 
 [run]: ./run/

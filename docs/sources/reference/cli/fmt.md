@@ -16,7 +16,7 @@ The `fmt` command formats a given {{< param "PRODUCT_NAME" >}} configuration fil
 
 Usage:
 
-* `grafana-alloy fmt [FLAG ...] FILE_NAME`
+* `alloy fmt [FLAG ...] FILE_NAME`
 
    Replace the following:
 
