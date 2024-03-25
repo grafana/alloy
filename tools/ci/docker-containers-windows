@@ -58,7 +58,7 @@ case "$TARGET_CONTAINER" in
       -t "$ALLOY_IMAGE:$BRANCH_TAG"     \
       --build-arg VERSION="$VERSION"    \
       --build-arg RELEASE_BUILD=1       \
-      -f ./cmd/alloy/Dockerfile.windows \
+      -f ./Dockerfile.windows \
       .
     ;;
 

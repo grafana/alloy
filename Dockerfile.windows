@@ -21,7 +21,7 @@ RUN ""C:\Program Files\git\bin\bash.exe" -c "go clean -cache -modcache""
 FROM mcr.microsoft.com/windows/nanoserver:1809
 
 COPY --from=builder /src/alloy/build/alloy /bin/alloy
-COPY --from=builder /src/alloy/cmd/alloy/example-config.river /etc/alloy/config.river
+COPY --from=builder /src/alloy/example-config.river /etc/alloy/config.river
 
 ENTRYPOINT ["/bin/alloy"]
 CMD ["run", "/etc/alloy/config.river", "--storage.path=/etc/alloy/data"]

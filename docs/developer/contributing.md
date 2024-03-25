@@ -34,7 +34,7 @@ compiling and testing your changes do:
 
 ```bash
 # For building:
-go build ./cmd/alloy/
+go build .
 ./alloy -config.file=<config-file>
 
 # For testing:
@@ -62,7 +62,7 @@ To build Grafana Agent from source code, please install the following tools:
 
 You can directly use the go tool to download and install the agent binary into your GOPATH:
 
-    $ GO111MODULE=on go install github.com/grafana/alloy/cmd/alloy
+    $ GO111MODULE=on go install github.com/grafana/alloy
     $ alloy run your_config.river
 
 An example of the above configuration file can be found [here][example-config].
@@ -205,5 +205,5 @@ a hard fork (i.e., creating a new Go module with the same source).
 [CLA]: https://cla-assistant.io/grafana/alloy
 [good-first-issue]: https://github.com/grafana/alloy/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22
 [community-slack]: https://slack.grafana.com/
-[example-config]: ../../cmd/alloy/example-config.river
+[example-config]: ../../example-config.river
 [go-modules]: https://golang.org/cmd/go/#hdr-Modules__module_versions__and_more

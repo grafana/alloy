@@ -83,7 +83,7 @@ steps:
     path: /var/run/docker.sock
 trigger:
   paths:
-  - cmd/alloy/Dockerfile
+  - Dockerfile
   - tools/ci/docker-containers
   ref:
   - refs/heads/main
@@ -109,7 +109,7 @@ steps:
     path: //./pipe/docker_engine/
 trigger:
   paths:
-  - cmd/alloy/Dockerfile.windows
+  - Dockerfile.windows
   - tools/ci/docker-containers-windows
   ref:
   - refs/heads/main
@@ -401,6 +401,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 1a44f5bcd0f52805d4b7d1f11433f993832627118bbae3956fe5aa49b68d5a31
+hmac: 1c75c3c155d1dba9707728f7b6a5fed9399518900e86c7fba55e52a253bdb26b
 
 ...
