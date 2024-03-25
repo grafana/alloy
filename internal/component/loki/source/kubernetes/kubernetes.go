@@ -38,13 +38,13 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.kubernetes
 // component.
 type Arguments struct {
-	Targets   []discovery.Target  `river:"targets,attr"`
-	ForwardTo []loki.LogsReceiver `river:"forward_to,attr"`
+	Targets   []discovery.Target  `alloy:"targets,attr"`
+	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 
 	// Client settings to connect to Kubernetes.
-	Client commonk8s.ClientArguments `river:"client,block,optional"`
+	Client commonk8s.ClientArguments `alloy:"client,block,optional"`
 
-	Clustering cluster.ComponentBlock `river:"clustering,block,optional"`
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
 // DefaultArguments holds default settings for loki.source.kubernetes.
@@ -269,14 +269,14 @@ func (c *Component) DebugInfo() interface{} {
 
 // DebugInfo represents debug information for loki.source.kubernetes.
 type DebugInfo struct {
-	Targets []DebugInfoTarget `river:"target,block,optional"`
+	Targets []DebugInfoTarget `alloy:"target,block,optional"`
 }
 
 // DebugInfoTarget is debug information for an individual target being tailed
 // for logs.
 type DebugInfoTarget struct {
-	Labels          map[string]string `river:"labels,attr,optional"`
-	DiscoveryLabels map[string]string `river:"discovery_labels,attr,optional"`
-	LastError       string            `river:"last_error,attr,optional"`
-	UpdateTime      time.Time         `river:"update_time,attr,optional"`
+	Labels          map[string]string `alloy:"labels,attr,optional"`
+	DiscoveryLabels map[string]string `alloy:"discovery_labels,attr,optional"`
+	LastError       string            `alloy:"last_error,attr,optional"`
+	UpdateTime      time.Time         `alloy:"update_time,attr,optional"`
 }

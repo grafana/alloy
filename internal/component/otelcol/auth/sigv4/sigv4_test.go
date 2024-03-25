@@ -13,7 +13,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth/sigv4"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	extauth "go.opentelemetry.io/collector/extension/auth"
@@ -160,7 +160,7 @@ func Test(t *testing.T) {
 		cfg := tt.riverConfig
 		t.Logf("River configuration: %s", cfg)
 		var args sigv4.Arguments
-		require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 		go func() {
 			err := ctrl.Run(ctx, args)

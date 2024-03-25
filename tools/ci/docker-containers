@@ -7,6 +7,11 @@
 # from a Drone trigger.
 set -euxo pipefail
 
+RELEASE_ALLOY_IMAGE=grafana/alloy
+DEVELOPMENT_ALLOY_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
+
+DEFAULT_ALLOY_IMAGE=${RELEASE_ALLOY_IMAGE}
+
 # Environment variables used throughout this script. These must be set
 # otherwise bash will fail with an "unbound variable" error because of the `set
 # -u` flag on the above line.
@@ -15,10 +20,13 @@ set -euxo pipefail
 # empty string.
 export TARGET_CONTAINER=${1:-}
 export DRONE_TAG=${DRONE_TAG:-}
-export DRONE_BRANCH=${DRONE_BRANCH:-}
+export DEVELOPMENT=${DEVELOPMENT:-}
 
-export AGENT_IMAGE=grafana/agent
-export AGENT_BORINGCRYPTO_IMAGE=grafana/agent-boringcrypto
+if [ -n "$DEVELOPMENT" ]; then
+  DEFAULT_ALLOY_IMAGE=${DEVELOPMENT_ALLOY_IMAGE}
+fi
+
+export ALLOY_IMAGE=${DEFAULT_ALLOY_IMAGE}
 
 # We need to determine what version to assign to built binaries. If containers
 # are being built from a Drone tag trigger, we force the version to come from the
@@ -31,53 +39,42 @@ else
   VERSION=$(./tools/image-tag)
 fi
 
+# The TAG_VERSION is the version to use for the Docker tag. It is sanitized to
+# force it to be a valid tag name; ./tools/image-tag can emit characters that
+# are valid for semver but invalid for Docker tags, such as +.
+TAG_VERSION=${VERSION//+/-}
+
 # We also need to know which "branch tag" to update. Branch tags are used as a
 # secondary tag for Docker containers. The branch tag is "latest" when being
-# tagged from a stable release (i.e., not a release candidate) or the Drone
-# branch when coming from a Drone job.
+# tagged from a stable release (i.e., not a release candidate).
 #
 # If we're not running from drone, we'll set the branch tag to match the
 # version. This effectively acts as a no-op because it will tag the same Docker
 # image twice.
 if [ -n "$DRONE_TAG" ] && [[ "$DRONE_TAG" != *"-rc."* ]]; then
   BRANCH_TAG=latest
-elif [ -n "$DRONE_BRANCH" ]; then
-  BRANCH_TAG=$DRONE_BRANCH
 else
-  BRANCH_TAG=$VERSION
+  BRANCH_TAG=$TAG_VERSION
 fi
 
 # Build all of our images.
 
 export BUILD_PLATFORMS=linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
-export BUILD_PLATFORMS_BORINGCRYPTO=linux/amd64,linux/arm64
 
 case "$TARGET_CONTAINER" in
-  agent)
+  alloy)
     docker buildx build --push        \
       --platform $BUILD_PLATFORMS     \
       --build-arg RELEASE_BUILD=1     \
       --build-arg VERSION="$VERSION"  \
-      -t "$AGENT_IMAGE:$VERSION"      \
-      -t "$AGENT_IMAGE:$BRANCH_TAG"   \
-      -f cmd/grafana-agent/Dockerfile \
-      .
-    ;;
-
-  agent-boringcrypto)
-    docker buildx build --push        \
-      --platform $BUILD_PLATFORMS_BORINGCRYPTO     \
-      --build-arg RELEASE_BUILD=1     \
-      --build-arg VERSION="$VERSION"  \
-      --build-arg GOEXPERIMENT=boringcrypto \
-      -t "$AGENT_BORINGCRYPTO_IMAGE:$VERSION"      \
-      -t "$AGENT_BORINGCRYPTO_IMAGE:$BRANCH_TAG"   \
-      -f cmd/grafana-agent/Dockerfile \
+      -t "$ALLOY_IMAGE:$TAG_VERSION"  \
+      -t "$ALLOY_IMAGE:$BRANCH_TAG"   \
+      -f cmd/alloy/Dockerfile \
       .
     ;;
 
   *)
-    echo "Usage: $0 agent|agent-boringcrypto"
+    echo "Usage: $0 alloy"
     exit 1
     ;;
 esac

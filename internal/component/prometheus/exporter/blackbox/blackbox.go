@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/blackbox_exporter"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func init() {
@@ -69,10 +69,10 @@ var DefaultArguments = Arguments{
 
 // BlackboxTarget defines a target to be used by the exporter.
 type BlackboxTarget struct {
-	Name   string            `river:"name,attr"`
-	Target string            `river:"address,attr"`
-	Module string            `river:"module,attr,optional"`
-	Labels map[string]string `river:"labels,attr,optional"`
+	Name   string            `alloy:"name,attr"`
+	Target string            `alloy:"address,attr"`
+	Module string            `alloy:"module,attr,optional"`
+	Labels map[string]string `alloy:"labels,attr,optional"`
 }
 
 type TargetBlock []BlackboxTarget
@@ -91,10 +91,10 @@ func (t TargetBlock) Convert() []blackbox_exporter.BlackboxTarget {
 }
 
 type Arguments struct {
-	ConfigFile         string                    `river:"config_file,attr,optional"`
-	Config             rivertypes.OptionalSecret `river:"config,attr,optional"`
-	Targets            TargetBlock               `river:"target,block"`
-	ProbeTimeoutOffset time.Duration             `river:"probe_timeout_offset,attr,optional"`
+	ConfigFile         string                    `alloy:"config_file,attr,optional"`
+	Config             alloytypes.OptionalSecret `alloy:"config,attr,optional"`
+	Targets            TargetBlock               `alloy:"target,block"`
+	ProbeTimeoutOffset time.Duration             `alloy:"probe_timeout_offset,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

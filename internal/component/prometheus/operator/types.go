@@ -17,30 +17,30 @@ import (
 type Arguments struct {
 
 	// Client settings to connect to Kubernetes.
-	Client kubernetes.ClientArguments `river:"client,block,optional"`
+	Client kubernetes.ClientArguments `alloy:"client,block,optional"`
 
-	ForwardTo []storage.Appendable `river:"forward_to,attr"`
+	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
 
 	// Namespaces to search for monitor resources. Empty implies All namespaces
-	Namespaces []string `river:"namespaces,attr,optional"`
+	Namespaces []string `alloy:"namespaces,attr,optional"`
 
 	// LabelSelector allows filtering discovered monitor resources by labels
-	LabelSelector *config.LabelSelector `river:"selector,block,optional"`
+	LabelSelector *config.LabelSelector `alloy:"selector,block,optional"`
 
-	Clustering cluster.ComponentBlock `river:"clustering,block,optional"`
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 
-	RelabelConfigs []*flow_relabel.Config `river:"rule,block,optional"`
+	RelabelConfigs []*flow_relabel.Config `alloy:"rule,block,optional"`
 
-	Scrape ScrapeOptions `river:"scrape,block,optional"`
+	Scrape ScrapeOptions `alloy:"scrape,block,optional"`
 }
 
 // ScrapeOptions holds values that configure scraping behavior.
 type ScrapeOptions struct {
 	// DefaultScrapeInterval is the default interval to scrape targets.
-	DefaultScrapeInterval time.Duration `river:"default_scrape_interval,attr,optional"`
+	DefaultScrapeInterval time.Duration `alloy:"default_scrape_interval,attr,optional"`
 
 	// DefaultScrapeTimeout is the default timeout to scrape targets.
-	DefaultScrapeTimeout time.Duration `river:"default_scrape_timeout,attr,optional"`
+	DefaultScrapeTimeout time.Duration `alloy:"default_scrape_timeout,attr,optional"`
 }
 
 func (s *ScrapeOptions) GlobalConfig() promconfig.GlobalConfig {
@@ -70,14 +70,14 @@ func (args *Arguments) Validate() error {
 }
 
 type DebugInfo struct {
-	DiscoveredCRDs []*DiscoveredResource `river:"crds,block"`
-	Targets        []scrape.TargetStatus `river:"targets,block,optional"`
+	DiscoveredCRDs []*DiscoveredResource `alloy:"crds,block"`
+	Targets        []scrape.TargetStatus `alloy:"targets,block,optional"`
 }
 
 type DiscoveredResource struct {
-	Namespace        string    `river:"namespace,attr"`
-	Name             string    `river:"name,attr"`
-	LastReconcile    time.Time `river:"last_reconcile,attr,optional"`
-	ReconcileError   string    `river:"reconcile_error,attr,optional"`
-	ScrapeConfigsURL string    `river:"scrape_configs_url,attr,optional"`
+	Namespace        string    `alloy:"namespace,attr"`
+	Name             string    `alloy:"name,attr"`
+	LastReconcile    time.Time `alloy:"last_reconcile,attr,optional"`
+	ReconcileError   string    `alloy:"reconcile_error,attr,optional"`
+	ScrapeConfigsURL string    `alloy:"scrape_configs_url,attr,optional"`
 }

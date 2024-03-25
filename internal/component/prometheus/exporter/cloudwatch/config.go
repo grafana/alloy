@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/static/integrations/cloudwatch_exporter"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
 	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
 )
@@ -30,33 +30,33 @@ var defaults = Arguments{
 
 // Arguments are the river based options to configure the embedded CloudWatch exporter.
 type Arguments struct {
-	STSRegion             string                `river:"sts_region,attr"`
-	FIPSDisabled          bool                  `river:"fips_disabled,attr,optional"`
-	Debug                 bool                  `river:"debug,attr,optional"`
-	DiscoveryExportedTags TagsPerNamespace      `river:"discovery_exported_tags,attr,optional"`
-	Discovery             []DiscoveryJob        `river:"discovery,block,optional"`
-	Static                []StaticJob           `river:"static,block,optional"`
-	DecoupledScrape       DecoupledScrapeConfig `river:"decoupled_scraping,block,optional"`
+	STSRegion             string                `alloy:"sts_region,attr"`
+	FIPSDisabled          bool                  `alloy:"fips_disabled,attr,optional"`
+	Debug                 bool                  `alloy:"debug,attr,optional"`
+	DiscoveryExportedTags TagsPerNamespace      `alloy:"discovery_exported_tags,attr,optional"`
+	Discovery             []DiscoveryJob        `alloy:"discovery,block,optional"`
+	Static                []StaticJob           `alloy:"static,block,optional"`
+	DecoupledScrape       DecoupledScrapeConfig `alloy:"decoupled_scraping,block,optional"`
 }
 
 // DecoupledScrapeConfig is the configuration for decoupled scraping feature.
 type DecoupledScrapeConfig struct {
-	Enabled bool `river:"enabled,attr,optional"`
+	Enabled bool `alloy:"enabled,attr,optional"`
 	// ScrapeInterval defines the decoupled scraping interval. If left empty, a default interval of 5m is used
-	ScrapeInterval time.Duration `river:"scrape_interval,attr,optional"`
+	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
 }
 
 type TagsPerNamespace = cloudwatch_exporter.TagsPerNamespace
 
 // DiscoveryJob configures a discovery job for a given service.
 type DiscoveryJob struct {
-	Auth                      RegionAndRoles `river:",squash"`
-	CustomTags                Tags           `river:"custom_tags,attr,optional"`
-	SearchTags                Tags           `river:"search_tags,attr,optional"`
-	Type                      string         `river:"type,attr"`
-	DimensionNameRequirements []string       `river:"dimension_name_requirements,attr,optional"`
-	Metrics                   []Metric       `river:"metric,block"`
-	NilToZero                 *bool          `river:"nil_to_zero,attr,optional"`
+	Auth                      RegionAndRoles `alloy:",squash"`
+	CustomTags                Tags           `alloy:"custom_tags,attr,optional"`
+	SearchTags                Tags           `alloy:"search_tags,attr,optional"`
+	Type                      string         `alloy:"type,attr"`
+	DimensionNameRequirements []string       `alloy:"dimension_name_requirements,attr,optional"`
+	Metrics                   []Metric       `alloy:"metric,block"`
+	NilToZero                 *bool          `alloy:"nil_to_zero,attr,optional"`
 }
 
 // Tags represents a series of tags configured on an AWS resource. Each tag is a
@@ -65,25 +65,25 @@ type Tags map[string]string
 
 // StaticJob will scrape metrics that match all defined dimensions.
 type StaticJob struct {
-	Name       string         `river:",label"`
-	Auth       RegionAndRoles `river:",squash"`
-	CustomTags Tags           `river:"custom_tags,attr,optional"`
-	Namespace  string         `river:"namespace,attr"`
-	Dimensions Dimensions     `river:"dimensions,attr"`
-	Metrics    []Metric       `river:"metric,block"`
-	NilToZero  *bool          `river:"nil_to_zero,attr,optional"`
+	Name       string         `alloy:",label"`
+	Auth       RegionAndRoles `alloy:",squash"`
+	CustomTags Tags           `alloy:"custom_tags,attr,optional"`
+	Namespace  string         `alloy:"namespace,attr"`
+	Dimensions Dimensions     `alloy:"dimensions,attr"`
+	Metrics    []Metric       `alloy:"metric,block"`
+	NilToZero  *bool          `alloy:"nil_to_zero,attr,optional"`
 }
 
 // RegionAndRoles exposes for each supported job, the AWS regions and IAM roles in which the agent should perform the
 // scrape.
 type RegionAndRoles struct {
-	Regions []string `river:"regions,attr"`
-	Roles   []Role   `river:"role,block,optional"`
+	Regions []string `alloy:"regions,attr"`
+	Roles   []Role   `alloy:"role,block,optional"`
 }
 
 type Role struct {
-	RoleArn    string `river:"role_arn,attr"`
-	ExternalID string `river:"external_id,attr,optional"`
+	RoleArn    string `alloy:"role_arn,attr"`
+	ExternalID string `alloy:"external_id,attr,optional"`
 }
 
 // Dimensions are the label values used to identify a unique metric stream in CloudWatch.
@@ -91,14 +91,14 @@ type Role struct {
 type Dimensions map[string]string
 
 type Metric struct {
-	Name       string        `river:"name,attr"`
-	Statistics []string      `river:"statistics,attr"`
-	Period     time.Duration `river:"period,attr"`
-	Length     time.Duration `river:"length,attr,optional"`
-	NilToZero  *bool         `river:"nil_to_zero,attr,optional"`
+	Name       string        `alloy:"name,attr"`
+	Statistics []string      `alloy:"statistics,attr"`
+	Period     time.Duration `alloy:"period,attr"`
+	Length     time.Duration `alloy:"length,attr,optional"`
+	NilToZero  *bool         `alloy:"nil_to_zero,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = defaults
 }
@@ -246,7 +246,7 @@ func toYACEDiscoveryJob(rj DiscoveryJob) *yaceConf.Job {
 
 // getHash calculates the MD5 hash of the river representation of the config.
 func getHash(a Arguments) string {
-	bytes, err := river.Marshal(a)
+	bytes, err := syntax.Marshal(a)
 	if err != nil {
 		return "<unknown>"
 	}

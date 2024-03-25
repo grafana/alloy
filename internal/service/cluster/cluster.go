@@ -363,7 +363,7 @@ type Component interface {
 // component. ComponentBlock is intended to be exposed as a block called
 // "clustering".
 type ComponentBlock struct {
-	Enabled bool `river:"enabled,attr"`
+	Enabled bool `alloy:"enabled,attr"`
 }
 
 // Cluster is a read-only view of a cluster.

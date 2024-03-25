@@ -14,8 +14,8 @@ import (
 	lsf "github.com/grafana/agent/internal/component/loki/source/file"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/logproto"
-	"github.com/grafana/river"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -45,10 +45,10 @@ func TestRelabeling(t *testing.T) {
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
-		Rcs []*flow_relabel.Config `river:"rule,block,optional"`
+		Rcs []*flow_relabel.Config `alloy:"rule,block,optional"`
 	}
 	var relabelConfigs cfg
-	err := river.Unmarshal([]byte(rc), &relabelConfigs)
+	err := syntax.Unmarshal([]byte(rc), &relabelConfigs)
 	require.NoError(t, err)
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
@@ -108,10 +108,10 @@ func TestRelabeling(t *testing.T) {
 
 func BenchmarkRelabelComponent(b *testing.B) {
 	type cfg struct {
-		Rcs []*flow_relabel.Config `river:"rule,block,optional"`
+		Rcs []*flow_relabel.Config `alloy:"rule,block,optional"`
 	}
 	var relabelConfigs cfg
-	_ = river.Unmarshal([]byte(rc), &relabelConfigs)
+	_ = syntax.Unmarshal([]byte(rc), &relabelConfigs)
 	ch1 := loki.NewLogsReceiver()
 
 	// Create and run the component, so that it relabels and forwards logs.
@@ -154,10 +154,10 @@ func BenchmarkRelabelComponent(b *testing.B) {
 
 func TestCache(t *testing.T) {
 	type cfg struct {
-		Rcs []*flow_relabel.Config `river:"rule,block,optional"`
+		Rcs []*flow_relabel.Config `alloy:"rule,block,optional"`
 	}
 	var relabelConfigs cfg
-	err := river.Unmarshal([]byte(rc), &relabelConfigs)
+	err := syntax.Unmarshal([]byte(rc), &relabelConfigs)
 	require.NoError(t, err)
 
 	ch1 := loki.NewLogsReceiver()
@@ -309,8 +309,8 @@ rule {
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 	var args1, args2 Arguments
-	require.NoError(t, river.Unmarshal([]byte(stg1), &args1))
-	require.NoError(t, river.Unmarshal([]byte(stg2), &args2))
+	require.NoError(t, syntax.Unmarshal([]byte(stg1), &args1))
+	require.NoError(t, syntax.Unmarshal([]byte(stg2), &args2))
 	args1.ForwardTo = []loki.LogsReceiver{ch1}
 	args2.ForwardTo = []loki.LogsReceiver{ch2}
 
@@ -387,7 +387,7 @@ func TestRuleGetter(t *testing.T) {
        }
 		forward_to = []`
 	var args Arguments
-	require.NoError(t, river.Unmarshal([]byte(originalCfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(originalCfg), &args))
 
 	// Set up and start the component.
 	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.relabel")
@@ -409,7 +409,7 @@ func TestRuleGetter(t *testing.T) {
          regex        = "up"
        }
 		forward_to = []`
-	require.NoError(t, river.Unmarshal([]byte(updatedCfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(updatedCfg), &args))
 
 	require.NoError(t, tc.Update(args))
 	exports = tc.Exports().(Exports)

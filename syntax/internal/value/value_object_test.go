@@ -3,7 +3,7 @@ package value_test
 import (
 	"testing"
 
-	"github.com/grafana/river/internal/value"
+	"github.com/grafana/alloy/syntax/internal/value"
 	"github.com/stretchr/testify/require"
 )
 
@@ -11,23 +11,23 @@ import (
 // represented correctly.
 func TestBlockRepresentation(t *testing.T) {
 	type UnlabledBlock struct {
-		Value int `river:"value,attr"`
+		Value int `alloy:"value,attr"`
 	}
 	type LabeledBlock struct {
-		Value int    `river:"value,attr"`
-		Label string `river:",label"`
+		Value int    `alloy:"value,attr"`
+		Label string `alloy:",label"`
 	}
 	type OuterBlock struct {
-		Attr1 string `river:"attr_1,attr"`
-		Attr2 string `river:"attr_2,attr"`
+		Attr1 string `alloy:"attr_1,attr"`
+		Attr2 string `alloy:"attr_2,attr"`
 
-		UnlabledBlock1 UnlabledBlock `river:"unlabeled.a,block"`
-		UnlabledBlock2 UnlabledBlock `river:"unlabeled.b,block"`
-		UnlabledBlock3 UnlabledBlock `river:"other_unlabeled,block"`
+		UnlabledBlock1 UnlabledBlock `alloy:"unlabeled.a,block"`
+		UnlabledBlock2 UnlabledBlock `alloy:"unlabeled.b,block"`
+		UnlabledBlock3 UnlabledBlock `alloy:"other_unlabeled,block"`
 
-		LabeledBlock1 LabeledBlock `river:"labeled.a,block"`
-		LabeledBlock2 LabeledBlock `river:"labeled.b,block"`
-		LabeledBlock3 LabeledBlock `river:"other_labeled,block"`
+		LabeledBlock1 LabeledBlock `alloy:"labeled.a,block"`
+		LabeledBlock2 LabeledBlock `alloy:"labeled.b,block"`
+		LabeledBlock3 LabeledBlock `alloy:"other_labeled,block"`
 	}
 
 	val := OuterBlock{
@@ -101,14 +101,14 @@ func TestBlockRepresentation(t *testing.T) {
 // blocks are represented correctly.
 func TestSquashedBlockRepresentation(t *testing.T) {
 	type InnerStruct struct {
-		InnerField1 string `river:"inner_field_1,attr,optional"`
-		InnerField2 string `river:"inner_field_2,attr,optional"`
+		InnerField1 string `alloy:"inner_field_1,attr,optional"`
+		InnerField2 string `alloy:"inner_field_2,attr,optional"`
 	}
 
 	type OuterStruct struct {
-		OuterField1 string      `river:"outer_field_1,attr,optional"`
-		Inner       InnerStruct `river:",squash"`
-		OuterField2 string      `river:"outer_field_2,attr,optional"`
+		OuterField1 string      `alloy:"outer_field_1,attr,optional"`
+		Inner       InnerStruct `alloy:",squash"`
+		OuterField2 string      `alloy:"outer_field_2,attr,optional"`
 	}
 
 	val := OuterStruct{
@@ -139,18 +139,18 @@ func TestSquashedBlockRepresentation(t *testing.T) {
 
 func TestSliceOfBlocks(t *testing.T) {
 	type UnlabledBlock struct {
-		Value int `river:"value,attr"`
+		Value int `alloy:"value,attr"`
 	}
 	type LabeledBlock struct {
-		Value int    `river:"value,attr"`
-		Label string `river:",label"`
+		Value int    `alloy:"value,attr"`
+		Label string `alloy:",label"`
 	}
 	type OuterBlock struct {
-		Attr1 string `river:"attr_1,attr"`
-		Attr2 string `river:"attr_2,attr"`
+		Attr1 string `alloy:"attr_1,attr"`
+		Attr2 string `alloy:"attr_2,attr"`
 
-		Unlabeled []UnlabledBlock `river:"unlabeled,block"`
-		Labeled   []LabeledBlock  `river:"labeled,block"`
+		Unlabeled []UnlabledBlock `alloy:"unlabeled,block"`
+		Labeled   []LabeledBlock  `alloy:"labeled,block"`
 	}
 
 	val := OuterBlock{

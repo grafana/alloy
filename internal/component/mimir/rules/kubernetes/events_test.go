@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/agent/internal/component/common/kubernetes"
 	mimirClient "github.com/grafana/agent/internal/mimir/client"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
@@ -135,7 +136,7 @@ func TestEventLoop(t *testing.T) {
 		args:              Arguments{MimirNameSpacePrefix: "agent"},
 		metrics:           newMetrics(),
 	}
-	eventHandler := newQueuedEventHandler(component.log, component.queue)
+	eventHandler := kubernetes.NewQueuedEventHandler(component.log, component.queue)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -153,7 +154,7 @@ func TestEventLoop(t *testing.T) {
 		require.NoError(t, err)
 		return len(rules) == 1
 	}, time.Second, 10*time.Millisecond)
-	component.queue.AddRateLimited(event{typ: eventTypeSyncMimir})
+	component.queue.AddRateLimited(kubernetes.Event{Typ: eventTypeSyncMimir})
 
 	// Update the rule in kubernetes
 	rule.Spec.Groups[0].Rules = append(rule.Spec.Groups[0].Rules, v1.Rule{
@@ -170,7 +171,7 @@ func TestEventLoop(t *testing.T) {
 		rules := allRules[mimirNamespaceForRuleCRD("agent", rule)][0].Rules
 		return len(rules) == 2
 	}, time.Second, 10*time.Millisecond)
-	component.queue.AddRateLimited(event{typ: eventTypeSyncMimir})
+	component.queue.AddRateLimited(kubernetes.Event{Typ: eventTypeSyncMimir})
 
 	// Remove the rule from kubernetes
 	ruleIndexer.Delete(rule)

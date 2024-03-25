@@ -40,15 +40,15 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.podlogs
 // component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver `river:"forward_to,attr"`
+	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 
 	// Client settings to connect to Kubernetes.
-	Client commonk8s.ClientArguments `river:"client,block,optional"`
+	Client commonk8s.ClientArguments `alloy:"client,block,optional"`
 
-	Selector          config.LabelSelector `river:"selector,block,optional"`
-	NamespaceSelector config.LabelSelector `river:"namespace_selector,block,optional"`
+	Selector          config.LabelSelector `alloy:"selector,block,optional"`
+	NamespaceSelector config.LabelSelector `alloy:"namespace_selector,block,optional"`
 
-	Clustering cluster.ComponentBlock `river:"clustering,block,optional"`
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
 // DefaultArguments holds default settings for loki.source.kubernetes.
@@ -326,6 +326,6 @@ func (c *Component) DebugInfo() interface{} {
 
 // DebugInfo stores debug information for loki.source.podlogs.
 type DebugInfo struct {
-	DiscoveredPodLogs []DiscoveredPodLogs          `river:"pod_logs,block"`
-	Targets           []kubernetes.DebugInfoTarget `river:"target,block,optional"`
+	DiscoveredPodLogs []DiscoveredPodLogs          `alloy:"pod_logs,block"`
+	Targets           []kubernetes.DebugInfoTarget `alloy:"target,block,optional"`
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/consul"
@@ -28,22 +28,22 @@ func init() {
 }
 
 type Arguments struct {
-	Server       string            `river:"server,attr,optional"`
-	Token        rivertypes.Secret `river:"token,attr,optional"`
-	Datacenter   string            `river:"datacenter,attr,optional"`
-	Namespace    string            `river:"namespace,attr,optional"`
-	Partition    string            `river:"partition,attr,optional"`
-	TagSeparator string            `river:"tag_separator,attr,optional"`
-	Scheme       string            `river:"scheme,attr,optional"`
-	Username     string            `river:"username,attr,optional"`
-	Password     rivertypes.Secret `river:"password,attr,optional"`
-	AllowStale   bool              `river:"allow_stale,attr,optional"`
-	Services     []string          `river:"services,attr,optional"`
-	ServiceTags  []string          `river:"tags,attr,optional"`
-	NodeMeta     map[string]string `river:"node_meta,attr,optional"`
+	Server       string            `alloy:"server,attr,optional"`
+	Token        alloytypes.Secret `alloy:"token,attr,optional"`
+	Datacenter   string            `alloy:"datacenter,attr,optional"`
+	Namespace    string            `alloy:"namespace,attr,optional"`
+	Partition    string            `alloy:"partition,attr,optional"`
+	TagSeparator string            `alloy:"tag_separator,attr,optional"`
+	Scheme       string            `alloy:"scheme,attr,optional"`
+	Username     string            `alloy:"username,attr,optional"`
+	Password     alloytypes.Secret `alloy:"password,attr,optional"`
+	AllowStale   bool              `alloy:"allow_stale,attr,optional"`
+	Services     []string          `alloy:"services,attr,optional"`
+	ServiceTags  []string          `alloy:"tags,attr,optional"`
+	NodeMeta     map[string]string `alloy:"node_meta,attr,optional"`
 
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
 }
 
 var DefaultArguments = Arguments{

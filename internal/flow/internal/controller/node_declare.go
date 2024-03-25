@@ -4,8 +4,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // DeclareNode represents a declare block in the DAG.

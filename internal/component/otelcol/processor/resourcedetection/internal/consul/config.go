@@ -2,8 +2,8 @@ package consul
 
 import (
 	rac "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"go.opentelemetry.io/collector/config/configopaque"
 )
 
@@ -14,32 +14,32 @@ const Name = "consul"
 // See `consul.go#NewDetector` for more information.
 type Config struct {
 	// Address is the address of the Consul server
-	Address string `river:"address,attr,optional"`
+	Address string `alloy:"address,attr,optional"`
 
 	// Datacenter to use. If not provided, the default agent datacenter is used.
-	Datacenter string `river:"datacenter,attr,optional"`
+	Datacenter string `alloy:"datacenter,attr,optional"`
 
 	// Token is used to provide a per-request ACL token which overrides the
 	// agent's default (empty) token. Token is only required if
 	// [Consul's ACL System](https://www.consul.io/docs/security/acl/acl-system)
 	// is enabled.
-	Token rivertypes.Secret `river:"token,attr,optional"`
+	Token alloytypes.Secret `alloy:"token,attr,optional"`
 
 	// TokenFile is not necessary in River because users can use the local.file
 	// Flow component instead.
 	//
-	// TokenFile string `river:"token_file"`
+	// TokenFile string `alloy:"token_file"`
 
 	// Namespace is the name of the namespace to send along for the request
 	// when no other Namespace is present in the QueryOptions
-	Namespace string `river:"namespace,attr,optional"`
+	Namespace string `alloy:"namespace,attr,optional"`
 
 	// Allowlist of [Consul Metadata](https://www.consul.io/docs/agent/options#node_meta)
 	// keys to use as resource attributes.
-	MetaLabels []string `river:"meta,attr,optional"`
+	MetaLabels []string `alloy:"meta,attr,optional"`
 
 	// ResourceAttributes configuration for Consul detector
-	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -51,9 +51,9 @@ var DefaultArguments = Config{
 	},
 }
 
-var _ river.Defaulter = (*Config)(nil)
+var _ syntax.Defaulter = (*Config)(nil)
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
@@ -80,9 +80,9 @@ func (args Config) Convert() map[string]interface{} {
 
 // ResourceAttributesConfig provides config for consul resource attributes.
 type ResourceAttributesConfig struct {
-	CloudRegion rac.ResourceAttributeConfig `river:"cloud.region,block,optional"`
-	HostID      rac.ResourceAttributeConfig `river:"host.id,block,optional"`
-	HostName    rac.ResourceAttributeConfig `river:"host.name,block,optional"`
+	CloudRegion rac.ResourceAttributeConfig `alloy:"cloud.region,block,optional"`
+	HostID      rac.ResourceAttributeConfig `alloy:"host.id,block,optional"`
+	HostName    rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
 }
 
 func (r *ResourceAttributesConfig) Convert() map[string]interface{} {

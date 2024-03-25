@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/grafana/agent/internal/static/config/encoder"
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/diag"
-	"github.com/grafana/river/parser"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/diag"
+	"github.com/grafana/alloy/syntax/parser"
 )
 
 // A Source holds the contents of a parsed Flow source

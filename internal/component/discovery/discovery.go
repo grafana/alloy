@@ -90,7 +90,7 @@ func (t Target) NonMetaLabels() labels.Labels {
 
 // Exports holds values which are exported by all discovery components.
 type Exports struct {
-	Targets []Target `river:"targets,attr"`
+	Targets []Target `alloy:"targets,attr"`
 }
 
 // Discoverer is an alias for Prometheus' Discoverer interface, so users of this package don't need

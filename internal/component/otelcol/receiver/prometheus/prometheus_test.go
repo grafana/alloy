@@ -11,7 +11,7 @@ import (
 	flowprometheus "github.com/grafana/agent/internal/component/prometheus"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
@@ -36,7 +36,7 @@ func Test(t *testing.T) {
 		}
 	`
 	var args prometheus.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	// Override our settings so metrics get forwarded to metricCh.
 	metricCh := make(chan pmetric.Metrics)

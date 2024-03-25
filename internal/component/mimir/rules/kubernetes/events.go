@@ -6,69 +6,15 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/go-kit/log"
+	"github.com/grafana/agent/internal/component/common/kubernetes"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus/prometheus/model/rulefmt"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/yaml" // Used for CRD compatibility instead of gopkg.in/yaml.v2
 )
 
-// This type must be hashable, so it is kept simple. The indexer will maintain a
-// cache of current state, so this is mostly used for logging.
-type event struct {
-	typ       eventType
-	objectKey string
-}
-
-type eventType string
-
-const (
-	eventTypeResourceChanged eventType = "resource-changed"
-	eventTypeSyncMimir       eventType = "sync-mimir"
-)
-
-type queuedEventHandler struct {
-	log   log.Logger
-	queue workqueue.RateLimitingInterface
-}
-
-func newQueuedEventHandler(log log.Logger, queue workqueue.RateLimitingInterface) *queuedEventHandler {
-	return &queuedEventHandler{
-		log:   log,
-		queue: queue,
-	}
-}
-
-// OnAdd implements the cache.ResourceEventHandler interface.
-func (c *queuedEventHandler) OnAdd(obj interface{}, _ bool) {
-	c.publishEvent(obj)
-}
-
-// OnUpdate implements the cache.ResourceEventHandler interface.
-func (c *queuedEventHandler) OnUpdate(oldObj, newObj interface{}) {
-	c.publishEvent(newObj)
-}
-
-// OnDelete implements the cache.ResourceEventHandler interface.
-func (c *queuedEventHandler) OnDelete(obj interface{}) {
-	c.publishEvent(obj)
-}
-
-func (c *queuedEventHandler) publishEvent(obj interface{}) {
-	key, err := cache.MetaNamespaceKeyFunc(obj)
-	if err != nil {
-		level.Error(c.log).Log("msg", "failed to get key for object", "err", err)
-		return
-	}
-
-	c.queue.AddRateLimited(event{
-		typ:       eventTypeResourceChanged,
-		objectKey: key,
-	})
-}
+const eventTypeSyncMimir kubernetes.EventType = "sync-mimir"
 
 func (c *Component) eventLoop(ctx context.Context) {
 	for {
@@ -78,14 +24,14 @@ func (c *Component) eventLoop(ctx context.Context) {
 			return
 		}
 
-		evt := eventInterface.(event)
-		c.metrics.eventsTotal.WithLabelValues(string(evt.typ)).Inc()
+		evt := eventInterface.(kubernetes.Event)
+		c.metrics.eventsTotal.WithLabelValues(string(evt.Typ)).Inc()
 		err := c.processEvent(ctx, evt)
 
 		if err != nil {
 			retries := c.queue.NumRequeues(evt)
 			if retries < 5 {
-				c.metrics.eventsRetried.WithLabelValues(string(evt.typ)).Inc()
+				c.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
 				c.queue.AddRateLimited(evt)
 				level.Error(c.log).Log(
 					"msg", "failed to process event, will retry",
@@ -94,7 +40,7 @@ func (c *Component) eventLoop(ctx context.Context) {
 				)
 				continue
 			} else {
-				c.metrics.eventsFailed.WithLabelValues(string(evt.typ)).Inc()
+				c.metrics.eventsFailed.WithLabelValues(string(evt.Typ)).Inc()
 				level.Error(c.log).Log(
 					"msg", "failed to process event, max retries exceeded",
 					"retries", fmt.Sprintf("%d/5", retries),
@@ -110,12 +56,12 @@ func (c *Component) eventLoop(ctx context.Context) {
 	}
 }
 
-func (c *Component) processEvent(ctx context.Context, e event) error {
+func (c *Component) processEvent(ctx context.Context, e kubernetes.Event) error {
 	defer c.queue.Done(e)
 
-	switch e.typ {
-	case eventTypeResourceChanged:
-		level.Info(c.log).Log("msg", "processing event", "type", e.typ, "key", e.objectKey)
+	switch e.Typ {
+	case kubernetes.EventTypeResourceChanged:
+		level.Info(c.log).Log("msg", "processing event", "type", e.Typ, "key", e.ObjectKey)
 	case eventTypeSyncMimir:
 		level.Debug(c.log).Log("msg", "syncing current state from ruler")
 		err := c.syncMimir(ctx)
@@ -123,7 +69,7 @@ func (c *Component) processEvent(ctx context.Context, e event) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("unknown event type: %s", e.typ)
+		return fmt.Errorf("unknown event type: %s", e.Typ)
 	}
 
 	return c.reconcileState(ctx)
@@ -156,7 +102,7 @@ func (c *Component) reconcileState(ctx context.Context) error {
 		return err
 	}
 
-	diffs := diffRuleState(desiredState, c.currentState)
+	diffs := kubernetes.DiffRuleState(desiredState, c.currentState)
 	var result error
 	for ns, diff := range diffs {
 		err = c.applyChanges(ctx, ns, diff)
@@ -169,13 +115,13 @@ func (c *Component) reconcileState(ctx context.Context) error {
 	return result
 }
 
-func (c *Component) loadStateFromK8s() (ruleGroupsByNamespace, error) {
+func (c *Component) loadStateFromK8s() (kubernetes.RuleGroupsByNamespace, error) {
 	matchedNamespaces, err := c.namespaceLister.List(c.namespaceSelector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list namespaces: %w", err)
 	}
 
-	desiredState := make(ruleGroupsByNamespace)
+	desiredState := make(kubernetes.RuleGroupsByNamespace)
 	for _, ns := range matchedNamespaces {
 		crdState, err := c.ruleLister.PrometheusRules(ns.Name).List(c.ruleSelector)
 		if err != nil {
@@ -211,26 +157,26 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 	return groups.Groups, nil
 }
 
-func (c *Component) applyChanges(ctx context.Context, namespace string, diffs []ruleGroupDiff) error {
+func (c *Component) applyChanges(ctx context.Context, namespace string, diffs []kubernetes.RuleGroupDiff) error {
 	if len(diffs) == 0 {
 		return nil
 	}
 
 	for _, diff := range diffs {
 		switch diff.Kind {
-		case ruleGroupDiffKindAdd:
+		case kubernetes.RuleGroupDiffKindAdd:
 			err := c.mimirClient.CreateRuleGroup(ctx, namespace, diff.Desired)
 			if err != nil {
 				return err
 			}
 			level.Info(c.log).Log("msg", "added rule group", "namespace", namespace, "group", diff.Desired.Name)
-		case ruleGroupDiffKindRemove:
+		case kubernetes.RuleGroupDiffKindRemove:
 			err := c.mimirClient.DeleteRuleGroup(ctx, namespace, diff.Actual.Name)
 			if err != nil {
 				return err
 			}
 			level.Info(c.log).Log("msg", "removed rule group", "namespace", namespace, "group", diff.Actual.Name)
-		case ruleGroupDiffKindUpdate:
+		case kubernetes.RuleGroupDiffKindUpdate:
 			err := c.mimirClient.CreateRuleGroup(ctx, namespace, diff.Desired)
 			if err != nil {
 				return err

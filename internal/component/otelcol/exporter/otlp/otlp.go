@@ -30,31 +30,29 @@ func init() {
 
 // Arguments configures the otelcol.exporter.otlp component.
 type Arguments struct {
-	Timeout time.Duration `river:"timeout,attr,optional"`
+	Timeout time.Duration `alloy:"timeout,attr,optional"`
 
-	Queue otelcol.QueueArguments `river:"sending_queue,block,optional"`
-	Retry otelcol.RetryArguments `river:"retry_on_failure,block,optional"`
+	Queue otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
+	Retry otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
-	Client GRPCClientArguments `river:"client,block"`
+	Client GRPCClientArguments `alloy:"client,block"`
 }
 
 var _ exporter.Arguments = Arguments{}
 
-// DefaultArguments holds default values for Arguments.
-var DefaultArguments = Arguments{
-	Timeout:      otelcol.DefaultTimeout,
-	Queue:        otelcol.DefaultQueueArguments,
-	Retry:        otelcol.DefaultRetryArguments,
-	Client:       DefaultGRPCClientArguments,
-	DebugMetrics: otelcol.DefaultDebugMetricsArguments,
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		Timeout: otelcol.DefaultTimeout,
+	}
+
+	args.Queue.SetToDefault()
+	args.Retry.SetToDefault()
+	args.Client.SetToDefault()
+	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements exporter.Arguments.
@@ -88,16 +86,12 @@ func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
 // component-specific defaults.
 type GRPCClientArguments otelcol.GRPCClientArguments
 
-// DefaultGRPCClientArguments holds component-specific default settings for
-// GRPCClientArguments.
-var DefaultGRPCClientArguments = GRPCClientArguments{
-	Headers:         map[string]string{},
-	Compression:     otelcol.CompressionTypeGzip,
-	WriteBufferSize: 512 * 1024,
-	BalancerName:    "pick_first",
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *GRPCClientArguments) SetToDefault() {
-	*args = DefaultGRPCClientArguments
+	*args = GRPCClientArguments{
+		Headers:         map[string]string{},
+		Compression:     otelcol.CompressionTypeGzip,
+		WriteBufferSize: 512 * 1024,
+		BalancerName:    otelcol.DefaultBalancerName,
+	}
 }

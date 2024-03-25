@@ -6,7 +6,7 @@ import (
 
 	"github.com/grafana/agent/internal/component/otelcol"
 	"github.com/grafana/agent/internal/component/otelcol/receiver/kafka"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
@@ -116,7 +116,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args kafka.Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			require.NoError(t, err)
 
 			actualPtr, err := args.Convert()
@@ -358,7 +358,7 @@ func TestArguments_Auth(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args kafka.Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			require.NoError(t, err)
 
 			actualPtr, err := args.Convert()
@@ -425,7 +425,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args kafka.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.agentCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/printer"
-	"github.com/grafana/river/token"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/printer"
+	"github.com/grafana/alloy/syntax/token"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,8 +103,8 @@ func TestBuilder_GoEncode_SortMapKeys(t *testing.T) {
 	f := builder.NewFile()
 
 	type Ordered struct {
-		SomeKey  string `river:"some_key,attr"`
-		OtherKey string `river:"other_key,attr"`
+		SomeKey  string `alloy:"some_key,attr"`
+		OtherKey string `alloy:"other_key,attr"`
 	}
 
 	// Maps are unordered because you can't iterate over their keys in a
@@ -135,14 +135,14 @@ func TestBuilder_GoEncode_SortMapKeys(t *testing.T) {
 
 func TestBuilder_AppendFrom(t *testing.T) {
 	type InnerBlock struct {
-		Number int `river:"number,attr"`
+		Number int `alloy:"number,attr"`
 	}
 
 	type Structure struct {
-		Field string `river:"field,attr"`
+		Field string `alloy:"field,attr"`
 
-		Block       InnerBlock   `river:"block,block"`
-		OtherBlocks []InnerBlock `river:"other_block,block"`
+		Block       InnerBlock   `alloy:"block,block"`
+		OtherBlocks []InnerBlock `alloy:"other_block,block"`
 	}
 
 	f := builder.NewFile()
@@ -177,19 +177,19 @@ func TestBuilder_AppendFrom(t *testing.T) {
 
 func TestBuilder_AppendFrom_EnumSlice(t *testing.T) {
 	type InnerBlock struct {
-		Number int `river:"number,attr"`
+		Number int `alloy:"number,attr"`
 	}
 
 	type EnumBlock struct {
-		BlockA InnerBlock `river:"a,block,optional"`
-		BlockB InnerBlock `river:"b,block,optional"`
-		BlockC InnerBlock `river:"c,block,optional"`
+		BlockA InnerBlock `alloy:"a,block,optional"`
+		BlockB InnerBlock `alloy:"b,block,optional"`
+		BlockC InnerBlock `alloy:"c,block,optional"`
 	}
 
 	type Structure struct {
-		Field string `river:"field,attr"`
+		Field string `alloy:"field,attr"`
 
-		OtherBlocks []EnumBlock `river:"block,enum"`
+		OtherBlocks []EnumBlock `alloy:"block,enum"`
 	}
 
 	f := builder.NewFile()
@@ -223,19 +223,19 @@ func TestBuilder_AppendFrom_EnumSlice(t *testing.T) {
 
 func TestBuilder_AppendFrom_EnumSlice_Pointer(t *testing.T) {
 	type InnerBlock struct {
-		Number int `river:"number,attr"`
+		Number int `alloy:"number,attr"`
 	}
 
 	type EnumBlock struct {
-		BlockA *InnerBlock `river:"a,block,optional"`
-		BlockB *InnerBlock `river:"b,block,optional"`
-		BlockC *InnerBlock `river:"c,block,optional"`
+		BlockA *InnerBlock `alloy:"a,block,optional"`
+		BlockB *InnerBlock `alloy:"b,block,optional"`
+		BlockC *InnerBlock `alloy:"c,block,optional"`
 	}
 
 	type Structure struct {
-		Field string `river:"field,attr"`
+		Field string `alloy:"field,attr"`
 
-		OtherBlocks []EnumBlock `river:"block,enum"`
+		OtherBlocks []EnumBlock `alloy:"block,enum"`
 	}
 
 	f := builder.NewFile()
@@ -269,10 +269,10 @@ func TestBuilder_AppendFrom_EnumSlice_Pointer(t *testing.T) {
 
 func TestBuilder_SkipOptional(t *testing.T) {
 	type Structure struct {
-		OptFieldA string `river:"opt_field_a,attr,optional"`
-		OptFieldB string `river:"opt_field_b,attr,optional"`
-		ReqFieldA string `river:"req_field_a,attr"`
-		ReqFieldB string `river:"req_field_b,attr"`
+		OptFieldA string `alloy:"opt_field_a,attr,optional"`
+		OptFieldB string `alloy:"opt_field_b,attr,optional"`
+		ReqFieldA string `alloy:"req_field_a,attr"`
+		ReqFieldB string `alloy:"req_field_b,attr"`
 	}
 
 	f := builder.NewFile()
@@ -346,14 +346,14 @@ func TestBuilder_GoEncode_Tokenizer(t *testing.T) {
 
 func TestBuilder_ValueOverrideHook(t *testing.T) {
 	type InnerBlock struct {
-		AnotherField string `river:"another_field,attr"`
+		AnotherField string `alloy:"another_field,attr"`
 	}
 
 	type Structure struct {
-		Field string `river:"field,attr"`
+		Field string `alloy:"field,attr"`
 
-		Block       InnerBlock   `river:"block,block"`
-		OtherBlocks []InnerBlock `river:"other_block,block"`
+		Block       InnerBlock   `alloy:"block,block"`
+		OtherBlocks []InnerBlock `alloy:"other_block,block"`
 	}
 
 	f := builder.NewFile()
@@ -391,7 +391,7 @@ func TestBuilder_ValueOverrideHook(t *testing.T) {
 
 func TestBuilder_MapBlocks(t *testing.T) {
 	type block struct {
-		Value map[string]any `river:"block,block,optional"`
+		Value map[string]any `alloy:"block,block,optional"`
 	}
 
 	f := builder.NewFile()

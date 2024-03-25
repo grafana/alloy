@@ -84,7 +84,7 @@ inside a `client` block.
 [authorization]: #authorization-block
 [oauth2]: #oauth2-block
 [tls_config]: #tls_config-block
-[clustering]: #clustering-beta
+[clustering]: #clustering-block
 
 ### client block
 
@@ -133,7 +133,7 @@ Name                     | Type                | Description                    
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### clustering (beta)
+### clustering block
 
 Name      | Type   | Description                                         | Default | Required
 ----------|--------|-----------------------------------------------------|---------|---------

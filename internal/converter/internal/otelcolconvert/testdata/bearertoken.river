@@ -1,0 +1,39 @@
+local.file "default_fromfile" {
+	filename  = "file-containing.token"
+	is_secret = true
+}
+
+otelcol.auth.bearer "default_fromfile" {
+	token = local.file.default_fromfile.content
+}
+
+otelcol.auth.bearer "default_withscheme" {
+	scheme = "CustomScheme"
+	token  = "randomtoken"
+}
+
+otelcol.receiver.otlp "default" {
+	grpc { }
+
+	http { }
+
+	output {
+		metrics = [otelcol.exporter.otlp.default_withauth.input, otelcol.exporter.otlphttp.default_withauth.input]
+		logs    = [otelcol.exporter.otlp.default_withauth.input, otelcol.exporter.otlphttp.default_withauth.input]
+		traces  = [otelcol.exporter.otlp.default_withauth.input, otelcol.exporter.otlphttp.default_withauth.input]
+	}
+}
+
+otelcol.exporter.otlp "default_withauth" {
+	client {
+		endpoint = "database:4317"
+		auth     = otelcol.auth.bearer.default_fromfile.handler
+	}
+}
+
+otelcol.exporter.otlphttp "default_withauth" {
+	client {
+		endpoint = "database:4318"
+		auth     = otelcol.auth.bearer.default_withscheme.handler
+	}
+}

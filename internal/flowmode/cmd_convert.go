@@ -13,7 +13,7 @@ import (
 
 	"github.com/grafana/agent/internal/converter"
 	convert_diag "github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/river/diag"
+	"github.com/grafana/alloy/syntax/diag"
 )
 
 func convertCommand() *cobra.Command {

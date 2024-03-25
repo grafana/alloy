@@ -2,13 +2,13 @@ package eks
 
 import (
 	rac "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 )
 
 const Name = "eks"
 
 type Config struct {
-	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -19,9 +19,9 @@ var DefaultArguments = Config{
 	},
 }
 
-var _ river.Defaulter = (*Config)(nil)
+var _ syntax.Defaulter = (*Config)(nil)
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
@@ -34,8 +34,8 @@ func (args Config) Convert() map[string]interface{} {
 
 // ResourceAttributesConfig provides config for eks resource attributes.
 type ResourceAttributesConfig struct {
-	CloudPlatform rac.ResourceAttributeConfig `river:"cloud.platform,block,optional"`
-	CloudProvider rac.ResourceAttributeConfig `river:"cloud.provider,block,optional"`
+	CloudPlatform rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
+	CloudProvider rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {

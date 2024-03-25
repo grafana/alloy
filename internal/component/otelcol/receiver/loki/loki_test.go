@@ -10,8 +10,8 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/logproto"
-	"github.com/grafana/river"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -30,7 +30,7 @@ func Test(t *testing.T) {
 		}
 	`
 	var args Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	// Override our settings so logs get forwarded to logCh.
 	logCh := make(chan plog.Logs)

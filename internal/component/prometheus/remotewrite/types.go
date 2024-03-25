@@ -8,7 +8,7 @@ import (
 
 	types "github.com/grafana/agent/internal/component/common/config"
 	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 
 	"github.com/google/uuid"
 	common "github.com/prometheus/common/config"
@@ -54,9 +54,9 @@ var (
 // Arguments represents the input state of the prometheus.remote_write
 // component.
 type Arguments struct {
-	ExternalLabels map[string]string  `river:"external_labels,attr,optional"`
-	Endpoints      []*EndpointOptions `river:"endpoint,block,optional"`
-	WALOptions     WALOptions         `river:"wal,block,optional"`
+	ExternalLabels map[string]string  `alloy:"external_labels,attr,optional"`
+	Endpoints      []*EndpointOptions `alloy:"endpoint,block,optional"`
+	WALOptions     WALOptions         `alloy:"wal,block,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -67,18 +67,18 @@ func (rc *Arguments) SetToDefault() {
 // EndpointOptions describes an individual location for where metrics in the WAL
 // should be delivered to using the remote_write protocol.
 type EndpointOptions struct {
-	Name                 string                  `river:"name,attr,optional"`
-	URL                  string                  `river:"url,attr"`
-	RemoteTimeout        time.Duration           `river:"remote_timeout,attr,optional"`
-	Headers              map[string]string       `river:"headers,attr,optional"`
-	SendExemplars        bool                    `river:"send_exemplars,attr,optional"`
-	SendNativeHistograms bool                    `river:"send_native_histograms,attr,optional"`
-	HTTPClientConfig     *types.HTTPClientConfig `river:",squash"`
-	QueueOptions         *QueueOptions           `river:"queue_config,block,optional"`
-	MetadataOptions      *MetadataOptions        `river:"metadata_config,block,optional"`
-	WriteRelabelConfigs  []*flow_relabel.Config  `river:"write_relabel_config,block,optional"`
-	SigV4                *SigV4Config            `river:"sigv4,block,optional"`
-	AzureAD              *AzureADConfig          `river:"azuread,block,optional"`
+	Name                 string                  `alloy:"name,attr,optional"`
+	URL                  string                  `alloy:"url,attr"`
+	RemoteTimeout        time.Duration           `alloy:"remote_timeout,attr,optional"`
+	Headers              map[string]string       `alloy:"headers,attr,optional"`
+	SendExemplars        bool                    `alloy:"send_exemplars,attr,optional"`
+	SendNativeHistograms bool                    `alloy:"send_native_histograms,attr,optional"`
+	HTTPClientConfig     *types.HTTPClientConfig `alloy:",squash"`
+	QueueOptions         *QueueOptions           `alloy:"queue_config,block,optional"`
+	MetadataOptions      *MetadataOptions        `alloy:"metadata_config,block,optional"`
+	WriteRelabelConfigs  []*flow_relabel.Config  `alloy:"write_relabel_config,block,optional"`
+	SigV4                *SigV4Config            `alloy:"sigv4,block,optional"`
+	AzureAD              *AzureADConfig          `alloy:"azuread,block,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -134,15 +134,15 @@ func (r *EndpointOptions) Validate() error {
 
 // QueueOptions handles the low level queue config options for a remote_write
 type QueueOptions struct {
-	Capacity          int           `river:"capacity,attr,optional"`
-	MaxShards         int           `river:"max_shards,attr,optional"`
-	MinShards         int           `river:"min_shards,attr,optional"`
-	MaxSamplesPerSend int           `river:"max_samples_per_send,attr,optional"`
-	BatchSendDeadline time.Duration `river:"batch_send_deadline,attr,optional"`
-	MinBackoff        time.Duration `river:"min_backoff,attr,optional"`
-	MaxBackoff        time.Duration `river:"max_backoff,attr,optional"`
-	RetryOnHTTP429    bool          `river:"retry_on_http_429,attr,optional"`
-	SampleAgeLimit    time.Duration `river:"sample_age_limit,attr,optional"`
+	Capacity          int           `alloy:"capacity,attr,optional"`
+	MaxShards         int           `alloy:"max_shards,attr,optional"`
+	MinShards         int           `alloy:"min_shards,attr,optional"`
+	MaxSamplesPerSend int           `alloy:"max_samples_per_send,attr,optional"`
+	BatchSendDeadline time.Duration `alloy:"batch_send_deadline,attr,optional"`
+	MinBackoff        time.Duration `alloy:"min_backoff,attr,optional"`
+	MaxBackoff        time.Duration `alloy:"max_backoff,attr,optional"`
+	RetryOnHTTP429    bool          `alloy:"retry_on_http_429,attr,optional"`
+	SampleAgeLimit    time.Duration `alloy:"sample_age_limit,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -173,9 +173,9 @@ func (r *QueueOptions) toPrometheusType() config.QueueConfig {
 // MetadataOptions configures how metadata gets sent over the remote_write
 // protocol.
 type MetadataOptions struct {
-	Send              bool          `river:"send,attr,optional"`
-	SendInterval      time.Duration `river:"send_interval,attr,optional"`
-	MaxSamplesPerSend int           `river:"max_samples_per_send,attr,optional"`
+	Send              bool          `alloy:"send,attr,optional"`
+	SendInterval      time.Duration `alloy:"send_interval,attr,optional"`
+	MaxSamplesPerSend int           `alloy:"max_samples_per_send,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -199,9 +199,9 @@ func (o *MetadataOptions) toPrometheusType() config.MetadataConfig {
 
 // WALOptions configures behavior within the WAL.
 type WALOptions struct {
-	TruncateFrequency time.Duration `river:"truncate_frequency,attr,optional"`
-	MinKeepaliveTime  time.Duration `river:"min_keepalive_time,attr,optional"`
-	MaxKeepaliveTime  time.Duration `river:"max_keepalive_time,attr,optional"`
+	TruncateFrequency time.Duration `alloy:"truncate_frequency,attr,optional"`
+	MinKeepaliveTime  time.Duration `alloy:"min_keepalive_time,attr,optional"`
+	MaxKeepaliveTime  time.Duration `alloy:"max_keepalive_time,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -224,7 +224,7 @@ func (o *WALOptions) Validate() error {
 // Exports are the set of fields exposed by the prometheus.remote_write
 // component.
 type Exports struct {
-	Receiver storage.Appendable `river:"receiver,attr"`
+	Receiver storage.Appendable `alloy:"receiver,attr"`
 }
 
 func convertConfigs(cfg Arguments) (*config.Config, error) {
@@ -271,7 +271,7 @@ func toLabels(in map[string]string) labels.Labels {
 // ManagedIdentityConfig is used to store managed identity config values
 type ManagedIdentityConfig struct {
 	// ClientID is the clientId of the managed identity that is being used to authenticate.
-	ClientID string `river:"client_id,attr"`
+	ClientID string `alloy:"client_id,attr"`
 }
 
 func (m ManagedIdentityConfig) toPrometheusType() azuread.ManagedIdentityConfig {
@@ -282,10 +282,10 @@ func (m ManagedIdentityConfig) toPrometheusType() azuread.ManagedIdentityConfig 
 
 type AzureADConfig struct {
 	// ManagedIdentity is the managed identity that is being used to authenticate.
-	ManagedIdentity ManagedIdentityConfig `river:"managed_identity,block"`
+	ManagedIdentity ManagedIdentityConfig `alloy:"managed_identity,block"`
 
 	// Cloud is the Azure cloud in which the service is running. Example: AzurePublic/AzureGovernment/AzureChina.
-	Cloud string `river:"cloud,attr,optional"`
+	Cloud string `alloy:"cloud,attr,optional"`
 }
 
 func (a *AzureADConfig) Validate() error {
@@ -321,11 +321,11 @@ func (a *AzureADConfig) toPrometheusType() *azuread.AzureADConfig {
 }
 
 type SigV4Config struct {
-	Region    string            `river:"region,attr,optional"`
-	AccessKey string            `river:"access_key,attr,optional"`
-	SecretKey rivertypes.Secret `river:"secret_key,attr,optional"`
-	Profile   string            `river:"profile,attr,optional"`
-	RoleARN   string            `river:"role_arn,attr,optional"`
+	Region    string            `alloy:"region,attr,optional"`
+	AccessKey string            `alloy:"access_key,attr,optional"`
+	SecretKey alloytypes.Secret `alloy:"secret_key,attr,optional"`
+	Profile   string            `alloy:"profile,attr,optional"`
+	RoleARN   string            `alloy:"role_arn,attr,optional"`
 }
 
 func (s *SigV4Config) Validate() error {

@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,14 +16,14 @@ import (
 
 func TestVM_File(t *testing.T) {
 	type block struct {
-		String string `river:"string,attr"`
-		Number int    `river:"number,attr,optional"`
+		String string `alloy:"string,attr"`
+		Number int    `alloy:"number,attr,optional"`
 	}
 	type file struct {
-		SettingA int `river:"setting_a,attr"`
-		SettingB int `river:"setting_b,attr,optional"`
+		SettingA int `alloy:"setting_a,attr"`
+		SettingB int `alloy:"setting_b,attr,optional"`
 
-		Block block `river:"some_block,block,optional"`
+		Block block `alloy:"some_block,block,optional"`
 	}
 
 	input := `
@@ -54,8 +54,8 @@ func TestVM_File(t *testing.T) {
 func TestVM_Block_Attributes(t *testing.T) {
 	t.Run("Decodes attributes", func(t *testing.T) {
 		type block struct {
-			Number int    `river:"number,attr"`
-			String string `river:"string,attr"`
+			Number int    `alloy:"number,attr"`
+			String string `alloy:"string,attr"`
 		}
 
 		input := `some_block {
@@ -72,7 +72,7 @@ func TestVM_Block_Attributes(t *testing.T) {
 
 	t.Run("Fails if attribute used as block", func(t *testing.T) {
 		type block struct {
-			Number int `river:"number,attr"`
+			Number int `alloy:"number,attr"`
 		}
 
 		input := `some_block {
@@ -86,8 +86,8 @@ func TestVM_Block_Attributes(t *testing.T) {
 
 	t.Run("Fails if required attributes are not present", func(t *testing.T) {
 		type block struct {
-			Number int    `river:"number,attr"`
-			String string `river:"string,attr"`
+			Number int    `alloy:"number,attr"`
+			String string `alloy:"string,attr"`
 		}
 
 		input := `some_block {
@@ -101,8 +101,8 @@ func TestVM_Block_Attributes(t *testing.T) {
 
 	t.Run("Succeeds if optional attributes are not present", func(t *testing.T) {
 		type block struct {
-			Number int    `river:"number,attr"`
-			String string `river:"string,attr,optional"`
+			Number int    `alloy:"number,attr"`
+			String string `alloy:"string,attr,optional"`
 		}
 
 		input := `some_block {
@@ -118,7 +118,7 @@ func TestVM_Block_Attributes(t *testing.T) {
 
 	t.Run("Fails if attribute is not defined in struct", func(t *testing.T) {
 		type block struct {
-			Number int `river:"number,attr"`
+			Number int `alloy:"number,attr"`
 		}
 
 		input := `some_block {
@@ -133,7 +133,7 @@ func TestVM_Block_Attributes(t *testing.T) {
 
 	t.Run("Tests decoding into an interface", func(t *testing.T) {
 		type block struct {
-			Anything interface{} `river:"anything,attr"`
+			Anything interface{} `alloy:"anything,attr"`
 		}
 
 		tests := []struct {
@@ -169,10 +169,10 @@ func TestVM_Block_Attributes(t *testing.T) {
 
 	t.Run("Supports arbitrarily nested struct pointer fields", func(t *testing.T) {
 		type block struct {
-			NumberA int    `river:"number_a,attr"`
-			NumberB *int   `river:"number_b,attr"`
-			NumberC **int  `river:"number_c,attr"`
-			NumberD ***int `river:"number_d,attr"`
+			NumberA int    `alloy:"number_a,attr"`
+			NumberB *int   `alloy:"number_b,attr"`
+			NumberC **int  `alloy:"number_c,attr"`
+			NumberD ***int `alloy:"number_d,attr"`
 		}
 
 		input := `some_block {
@@ -193,14 +193,14 @@ func TestVM_Block_Attributes(t *testing.T) {
 
 	t.Run("Supports squashed attributes", func(t *testing.T) {
 		type InnerStruct struct {
-			InnerField1 string `river:"inner_field_1,attr,optional"`
-			InnerField2 string `river:"inner_field_2,attr,optional"`
+			InnerField1 string `alloy:"inner_field_1,attr,optional"`
+			InnerField2 string `alloy:"inner_field_2,attr,optional"`
 		}
 
 		type OuterStruct struct {
-			OuterField1 string      `river:"outer_field_1,attr,optional"`
-			Inner       InnerStruct `river:",squash"`
-			OuterField2 string      `river:"outer_field_2,attr,optional"`
+			OuterField1 string      `alloy:"outer_field_1,attr,optional"`
+			Inner       InnerStruct `alloy:",squash"`
+			OuterField2 string      `alloy:"outer_field_2,attr,optional"`
 		}
 
 		var (
@@ -229,14 +229,14 @@ func TestVM_Block_Attributes(t *testing.T) {
 
 	t.Run("Supports squashed attributes in pointers", func(t *testing.T) {
 		type InnerStruct struct {
-			InnerField1 string `river:"inner_field_1,attr,optional"`
-			InnerField2 string `river:"inner_field_2,attr,optional"`
+			InnerField1 string `alloy:"inner_field_1,attr,optional"`
+			InnerField2 string `alloy:"inner_field_2,attr,optional"`
 		}
 
 		type OuterStruct struct {
-			OuterField1 string       `river:"outer_field_1,attr,optional"`
-			Inner       *InnerStruct `river:",squash"`
-			OuterField2 string       `river:"outer_field_2,attr,optional"`
+			OuterField1 string       `alloy:"outer_field_1,attr,optional"`
+			Inner       *InnerStruct `alloy:",squash"`
+			OuterField2 string       `alloy:"outer_field_2,attr,optional"`
 		}
 
 		var (
@@ -266,13 +266,13 @@ func TestVM_Block_Attributes(t *testing.T) {
 
 func TestVM_Block_Children_Blocks(t *testing.T) {
 	type childBlock struct {
-		Attr bool `river:"attr,attr"`
+		Attr bool `alloy:"attr,attr"`
 	}
 
 	t.Run("Decodes children blocks", func(t *testing.T) {
 		type block struct {
-			Value int        `river:"value,attr"`
-			Child childBlock `river:"child.block,block"`
+			Value int        `alloy:"value,attr"`
+			Child childBlock `alloy:"child.block,block"`
 		}
 
 		input := `some_block {
@@ -290,8 +290,8 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 
 	t.Run("Decodes multiple instances of children blocks", func(t *testing.T) {
 		type block struct {
-			Value    int          `river:"value,attr"`
-			Children []childBlock `river:"child.block,block"`
+			Value    int          `alloy:"value,attr"`
+			Children []childBlock `alloy:"child.block,block"`
 		}
 
 		input := `some_block {
@@ -314,8 +314,8 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 
 	t.Run("Decodes multiple instances of children blocks into an array", func(t *testing.T) {
 		type block struct {
-			Value    int           `river:"value,attr"`
-			Children [3]childBlock `river:"child.block,block"`
+			Value    int           `alloy:"value,attr"`
+			Children [3]childBlock `alloy:"child.block,block"`
 		}
 
 		input := `some_block {
@@ -337,7 +337,7 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 
 	t.Run("Fails if block used as an attribute", func(t *testing.T) {
 		type block struct {
-			Child childBlock `river:"child,block"`
+			Child childBlock `alloy:"child,block"`
 		}
 
 		input := `some_block {
@@ -351,8 +351,8 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 
 	t.Run("Fails if required children blocks are not present", func(t *testing.T) {
 		type block struct {
-			Value int        `river:"value,attr"`
-			Child childBlock `river:"child.block,block"`
+			Value int        `alloy:"value,attr"`
+			Child childBlock `alloy:"child.block,block"`
 		}
 
 		input := `some_block {
@@ -366,8 +366,8 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 
 	t.Run("Succeeds if optional children blocks are not present", func(t *testing.T) {
 		type block struct {
-			Value int        `river:"value,attr"`
-			Child childBlock `river:"child.block,block,optional"`
+			Value int        `alloy:"value,attr"`
+			Child childBlock `alloy:"child.block,block,optional"`
 		}
 
 		input := `some_block {
@@ -382,7 +382,7 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 
 	t.Run("Fails if child block is not defined in struct", func(t *testing.T) {
 		type block struct {
-			Value int `river:"value,attr"`
+			Value int `alloy:"value,attr"`
 		}
 
 		input := `some_block {
@@ -398,10 +398,10 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 
 	t.Run("Supports arbitrarily nested struct pointer fields", func(t *testing.T) {
 		type block struct {
-			BlockA childBlock    `river:"block_a,block"`
-			BlockB *childBlock   `river:"block_b,block"`
-			BlockC **childBlock  `river:"block_c,block"`
-			BlockD ***childBlock `river:"block_d,block"`
+			BlockA childBlock    `alloy:"block_a,block"`
+			BlockB *childBlock   `alloy:"block_b,block"`
+			BlockC **childBlock  `alloy:"block_c,block"`
+			BlockD ***childBlock `alloy:"block_d,block"`
 		}
 
 		input := `some_block {
@@ -422,14 +422,14 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 
 	t.Run("Supports squashed blocks", func(t *testing.T) {
 		type InnerStruct struct {
-			Inner1 childBlock `river:"inner_block_1,block"`
-			Inner2 childBlock `river:"inner_block_2,block"`
+			Inner1 childBlock `alloy:"inner_block_1,block"`
+			Inner2 childBlock `alloy:"inner_block_2,block"`
 		}
 
 		type OuterStruct struct {
-			Outer1 childBlock  `river:"outer_block_1,block"`
-			Inner  InnerStruct `river:",squash"`
-			Outer2 childBlock  `river:"outer_block_2,block"`
+			Outer1 childBlock  `alloy:"outer_block_1,block"`
+			Inner  InnerStruct `alloy:",squash"`
+			Outer2 childBlock  `alloy:"outer_block_2,block"`
 		}
 
 		var (
@@ -458,14 +458,14 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 
 	t.Run("Supports squashed blocks in pointers", func(t *testing.T) {
 		type InnerStruct struct {
-			Inner1 *childBlock `river:"inner_block_1,block"`
-			Inner2 *childBlock `river:"inner_block_2,block"`
+			Inner1 *childBlock `alloy:"inner_block_1,block"`
+			Inner2 *childBlock `alloy:"inner_block_2,block"`
 		}
 
 		type OuterStruct struct {
-			Outer1 childBlock   `river:"outer_block_1,block"`
-			Inner  *InnerStruct `river:",squash"`
-			Outer2 childBlock   `river:"outer_block_2,block"`
+			Outer1 childBlock   `alloy:"outer_block_1,block"`
+			Inner  *InnerStruct `alloy:",squash"`
+			Outer2 childBlock   `alloy:"outer_block_2,block"`
 		}
 
 		var (
@@ -497,20 +497,20 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 
 func TestVM_Block_Enum_Block(t *testing.T) {
 	type childBlock struct {
-		Attr int `river:"attr,attr"`
+		Attr int `alloy:"attr,attr"`
 	}
 
 	type enumBlock struct {
-		BlockA *childBlock `river:"a,block,optional"`
-		BlockB *childBlock `river:"b,block,optional"`
-		BlockC *childBlock `river:"c,block,optional"`
-		BlockD *childBlock `river:"d,block,optional"`
+		BlockA *childBlock `alloy:"a,block,optional"`
+		BlockB *childBlock `alloy:"b,block,optional"`
+		BlockC *childBlock `alloy:"c,block,optional"`
+		BlockD *childBlock `alloy:"d,block,optional"`
 	}
 
 	t.Run("Decodes enum blocks", func(t *testing.T) {
 		type block struct {
-			Value  int          `river:"value,attr"`
-			Blocks []*enumBlock `river:"child,enum,optional"`
+			Value  int          `alloy:"value,attr"`
+			Blocks []*enumBlock `alloy:"child,enum,optional"`
 		}
 
 		input := `some_block {
@@ -534,8 +534,8 @@ func TestVM_Block_Enum_Block(t *testing.T) {
 
 	t.Run("Decodes multiple enum blocks", func(t *testing.T) {
 		type block struct {
-			Value  int          `river:"value,attr"`
-			Blocks []*enumBlock `river:"child,enum,optional"`
+			Value  int          `alloy:"value,attr"`
+			Blocks []*enumBlock `alloy:"child,enum,optional"`
 		}
 
 		input := `some_block {
@@ -563,8 +563,8 @@ func TestVM_Block_Enum_Block(t *testing.T) {
 
 	t.Run("Decodes multiple enum blocks with repeating blocks", func(t *testing.T) {
 		type block struct {
-			Value  int          `river:"value,attr"`
-			Blocks []*enumBlock `river:"child,enum,optional"`
+			Value  int          `alloy:"value,attr"`
+			Blocks []*enumBlock `alloy:"child,enum,optional"`
 		}
 
 		input := `some_block {
@@ -596,7 +596,7 @@ func TestVM_Block_Enum_Block(t *testing.T) {
 func TestVM_Block_Label(t *testing.T) {
 	t.Run("Decodes label into string field", func(t *testing.T) {
 		type block struct {
-			Label string `river:",label"`
+			Label string `alloy:",label"`
 		}
 
 		input := `some_block "label_value_1" {}`
@@ -619,7 +619,7 @@ func TestVM_Block_Label(t *testing.T) {
 
 	t.Run("Block must have label if struct accepts label", func(t *testing.T) {
 		type block struct {
-			Label string `river:",label"`
+			Label string `alloy:",label"`
 		}
 
 		input := `some_block {}`
@@ -631,7 +631,7 @@ func TestVM_Block_Label(t *testing.T) {
 
 	t.Run("Block must have non-empty label if struct accepts label", func(t *testing.T) {
 		type block struct {
-			Label string `river:",label"`
+			Label string `alloy:",label"`
 		}
 
 		input := `some_block "" {}`
@@ -644,8 +644,8 @@ func TestVM_Block_Label(t *testing.T) {
 
 func TestVM_Block_Unmarshaler(t *testing.T) {
 	type OuterBlock struct {
-		FieldA   string  `river:"field_a,attr"`
-		Settings Setting `river:"some.settings,block"`
+		FieldA   string  `alloy:"field_a,attr"`
+		Settings Setting `alloy:"some.settings,block"`
 	}
 
 	input := `
@@ -670,7 +670,7 @@ func TestVM_Block_Unmarshaler(t *testing.T) {
 
 func TestVM_Block_UnmarshalToMap(t *testing.T) {
 	type OuterBlock struct {
-		Settings map[string]interface{} `river:"some.settings,block"`
+		Settings map[string]interface{} `alloy:"some.settings,block"`
 	}
 
 	tt := []struct {
@@ -739,7 +739,7 @@ func TestVM_Block_UnmarshalToMap(t *testing.T) {
 
 func TestVM_Block_UnmarshalToAny(t *testing.T) {
 	type OuterBlock struct {
-		Settings any `river:"some.settings,block"`
+		Settings any `alloy:"some.settings,block"`
 	}
 
 	input := `
@@ -765,8 +765,8 @@ func TestVM_Block_UnmarshalToAny(t *testing.T) {
 }
 
 type Setting struct {
-	FieldA string `river:"field_a,attr"`
-	FieldB string `river:"field_b,attr"`
+	FieldA string `alloy:"field_a,attr"`
+	FieldB string `alloy:"field_b,attr"`
 
 	UnmarshalCalled bool
 	DefaultCalled   bool

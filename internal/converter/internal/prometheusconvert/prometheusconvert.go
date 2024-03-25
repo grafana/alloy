@@ -15,7 +15,7 @@ import (
 	prom_discover "github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/storage"
 
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax/token/builder"
 	_ "github.com/prometheus/prometheus/discovery/install" // Register Prometheus SDs
 )
 

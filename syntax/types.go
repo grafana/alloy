@@ -1,6 +1,6 @@
-package river
+package syntax
 
-import "github.com/grafana/river/internal/value"
+import "github.com/grafana/alloy/syntax/internal/value"
 
 // Our types in this file are re-implementations of interfaces from
 // value.Capsule. They are *not* defined as type aliases, since pkg.go.dev
@@ -24,7 +24,7 @@ type Unmarshaler interface {
 	// UnmarshalRiver is invoked when decoding a River value into a Go value. f
 	// should be called with a pointer to a value to decode into. UnmarshalRiver
 	// will not be called on types which are squashed into the parent struct
-	// using `river:",squash"`.
+	// using `alloy:",squash"`.
 	UnmarshalRiver(f func(v interface{}) error) error
 }
 
@@ -33,7 +33,7 @@ type Unmarshaler interface {
 type Defaulter interface {
 	// SetToDefault is called when evaluating a block or body to set the value
 	// to its defaults. SetToDefault will not be called on types which are
-	// squashed into the parent struct using `river:",squash"`.
+	// squashed into the parent struct using `alloy:",squash"`.
 	SetToDefault()
 }
 
@@ -42,7 +42,7 @@ type Defaulter interface {
 type Validator interface {
 	// Validate is called when evaluating a block or body to enforce the
 	// value is valid. Validate will not be called on types which are
-	// squashed into the parent struct using `river:",squash"`.
+	// squashed into the parent struct using `alloy:",squash"`.
 	Validate() error
 }
 

@@ -10,11 +10,11 @@ import (
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
 	app_agent_receiver_v2 "github.com/grafana/agent/internal/static/integrations/v2/app_agent_receiver"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/scanner"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/scanner"
 )
 
-func (b *IntegrationsConfigBuilder) appendAppAgentReceiverV2(config *app_agent_receiver_v2.Config) {
+func (b *ConfigBuilder) appendAppAgentReceiverV2(config *app_agent_receiver_v2.Config) {
 	args := toAppAgentReceiverV2(config)
 
 	compLabel, err := scanner.SanitizeIdentifier(b.formatJobName(config.Name(), nil))
@@ -51,7 +51,7 @@ func toAppAgentReceiverV2(config *app_agent_receiver_v2.Config) *receiver.Argume
 			Host:                  config.Server.Host,
 			Port:                  config.Server.Port,
 			CORSAllowedOrigins:    config.Server.CORSAllowedOrigins,
-			APIKey:                rivertypes.Secret(config.Server.APIKey),
+			APIKey:                alloytypes.Secret(config.Server.APIKey),
 			MaxAllowedPayloadSize: units.Base2Bytes(config.Server.MaxAllowedPayloadSize),
 			RateLimiting: receiver.RateLimitingArguments{
 				Enabled:   config.Server.RateLimiting.Enabled,

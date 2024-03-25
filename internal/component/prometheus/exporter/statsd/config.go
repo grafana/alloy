@@ -10,26 +10,26 @@ import (
 )
 
 type Arguments struct {
-	ListenUDP      string `river:"listen_udp,attr,optional"`
-	ListenTCP      string `river:"listen_tcp,attr,optional"`
-	ListenUnixgram string `river:"listen_unixgram,attr,optional"`
-	UnixSocketMode string `river:"unix_socket_mode,attr,optional"`
-	MappingConfig  string `river:"mapping_config_path,attr,optional"`
+	ListenUDP      string `alloy:"listen_udp,attr,optional"`
+	ListenTCP      string `alloy:"listen_tcp,attr,optional"`
+	ListenUnixgram string `alloy:"listen_unixgram,attr,optional"`
+	UnixSocketMode string `alloy:"unix_socket_mode,attr,optional"`
+	MappingConfig  string `alloy:"mapping_config_path,attr,optional"`
 
-	ReadBuffer          int           `river:"read_buffer,attr,optional"`
-	CacheSize           int           `river:"cache_size,attr,optional"`
-	CacheType           string        `river:"cache_type,attr,optional"`
-	EventQueueSize      int           `river:"event_queue_size,attr,optional"`
-	EventFlushThreshold int           `river:"event_flush_threshold,attr,optional"`
-	EventFlushInterval  time.Duration `river:"event_flush_interval,attr,optional"`
+	ReadBuffer          int           `alloy:"read_buffer,attr,optional"`
+	CacheSize           int           `alloy:"cache_size,attr,optional"`
+	CacheType           string        `alloy:"cache_type,attr,optional"`
+	EventQueueSize      int           `alloy:"event_queue_size,attr,optional"`
+	EventFlushThreshold int           `alloy:"event_flush_threshold,attr,optional"`
+	EventFlushInterval  time.Duration `alloy:"event_flush_interval,attr,optional"`
 
-	ParseDogStatsd bool `river:"parse_dogstatsd_tags,attr,optional"`
-	ParseInfluxDB  bool `river:"parse_influxdb_tags,attr,optional"`
-	ParseLibrato   bool `river:"parse_librato_tags,attr,optional"`
-	ParseSignalFX  bool `river:"parse_signalfx_tags,attr,optional"`
+	ParseDogStatsd bool `alloy:"parse_dogstatsd_tags,attr,optional"`
+	ParseInfluxDB  bool `alloy:"parse_influxdb_tags,attr,optional"`
+	ParseLibrato   bool `alloy:"parse_librato_tags,attr,optional"`
+	ParseSignalFX  bool `alloy:"parse_signalfx_tags,attr,optional"`
 
-	RelayAddr         string `river:"relay_addr,attr,optional"`
-	RelayPacketLength int    `river:"relay_packet_length,attr,optional"`
+	RelayAddr         string `alloy:"relay_addr,attr,optional"`
+	RelayPacketLength int    `alloy:"relay_packet_length,attr,optional"`
 }
 
 // DefaultConfig holds non-zero default options for the Config when it is

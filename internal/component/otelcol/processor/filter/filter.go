@@ -28,13 +28,13 @@ func init() {
 
 type Arguments struct {
 	// ErrorMode determines how the processor reacts to errors that occur while processing a statement.
-	ErrorMode ottl.ErrorMode `river:"error_mode,attr,optional"`
-	Traces    TraceConfig    `river:"traces,block,optional"`
-	Metrics   MetricConfig   `river:"metrics,block,optional"`
-	Logs      LogConfig      `river:"logs,block,optional"`
+	ErrorMode ottl.ErrorMode `alloy:"error_mode,attr,optional"`
+	Traces    TraceConfig    `alloy:"traces,block,optional"`
+	Metrics   MetricConfig   `alloy:"metrics,block,optional"`
+	Logs      LogConfig      `alloy:"logs,block,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/static/integrations/oracledb_exporter"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
@@ -20,11 +20,11 @@ func TestRiverUnmarshal(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
-		ConnectionString: rivertypes.Secret("oracle://user:password@localhost:1521/orcl.localnet"),
+		ConnectionString: alloytypes.Secret("oracle://user:password@localhost:1521/orcl.localnet"),
 		MaxIdleConns:     0,
 		MaxOpenConns:     10,
 		QueryTimeout:     5,
@@ -43,7 +43,7 @@ func TestArgumentsValidate(t *testing.T) {
 		{
 			name: "no connection string",
 			args: Arguments{
-				ConnectionString: rivertypes.Secret(""),
+				ConnectionString: alloytypes.Secret(""),
 			},
 			wantErr: true,
 			err:     errNoConnectionString,
@@ -51,7 +51,7 @@ func TestArgumentsValidate(t *testing.T) {
 		{
 			name: "unable to parse connection string",
 			args: Arguments{
-				ConnectionString: rivertypes.Secret("oracle://user	password@localhost:1521/orcl.localnet"),
+				ConnectionString: alloytypes.Secret("oracle://user	password@localhost:1521/orcl.localnet"),
 			},
 			wantErr: true,
 			err:     errors.New("unable to parse connection string:"),
@@ -59,7 +59,7 @@ func TestArgumentsValidate(t *testing.T) {
 		{
 			name: "unexpected scheme",
 			args: Arguments{
-				ConnectionString: rivertypes.Secret("notoracle://user:password@localhost:1521/orcl.localnet"),
+				ConnectionString: alloytypes.Secret("notoracle://user:password@localhost:1521/orcl.localnet"),
 			},
 			wantErr: true,
 			err:     errors.New("unexpected scheme of type"),
@@ -67,7 +67,7 @@ func TestArgumentsValidate(t *testing.T) {
 		{
 			name: "no host name",
 			args: Arguments{
-				ConnectionString: rivertypes.Secret("oracle://user:password@:1521/orcl.localnet"),
+				ConnectionString: alloytypes.Secret("oracle://user:password@:1521/orcl.localnet"),
 			},
 			wantErr: true,
 			err:     errNoHostname,
@@ -75,7 +75,7 @@ func TestArgumentsValidate(t *testing.T) {
 		{
 			name: "valid",
 			args: Arguments{
-				ConnectionString: rivertypes.Secret("oracle://user:password@localhost:1521/orcl.localnet"),
+				ConnectionString: alloytypes.Secret("oracle://user:password@localhost:1521/orcl.localnet"),
 			},
 			wantErr: false,
 		},
@@ -99,7 +99,7 @@ func TestConvert(t *testing.T) {
 	connection_string  = "oracle://user:password@localhost:1521/orcl.localnet"
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 
 	res := args.Convert()

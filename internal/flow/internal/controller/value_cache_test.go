@@ -7,14 +7,14 @@ import (
 )
 
 type fooArgs struct {
-	Something bool `river:"something,attr"`
+	Something bool `alloy:"something,attr"`
 }
 type fooExports struct {
-	SomethingElse bool `river:"something_else,attr"`
+	SomethingElse bool `alloy:"something_else,attr"`
 }
 
 type barArgs struct {
-	Number int `river:"number,attr"`
+	Number int `alloy:"number,attr"`
 }
 
 func TestValueCache(t *testing.T) {

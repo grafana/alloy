@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/grafana/river/internal/value"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/internal/value"
 	"github.com/ohler55/ojg/jp"
 	"github.com/ohler55/ojg/oj"
 )
@@ -25,7 +25,7 @@ var Identifiers = map[string]interface{}{
 
 	"env": os.Getenv,
 
-	"nonsensitive": func(secret rivertypes.Secret) string {
+	"nonsensitive": func(secret alloytypes.Secret) string {
 		return string(secret)
 	},
 

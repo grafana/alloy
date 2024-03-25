@@ -20,7 +20,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/service"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	commonconfig "github.com/prometheus/common/config"
 )
 
@@ -62,11 +62,11 @@ type Options struct {
 
 // Arguments holds runtime settings for the remotecfg service.
 type Arguments struct {
-	URL              string                   `river:"url,attr,optional"`
-	ID               string                   `river:"id,attr,optional"`
-	Metadata         map[string]string        `river:"metadata,attr,optional"`
-	PollFrequency    time.Duration            `river:"poll_frequency,attr,optional"`
-	HTTPClientConfig *config.HTTPClientConfig `river:",squash"`
+	URL              string                   `alloy:"url,attr,optional"`
+	ID               string                   `alloy:"id,attr,optional"`
+	Metadata         map[string]string        `alloy:"metadata,attr,optional"`
+	PollFrequency    time.Duration            `alloy:"poll_frequency,attr,optional"`
+	HTTPClientConfig *config.HTTPClientConfig `alloy:",squash"`
 }
 
 // GetDefaultArguments populates the default values for the Arguments struct.
@@ -79,12 +79,12 @@ func GetDefaultArguments() Arguments {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = GetDefaultArguments()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	// We must explicitly Validate because HTTPClientConfig is squashed and it
 	// won't run otherwise
@@ -97,7 +97,7 @@ func (a *Arguments) Validate() error {
 
 // Hash marshals the Arguments and returns a hash representation.
 func (a *Arguments) Hash() (string, error) {
-	b, err := river.Marshal(a)
+	b, err := syntax.Marshal(a)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal arguments: %w", err)
 	}

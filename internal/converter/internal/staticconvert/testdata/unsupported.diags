@@ -1,9 +1,9 @@
 (Error) The converter does not support handling integrations which are not being scraped: mssql.
 (Error) mapping_config is not supported in statsd_exporter integrations config
+(Error) automatic_logging for traces has no direct flow equivalent. A best effort translation can be made which only outputs to stdout and not directly to loki by bypassing errors.
 (Warning) Please review your agent command line flags and ensure they are set in your Flow mode config file where necessary.
 (Error) The converter does not support converting the provided grpc_tls_config server config: flow mode does not have a gRPC server to configure.
 (Error) The converter does not support converting the provided prefer_server_cipher_suites server config.
 (Warning) The converter does not support converting the provided metrics wal_directory config: Use the run command flag --storage.path for Flow mode instead.
 (Warning) disabled integrations do nothing and are not included in the output: node_exporter.
-(Error) The converter does not support converting the provided traces config.
 (Error) The converter does not support converting the provided agent_management config.

@@ -31,22 +31,21 @@ func init() {
 
 // Arguments configures the otelcol.receiver.jaeger component.
 type Arguments struct {
-	Protocols ProtocolsArguments `river:"protocols,block"`
+	Protocols ProtocolsArguments `alloy:"protocols,block"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	// Output configures where to send received data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var _ receiver.Arguments = Arguments{}
 
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = Arguments{
-		DebugMetrics: otelcol.DefaultDebugMetricsArguments,
-	}
+	*args = Arguments{}
+	args.DebugMetrics.SetToDefault()
 }
 
 // Validate implements river.Validator.
@@ -92,14 +91,14 @@ func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
 // ProtocolsArguments configures protocols for otelcol.receiver.jaeger to
 // listen on.
 type ProtocolsArguments struct {
-	GRPC          *GRPC          `river:"grpc,block,optional"`
-	ThriftHTTP    *ThriftHTTP    `river:"thrift_http,block,optional"`
-	ThriftBinary  *ThriftBinary  `river:"thrift_binary,block,optional"`
-	ThriftCompact *ThriftCompact `river:"thrift_compact,block,optional"`
+	GRPC          *GRPC          `alloy:"grpc,block,optional"`
+	ThriftHTTP    *ThriftHTTP    `alloy:"thrift_http,block,optional"`
+	ThriftBinary  *ThriftBinary  `alloy:"thrift_binary,block,optional"`
+	ThriftCompact *ThriftCompact `alloy:"thrift_compact,block,optional"`
 }
 
 type GRPC struct {
-	GRPCServerArguments *otelcol.GRPCServerArguments `river:",squash"`
+	GRPCServerArguments *otelcol.GRPCServerArguments `alloy:",squash"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -122,7 +121,7 @@ func (args *GRPC) Convert() *otelconfiggrpc.GRPCServerSettings {
 }
 
 type ThriftHTTP struct {
-	HTTPServerArguments *otelcol.HTTPServerArguments `river:",squash"`
+	HTTPServerArguments *otelcol.HTTPServerArguments `alloy:",squash"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -145,11 +144,11 @@ func (args *ThriftHTTP) Convert() *otelconfighttp.HTTPServerSettings {
 
 // ProtocolUDP configures a UDP server.
 type ProtocolUDP struct {
-	Endpoint         string           `river:"endpoint,attr,optional"`
-	QueueSize        int              `river:"queue_size,attr,optional"`
-	MaxPacketSize    units.Base2Bytes `river:"max_packet_size,attr,optional"`
-	Workers          int              `river:"workers,attr,optional"`
-	SocketBufferSize units.Base2Bytes `river:"socket_buffer_size,attr,optional"`
+	Endpoint         string           `alloy:"endpoint,attr,optional"`
+	QueueSize        int              `alloy:"queue_size,attr,optional"`
+	MaxPacketSize    units.Base2Bytes `alloy:"max_packet_size,attr,optional"`
+	Workers          int              `alloy:"workers,attr,optional"`
+	SocketBufferSize units.Base2Bytes `alloy:"socket_buffer_size,attr,optional"`
 }
 
 // Convert converts proto into the upstream type.
@@ -171,7 +170,7 @@ func (proto *ProtocolUDP) Convert() *jaegerreceiver.ProtocolUDP {
 
 // ThriftCompact wraps ProtocolUDP and provides additional behavior.
 type ThriftCompact struct {
-	ProtocolUDP *ProtocolUDP `river:",squash"`
+	ProtocolUDP *ProtocolUDP `alloy:",squash"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -197,7 +196,7 @@ func (args *ThriftCompact) Convert() *jaegerreceiver.ProtocolUDP {
 
 // ThriftCompact wraps ProtocolUDP and provides additional behavior.
 type ThriftBinary struct {
-	ProtocolUDP *ProtocolUDP `river:",squash"`
+	ProtocolUDP *ProtocolUDP `alloy:",squash"`
 }
 
 // SetToDefault implements river.Defaulter.

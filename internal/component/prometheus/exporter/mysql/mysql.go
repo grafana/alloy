@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/mysqld_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -58,71 +58,71 @@ var DefaultArguments = Arguments{
 // Arguments controls the mysql component.
 type Arguments struct {
 	// DataSourceName to use to connect to MySQL.
-	DataSourceName rivertypes.Secret `river:"data_source_name,attr,optional"`
+	DataSourceName alloytypes.Secret `alloy:"data_source_name,attr,optional"`
 
 	// Collectors to mark as enabled in addition to the default.
-	EnableCollectors []string `river:"enable_collectors,attr,optional"`
+	EnableCollectors []string `alloy:"enable_collectors,attr,optional"`
 	// Collectors to explicitly mark as disabled.
-	DisableCollectors []string `river:"disable_collectors,attr,optional"`
+	DisableCollectors []string `alloy:"disable_collectors,attr,optional"`
 
 	// Overrides the default set of enabled collectors with the given list.
-	SetCollectors []string `river:"set_collectors,attr,optional"`
+	SetCollectors []string `alloy:"set_collectors,attr,optional"`
 
 	// Collector-wide options
-	LockWaitTimeout int  `river:"lock_wait_timeout,attr,optional"`
-	LogSlowFilter   bool `river:"log_slow_filter,attr,optional"`
+	LockWaitTimeout int  `alloy:"lock_wait_timeout,attr,optional"`
+	LogSlowFilter   bool `alloy:"log_slow_filter,attr,optional"`
 
 	// Collector-specific config options
-	InfoSchemaProcessList      InfoSchemaProcessList      `river:"info_schema.processlist,block,optional"`
-	InfoSchemaTables           InfoSchemaTables           `river:"info_schema.tables,block,optional"`
-	PerfSchemaEventsStatements PerfSchemaEventsStatements `river:"perf_schema.eventsstatements,block,optional"`
-	PerfSchemaFileInstances    PerfSchemaFileInstances    `river:"perf_schema.file_instances,block,optional"`
-	PerfSchemaMemoryEvents     PerfSchemaMemoryEvents     `river:"perf_schema.memory_events,block,optional"`
+	InfoSchemaProcessList      InfoSchemaProcessList      `alloy:"info_schema.processlist,block,optional"`
+	InfoSchemaTables           InfoSchemaTables           `alloy:"info_schema.tables,block,optional"`
+	PerfSchemaEventsStatements PerfSchemaEventsStatements `alloy:"perf_schema.eventsstatements,block,optional"`
+	PerfSchemaFileInstances    PerfSchemaFileInstances    `alloy:"perf_schema.file_instances,block,optional"`
+	PerfSchemaMemoryEvents     PerfSchemaMemoryEvents     `alloy:"perf_schema.memory_events,block,optional"`
 
-	Heartbeat Heartbeat `river:"heartbeat,block,optional"`
-	MySQLUser MySQLUser `river:"mysql.user,block,optional"`
+	Heartbeat Heartbeat `alloy:"heartbeat,block,optional"`
+	MySQLUser MySQLUser `alloy:"mysql.user,block,optional"`
 }
 
 // InfoSchemaProcessList configures the info_schema.processlist collector
 type InfoSchemaProcessList struct {
-	MinTime         int  `river:"min_time,attr,optional"`
-	ProcessesByUser bool `river:"processes_by_user,attr,optional"`
-	ProcessesByHost bool `river:"processes_by_host,attr,optional"`
+	MinTime         int  `alloy:"min_time,attr,optional"`
+	ProcessesByUser bool `alloy:"processes_by_user,attr,optional"`
+	ProcessesByHost bool `alloy:"processes_by_host,attr,optional"`
 }
 
 // InfoSchemaTables configures the info_schema.tables collector
 type InfoSchemaTables struct {
-	Databases string `river:"databases,attr,optional"`
+	Databases string `alloy:"databases,attr,optional"`
 }
 
 // PerfSchemaEventsStatements configures the perf_schema.eventsstatements collector
 type PerfSchemaEventsStatements struct {
-	Limit     int `river:"limit,attr,optional"`
-	TimeLimit int `river:"time_limit,attr,optional"`
-	TextLimit int `river:"text_limit,attr,optional"`
+	Limit     int `alloy:"limit,attr,optional"`
+	TimeLimit int `alloy:"time_limit,attr,optional"`
+	TextLimit int `alloy:"text_limit,attr,optional"`
 }
 
 // PerfSchemaFileInstances configures the perf_schema.file_instances collector
 type PerfSchemaFileInstances struct {
-	Filter       string `river:"filter,attr,optional"`
-	RemovePrefix string `river:"remove_prefix,attr,optional"`
+	Filter       string `alloy:"filter,attr,optional"`
+	RemovePrefix string `alloy:"remove_prefix,attr,optional"`
 }
 
 // PerfSchemaMemoryEvents configures the perf_schema.memory_events collector
 type PerfSchemaMemoryEvents struct {
-	RemovePrefix string `river:"remove_prefix,attr,optional"`
+	RemovePrefix string `alloy:"remove_prefix,attr,optional"`
 }
 
 // Heartbeat controls the heartbeat collector
 type Heartbeat struct {
-	Database string `river:"database,attr,optional"`
-	Table    string `river:"table,attr,optional"`
-	UTC      bool   `river:"utc,attr,optional"`
+	Database string `alloy:"database,attr,optional"`
+	Table    string `alloy:"table,attr,optional"`
+	UTC      bool   `alloy:"utc,attr,optional"`
 }
 
 // MySQLUser controls the mysql.user collector
 type MySQLUser struct {
-	Privileges bool `river:"privileges,attr,optional"`
+	Privileges bool `alloy:"privileges,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

@@ -28,27 +28,24 @@ func init() {
 
 // Arguments configures the otelcol.exporter.logging component.
 type Arguments struct {
-	Verbosity          configtelemetry.Level `river:"verbosity,attr,optional"`
-	SamplingInitial    int                   `river:"sampling_initial,attr,optional"`
-	SamplingThereafter int                   `river:"sampling_thereafter,attr,optional"`
+	Verbosity          configtelemetry.Level `alloy:"verbosity,attr,optional"`
+	SamplingInitial    int                   `alloy:"sampling_initial,attr,optional"`
+	SamplingThereafter int                   `alloy:"sampling_thereafter,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 var _ exporter.Arguments = Arguments{}
 
-// DefaultArguments holds default values for Arguments.
-var DefaultArguments = Arguments{
-	Verbosity:          configtelemetry.LevelNormal,
-	SamplingInitial:    2,
-	SamplingThereafter: 500,
-	DebugMetrics:       otelcol.DefaultDebugMetricsArguments,
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		Verbosity:          configtelemetry.LevelNormal,
+		SamplingInitial:    2,
+		SamplingThereafter: 500,
+	}
+	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements exporter.Arguments.

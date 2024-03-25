@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 )
 
@@ -15,15 +15,15 @@ const bearerAuth string = "Bearer"
 
 // HTTPClientConfig mirrors config.HTTPClientConfig
 type HTTPClientConfig struct {
-	BasicAuth       *BasicAuth        `river:"basic_auth,block,optional"`
-	Authorization   *Authorization    `river:"authorization,block,optional"`
-	OAuth2          *OAuth2Config     `river:"oauth2,block,optional"`
-	BearerToken     rivertypes.Secret `river:"bearer_token,attr,optional"`
-	BearerTokenFile string            `river:"bearer_token_file,attr,optional"`
-	ProxyConfig     *ProxyConfig      `river:",squash"`
-	TLSConfig       TLSConfig         `river:"tls_config,block,optional"`
-	FollowRedirects bool              `river:"follow_redirects,attr,optional"`
-	EnableHTTP2     bool              `river:"enable_http2,attr,optional"`
+	BasicAuth       *BasicAuth        `alloy:"basic_auth,block,optional"`
+	Authorization   *Authorization    `alloy:"authorization,block,optional"`
+	OAuth2          *OAuth2Config     `alloy:"oauth2,block,optional"`
+	BearerToken     alloytypes.Secret `alloy:"bearer_token,attr,optional"`
+	BearerTokenFile string            `alloy:"bearer_token_file,attr,optional"`
+	ProxyConfig     *ProxyConfig      `alloy:",squash"`
+	TLSConfig       TLSConfig         `alloy:"tls_config,block,optional"`
+	FollowRedirects bool              `alloy:"follow_redirects,attr,optional"`
+	EnableHTTP2     bool              `alloy:"enable_http2,attr,optional"`
 }
 
 // SetToDefault implements the river.Defaulter
@@ -109,9 +109,9 @@ var DefaultHTTPClientConfig = HTTPClientConfig{
 
 // BasicAuth configures Basic HTTP authentication credentials.
 type BasicAuth struct {
-	Username     string            `river:"username,attr,optional"`
-	Password     rivertypes.Secret `river:"password,attr,optional"`
-	PasswordFile string            `river:"password_file,attr,optional"`
+	Username     string            `alloy:"username,attr,optional"`
+	Password     alloytypes.Secret `alloy:"password,attr,optional"`
+	PasswordFile string            `alloy:"password_file,attr,optional"`
 }
 
 // Convert converts our type to the native prometheus type
@@ -139,10 +139,10 @@ func (b *BasicAuth) Validate() error {
 }
 
 type ProxyConfig struct {
-	ProxyURL             URL    `river:"proxy_url,attr,optional"`
-	NoProxy              string `river:"no_proxy,attr,optional"`
-	ProxyFromEnvironment bool   `river:"proxy_from_environment,attr,optional"`
-	ProxyConnectHeader   Header `river:",squash"`
+	ProxyURL             URL    `alloy:"proxy_url,attr,optional"`
+	NoProxy              string `alloy:"no_proxy,attr,optional"`
+	ProxyFromEnvironment bool   `alloy:"proxy_from_environment,attr,optional"`
+	ProxyConnectHeader   Header `alloy:",squash"`
 }
 
 func (p *ProxyConfig) Convert() config.ProxyConfig {
@@ -215,7 +215,7 @@ func (u *URL) Convert() config.URL {
 }
 
 type Header struct {
-	Header map[string][]rivertypes.Secret `river:"proxy_connect_header,attr,optional"`
+	Header map[string][]alloytypes.Secret `alloy:"proxy_connect_header,attr,optional"`
 }
 
 func (h *Header) Convert() config.Header {
@@ -238,9 +238,9 @@ func (h *Header) Convert() config.Header {
 
 // Authorization sets up HTTP authorization credentials.
 type Authorization struct {
-	Type            string            `river:"type,attr,optional"`
-	Credentials     rivertypes.Secret `river:"credentials,attr,optional"`
-	CredentialsFile string            `river:"credentials_file,attr,optional"`
+	Type            string            `alloy:"type,attr,optional"`
+	Credentials     alloytypes.Secret `alloy:"credentials,attr,optional"`
+	CredentialsFile string            `alloy:"credentials_file,attr,optional"`
 }
 
 // Convert converts our type to the native prometheus type
@@ -301,15 +301,15 @@ func (tv *TLSVersion) UnmarshalText(text []byte) error {
 
 // TLSConfig sets up options for TLS connections.
 type TLSConfig struct {
-	CA                 string            `river:"ca_pem,attr,optional"`
-	CAFile             string            `river:"ca_file,attr,optional"`
-	Cert               string            `river:"cert_pem,attr,optional"`
-	CertFile           string            `river:"cert_file,attr,optional"`
-	Key                rivertypes.Secret `river:"key_pem,attr,optional"`
-	KeyFile            string            `river:"key_file,attr,optional"`
-	ServerName         string            `river:"server_name,attr,optional"`
-	InsecureSkipVerify bool              `river:"insecure_skip_verify,attr,optional"`
-	MinVersion         TLSVersion        `river:"min_version,attr,optional"`
+	CA                 string            `alloy:"ca_pem,attr,optional"`
+	CAFile             string            `alloy:"ca_file,attr,optional"`
+	Cert               string            `alloy:"cert_pem,attr,optional"`
+	CertFile           string            `alloy:"cert_file,attr,optional"`
+	Key                alloytypes.Secret `alloy:"key_pem,attr,optional"`
+	KeyFile            string            `alloy:"key_file,attr,optional"`
+	ServerName         string            `alloy:"server_name,attr,optional"`
+	InsecureSkipVerify bool              `alloy:"insecure_skip_verify,attr,optional"`
+	MinVersion         TLSVersion        `alloy:"min_version,attr,optional"`
 }
 
 // Convert converts our type to the native prometheus type
@@ -358,14 +358,14 @@ func (t *TLSConfig) Validate() error {
 
 // OAuth2Config sets up the OAuth2 client.
 type OAuth2Config struct {
-	ClientID         string            `river:"client_id,attr,optional"`
-	ClientSecret     rivertypes.Secret `river:"client_secret,attr,optional"`
-	ClientSecretFile string            `river:"client_secret_file,attr,optional"`
-	Scopes           []string          `river:"scopes,attr,optional"`
-	TokenURL         string            `river:"token_url,attr,optional"`
-	EndpointParams   map[string]string `river:"endpoint_params,attr,optional"`
-	ProxyConfig      *ProxyConfig      `river:",squash"`
-	TLSConfig        *TLSConfig        `river:"tls_config,block,optional"`
+	ClientID         string            `alloy:"client_id,attr,optional"`
+	ClientSecret     alloytypes.Secret `alloy:"client_secret,attr,optional"`
+	ClientSecretFile string            `alloy:"client_secret_file,attr,optional"`
+	Scopes           []string          `alloy:"scopes,attr,optional"`
+	TokenURL         string            `alloy:"token_url,attr,optional"`
+	EndpointParams   map[string]string `alloy:"endpoint_params,attr,optional"`
+	ProxyConfig      *ProxyConfig      `alloy:",squash"`
+	TLSConfig        *TLSConfig        `alloy:"tls_config,block,optional"`
 }
 
 // Convert converts our type to the native prometheus type

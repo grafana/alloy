@@ -6,11 +6,11 @@ import (
 	"github.com/grafana/agent/internal/converter/internal/common"
 	"github.com/grafana/agent/internal/static/integrations/snmp_exporter"
 	snmp_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/snmp_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	snmp_config "github.com/prometheus/snmp_exporter/config"
 )
 
-func (b *IntegrationsConfigBuilder) appendSnmpExporter(config *snmp_exporter.Config) discovery.Exports {
+func (b *ConfigBuilder) appendSnmpExporter(config *snmp_exporter.Config) discovery.Exports {
 	args := toSnmpExporter(config)
 	return b.appendExporterBlock(args, config.Name(), nil, "snmp")
 }
@@ -47,7 +47,7 @@ func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
 
 	return &snmp.Arguments{
 		ConfigFile: config.SnmpConfigFile,
-		Config:     rivertypes.OptionalSecret{},
+		Config:     alloytypes.OptionalSecret{},
 		Targets:    targets,
 		WalkParams: walkParams,
 		ConfigStruct: snmp_config.Config{
@@ -58,7 +58,7 @@ func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
 	}
 }
 
-func (b *IntegrationsConfigBuilder) appendSnmpExporterV2(config *snmp_exporter_v2.Config) discovery.Exports {
+func (b *ConfigBuilder) appendSnmpExporterV2(config *snmp_exporter_v2.Config) discovery.Exports {
 	args := toSnmpExporterV2(config)
 	return b.appendExporterBlock(args, config.Name(), config.Common.InstanceKey, "snmp")
 }
@@ -95,7 +95,7 @@ func toSnmpExporterV2(config *snmp_exporter_v2.Config) *snmp.Arguments {
 
 	return &snmp.Arguments{
 		ConfigFile: config.SnmpConfigFile,
-		Config:     rivertypes.OptionalSecret{},
+		Config:     alloytypes.OptionalSecret{},
 		Targets:    targets,
 		WalkParams: walkParams,
 		ConfigStruct: snmp_config.Config{

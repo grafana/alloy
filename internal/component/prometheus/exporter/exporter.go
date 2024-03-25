@@ -22,7 +22,7 @@ type Creator func(component.Options, component.Arguments, string) (integrations.
 
 // Exports are simply a list of targets for a scraper to consume.
 type Exports struct {
-	Targets []discovery.Target `river:"targets,attr"`
+	Targets []discovery.Target `alloy:"targets,attr"`
 }
 
 type Component struct {

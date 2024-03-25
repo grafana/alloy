@@ -20,17 +20,17 @@ var Analyzer = &analysis.Analyzer{
 var noLintRegex = regexp.MustCompile(`//\s*nolint:(\S+)`)
 
 var (
-	syntaxTagRegex = regexp.MustCompile(`river:"([^"]*)"`)
+	syntaxTagRegex = regexp.MustCompile(`alloy:"([^"]*)"`)
 	jsonTagRegex   = regexp.MustCompile(`json:"([^"]*)"`)
 	yamlTagRegex   = regexp.MustCompile(`yaml:"([^"]*)"`)
 )
 
-// Rules for river tag linting:
+// Rules for alloy tag linting:
 //
-// - No river tags on anonymous fields.
-// - No river tags on unexported fields.
-// - No empty tags (river:"").
-// - Tags must have options (river:"NAME,OPTIONS").
+// - No alloy tags on anonymous fields.
+// - No alloy tags on unexported fields.
+// - No empty tags (alloy:"").
+// - Tags must have options (alloy:"NAME,OPTIONS").
 // - Options must be one of the following:
 //   - attr
 //   - attr,optional
@@ -79,7 +79,7 @@ func run(p *analysis.Pass) (interface{}, error) {
 
 			matches := syntaxTagRegex.FindAllStringSubmatch(s.Tag(i), -1)
 			if len(matches) == 0 && hasSyntaxTags {
-				// If this struct has River tags, but this field only has json/yaml
+				// If this struct has alloy tags, but this field only has json/yaml
 				// tags, emit an error.
 				jsonMatches := jsonTagRegex.FindAllStringSubmatch(s.Tag(i), -1)
 				yamlMatches := yamlTagRegex.FindAllStringSubmatch(s.Tag(i), -1)
@@ -88,7 +88,7 @@ func run(p *analysis.Pass) (interface{}, error) {
 					p.Report(analysis.Diagnostic{
 						Pos:      field.Pos(),
 						Category: "syntaxtags",
-						Message:  "field has yaml or json tags, but no river tags",
+						Message:  "field has yaml or json tags, but no alloy tags",
 					})
 				}
 
@@ -99,7 +99,7 @@ func run(p *analysis.Pass) (interface{}, error) {
 				p.Report(analysis.Diagnostic{
 					Pos:      field.Pos(),
 					Category: "syntaxtags",
-					Message:  "field should not have more than one river tag",
+					Message:  "field should not have more than one alloy tag",
 				})
 			}
 
@@ -108,22 +108,22 @@ func run(p *analysis.Pass) (interface{}, error) {
 				p.Report(analysis.Diagnostic{
 					Pos:      field.Pos(),
 					Category: "syntaxtags",
-					Message:  "river tags may not be given to anonymous fields",
+					Message:  "alloy tags may not be given to anonymous fields",
 				})
 			}
 			if !field.Exported() {
 				p.Report(analysis.Diagnostic{
 					Pos:      field.Pos(),
 					Category: "syntaxtags",
-					Message:  "river tags may only be given to exported fields",
+					Message:  "alloy tags may only be given to exported fields",
 				})
 			}
 			if len(nodeField.Names) > 1 {
-				// Report "a, b, c int `river:"name,attr"`" as invalid usage.
+				// Report "a, b, c int `alloy:"name,attr"`" as invalid usage.
 				p.Report(analysis.Diagnostic{
 					Pos:      field.Pos(),
 					Category: "syntaxtags",
-					Message:  "river tags should not be inserted on field names separated by commas",
+					Message:  "alloy tags should not be inserted on field names separated by commas",
 				})
 			}
 
@@ -218,13 +218,13 @@ type structInfo struct {
 
 func lintSyntaxTag(ty *types.Var, tag string) (diagnostics []string) {
 	if tag == "" {
-		diagnostics = append(diagnostics, "river tag should not be empty")
+		diagnostics = append(diagnostics, "alloy tag should not be empty")
 		return
 	}
 
 	parts := strings.SplitN(tag, ",", 2)
 	if len(parts) != 2 {
-		diagnostics = append(diagnostics, "river tag is missing options")
+		diagnostics = append(diagnostics, "alloy tag is missing options")
 		return
 	}
 

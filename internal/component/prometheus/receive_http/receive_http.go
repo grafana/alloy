@@ -33,8 +33,8 @@ func init() {
 }
 
 type Arguments struct {
-	Server    *fnet.ServerConfig   `river:",squash"`
-	ForwardTo []storage.Appendable `river:"forward_to,attr"`
+	Server    *fnet.ServerConfig   `alloy:",squash"`
+	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
 }
 
 // SetToDefault implements river.Defaulter.

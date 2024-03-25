@@ -4,10 +4,13 @@ title: Grafana Alloy
 description: Grafana Alloy is a flexible, performant, vendor-neutral, telemetry collector
 weight: 350
 cascade:
-  ALLOY_RELEASE: $ALLOY_VERSION
+  ALLOY_RELEASE: v1.0.0
   OTEL_VERSION: v0.87.0
   PRODUCT_NAME: Grafana Alloy
   PRODUCT_ROOT_NAME: Alloy
+  _build:
+    list: false
+  noindex: true
 ---
 
 # {{% param "PRODUCT_NAME" %}}

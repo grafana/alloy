@@ -291,11 +291,11 @@ func init() {
 }
 
 type TestArguments struct {
-	Content string `river:"content,attr"`
+	Content string `alloy:"content,attr"`
 }
 
 type TestExports struct {
-	Exports map[string]interface{} `river:"exports,attr"`
+	Exports map[string]interface{} `alloy:"exports,attr"`
 }
 
 type testModule struct {

@@ -29,9 +29,9 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.syslog
 // component.
 type Arguments struct {
-	SyslogListeners []ListenerConfig    `river:"listener,block"`
-	ForwardTo       []loki.LogsReceiver `river:"forward_to,attr"`
-	RelabelRules    flow_relabel.Rules  `river:"relabel_rules,attr,optional"`
+	SyslogListeners []ListenerConfig    `alloy:"listener,block"`
+	ForwardTo       []loki.LogsReceiver `alloy:"forward_to,attr"`
+	RelabelRules    flow_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
 }
 
 // Component implements the loki.source.syslog component.
@@ -146,14 +146,14 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type readerDebugInfo struct {
-	ListenersInfo []listenerInfo `river:"listeners_info,attr"`
+	ListenersInfo []listenerInfo `alloy:"listeners_info,attr"`
 }
 
 type listenerInfo struct {
-	Type          string `river:"type,attr"`
-	Ready         bool   `river:"ready,attr"`
-	ListenAddress string `river:"listen_address,attr"`
-	Labels        string `river:"labels,attr"`
+	Type          string `alloy:"type,attr"`
+	Ready         bool   `alloy:"ready,attr"`
+	ListenAddress string `alloy:"listen_address,attr"`
+	Labels        string `alloy:"labels,attr"`
 }
 
 func listenersChanged(prev, next []ListenerConfig) bool {

@@ -344,6 +344,6 @@ func (ctrl *eventController) DebugInfo() controllerInfo {
 }
 
 type controllerInfo struct {
-	Namespace     string    `river:"namespace,attr"`
-	LastTimestamp time.Time `river:"last_event_timestamp,attr"`
+	Namespace     string    `alloy:"namespace,attr"`
+	LastTimestamp time.Time `alloy:"last_event_timestamp,attr"`
 }

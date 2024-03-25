@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/vcs"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // ImportGit imports a module from a git repository.
@@ -43,11 +43,11 @@ var (
 )
 
 type GitArguments struct {
-	Repository    string            `river:"repository,attr"`
-	Revision      string            `river:"revision,attr,optional"`
-	Path          string            `river:"path,attr"`
-	PullFrequency time.Duration     `river:"pull_frequency,attr,optional"`
-	GitAuthConfig vcs.GitAuthConfig `river:",squash"`
+	Repository    string            `alloy:"repository,attr"`
+	Revision      string            `alloy:"revision,attr,optional"`
+	Path          string            `alloy:"path,attr"`
+	PullFrequency time.Duration     `alloy:"pull_frequency,attr,optional"`
+	GitAuthConfig vcs.GitAuthConfig `alloy:",squash"`
 }
 
 var DefaultGitArguments = GitArguments{

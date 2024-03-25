@@ -13,9 +13,9 @@ import (
 	"github.com/grafana/agent/internal/flow/internal/dag"
 	"github.com/grafana/agent/internal/flow/logging"
 	"github.com/grafana/agent/internal/service"
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/diag"
-	"github.com/grafana/river/parser"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/diag"
+	"github.com/grafana/alloy/syntax/parser"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -328,7 +328,7 @@ func TestLoader_Services(t *testing.T) {
 			return service.Definition{
 				Name: "testsvc",
 				ConfigType: struct {
-					Name string `river:"name,attr,optional"`
+					Name string `alloy:"name,attr,optional"`
 				}{},
 				Stability: featuregate.StabilityBeta,
 			}

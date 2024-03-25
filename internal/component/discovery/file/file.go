@@ -24,8 +24,8 @@ func init() {
 }
 
 type Arguments struct {
-	Files           []string      `river:"files,attr"`
-	RefreshInterval time.Duration `river:"refresh_interval,attr,optional"`
+	Files           []string      `alloy:"files,attr"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
 }
 
 var DefaultArguments = Arguments{

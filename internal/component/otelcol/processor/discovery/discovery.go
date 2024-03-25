@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	promsdconsumer "github.com/grafana/agent/internal/static/traces/promsdprocessor/consumer"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 )
 
 func init() {
@@ -32,37 +32,34 @@ func init() {
 
 // Arguments configures the otelcol.processor.discovery component.
 type Arguments struct {
-	Targets         []discovery.Target `river:"targets,attr"`
-	OperationType   string             `river:"operation_type,attr,optional"`
-	PodAssociations []string           `river:"pod_associations,attr,optional"`
+	Targets         []discovery.Target `alloy:"targets,attr"`
+	OperationType   string             `alloy:"operation_type,attr,optional"`
+	PodAssociations []string           `alloy:"pod_associations,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (
-	_ river.Defaulter = (*Arguments)(nil)
-	_ river.Validator = (*Arguments)(nil)
+	_ syntax.Defaulter = (*Arguments)(nil)
+	_ syntax.Validator = (*Arguments)(nil)
 )
 
-// DefaultArguments holds default settings for Arguments.
-var DefaultArguments = Arguments{
-	OperationType: promsdconsumer.OperationTypeUpsert,
-	PodAssociations: []string{
-		promsdconsumer.PodAssociationIPLabel,
-		promsdconsumer.PodAssociationOTelIPLabel,
-		promsdconsumer.PodAssociationk8sIPLabel,
-		promsdconsumer.PodAssociationHostnameLabel,
-		promsdconsumer.PodAssociationConnectionIP,
-	},
-}
-
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		OperationType: promsdconsumer.OperationTypeUpsert,
+		PodAssociations: []string{
+			promsdconsumer.PodAssociationIPLabel,
+			promsdconsumer.PodAssociationOTelIPLabel,
+			promsdconsumer.PodAssociationk8sIPLabel,
+			promsdconsumer.PodAssociationHostnameLabel,
+			promsdconsumer.PodAssociationConnectionIP,
+		},
+	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	err := promsdconsumer.ValidateOperationType(args.OperationType)
 	if err != nil {

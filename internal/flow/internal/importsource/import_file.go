@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/agent/internal/component"
 	filedetector "github.com/grafana/agent/internal/filedetector"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // ImportFile imports a module from a file or a folder.
@@ -57,11 +57,11 @@ func NewImportFile(managedOpts component.Options, eval *vm.Evaluator, onContentC
 
 type FileArguments struct {
 	// Filename indicates the file to watch.
-	Filename string `river:"filename,attr"`
+	Filename string `alloy:"filename,attr"`
 	// Type indicates how to detect changes to the file.
-	Type filedetector.Detector `river:"detector,attr,optional"`
+	Type filedetector.Detector `alloy:"detector,attr,optional"`
 	// PollFrequency determines the frequency to check for changes when Type is Poll.
-	PollFrequency time.Duration `river:"poll_frequency,attr,optional"`
+	PollFrequency time.Duration `alloy:"poll_frequency,attr,optional"`
 }
 
 var DefaultFileArguments = FileArguments{

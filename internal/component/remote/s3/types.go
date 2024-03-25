@@ -4,30 +4,30 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 // Arguments implements the input for the S3 component.
 type Arguments struct {
-	Path string `river:"path,attr"`
+	Path string `alloy:"path,attr"`
 	// PollFrequency determines the frequency to check for changes
 	// defaults to 10m.
-	PollFrequency time.Duration `river:"poll_frequency,attr,optional"`
+	PollFrequency time.Duration `alloy:"poll_frequency,attr,optional"`
 	// IsSecret determines if the content should be displayed to the user.
-	IsSecret bool `river:"is_secret,attr,optional"`
+	IsSecret bool `alloy:"is_secret,attr,optional"`
 	// Options allows the overriding of default settings.
-	Options Client `river:"client,block,optional"`
+	Options Client `alloy:"client,block,optional"`
 }
 
 // Client implements specific AWS configuration options
 type Client struct {
-	AccessKey     string            `river:"key,attr,optional"`
-	Secret        rivertypes.Secret `river:"secret,attr,optional"`
-	Endpoint      string            `river:"endpoint,attr,optional"`
-	DisableSSL    bool              `river:"disable_ssl,attr,optional"`
-	UsePathStyle  bool              `river:"use_path_style,attr,optional"`
-	Region        string            `river:"region,attr,optional"`
-	SigningRegion string            `river:"signing_region,attr,optional"`
+	AccessKey     string            `alloy:"key,attr,optional"`
+	Secret        alloytypes.Secret `alloy:"secret,attr,optional"`
+	Endpoint      string            `alloy:"endpoint,attr,optional"`
+	DisableSSL    bool              `alloy:"disable_ssl,attr,optional"`
+	UsePathStyle  bool              `alloy:"use_path_style,attr,optional"`
+	Region        string            `alloy:"region,attr,optional"`
+	SigningRegion string            `alloy:"signing_region,attr,optional"`
 }
 
 const minimumPollFrequency = 30 * time.Second
@@ -52,5 +52,5 @@ func (a *Arguments) Validate() error {
 
 // Exports implements the file content
 type Exports struct {
-	Content rivertypes.OptionalSecret `river:"content,attr"`
+	Content alloytypes.OptionalSecret `alloy:"content,attr"`
 }

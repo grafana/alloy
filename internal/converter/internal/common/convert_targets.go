@@ -2,9 +2,9 @@ package common
 
 import (
 	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/river"
-	"github.com/grafana/river/token"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/token"
+	"github.com/grafana/alloy/syntax/token/builder"
 )
 
 // NewDiscoveryExports will return a new [discovery.Exports] with a specific
@@ -33,7 +33,7 @@ type ConvertTargets struct {
 }
 
 var _ builder.Tokenizer = ConvertTargets{}
-var _ river.Capsule = ConvertTargets{}
+var _ syntax.Capsule = ConvertTargets{}
 
 func (f ConvertTargets) RiverCapsule() {}
 func (f ConvertTargets) RiverTokenize() []builder.Token {

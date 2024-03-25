@@ -6,28 +6,13 @@ receivers:
 
 exporters:
   otlp/traces_backend:
-    # Our defaults have drifted from upstream, so we explicitly set our
-    # defaults below (balancer_name and queue_size).
     endpoint: database:34317
-    balancer_name: pick_first
-    sending_queue:
-      queue_size: 5000
 
   otlp/metrics_backend:
-    # Our defaults have drifted from upstream, so we explicitly set our
-    # defaults below (balancer_name and queue_size).
     endpoint: database:44317
-    balancer_name: pick_first
-    sending_queue:
-      queue_size: 5000
 
-  otlp/metrics_backend_two:
-    # Our defaults have drifted from upstream, so we explicitly set our
-    # defaults below (balancer_name and queue_size).
+  otlp/metrics_backend/2:
     endpoint: database:54317
-    balancer_name: pick_first
-    sending_queue:
-      queue_size: 5000
 
 connectors:
   spanmetrics:
@@ -42,7 +27,7 @@ service:
     metrics:
       receivers: [spanmetrics]
       exporters: [otlp/metrics_backend]
-    metrics/foo:
+    metrics/2:
       receivers: [spanmetrics]
-      exporters: [otlp/metrics_backend_two]
+      exporters: [otlp/metrics_backend/2]
 

@@ -19,9 +19,9 @@ import (
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/flow/tracing"
 	"github.com/grafana/agent/internal/runner"
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

@@ -40,13 +40,13 @@ func init() {
 // Arguments configures the otelcol.receiver.prometheus component.
 type Arguments struct {
 	// Output configures where to send received data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 // Exports are the set of fields exposed by the otelcol.receiver.prometheus
 // component.
 type Exports struct {
-	Receiver storage.Appendable `river:"receiver,attr"`
+	Receiver storage.Appendable `alloy:"receiver,attr"`
 }
 
 // Component is the otelcol.receiver.prometheus component.

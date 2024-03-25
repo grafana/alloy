@@ -32,15 +32,27 @@ var (
 
 // Arguments configures the otelcol.processor.k8sattributes component.
 type Arguments struct {
-	AuthType        string              `river:"auth_type,attr,optional"`
-	Passthrough     bool                `river:"passthrough,attr,optional"`
-	ExtractConfig   ExtractConfig       `river:"extract,block,optional"`
-	Filter          FilterConfig        `river:"filter,block,optional"`
-	PodAssociations PodAssociationSlice `river:"pod_association,block,optional"`
-	Exclude         ExcludeConfig       `river:"exclude,block,optional"`
+	AuthType        string              `alloy:"auth_type,attr,optional"`
+	Passthrough     bool                `alloy:"passthrough,attr,optional"`
+	ExtractConfig   ExtractConfig       `alloy:"extract,block,optional"`
+	Filter          FilterConfig        `alloy:"filter,block,optional"`
+	PodAssociations PodAssociationSlice `alloy:"pod_association,block,optional"`
+	Exclude         ExcludeConfig       `alloy:"exclude,block,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+}
+
+// SetToDefault implements river.Defaulter.
+func (args *Arguments) SetToDefault() {
+	// These are default excludes from upstream opentelemetry-collector-contrib
+	// Source: https://github.com/open-telemetry/opentelemetry-collector-contrib/blame/main/processor/k8sattributesprocessor/factory.go#L21
+	args.Exclude = ExcludeConfig{
+		Pods: []ExcludePodConfig{
+			{Name: "jaeger-agent"},
+			{Name: "jaeger-collector"},
+		},
+	}
 }
 
 // Validate implements river.Validator.

@@ -29,25 +29,7 @@ local os_arch_tuples = [
 
 
 local targets = [
-  'agent',
-];
-
-local targets_boringcrypto = [
-  'agent-boringcrypto',
-];
-local targets_boringcrypto_windows = [
-  'agent-windows-boringcrypto',
-];
-
-
-local os_arch_types_boringcrypto = [
-  // Linux boringcrypto
-  { name: 'Linux amd64 boringcrypto', os: 'linux', arch: 'amd64', experiment: 'boringcrypto' },
-  { name: 'Linux arm64 boringcrypto', os: 'linux', arch: 'arm64', experiment: 'boringcrypto' },
-];
-local windows_os_arch_types_boringcrypto = [
-  // Windows boringcrypto
-  { name: 'Windows amd64', os: 'windows', arch: 'amd64', experiment: 'cngcrypto' },
+  'alloy',
 ];
 
 local build_environments(targets, tuples, image) = std.flatMap(function(target) (
@@ -81,6 +63,4 @@ local build_environments(targets, tuples, image) = std.flatMap(function(target) 
   ), tuples)
 ), targets);
 
-build_environments(targets, os_arch_tuples, build_image.linux) +
-build_environments(targets_boringcrypto, os_arch_types_boringcrypto, build_image.linux) +
-build_environments(targets_boringcrypto_windows, windows_os_arch_types_boringcrypto, build_image.boringcrypto)
+build_environments(targets, os_arch_tuples, build_image.linux)

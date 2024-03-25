@@ -143,7 +143,7 @@ For example, `client > basic_auth` refers to a `basic_auth` block defined inside
 [tls_config]: #tls_config-block
 [selector]: #selector-block
 [match_expression]: #match_expression-block
-[clustering]: #clustering-beta
+[clustering]: #clustering-block
 
 ### client block
 
@@ -225,7 +225,7 @@ The `operator` argument must be one of the following strings:
 Both `selector` and `namespace_selector` can make use of multiple
 `match_expression` inner blocks which are treated as AND clauses.
 
-### clustering (beta)
+### clustering block
 
 Name      | Type   | Description                                         | Default | Required
 ----------|--------|-----------------------------------------------------|---------|---------

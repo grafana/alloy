@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/marathon"
@@ -28,11 +28,11 @@ func init() {
 }
 
 type Arguments struct {
-	Servers          []string                `river:"servers,attr"`
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
-	AuthToken        rivertypes.Secret       `river:"auth_token,attr,optional"`
-	AuthTokenFile    string                  `river:"auth_token_file,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
+	Servers          []string                `alloy:"servers,attr"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	AuthToken        alloytypes.Secret       `alloy:"auth_token,attr,optional"`
+	AuthTokenFile    string                  `alloy:"auth_token_file,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
 }
 
 var DefaultArguments = Arguments{

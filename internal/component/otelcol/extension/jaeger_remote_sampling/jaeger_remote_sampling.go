@@ -37,31 +37,19 @@ type (
 	HTTPServerArguments otelcol.HTTPServerArguments
 )
 
-// Default server settings.
-var (
-	DefaultGRPCServerArguments = GRPCServerArguments{
-		Endpoint:  "0.0.0.0:14250",
-		Transport: "tcp",
-	}
-
-	DefaultHTTPServerArguments = HTTPServerArguments{
-		Endpoint: "0.0.0.0:5778",
-	}
-)
-
 // Arguments configures the otelcol.extension.jaegerremotesampling component.
 type Arguments struct {
-	GRPC *GRPCServerArguments `river:"grpc,block,optional"`
-	HTTP *HTTPServerArguments `river:"http,block,optional"`
+	GRPC *GRPCServerArguments `alloy:"grpc,block,optional"`
+	HTTP *HTTPServerArguments `alloy:"http,block,optional"`
 
-	Source ArgumentsSource `river:"source,block"`
+	Source ArgumentsSource `alloy:"source,block"`
 }
 
 type ArgumentsSource struct {
-	Content        string               `river:"content,attr,optional"`
-	Remote         *GRPCClientArguments `river:"remote,block,optional"`
-	File           string               `river:"file,attr,optional"`
-	ReloadInterval time.Duration        `river:"reload_interval,attr,optional"`
+	Content        string               `alloy:"content,attr,optional"`
+	Remote         *GRPCClientArguments `alloy:"remote,block,optional"`
+	File           string               `alloy:"file,attr,optional"`
+	ReloadInterval time.Duration        `alloy:"reload_interval,attr,optional"`
 }
 
 var (
@@ -127,12 +115,17 @@ func (a *ArgumentsSource) Validate() error {
 
 // SetToDefault implements river.Defaulter.
 func (args *GRPCServerArguments) SetToDefault() {
-	*args = DefaultGRPCServerArguments
+	*args = GRPCServerArguments{
+		Endpoint:  "0.0.0.0:14250",
+		Transport: "tcp",
+	}
 }
 
 // SetToDefault implements river.Defaulter.
 func (args *HTTPServerArguments) SetToDefault() {
-	*args = DefaultHTTPServerArguments
+	*args = HTTPServerArguments{
+		Endpoint: "0.0.0.0:5778",
+	}
 }
 
 // GRPCClientArguments is used to configure
@@ -140,16 +133,12 @@ func (args *HTTPServerArguments) SetToDefault() {
 // component-specific defaults.
 type GRPCClientArguments otelcol.GRPCClientArguments
 
-// DefaultGRPCClientArguments holds component-specific
-// default settings for GRPCClientArguments.
-var DefaultGRPCClientArguments = GRPCClientArguments{
-	Headers:         map[string]string{},
-	Compression:     otelcol.CompressionTypeGzip,
-	WriteBufferSize: 512 * 1024,
-	BalancerName:    "pick_first",
-}
-
 // SetToDefault implements river.Defaulter.
 func (args *GRPCClientArguments) SetToDefault() {
-	*args = DefaultGRPCClientArguments
+	*args = GRPCClientArguments{
+		Headers:         map[string]string{},
+		Compression:     otelcol.CompressionTypeGzip,
+		WriteBufferSize: 512 * 1024,
+		BalancerName:    otelcol.DefaultBalancerName,
+	}
 }

@@ -1,0 +1,78 @@
+otelcol.receiver.otlp "trace_config_1_default" {
+	grpc {
+		include_metadata = true
+	}
+
+	http {
+		include_metadata = true
+	}
+
+	output {
+		metrics = []
+		logs    = []
+		traces  = [otelcol.processor.attributes.trace_config_1_default.input]
+	}
+}
+
+otelcol.processor.attributes "trace_config_1_default" {
+	action {
+		key    = "db.table"
+		action = "delete"
+	}
+
+	output {
+		metrics = []
+		logs    = []
+		traces  = [otelcol.exporter.otlp.trace_config_1_default_0.input]
+	}
+}
+
+otelcol.exporter.otlp "trace_config_1_default_0" {
+	retry_on_failure {
+		max_elapsed_time = "1m0s"
+	}
+
+	client {
+		endpoint = "http://localhost:1234/write"
+	}
+}
+
+otelcol.receiver.otlp "trace_config_2_default" {
+	grpc {
+		include_metadata = true
+	}
+
+	http {
+		include_metadata = true
+	}
+
+	output {
+		metrics = []
+		logs    = []
+		traces  = [otelcol.processor.attributes.trace_config_2_default.input]
+	}
+}
+
+otelcol.processor.attributes "trace_config_2_default" {
+	action {
+		key    = "redacted_span"
+		value  = true
+		action = "upsert"
+	}
+
+	output {
+		metrics = []
+		logs    = []
+		traces  = [otelcol.exporter.otlp.trace_config_2_default_0.input]
+	}
+}
+
+otelcol.exporter.otlp "trace_config_2_default_0" {
+	retry_on_failure {
+		max_elapsed_time = "1m0s"
+	}
+
+	client {
+		endpoint = "http://localhost:1234/write"
+	}
+}

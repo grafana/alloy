@@ -24,9 +24,9 @@ var (
 
 // MultilineConfig contains the configuration for a Multiline stage.
 type MultilineConfig struct {
-	Expression  string        `river:"firstline,attr"`
-	MaxLines    uint64        `river:"max_lines,attr,optional"`
-	MaxWaitTime time.Duration `river:"max_wait_time,attr,optional"`
+	Expression  string        `alloy:"firstline,attr"`
+	MaxLines    uint64        `alloy:"max_lines,attr,optional"`
+	MaxWaitTime time.Duration `alloy:"max_wait_time,attr,optional"`
 	regex       *regexp.Regexp
 }
 

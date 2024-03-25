@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,9 +56,9 @@ func BenchmarkExprs(b *testing.B) {
 					age = 42,
 			}`,
 			expect: struct {
-				Name    string `river:"name,attr"`
-				Age     int    `river:"age,attr"`
-				Country string `river:"country,attr,optional"`
+				Name    string `alloy:"name,attr"`
+				Age     int    `alloy:"age,attr"`
+				Country string `alloy:"country,attr,optional"`
 			}{
 				Name: "John Doe",
 				Age:  42,

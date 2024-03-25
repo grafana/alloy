@@ -7,10 +7,10 @@ import (
 	"github.com/grafana/agent/internal/component/prometheus/exporter/blackbox"
 	"github.com/grafana/agent/internal/static/integrations/blackbox_exporter"
 	blackbox_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/blackbox_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendBlackboxExporter(config *blackbox_exporter.Config) discovery.Exports {
+func (b *ConfigBuilder) appendBlackboxExporter(config *blackbox_exporter.Config) discovery.Exports {
 	args := toBlackboxExporter(config)
 	return b.appendExporterBlock(args, config.Name(), nil, "blackbox")
 }
@@ -18,7 +18,7 @@ func (b *IntegrationsConfigBuilder) appendBlackboxExporter(config *blackbox_expo
 func toBlackboxExporter(config *blackbox_exporter.Config) *blackbox.Arguments {
 	return &blackbox.Arguments{
 		ConfigFile: config.BlackboxConfigFile,
-		Config: rivertypes.OptionalSecret{
+		Config: alloytypes.OptionalSecret{
 			IsSecret: false,
 			Value:    string(config.BlackboxConfig),
 		},
@@ -27,7 +27,7 @@ func toBlackboxExporter(config *blackbox_exporter.Config) *blackbox.Arguments {
 	}
 }
 
-func (b *IntegrationsConfigBuilder) appendBlackboxExporterV2(config *blackbox_exporter_v2.Config) discovery.Exports {
+func (b *ConfigBuilder) appendBlackboxExporterV2(config *blackbox_exporter_v2.Config) discovery.Exports {
 	args := toBlackboxExporterV2(config)
 	return b.appendExporterBlock(args, config.Name(), config.Common.InstanceKey, "blackbox")
 }
@@ -35,7 +35,7 @@ func (b *IntegrationsConfigBuilder) appendBlackboxExporterV2(config *blackbox_ex
 func toBlackboxExporterV2(config *blackbox_exporter_v2.Config) *blackbox.Arguments {
 	return &blackbox.Arguments{
 		ConfigFile: config.BlackboxConfigFile,
-		Config: rivertypes.OptionalSecret{
+		Config: alloytypes.OptionalSecret{
 			IsSecret: false,
 			Value:    string(config.BlackboxConfig),
 		},

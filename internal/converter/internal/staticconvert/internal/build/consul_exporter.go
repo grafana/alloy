@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations/consul_exporter"
 )
 
-func (b *IntegrationsConfigBuilder) appendConsulExporter(config *consul_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendConsulExporter(config *consul_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toConsulExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "consul")
 }

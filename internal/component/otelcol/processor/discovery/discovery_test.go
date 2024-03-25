@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/flow/componenttest"
 	promsdconsumer "github.com/grafana/agent/internal/static/traces/promsdprocessor/consumer"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
 )
@@ -27,7 +27,7 @@ func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorCon
 	require.NoError(t, err)
 
 	var args discovery.Arguments
-	require.NoError(t, river.Unmarshal([]byte(processorConfig), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(processorConfig), &args))
 
 	// Override the arguments so signals get forwarded to the test channel.
 	args.Output = testSignal.MakeOutput()
@@ -55,10 +55,12 @@ func Test_DefaultConfig(t *testing.T) {
 		}
 	`
 	var args discovery.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
+	var defaultArgs discovery.Arguments
+	defaultArgs.SetToDefault()
 	require.Equal(t, args.OperationType, promsdconsumer.OperationTypeUpsert)
-	require.Equal(t, args.PodAssociations, discovery.DefaultArguments.PodAssociations)
+	require.Equal(t, args.PodAssociations, defaultArgs.PodAssociations)
 
 	var inputTrace = `{
 		"resourceSpans": [{
@@ -155,10 +157,12 @@ func Test_Insert(t *testing.T) {
 		}
 	`
 	var args discovery.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
+	var defaultArgs discovery.Arguments
+	defaultArgs.SetToDefault()
 	require.Equal(t, args.OperationType, promsdconsumer.OperationTypeInsert)
-	require.Equal(t, args.PodAssociations, discovery.DefaultArguments.PodAssociations)
+	require.Equal(t, args.PodAssociations, defaultArgs.PodAssociations)
 
 	var inputTrace = `{
 		"resourceSpans": [{
@@ -276,10 +280,12 @@ func Test_Update(t *testing.T) {
 		}
 	`
 	var args discovery.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
+	var defaultArgs discovery.Arguments
+	defaultArgs.SetToDefault()
 	require.Equal(t, args.OperationType, promsdconsumer.OperationTypeUpdate)
-	require.Equal(t, args.PodAssociations, discovery.DefaultArguments.PodAssociations)
+	require.Equal(t, args.PodAssociations, defaultArgs.PodAssociations)
 
 	var inputTrace = `{
 		"resourceSpans": [{
@@ -398,7 +404,7 @@ func Test_PodAssociationLabels(t *testing.T) {
 		`, podAssociationLabel)
 
 		var args discovery.Arguments
-		require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 		require.Equal(t, args.OperationType, promsdconsumer.OperationTypeInsert)
 		require.Equal(t, args.PodAssociations, []string{podAssociationLabel})

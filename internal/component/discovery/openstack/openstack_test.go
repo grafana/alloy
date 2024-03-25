@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/openstack"
@@ -39,7 +39,7 @@ func TestUnmarshal(t *testing.T) {
 	}
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(cfg), &args)
+	err := syntax.Unmarshal([]byte(cfg), &args)
 	require.NoError(t, err)
 }
 
@@ -50,7 +50,7 @@ func TestValidate(t *testing.T) {
 		availability = "private"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(wrongAvailability), &args)
+	err := syntax.Unmarshal([]byte(wrongAvailability), &args)
 	require.ErrorContains(t, err, "unknown availability private, must be one of admin, internal or public")
 
 	wrongRole := `
@@ -59,7 +59,7 @@ func TestValidate(t *testing.T) {
 		availability = "public"`
 
 	var args2 Arguments
-	err = river.Unmarshal([]byte(wrongRole), &args2)
+	err = syntax.Unmarshal([]byte(wrongRole), &args2)
 	require.ErrorContains(t, err, "unknown availability private, must be one of instance or hypervisor")
 }
 

@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
 	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_consul "github.com/prometheus/prometheus/discovery/consul"
 )
 
@@ -31,14 +31,14 @@ func toDiscoveryConsul(sdConfig *prom_consul.SDConfig) *consul.Arguments {
 
 	return &consul.Arguments{
 		Server:           sdConfig.Server,
-		Token:            rivertypes.Secret(sdConfig.Token),
+		Token:            alloytypes.Secret(sdConfig.Token),
 		Datacenter:       sdConfig.Datacenter,
 		Namespace:        sdConfig.Namespace,
 		Partition:        sdConfig.Partition,
 		TagSeparator:     sdConfig.TagSeparator,
 		Scheme:           sdConfig.Scheme,
 		Username:         sdConfig.Username,
-		Password:         rivertypes.Secret(sdConfig.Password),
+		Password:         alloytypes.Secret(sdConfig.Password),
 		AllowStale:       sdConfig.AllowStale,
 		Services:         sdConfig.Services,
 		ServiceTags:      sdConfig.ServiceTags,

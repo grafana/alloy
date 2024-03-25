@@ -2,7 +2,7 @@ package ec2
 
 import (
 	rac "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 )
 
 const Name = "ec2"
@@ -11,8 +11,8 @@ const Name = "ec2"
 type Config struct {
 	// Tags is a list of regex's to match ec2 instance tag keys that users want
 	// to add as resource attributes to processed data
-	Tags               []string                 `river:"tags,attr,optional"`
-	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+	Tags               []string                 `alloy:"tags,attr,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -30,9 +30,9 @@ var DefaultArguments = Config{
 	},
 }
 
-var _ river.Defaulter = (*Config)(nil)
+var _ syntax.Defaulter = (*Config)(nil)
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
@@ -46,15 +46,15 @@ func (args Config) Convert() map[string]interface{} {
 
 // ResourceAttributesConfig provides config to enable and disable resource attributes.
 type ResourceAttributesConfig struct {
-	CloudAccountID        rac.ResourceAttributeConfig `river:"cloud.account.id,block,optional"`
-	CloudAvailabilityZone rac.ResourceAttributeConfig `river:"cloud.availability_zone,block,optional"`
-	CloudPlatform         rac.ResourceAttributeConfig `river:"cloud.platform,block,optional"`
-	CloudProvider         rac.ResourceAttributeConfig `river:"cloud.provider,block,optional"`
-	CloudRegion           rac.ResourceAttributeConfig `river:"cloud.region,block,optional"`
-	HostID                rac.ResourceAttributeConfig `river:"host.id,block,optional"`
-	HostImageID           rac.ResourceAttributeConfig `river:"host.image.id,block,optional"`
-	HostName              rac.ResourceAttributeConfig `river:"host.name,block,optional"`
-	HostType              rac.ResourceAttributeConfig `river:"host.type,block,optional"`
+	CloudAccountID        rac.ResourceAttributeConfig `alloy:"cloud.account.id,block,optional"`
+	CloudAvailabilityZone rac.ResourceAttributeConfig `alloy:"cloud.availability_zone,block,optional"`
+	CloudPlatform         rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
+	CloudProvider         rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
+	CloudRegion           rac.ResourceAttributeConfig `alloy:"cloud.region,block,optional"`
+	HostID                rac.ResourceAttributeConfig `alloy:"host.id,block,optional"`
+	HostImageID           rac.ResourceAttributeConfig `alloy:"host.image.id,block,optional"`
+	HostName              rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
+	HostType              rac.ResourceAttributeConfig `alloy:"host.type,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {

@@ -8,19 +8,19 @@ import (
 )
 
 type Arguments struct {
-	Targets   []discovery.Target     `river:"targets,attr"`
-	ForwardTo []pyroscope.Appendable `river:"forward_to,attr"`
+	Targets   []discovery.Target     `alloy:"targets,attr"`
+	ForwardTo []pyroscope.Appendable `alloy:"forward_to,attr"`
 
-	TmpDir          string          `river:"tmp_dir,attr,optional"`
-	ProfilingConfig ProfilingConfig `river:"profiling_config,block,optional"`
+	TmpDir          string          `alloy:"tmp_dir,attr,optional"`
+	ProfilingConfig ProfilingConfig `alloy:"profiling_config,block,optional"`
 }
 
 type ProfilingConfig struct {
-	Interval   time.Duration `river:"interval,attr,optional"`
-	SampleRate int           `river:"sample_rate,attr,optional"`
-	Alloc      string        `river:"alloc,attr,optional"`
-	Lock       string        `river:"lock,attr,optional"`
-	CPU        bool          `river:"cpu,attr,optional"`
+	Interval   time.Duration `alloy:"interval,attr,optional"`
+	SampleRate int           `alloy:"sample_rate,attr,optional"`
+	Alloc      string        `alloy:"alloc,attr,optional"`
+	Lock       string        `alloy:"lock,attr,optional"`
+	CPU        bool          `alloy:"cpu,attr,optional"`
 }
 
 func (rc *Arguments) UnmarshalRiver(f func(interface{}) error) error {

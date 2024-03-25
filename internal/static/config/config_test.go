@@ -13,13 +13,11 @@ import (
 	"github.com/grafana/agent/internal/static/config/encoder"
 	"github.com/grafana/agent/internal/static/metrics"
 	"github.com/grafana/agent/internal/static/metrics/instance"
-	"github.com/grafana/agent/internal/static/server"
 	"github.com/grafana/agent/internal/util"
 	commonCfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	promCfg "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
@@ -457,71 +455,18 @@ func TestAgent_OmitEmptyFields(t *testing.T) {
 	require.Equal(t, "{}\n", string(yml))
 }
 
-func TestAgentManagement_MergeEffectiveConfig(t *testing.T) {
-	initialCfg := `
-server:
-  log_level: info
-logs:
-  positions_directory: /tmp
-agent_management:
-  host: "localhost"
-  basic_auth:
-    username: "initial_user"
-  protocol: "http"
-  polling_interval: "1m"
-  remote_configuration:
-    namespace: "new_namespace"
-    cache_location: "/etc"`
-
-	remoteCfg := `
-server:
-  log_level: debug
-metrics:
-  wal_directory: /tmp
-  global:
-    scrape_interval: 5m
-integrations:
-  scrape_integrations: true
-
-agent_management:
-  host: "localhost:80"
-  basic_auth:
-    username: "new_user"
-  protocol: "http"
-  polling_interval: "10s"
-  remote_configuration:
-    namespace: "new_namespace"
-    cache_location: "/etc"`
-
-	var ic, rc Config
-	err := LoadBytes([]byte(initialCfg), false, &ic)
-	assert.NoError(t, err)
-	err = LoadBytes([]byte(remoteCfg), false, &rc)
-	assert.NoError(t, err)
-
-	// keep a copy of the initial config's agent management block to ensure it isn't
-	// overwritten by the remote config's
-	initialAgentManagement := ic.AgentManagement
-	mergeEffectiveConfig(&ic, &rc)
-
-	// agent_management configuration should not be overwritten by the remote config
-	assert.Equal(t, initialAgentManagement, ic.AgentManagement)
-
-	// since these elements are purposefully different for the previous portion of the test,
-	// unset them before comparing the rest of the config
-	ic.AgentManagement = AgentManagementConfig{}
-	rc.AgentManagement = AgentManagementConfig{}
-
-	assert.True(t, util.CompareYAML(ic, rc))
-}
-
 func TestConfig_EmptyServerConfigFails(t *testing.T) {
 	// Since we are testing defaults via config.Load, we need a file instead of a string.
 	// This test file has an empty server stanza, we expect default values out.
-	defaultServerCfg := server.DefaultConfig()
-	logger := server.NewLogger(&defaultServerCfg)
 	fs := flag.NewFlagSet("", flag.ExitOnError)
-	_, err := Load(fs, []string{"--config.file", "./testdata/server_empty.yml"}, logger)
+
+	_, err := LoadFromFunc(fs, []string{"--config.file", "./testdata/server_empty.yml"}, func(path, fileType string, expandEnvVars bool, target *Config) error {
+		bb, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return LoadBytes(bb, expandEnvVars, target)
+	})
 	require.Error(t, err)
 }
 

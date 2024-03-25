@@ -3,7 +3,7 @@ package scaleway
 import (
 	"testing"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,7 +40,7 @@ func Test(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			var args Arguments
-			err := river.Unmarshal([]byte(tc.config), &args)
+			err := syntax.Unmarshal([]byte(tc.config), &args)
 			require.NoError(t, err)
 
 			// Assert that args.Convert() doesn't panic.
@@ -67,6 +67,6 @@ func TestUnsafeCast(t *testing.T) {
 		secret_key = "00000000-0000-0000-0000-000000000000"
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(input), &args)
+	err := syntax.Unmarshal([]byte(input), &args)
 	require.ErrorContains(t, err, "invalid project ID format")
 }

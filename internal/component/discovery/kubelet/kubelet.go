@@ -72,23 +72,21 @@ func init() {
 
 // Arguments configures the discovery.kubelet component.
 type Arguments struct {
-	URL              config.URL              `river:"url,attr,optional"`
-	Interval         time.Duration           `river:"refresh_interval,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
-	Namespaces       []string                `river:"namespaces,attr,optional"`
-}
-
-// DefaultConfig holds defaults for SDConfig.
-var DefaultConfig = Arguments{
-	URL: config.URL{
-		URL: defaultKubeletURL,
-	},
-	HTTPClientConfig: config.DefaultHTTPClientConfig,
+	URL              config.URL              `alloy:"url,attr,optional"`
+	Interval         time.Duration           `alloy:"refresh_interval,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
+	Namespaces       []string                `alloy:"namespaces,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultConfig
+	cloneDefaultKubeletUrl := *defaultKubeletURL
+	*args = Arguments{
+		URL: config.URL{
+			URL: &cloneDefaultKubeletUrl,
+		},
+		HTTPClientConfig: config.DefaultHTTPClientConfig,
+	}
 }
 
 // Validate implements river.Validator.

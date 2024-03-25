@@ -16,10 +16,6 @@ loki.write "logs_log_config" {
 	external_labels = {}
 }
 
-loki.source.kubernetes_events "integrations_eventhandler" {
-	forward_to = [loki.write.logs_log_config.receiver]
-}
-
 faro.receiver "integrations_app_agent_receiver" {
 	extra_log_labels = {}
 
@@ -29,19 +25,21 @@ faro.receiver "integrations_app_agent_receiver" {
 		max_allowed_payload_size = "4MiB786KiB832B"
 
 		rate_limiting {
-			enabled    = true
 			rate       = 100
 			burst_size = 50
 		}
 	}
 
 	sourcemaps {
-		download_from_origins = ["*"]
-		download_timeout      = "1s"
+		download = false
 	}
 
 	output {
 		logs   = []
 		traces = []
 	}
+}
+
+loki.source.kubernetes_events "integrations_eventhandler" {
+	forward_to = [loki.write.logs_log_config.receiver]
 }

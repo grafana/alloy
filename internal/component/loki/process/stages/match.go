@@ -27,11 +27,11 @@ var (
 
 // MatchConfig contains the configuration for a matcherStage
 type MatchConfig struct {
-	Selector     string        `river:"selector,attr"`
-	Stages       []StageConfig `river:"stage,enum,optional"`
-	Action       string        `river:"action,attr,optional"`
-	PipelineName string        `river:"pipeline_name,attr,optional"`
-	DropReason   string        `river:"drop_counter_reason,attr,optional"`
+	Selector     string        `alloy:"selector,attr"`
+	Stages       []StageConfig `alloy:"stage,enum,optional"`
+	Action       string        `alloy:"action,attr,optional"`
+	PipelineName string        `alloy:"pipeline_name,attr,optional"`
+	DropReason   string        `alloy:"drop_counter_reason,attr,optional"`
 }
 
 // validateMatcherConfig validates the MatcherConfig for the matcherStage

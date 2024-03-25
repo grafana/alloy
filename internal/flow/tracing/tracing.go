@@ -38,28 +38,28 @@ var (
 type Options struct {
 	// SamplingFraction determines which rate of traces to sample. A value of 1
 	// means to keep 100% of traces. A value of 0 means to keep 0% of traces.
-	SamplingFraction float64 `river:"sampling_fraction,attr,optional"`
+	SamplingFraction float64 `alloy:"sampling_fraction,attr,optional"`
 
 	// Sampler holds optional samplers to configure on top of the sampling
 	// fraction.
-	Sampler SamplerOptions `river:"sampler,block,optional"`
+	Sampler SamplerOptions `alloy:"sampler,block,optional"`
 
 	// WriteTo holds a set of OpenTelemetry Collector consumers where internal
 	// traces should be sent.
-	WriteTo []otelcol.Consumer `river:"write_to,attr,optional"`
+	WriteTo []otelcol.Consumer `alloy:"write_to,attr,optional"`
 }
 
 type SamplerOptions struct {
-	JaegerRemote *JaegerRemoteSamplerOptions `river:"jaeger_remote,block,optional"`
+	JaegerRemote *JaegerRemoteSamplerOptions `alloy:"jaeger_remote,block,optional"`
 
 	// TODO(rfratto): if support for another sampler is added, SamplerOptions
 	// must enforce that only one inner block is provided.
 }
 
 type JaegerRemoteSamplerOptions struct {
-	URL             string        `river:"url,attr,optional"`
-	MaxOperations   int           `river:"max_operations,attr,optional"`
-	RefreshInterval time.Duration `river:"refresh_interval,attr,optional"`
+	URL             string        `alloy:"url,attr,optional"`
+	MaxOperations   int           `alloy:"max_operations,attr,optional"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

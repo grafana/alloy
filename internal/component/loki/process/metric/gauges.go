@@ -29,15 +29,15 @@ var DefaultGaugeConfig = GaugeConfig{
 // GaugeConfig defines a gauge metric whose value can go up or down.
 type GaugeConfig struct {
 	// Shared fields
-	Name        string        `river:"name,attr"`
-	Description string        `river:"description,attr,optional"`
-	Source      string        `river:"source,attr,optional"`
-	Prefix      string        `river:"prefix,attr,optional"`
-	MaxIdle     time.Duration `river:"max_idle_duration,attr,optional"`
-	Value       string        `river:"value,attr,optional"`
+	Name        string        `alloy:"name,attr"`
+	Description string        `alloy:"description,attr,optional"`
+	Source      string        `alloy:"source,attr,optional"`
+	Prefix      string        `alloy:"prefix,attr,optional"`
+	MaxIdle     time.Duration `alloy:"max_idle_duration,attr,optional"`
+	Value       string        `alloy:"value,attr,optional"`
 
 	// Gauge-specific fields
-	Action string `river:"action,attr"`
+	Action string `alloy:"action,attr"`
 }
 
 // SetToDefault implements river.Defaulter.

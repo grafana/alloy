@@ -10,7 +10,7 @@ import (
 	remote_http "github.com/grafana/agent/internal/component/remote/http"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/internal/testcomponents/module"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func init() {
@@ -28,9 +28,9 @@ func init() {
 
 // Arguments holds values which are used to configure the module.http component.
 type Arguments struct {
-	RemoteHTTPArguments remote_http.Arguments `river:",squash"`
+	RemoteHTTPArguments remote_http.Arguments `alloy:",squash"`
 
-	Arguments map[string]any `river:"arguments,block,optional"`
+	Arguments map[string]any `alloy:"arguments,block,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -45,7 +45,7 @@ type Component struct {
 
 	mut     sync.RWMutex
 	args    Arguments
-	content rivertypes.OptionalSecret
+	content alloytypes.OptionalSecret
 
 	managedRemoteHTTP *remote_http.Component
 	inUpdate          atomic.Bool
@@ -167,14 +167,14 @@ func (c *Component) setArgs(args Arguments) {
 }
 
 // getContent is a goroutine safe way to get content
-func (c *Component) getContent() rivertypes.OptionalSecret {
+func (c *Component) getContent() alloytypes.OptionalSecret {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 	return c.content
 }
 
 // setContent is a goroutine safe way to set content
-func (c *Component) setContent(content rivertypes.OptionalSecret) {
+func (c *Component) setContent(content alloytypes.OptionalSecret) {
 	c.mut.Lock()
 	c.content = content
 	c.mut.Unlock()

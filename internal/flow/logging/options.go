@@ -7,15 +7,15 @@ import (
 	"math"
 
 	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Options is a set of options used to construct and configure a Logger.
 type Options struct {
-	Level  Level  `river:"level,attr,optional"`
-	Format Format `river:"format,attr,optional"`
+	Level  Level  `alloy:"level,attr,optional"`
+	Format Format `alloy:"format,attr,optional"`
 
-	WriteTo []loki.LogsReceiver `river:"write_to,attr,optional"`
+	WriteTo []loki.LogsReceiver `alloy:"write_to,attr,optional"`
 }
 
 // DefaultOptions holds defaults for creating a Logger.
@@ -24,9 +24,9 @@ var DefaultOptions = Options{
 	Format: FormatDefault,
 }
 
-var _ river.Defaulter = (*Options)(nil)
+var _ syntax.Defaulter = (*Options)(nil)
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (o *Options) SetToDefault() {
 	*o = DefaultOptions
 }

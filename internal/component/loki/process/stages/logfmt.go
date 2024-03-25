@@ -21,8 +21,8 @@ var (
 
 // LogfmtConfig represents a logfmt Stage configuration
 type LogfmtConfig struct {
-	Mapping map[string]string `river:"mapping,attr"`
-	Source  string            `river:"source,attr,optional"`
+	Mapping map[string]string `alloy:"mapping,attr"`
+	Source  string            `alloy:"source,attr,optional"`
 }
 
 // validateLogfmtConfig validates a logfmt stage config and returns an inverse mapping of configured mapping.

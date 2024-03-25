@@ -4,8 +4,8 @@ import (
 	"github.com/grafana/agent/internal/component/common/relabel"
 	"github.com/grafana/agent/internal/component/loki/source/kafka"
 	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/river/rivertypes"
 )
 
 func (s *ScrapeConfigBuilder) AppendKafka() {
@@ -29,7 +29,7 @@ func (s *ScrapeConfigBuilder) AppendKafka() {
 		switch value := val.(type) {
 		case relabel.Rules:
 			return common.CustomTokenizer{Expr: s.getOrNewDiscoveryRelabelRules()}
-		case rivertypes.Secret:
+		case alloytypes.Secret:
 			return string(value)
 		default:
 			return val
@@ -51,7 +51,7 @@ func convertKafkaAuthConfig(kafkaCfg *scrapeconfig.KafkaTargetConfig) kafka.Kafk
 		SASLConfig: kafka.KafkaSASLConfig{
 			Mechanism: string(kafkaCfg.Authentication.SASLConfig.Mechanism),
 			User:      kafkaCfg.Authentication.SASLConfig.User,
-			Password:  rivertypes.Secret(kafkaCfg.Authentication.SASLConfig.Password.String()),
+			Password:  alloytypes.Secret(kafkaCfg.Authentication.SASLConfig.Password.String()),
 			UseTLS:    kafkaCfg.Authentication.SASLConfig.UseTLS,
 			TLSConfig: *common.ToTLSConfig(&kafkaCfg.Authentication.SASLConfig.TLSConfig),
 		},

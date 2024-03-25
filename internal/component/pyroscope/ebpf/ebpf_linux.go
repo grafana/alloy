@@ -200,8 +200,8 @@ func (c *Component) collectProfiles() error {
 }
 
 type DebugInfo struct {
-	Targets interface{} `river:"targets,attr,optional"`
-	Session interface{} `river:"session,attr,optional"`
+	Targets interface{} `alloy:"targets,attr,optional"`
+	Session interface{} `alloy:"session,attr,optional"`
 }
 
 func (c *Component) updateDebugInfo() {

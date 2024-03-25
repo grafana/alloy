@@ -33,9 +33,9 @@ var DefaultArguments = Arguments{
 
 // Arguments controls the apache exporter.
 type Arguments struct {
-	ApacheAddr         string `river:"scrape_uri,attr,optional"`
-	ApacheHostOverride string `river:"host_override,attr,optional"`
-	ApacheInsecure     bool   `river:"insecure,attr,optional"`
+	ApacheAddr         string `alloy:"scrape_uri,attr,optional"`
+	ApacheHostOverride string `alloy:"host_override,attr,optional"`
+	ApacheInsecure     bool   `alloy:"insecure,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

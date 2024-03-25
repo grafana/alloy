@@ -28,10 +28,10 @@ func init() {
 
 // Arguments configures the discovery.dns component.
 type Arguments struct {
-	Names           []string      `river:"names,attr"`
-	RefreshInterval time.Duration `river:"refresh_interval,attr,optional"`
-	Type            string        `river:"type,attr,optional"`
-	Port            int           `river:"port,attr,optional"`
+	Names           []string      `alloy:"names,attr"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
+	Type            string        `alloy:"type,attr,optional"`
+	Port            int           `alloy:"port,attr,optional"`
 }
 
 var DefaultArguments = Arguments{

@@ -35,9 +35,9 @@ import (
 	uiservice "github.com/grafana/agent/internal/service/ui"
 	"github.com/grafana/agent/internal/static/config/instrumentation"
 	"github.com/grafana/agent/internal/usagestats"
+	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
-	"github.com/grafana/river/diag"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
@@ -387,6 +387,9 @@ func getEnabledComponentsFunc(f *flow.Flow) func() map[string]interface{} {
 		components := component.GetAllComponents(f, component.InfoOptions{})
 		componentNames := map[string]struct{}{}
 		for _, c := range components {
+			if c.Type != component.TypeBuiltin {
+				continue
+			}
 			componentNames[c.ComponentName] = struct{}{}
 		}
 		return map[string]interface{}{"enabled-components": maps.Keys(componentNames)}

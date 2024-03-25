@@ -4,8 +4,9 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/static/integrations/postgres_exporter"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
@@ -24,11 +25,11 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 	}`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
-		DataSourceNames:        []rivertypes.Secret{rivertypes.Secret("postgresql://username:password@localhost:5432/database?sslmode=disable")},
+		DataSourceNames:        []alloytypes.Secret{rivertypes.Secret("postgresql://username:password@localhost:5432/database?sslmode=disable")},
 		DisableSettingsMetrics: true,
 		AutoDiscovery: AutoDiscovery{
 			Enabled:           false,
@@ -56,7 +57,7 @@ func TestRiverConfigConvert(t *testing.T) {
 	}`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	c := args.Convert()

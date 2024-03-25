@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +19,7 @@ type defaultingType struct {
 	Number int
 }
 
-var _ river.Defaulter = (*defaultingType)(nil)
+var _ syntax.Defaulter = (*defaultingType)(nil)
 
 func (dt *defaultingType) SetToDefault() {
 	dt.Number = 42

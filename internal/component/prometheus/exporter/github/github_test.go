@@ -3,7 +3,7 @@ package github
 import (
 	"testing"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +16,7 @@ func TestUnmarshalRiver(t *testing.T) {
 		api_url = "https://some-other-api.github.com"
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "/etc/github-api-token", args.APITokenFile)
 	require.Equal(t, []string{"grafana/agent"}, args.Repositories)

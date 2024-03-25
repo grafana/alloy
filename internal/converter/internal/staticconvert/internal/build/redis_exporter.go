@@ -4,10 +4,10 @@ import (
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/component/prometheus/exporter/redis"
 	"github.com/grafana/agent/internal/static/integrations/redis_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
-func (b *IntegrationsConfigBuilder) appendRedisExporter(config *redis_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendRedisExporter(config *redis_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toRedisExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "redis")
 }
@@ -17,7 +17,7 @@ func toRedisExporter(config *redis_exporter.Config) *redis.Arguments {
 		IncludeExporterMetrics:  config.IncludeExporterMetrics,
 		RedisAddr:               config.RedisAddr,
 		RedisUser:               config.RedisUser,
-		RedisPassword:           rivertypes.Secret(config.RedisPassword),
+		RedisPassword:           alloytypes.Secret(config.RedisPassword),
 		RedisPasswordFile:       config.RedisPasswordFile,
 		RedisPasswordMapFile:    config.RedisPasswordMapFile,
 		Namespace:               config.Namespace,

@@ -6,8 +6,8 @@ import (
 	"reflect"
 
 	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // ImportString imports a module from a string.
@@ -27,7 +27,7 @@ func NewImportString(eval *vm.Evaluator, onContentChange func(map[string]string)
 }
 
 type importStringConfigBlock struct {
-	Content rivertypes.OptionalSecret `river:"content,attr"`
+	Content alloytypes.OptionalSecret `alloy:"content,attr"`
 }
 
 func (im *ImportString) Evaluate(scope *vm.Scope) error {

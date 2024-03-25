@@ -18,15 +18,15 @@ var DefaultHistogramConfig = HistogramConfig{
 // HistogramConfig defines a histogram metric whose values are bucketed.
 type HistogramConfig struct {
 	// Shared fields
-	Name        string        `river:"name,attr"`
-	Description string        `river:"description,attr,optional"`
-	Source      string        `river:"source,attr,optional"`
-	Prefix      string        `river:"prefix,attr,optional"`
-	MaxIdle     time.Duration `river:"max_idle_duration,attr,optional"`
-	Value       string        `river:"value,attr,optional"`
+	Name        string        `alloy:"name,attr"`
+	Description string        `alloy:"description,attr,optional"`
+	Source      string        `alloy:"source,attr,optional"`
+	Prefix      string        `alloy:"prefix,attr,optional"`
+	MaxIdle     time.Duration `alloy:"max_idle_duration,attr,optional"`
+	Value       string        `alloy:"value,attr,optional"`
 
 	// Histogram-specific fields
-	Buckets []float64 `river:"buckets,attr"`
+	Buckets []float64 `alloy:"buckets,attr"`
 }
 
 // SetToDefault implements river.Defaulter.

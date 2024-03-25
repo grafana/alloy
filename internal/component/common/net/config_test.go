@@ -7,13 +7,13 @@ import (
 	dskit "github.com/grafana/dskit/server"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 )
 
 // testArguments mimics an arguments type used by a component, applying the defaults to ServerConfig
 // from it's UnmarshalRiver implementation, since the block is squashed.
 type testArguments struct {
-	Server *ServerConfig `river:",squash"`
+	Server *ServerConfig `alloy:",squash"`
 }
 
 func (t *testArguments) UnmarshalRiver(f func(v interface{}) error) error {
@@ -150,7 +150,7 @@ func TestConfig(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			args := testArguments{}
-			err := river.Unmarshal([]byte(tc.raw), &args)
+			err := syntax.Unmarshal([]byte(tc.raw), &args)
 			require.Equal(t, tc.errExpected, err != nil)
 			wConfig := args.Server.convert()
 			tc.assert(t, wConfig)

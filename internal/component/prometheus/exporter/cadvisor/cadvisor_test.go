@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/static/integrations/cadvisor"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +29,7 @@ docker_tls_key = "docker_tls_key"
 docker_tls_ca = "docker_tls_ca"
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	expected := Arguments{
 		StoreContainerLabels:       true,

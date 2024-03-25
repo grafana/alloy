@@ -8,6 +8,9 @@ cascade:
   OTEL_VERSION: v0.87.0
   PRODUCT_NAME: Grafana Alloy
   PRODUCT_ROOT_NAME: Alloy
+  _build:
+    list: false
+  noindex: true
 ---
 
 # {{% param "PRODUCT_NAME" %}}

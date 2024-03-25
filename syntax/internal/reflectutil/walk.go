@@ -3,7 +3,7 @@ package reflectutil
 import (
 	"reflect"
 
-	"github.com/grafana/river/internal/syntaxtags"
+	"github.com/grafana/alloy/syntax/internal/syntaxtags"
 )
 
 // GetOrAlloc returns the nested field of value corresponding to index.

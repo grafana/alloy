@@ -12,8 +12,8 @@ import (
 	kt "github.com/grafana/agent/internal/component/loki/source/internal/kafkatarget"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/river/rivertypes"
 	"github.com/prometheus/common/model"
 )
 
@@ -32,39 +32,39 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.kafka
 // component.
 type Arguments struct {
-	Brokers              []string            `river:"brokers,attr"`
-	Topics               []string            `river:"topics,attr"`
-	GroupID              string              `river:"group_id,attr,optional"`
-	Assignor             string              `river:"assignor,attr,optional"`
-	Version              string              `river:"version,attr,optional"`
-	Authentication       KafkaAuthentication `river:"authentication,block,optional"`
-	UseIncomingTimestamp bool                `river:"use_incoming_timestamp,attr,optional"`
-	Labels               map[string]string   `river:"labels,attr,optional"`
+	Brokers              []string            `alloy:"brokers,attr"`
+	Topics               []string            `alloy:"topics,attr"`
+	GroupID              string              `alloy:"group_id,attr,optional"`
+	Assignor             string              `alloy:"assignor,attr,optional"`
+	Version              string              `alloy:"version,attr,optional"`
+	Authentication       KafkaAuthentication `alloy:"authentication,block,optional"`
+	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
+	Labels               map[string]string   `alloy:"labels,attr,optional"`
 
-	ForwardTo    []loki.LogsReceiver `river:"forward_to,attr"`
-	RelabelRules flow_relabel.Rules  `river:"relabel_rules,attr,optional"`
+	ForwardTo    []loki.LogsReceiver `alloy:"forward_to,attr"`
+	RelabelRules flow_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
 }
 
 // KafkaAuthentication describe the configuration for authentication with Kafka brokers
 type KafkaAuthentication struct {
-	Type       string           `river:"type,attr,optional"`
-	TLSConfig  config.TLSConfig `river:"tls_config,block,optional"`
-	SASLConfig KafkaSASLConfig  `river:"sasl_config,block,optional"`
+	Type       string           `alloy:"type,attr,optional"`
+	TLSConfig  config.TLSConfig `alloy:"tls_config,block,optional"`
+	SASLConfig KafkaSASLConfig  `alloy:"sasl_config,block,optional"`
 }
 
 // KafkaSASLConfig describe the SASL configuration for authentication with Kafka brokers
 type KafkaSASLConfig struct {
-	Mechanism   string            `river:"mechanism,attr,optional"`
-	User        string            `river:"user,attr,optional"`
-	Password    rivertypes.Secret `river:"password,attr,optional"`
-	UseTLS      bool              `river:"use_tls,attr,optional"`
-	TLSConfig   config.TLSConfig  `river:"tls_config,block,optional"`
-	OAuthConfig OAuthConfigConfig `river:"oauth_config,block,optional"`
+	Mechanism   string            `alloy:"mechanism,attr,optional"`
+	User        string            `alloy:"user,attr,optional"`
+	Password    alloytypes.Secret `alloy:"password,attr,optional"`
+	UseTLS      bool              `alloy:"use_tls,attr,optional"`
+	TLSConfig   config.TLSConfig  `alloy:"tls_config,block,optional"`
+	OAuthConfig OAuthConfigConfig `alloy:"oauth_config,block,optional"`
 }
 
 type OAuthConfigConfig struct {
-	TokenProvider string   `river:"token_provider,attr"`
-	Scopes        []string `river:"scopes,attr"`
+	TokenProvider string   `alloy:"token_provider,attr"`
+	Scopes        []string `alloy:"scopes,attr"`
 }
 
 // DefaultArguments provides the default arguments for a kafka component.

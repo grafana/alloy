@@ -24,13 +24,13 @@ func init() {
 
 // Arguments configures the discovery.kubernetes component.
 type Arguments struct {
-	APIServer          config.URL              `river:"api_server,attr,optional"`
-	Role               string                  `river:"role,attr"`
-	KubeConfig         string                  `river:"kubeconfig_file,attr,optional"`
-	HTTPClientConfig   config.HTTPClientConfig `river:",squash"`
-	NamespaceDiscovery NamespaceDiscovery      `river:"namespaces,block,optional"`
-	Selectors          []SelectorConfig        `river:"selectors,block,optional"`
-	AttachMetadata     AttachMetadataConfig    `river:"attach_metadata,block,optional"`
+	APIServer          config.URL              `alloy:"api_server,attr,optional"`
+	Role               string                  `alloy:"role,attr"`
+	KubeConfig         string                  `alloy:"kubeconfig_file,attr,optional"`
+	HTTPClientConfig   config.HTTPClientConfig `alloy:",squash"`
+	NamespaceDiscovery NamespaceDiscovery      `alloy:"namespaces,block,optional"`
+	Selectors          []SelectorConfig        `alloy:"selectors,block,optional"`
+	AttachMetadata     AttachMetadataConfig    `alloy:"attach_metadata,block,optional"`
 }
 
 // DefaultConfig holds defaults for SDConfig.
@@ -68,8 +68,8 @@ func (args *Arguments) Convert() *promk8s.SDConfig {
 
 // NamespaceDiscovery configures filtering rules for which namespaces to discover.
 type NamespaceDiscovery struct {
-	IncludeOwnNamespace bool     `river:"own_namespace,attr,optional"`
-	Names               []string `river:"names,attr,optional"`
+	IncludeOwnNamespace bool     `alloy:"own_namespace,attr,optional"`
+	Names               []string `alloy:"names,attr,optional"`
 }
 
 func (nd *NamespaceDiscovery) convert() *promk8s.NamespaceDiscovery {
@@ -81,9 +81,9 @@ func (nd *NamespaceDiscovery) convert() *promk8s.NamespaceDiscovery {
 
 // SelectorConfig configures selectors to filter resources to discover.
 type SelectorConfig struct {
-	Role  string `river:"role,attr"`
-	Label string `river:"label,attr,optional"`
-	Field string `river:"field,attr,optional"`
+	Role  string `alloy:"role,attr"`
+	Label string `alloy:"label,attr,optional"`
+	Field string `alloy:"field,attr,optional"`
 }
 
 func (sc *SelectorConfig) convert() *promk8s.SelectorConfig {
@@ -95,7 +95,7 @@ func (sc *SelectorConfig) convert() *promk8s.SelectorConfig {
 }
 
 type AttachMetadataConfig struct {
-	Node bool `river:"node,attr,optional"`
+	Node bool `alloy:"node,attr,optional"`
 }
 
 func (am *AttachMetadataConfig) convert() *promk8s.AttachMetadataConfig {

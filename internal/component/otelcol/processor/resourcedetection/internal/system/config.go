@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	rac "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 )
 
 const Name = "system"
@@ -14,33 +14,31 @@ type Config struct {
 	// The HostnameSources is a priority list of sources from which hostname will be fetched.
 	// In case of the error in fetching hostname from source,
 	// the next source from the list will be considered.
-	HostnameSources []string `river:"hostname_sources,attr,optional"`
+	HostnameSources []string `alloy:"hostname_sources,attr,optional"`
 
-	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
-var DefaultArguments = Config{
-	HostnameSources: []string{"dns", "os"},
-	ResourceAttributes: ResourceAttributesConfig{
-		HostArch:           rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUCacheL2Size: rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUFamily:      rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUModelID:     rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUModelName:   rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUStepping:    rac.ResourceAttributeConfig{Enabled: false},
-		HostCPUVendorID:    rac.ResourceAttributeConfig{Enabled: false},
-		HostID:             rac.ResourceAttributeConfig{Enabled: false},
-		HostName:           rac.ResourceAttributeConfig{Enabled: true},
-		OsDescription:      rac.ResourceAttributeConfig{Enabled: false},
-		OsType:             rac.ResourceAttributeConfig{Enabled: true},
-	},
-}
+var _ syntax.Defaulter = (*Config)(nil)
 
-var _ river.Defaulter = (*Config)(nil)
-
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (c *Config) SetToDefault() {
-	*c = DefaultArguments
+	*c = Config{
+		HostnameSources: []string{"dns", "os"},
+		ResourceAttributes: ResourceAttributesConfig{
+			HostArch:           rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUCacheL2Size: rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUFamily:      rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUModelID:     rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUModelName:   rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUStepping:    rac.ResourceAttributeConfig{Enabled: false},
+			HostCPUVendorID:    rac.ResourceAttributeConfig{Enabled: false},
+			HostID:             rac.ResourceAttributeConfig{Enabled: false},
+			HostName:           rac.ResourceAttributeConfig{Enabled: true},
+			OsDescription:      rac.ResourceAttributeConfig{Enabled: false},
+			OsType:             rac.ResourceAttributeConfig{Enabled: true},
+		},
+	}
 }
 
 // Validate config
@@ -65,17 +63,17 @@ func (args Config) Convert() map[string]interface{} {
 
 // ResourceAttributesConfig provides config for system resource attributes.
 type ResourceAttributesConfig struct {
-	HostArch           rac.ResourceAttributeConfig `river:"host.arch,block,optional"`
-	HostCPUCacheL2Size rac.ResourceAttributeConfig `river:"host.cpu.cache.l2.size,block,optional"`
-	HostCPUFamily      rac.ResourceAttributeConfig `river:"host.cpu.family,block,optional"`
-	HostCPUModelID     rac.ResourceAttributeConfig `river:"host.cpu.model.id,block,optional"`
-	HostCPUModelName   rac.ResourceAttributeConfig `river:"host.cpu.model.name,block,optional"`
-	HostCPUStepping    rac.ResourceAttributeConfig `river:"host.cpu.stepping,block,optional"`
-	HostCPUVendorID    rac.ResourceAttributeConfig `river:"host.cpu.vendor.id,block,optional"`
-	HostID             rac.ResourceAttributeConfig `river:"host.id,block,optional"`
-	HostName           rac.ResourceAttributeConfig `river:"host.name,block,optional"`
-	OsDescription      rac.ResourceAttributeConfig `river:"os.description,block,optional"`
-	OsType             rac.ResourceAttributeConfig `river:"os.type,block,optional"`
+	HostArch           rac.ResourceAttributeConfig `alloy:"host.arch,block,optional"`
+	HostCPUCacheL2Size rac.ResourceAttributeConfig `alloy:"host.cpu.cache.l2.size,block,optional"`
+	HostCPUFamily      rac.ResourceAttributeConfig `alloy:"host.cpu.family,block,optional"`
+	HostCPUModelID     rac.ResourceAttributeConfig `alloy:"host.cpu.model.id,block,optional"`
+	HostCPUModelName   rac.ResourceAttributeConfig `alloy:"host.cpu.model.name,block,optional"`
+	HostCPUStepping    rac.ResourceAttributeConfig `alloy:"host.cpu.stepping,block,optional"`
+	HostCPUVendorID    rac.ResourceAttributeConfig `alloy:"host.cpu.vendor.id,block,optional"`
+	HostID             rac.ResourceAttributeConfig `alloy:"host.id,block,optional"`
+	HostName           rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
+	OsDescription      rac.ResourceAttributeConfig `alloy:"os.description,block,optional"`
+	OsType             rac.ResourceAttributeConfig `alloy:"os.type,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {

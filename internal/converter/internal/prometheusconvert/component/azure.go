@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
 	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_azure "github.com/prometheus/prometheus/discovery/azure"
 )
 
@@ -58,6 +58,6 @@ func toDiscoveryAzureOauth2(clientId string, tenantId string, clientSecret strin
 	return &azure.OAuth{
 		ClientID:     clientId,
 		TenantID:     tenantId,
-		ClientSecret: rivertypes.Secret(clientSecret),
+		ClientSecret: alloytypes.Secret(clientSecret),
 	}
 }

@@ -6,8 +6,8 @@ import (
 
 	"github.com/burningalchemist/sql_exporter/config"
 	"github.com/grafana/agent/internal/static/integrations/mssql"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
@@ -21,11 +21,11 @@ func TestRiverUnmarshal(t *testing.T) {
 	timeout = "10s"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
-		ConnectionString:   rivertypes.Secret("sqlserver://user:pass@localhost:1433"),
+		ConnectionString:   alloytypes.Secret("sqlserver://user:pass@localhost:1433"),
 		MaxIdleConnections: 3,
 		MaxOpenConnections: 3,
 		Timeout:            10 * time.Second,
@@ -43,13 +43,13 @@ func TestRiverUnmarshalWithInlineQueryConfig(t *testing.T) {
 	query_config = "{ collector_name: mssql_standard, metrics: [ { metric_name: mssql_local_time_seconds, type: gauge, help: 'Local time in seconds since epoch (Unix time).', values: [ unix_time ], query: \"SELECT DATEDIFF(second, '19700101', GETUTCDATE()) AS unix_time\" } ] }"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 	var collectorConfig config.CollectorConfig
 	err = yaml.UnmarshalStrict([]byte(args.QueryConfig.Value), &collectorConfig)
 	require.NoError(t, err)
 
-	require.Equal(t, rivertypes.Secret("sqlserver://user:pass@localhost:1433"), args.ConnectionString)
+	require.Equal(t, alloytypes.Secret("sqlserver://user:pass@localhost:1433"), args.ConnectionString)
 	require.Equal(t, 3, args.MaxIdleConnections)
 	require.Equal(t, 3, args.MaxOpenConnections)
 	require.Equal(t, 10*time.Second, args.Timeout)
@@ -72,13 +72,13 @@ func TestRiverUnmarshalWithInlineQueryConfigYaml(t *testing.T) {
 	query_config = "collector_name: mssql_standard\nmetrics:\n- metric_name: mssql_local_time_seconds\n  type: gauge\n  help: 'Local time in seconds since epoch (Unix time).'\n  values: [unix_time]\n  query: \"SELECT DATEDIFF(second, '19700101', GETUTCDATE()) AS unix_time\""`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 	var collectorConfig config.CollectorConfig
 	err = yaml.UnmarshalStrict([]byte(args.QueryConfig.Value), &collectorConfig)
 	require.NoError(t, err)
 
-	require.Equal(t, rivertypes.Secret("sqlserver://user:pass@localhost:1433"), args.ConnectionString)
+	require.Equal(t, alloytypes.Secret("sqlserver://user:pass@localhost:1433"), args.ConnectionString)
 	require.Equal(t, 3, args.MaxIdleConnections)
 	require.Equal(t, 3, args.MaxOpenConnections)
 	require.Equal(t, 10*time.Second, args.Timeout)
@@ -101,7 +101,7 @@ func TestUnmarshalInvalid(t *testing.T) {
 	`
 
 	var invalidArgs Arguments
-	err := river.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err := syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
 	require.Error(t, err)
 	require.EqualError(t, err, "timeout must be positive")
 }
@@ -116,7 +116,7 @@ func TestUnmarshalInvalidQueryConfigYaml(t *testing.T) {
 	`
 
 	var invalidArgs Arguments
-	err := river.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err := syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
 	require.Error(t, err)
 	require.EqualError(t, err, "invalid query_config: yaml: line 1: did not find expected ',' or ']'")
 }
@@ -131,7 +131,7 @@ func TestUnmarshalInvalidProperty(t *testing.T) {
 	`
 
 	var invalidArgs Arguments
-	err := river.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err := syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
 	require.Error(t, err)
 	require.EqualError(t, err, "invalid query_config: unknown fields in collector: bad_param")
 }
@@ -145,7 +145,7 @@ func TestArgumentsValidate(t *testing.T) {
 		{
 			name: "invalid max open connections",
 			args: Arguments{
-				ConnectionString:   rivertypes.Secret("test"),
+				ConnectionString:   alloytypes.Secret("test"),
 				MaxIdleConnections: 1,
 				MaxOpenConnections: 0,
 				Timeout:            10 * time.Second,
@@ -155,7 +155,7 @@ func TestArgumentsValidate(t *testing.T) {
 		{
 			name: "invalid max idle connections",
 			args: Arguments{
-				ConnectionString:   rivertypes.Secret("test"),
+				ConnectionString:   alloytypes.Secret("test"),
 				MaxIdleConnections: 0,
 				MaxOpenConnections: 1,
 				Timeout:            10 * time.Second,
@@ -165,7 +165,7 @@ func TestArgumentsValidate(t *testing.T) {
 		{
 			name: "invalid timeout",
 			args: Arguments{
-				ConnectionString:   rivertypes.Secret("test"),
+				ConnectionString:   alloytypes.Secret("test"),
 				MaxIdleConnections: 1,
 				MaxOpenConnections: 1,
 				Timeout:            0,
@@ -175,11 +175,11 @@ func TestArgumentsValidate(t *testing.T) {
 		{
 			name: "valid",
 			args: Arguments{
-				ConnectionString:   rivertypes.Secret("test"),
+				ConnectionString:   alloytypes.Secret("test"),
 				MaxIdleConnections: 1,
 				MaxOpenConnections: 1,
 				Timeout:            10 * time.Second,
-				QueryConfig: rivertypes.OptionalSecret{
+				QueryConfig: alloytypes.OptionalSecret{
 					Value: `{ collector_name: mssql_standard, metrics: [ { metric_name: mssql_local_time_seconds, type: gauge, help: 'Local time in seconds since epoch (Unix time).', values: [ unix_time ], query: "SELECT DATEDIFF(second, '19700101', GETUTCDATE()) AS unix_time" } ] }`,
 				},
 			},
@@ -209,11 +209,11 @@ metrics:
   query: "SELECT DATEDIFF(second, '19700101', GETUTCDATE()) AS unix_time"`
 
 	args := Arguments{
-		ConnectionString:   rivertypes.Secret("sqlserver://user:pass@localhost:1433"),
+		ConnectionString:   alloytypes.Secret("sqlserver://user:pass@localhost:1433"),
 		MaxIdleConnections: 1,
 		MaxOpenConnections: 1,
 		Timeout:            10 * time.Second,
-		QueryConfig: rivertypes.OptionalSecret{
+		QueryConfig: alloytypes.OptionalSecret{
 			Value: strQueryConfig,
 		},
 	}

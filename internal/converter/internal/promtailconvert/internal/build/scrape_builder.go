@@ -16,10 +16,10 @@ import (
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
 	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/component"
+	"github.com/grafana/alloy/syntax/scanner"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/clients/pkg/promtail/targets/file"
-	"github.com/grafana/river/scanner"
-	"github.com/grafana/river/token/builder"
 	"github.com/prometheus/common/model"
 )
 

@@ -26,10 +26,10 @@ func init() {
 }
 
 type Arguments struct {
-	Role             string                  `river:"role,attr"`
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
-	Port             int                     `river:"port,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
+	Role             string                  `alloy:"role,attr"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	Port             int                     `alloy:"port,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
 }
 
 var DefaultArguments = Arguments{

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,7 +32,7 @@ var (
 
 func TestRiverUnmarshal(t *testing.T) {
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	require.Equal(t, ":1010", args.ListenUDP)
@@ -56,7 +56,7 @@ func TestRiverUnmarshal(t *testing.T) {
 func TestConvert(t *testing.T) {
 	t.Run("with valid config", func(t *testing.T) {
 		var args Arguments
-		err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+		err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 		require.NoError(t, err)
 
 		configStatsd, err := args.Convert()
@@ -82,7 +82,7 @@ func TestConvert(t *testing.T) {
 
 	t.Run("with empty config", func(t *testing.T) {
 		var args Arguments
-		err := river.Unmarshal([]byte(""), &args)
+		err := syntax.Unmarshal([]byte(""), &args)
 		require.NoError(t, err)
 
 		configStatsd, err := args.Convert()

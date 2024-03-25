@@ -6,7 +6,61 @@ local ghTokenFilename = '/drone/src/gh-token.txt';
 // job_names gets the list of job names for use in depends_on.
 local job_names = function(jobs) std.map(function(job) job.name, jobs);
 
-local linux_containers = ['agent', 'agent-boringcrypto'];
+local linux_containers = ['alloy'];
+
+local linux_containers_dev_jobs = std.map(function(container) (
+  pipelines.linux('Publish development Linux %s container' % container) {
+    trigger: {
+      ref: [
+        'refs/heads/main',
+      ],
+    },
+    steps: [{
+      // We only need to run this once per machine, so it's OK if it fails. It
+      // is also likely to fail when run in parallel on the same machine.
+      name: 'Configure QEMU',
+      image: build_image.linux,
+      failure: 'ignore',
+      volumes: [{
+        name: 'docker',
+        path: '/var/run/docker.sock',
+      }],
+      commands: [
+        'docker run --rm --privileged multiarch/qemu-user-static --reset -p yes',
+      ],
+    }, {
+      name: 'Publish container',
+      image: build_image.linux,
+      volumes: [{
+        name: 'docker',
+        path: '/var/run/docker.sock',
+      }],
+      environment: {
+        DOCKER_LOGIN: secrets.docker_login.fromSecret,
+        DOCKER_PASSWORD: secrets.docker_password.fromSecret,
+        GCR_CREDS: secrets.gcr_admin.fromSecret,
+      },
+      commands: [
+        'mkdir -p $HOME/.docker',
+        'printenv GCR_CREDS > $HOME/.docker/config.json',
+        'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
+
+        // Create a buildx worker for our cross platform builds.
+        'docker buildx create --name multiarch-alloy-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container,
+
+        'DEVELOPMENT=1 ./tools/ci/docker-containers %s' % container,
+
+        'docker buildx rm multiarch-alloy-%s-${DRONE_COMMIT_SHA}' % container,
+      ],
+    }],
+    volumes: [{
+      name: 'docker',
+      host: { path: '/var/run/docker.sock' },
+    }],
+  }
+), linux_containers);
+
+
 local linux_containers_jobs = std.map(function(container) (
   pipelines.linux('Publish Linux %s container' % container) {
     trigger: {
@@ -46,11 +100,11 @@ local linux_containers_jobs = std.map(function(container) (
         'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
 
         // Create a buildx worker for our cross platform builds.
-        'docker buildx create --name multiarch-agent-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container,
+        'docker buildx create --name multiarch-alloy-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container,
 
         './tools/ci/docker-containers %s' % container,
 
-        'docker buildx rm multiarch-agent-%s-${DRONE_COMMIT_SHA}' % container,
+        'docker buildx rm multiarch-alloy-%s-${DRONE_COMMIT_SHA}' % container,
       ],
     }],
     volumes: [{
@@ -94,7 +148,10 @@ local windows_containers_jobs = std.map(function(container) (
 // TODO(rfratto): The following are TEMPORARILY disabled as grafana/alloy gets
 // set up. Remove the line below in favor of the comment block to reenable the
 // publish jobs.
-[]
+//
+// This file must be refactored in the future after development has fully
+// shifted.
+linux_containers_dev_jobs
 
 /*
 linux_containers_jobs + windows_containers_jobs + [

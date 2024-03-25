@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 type SourceType int

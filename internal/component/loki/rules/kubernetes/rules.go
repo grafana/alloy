@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/agent/internal/component"
+	commonK8s "github.com/grafana/agent/internal/component/common/kubernetes"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	lokiClient "github.com/grafana/agent/internal/loki/client"
@@ -63,7 +64,7 @@ type Component struct {
 	namespaceSelector labels.Selector
 	ruleSelector      labels.Selector
 
-	currentState ruleGroupsByNamespace
+	currentState commonK8s.RuleGroupsByNamespace
 
 	metrics   *metrics
 	healthMut sync.RWMutex
@@ -202,8 +203,8 @@ func (c *Component) Run(ctx context.Context) error {
 			c.shutdown()
 			return nil
 		case <-c.ticker.C:
-			c.queue.Add(event{
-				typ: eventTypeSyncLoki,
+			c.queue.Add(commonK8s.Event{
+				Typ: eventTypeSyncLoki,
 			})
 		}
 	}
@@ -274,34 +275,17 @@ func (c *Component) init() error {
 
 	c.ticker.Reset(c.args.SyncInterval)
 
-	c.namespaceSelector, err = convertSelectorToListOptions(c.args.RuleNamespaceSelector)
+	c.namespaceSelector, err = commonK8s.ConvertSelectorToListOptions(c.args.RuleNamespaceSelector)
 	if err != nil {
 		return err
 	}
 
-	c.ruleSelector, err = convertSelectorToListOptions(c.args.RuleSelector)
+	c.ruleSelector, err = commonK8s.ConvertSelectorToListOptions(c.args.RuleSelector)
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func convertSelectorToListOptions(selector LabelSelector) (labels.Selector, error) {
-	matchExpressions := []metav1.LabelSelectorRequirement{}
-
-	for _, me := range selector.MatchExpressions {
-		matchExpressions = append(matchExpressions, metav1.LabelSelectorRequirement{
-			Key:      me.Key,
-			Operator: metav1.LabelSelectorOperator(me.Operator),
-			Values:   me.Values,
-		})
-	}
-
-	return metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
-		MatchLabels:      selector.MatchLabels,
-		MatchExpressions: matchExpressions,
-	})
 }
 
 func (c *Component) startNamespaceInformer() error {
@@ -316,7 +300,7 @@ func (c *Component) startNamespaceInformer() error {
 	namespaces := factory.Core().V1().Namespaces()
 	c.namespaceLister = namespaces.Lister()
 	c.namespaceInformer = namespaces.Informer()
-	_, err := c.namespaceInformer.AddEventHandler(newQueuedEventHandler(c.log, c.queue))
+	_, err := c.namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, c.queue))
 	if err != nil {
 		return err
 	}
@@ -338,7 +322,7 @@ func (c *Component) startRuleInformer() error {
 	promRules := factory.Monitoring().V1().PrometheusRules()
 	c.ruleLister = promRules.Lister()
 	c.ruleInformer = promRules.Informer()
-	_, err := c.ruleInformer.AddEventHandler(newQueuedEventHandler(c.log, c.queue))
+	_, err := c.ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, c.queue))
 	if err != nil {
 		return err
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations/windows_exporter"
 )
 
-func (b *IntegrationsConfigBuilder) appendWindowsExporter(config *windows_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendWindowsExporter(config *windows_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toWindowsExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "windows")
 }

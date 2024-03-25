@@ -108,6 +108,7 @@ func (f *Flow) getComponentDetail(cn controller.ComponentNode, graph *dag.Graph,
 			LocalID:  cn.NodeID(),
 		},
 		Label: cn.Label(),
+		Type:  componentType(cn),
 
 		References:   references,
 		ReferencedBy: referencedBy,
@@ -128,4 +129,12 @@ func (f *Flow) getComponentDetail(cn controller.ComponentNode, graph *dag.Graph,
 		}
 	}
 	return componentInfo
+}
+
+func componentType(cn controller.ComponentNode) component.Type {
+	if _, ok := cn.(*controller.BuiltinComponentNode); ok {
+		return component.TypeBuiltin
+	}
+
+	return component.TypeCustom
 }

@@ -30,27 +30,27 @@ func init() {
 
 // Arguments configures the otelcol.receiver.otlp component.
 type Arguments struct {
-	GRPC *GRPCServerArguments `river:"grpc,block,optional"`
-	HTTP *HTTPConfigArguments `river:"http,block,optional"`
+	GRPC *GRPCServerArguments `alloy:"grpc,block,optional"`
+	HTTP *HTTPConfigArguments `alloy:"http,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	// Output configures where to send received data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 type HTTPConfigArguments struct {
-	HTTPServerArguments *otelcol.HTTPServerArguments `river:",squash"`
+	HTTPServerArguments *otelcol.HTTPServerArguments `alloy:",squash"`
 
 	// The URL path to receive traces on. If omitted "/v1/traces" will be used.
-	TracesURLPath string `river:"traces_url_path,attr,optional"`
+	TracesURLPath string `alloy:"traces_url_path,attr,optional"`
 
 	// The URL path to receive metrics on. If omitted "/v1/metrics" will be used.
-	MetricsURLPath string `river:"metrics_url_path,attr,optional"`
+	MetricsURLPath string `alloy:"metrics_url_path,attr,optional"`
 
 	// The URL path to receive logs on. If omitted "/v1/logs" will be used.
-	LogsURLPath string `river:"logs_url_path,attr,optional"`
+	LogsURLPath string `alloy:"logs_url_path,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -71,9 +71,8 @@ var _ receiver.Arguments = Arguments{}
 
 // SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = Arguments{
-		DebugMetrics: otelcol.DefaultDebugMetricsArguments,
-	}
+	*args = Arguments{}
+	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements receiver.Arguments.
@@ -107,26 +106,6 @@ type (
 	GRPCServerArguments otelcol.GRPCServerArguments
 )
 
-// Default server settings.
-var (
-	DefaultGRPCServerArguments = GRPCServerArguments{
-		Endpoint:  "0.0.0.0:4317",
-		Transport: "tcp",
-
-		ReadBufferSize: 512 * units.Kibibyte,
-		// We almost write 0 bytes, so no need to tune WriteBufferSize.
-	}
-
-	DefaultHTTPConfigArguments = HTTPConfigArguments{
-		HTTPServerArguments: &otelcol.HTTPServerArguments{
-			Endpoint: "0.0.0.0:4318",
-		},
-		MetricsURLPath: "/v1/metrics",
-		LogsURLPath:    "/v1/logs",
-		TracesURLPath:  "/v1/traces",
-	}
-)
-
 // Validate implements river.Validator.
 func (args *Arguments) Validate() error {
 	if args.HTTP != nil {
@@ -155,12 +134,25 @@ func validateURL(url string, urlName string) error {
 
 // SetToDefault implements river.Defaulter.
 func (args *GRPCServerArguments) SetToDefault() {
-	*args = DefaultGRPCServerArguments
+	*args = GRPCServerArguments{
+		Endpoint:  "0.0.0.0:4317",
+		Transport: "tcp",
+
+		ReadBufferSize: 512 * units.Kibibyte,
+		// We almost write 0 bytes, so no need to tune WriteBufferSize.
+	}
 }
 
 // SetToDefault implements river.Defaulter.
 func (args *HTTPConfigArguments) SetToDefault() {
-	*args = DefaultHTTPConfigArguments
+	*args = HTTPConfigArguments{
+		HTTPServerArguments: &otelcol.HTTPServerArguments{
+			Endpoint: "0.0.0.0:4318",
+		},
+		MetricsURLPath: "/v1/metrics",
+		LogsURLPath:    "/v1/logs",
+		TracesURLPath:  "/v1/traces",
+	}
 }
 
 // DebugMetricsConfig implements receiver.Arguments.

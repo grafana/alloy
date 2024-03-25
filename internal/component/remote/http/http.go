@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/useragent"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_config "github.com/prometheus/common/config"
 )
 
@@ -36,16 +36,16 @@ func init() {
 
 // Arguments control the remote.http component.
 type Arguments struct {
-	URL           string        `river:"url,attr"`
-	PollFrequency time.Duration `river:"poll_frequency,attr,optional"`
-	PollTimeout   time.Duration `river:"poll_timeout,attr,optional"`
-	IsSecret      bool          `river:"is_secret,attr,optional"`
+	URL           string        `alloy:"url,attr"`
+	PollFrequency time.Duration `alloy:"poll_frequency,attr,optional"`
+	PollTimeout   time.Duration `alloy:"poll_timeout,attr,optional"`
+	IsSecret      bool          `alloy:"is_secret,attr,optional"`
 
-	Method  string            `river:"method,attr,optional"`
-	Headers map[string]string `river:"headers,attr,optional"`
-	Body    string            `river:"body,attr,optional"`
+	Method  string            `alloy:"method,attr,optional"`
+	Headers map[string]string `alloy:"headers,attr,optional"`
+	Body    string            `alloy:"body,attr,optional"`
 
-	Client common_config.HTTPClientConfig `river:"client,block,optional"`
+	Client common_config.HTTPClientConfig `alloy:"client,block,optional"`
 }
 
 // DefaultArguments holds default settings for Arguments.
@@ -82,7 +82,7 @@ func (args *Arguments) Validate() error {
 
 // Exports holds settings exported by remote.http.
 type Exports struct {
-	Content rivertypes.OptionalSecret `river:"content,attr"`
+	Content alloytypes.OptionalSecret `alloy:"content,attr"`
 }
 
 // Component implements the remote.http component.
@@ -231,7 +231,7 @@ func (c *Component) pollError() error {
 	stringContent := strings.TrimSpace(string(bb))
 
 	newExports := Exports{
-		Content: rivertypes.OptionalSecret{
+		Content: alloytypes.OptionalSecret{
 			IsSecret: c.args.IsSecret,
 			Value:    stringContent,
 		},

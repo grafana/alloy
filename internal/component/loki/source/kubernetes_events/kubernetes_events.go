@@ -41,14 +41,14 @@ func init() {
 // Arguments holds values which are used to configure the
 // loki.source.kubernetes_events component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver `river:"forward_to,attr"`
+	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 
-	JobName    string   `river:"job_name,attr,optional"`
-	Namespaces []string `river:"namespaces,attr,optional"`
-	LogFormat  string   `river:"log_format,attr,optional"`
+	JobName    string   `alloy:"job_name,attr,optional"`
+	Namespaces []string `alloy:"namespaces,attr,optional"`
+	LogFormat  string   `alloy:"log_format,attr,optional"`
 
 	// Client settings to connect to Kubernetes.
-	Client kubernetes.ClientArguments `river:"client,block,optional"`
+	Client kubernetes.ClientArguments `alloy:"client,block,optional"`
 }
 
 // DefaultArguments holds default settings for loki.source.kubernetes_events.
@@ -248,7 +248,7 @@ func getNamespaces(args Arguments) []string {
 // DebugInfo implements [component.DebugComponent].
 func (c *Component) DebugInfo() interface{} {
 	type Info struct {
-		Controllers []controllerInfo `river:"event_controller,block,optional"`
+		Controllers []controllerInfo `alloy:"event_controller,block,optional"`
 	}
 
 	var info Info

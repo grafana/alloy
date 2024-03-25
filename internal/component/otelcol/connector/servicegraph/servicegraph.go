@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol"
 	"github.com/grafana/agent/internal/component/otelcol/connector"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/servicegraphprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -32,7 +32,7 @@ func init() {
 // Arguments configures the otelcol.connector.servicegraph component.
 type Arguments struct {
 	// LatencyHistogramBuckets is the list of durations representing latency histogram buckets.
-	LatencyHistogramBuckets []time.Duration `river:"latency_histogram_buckets,attr,optional"`
+	LatencyHistogramBuckets []time.Duration `alloy:"latency_histogram_buckets,attr,optional"`
 
 	// Dimensions defines the list of additional dimensions on top of the provided:
 	// - client
@@ -41,82 +41,83 @@ type Arguments struct {
 	// - connection_type
 	// The dimensions will be fetched from the span's attributes. Examples of some conventionally used attributes:
 	// https://github.com/open-telemetry/opentelemetry-collector/blob/main/model/semconv/opentelemetry.go.
-	Dimensions []string `river:"dimensions,attr,optional"`
+	Dimensions []string `alloy:"dimensions,attr,optional"`
 
 	// Store contains the config for the in-memory store used to find requests between services by pairing spans.
-	Store StoreConfig `river:"store,block,optional"`
+	Store StoreConfig `alloy:"store,block,optional"`
 	// CacheLoop defines how often to clean the cache of stale series.
-	CacheLoop time.Duration `river:"cache_loop,attr,optional"`
+	CacheLoop time.Duration `alloy:"cache_loop,attr,optional"`
 	// StoreExpirationLoop defines how often to expire old entries from the store.
-	StoreExpirationLoop time.Duration `river:"store_expiration_loop,attr,optional"`
+	StoreExpirationLoop time.Duration `alloy:"store_expiration_loop,attr,optional"`
 	// VirtualNodePeerAttributes the list of attributes need to match, the higher the front, the higher the priority.
 	//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 	// the "processor.servicegraph.virtualNode" feature gate.
-	// VirtualNodePeerAttributes []string `river:"virtual_node_peer_attributes,attr,optional"`
+	// VirtualNodePeerAttributes []string `alloy:"virtual_node_peer_attributes,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 type StoreConfig struct {
 	// MaxItems is the maximum number of items to keep in the store.
-	MaxItems int `river:"max_items,attr,optional"`
+	MaxItems int `alloy:"max_items,attr,optional"`
 	// TTL is the time to live for items in the store.
-	TTL time.Duration `river:"ttl,attr,optional"`
+	TTL time.Duration `alloy:"ttl,attr,optional"`
+}
+
+func (sc *StoreConfig) SetToDefault() {
+	*sc = StoreConfig{
+		MaxItems: 1000,
+		TTL:      2 * time.Second,
+	}
 }
 
 var (
-	_ river.Validator = (*Arguments)(nil)
-	_ river.Defaulter = (*Arguments)(nil)
+	_ syntax.Validator = (*Arguments)(nil)
+	_ syntax.Defaulter = (*Arguments)(nil)
 )
 
-// DefaultArguments holds default settings for Arguments.
-var DefaultArguments = Arguments{
-	LatencyHistogramBuckets: []time.Duration{
-		2 * time.Millisecond,
-		4 * time.Millisecond,
-		6 * time.Millisecond,
-		8 * time.Millisecond,
-		10 * time.Millisecond,
-		50 * time.Millisecond,
-		100 * time.Millisecond,
-		200 * time.Millisecond,
-		400 * time.Millisecond,
-		800 * time.Millisecond,
-		1 * time.Second,
-		1400 * time.Millisecond,
-		2 * time.Second,
-		5 * time.Second,
-		10 * time.Second,
-		15 * time.Second,
-	},
-	Dimensions: []string{},
-	Store: StoreConfig{
-		MaxItems: 1000,
-		TTL:      2 * time.Second,
-	},
-	CacheLoop:           1 * time.Minute,
-	StoreExpirationLoop: 2 * time.Second,
-	//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
-	// the "processor.servicegraph.virtualNode" feature gate.
-	// VirtualNodePeerAttributes: []string{
-	// 	semconv.AttributeDBName,
-	// 	semconv.AttributeNetSockPeerAddr,
-	// 	semconv.AttributeNetPeerName,
-	// 	semconv.AttributeRPCService,
-	// 	semconv.AttributeNetSockPeerName,
-	// 	semconv.AttributeNetPeerName,
-	// 	semconv.AttributeHTTPURL,
-	// 	semconv.AttributeHTTPTarget,
-	// },
-}
-
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		LatencyHistogramBuckets: []time.Duration{
+			2 * time.Millisecond,
+			4 * time.Millisecond,
+			6 * time.Millisecond,
+			8 * time.Millisecond,
+			10 * time.Millisecond,
+			50 * time.Millisecond,
+			100 * time.Millisecond,
+			200 * time.Millisecond,
+			400 * time.Millisecond,
+			800 * time.Millisecond,
+			1 * time.Second,
+			1400 * time.Millisecond,
+			2 * time.Second,
+			5 * time.Second,
+			10 * time.Second,
+			15 * time.Second,
+		},
+		Dimensions:          []string{},
+		CacheLoop:           1 * time.Minute,
+		StoreExpirationLoop: 2 * time.Second,
+		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
+		// the "processor.servicegraph.virtualNode" feature gate.
+		// VirtualNodePeerAttributes: []string{
+		// 	semconv.AttributeDBName,
+		// 	semconv.AttributeNetSockPeerAddr,
+		// 	semconv.AttributeNetPeerName,
+		// 	semconv.AttributeRPCService,
+		// 	semconv.AttributeNetSockPeerName,
+		// 	semconv.AttributeNetPeerName,
+		// 	semconv.AttributeHTTPURL,
+		// 	semconv.AttributeHTTPTarget,
+		// },
+	}
+	args.Store.SetToDefault()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.CacheLoop <= 0 {
 		return fmt.Errorf("cache_loop must be greater than 0")

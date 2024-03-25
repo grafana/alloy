@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 type ArgumentConfigNode struct {
@@ -37,9 +37,9 @@ func NewArgumentConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *Argu
 }
 
 type argumentBlock struct {
-	Optional bool   `river:"optional,attr,optional"`
-	Default  any    `river:"default,attr,optional"`
-	Comment  string `river:"comment,attr,optional"`
+	Optional bool   `alloy:"optional,attr,optional"`
+	Default  any    `alloy:"default,attr,optional"`
+	Comment  string `alloy:"comment,attr,optional"`
 }
 
 // Evaluate implements BlockNode and updates the arguments for the managed config block

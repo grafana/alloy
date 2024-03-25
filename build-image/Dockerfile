@@ -36,7 +36,6 @@ RUN wget -nv https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip
 # Dependency: Go and Go dependencies
 FROM ${GO_RUNTIME} as golang
 
-# Keep in sync with cmd/grafana-agent-operator/DEVELOPERS.md
 ENV CONTROLLER_GEN_VERSION v0.9.2
 
 RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_VERSION \

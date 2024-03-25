@@ -19,7 +19,7 @@ import (
 	cft "github.com/grafana/agent/internal/component/loki/source/cloudflare/internal/cloudflaretarget"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/model"
 )
 
@@ -38,14 +38,14 @@ func init() {
 // Arguments holds values which are used to configure the
 // loki.source.cloudflare component.
 type Arguments struct {
-	APIToken         rivertypes.Secret   `river:"api_token,attr"`
-	ZoneID           string              `river:"zone_id,attr"`
-	Labels           map[string]string   `river:"labels,attr,optional"`
-	Workers          int                 `river:"workers,attr,optional"`
-	PullRange        time.Duration       `river:"pull_range,attr,optional"`
-	FieldsType       string              `river:"fields_type,attr,optional"`
-	AdditionalFields []string            `river:"additional_fields,attr,optional"`
-	ForwardTo        []loki.LogsReceiver `river:"forward_to,attr"`
+	APIToken         alloytypes.Secret   `alloy:"api_token,attr"`
+	ZoneID           string              `alloy:"zone_id,attr"`
+	Labels           map[string]string   `alloy:"labels,attr,optional"`
+	Workers          int                 `alloy:"workers,attr,optional"`
+	PullRange        time.Duration       `alloy:"pull_range,attr,optional"`
+	FieldsType       string              `alloy:"fields_type,attr,optional"`
+	AdditionalFields []string            `alloy:"additional_fields,attr,optional"`
+	ForwardTo        []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
 
 // Convert returns a cloudflaretarget Config struct from the Arguments.
@@ -196,6 +196,6 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type targetDebugInfo struct {
-	Ready   bool              `river:"ready,attr"`
-	Details map[string]string `river:"target_info,attr"`
+	Ready   bool              `alloy:"ready,attr"`
+	Details map[string]string `alloy:"target_info,attr"`
 }

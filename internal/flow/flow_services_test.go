@@ -49,7 +49,7 @@ func TestServices(t *testing.T) {
 func TestServices_Configurable(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	type ServiceOptions struct {
-		Name string `river:"name,attr"`
+		Name string `alloy:"name,attr"`
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -104,7 +104,7 @@ func TestServices_Configurable(t *testing.T) {
 func TestServices_Configurable_Optional(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	type ServiceOptions struct {
-		Name string `river:"name,attr,optional"`
+		Name string `alloy:"name,attr,optional"`
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

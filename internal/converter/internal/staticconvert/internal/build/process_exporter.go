@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations/process_exporter"
 )
 
-func (b *IntegrationsConfigBuilder) appendProcessExporter(config *process_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendProcessExporter(config *process_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toProcessExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "process")
 }

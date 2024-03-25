@@ -3,7 +3,7 @@ package config
 import (
 	"testing"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +25,7 @@ func TestHTTPClientConfigBearerToken(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := river.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
@@ -38,7 +38,7 @@ func TestHTTPClientConfigBearerTokenFile(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := river.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
@@ -55,7 +55,7 @@ func TestHTTPClientConfigBasicAuthPassword(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := river.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
@@ -72,7 +72,7 @@ func TestHTTPClientConfigBasicAuthPasswordFile(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := river.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
@@ -89,7 +89,7 @@ func TestHTTPClientConfigAuthorizationCredentials(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := river.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
@@ -106,7 +106,7 @@ func TestHTTPClientConfigAuthorizationCredentialsFile(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := river.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
@@ -135,7 +135,7 @@ func TestHTTPClientConfigOath2ClientSecret(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := river.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
@@ -156,7 +156,7 @@ func TestHTTPClientConfigOath2ClientSecretFile(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := river.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
@@ -172,7 +172,7 @@ func TestOath2TLSConvert(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := river.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
 	require.NoError(t, err)
 	newCfg := httpClientConfig.Convert()
 	require.NotNil(t, newCfg)
@@ -227,6 +227,6 @@ func TestHTTPClientBadConfig(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := river.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
 	require.ErrorContains(t, err, "at most one of basic_auth password & password_file must be configured")
 }

@@ -34,13 +34,13 @@ var DefaultArguments = Arguments{
 // Arguments configures the prometheus.exporter.dnsmasq component.
 type Arguments struct {
 	// Address is the address of the dnsmasq server to connect to (host:port).
-	Address string `river:"address,attr,optional"`
+	Address string `alloy:"address,attr,optional"`
 
 	// LeasesFile is the path to the dnsmasq leases file.
-	LeasesFile string `river:"leases_file,attr,optional"`
+	LeasesFile string `alloy:"leases_file,attr,optional"`
 
 	// ExposeLeases controls whether expose dnsmasq leases as metrics (high cardinality).
-	ExposeLeases bool `river:"expose_leases,attr,optional"`
+	ExposeLeases bool `alloy:"expose_leases,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

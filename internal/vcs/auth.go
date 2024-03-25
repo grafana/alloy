@@ -6,12 +6,12 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 type GitAuthConfig struct {
-	BasicAuth *BasicAuth `river:"basic_auth,block,optional"`
-	SSHKey    *SSHKey    `river:"ssh_key,block,optional"`
+	BasicAuth *BasicAuth `alloy:"basic_auth,block,optional"`
+	SSHKey    *SSHKey    `alloy:"ssh_key,block,optional"`
 }
 
 // Convert converts HTTPClientConfig to the native Prometheus type. If h is
@@ -33,8 +33,8 @@ func (h *GitAuthConfig) Convert() transport.AuthMethod {
 }
 
 type BasicAuth struct {
-	Username string            `river:"username,attr"`
-	Password rivertypes.Secret `river:"password,attr"`
+	Username string            `alloy:"username,attr"`
+	Password alloytypes.Secret `alloy:"password,attr"`
 }
 
 // Convert converts our type to the native prometheus type
@@ -49,10 +49,10 @@ func (b *BasicAuth) Convert() (t transport.AuthMethod) {
 }
 
 type SSHKey struct {
-	Username   string            `river:"username,attr"`
-	Key        rivertypes.Secret `river:"key,attr,optional"`
-	Keyfile    string            `river:"key_file,attr,optional"`
-	Passphrase rivertypes.Secret `river:"passphrase,attr,optional"`
+	Username   string            `alloy:"username,attr"`
+	Key        alloytypes.Secret `alloy:"key,attr,optional"`
+	Keyfile    string            `alloy:"key_file,attr,optional"`
+	Passphrase alloytypes.Secret `alloy:"passphrase,attr,optional"`
 }
 
 // Convert converts our type to the native prometheus type

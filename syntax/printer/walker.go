@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/token"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/token"
 )
 
 // A walker walks an AST and sends lexical tokens and formatting information to

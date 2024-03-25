@@ -25,9 +25,9 @@ func init() {
 }
 
 type Arguments struct {
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
-	URL              config.URL              `river:"url,attr"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	URL              config.URL              `alloy:"url,attr"`
 }
 
 var DefaultArguments = Arguments{

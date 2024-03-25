@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/agent/internal/flow/logging"
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 var _ BlockNode = (*LoggingConfigNode)(nil)

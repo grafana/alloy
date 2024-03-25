@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations/dnsmasq_exporter"
 )
 
-func (b *IntegrationsConfigBuilder) appendDnsmasqExporter(config *dnsmasq_exporter.Config, instanceKey *string) discovery.Exports {
+func (b *ConfigBuilder) appendDnsmasqExporter(config *dnsmasq_exporter.Config, instanceKey *string) discovery.Exports {
 	args := toDnsmasqExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "dnsmasq")
 }

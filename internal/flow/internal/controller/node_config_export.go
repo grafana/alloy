@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 type ExportConfigNode struct {
@@ -36,7 +36,7 @@ func NewExportConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *Export
 }
 
 type exportBlock struct {
-	Value any `river:"value,attr"`
+	Value any `alloy:"value,attr"`
 }
 
 // Evaluate implements BlockNode and updates the arguments for the managed config block

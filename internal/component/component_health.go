@@ -26,15 +26,15 @@ type HealthComponent interface {
 // River.
 type Health struct {
 	// The specific health value.
-	Health HealthType `river:"state,attr"`
+	Health HealthType `alloy:"state,attr"`
 
 	// An optional message to describe the health; useful to say why a component
 	// is unhealthy.
-	Message string `river:"message,attr,optional"`
+	Message string `alloy:"message,attr,optional"`
 
 	// An optional time to indicate when the component last modified something
 	// which updated its health.
-	UpdateTime time.Time `river:"update_time,attr,optional"`
+	UpdateTime time.Time `alloy:"update_time,attr,optional"`
 }
 
 // HealthType holds the health value for a component.

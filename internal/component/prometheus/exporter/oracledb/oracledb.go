@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/oracledb_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -44,10 +44,10 @@ var (
 
 // Arguments controls the oracledb exporter.
 type Arguments struct {
-	ConnectionString rivertypes.Secret `river:"connection_string,attr"`
-	MaxIdleConns     int               `river:"max_idle_conns,attr,optional"`
-	MaxOpenConns     int               `river:"max_open_conns,attr,optional"`
-	QueryTimeout     int               `river:"query_timeout,attr,optional"`
+	ConnectionString alloytypes.Secret `alloy:"connection_string,attr"`
+	MaxIdleConns     int               `alloy:"max_idle_conns,attr,optional"`
+	MaxOpenConns     int               `alloy:"max_open_conns,attr,optional"`
+	QueryTimeout     int               `alloy:"query_timeout,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

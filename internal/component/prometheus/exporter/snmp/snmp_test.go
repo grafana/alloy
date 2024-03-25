@@ -6,7 +6,7 @@ import (
 
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/snmp_exporter/config"
@@ -35,7 +35,7 @@ func TestUnmarshalRiver(t *testing.T) {
 		}		
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "modules.yml", args.ConfigFile)
 	require.Equal(t, 2, len(args.Targets))
@@ -162,7 +162,7 @@ func TestUnmarshalRiverWithInlineConfig(t *testing.T) {
 		}
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "", args.ConfigFile)
 	require.Equal(t, args.ConfigStruct.Modules["if_mib"].Walk, []string{"1.3.6.1.2.1.2"})
@@ -244,7 +244,7 @@ func TestUnmarshalRiverWithInvalidInlineConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testname, func(t *testing.T) {
 			var args Arguments
-			require.EqualError(t, river.Unmarshal([]byte(tt.cfg), &args), tt.expectedError)
+			require.EqualError(t, syntax.Unmarshal([]byte(tt.cfg), &args), tt.expectedError)
 		})
 	}
 }

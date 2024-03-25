@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/receiver/zipkin"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
@@ -31,7 +31,7 @@ func TestRun(t *testing.T) {
 	`, httpAddr)
 
 	var args zipkin.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	go func() {
 		err := ctrl.Run(ctx, args)
@@ -60,7 +60,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 		`, httpAddr)
 
 		var args zipkin.Arguments
-		require.NoError(t, river.Unmarshal([]byte(in), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 		require.Equal(t, args.DebugMetricsConfig().DisableHighCardinalityMetrics, true)
 		ext, err := args.Convert()
 		require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args zipkin.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.agentCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

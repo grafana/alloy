@@ -6,10 +6,10 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/scanner"
-	"github.com/grafana/river/token"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/scanner"
+	"github.com/grafana/alloy/syntax/token"
+	"github.com/grafana/alloy/syntax/vm"
 	"github.com/stretchr/testify/require"
 )
 
@@ -110,9 +110,9 @@ func TestVM_Evaluate(t *testing.T) {
 					age = 42,
 			}`,
 			expect: struct {
-				Name    string `river:"name,attr"`
-				Age     int    `river:"age,attr"`
-				Country string `river:"country,attr,optional"`
+				Name    string `alloy:"name,attr"`
+				Age     int    `alloy:"age,attr"`
+				Country string `alloy:"country,attr,optional"`
 			}{
 				Name: "John Doe",
 				Age:  42,
@@ -207,7 +207,7 @@ func TestVM_Evaluate_IdentifierExpr(t *testing.T) {
 func TestVM_Evaluate_AccessExpr(t *testing.T) {
 	t.Run("Lookup optional field", func(t *testing.T) {
 		type Person struct {
-			Name string `river:"name,attr,optional"`
+			Name string `alloy:"name,attr,optional"`
 		}
 
 		scope := &vm.Scope{

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/river/internal/reflectutil"
+	"github.com/grafana/alloy/syntax/internal/reflectutil"
 )
 
 // Go types used throughout the package.

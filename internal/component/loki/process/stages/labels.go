@@ -18,7 +18,7 @@ const (
 
 // LabelsConfig is a set of labels to be extracted
 type LabelsConfig struct {
-	Values map[string]*string `river:"values,attr"`
+	Values map[string]*string `alloy:"values,attr"`
 }
 
 // validateLabelsConfig validates the Label stage configuration

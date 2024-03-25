@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/github_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -33,12 +33,12 @@ var DefaultArguments = Arguments{
 }
 
 type Arguments struct {
-	APIURL        string            `river:"api_url,attr,optional"`
-	Repositories  []string          `river:"repositories,attr,optional"`
-	Organizations []string          `river:"organizations,attr,optional"`
-	Users         []string          `river:"users,attr,optional"`
-	APIToken      rivertypes.Secret `river:"api_token,attr,optional"`
-	APITokenFile  string            `river:"api_token_file,attr,optional"`
+	APIURL        string            `alloy:"api_url,attr,optional"`
+	Repositories  []string          `alloy:"repositories,attr,optional"`
+	Organizations []string          `alloy:"organizations,attr,optional"`
+	Users         []string          `alloy:"users,attr,optional"`
+	APIToken      alloytypes.Secret `alloy:"api_token,attr,optional"`
+	APITokenFile  string            `alloy:"api_token_file,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

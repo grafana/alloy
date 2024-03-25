@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/api/auth/approle"
 	"github.com/hashicorp/vault/api/auth/aws"
@@ -29,15 +29,15 @@ type authMethod interface {
 // component instance. These are embedded as an enum field so only one may be
 // set per AuthArguments.
 type AuthArguments struct {
-	AuthToken      *AuthToken      `river:"token,block,optional"`
-	AuthAppRole    *AuthAppRole    `river:"approle,block,optional"`
-	AuthAWS        *AuthAWS        `river:"aws,block,optional"`
-	AuthAzure      *AuthAzure      `river:"azure,block,optional"`
-	AuthGCP        *AuthGCP        `river:"gcp,block,optional"`
-	AuthKubernetes *AuthKubernetes `river:"kubernetes,block,optional"`
-	AuthLDAP       *AuthLDAP       `river:"ldap,block,optional"`
-	AuthUserPass   *AuthUserPass   `river:"userpass,block,optional"`
-	AuthCustom     *AuthCustom     `river:"custom,block,optional"`
+	AuthToken      *AuthToken      `alloy:"token,block,optional"`
+	AuthAppRole    *AuthAppRole    `alloy:"approle,block,optional"`
+	AuthAWS        *AuthAWS        `alloy:"aws,block,optional"`
+	AuthAzure      *AuthAzure      `alloy:"azure,block,optional"`
+	AuthGCP        *AuthGCP        `alloy:"gcp,block,optional"`
+	AuthKubernetes *AuthKubernetes `alloy:"kubernetes,block,optional"`
+	AuthLDAP       *AuthLDAP       `alloy:"ldap,block,optional"`
+	AuthUserPass   *AuthUserPass   `alloy:"userpass,block,optional"`
+	AuthCustom     *AuthCustom     `alloy:"custom,block,optional"`
 }
 
 func (a *AuthArguments) authMethod() authMethod {
@@ -70,7 +70,7 @@ func (a *AuthArguments) authMethod() authMethod {
 
 // AuthToken authenticates against Vault with a token.
 type AuthToken struct {
-	Token rivertypes.Secret `river:"token,attr"`
+	Token alloytypes.Secret `alloy:"token,attr"`
 }
 
 func (a *AuthToken) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*vault.Secret, error) {
@@ -80,10 +80,10 @@ func (a *AuthToken) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*
 
 // AuthAppRole authenticates against Vault with AppRole.
 type AuthAppRole struct {
-	RoleID        string            `river:"role_id,attr"`
-	Secret        rivertypes.Secret `river:"secret,attr"`
-	WrappingToken bool              `river:"wrapping_token,attr,optional"`
-	MountPath     string            `river:"mount_path,attr,optional"`
+	RoleID        string            `alloy:"role_id,attr"`
+	Secret        alloytypes.Secret `alloy:"secret,attr"`
+	WrappingToken bool              `alloy:"wrapping_token,attr,optional"`
+	MountPath     string            `alloy:"mount_path,attr,optional"`
 }
 
 // DefaultAuthAppRole provides default settings for AuthAppRole.
@@ -122,14 +122,14 @@ func (a *AuthAppRole) vaultAuthenticate(ctx context.Context, cli *vault.Client) 
 type AuthAWS struct {
 	// Type specifies the mechanism used to authenticate with AWS. Should be
 	// either ec2 or iam.
-	Type              string `river:"type,attr"`
-	Region            string `river:"region,attr,optional"`
-	Role              string `river:"role,attr,optional"`
-	IAMServerIDHeader string `river:"iam_server_id_header,attr,optional"`
+	Type              string `alloy:"type,attr"`
+	Region            string `alloy:"region,attr,optional"`
+	Role              string `alloy:"role,attr,optional"`
+	IAMServerIDHeader string `alloy:"iam_server_id_header,attr,optional"`
 	// EC2SignatureType specifies the signature to use against EC2. Only used
 	// when Type is ec2. Valid options are identity and pkcs7 (default).
-	EC2SignatureType string `river:"ec2_signature_type,attr,optional"`
-	MountPath        string `river:"mount_path,attr,optional"`
+	EC2SignatureType string `alloy:"ec2_signature_type,attr,optional"`
+	MountPath        string `alloy:"mount_path,attr,optional"`
 }
 
 const (
@@ -219,9 +219,9 @@ func (a *AuthAWS) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*va
 
 // AuthAzure authenticates against Vault with Azure.
 type AuthAzure struct {
-	Role        string `river:"role,attr"`
-	ResourceURL string `river:"resource_url,attr,optional"`
-	MountPath   string `river:"mount_path,attr,optional"`
+	Role        string `alloy:"role,attr"`
+	ResourceURL string `alloy:"resource_url,attr,optional"`
+	MountPath   string `alloy:"mount_path,attr,optional"`
 }
 
 // DefaultAuthAzure provides default settings for AuthAzure.
@@ -258,12 +258,12 @@ func (a *AuthAzure) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*
 
 // AuthGCP authenticates against Vault with GCP.
 type AuthGCP struct {
-	Role string `river:"role,attr"`
+	Role string `alloy:"role,attr"`
 	// Type specifies the mechanism used to authenticate with GCS. Should be
 	// either gce or iam.
-	Type              string `river:"type,attr"`
-	IAMServiceAccount string `river:"iam_service_account,attr,optional"`
-	MountPath         string `river:"mount_path,attr,optional"`
+	Type              string `alloy:"type,attr"`
+	IAMServiceAccount string `alloy:"iam_service_account,attr,optional"`
+	MountPath         string `alloy:"mount_path,attr,optional"`
 }
 
 const (
@@ -330,9 +330,9 @@ func (a *AuthGCP) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*va
 
 // AuthKubernetes authenticates against Vault with Kubernetes.
 type AuthKubernetes struct {
-	Role                    string `river:"role,attr"`
-	ServiceAccountTokenFile string `river:"service_account_file,attr,optional"`
-	MountPath               string `river:"mount_path,attr,optional"`
+	Role                    string `alloy:"role,attr"`
+	ServiceAccountTokenFile string `alloy:"service_account_file,attr,optional"`
+	MountPath               string `alloy:"mount_path,attr,optional"`
 }
 
 // DefaultAuthKubernetes provides default settings for AuthKubernetes.
@@ -369,9 +369,9 @@ func (a *AuthKubernetes) vaultAuthenticate(ctx context.Context, cli *vault.Clien
 
 // AuthLDAP authenticates against Vault with LDAP.
 type AuthLDAP struct {
-	Username  string            `river:"username,attr"`
-	Password  rivertypes.Secret `river:"password,attr"`
-	MountPath string            `river:"mount_path,attr,optional"`
+	Username  string            `alloy:"username,attr"`
+	Password  alloytypes.Secret `alloy:"password,attr"`
+	MountPath string            `alloy:"mount_path,attr,optional"`
 }
 
 // DefaultAuthLDAP provides default settings for AuthLDAP.
@@ -406,9 +406,9 @@ func (a *AuthLDAP) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*v
 
 // AuthUserPass authenticates against Vault with a username and password.
 type AuthUserPass struct {
-	Username  string            `river:"username,attr"`
-	Password  rivertypes.Secret `river:"password,attr"`
-	MountPath string            `river:"mount_path,attr,optional"`
+	Username  string            `alloy:"username,attr"`
+	Password  alloytypes.Secret `alloy:"password,attr"`
+	MountPath string            `alloy:"mount_path,attr,optional"`
 }
 
 // DefaultAuthUserPass provides default settings for AuthUserPass.
@@ -444,8 +444,8 @@ func (a *AuthUserPass) vaultAuthenticate(ctx context.Context, cli *vault.Client)
 // AuthCustom provides a custom authentication method.
 type AuthCustom struct {
 	// Path to use for logging in (e.g., auth/kubernetes/login, etc.)
-	Path string                       `river:"path,attr"`
-	Data map[string]rivertypes.Secret `river:"data,attr"`
+	Path string                       `alloy:"path,attr"`
+	Data map[string]alloytypes.Secret `alloy:"data,attr"`
 }
 
 // Login implements vault.AuthMethod.
