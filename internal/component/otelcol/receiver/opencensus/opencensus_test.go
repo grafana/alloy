@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/opencensus"
-	"github.com/grafana/alloy/internal/flow/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver"

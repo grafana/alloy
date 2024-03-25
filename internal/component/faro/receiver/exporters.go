@@ -8,10 +8,10 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-logfmt/logfmt"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/grafana/alloy/internal/component/otelcol"
-	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"

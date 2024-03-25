@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/flow/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"

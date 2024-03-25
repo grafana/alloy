@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafana/alloy/internal/alloy"
+	"github.com/grafana/alloy/internal/alloy/logging"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/flow"
-	"github.com/grafana/alloy/internal/flow/logging"
 	"github.com/grafana/alloy/internal/service"
 	cluster_service "github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -173,7 +173,7 @@ func validateRiver(t *testing.T, expectedRiver []byte, actualRiver []byte, loadF
 
 // attemptLoadingFlowConfig will attempt to load the Flow config and report any errors.
 func attemptLoadingFlowConfig(t *testing.T, river []byte) {
-	cfg, err := flow.ParseSource(t.Name(), river)
+	cfg, err := alloy.ParseSource(t.Name(), river)
 	require.NoError(t, err, "the output River config failed to parse: %s", string(normalizeLineEndings(river)))
 
 	// The below check suffers from test race conditions on Windows. Our goal here is to verify config conversions,
@@ -193,7 +193,7 @@ func attemptLoadingFlowConfig(t *testing.T, river []byte) {
 	})
 	require.NoError(t, err)
 
-	f := flow.New(flow.Options{
+	f := alloy.New(alloy.Options{
 		Logger:       logger,
 		DataPath:     t.TempDir(),
 		MinStability: featuregate.StabilityExperimental,

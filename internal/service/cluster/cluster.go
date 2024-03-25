@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/ckit"

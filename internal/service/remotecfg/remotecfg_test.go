@@ -11,12 +11,12 @@ import (
 
 	"connectrpc.com/connect"
 	agentv1 "github.com/grafana/agent-remote-config/api/gen/proto/go/agent/v1"
+	"github.com/grafana/alloy/internal/alloy"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/alloy/logging"
 	"github.com/grafana/alloy/internal/component"
 	_ "github.com/grafana/alloy/internal/component/loki/process"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/flow"
-	"github.com/grafana/alloy/internal/flow/componenttest"
-	"github.com/grafana/alloy/internal/flow/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
@@ -165,7 +165,7 @@ func (fakeHost) GetService(_ string) (service.Service, bool)     { return nil, f
 
 func (f fakeHost) NewController(id string) service.Controller {
 	logger, _ := logging.New(io.Discard, logging.DefaultOptions)
-	ctrl := flow.New(flow.Options{
+	ctrl := alloy.New(alloy.Options{
 		ControllerID:    ServiceName,
 		Logger:          logger,
 		Tracer:          nil,
@@ -211,12 +211,12 @@ func (ag *agentClient) ListAgents(context.Context, *connect.Request[agentv1.List
 }
 
 type serviceController struct {
-	f *flow.Flow
+	f *alloy.Alloy
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
 func (sc serviceController) LoadSource(b []byte, args map[string]any) error {
-	source, err := flow.ParseSource("", b)
+	source, err := alloy.ParseSource("", b)
 	if err != nil {
 		return err
 	}

@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus"
 	flowprometheus "github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/flow/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
