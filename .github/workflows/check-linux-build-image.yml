@@ -3,7 +3,7 @@ name: Check Linux build image
 on:
   pull_request:
     paths:
-      - 'build-image/*'
+      - 'tools/build-image/*'
 
 jobs:
   check-linux-build-image:
@@ -21,7 +21,7 @@ jobs:
       - name: Create test Linux build image
         uses: docker/build-push-action@v5
         with:
-          context: ./build-image
+          context: ./tools/build-image
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
@@ -30,7 +30,7 @@ jobs:
       - name: Create test Linux build image for boring crypto
         uses: docker/build-push-action@v5
         with:
-          context: ./build-image
+          context: ./tools/build-image
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |

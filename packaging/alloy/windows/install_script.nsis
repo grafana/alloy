@@ -70,7 +70,7 @@ Section "install"
   Exists:
     SetOutPath "$INSTDIR"
 
-  File "..\..\..\dist.temp\alloy-windows-amd64.exe"
+  File "..\..\..\dist\alloy-windows-amd64.exe"
   File "..\..\..\dist.temp\alloy-service-windows-amd64.exe"
   File "logo.ico"
 

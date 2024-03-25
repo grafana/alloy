@@ -23,7 +23,7 @@
 ##
 ##   binaries                        Compiles all binaries.
 ##   alloy                           Compiles cmd/alloy to $(ALLOY_BINARY)
-##   alloy-service                   Compiles cmd/alloy-service to $(SERVICE_BINARY)
+##   alloy-service                   Compiles internal/cmd/alloy-service to $(SERVICE_BINARY)
 ##
 ## Targets for building Docker images:
 ##
@@ -166,7 +166,7 @@ alloy-service:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	$(GO_ENV) go build $(GO_FLAGS) -o $(SERVICE_BINARY) ./cmd/alloy-service
+	$(GO_ENV) go build $(GO_FLAGS) -o $(SERVICE_BINARY) ./internal/cmd/alloy-service
 endif
 
 alloylint:
