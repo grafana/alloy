@@ -1,8 +1,8 @@
 package build
 
 import (
-	"github.com/grafana/agent/internal/component/prometheus/remotewrite"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 )
 
 type GlobalContext struct {

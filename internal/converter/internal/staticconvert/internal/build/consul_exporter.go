@@ -1,9 +1,9 @@
 package build
 
 import (
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/exporter/consul"
-	"github.com/grafana/agent/internal/static/integrations/consul_exporter"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/consul"
+	"github.com/grafana/alloy/internal/static/integrations/consul_exporter"
 )
 
 func (b *ConfigBuilder) appendConsulExporter(config *consul_exporter.Config, instanceKey *string) discovery.Exports {

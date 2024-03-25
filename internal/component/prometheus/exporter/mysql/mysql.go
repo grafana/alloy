@@ -2,11 +2,11 @@ package mysql
 
 import (
 	"github.com/go-sql-driver/mysql"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/mysqld_exporter"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )

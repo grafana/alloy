@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/exporter/prometheus/internal/convert"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/agent/internal/component/prometheus"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus/internal/convert"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/prometheus/prometheus/storage"
 )
 

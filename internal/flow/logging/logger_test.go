@@ -11,9 +11,9 @@ import (
 
 	"github.com/go-kit/log"
 	gokitlevel "github.com/go-kit/log/level"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/flow/logging"
-	flowlevel "github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/flow/logging"
+	flowlevel "github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/stretchr/testify/require"
 )
 

@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"math"
 
-	"github.com/grafana/agent/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/syntax"
 )
 

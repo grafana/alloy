@@ -15,11 +15,11 @@ import (
 	"github.com/go-kit/log"
 	agentv1 "github.com/grafana/agent-remote-config/api/gen/proto/go/agent/v1"
 	"github.com/grafana/agent-remote-config/api/gen/proto/go/agent/v1/agentv1connect"
-	"github.com/grafana/agent/internal/agentseed"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/service"
+	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/syntax"
 	commonconfig "github.com/prometheus/common/config"
 )
@@ -72,7 +72,7 @@ type Arguments struct {
 // GetDefaultArguments populates the default values for the Arguments struct.
 func GetDefaultArguments() Arguments {
 	return Arguments{
-		ID:               agentseed.Get().UID,
+		ID:               alloyseed.Get().UID,
 		Metadata:         make(map[string]string),
 		PollFrequency:    1 * time.Minute,
 		HTTPClientConfig: config.CloneDefaultHTTPClientConfig(),

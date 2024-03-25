@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/useragent"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/scrape"

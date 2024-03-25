@@ -15,7 +15,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
-	"github.com/grafana/agent/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 // ReservedLabelTenantID reserved to override the tenant ID while processing

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/grafana/agent/internal/static/logs"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/static/logs"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"gopkg.in/yaml.v3"

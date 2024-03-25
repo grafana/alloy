@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"testing"
 
-	integrations "github.com/grafana/agent/internal/static/integrations/config"
+	integrations "github.com/grafana/alloy/internal/static/integrations/config"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )

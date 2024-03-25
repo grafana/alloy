@@ -3,9 +3,9 @@ package string
 import (
 	"context"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/internal/testcomponents/module"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/internal/testcomponents/module"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 

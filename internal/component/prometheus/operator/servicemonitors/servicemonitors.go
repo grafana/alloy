@@ -1,10 +1,10 @@
 package servicemonitors
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus/operator"
-	"github.com/grafana/agent/internal/component/prometheus/operator/common"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/operator"
+	"github.com/grafana/alloy/internal/component/prometheus/operator/common"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 func init() {

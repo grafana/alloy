@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/agent/internal/util/zapadapter"
+	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )

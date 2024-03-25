@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/build"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/flow/tracing/internal/jaegerremote"
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/flow/tracing/internal/jaegerremote"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"

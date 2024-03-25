@@ -1,4 +1,4 @@
-package agentseed
+package alloyseed
 
 import (
 	"os"

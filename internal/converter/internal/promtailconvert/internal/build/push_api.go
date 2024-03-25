@@ -3,10 +3,10 @@ package build
 import (
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/api"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/api"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 )
 
 func (s *ScrapeConfigBuilder) AppendPushAPI() {

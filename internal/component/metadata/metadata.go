@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/grafana/agent/internal/component"
-	_ "github.com/grafana/agent/internal/component/all"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component"
+	_ "github.com/grafana/alloy/internal/component/all"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/prometheus/prometheus/storage"
 )
 

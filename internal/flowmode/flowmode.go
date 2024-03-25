@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/grafana/agent/internal/build"
+	"github.com/grafana/alloy/internal/build"
 	"github.com/spf13/cobra"
 )
 

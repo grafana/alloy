@@ -3,9 +3,9 @@ package build
 import (
 	"reflect"
 
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/service/http"
-	"github.com/grafana/agent/internal/static/server"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/static/server"
 )
 
 func (b *ConfigBuilder) appendServer(config *server.Config) {

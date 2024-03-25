@@ -12,8 +12,8 @@ import (
 
 	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/flow/componenttest"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/stretchr/testify/require"

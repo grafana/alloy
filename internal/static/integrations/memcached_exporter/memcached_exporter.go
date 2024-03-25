@@ -10,9 +10,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/agent/internal/static/integrations"
-	integrations_v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/metricsutils"
+	"github.com/grafana/alloy/internal/static/integrations"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/prometheus/memcached_exporter/pkg/exporter"
 )
 

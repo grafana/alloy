@@ -3,7 +3,7 @@ package common_test
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )

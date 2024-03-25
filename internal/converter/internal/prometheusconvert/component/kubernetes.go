@@ -1,12 +1,12 @@
 package component
 
 import (
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/discovery/kubernetes"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery/kubernetes"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
 	prom_kubernetes "github.com/prometheus/prometheus/discovery/kubernetes"
 )
 

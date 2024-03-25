@@ -5,8 +5,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/consumer/consumertest"

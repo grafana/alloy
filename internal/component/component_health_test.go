@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
+	"github.com/grafana/alloy/internal/component"
 	"github.com/stretchr/testify/require"
 )
 

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/static/integrations/memcached_exporter"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/static/integrations/memcached_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 )

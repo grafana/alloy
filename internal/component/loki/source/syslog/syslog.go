@@ -5,12 +5,12 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	st "github.com/grafana/agent/internal/component/loki/source/syslog/internal/syslogtarget"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/prometheus/prometheus/model/relabel"
 )
 

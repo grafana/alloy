@@ -3,9 +3,9 @@ package build
 import (
 	"reflect"
 
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/flow/logging"
-	"github.com/grafana/agent/internal/static/server"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/flow/logging"
+	"github.com/grafana/alloy/internal/static/server"
 )
 
 func (b *ConfigBuilder) appendLogging(config *server.Config) {

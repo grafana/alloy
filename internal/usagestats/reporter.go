@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/agent/internal/agentseed"
+	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/multierror"
 )
@@ -21,7 +21,7 @@ var (
 type Reporter struct {
 	logger log.Logger
 
-	agentSeed  *agentseed.AgentSeed
+	seed       *alloyseed.Seed
 	lastReport time.Time
 }
 
@@ -36,14 +36,14 @@ func NewReporter(logger log.Logger) (*Reporter, error) {
 // Start inits the reporter seed and start sending report for every interval
 func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]interface{}) error {
 	level.Info(rep.logger).Log("msg", "running usage stats reporter")
-	rep.agentSeed = agentseed.Get()
+	rep.seed = alloyseed.Get()
 
 	// check every minute if we should report.
 	ticker := time.NewTicker(reportCheckInterval)
 	defer ticker.Stop()
 
 	// find  when to send the next report.
-	next := nextReport(reportInterval, rep.agentSeed.CreatedAt, time.Now())
+	next := nextReport(reportInterval, rep.seed.CreatedAt, time.Now())
 	if rep.lastReport.IsZero() {
 		// if we never reported assumed it was the last interval.
 		rep.lastReport = next.Add(-reportInterval)
@@ -77,7 +77,7 @@ func (rep *Reporter) reportUsage(ctx context.Context, interval time.Time, metric
 	})
 	var errs multierror.MultiError
 	for backoff.Ongoing() {
-		if err := sendReport(ctx, rep.agentSeed, interval, metrics); err != nil {
+		if err := sendReport(ctx, rep.seed, interval, metrics); err != nil {
 			level.Info(rep.logger).Log("msg", "failed to send usage report", "retries", backoff.NumRetries(), "err", err)
 			errs.Add(err)
 			backoff.Wait()

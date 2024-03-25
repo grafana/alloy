@@ -7,19 +7,19 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/agent/internal/agentseed"
-	"github.com/grafana/agent/internal/component/pyroscope"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/useragent"
+	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/oklog/run"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.uber.org/multierr"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -159,12 +159,13 @@ type fanOutClient struct {
 // NewFanOut creates a new fan out client that will fan out to all endpoints.
 func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fanOutClient, error) {
 	clients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
-	uid := agentseed.Get().UID
+	uid := alloyseed.Get().UID
 	for _, endpoint := range config.Endpoints {
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
-		endpoint.Headers[agentseed.HeaderName] = uid
+		endpoint.Headers[alloyseed.LegacyHeaderName] = uid
+		endpoint.Headers[alloyseed.HeaderName] = uid
 		httpClient, err := commonconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
 		if err != nil {
 			return nil, err

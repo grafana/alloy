@@ -5,10 +5,10 @@ package converter
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert"
-	"github.com/grafana/agent/internal/converter/internal/promtailconvert"
-	"github.com/grafana/agent/internal/converter/internal/staticconvert"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
+	"github.com/grafana/alloy/internal/converter/internal/promtailconvert"
+	"github.com/grafana/alloy/internal/converter/internal/staticconvert"
 )
 
 // Input represents the type of config file being fed into the converter.

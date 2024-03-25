@@ -1,10 +1,10 @@
 package build
 
 import (
-	commonCfg "github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/exporter/elasticsearch"
-	"github.com/grafana/agent/internal/static/integrations/elasticsearch_exporter"
+	commonCfg "github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/elasticsearch"
+	"github.com/grafana/alloy/internal/static/integrations/elasticsearch_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 

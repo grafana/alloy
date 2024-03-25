@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/grafana/agent/internal/static/metrics/instance"
+	"github.com/grafana/alloy/internal/static/metrics/instance"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )

@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/time/rate"
 )

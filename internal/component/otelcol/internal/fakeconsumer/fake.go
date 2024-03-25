@@ -3,7 +3,7 @@ package fakeconsumer
 import (
 	"context"
 
-	"github.com/grafana/agent/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"

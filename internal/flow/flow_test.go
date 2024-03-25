@@ -5,12 +5,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/internal/controller"
-	"github.com/grafana/agent/internal/flow/internal/dag"
-	"github.com/grafana/agent/internal/flow/internal/testcomponents"
-	"github.com/grafana/agent/internal/flow/logging"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/internal/controller"
+	"github.com/grafana/alloy/internal/flow/internal/dag"
+	"github.com/grafana/alloy/internal/flow/internal/testcomponents"
+	"github.com/grafana/alloy/internal/flow/logging"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 )

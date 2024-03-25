@@ -1,9 +1,9 @@
 package build
 
 import (
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/loki/source/windowsevent"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source/windowsevent"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 )
 
 func (s *ScrapeConfigBuilder) AppendWindowsEventsConfig() {

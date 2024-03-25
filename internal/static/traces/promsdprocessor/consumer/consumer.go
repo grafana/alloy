@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/agent/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/collector/client"
 	otelcomponent "go.opentelemetry.io/collector/component"

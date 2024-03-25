@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/agent/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 

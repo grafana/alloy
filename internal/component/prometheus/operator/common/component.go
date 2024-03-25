@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus/operator"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/service/cluster"
-	"github.com/grafana/agent/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/operator"
+	"github.com/grafana/alloy/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"gopkg.in/yaml.v3"
 )
 

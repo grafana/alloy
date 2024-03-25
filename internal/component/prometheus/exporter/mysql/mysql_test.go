@@ -3,7 +3,7 @@ package mysql
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/static/integrations/mysqld_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/stretchr/testify/require"

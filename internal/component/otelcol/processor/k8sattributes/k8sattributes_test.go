@@ -3,7 +3,7 @@ package k8sattributes_test
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/component/otelcol/processor/k8sattributes"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/k8sattributes"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 	"github.com/stretchr/testify/require"

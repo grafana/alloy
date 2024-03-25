@@ -14,7 +14,7 @@ import (
 	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/agent/internal/component/pyroscope/scrape/internal/pproflite"
+	"github.com/grafana/alloy/internal/component/pyroscope/scrape/internal/pproflite"
 )
 
 func TestDecoderEncoder(t *testing.T) {

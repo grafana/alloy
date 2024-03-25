@@ -3,7 +3,7 @@ package dnsmasq
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/static/integrations/dnsmasq_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/dnsmasq_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 )

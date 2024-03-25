@@ -7,7 +7,7 @@ package windowsevent
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 // Arguments holds values which are used to configure the loki.source.windowsevent

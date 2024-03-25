@@ -1,9 +1,9 @@
 package build
 
 import (
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/exporter/dnsmasq"
-	"github.com/grafana/agent/internal/static/integrations/dnsmasq_exporter"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/dnsmasq"
+	"github.com/grafana/alloy/internal/static/integrations/dnsmasq_exporter"
 )
 
 func (b *ConfigBuilder) appendDnsmasqExporter(config *dnsmasq_exporter.Config, instanceKey *string) discovery.Exports {

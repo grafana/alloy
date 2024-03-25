@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"

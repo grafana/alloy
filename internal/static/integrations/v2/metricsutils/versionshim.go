@@ -9,10 +9,10 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 
-	v1 "github.com/grafana/agent/internal/static/integrations"
-	v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/common"
-	"github.com/grafana/agent/internal/util"
+	v1 "github.com/grafana/alloy/internal/static/integrations"
+	v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/common"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // NewNamedShim returns a v2.UpgradeFunc which will upgrade a v1.Config to a

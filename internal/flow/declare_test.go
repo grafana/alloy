@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow"
-	"github.com/grafana/agent/internal/flow/internal/testcomponents"
-	"github.com/grafana/agent/internal/flow/logging"
-	"github.com/grafana/agent/internal/service"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow"
+	"github.com/grafana/alloy/internal/flow/internal/testcomponents"
+	"github.com/grafana/alloy/internal/flow/logging"
+	"github.com/grafana/alloy/internal/service"
 	"github.com/stretchr/testify/require"
 )
 

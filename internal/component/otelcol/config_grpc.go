@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/agent/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	otelconfiggrpc "go.opentelemetry.io/collector/config/configgrpc"

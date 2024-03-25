@@ -6,8 +6,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/config"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/config"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"

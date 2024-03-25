@@ -14,14 +14,14 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	fnet "github.com/grafana/agent/internal/component/common/net"
-	"github.com/grafana/agent/internal/component/loki/source/gcplog/gcptypes"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
 )
 
 // PushTarget defines a server for receiving messages from a GCP PubSub push

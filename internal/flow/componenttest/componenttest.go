@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/flow/logging"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/flow/logging"
 	"go.opentelemetry.io/otel/trace/noop"
 )
 

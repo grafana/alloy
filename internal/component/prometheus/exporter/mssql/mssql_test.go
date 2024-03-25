@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/burningalchemist/sql_exporter/config"
-	"github.com/grafana/agent/internal/static/integrations/mssql"
+	"github.com/grafana/alloy/internal/static/integrations/mssql"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"

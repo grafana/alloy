@@ -3,7 +3,7 @@ package filter_test
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/component/otelcol/processor/filter"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/filter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor"

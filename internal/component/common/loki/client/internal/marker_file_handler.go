@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/agent/internal/component/common/loki/wal"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/natefinch/atomic"
 )
 

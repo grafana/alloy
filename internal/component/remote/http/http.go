@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	common_config "github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/useragent"
+	"github.com/grafana/alloy/internal/component"
+	common_config "github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_config "github.com/prometheus/common/config"
 )

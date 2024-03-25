@@ -10,7 +10,7 @@ The project must be updated to reference the upcoming release tag whenever a new
 
 ## Steps
 
-1. Create a branch from `main` for [grafana/agent](https://github.com/grafana/agent).
+1. Create a branch from `main` for [grafana/alloy](https://github.com/grafana/alloy).
 
 2. Update the `CHANGELOG.md`:
 

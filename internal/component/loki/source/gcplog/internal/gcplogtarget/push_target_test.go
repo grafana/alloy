@@ -16,10 +16,10 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/client/fake"
-	fnet "github.com/grafana/agent/internal/component/common/net"
-	"github.com/grafana/agent/internal/component/loki/source/gcplog/gcptypes"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
 )
 
 const localhost = "127.0.0.1"

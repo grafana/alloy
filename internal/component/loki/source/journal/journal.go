@@ -9,15 +9,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/journal/internal/target"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/journal/internal/target"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/agent/internal/component"
+	"github.com/grafana/alloy/internal/component"
 )
 
 func init() {

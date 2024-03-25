@@ -3,7 +3,7 @@ package controller
 import (
 	"context"
 
-	"github.com/grafana/agent/internal/component"
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/syntax/ast"
 )
 

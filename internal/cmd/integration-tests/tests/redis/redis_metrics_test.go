@@ -5,7 +5,7 @@ package main
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/cmd/integration-tests/common"
+	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 )
 
 func TestRedisMetrics(t *testing.T) {

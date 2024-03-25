@@ -3,9 +3,9 @@ package build
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/discovery/consulagent"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/discovery/consulagent"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	promtail_consulagent "github.com/grafana/loki/clients/pkg/promtail/discovery/consulagent"
 )

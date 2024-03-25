@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/static/metrics/cluster"
-	"github.com/grafana/agent/internal/static/metrics/cluster/client"
-	"github.com/grafana/agent/internal/static/metrics/instance"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/static/metrics/cluster"
+	"github.com/grafana/alloy/internal/static/metrics/cluster/client"
+	"github.com/grafana/alloy/internal/static/metrics/instance"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // DefaultConfig is the default settings for the Prometheus-lite client.

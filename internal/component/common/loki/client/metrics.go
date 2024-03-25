@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

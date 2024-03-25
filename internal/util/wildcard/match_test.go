@@ -19,7 +19,7 @@ package wildcard_test
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/util/wildcard"
+	"github.com/grafana/alloy/internal/util/wildcard"
 )
 
 // TestMatch - Tests validate the logic of wild card matching.

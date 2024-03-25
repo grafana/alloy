@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/grafana/agent/internal/static/integrations/config"
+	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
 type cachingFactory interface {

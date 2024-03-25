@@ -3,8 +3,8 @@ package kafka
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/static/integrations/kafka_exporter"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/static/integrations/kafka_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )

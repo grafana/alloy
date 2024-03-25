@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/stretchr/testify/require"
 )
 

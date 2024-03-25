@@ -3,7 +3,7 @@ package windows
 import (
 	"strings"
 
-	windows_integration "github.com/grafana/agent/internal/static/integrations/windows_exporter"
+	windows_integration "github.com/grafana/alloy/internal/static/integrations/windows_exporter"
 )
 
 // Arguments is used for controlling for this exporter.

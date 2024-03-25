@@ -10,7 +10,7 @@ import (
 func TestUnmarshalRiver(t *testing.T) {
 	riverCfg := `
 		api_token_file = "/etc/github-api-token"
-		repositories = ["grafana/agent"]
+		repositories = ["grafana/alloy"]
 		organizations = ["grafana", "prometheus"]
 		users = ["jcreixell"]
 		api_url = "https://some-other-api.github.com"
@@ -19,7 +19,7 @@ func TestUnmarshalRiver(t *testing.T) {
 	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "/etc/github-api-token", args.APITokenFile)
-	require.Equal(t, []string{"grafana/agent"}, args.Repositories)
+	require.Equal(t, []string{"grafana/alloy"}, args.Repositories)
 	require.Contains(t, args.Organizations, "grafana")
 	require.Contains(t, args.Organizations, "prometheus")
 	require.Equal(t, []string{"jcreixell"}, args.Users)
@@ -29,7 +29,7 @@ func TestUnmarshalRiver(t *testing.T) {
 func TestConvert(t *testing.T) {
 	args := Arguments{
 		APITokenFile:  "/etc/github-api-token",
-		Repositories:  []string{"grafana/agent"},
+		Repositories:  []string{"grafana/alloy"},
 		Organizations: []string{"grafana", "prometheus"},
 		Users:         []string{"jcreixell"},
 		APIURL:        "https://some-other-api.github.com",
@@ -37,7 +37,7 @@ func TestConvert(t *testing.T) {
 
 	res := args.Convert()
 	require.Equal(t, "/etc/github-api-token", res.APITokenFile)
-	require.Equal(t, []string{"grafana/agent"}, res.Repositories)
+	require.Equal(t, []string{"grafana/alloy"}, res.Repositories)
 	require.Contains(t, res.Organizations, "grafana")
 	require.Contains(t, res.Organizations, "prometheus")
 	require.Equal(t, []string{"jcreixell"}, res.Users)

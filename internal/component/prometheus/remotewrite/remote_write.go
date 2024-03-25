@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/agentseed"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/service/labelstore"
-	"github.com/grafana/agent/internal/static/metrics/wal"
-	"github.com/grafana/agent/internal/useragent"
+	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/static/metrics/wal"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
@@ -257,12 +257,13 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	if err != nil {
 		return err
 	}
-	uid := agentseed.Get().UID
+	uid := alloyseed.Get().UID
 	for _, cfg := range convertedConfig.RemoteWriteConfigs {
 		if cfg.Headers == nil {
 			cfg.Headers = map[string]string{}
 		}
-		cfg.Headers[agentseed.HeaderName] = uid
+		cfg.Headers[alloyseed.LegacyHeaderName] = uid
+		cfg.Headers[alloyseed.HeaderName] = uid
 	}
 	err = c.remoteStore.ApplyConfig(convertedConfig)
 	if err != nil {

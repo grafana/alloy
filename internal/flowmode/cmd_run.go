@@ -17,24 +17,24 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/agentseed"
-	"github.com/grafana/agent/internal/boringcrypto"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/converter"
-	convert_diag "github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow"
-	"github.com/grafana/agent/internal/flow/logging"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/flow/tracing"
-	"github.com/grafana/agent/internal/service"
-	httpservice "github.com/grafana/agent/internal/service/http"
-	"github.com/grafana/agent/internal/service/labelstore"
-	otel_service "github.com/grafana/agent/internal/service/otel"
-	remotecfgservice "github.com/grafana/agent/internal/service/remotecfg"
-	uiservice "github.com/grafana/agent/internal/service/ui"
-	"github.com/grafana/agent/internal/static/config/instrumentation"
-	"github.com/grafana/agent/internal/usagestats"
+	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/boringcrypto"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/converter"
+	convert_diag "github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow"
+	"github.com/grafana/alloy/internal/flow/logging"
+	"github.com/grafana/alloy/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/flow/tracing"
+	"github.com/grafana/alloy/internal/service"
+	httpservice "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	otel_service "github.com/grafana/alloy/internal/service/otel"
+	remotecfgservice "github.com/grafana/alloy/internal/service/remotecfg"
+	uiservice "github.com/grafana/alloy/internal/service/ui"
+	"github.com/grafana/alloy/internal/static/config/instrumentation"
+	"github.com/grafana/alloy/internal/usagestats"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
@@ -44,7 +44,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	// Install Components
-	_ "github.com/grafana/agent/internal/component/all"
+	_ "github.com/grafana/alloy/internal/component/all"
 )
 
 func runCommand() *cobra.Command {
@@ -274,7 +274,7 @@ func (fr *flowRun) Run(configPath string) error {
 	}
 
 	labelService := labelstore.New(l, reg)
-	agentseed.Init(fr.storagePath, l)
+	alloyseed.Init(fr.storagePath, l)
 
 	f := flow.New(flow.Options{
 		Logger:       l,
@@ -302,7 +302,7 @@ func (fr *flowRun) Run(configPath string) error {
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
 		if err := f.LoadSource(flowSource, nil); err != nil {
-			return flowSource, fmt.Errorf("error during the initial grafana/agent load: %w", err)
+			return flowSource, fmt.Errorf("error during the initial load: %w", err)
 		}
 
 		return flowSource, nil

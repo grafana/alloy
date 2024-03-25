@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/agentseed"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/client"
-	"github.com/grafana/agent/internal/component/common/loki/limit"
-	"github.com/grafana/agent/internal/component/common/loki/wal"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/client"
+	"github.com/grafana/alloy/internal/component/common/loki/limit"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 func init() {
@@ -163,13 +163,14 @@ func (c *Component) Update(args component.Arguments) error {
 
 	cfgs := newArgs.convertClientConfigs()
 
-	uid := agentseed.Get().UID
+	uid := alloyseed.Get().UID
 	for i := range cfgs {
 		//cfgs is slice of struct values, so we set by index
 		if cfgs[i].Headers == nil {
 			cfgs[i].Headers = map[string]string{}
 		}
-		cfgs[i].Headers[agentseed.HeaderName] = uid
+		cfgs[i].Headers[alloyseed.LegacyHeaderName] = uid
+		cfgs[i].Headers[alloyseed.HeaderName] = uid
 	}
 	walCfg := wal.Config{
 		Enabled:       newArgs.WAL.Enabled,

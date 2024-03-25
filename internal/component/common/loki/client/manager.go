@@ -7,13 +7,13 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/common/loki/client/internal"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
+	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/limit"
-	"github.com/grafana/agent/internal/component/common/loki/wal"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/limit"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
 // WriterEventsNotifier implements a notifier that's received by the Manager, to which wal.Watcher can subscribe for

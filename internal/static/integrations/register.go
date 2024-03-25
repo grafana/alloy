@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/grafana/agent/internal/static/integrations/config"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/static/integrations/config"
+	"github.com/grafana/alloy/internal/util"
 	"gopkg.in/yaml.v2"
 )
 

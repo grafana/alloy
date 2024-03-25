@@ -3,8 +3,8 @@ package common
 import (
 	"reflect"
 
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/converter/diag"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_config "github.com/prometheus/common/config"
 )

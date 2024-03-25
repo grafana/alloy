@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/atomic"
 
-	"github.com/grafana/agent/internal/static/integrations/config"
+	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
 // asyncExporter wraps YACE entrypoint around an Integration implementation

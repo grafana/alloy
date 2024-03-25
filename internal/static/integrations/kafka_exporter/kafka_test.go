@@ -3,7 +3,7 @@ package kafka_exporter //nolint:golint
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/static/config"
+	"github.com/grafana/alloy/internal/static/config"
 )
 
 func TestConfig_SecretKafkaPassword(t *testing.T) {

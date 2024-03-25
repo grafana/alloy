@@ -8,9 +8,9 @@ import (
 	"net/url"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/config"
-	snmp_common "github.com/grafana/agent/internal/static/integrations/snmp_exporter/common"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/config"
+	snmp_common "github.com/grafana/alloy/internal/static/integrations/snmp_exporter/common"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/snmp_exporter/collector"

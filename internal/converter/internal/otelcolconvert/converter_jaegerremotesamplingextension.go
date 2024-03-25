@@ -3,9 +3,9 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/otelcol/extension/jaeger_remote_sampling"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
 	"go.opentelemetry.io/collector/component"
 )

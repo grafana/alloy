@@ -12,9 +12,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/limit"
-	"github.com/grafana/agent/internal/component/common/loki/wal"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/limit"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
 var (

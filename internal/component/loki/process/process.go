@@ -8,10 +8,10 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/loki/process/stages"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/process/stages"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 // TODO(thampiotr): We should reconsider which parts of this component should be exported and which should

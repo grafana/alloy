@@ -3,8 +3,8 @@ package ebpf
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope"
 )
 
 type Arguments struct {

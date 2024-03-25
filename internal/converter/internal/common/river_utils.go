@@ -11,10 +11,10 @@ import (
 	"github.com/grafana/alloy/syntax/printer"
 	"github.com/grafana/alloy/syntax/scanner"
 
-	"github.com/grafana/agent/internal/component"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/converter/diag"
+	"github.com/grafana/alloy/internal/component"
+	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 

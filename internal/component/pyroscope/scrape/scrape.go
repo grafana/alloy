@@ -7,17 +7,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/component/pyroscope"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/service/cluster"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 
-	"github.com/grafana/agent/internal/component"
-	component_config "github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/scrape"
+	"github.com/grafana/alloy/internal/component"
+	component_config "github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/scrape"
 )
 
 const (

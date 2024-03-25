@@ -1,4 +1,4 @@
-module github.com/grafana/agent
+module github.com/grafana/alloy
 
 go 1.22.1
 

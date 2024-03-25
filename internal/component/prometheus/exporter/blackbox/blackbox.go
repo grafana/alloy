@@ -8,13 +8,13 @@ import (
 	blackbox_config "github.com/prometheus/blackbox_exporter/config"
 	"gopkg.in/yaml.v2"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/blackbox_exporter"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/blackbox_exporter"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
