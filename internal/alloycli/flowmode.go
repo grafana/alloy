@@ -1,5 +1,5 @@
-// Package flowmode is the entrypoint for Grafana Agent Flow.
-package flowmode
+// Package alloycli is the entrypoint for Grafana Alloy.
+package alloycli
 
 import (
 	"fmt"

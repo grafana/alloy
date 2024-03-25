@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/build"
-	"github.com/grafana/alloy/internal/flowmode"
 	"github.com/prometheus/client_golang/prometheus"
 
 	// Register Prometheus SD components
@@ -22,5 +22,5 @@ func init() {
 }
 
 func main() {
-	flowmode.Run()
+	alloycli.Run()
 }

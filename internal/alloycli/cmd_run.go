@@ -1,4 +1,4 @@
-package flowmode
+package alloycli
 
 import (
 	"context"
