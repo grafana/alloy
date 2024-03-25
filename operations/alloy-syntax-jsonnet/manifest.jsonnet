@@ -1,7 +1,7 @@
 local utils = import './internal/utils.jsonnet';
 
 // parseField parses a field name from a Jsonnet object and determines if it's
-// supposed to be a River attribute or block.
+// supposed to be an Alloy attribute or block.
 local parseField(name) = (
   local parts = std.split(name, ' ');
   local numParts = std.length(parts);
@@ -27,8 +27,8 @@ local parseField(name) = (
   )
 );
 
-// isRiverExpr returns true if value was constructed with river.expr().
-local isRiverExpr(value) = std.isObject(value) && std.length(value) == 1 && utils.exprMarker in value;
+// isAlloyExpr returns true if value was constructed with alloy.expr().
+local isAlloyExpr(value) = std.isObject(value) && std.length(value) == 1 && utils.exprMarker in value;
 
 // linePadding returns number of spaces to indent a line with given a specific
 // indentation level.
@@ -38,7 +38,7 @@ local manifester(indent=0) = {
   local padding = linePadding(indent),
   local this = $,
 
-  // body manifests a River body to text, manifesting both attributes and
+  // body manifests an Alloy body to text, manifesting both attributes and
   // blocks.
   body(value): (
     // First we need to look at each public field of the value and parse it as
@@ -88,11 +88,11 @@ local manifester(indent=0) = {
     ), parsedFields, '')
   ),
 
-  // value manifests a River value to text.
+  // value manifests an Alloy value to text.
   value(value): (
     if value == null then (
       'null'
-    ) else if isRiverExpr(value) then (
+    ) else if isAlloyExpr(value) then (
       local lines = std.split(value[utils.exprMarker], '\n');
 
       // When injecting literals, each line after the first should have the
@@ -162,14 +162,14 @@ local manifester(indent=0) = {
 
 {
 
-  // manifestRiver returns a pretty-printed River file from the Jsonnet value.
-  // value must be an object.
-  manifestRiver(value):: (
-    assert std.isObject(value) : 'manifestRiver must be called with object';
+  // manifestAlloy returns a pretty-printed Alloy syntax file from the Jsonnet
+  // value. value must be an object.
+  manifestAlloy(value):: (
+    assert std.isObject(value) : 'manifestAlloy must be called with object';
     manifester().body(value)
   ),
 
-  manifestRiverValue(value):: (
+  manifestAlloyValue(value):: (
     manifester().value(value)
   ),
 }
