@@ -14,12 +14,12 @@ ARG RELEASE_BUILD=1
 ARG VERSION
 ARG GOEXPERIMENT
 
-COPY . /src/agent
-WORKDIR /src/agent
+COPY . /src/alloy
+WORKDIR /src/alloy
 
-# Build the UI before building the agent, which will then bake the final UI
-# into the binary.
-RUN --mount=type=cache,target=/src/agent/web/ui/node_modules,sharing=locked \
+# Build the UI before building Alloy, which will then bake the final UI into
+# the binary.
+RUN --mount=type=cache,target=/src/alloy/web/ui/node_modules,sharing=locked \
    make generate-ui
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
@@ -28,15 +28,15 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
     GO_TAGS="netgo builtinassets promtail_journal_enabled" \
     GOEXPERIMENT=${GOEXPERIMENT} \
-    make agent
+    make alloy
 
 FROM public.ecr.aws/ubuntu/ubuntu:mantic
 
-#Username and uid for grafana-agent user
+# Username and uid for alloy user
 ARG UID=473
-ARG USERNAME="grafana-agent"
+ARG USERNAME="alloy"
 
-LABEL org.opencontainers.image.source="https://github.com/grafana/agent"
+LABEL org.opencontainers.image.source="https://github.com/grafana/alloy"
 
 # Install dependencies needed at runtime.
 RUN <<EOF
@@ -45,15 +45,15 @@ RUN <<EOF
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 EOF
 
-COPY --from=build /src/agent/build/grafana-agent /bin/grafana-agent
-COPY cmd/grafana-agent/example-config.river /etc/agent/agent.river
+COPY --from=build /src/alloy/build/alloy /bin/alloy
+COPY cmd/alloy/example-config.river /etc/alloy/config.river
 
-# Create grafana-agent user in container, but do not set it as default
+# Create alloy user in container, but do not set it as default
 RUN groupadd --gid $UID $USERNAME
 RUN useradd -m -u $UID -g $UID $USERNAME
-RUN chown -R $USERNAME:$USERNAME /etc/agent
-RUN chown -R $USERNAME:$USERNAME /bin/grafana-agent
+RUN chown -R $USERNAME:$USERNAME /etc/alloy
+RUN chown -R $USERNAME:$USERNAME /bin/alloy
 
-ENTRYPOINT ["/bin/grafana-agent"]
+ENTRYPOINT ["/bin/alloy"]
 ENV AGENT_DEPLOY_MODE=docker
-CMD ["run", "/etc/agent/agent.river", "--storage.path=/etc/agent/data"]
+CMD ["run", "/etc/alloy/config.river", "--storage.path=/etc/alloy/data"]

@@ -20,7 +20,7 @@ func main() {
 	}
 
 	rootCmd.PersistentFlags().StringVar(&specificTest, "test", "", "Specific test directory to run")
-	rootCmd.PersistentFlags().BoolVar(&skipBuild, "skip-build", false, "Skip building the agent")
+	rootCmd.PersistentFlags().BoolVar(&skipBuild, "skip-build", false, "Skip building Alloy")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -33,7 +33,7 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 	defer cleanUpEnvironment()
 
 	if !skipBuild {
-		buildAgent()
+		buildAlloy()
 	}
 	setupEnvironment()
 

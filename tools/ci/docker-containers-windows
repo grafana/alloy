@@ -22,8 +22,7 @@ export DRONE_BRANCH=${DRONE_BRANCH:-}
 export DOCKER_LOGIN=${DOCKER_LOGIN:-}
 export DOCKER_PASSWORD=${DOCKER_PASSWORD:-}
 
-export AGENT_IMAGE=grafana/agent
-export AGENTCTL_IMAGE=grafana/agentctl
+export ALLOY_IMAGE=grafana/alloy
 
 if [ -n "$DRONE_TAG" ]; then
   VERSION=$DRONE_TAG
@@ -50,28 +49,18 @@ else
 fi
 
 case "$TARGET_CONTAINER" in
-  agent)
-    docker build                                \
-      -t "$AGENT_IMAGE:$VERSION_TAG"            \
-      -t "$AGENT_IMAGE:$BRANCH_TAG"             \
-      --build-arg VERSION="$VERSION"            \
-      --build-arg RELEASE_BUILD=1               \
-      -f ./cmd/grafana-agent/Dockerfile.windows \
-      .
-    ;;
-
-  agentctl)
-    docker build                                   \
-      -t "$AGENTCTL_IMAGE:$VERSION_TAG"            \
-      -t "$AGENTCTL_IMAGE:$BRANCH_TAG"             \
-      --build-arg VERSION="$VERSION"               \
-      --build-arg RELEASE_BUILD=1                  \
-      -f ./cmd/grafana-agentctl/Dockerfile.windows \
+  alloy)
+    docker build                        \
+      -t "$ALLOY_IMAGE:$VERSION_TAG"    \
+      -t "$ALLOY_IMAGE:$BRANCH_TAG"     \
+      --build-arg VERSION="$VERSION"    \
+      --build-arg RELEASE_BUILD=1       \
+      -f ./cmd/alloy/Dockerfile.windows \
       .
     ;;
 
   *)
-    echo "Usage: $0 agent|agentctl"
+    echo "Usage: $0 alloy"
     exit 1
     ;;
 esac
@@ -81,18 +70,13 @@ if [ -n "$DOCKER_LOGIN" ] && [ -n "$DOCKER_PASSWORD" ]; then
   docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWORD"
 
   case "$TARGET_CONTAINER" in
-    agent)
-      docker push "$AGENT_IMAGE:$VERSION_TAG"
-      docker push "$AGENT_IMAGE:$BRANCH_TAG"
-      ;;
-
-    agentctl)
-      docker push "$AGENTCTL_IMAGE:$VERSION_TAG"
-      docker push "$AGENTCTL_IMAGE:$BRANCH_TAG"
+    alloy)
+      docker push "$ALLOY_IMAGE:$VERSION_TAG"
+      docker push "$ALLOY_IMAGE:$BRANCH_TAG"
       ;;
 
     *)
-      echo "Usage: $0 agent|agentctl"
+      echo "Usage: $0 alloy"
       exit 1
       ;;
   esac

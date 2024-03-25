@@ -29,7 +29,7 @@ local os_arch_tuples = [
 
 
 local targets = [
-  'agent',
+  'alloy',
 ];
 
 local build_environments(targets, tuples, image) = std.flatMap(function(target) (

@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sys/windows/svc"
 )
 
-const serviceName = "Grafana Agent"
+const serviceName = "Grafana Alloy"
 
 func main() {
 	logger, err := newLogger()
@@ -39,21 +39,21 @@ func main() {
 		Stderr: logger,
 	}
 
-	as := &agentService{logger: logger, cfg: cfg}
+	as := &alloyService{logger: logger, cfg: cfg}
 	if err := svc.Run(serviceName, as); err != nil {
 		level.Error(logger).Log("msg", "failed to run service", "err", err)
 		os.Exit(1)
 	}
 }
 
-type agentService struct {
+type alloyService struct {
 	logger log.Logger
 	cfg    serviceManagerConfig
 }
 
 const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
 
-func (as *agentService) Execute(args []string, r <-chan svc.ChangeRequest, s chan<- svc.Status) (svcSpecificEC bool, exitCode uint32) {
+func (as *alloyService) Execute(args []string, r <-chan svc.ChangeRequest, s chan<- svc.Status) (svcSpecificEC bool, exitCode uint32) {
 	defer func() {
 		s <- svc.Status{State: svc.Stopped}
 	}()

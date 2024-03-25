@@ -15,12 +15,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAgentLinuxPackages runs the entire test suite for the Linux packages.
-func TestAgentLinuxPackages(t *testing.T) {
-	packageName := "grafana-agent"
+// TestAlloyLinuxPackages runs the entire test suite for the Linux packages.
+func TestAlloyLinuxPackages(t *testing.T) {
+	packageName := "alloy"
 
 	fmt.Println("Building packages (this may take a while...)")
-	buildAgentPackages(t)
+	buildAlloyPackages(t)
 
 	dockerPool, err := dockertest.NewPool("")
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestAgentLinuxPackages(t *testing.T) {
 	}
 }
 
-func buildAgentPackages(t *testing.T) {
+func buildAlloyPackages(t *testing.T) {
 	t.Helper()
 
 	wd, err := os.Getwd()

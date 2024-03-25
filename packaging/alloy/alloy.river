@@ -1,6 +1,6 @@
-// Sample config for Grafana Agent.
+// Sample config for Alloy.
 //
-// For a full configuration reference, see https://grafana.com/docs/agent
+// For a full configuration reference, see https://grafana.com/docs/alloy
 logging {
 	level = "warn"
 }
@@ -15,7 +15,7 @@ prometheus.scrape "default" {
 		prometheus.exporter.unix.default.targets,
 		[{
 			// Self-collect metrics
-			job         = "agent",
+			job         = "alloy",
 			__address__ = "127.0.0.1:12345",
 		}],
 	)

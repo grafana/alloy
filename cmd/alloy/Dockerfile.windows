@@ -2,8 +2,8 @@ FROM grafana/agent-build-image:0.40.2-windows as builder
 ARG VERSION
 ARG RELEASE_BUILD=1
 
-COPY . /src/agent
-WORKDIR /src/agent
+COPY . /src/alloy
+WORKDIR /src/alloy
 
 SHELL ["cmd", "/S", "/C"]
 
@@ -11,17 +11,17 @@ SHELL ["cmd", "/S", "/C"]
 # we can before moving on to the next step.
 RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} make generate-ui && rm -rf web/ui/node_modules && yarn cache clean --all""
 
-RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GO_TAGS='builtinassets' make agent""
-# In this case, we're separating the clean command from make agent to avoid an issue where access to some mod cache
-# files is denied immediately after make agent, for example:
+RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GO_TAGS='builtinassets' make alloy""
+# In this case, we're separating the clean command from make alloy to avoid an issue where access to some mod cache
+# files is denied immediately after make alloy, for example:
 # "go: remove C:\go\pkg\mod\golang.org\toolchain@v0.0.1-go1.22.1.windows-amd64\bin\go.exe: Access is denied."
 RUN ""C:\Program Files\git\bin\bash.exe" -c "go clean -cache -modcache""
 
 # Use the smallest container possible for the final image
 FROM mcr.microsoft.com/windows/nanoserver:1809
 
-COPY --from=builder /src/agent/build/grafana-agent /bin/grafana-agent
-COPY --from=builder /src/agent/cmd/grafana-agent/example-config.river /etc/grafana-agent/agent.river
+COPY --from=builder /src/alloy/build/alloy /bin/alloy
+COPY --from=builder /src/alloy/cmd/alloy/example-config.river /etc/alloy/config.river
 
-ENTRYPOINT ["/bin/grafana-agent"]
-CMD ["run", "/etc/agent/agent.river", "--storage.path=/etc/agent/data"]
+ENTRYPOINT ["/bin/alloy"]
+CMD ["run", "/etc/alloy/config.river", "--storage.path=/etc/alloy/data"]

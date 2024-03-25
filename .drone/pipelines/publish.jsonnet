@@ -6,7 +6,7 @@ local ghTokenFilename = '/drone/src/gh-token.txt';
 // job_names gets the list of job names for use in depends_on.
 local job_names = function(jobs) std.map(function(job) job.name, jobs);
 
-local linux_containers = ['agent'];
+local linux_containers = ['alloy'];
 
 local linux_containers_dev_jobs = std.map(function(container) (
   pipelines.linux('Publish development Linux %s container' % container) {
@@ -46,11 +46,11 @@ local linux_containers_dev_jobs = std.map(function(container) (
         'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
 
         // Create a buildx worker for our cross platform builds.
-        'docker buildx create --name multiarch-agent-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container,
+        'docker buildx create --name multiarch-alloy-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container,
 
         'DEVELOPMENT=1 ./tools/ci/docker-containers %s' % container,
 
-        'docker buildx rm multiarch-agent-%s-${DRONE_COMMIT_SHA}' % container,
+        'docker buildx rm multiarch-alloy-%s-${DRONE_COMMIT_SHA}' % container,
       ],
     }],
     volumes: [{
@@ -100,11 +100,11 @@ local linux_containers_jobs = std.map(function(container) (
         'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
 
         // Create a buildx worker for our cross platform builds.
-        'docker buildx create --name multiarch-agent-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container,
+        'docker buildx create --name multiarch-alloy-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container,
 
         './tools/ci/docker-containers %s' % container,
 
-        'docker buildx rm multiarch-agent-%s-${DRONE_COMMIT_SHA}' % container,
+        'docker buildx rm multiarch-alloy-%s-${DRONE_COMMIT_SHA}' % container,
       ],
     }],
     volumes: [{

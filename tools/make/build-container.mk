@@ -47,8 +47,8 @@ DOCKER_OPTS         ?= -it
 # DOCKER_OPTS if they do.
 #
 
-GO_CACHE_VOLUME    := grafana-agent-build-container-gocache
-GO_MODCACHE_VOLUME := grafana-agent-build-container-gomodcache
+GO_CACHE_VOLUME    := alloy-build-container-gocache
+GO_MODCACHE_VOLUME := alloy-build-container-gomodcache
 
 define volume_exists
 $(shell docker volume inspect $(1) >/dev/null 2>&1 && echo 1 || echo "")
