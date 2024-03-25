@@ -17,7 +17,7 @@ import (
 )
 
 func convertCommand() *cobra.Command {
-	f := &flowConvert{
+	f := &alloyConvert{
 		output:       "",
 		sourceFormat: "",
 		bypassErrors: false,
@@ -81,7 +81,7 @@ by separating them with a space.`,
 	return cmd
 }
 
-type flowConvert struct {
+type alloyConvert struct {
 	output       string
 	report       string
 	sourceFormat string
@@ -89,7 +89,7 @@ type flowConvert struct {
 	extraArgs    string
 }
 
-func (fc *flowConvert) Run(configFile string) error {
+func (fc *alloyConvert) Run(configFile string) error {
 	if fc.sourceFormat == "" {
 		return fmt.Errorf("source-format is a required flag")
 	}
@@ -114,7 +114,7 @@ func (fc *flowConvert) Run(configFile string) error {
 	return convert(f, fc)
 }
 
-func convert(r io.Reader, fc *flowConvert) error {
+func convert(r io.Reader, fc *alloyConvert) error {
 	inputBytes, err := io.ReadAll(r)
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func convert(r io.Reader, fc *flowConvert) error {
 	return err
 }
 
-func generateConvertReport(diags convert_diag.Diagnostics, fc *flowConvert) error {
+func generateConvertReport(diags convert_diag.Diagnostics, fc *alloyConvert) error {
 	if fc.report != "" {
 		file, err := os.Create(fc.report)
 		if err != nil {

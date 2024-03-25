@@ -48,7 +48,7 @@ import (
 )
 
 func runCommand() *cobra.Command {
-	r := &flowRun{
+	r := &alloyRun{
 		inMemoryAddr:          "agent.internal:12345",
 		httpListenAddr:        "127.0.0.1:12345",
 		storagePath:           "data-agent/",
@@ -56,7 +56,7 @@ func runCommand() *cobra.Command {
 		uiPrefix:              "/",
 		disableReporting:      false,
 		enablePprof:           true,
-		configFormat:          "flow",
+		configFormat:          "alloy",
 		clusterAdvInterfaces:  advertise.DefaultInterfaces,
 		ClusterMaxJoinPeers:   5,
 		clusterRejoinInterval: 60 * time.Second,
@@ -64,8 +64,8 @@ func runCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "run [flags] path",
-		Short: "Run Grafana Agent Flow",
-		Long: `The run subcommand runs Grafana Agent Flow in the foreground until an interrupt
+		Short: "Run Grafana Alloy",
+		Long: `The run subcommand runs Grafana Alloy in the foreground until an interrupt
 is received.
 
 run must be provided an argument pointing at the Alloy configuration
@@ -76,7 +76,7 @@ immediately.
 If path is a directory, all *.river files in that directory will be combined
 into a single unit. Subdirectories are not recursively searched for further merging.
 
-run starts an HTTP server which can be used to debug Grafana Agent Flow or
+run starts an HTTP server which can be used to debug Grafana Alloy or
 force it to reload (by sending a GET or POST request to /-/reload). The listen
 address can be changed through the --server.http.listen-addr flag.
 
@@ -88,7 +88,7 @@ Additionally, the HTTP server exposes the following debug endpoints:
 
   /debug/pprof   Go performance profiling tools
 
-If reloading the config dir/file-path fails, Grafana Agent Flow will continue running in
+If reloading the config dir/file-path fails, Grafana Alloy will continue running in
 its last valid state. Components which failed may be be listed as unhealthy,
 depending on the nature of the reload error.
 `,
@@ -141,7 +141,7 @@ depending on the nature of the reload error.
 	return cmd
 }
 
-type flowRun struct {
+type alloyRun struct {
 	inMemoryAddr                 string
 	httpListenAddr               string
 	storagePath                  string
@@ -163,7 +163,7 @@ type flowRun struct {
 	configExtraArgs              string
 }
 
-func (fr *flowRun) Run(configPath string) error {
+func (fr *alloyRun) Run(configPath string) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -213,11 +213,11 @@ func (fr *flowRun) Run(configPath string) error {
 	reg := prometheus.DefaultRegisterer
 	reg.MustRegister(newResourcesCollector(l))
 
-	// There's a cyclic dependency between the definition of the Flow controller,
+	// There's a cyclic dependency between the definition of the Alloy controller,
 	// the reload/ready functions, and the HTTP service.
 	//
 	// To work around this, we lazily create variables for the functions the HTTP
-	// service needs and set them after the Flow controller exists.
+	// service needs and set them after the Alloy controller exists.
 	var (
 		reload func() (*flow.Source, error)
 		ready  func() bool
@@ -294,21 +294,21 @@ func (fr *flowRun) Run(configPath string) error {
 
 	ready = f.Ready
 	reload = func() (*flow.Source, error) {
-		flowSource, err := loadFlowSource(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-		defer instrumentation.InstrumentSHA256(flowSource.SHA256())
+		alloySource, err := loadAlloySource(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
+		defer instrumentation.InstrumentSHA256(alloySource.SHA256())
 		defer instrumentation.InstrumentLoad(err == nil)
 
 		if err != nil {
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
-		if err := f.LoadSource(flowSource, nil); err != nil {
-			return flowSource, fmt.Errorf("error during the initial load: %w", err)
+		if err := f.LoadSource(alloySource, nil); err != nil {
+			return alloySource, fmt.Errorf("error during the initial load: %w", err)
 		}
 
-		return flowSource, nil
+		return alloySource, nil
 	}
 
-	// Flow controller
+	// Alloy controller
 	{
 		wg.Add(1)
 		go func() {
@@ -332,7 +332,7 @@ func (fr *flowRun) Run(configPath string) error {
 	}
 
 	// Perform the initial reload. This is done after starting the HTTP server so
-	// that /metric and pprof endpoints are available while the Flow controller
+	// that /metric and pprof endpoints are available while the Alloy controller
 	// is loading.
 	if source, err := reload(); err != nil {
 		var diags diag.Diagnostics
@@ -396,7 +396,7 @@ func getEnabledComponentsFunc(f *flow.Flow) func() map[string]interface{} {
 	}
 }
 
-func loadFlowSource(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (*flow.Source, error) {
+func loadAlloySource(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (*flow.Source, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -435,7 +435,7 @@ func loadFlowSource(path string, converterSourceFormat string, converterBypassEr
 	if err != nil {
 		return nil, err
 	}
-	if converterSourceFormat != "flow" {
+	if converterSourceFormat != "alloy" {
 		var diags convert_diag.Diagnostics
 		ea, err := parseExtraArgs(configExtraArgs)
 		if err != nil {

@@ -15,7 +15,7 @@ import (
 )
 
 func fmtCommand() *cobra.Command {
-	f := &flowFmt{
+	f := &alloyFmt{
 		write: false,
 	}
 
@@ -58,11 +58,11 @@ The -w flag can be used to write the formatted file back to disk. -w can not be 
 	return cmd
 }
 
-type flowFmt struct {
+type alloyFmt struct {
 	write bool
 }
 
-func (ff *flowFmt) Run(configFile string) error {
+func (ff *alloyFmt) Run(configFile string) error {
 	switch configFile {
 	case "-":
 		if ff.write {

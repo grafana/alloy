@@ -9,12 +9,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Run is the entrypoint to Flow mode. It is expected to be called
-// directly from the main function.
+// Run runs the Alloy CLI. It is expected to be called directly from the main
+// function.
 func Run() {
 	var cmd = &cobra.Command{
 		Use:     fmt.Sprintf("%s [global options] <subcommand>", os.Args[0]),
-		Short:   "Grafana Agent Flow",
+		Short:   "Grafana Alloy",
 		Version: build.Print("agent"),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
