@@ -12,32 +12,29 @@ cascade:
 
 # {{% param "PRODUCT_NAME" %}}
 
-{{< param "PRODUCT_NAME" >}} is a distribution of the [OpenTelemetry][] (OTel) Collector. {{< param "PRODUCT_NAME" >}} is vendor-agnostic and fully compatible with the Open Telemetry Protocol (OTLP) and [Prometheus][] Agent. You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructure and you can pair it with Grafana Cloud or a backend from any other vendor. {{< param "PRODUCT_NAME" >}} is flexible and can easily meet your needs in on-prem, cloud-only, or a mix of both. {{< param "PRODUCT_NAME" >}} offers native pipelines for both OTel and Prometheus telemetry, supporting metrics, logs, traces, and profiles.
+{{< param "PRODUCT_NAME" >}} is a vendor-agnostic distribution of the [OpenTelemetry][] (OTel) Collector.
+{{< param "PRODUCT_ROOT_NAME" >}} uniquely combines the very best OSS observability signals in the community, and it offers native pipelines for both OTel and [Prometheus][] telemetry formats, supporting metrics, logs, traces, and profiles.
 
-Some of the features in {{< param "PRODUCT_NAME" >}} include:
+{{< param "PRODUCT_ROOT_NAME" >}} is fully compatible with the OTel Collector and the Prometheus Agent.
+{{< param "PRODUCT_ROOT_NAME" >}} can be used as an alternative to either of these solutions or combined into a hybrid system of multiple collectors and agents.
+You can deploy {{< param "PRODUCT_ROOT_NAME" >}} anywhere within your IT infrastructure and you can pair it with a telemetry backend from Grafana Cloud or any other compatible backend from any other vendor.
+{{< param "PRODUCT_ROOT_NAME" >}} is flexible and you can easily configure it to fit your needs in on-prem, cloud only, or a mix of both.
 
-* Modules to help you quickly build production-ready pipelines.
-* Frameworks that can pull configurations from Git, S3, HTTP endpoints, and just about any oSome of the featurther source.
-* Clustering support to help you create horizontally scalable deployments with minimal resource and operational overhead.
-* Security features to help you manage authentication credentials and connect to HashiCorp Vaults.
-* Debugging support and an embedded user interface to help you troubleshoot configuration problems.
+## What can {{% param "PRODUCT_ROOT_NAME" %}} do?
 
-{{< param "PRODUCT_NAME" >}} is based around **components**. Components are wired together to form programmable observability **pipelines** for telemetry collection, processing, and delivery.
+{{< param "PRODUCT_ROOT_NAME" >}} 
 
-{{< param "PRODUCT_NAME" >}} can collect, transform, and send data to:
+Some of the features in {{< param "PRODUCT_ROOT_NAME" >}} include:
 
-* The [Prometheus][] ecosystem
-* The [OpenTelemetry][] ecosystem
-* The Grafana open source ecosystem ([Loki][], [Grafana][], [Tempo][], [Mimir][], [Pyroscope][])
-
-## Why use {{< param "PRODUCT_NAME" >}}?
-
-* **Vendor-neutral**: Fully compatible with the Prometheus, OpenTelemetry, and Grafana open source ecosystems.
-* **Every signal**: Collect telemetry data for metrics, logs, traces, and continuous profiles.
-* **Scalable**: Deploy on any number of machines to collect millions of active series and terabytes of logs.
-* **Battle-tested**: {{< param "PRODUCT_NAME" >}} extends the existing battle-tested code from the Prometheus and OpenTelemetry Collector projects.
-* **Powerful**: Write programmable pipelines with ease, and debug them using a [built-in UI][UI].
-* **Batteries included**: Integrate with systems like MySQL, Kubernetes, and Apache to get telemetry that's immediately useful.
+* **Modules:** {{< param "PRODUCT_ROOT_NAME" >}} uses modules to help you quickly build production-ready pipelines.
+  Modules break down large congiuration files into single, easy to understand modules that are just a few lines long.
+  You can use pre-built community modules, modules packaged by Grafana, or you can create your own.
+* **GitOps compatibility:** {{< param "PRODUCT_ROOT_NAME" >}} uses frameworks to pull configurations from Git, S3, HTTP endpoints, and just about any other source.
+* **Built for scale:** {{< param "PRODUCT_ROOT_NAME" >}} has native clustering support.
+  Clustering helps distribute the workload and ensure you have high availability.
+  You can quickly create horizontally scalable deployments with minimal resource and operational overhead
+* **Security:** {{< param "PRODUCT_ROOT_NAME" >}} helps you manage authentication credentials and connect to HashiCorp Vaults to retrieve secrets.
+* **Debugging utilities:** {{< param "PRODUCT_ROOT_NAME" >}} provides troubleshooting support and an embedded [user interface][UI] to help you identify and resolve configuration problems.
 
 ## Supported platforms
 
@@ -61,27 +58,7 @@ Some of the features in {{< param "PRODUCT_NAME" >}} include:
   * Minimum version: FreeBSD 10 or later
   * Architectures: AMD64
 
-## Release cadence
-
-A new minor release is planned every six weeks.
-
-The release cadence is best-effort: if necessary, releases may be performed
-outside of this cadence, or a scheduled release date can be moved forwards or
-backwards.
-
-Minor releases published on cadence include updating dependencies for upstream
-OpenTelemetry Collector code if new versions are available. Minor releases
-published outside of the release cadence may not include these dependency
-updates.
-
-Patch and security releases may be created at any time.
-
-[Terraform]: https://terraform.io
+[OpenTelemetry]: https://opentelemetry.io/ecosystem/distributions/
 [Prometheus]: https://prometheus.io
-[OpenTelemetry]: https://opentelemetry.io
 [Loki]: https://github.com/grafana/loki
-[Grafana]: https://github.com/grafana/grafana
-[Tempo]: https://github.com/grafana/tempo
-[Mimir]: https://github.com/grafana/mimir
-[Pyroscope]: https://github.com/grafana/pyroscope
 [UI]: ./tasks/debug/#grafana-alloy-ui
