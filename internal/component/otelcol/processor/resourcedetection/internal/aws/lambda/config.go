@@ -2,7 +2,7 @@ package lambda
 
 import (
 	rac "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 )
 
 const Name = "lambda"
@@ -26,9 +26,9 @@ var DefaultArguments = Config{
 	},
 }
 
-var _ river.Defaulter = (*Config)(nil)
+var _ syntax.Defaulter = (*Config)(nil)
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }

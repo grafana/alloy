@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	promsdconsumer "github.com/grafana/agent/internal/static/traces/promsdprocessor/consumer"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 )
 
 func init() {
@@ -41,11 +41,11 @@ type Arguments struct {
 }
 
 var (
-	_ river.Defaulter = (*Arguments)(nil)
-	_ river.Validator = (*Arguments)(nil)
+	_ syntax.Defaulter = (*Arguments)(nil)
+	_ syntax.Validator = (*Arguments)(nil)
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		OperationType: promsdconsumer.OperationTypeUpsert,
@@ -59,7 +59,7 @@ func (args *Arguments) SetToDefault() {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	err := promsdconsumer.ValidateOperationType(args.OperationType)
 	if err != nil {

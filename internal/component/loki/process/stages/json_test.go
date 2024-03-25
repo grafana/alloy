@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 )
 
 var testJSONRiverSingleStageWithoutSource = `
@@ -100,7 +100,7 @@ func TestRiver(t *testing.T) {
 
 	// testing that we can use river data into the config structure.
 	var got JSONConfig
-	err := river.Unmarshal([]byte(jsonCfg), &got)
+	err := syntax.Unmarshal([]byte(jsonCfg), &got)
 	assert.NoError(t, err, "error while un-marshalling config: %s", err)
 
 	want := JSONConfig{

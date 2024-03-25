@@ -7,7 +7,7 @@ import (
 	"math"
 
 	"github.com/grafana/agent/internal/component/common/loki"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Options is a set of options used to construct and configure a Logger.
@@ -24,9 +24,9 @@ var DefaultOptions = Options{
 	Format: FormatDefault,
 }
 
-var _ river.Defaulter = (*Options)(nil)
+var _ syntax.Defaulter = (*Options)(nil)
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (o *Options) SetToDefault() {
 	*o = DefaultOptions
 }

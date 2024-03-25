@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/common/config"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	promConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -25,7 +25,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	assert.Equal(t, "datacenter_id", args.DatacenterID)
 	assert.Equal(t, 20*time.Second, args.RefreshInterval)

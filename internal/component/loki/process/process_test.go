@@ -15,7 +15,7 @@ import (
 	lsf "github.com/grafana/agent/internal/component/loki/source/file"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -67,7 +67,7 @@ func TestJSONLabelsStage(t *testing.T) {
 		Stages []stages.StageConfig `river:"stage,enum"`
 	}
 	var stagesCfg cfg
-	err := river.Unmarshal([]byte(stg), &stagesCfg)
+	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
 	require.NoError(t, err)
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
@@ -154,7 +154,7 @@ stage.label_keep {
 		Stages []stages.StageConfig `river:"stage,enum"`
 	}
 	var stagesCfg cfg
-	err := river.Unmarshal([]byte(stg), &stagesCfg)
+	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
 	require.NoError(t, err)
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
@@ -249,7 +249,7 @@ stage.labels {
 		Stages []stages.StageConfig `river:"stage,enum"`
 	}
 	var stagesCfg cfg
-	err := river.Unmarshal([]byte(stg), &stagesCfg)
+	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
 	require.NoError(t, err)
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
@@ -328,8 +328,8 @@ stage.static_labels {
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 	var args1, args2 Arguments
-	require.NoError(t, river.Unmarshal([]byte(stg1), &args1))
-	require.NoError(t, river.Unmarshal([]byte(stg2), &args2))
+	require.NoError(t, syntax.Unmarshal([]byte(stg1), &args1))
+	require.NoError(t, syntax.Unmarshal([]byte(stg2), &args2))
 	args1.ForwardTo = []loki.LogsReceiver{ch1}
 	args2.ForwardTo = []loki.LogsReceiver{ch2}
 
@@ -415,7 +415,7 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 		Stages []stages.StageConfig `river:"stage,enum"`
 	}
 	var stagesCfg cfg
-	err := river.Unmarshal([]byte(stg), &stagesCfg)
+	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
 	require.NoError(t, err)
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()

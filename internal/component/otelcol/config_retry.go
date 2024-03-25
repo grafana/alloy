@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	otelexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
@@ -20,11 +20,11 @@ type RetryArguments struct {
 }
 
 var (
-	_ river.Defaulter = (*RetryArguments)(nil)
-	_ river.Validator = (*RetryArguments)(nil)
+	_ syntax.Defaulter = (*RetryArguments)(nil)
+	_ syntax.Validator = (*RetryArguments)(nil)
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *RetryArguments) SetToDefault() {
 	*args = RetryArguments{
 		Enabled:             true,

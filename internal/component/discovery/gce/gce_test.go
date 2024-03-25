@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +19,7 @@ func TestUnmarshalRiver(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 }
 
@@ -32,7 +32,7 @@ func TestUnmarshalRiverInvalid(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 
 	// Validate that project and zone are required.
 	require.Error(t, err)

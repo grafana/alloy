@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +29,7 @@ func TestConvert(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	converted := args.Convert()
@@ -69,7 +69,7 @@ func TestBadTLSRiverConfig(t *testing.T) {
 
 	// Make sure the TLSConfig Validate function is being utilized correctly.
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.ErrorContains(t, err, "at most one of ca_pem and ca_file must be configured")
 }
 
@@ -92,6 +92,6 @@ func TestBadRefreshIntervalRiverConfig(t *testing.T) {
 
 	// Make sure the Refresh Interval is tested correctly.
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.ErrorContains(t, err, "refresh_interval must be greater than 0")
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol"
 	"github.com/grafana/agent/internal/component/otelcol/connector"
 	"github.com/grafana/agent/internal/featuregate"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 )
@@ -38,12 +38,12 @@ type Arguments struct {
 }
 
 var (
-	_ river.Validator     = (*Arguments)(nil)
-	_ river.Defaulter     = (*Arguments)(nil)
+	_ syntax.Validator    = (*Arguments)(nil)
+	_ syntax.Defaulter    = (*Arguments)(nil)
 	_ connector.Arguments = (*Arguments)(nil)
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		HostIdentifiers:      []string{"host.id"},
@@ -51,7 +51,7 @@ func (args *Arguments) SetToDefault() {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if len(args.HostIdentifiers) == 0 {
 		return fmt.Errorf("host_identifiers must not be empty")

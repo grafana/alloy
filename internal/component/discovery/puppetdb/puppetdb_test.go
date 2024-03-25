@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
@@ -24,7 +24,7 @@ basic_auth {
 
 func TestRiverConfig(t *testing.T) {
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 	assert.Equal(t, args.HTTPClientConfig.BasicAuth.Username, "123")
 	assert.Equal(t, args.RefreshInterval, time.Minute)
@@ -36,7 +36,7 @@ func TestRiverConfig(t *testing.T) {
 
 func TestConvert(t *testing.T) {
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	sd := args.Convert()

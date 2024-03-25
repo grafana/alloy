@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 )
 
 func init() {
@@ -51,7 +51,7 @@ type OverrideConfig struct {
 }
 
 var (
-	_ river.Defaulter = (*Arguments)(nil)
+	_ syntax.Defaulter = (*Arguments)(nil)
 )
 
 // DefaultArguments holds default settings for Arguments.
@@ -66,7 +66,7 @@ var DefaultArguments = Arguments{
 	},
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }

@@ -3,7 +3,7 @@ package nerve
 import (
 	"testing"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,7 +15,7 @@ func TestRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 }
 
@@ -31,5 +31,5 @@ func TestBadRiverConfig(t *testing.T) {
 	timeout = "0s"
 `
 
-	require.ErrorContains(t, river.Unmarshal([]byte(riverConfig), &args), "timeout must be greater than 0")
+	require.ErrorContains(t, syntax.Unmarshal([]byte(riverConfig), &args), "timeout must be greater than 0")
 }

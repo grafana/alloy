@@ -11,7 +11,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/agent/internal/component/common/loki"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/logproto"
 	util_log "github.com/grafana/loki/pkg/util/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,7 +45,7 @@ func processEntries(s Stage, entries ...Entry) []Entry {
 
 func loadConfig(yml string) []StageConfig {
 	var config Configs
-	err := river.Unmarshal([]byte(yml), &config)
+	err := syntax.Unmarshal([]byte(yml), &config)
 	if err != nil {
 		panic(err)
 	}
@@ -209,7 +209,7 @@ func TestPipeline_Process(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			var config Configs
 
-			err := river.Unmarshal([]byte(tt.config), &config)
+			err := syntax.Unmarshal([]byte(tt.config), &config)
 			require.NoError(t, err)
 
 			p, err := NewPipeline(util_log.Logger, loadConfig(tt.config), nil, prometheus.DefaultRegisterer)

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -75,7 +75,7 @@ func Test(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			var args Arguments
-			err := river.Unmarshal([]byte(tc.config), &args)
+			err := syntax.Unmarshal([]byte(tc.config), &args)
 			tc.assertions(t, args, err)
 		})
 	}

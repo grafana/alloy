@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/static/integrations/mysqld_exporter"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/stretchr/testify/require"
 )
@@ -55,7 +55,7 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	require.Equal(t, "root:secret_password@tcp(localhost:3306)/mydb", string(args.DataSourceName))
@@ -126,7 +126,7 @@ func TestRiverConfigConvert(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	c := args.Convert()

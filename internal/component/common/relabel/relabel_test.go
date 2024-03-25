@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestParseConfig(t *testing.T) {
@@ -58,7 +58,7 @@ func TestParseConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var cfg Config
-			err := river.Unmarshal([]byte(tt.cfg), &cfg)
+			err := syntax.Unmarshal([]byte(tt.cfg), &cfg)
 			if tt.expectErr {
 				require.Error(t, err)
 			} else {

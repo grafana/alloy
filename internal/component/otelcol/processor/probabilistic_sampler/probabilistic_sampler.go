@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol"
 	"github.com/grafana/agent/internal/component/otelcol/processor"
 	"github.com/grafana/agent/internal/featuregate"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -40,8 +40,8 @@ type Arguments struct {
 
 var (
 	_ processor.Arguments = Arguments{}
-	_ river.Validator     = (*Arguments)(nil)
-	_ river.Defaulter     = (*Arguments)(nil)
+	_ syntax.Validator    = (*Arguments)(nil)
+	_ syntax.Defaulter    = (*Arguments)(nil)
 )
 
 // DefaultArguments holds default settings for Arguments.
@@ -49,12 +49,12 @@ var DefaultArguments = Arguments{
 	AttributeSource: "traceID",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	cfg, err := args.Convert()
 	if err != nil {

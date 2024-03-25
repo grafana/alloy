@@ -5,7 +5,7 @@ import (
 
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/static/integrations/kafka_exporter"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +23,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		groups_filter_regex = ".*"
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 
 	require.NoError(t, err)
 	expected := Arguments{
@@ -56,7 +56,7 @@ func TestUnmarshalInvalid(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(validRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(validRiverConfig), &args)
 	require.NoError(t, err)
 
 	invalidRiverConfig := `
@@ -64,7 +64,7 @@ func TestUnmarshalInvalid(t *testing.T) {
 		kafka_uris = "localhost:9092"
 	`
 	var invalidArgs Arguments
-	err = river.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err = syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
 	require.Error(t, err)
 }
 
@@ -117,6 +117,6 @@ func TestSASLPassword(t *testing.T) { // #6044
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 }

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -110,7 +110,7 @@ func TestConvertConfig(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			var args Arguments
-			err := river.Unmarshal([]byte(tc.riverCfg), &args)
+			err := syntax.Unmarshal([]byte(tc.riverCfg), &args)
 			if tc.expectedUnmarshalError != "" {
 				require.EqualError(t, err, tc.expectedUnmarshalError)
 			} else {

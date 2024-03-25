@@ -7,7 +7,7 @@ import (
 
 	"github.com/grafana/agent/internal/component/otelcol"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
 )
@@ -259,7 +259,7 @@ func TestUnmarshalSeverityLevel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var sl otelcol.LogSeverityNumberMatchProperties
-			err := river.Unmarshal([]byte(tt.cfg), &sl)
+			err := syntax.Unmarshal([]byte(tt.cfg), &sl)
 			if tt.expectErr {
 				require.Error(t, err)
 			} else {

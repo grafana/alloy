@@ -6,7 +6,7 @@ import (
 	"github.com/alecthomas/units"
 	"github.com/grafana/agent/internal/component/common/loki"
 	"github.com/grafana/agent/internal/component/otelcol"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -19,7 +19,7 @@ type Arguments struct {
 	Output     OutputArguments     `river:"output,block"`
 }
 
-var _ river.Defaulter = (*Arguments)(nil)
+var _ syntax.Defaulter = (*Arguments)(nil)
 
 // SetToDefault applies default settings.
 func (args *Arguments) SetToDefault() {

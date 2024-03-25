@@ -6,7 +6,7 @@ import (
 
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/static/integrations/memcached_exporter"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,7 +16,7 @@ address = "localhost:99"
 timeout = "5s"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	assert.NoError(t, err)
 
 	expected := Arguments{
@@ -37,7 +37,7 @@ tls_config {
   key_file  = "/path/to/key_file"
 }`
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	assert.NoError(t, err)
 
 	expected := Arguments{
@@ -58,7 +58,7 @@ tls_config {
 	ca_pem  = "ca"
 	ca_file = "/path/to/ca_file"
 }`
-	err = river.Unmarshal([]byte(invalidRiverConfig), &args)
+	err = syntax.Unmarshal([]byte(invalidRiverConfig), &args)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "at most one of")
 }
@@ -73,7 +73,7 @@ func TestRiverUnmarshalDefaults(t *testing.T) {
 	var exampleRiverConfig = ``
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	assert.NoError(t, err)
 
 	expected := DefaultArguments

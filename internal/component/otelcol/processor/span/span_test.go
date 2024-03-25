@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/processor/span"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor"
 	"github.com/stretchr/testify/require"
@@ -154,7 +154,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 
 	for _, tc := range tests {
 		var args span.Arguments
-		err := river.Unmarshal([]byte(tc.flowCfg), &args)
+		err := syntax.Unmarshal([]byte(tc.flowCfg), &args)
 
 		if tc.expectUnmarshalError {
 			require.Error(t, err)
@@ -191,7 +191,7 @@ func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorCon
 	require.NoError(t, err)
 
 	var args span.Arguments
-	require.NoError(t, river.Unmarshal([]byte(processorConfig), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(processorConfig), &args))
 
 	// Override the arguments so signals get forwarded to the test channel.
 	args.Output = testSignal.MakeOutput()
@@ -219,7 +219,7 @@ func Test_UpdateSpanNameFromAttributesSuccessfully(t *testing.T) {
 	}
 	`
 	var args span.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -287,7 +287,7 @@ func Test_UpdateSpanNameFromAttributesUnsuccessfully(t *testing.T) {
 	}
 	`
 	var args span.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -348,7 +348,7 @@ func Test_UpdateSpanNameFromAttributesNoSeparatorSuccessfully(t *testing.T) {
 	}
 	`
 	var args span.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -416,7 +416,7 @@ func Test_ToAttributes(t *testing.T) {
 	}
 	`
 	var args span.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -494,7 +494,7 @@ func Test_IncludeExclude(t *testing.T) {
 	}
 `
 	var args span.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -608,7 +608,7 @@ func Test_StatusError(t *testing.T) {
 	}
 	`
 	var args span.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -668,7 +668,7 @@ func Test_StatusOk(t *testing.T) {
 	}
 	`
 	var args span.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)

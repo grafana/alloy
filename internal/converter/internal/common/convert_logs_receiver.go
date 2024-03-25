@@ -2,7 +2,7 @@ package common
 
 import (
 	"github.com/grafana/agent/internal/component/common/loki"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/token"
 	"github.com/grafana/alloy/syntax/token/builder"
 )
@@ -17,7 +17,7 @@ type ConvertLogsReceiver struct {
 
 var _ loki.LogsReceiver = (*ConvertLogsReceiver)(nil)
 var _ builder.Tokenizer = ConvertLogsReceiver{}
-var _ river.Capsule = ConvertLogsReceiver{}
+var _ syntax.Capsule = ConvertLogsReceiver{}
 
 func (f ConvertLogsReceiver) RiverCapsule() {}
 func (f ConvertLogsReceiver) RiverTokenize() []builder.Token {

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/common/config"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -22,7 +22,7 @@ func TestUnmarshal(t *testing.T) {
 		password = "examplepassword"
 	}`
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleCfg), &args)
+	err := syntax.Unmarshal([]byte(exampleCfg), &args)
 	require.NoError(t, err)
 
 	require.Equal(t, "http://localhost:8080/eureka/v1", args.Server)
@@ -40,7 +40,7 @@ func TestValidate(t *testing.T) {
 	}`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(noServer), &args)
+	err := syntax.Unmarshal([]byte(noServer), &args)
 	require.Error(t, err)
 
 	emptyServer := `
@@ -50,7 +50,7 @@ func TestValidate(t *testing.T) {
 		username = "exampleuser"
 		password = "examplepassword"
 	}`
-	err = river.Unmarshal([]byte(emptyServer), &args)
+	err = syntax.Unmarshal([]byte(emptyServer), &args)
 	require.Error(t, err)
 
 	invalidServer := `
@@ -60,7 +60,7 @@ func TestValidate(t *testing.T) {
 		username = "exampleuser"
 		password = "examplepassword"
 	}`
-	err = river.Unmarshal([]byte(invalidServer), &args)
+	err = syntax.Unmarshal([]byte(invalidServer), &args)
 	require.Error(t, err)
 }
 

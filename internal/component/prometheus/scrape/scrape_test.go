@@ -14,7 +14,7 @@ import (
 	http_service "github.com/grafana/agent/internal/service/http"
 	"github.com/grafana/agent/internal/service/labelstore"
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/ckit/memconn"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -47,7 +47,7 @@ func TestRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 }
 
@@ -67,7 +67,7 @@ func TestBadRiverConfig(t *testing.T) {
 
 	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 }
 
@@ -173,7 +173,7 @@ func TestCustomDialer(t *testing.T) {
 	scrape_timeout  = "85ms"
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(config), &args)
+	err := syntax.Unmarshal([]byte(config), &args)
 	require.NoError(t, err)
 
 	opts := component.Options{
@@ -220,6 +220,6 @@ func TestValidateScrapeConfig(t *testing.T) {
 	job_name        = "local"
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.ErrorContains(t, err, "scrape_timeout (20s) greater than scrape_interval (10s) for scrape config with job name \"local\"")
 }

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	util_log "github.com/grafana/loki/pkg/util/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -146,7 +146,7 @@ func TestEventLogMessageConfig_validate(t *testing.T) {
 		tt := tt
 		t.Run(tName, func(t *testing.T) {
 			var config Configs
-			err := river.Unmarshal([]byte(tt.config), &config)
+			err := syntax.Unmarshal([]byte(tt.config), &config)
 			if err == nil {
 				require.Len(t, config.Stages, 1)
 				err = config.Stages[0].EventLogMessageConfig.Validate()

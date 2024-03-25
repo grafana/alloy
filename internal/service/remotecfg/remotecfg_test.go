@@ -19,7 +19,7 @@ import (
 	"github.com/grafana/agent/internal/flow/logging"
 	"github.com/grafana/agent/internal/service"
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -135,7 +135,7 @@ func newTestEnvironment(t *testing.T) *testEnvironment {
 
 func (env *testEnvironment) ApplyConfig(config string) error {
 	var args Arguments
-	if err := river.Unmarshal([]byte(config), &args); err != nil {
+	if err := syntax.Unmarshal([]byte(config), &args); err != nil {
 		return err
 	}
 	return env.svc.Update(args)

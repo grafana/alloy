@@ -3,7 +3,7 @@ package cloudwatch
 import (
 	"testing"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
 	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
 	"github.com/stretchr/testify/require"
@@ -457,7 +457,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			args := Arguments{}
-			err := river.Unmarshal([]byte(tc.raw), &args)
+			err := syntax.Unmarshal([]byte(tc.raw), &args)
 			if tc.expectUnmarshallErr {
 				require.Error(t, err)
 				return

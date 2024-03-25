@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -35,7 +35,7 @@ func Test(t *testing.T) {
 		}
 	`
 	var args batch.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	// Override our arguments so traces get forwarded to traceCh.
 	traceCh := make(chan ptrace.Traces)
@@ -171,7 +171,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 
 	for _, tc := range tests {
 		var args batch.Arguments
-		err := river.Unmarshal([]byte(tc.cfg), &args)
+		err := syntax.Unmarshal([]byte(tc.cfg), &args)
 		require.NoError(t, err)
 
 		ext, err := args.Convert()

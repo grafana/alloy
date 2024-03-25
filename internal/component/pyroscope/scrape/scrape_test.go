@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/agent/internal/component/pyroscope"
 	"github.com/grafana/agent/internal/service/cluster"
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -187,12 +187,12 @@ func TestUnmarshalConfig(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			arg := Arguments{}
 			if tt.expectedErr != "" {
-				err := river.Unmarshal([]byte(tt.in), &arg)
+				err := syntax.Unmarshal([]byte(tt.in), &arg)
 				require.Error(t, err)
 				require.Equal(t, tt.expectedErr, err.Error())
 				return
 			}
-			require.NoError(t, river.Unmarshal([]byte(tt.in), &arg))
+			require.NoError(t, syntax.Unmarshal([]byte(tt.in), &arg))
 			require.Equal(t, tt.expected(), arg)
 		})
 	}

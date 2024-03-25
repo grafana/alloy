@@ -1,7 +1,7 @@
 package common
 
 import (
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/token"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/prometheus/prometheus/storage"
@@ -19,7 +19,7 @@ type ConvertAppendable struct {
 
 var _ storage.Appendable = (*ConvertAppendable)(nil)
 var _ builder.Tokenizer = ConvertAppendable{}
-var _ river.Capsule = ConvertAppendable{}
+var _ syntax.Capsule = ConvertAppendable{}
 
 func (f ConvertAppendable) RiverCapsule() {}
 func (f ConvertAppendable) RiverTokenize() []builder.Token {

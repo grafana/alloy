@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/regexp"
 )
@@ -53,14 +53,14 @@ type WindowsServerFilter struct {
 	RefreshInterval   time.Duration `river:"refresh_interval,attr,optional"`
 }
 
-var _ river.Defaulter = (*WindowsServerFilter)(nil)
+var _ syntax.Defaulter = (*WindowsServerFilter)(nil)
 
 // SetToDefault sets the default for WindowsServerFilter
 func (wcf *WindowsServerFilter) SetToDefault() {
 	wcf.RefreshInterval = 5 * time.Minute
 }
 
-var _ river.Validator = (*TLSArguments)(nil)
+var _ syntax.Validator = (*TLSArguments)(nil)
 
 // Validate returns whether args is valid.
 func (args *TLSArguments) Validate() error {

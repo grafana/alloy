@@ -3,13 +3,13 @@ package windows
 import (
 	"testing"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRiverUnmarshalWithDefaultConfig(t *testing.T) {
 	var args Arguments
-	err := river.Unmarshal([]byte(""), &args)
+	err := syntax.Unmarshal([]byte(""), &args)
 	require.NoError(t, err)
 
 	var defaultArgs Arguments

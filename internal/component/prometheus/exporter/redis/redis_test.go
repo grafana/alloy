@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/static/integrations/redis_exporter"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,7 +41,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		is_cluster                   = true
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 
 	require.NoError(t, err)
 	expected := Arguments{
@@ -88,7 +88,7 @@ func TestUnmarshalInvalid(t *testing.T) {
 	script_path = "/tmp/metrics.lua"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(validRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(validRiverConfig), &args)
 	require.NoError(t, err)
 
 	invalidRiverConfig := `
@@ -97,7 +97,7 @@ func TestUnmarshalInvalid(t *testing.T) {
 	script_paths = ["/tmp/more-metrics.lua", "/tmp/even-more-metrics.lua"]`
 
 	var invalidArgs Arguments
-	err = river.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err = syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
 	require.Error(t, err)
 }
 

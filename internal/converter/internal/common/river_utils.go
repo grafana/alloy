@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/printer"
@@ -127,13 +127,13 @@ func SanitizeIdentifierPanics(in string) string {
 }
 
 // DefaultValue returns the default value for a given type. If *T implements
-// river.Defaulter, a value will be returned with defaults applied. If *T does
-// not implement river.Defaulter, the zero value of T is returned.
+// syntax.Defaulter, a value will be returned with defaults applied. If *T does
+// not implement syntax.Defaulter, the zero value of T is returned.
 //
 // T must not be a pointer type.
 func DefaultValue[T any]() T {
 	var val T
-	if defaulter, ok := any(&val).(river.Defaulter); ok {
+	if defaulter, ok := any(&val).(syntax.Defaulter); ok {
 		defaulter.SetToDefault()
 	}
 	return val

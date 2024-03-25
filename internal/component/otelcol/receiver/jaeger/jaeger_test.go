@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/receiver/jaeger"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )
@@ -34,7 +34,7 @@ func Test(t *testing.T) {
 		output { /* no-op */ }
 	`, httpAddr)
 	var args jaeger.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	go func() {
 		err := ctrl.Run(ctx, args)
@@ -57,7 +57,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 		`
 
 		var args jaeger.Arguments
-		require.NoError(t, river.Unmarshal([]byte(in), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 
 		defaults := &jaeger.GRPC{}
 		defaults.SetToDefault()
@@ -75,7 +75,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 		`
 
 		var args jaeger.Arguments
-		require.NoError(t, river.Unmarshal([]byte(in), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 
 		defaults := &jaeger.ThriftHTTP{}
 		defaults.SetToDefault()
@@ -93,7 +93,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 		`
 
 		var args jaeger.Arguments
-		require.NoError(t, river.Unmarshal([]byte(in), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 
 		defaults := &jaeger.ThriftBinary{}
 		defaults.SetToDefault()
@@ -111,7 +111,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 		`
 
 		var args jaeger.Arguments
-		require.NoError(t, river.Unmarshal([]byte(in), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 
 		defaults := &jaeger.ThriftCompact{}
 		defaults.SetToDefault()
@@ -179,7 +179,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args jaeger.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.agentCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

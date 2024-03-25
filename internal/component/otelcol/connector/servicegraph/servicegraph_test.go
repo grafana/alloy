@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/otelcol/connector/servicegraph"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/servicegraphprocessor"
 	"github.com/stretchr/testify/require"
 )
@@ -137,7 +137,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args servicegraph.Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			if tc.errorMsg != "" {
 				require.ErrorContains(t, err, tc.errorMsg)
 				return

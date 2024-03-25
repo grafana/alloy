@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
@@ -50,7 +50,7 @@ func Test(t *testing.T) {
 		poll_timeout   = "25ms" 
 	`, srv.URL, http.MethodPut, "hello there!")
 	var args http_component.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	go func() {
 		err := ctrl.Run(ctx, args)
@@ -126,7 +126,7 @@ func TestUnmarshalValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testname, func(t *testing.T) {
 			var args http_component.Arguments
-			require.EqualError(t, river.Unmarshal([]byte(tt.cfg), &args), tt.expectedError)
+			require.EqualError(t, syntax.Unmarshal([]byte(tt.cfg), &args), tt.expectedError)
 		})
 	}
 }

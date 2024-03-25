@@ -3,7 +3,7 @@ package riverjson_test
 import (
 	"testing"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/encoding/riverjson"
 	"github.com/stretchr/testify/require"
@@ -304,7 +304,7 @@ type defaultsBlock struct {
 	Age  int    `river:"age,attr,optional"`
 }
 
-var _ river.Defaulter = (*defaultsBlock)(nil)
+var _ syntax.Defaulter = (*defaultsBlock)(nil)
 
 func (d *defaultsBlock) SetToDefault() {
 	*d = defaultsBlock{

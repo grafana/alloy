@@ -21,7 +21,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/loki/client/fake"
 	fnet "github.com/grafana/agent/internal/component/common/net"
 	frelabel "github.com/grafana/agent/internal/component/common/relabel"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/grafana/loki/pkg/push"
@@ -49,7 +49,7 @@ func TestLokiPushTarget(t *testing.T) {
 action = "labeldrop"
 regex = "dropme"
 `
-	err := river.Unmarshal([]byte(relabelStr), &relabelRule)
+	err := syntax.Unmarshal([]byte(relabelStr), &relabelRule)
 	require.NoError(t, err)
 	pt.SetRelabelRules(frelabel.Rules{&relabelRule})
 
@@ -137,7 +137,7 @@ func TestLokiPushTargetForRedirect(t *testing.T) {
 action = "labeldrop"
 regex = "dropme"
 `
-	err := river.Unmarshal([]byte(relabelStr), &relabelRule)
+	err := syntax.Unmarshal([]byte(relabelStr), &relabelRule)
 	require.NoError(t, err)
 	pt.SetRelabelRules(frelabel.Rules{&relabelRule})
 

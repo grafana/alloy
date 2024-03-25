@@ -16,7 +16,7 @@ import (
 	lsf "github.com/grafana/agent/internal/component/loki/source/file"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -35,7 +35,7 @@ func TestRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 }
 
@@ -52,7 +52,7 @@ func TestBadRiverConfig(t *testing.T) {
 
 	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 }
 
@@ -112,7 +112,7 @@ func TestUnmarshallWalAttrributes(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			cfg := WalArguments{}
-			err := river.Unmarshal([]byte(tc.raw), &cfg)
+			err := syntax.Unmarshal([]byte(tc.raw), &cfg)
 			if tc.errorExpected {
 				require.Error(t, err)
 				return
@@ -161,7 +161,7 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 		}
 	`, srv.URL)
 	var args Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	alterConfig(&args)
 
@@ -242,8 +242,8 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 		external_labels = { "lbl" = "bar" }
 	`, srv2.URL)
 	var args1, args2 Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg1), &args1))
-	require.NoError(t, river.Unmarshal([]byte(cfg2), &args2))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg1), &args1))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg2), &args2))
 	alterArgs(&args1)
 	alterArgs(&args2)
 
@@ -371,7 +371,7 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 		}
 	`, srv.URL)
 	var args Arguments
-	require.NoError(b, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(b, syntax.Unmarshal([]byte(cfg), &args))
 
 	alterConfig(&args)
 

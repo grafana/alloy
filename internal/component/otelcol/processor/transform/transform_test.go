@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/component/otelcol/processor/transform"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"github.com/stretchr/testify/require"
@@ -523,7 +523,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args transform.Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			if tc.errorMsg != "" {
 				require.ErrorContains(t, err, tc.errorMsg)
 				return

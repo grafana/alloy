@@ -13,7 +13,7 @@ import (
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -55,7 +55,7 @@ func Test(t *testing.T) {
 		}
 	`, srv.URL)
 	var args otlphttp.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	go func() {
 		err := ctrl.Run(ctx, args)
@@ -165,7 +165,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args otlphttp.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.agentCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

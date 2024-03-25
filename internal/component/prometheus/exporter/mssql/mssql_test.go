@@ -6,7 +6,7 @@ import (
 
 	"github.com/burningalchemist/sql_exporter/config"
 	"github.com/grafana/agent/internal/static/integrations/mssql"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	timeout = "10s"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
@@ -43,7 +43,7 @@ func TestRiverUnmarshalWithInlineQueryConfig(t *testing.T) {
 	query_config = "{ collector_name: mssql_standard, metrics: [ { metric_name: mssql_local_time_seconds, type: gauge, help: 'Local time in seconds since epoch (Unix time).', values: [ unix_time ], query: \"SELECT DATEDIFF(second, '19700101', GETUTCDATE()) AS unix_time\" } ] }"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 	var collectorConfig config.CollectorConfig
 	err = yaml.UnmarshalStrict([]byte(args.QueryConfig.Value), &collectorConfig)
@@ -72,7 +72,7 @@ func TestRiverUnmarshalWithInlineQueryConfigYaml(t *testing.T) {
 	query_config = "collector_name: mssql_standard\nmetrics:\n- metric_name: mssql_local_time_seconds\n  type: gauge\n  help: 'Local time in seconds since epoch (Unix time).'\n  values: [unix_time]\n  query: \"SELECT DATEDIFF(second, '19700101', GETUTCDATE()) AS unix_time\""`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 	var collectorConfig config.CollectorConfig
 	err = yaml.UnmarshalStrict([]byte(args.QueryConfig.Value), &collectorConfig)
@@ -101,7 +101,7 @@ func TestUnmarshalInvalid(t *testing.T) {
 	`
 
 	var invalidArgs Arguments
-	err := river.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err := syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
 	require.Error(t, err)
 	require.EqualError(t, err, "timeout must be positive")
 }
@@ -116,7 +116,7 @@ func TestUnmarshalInvalidQueryConfigYaml(t *testing.T) {
 	`
 
 	var invalidArgs Arguments
-	err := river.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err := syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
 	require.Error(t, err)
 	require.EqualError(t, err, "invalid query_config: yaml: line 1: did not find expected ',' or ']'")
 }
@@ -131,7 +131,7 @@ func TestUnmarshalInvalidProperty(t *testing.T) {
 	`
 
 	var invalidArgs Arguments
-	err := river.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err := syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
 	require.Error(t, err)
 	require.EqualError(t, err, "invalid query_config: unknown fields in collector: bad_param")
 }

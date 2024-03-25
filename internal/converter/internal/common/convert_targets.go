@@ -2,7 +2,7 @@ package common
 
 import (
 	"github.com/grafana/agent/internal/component/discovery"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/token"
 	"github.com/grafana/alloy/syntax/token/builder"
 )
@@ -33,7 +33,7 @@ type ConvertTargets struct {
 }
 
 var _ builder.Tokenizer = ConvertTargets{}
-var _ river.Capsule = ConvertTargets{}
+var _ syntax.Capsule = ConvertTargets{}
 
 func (f ConvertTargets) RiverCapsule() {}
 func (f ConvertTargets) RiverTokenize() []builder.Token {

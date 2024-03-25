@@ -3,7 +3,7 @@ package process
 import (
 	"testing"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/ncabatoff/process-exporter/config"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +22,7 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	require.False(t, args.Children)
@@ -54,7 +54,7 @@ func TestRiverConfigConvert(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	require.True(t, args.Children)

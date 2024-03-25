@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	tsp "github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor"
@@ -215,11 +215,11 @@ const (
 )
 
 var (
-	_ river.Validator          = (*ErrorMode)(nil)
+	_ syntax.Validator         = (*ErrorMode)(nil)
 	_ encoding.TextUnmarshaler = (*ErrorMode)(nil)
 )
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (e *ErrorMode) Validate() error {
 	if e == nil {
 		return nil

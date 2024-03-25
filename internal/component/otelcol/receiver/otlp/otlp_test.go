@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/util"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
@@ -46,7 +46,7 @@ func Test(t *testing.T) {
 	require.NoError(t, err)
 
 	var args otlp.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	// Override our settings so traces get forwarded to traceCh.
 	traceCh := make(chan ptrace.Traces)
@@ -133,7 +133,7 @@ func TestUnmarshalGrpc(t *testing.T) {
 		}
 	`
 	var args otlp.Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 }
 
@@ -147,7 +147,7 @@ func TestUnmarshalHttp(t *testing.T) {
 		}
 	`
 	var args otlp.Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	assert.Equal(t, "/v1/logs", args.HTTP.LogsURLPath)
 	assert.Equal(t, "/v1/metrics", args.HTTP.MetricsURLPath)
@@ -167,7 +167,7 @@ func TestUnmarshalHttpUrls(t *testing.T) {
 		}
 	`
 	var args otlp.Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	assert.Equal(t, "custom/logs", args.HTTP.LogsURLPath)
 	assert.Equal(t, "custom/metrics", args.HTTP.MetricsURLPath)
@@ -227,7 +227,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args otlp.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.agentCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/common/config"
-	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
@@ -29,7 +29,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		proxy_url = "http://example:8080"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 
 	assert.Equal(t, "AzureTestCloud", args.Environment)
@@ -56,7 +56,7 @@ func TestRiverUnmarshal_OAuthRequiredFields(t *testing.T) {
 			client_id = "clientid"
 		}`
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.Error(t, err)
 }
 
@@ -69,7 +69,7 @@ func TestValidate(t *testing.T) {
 		resource_group = "test"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(noAuth), &args)
+	err := syntax.Unmarshal([]byte(noAuth), &args)
 	require.ErrorContains(t, err, "exactly one of oauth or managed_identity must be specified")
 
 	bothAuth := `
@@ -87,7 +87,7 @@ func TestValidate(t *testing.T) {
 			client_id = "clientid"
 		}`
 	var args2 Arguments
-	err = river.Unmarshal([]byte(bothAuth), &args2)
+	err = syntax.Unmarshal([]byte(bothAuth), &args2)
 	require.ErrorContains(t, err, "exactly one of oauth or managed_identity must be specified")
 
 	invalidTLS := `
@@ -104,7 +104,7 @@ func TestValidate(t *testing.T) {
 			cert_pem = "certpem"
 		}`
 	var args3 Arguments
-	err = river.Unmarshal([]byte(invalidTLS), &args3)
+	err = syntax.Unmarshal([]byte(invalidTLS), &args3)
 	require.ErrorContains(t, err, "at most one of cert_pem and cert_file must be configured")
 }
 
