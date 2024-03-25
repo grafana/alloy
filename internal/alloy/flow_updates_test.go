@@ -370,7 +370,7 @@ func TestController_Updates_WithLaggingComponent(t *testing.T) {
 	require.Equal(t, 10, in.(testcomponents.SummationConfig).Input)
 }
 
-func newTestController(t *testing.T) *Flow {
+func newTestController(t *testing.T) *Alloy {
 	return newController(controllerOptions{
 		Options:        testOptions(t),
 		ModuleRegistry: newModuleRegistry(),

@@ -4,7 +4,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 )
 
-// ComponentNode is a generic representation of a Flow component.
+// ComponentNode is a generic representation of a component.
 type ComponentNode interface {
 	RunnableNode
 

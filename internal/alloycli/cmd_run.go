@@ -382,7 +382,7 @@ func (fr *alloyRun) Run(configPath string) error {
 }
 
 // getEnabledComponentsFunc returns a function that gets the current enabled components
-func getEnabledComponentsFunc(f *alloy.Flow) func() map[string]interface{} {
+func getEnabledComponentsFunc(f *alloy.Alloy) func() map[string]interface{} {
 	return func() map[string]interface{} {
 		components := component.GetAllComponents(f, component.InfoOptions{})
 		componentNames := map[string]struct{}{}

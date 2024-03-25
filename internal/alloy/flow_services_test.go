@@ -145,7 +145,7 @@ func TestServices_Configurable_Optional(t *testing.T) {
 	require.NoError(t, updateCalled.Wait(5*time.Second), "Service was not configured")
 }
 
-func TestFlow_GetServiceConsumers(t *testing.T) {
+func TestAlloy_GetServiceConsumers(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	var (
 		svcA = &testservices.Fake{

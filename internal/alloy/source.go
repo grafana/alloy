@@ -12,13 +12,13 @@ import (
 	"github.com/grafana/alloy/syntax/parser"
 )
 
-// A Source holds the contents of a parsed Flow source
+// A Source holds the contents of a parsed Alloy configuration source module.
 type Source struct {
-	sourceMap map[string][]byte // Map that links parsed Flow source's name with its content.
+	sourceMap map[string][]byte // Map that links parsed Alloy source's name with its content.
 	hash      [sha256.Size]byte // Hash of all files in sourceMap sorted by name.
 
 	// Components holds the list of raw River AST blocks describing components.
-	// The Flow controller can interpret them.
+	// The Alloy controller can interpret them.
 	components    []*ast.BlockStmt
 	configBlocks  []*ast.BlockStmt
 	declareBlocks []*ast.BlockStmt

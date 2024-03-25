@@ -1,7 +1,7 @@
 package alloy_test
 
-// This file contains tests which verify that the Flow controller correctly evaluates and updates modules, including
-// the module's arguments and exports.
+// This file contains tests which verify that the Alloy controller correctly
+// evaluates and updates modules, including the module's arguments and exports.
 
 import (
 	"context"
@@ -82,7 +82,7 @@ func TestUpdates_EmptyModule(t *testing.T) {
 }
 
 func TestUpdates_ThroughModule(t *testing.T) {
-	// We use this module in a Flow config below.
+	// We use this module in an Alloy config below.
 	module := `
 	argument "input" {
 		optional = false
@@ -143,7 +143,7 @@ func TestUpdates_ThroughModule(t *testing.T) {
 }
 
 func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
-	// We use this module in a Flow config below.
+	// We use this module in an Alloy config below.
 	module := `
 	testcomponents.count "inc" {
 		frequency = "1ms"
@@ -211,7 +211,7 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 }
 
 func TestUpdates_ReloadConfig(t *testing.T) {
-	// We use this module in a Flow config below.
+	// We use this module in an Alloy config below.
 	module := `
 	argument "input" {
 		optional = false
@@ -345,7 +345,7 @@ func testOptions(t *testing.T) alloy.Options {
 	}
 }
 
-func getExport[T any](t *testing.T, ctrl *alloy.Flow, moduleId string, nodeId string) T {
+func getExport[T any](t *testing.T, ctrl *alloy.Alloy, moduleId string, nodeId string) T {
 	t.Helper()
 	info, err := ctrl.GetComponent(component.ID{
 		ModuleID: moduleId,

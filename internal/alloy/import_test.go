@@ -322,7 +322,7 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 	}()
 }
 
-func setup(t *testing.T, config string) (*alloy.Flow, *alloy.Source) {
+func setup(t *testing.T, config string) (*alloy.Alloy, *alloy.Source) {
 	s, err := logging.New(os.Stderr, logging.DefaultOptions)
 	require.NoError(t, err)
 	ctrl := alloy.New(alloy.Options{

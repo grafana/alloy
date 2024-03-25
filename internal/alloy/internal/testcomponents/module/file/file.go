@@ -90,7 +90,7 @@ func (c *Component) newManagedLocalComponent(o component.Options) (*file.Compone
 
 		if !c.inUpdate.Load() && c.isCreated.Load() {
 			// Any errors found here are reported via component health
-			_ = c.mod.LoadFlowSource(c.getArgs().Arguments, c.getContent().Value)
+			_ = c.mod.LoadAlloySource(c.getArgs().Arguments, c.getContent().Value)
 		}
 	}
 
@@ -110,7 +110,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	}()
 
-	go c.mod.RunFlowController(ctx)
+	go c.mod.RunAlloyController(ctx)
 
 	for {
 		select {
@@ -137,7 +137,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Force a content load here and bubble up any error. This will catch problems
 	// on initial load.
-	return c.mod.LoadFlowSource(newArgs.Arguments, c.getContent().Value)
+	return c.mod.LoadAlloySource(newArgs.Arguments, c.getContent().Value)
 }
 
 // CurrentHealth implements component.HealthComponent.

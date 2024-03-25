@@ -18,7 +18,7 @@ type EnabledAware interface {
 	Enabled(context.Context, slog.Level) bool
 }
 
-// Logger is the logging subsystem of Flow. It supports being dynamically
+// Logger is the logging subsystem of Alloy. It supports being dynamically
 // updated at runtime.
 type Logger struct {
 	inner io.Writer // Writer passed to New.

@@ -1,4 +1,4 @@
-// Package componenttest provides utilities for testing Flow components.
+// Package componenttest provides utilities for testing components.
 package componenttest
 
 import (

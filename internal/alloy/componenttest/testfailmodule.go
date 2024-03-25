@@ -24,7 +24,7 @@ func init() {
 			if args.(TestFailArguments).Fail {
 				return nil, fmt.Errorf("module told to fail")
 			}
-			err = m.LoadFlowSource(nil, args.(TestFailArguments).Content)
+			err = m.LoadAlloySource(nil, args.(TestFailArguments).Content)
 			if err != nil {
 				return nil, err
 			}
@@ -53,14 +53,14 @@ type TestFailModule struct {
 }
 
 func (t *TestFailModule) Run(ctx context.Context) error {
-	go t.mc.RunFlowController(ctx)
+	go t.mc.RunAlloyController(ctx)
 	<-ctx.Done()
 	return nil
 }
 
 func (t *TestFailModule) UpdateContent(content string) error {
 	t.content = content
-	err := t.mc.LoadFlowSource(nil, t.content)
+	err := t.mc.LoadAlloySource(nil, t.content)
 	return err
 }
 

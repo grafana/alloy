@@ -111,7 +111,7 @@ func (m *moduleController) ModuleIDs() []string {
 }
 
 type module struct {
-	f *Flow
+	f *Alloy
 	o *moduleOptions
 }
 

@@ -12,16 +12,16 @@ import (
 	"github.com/go-kit/log"
 	gokitlevel "github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/alloy/logging"
-	flowlevel "github.com/grafana/alloy/internal/alloy/logging/level"
+	alloylevel "github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/stretchr/testify/require"
 )
 
 /* Most recent performance results on M2 Macbook Air:
-$ go test -count=1 -benchmem ./internal/flow/logging -run ^$ -bench BenchmarkLogging_
+$ go test -count=1 -benchmem ./internal/alloy/logging -run ^$ -bench BenchmarkLogging_
 goos: darwin
 goarch: arm64
-pkg: github.com/grafana/agent/internal/flow/logging
+pkg: github.com/grafana/agent/internal/alloy/logging
 BenchmarkLogging_NoLevel_Prints-8             	  722358	      1524 ns/op	     368 B/op	      11 allocs/op
 BenchmarkLogging_NoLevel_Drops-8              	47103154	        25.59 ns/op	       8 B/op	       0 allocs/op
 BenchmarkLogging_GoKitLevel_Drops_Sprintf-8   	 3585387	       332.1 ns/op	     320 B/op	       8 allocs/op
@@ -29,8 +29,8 @@ BenchmarkLogging_GoKitLevel_Drops-8           	 6705489	       176.6 ns/op	     
 BenchmarkLogging_GoKitLevel_Prints-8          	  678214	      1669 ns/op	     849 B/op	      16 allocs/op
 BenchmarkLogging_Slog_Drops-8                 	79687671	        15.09 ns/op	       8 B/op	       0 allocs/op
 BenchmarkLogging_Slog_Prints-8                	 1000000	      1119 ns/op	      32 B/op	       2 allocs/op
-BenchmarkLogging_FlowLevel_Drops-8            	21693330	        58.45 ns/op	     168 B/op	       2 allocs/op
-BenchmarkLogging_FlowLevel_Prints-8           	  720554	      1672 ns/op	     833 B/op	      15 allocs/op
+BenchmarkLogging_AlloyLevel_Drops-8            	21693330	        58.45 ns/op	     168 B/op	       2 allocs/op
+BenchmarkLogging_AlloyLevel_Prints-8           	  720554	      1672 ns/op	     833 B/op	      15 allocs/op
 */
 
 const testStr = "this is a test string"
@@ -57,46 +57,46 @@ func TestLevels(t *testing.T) {
 			expected: "",
 		},
 		{
-			name: "flow info level - drops",
+			name: "alloy info level - drops",
 			logger: func(w io.Writer) (log.Logger, error) {
 				logger, err := logging.New(w, warnLevel())
-				return flowlevel.Info(logger), err
+				return alloylevel.Info(logger), err
 			},
 			message:  "hello",
 			expected: "",
 		},
 		{
-			name: "flow debug level - prints",
+			name: "alloy debug level - prints",
 			logger: func(w io.Writer) (log.Logger, error) {
 				logger, err := logging.New(w, debugLevel())
-				return flowlevel.Debug(logger), err
+				return alloylevel.Debug(logger), err
 			},
 			message:  "hello",
 			expected: "level=debug msg=hello\n",
 		},
 		{
-			name: "flow info level - prints",
+			name: "alloy info level - prints",
 			logger: func(w io.Writer) (log.Logger, error) {
 				logger, err := logging.New(w, infoLevel())
-				return flowlevel.Info(logger), err
+				return alloylevel.Info(logger), err
 			},
 			message:  "hello",
 			expected: "level=info msg=hello\n",
 		},
 		{
-			name: "flow warn level - prints",
+			name: "alloy warn level - prints",
 			logger: func(w io.Writer) (log.Logger, error) {
 				logger, err := logging.New(w, debugLevel())
-				return flowlevel.Warn(logger), err
+				return alloylevel.Warn(logger), err
 			},
 			message:  "hello",
 			expected: "level=warn msg=hello\n",
 		},
 		{
-			name: "flow error level - prints",
+			name: "alloy error level - prints",
 			logger: func(w io.Writer) (log.Logger, error) {
 				logger, err := logging.New(w, debugLevel())
-				return flowlevel.Error(logger), err
+				return alloylevel.Error(logger), err
 			},
 			message:  "hello",
 			expected: "level=error msg=hello\n",
@@ -258,23 +258,23 @@ func BenchmarkLogging_Slog_Prints(b *testing.B) {
 	}
 }
 
-func BenchmarkLogging_FlowLevel_Drops(b *testing.B) {
+func BenchmarkLogging_AlloyLevel_Drops(b *testing.B) {
 	logger, err := logging.New(io.Discard, infoLevel())
 	require.NoError(b, err)
 
 	testErr := fmt.Errorf("test error")
 	for i := 0; i < b.N; i++ {
-		flowlevel.Debug(logger).Log("msg", "test message", "i", i, "err", testErr, "str", testStr, "duration", time.Second)
+		alloylevel.Debug(logger).Log("msg", "test message", "i", i, "err", testErr, "str", testStr, "duration", time.Second)
 	}
 }
 
-func BenchmarkLogging_FlowLevel_Prints(b *testing.B) {
+func BenchmarkLogging_AlloyLevel_Prints(b *testing.B) {
 	logger, err := logging.New(io.Discard, infoLevel())
 	require.NoError(b, err)
 
 	testErr := fmt.Errorf("test error")
 	for i := 0; i < b.N; i++ {
-		flowlevel.Info(logger).Log("msg", "test message", "i", i, "err", testErr, "str", testStr, "duration", time.Second)
+		alloylevel.Info(logger).Log("msg", "test message", "i", i, "err", testErr, "str", testStr, "duration", time.Second)
 	}
 }
 

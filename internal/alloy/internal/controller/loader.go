@@ -640,8 +640,8 @@ func (l *Loader) wireCustomComponentNode(g *dag.Graph, cc *CustomComponentNode) 
 	}
 }
 
-// Variables returns the Variables the Loader exposes for other Flow components
-// to reference.
+// Variables returns the Variables the Loader exposes for other components to
+// reference.
 func (l *Loader) Variables() map[string]interface{} {
 	return l.cache.BuildContext().Variables
 }
@@ -722,8 +722,8 @@ func (l *Loader) EvaluateDependants(ctx context.Context, updatedNodes []*QueuedN
 	}
 
 	// Submit all dependencies for asynchronous evaluation.
-	// During evaluation, if a node's exports change, Flow will add it to updated nodes queue (controller.Queue) and
-	// the Flow controller will call EvaluateDependants on it again. This results in a concurrent breadth-first
+	// During evaluation, if a node's exports change, Alloy will add it to updated nodes queue (controller.Queue) and
+	// the Alloy controller will call EvaluateDependants on it again. This results in a concurrent breadth-first
 	// traversal of the nodes that need to be evaluated.
 	for n, parent := range dependenciesToParentsMap {
 		dependantCtx, span := tracer.Start(spanCtx, "SubmitForEvaluation", trace.WithSpanKind(trace.SpanKindInternal))
@@ -871,7 +871,7 @@ func multierrToDiags(errors error) diag.Diagnostics {
 	return diags
 }
 
-// isRootController returns true if the loader is for the root flow controller.
+// isRootController returns true if the loader is for the root Alloy controller.
 func (l *Loader) isRootController() bool {
 	return l.globals.ControllerID == ""
 }

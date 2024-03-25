@@ -40,10 +40,10 @@ func NewModuleComponent(o component.Options) (*ModuleComponent, error) {
 	return c, err
 }
 
-// LoadFlowSource loads the flow controller with the current component source.
+// LoadAlloySource loads the flow controller with the current component source.
 // It will set the component health in addition to return the error so that the consumer can rely on either or both.
 // If the content is the same as the last time it was successfully loaded, it will not be reloaded.
-func (c *ModuleComponent) LoadFlowSource(args map[string]any, contentValue string) error {
+func (c *ModuleComponent) LoadAlloySource(args map[string]any, contentValue string) error {
 	if reflect.DeepEqual(args, c.getLatestArgs()) && contentValue == c.getLatestContent() {
 		return nil
 	}
@@ -70,8 +70,8 @@ func (c *ModuleComponent) LoadFlowSource(args map[string]any, contentValue strin
 	return nil
 }
 
-// RunFlowController runs the flow controller that all module components start.
-func (c *ModuleComponent) RunFlowController(ctx context.Context) {
+// RunAlloyController runs the flow controller that all module components start.
+func (c *ModuleComponent) RunAlloyController(ctx context.Context) {
 	err := c.mod.Run(ctx)
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "error running module", "id", c.opts.ID, "err", err)

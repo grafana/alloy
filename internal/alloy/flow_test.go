@@ -78,7 +78,7 @@ func testOptions(t *testing.T) Options {
 	}
 }
 
-func cleanUpController(ctrl *Flow) {
+func cleanUpController(ctrl *Alloy) {
 	// To avoid leaking goroutines and clean-up, we need to run and shut down the controller.
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})

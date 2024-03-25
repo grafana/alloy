@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/syntax/vm"
 )
 
-// ServiceNode is a Flow DAG node which represents a running service.
+// ServiceNode is a DAG node which represents a running service.
 type ServiceNode struct {
 	host service.Host
 	svc  service.Service

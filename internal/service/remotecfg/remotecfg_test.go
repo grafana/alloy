@@ -211,7 +211,7 @@ func (ag *agentClient) ListAgents(context.Context, *connect.Request[agentv1.List
 }
 
 type serviceController struct {
-	f *alloy.Flow
+	f *alloy.Alloy
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }

@@ -1,4 +1,4 @@
-// Package tracing implements the tracing subsystem of Grafana Agent Flow. The
+// Package tracing implements the tracing subsystem of Grafana Alloy. The
 // tracing subsystem exposes a [trace.TraceProvider] which accepts traces and
 // forwards them to a running component for further processing.
 package tracing
@@ -72,9 +72,9 @@ func (opts *JaegerRemoteSamplerOptions) SetToDefault() {
 	*opts = DefaultJaegerRemoteSamplerOptions
 }
 
-// Tracer is the tracing subsystem of Grafana Agent Flow. It implements
+// Tracer is the tracing subsystem of Grafana Alloy. It implements
 // [trace.TracerProvider] and can be used to forward internally generated
-// traces to a OpenTelemetry Collector-compatible Flow component.
+// traces to a OpenTelemetry Collector-compatible Alloy component.
 type Tracer struct {
 	trace.TracerProvider
 	sampler *lazySampler

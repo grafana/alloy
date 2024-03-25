@@ -60,7 +60,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	c.mod.RunFlowController(ctx)
+	c.mod.RunAlloyController(ctx)
 	return nil
 }
 
@@ -68,7 +68,7 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	return c.mod.LoadFlowSource(newArgs.Arguments, newArgs.Content.Value)
+	return c.mod.LoadAlloySource(newArgs.Arguments, newArgs.Content.Value)
 }
 
 // CurrentHealth implements component.HealthComponent.

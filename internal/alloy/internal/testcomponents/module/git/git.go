@@ -107,7 +107,7 @@ func (c *Component) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	go c.mod.RunFlowController(ctx)
+	go c.mod.RunAlloyController(ctx)
 
 	var (
 		ticker  *time.Ticker
@@ -241,7 +241,7 @@ func (c *Component) pollFile(ctx context.Context, args Arguments) error {
 		return err
 	}
 
-	return c.mod.LoadFlowSource(args.Arguments, string(bb))
+	return c.mod.LoadAlloySource(args.Arguments, string(bb))
 }
 
 // CurrentHealth implements component.HealthComponent.

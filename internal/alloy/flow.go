@@ -109,7 +109,7 @@ type Options struct {
 }
 
 // Alloy is the Alloy system.
-type Flow struct {
+type Alloy struct {
 	log    *logging.Logger
 	tracer *tracing.Tracer
 	opts   controllerOptions
@@ -125,8 +125,8 @@ type Flow struct {
 	loadedOnce atomic.Bool
 }
 
-// New creates a new, unstarted Flow controller. Call Run to run the controller.
-func New(o Options) *Flow {
+// New creates a new, unstarted Alloy controller. Call Run to run the controller.
+func New(o Options) *Alloy {
 	return newController(controllerOptions{
 		Options:        o,
 		ModuleRegistry: newModuleRegistry(),
@@ -135,7 +135,7 @@ func New(o Options) *Flow {
 	})
 }
 
-// controllerOptions are internal options used to create both root Flow
+// controllerOptions are internal options used to create both root Alloy
 // controller and controllers for modules.
 type controllerOptions struct {
 	Options
@@ -147,10 +147,10 @@ type controllerOptions struct {
 	WorkerPool worker.Pool
 }
 
-// newController creates a new, unstarted Flow controller with a specific
+// newController creates a new, unstarted Alloy controller with a specific
 // moduleRegistry. Modules created by the controller will be passed to the
 // given modReg.
-func newController(o controllerOptions) *Flow {
+func newController(o controllerOptions) *Alloy {
 	var (
 		log        = o.Logger
 		tracer     = o.Tracer
@@ -171,7 +171,7 @@ func newController(o controllerOptions) *Flow {
 		workerPool = worker.NewDefaultWorkerPool()
 	}
 
-	f := &Flow{
+	f := &Alloy{
 		log:    log,
 		tracer: tracer,
 		opts:   o,
@@ -231,12 +231,12 @@ func newController(o controllerOptions) *Flow {
 	return f
 }
 
-// Run starts the Flow controller, blocking until the provided context is
+// Run starts the Alloy controller, blocking until the provided context is
 // canceled. Run must only be called once.
-func (f *Flow) Run(ctx context.Context) {
+func (f *Alloy) Run(ctx context.Context) {
 	defer func() { _ = f.sched.Close() }()
 	defer f.loader.Cleanup(!f.opts.IsModule)
-	defer level.Debug(f.log).Log("msg", "flow controller exiting")
+	defer level.Debug(f.log).Log("msg", "Alloy controller exiting")
 
 	for {
 		select {
@@ -290,12 +290,12 @@ func (f *Flow) Run(ctx context.Context) {
 // The controller will only start running components after Load is called once
 // without any configuration errors.
 // LoadSource uses default loader configuration.
-func (f *Flow) LoadSource(source *Source, args map[string]any) error {
+func (f *Alloy) LoadSource(source *Source, args map[string]any) error {
 	return f.loadSource(source, args, nil)
 }
 
 // Same as above but with a customComponentRegistry that provides custom component definitions.
-func (f *Flow) loadSource(source *Source, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
+func (f *Alloy) loadSource(source *Source, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
 	f.loadMut.Lock()
 	defer f.loadMut.Unlock()
 
@@ -323,7 +323,7 @@ func (f *Flow) loadSource(source *Source, args map[string]any, customComponentRe
 	return diags.ErrorOrNil()
 }
 
-// Ready returns whether the Flow controller has finished its initial load.
-func (f *Flow) Ready() bool {
+// Ready returns whether the Alloy controller has finished its initial load.
+func (f *Alloy) Ready() bool {
 	return f.loadedOnce.Load()
 }
