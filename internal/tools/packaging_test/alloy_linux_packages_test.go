@@ -79,7 +79,7 @@ func (env *AlloyEnvironment) TestInstall(t *testing.T) {
 	res := env.Install()
 	require.Equal(t, 0, res.ExitCode, "installing failed")
 
-	res = env.ExecScript(`[ -f /usr/bin/alloy]`)
+	res = env.ExecScript(`[ -f /usr/bin/alloy ]`)
 	require.Equal(t, 0, res.ExitCode, "expected Alloy to be installed")
 	res = env.ExecScript(`[ -f /etc/alloy.river ]`)
 	require.Equal(t, 0, res.ExitCode, "expected Alloy configuration file to exist")
