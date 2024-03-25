@@ -27,11 +27,11 @@ func TestAlloyLinuxPackages(t *testing.T) {
 
 	tt := []struct {
 		name string
-		f    func(*AgentEnvironment, *testing.T)
+		f    func(*AlloyEnvironment, *testing.T)
 	}{
-		{"install package", (*AgentEnvironment).TestInstall},
-		{"ensure existing config doesn't get overridden", (*AgentEnvironment).TestConfigPersistence},
-		{"test data folder permissions", (*AgentEnvironment).TestDataFolderPermissions},
+		{"install package", (*AlloyEnvironment).TestInstall},
+		{"ensure existing config doesn't get overridden", (*AlloyEnvironment).TestConfigPersistence},
+		{"test data folder permissions", (*AlloyEnvironment).TestDataFolderPermissions},
 
 		// TODO: a test to verify that the systemd service works would be nice, but not
 		// required.
@@ -43,11 +43,11 @@ func TestAlloyLinuxPackages(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name+"/rpm", func(t *testing.T) {
-			env := &AgentEnvironment{RPMEnvironment(t, packageName, dockerPool)}
+			env := &AlloyEnvironment{RPMEnvironment(t, packageName, dockerPool)}
 			tc.f(env, t)
 		})
 		t.Run(tc.name+"/deb", func(t *testing.T) {
-			env := &AgentEnvironment{DEBEnvironment(t, packageName, dockerPool)}
+			env := &AlloyEnvironment{DEBEnvironment(t, packageName, dockerPool)}
 			tc.f(env, t)
 		})
 	}
@@ -61,7 +61,7 @@ func buildAlloyPackages(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join(wd, "../../.."))
 	require.NoError(t, err)
 
-	cmd := exec.Command("make", fmt.Sprintf("dist-agent-packages-%s", runtime.GOARCH))
+	cmd := exec.Command("make", fmt.Sprintf("dist-alloy-packages-%s", runtime.GOARCH))
 	cmd.Env = append(
 		os.Environ(),
 		"VERSION=v0.0.0",
@@ -73,47 +73,47 @@ func buildAlloyPackages(t *testing.T) {
 	require.NoError(t, cmd.Run())
 }
 
-type AgentEnvironment struct{ Environment }
+type AlloyEnvironment struct{ Environment }
 
-func (env *AgentEnvironment) TestInstall(t *testing.T) {
+func (env *AlloyEnvironment) TestInstall(t *testing.T) {
 	res := env.Install()
 	require.Equal(t, 0, res.ExitCode, "installing failed")
 
-	res = env.ExecScript(`[ -f /usr/bin/grafana-agent ]`)
-	require.Equal(t, 0, res.ExitCode, "expected grafana-agent to be installed")
-	res = env.ExecScript(`[ -f /etc/grafana-agent.river ]`)
-	require.Equal(t, 0, res.ExitCode, "expected grafana agent configuration file to exist")
+	res = env.ExecScript(`[ -f /usr/bin/alloy]`)
+	require.Equal(t, 0, res.ExitCode, "expected Alloy to be installed")
+	res = env.ExecScript(`[ -f /etc/alloy.river ]`)
+	require.Equal(t, 0, res.ExitCode, "expected Alloy configuration file to exist")
 
 	res = env.Uninstall()
 	require.Equal(t, 0, res.ExitCode, "uninstalling failed")
 
-	res = env.ExecScript(`[ -f /usr/bin/grafana-agent ]`)
-	require.Equal(t, 1, res.ExitCode, "expected grafana-agent to be uninstalled")
+	res = env.ExecScript(`[ -f /usr/bin/alloy ]`)
+	require.Equal(t, 1, res.ExitCode, "expected Alloy to be uninstalled")
 	// NOTE(rfratto): we don't check for what happens to the config file here,
 	// since the behavior is inconsistent: rpm uninstalls it, but deb doesn't.
 }
 
-func (env *AgentEnvironment) TestConfigPersistence(t *testing.T) {
-	res := env.ExecScript(`echo -n "keepalive" > /etc/grafana-agent.river`)
+func (env *AlloyEnvironment) TestConfigPersistence(t *testing.T) {
+	res := env.ExecScript(`echo -n "keepalive" > /etc/alloy.river`)
 	require.Equal(t, 0, res.ExitCode, "failed to write config file")
 
 	res = env.Install()
 	require.Equal(t, 0, res.ExitCode, "installation failed")
 
-	res = env.ExecScript(`cat /etc/grafana-agent.river`)
+	res = env.ExecScript(`cat /etc/alloy.river`)
 	require.Equal(t, "keepalive", res.Stdout, "Expected existing file to not be overridden")
 }
 
-func (env *AgentEnvironment) TestDataFolderPermissions(t *testing.T) {
-	// Installing should create /var/lib/grafana-agent, assign it to the
-	// grafana-agent user and group, and set its permissions to 0770.
+func (env *AlloyEnvironment) TestDataFolderPermissions(t *testing.T) {
+	// Installing should create /var/lib/alloy, assign it to the
+	// alloy user and group, and set its permissions to 0770.
 	res := env.Install()
 	require.Equal(t, 0, res.ExitCode, "installation failed")
 
-	res = env.ExecScript(`[ -d /var/lib/grafana-agent ]`)
-	require.Equal(t, 0, res.ExitCode, "Expected /var/lib/grafana-agent to have been created during install")
+	res = env.ExecScript(`[ -d /var/lib/alloy ]`)
+	require.Equal(t, 0, res.ExitCode, "Expected /var/lib/alloy to have been created during install")
 
-	res = env.ExecScript(`stat -c '%a:%U:%G' /var/lib/grafana-agent`)
-	require.Equal(t, "770:grafana-agent:grafana-agent\n", res.Stdout, "wrong permissions for data folder")
+	res = env.ExecScript(`stat -c '%a:%U:%G' /var/lib/alloy`)
+	require.Equal(t, "770:alloy:alloy\n", res.Stdout, "wrong permissions for data folder")
 	require.Equal(t, 0, res.ExitCode, "stat'ing data folder failed")
 }

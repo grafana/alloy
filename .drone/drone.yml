@@ -311,7 +311,9 @@ steps:
 trigger:
   paths:
   - packaging/**
+  - internal/tools/packaging_test/**
   - Makefile
+  - tools/make/*.mk
   ref:
   - refs/heads/main
 type: docker
@@ -399,6 +401,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: ba4497becf94a0f6f8dead2d99f8636683fbfba81eb869723c0a71ce4f7dcc09
+hmac: 1a44f5bcd0f52805d4b7d1f11433f993832627118bbae3956fe5aa49b68d5a31
 
 ...

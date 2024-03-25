@@ -7,7 +7,9 @@ local pipelines = import '../util/pipelines.jsonnet';
       ref: ['refs/heads/main'],
       paths: [
         'packaging/**',
+        'internal/tools/packaging_test/**',
         'Makefile',
+        'tools/make/*.mk',
       ],
     },
     steps: [{
