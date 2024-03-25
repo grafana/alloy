@@ -110,9 +110,9 @@ func TestVM_Evaluate(t *testing.T) {
 					age = 42,
 			}`,
 			expect: struct {
-				Name    string `river:"name,attr"`
-				Age     int    `river:"age,attr"`
-				Country string `river:"country,attr,optional"`
+				Name    string `alloy:"name,attr"`
+				Age     int    `alloy:"age,attr"`
+				Country string `alloy:"country,attr,optional"`
 			}{
 				Name: "John Doe",
 				Age:  42,
@@ -207,7 +207,7 @@ func TestVM_Evaluate_IdentifierExpr(t *testing.T) {
 func TestVM_Evaluate_AccessExpr(t *testing.T) {
 	t.Run("Lookup optional field", func(t *testing.T) {
 		type Person struct {
-			Name string `river:"name,attr,optional"`
+			Name string `alloy:"name,attr,optional"`
 		}
 
 		scope := &vm.Scope{

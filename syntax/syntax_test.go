@@ -12,23 +12,23 @@ func ExampleUnmarshal() {
 	// book.
 	type Character struct {
 		// Name of the character. The name is decoded from the block label.
-		Name string `river:",label"`
+		Name string `alloy:",label"`
 		// Age of the character. The age is a required attribute within the block,
 		// and must be set in the config.
-		Age int `river:"age,attr"`
+		Age int `alloy:"age,attr"`
 		// Location the character lives in. The location is an optional attribute
 		// within the block. Optional attributes do not have to bet set.
-		Location string `river:"location,attr,optional"`
+		Location string `alloy:"location,attr,optional"`
 	}
 
 	// Book is our overall type where we decode the overall River file into.
 	type Book struct {
 		// Title of the book (required attribute).
-		Title string `river:"title,attr"`
+		Title string `alloy:"title,attr"`
 		// List of characters. Each character is a labeled block. The optional tag
 		// means that it is valid not provide a character block. Decoding into a
 		// slice permits there to be multiple specified character blocks.
-		Characters []*Character `river:"character,block,optional"`
+		Characters []*Character `alloy:"character,block,optional"`
 	}
 
 	// Create our book with two characters.
@@ -76,7 +76,7 @@ func ExampleUnmarshal_functions() {
 	_ = os.Setenv("EXAMPLE", "Jane Doe")
 
 	type Data struct {
-		String string `river:"string,attr"`
+		String string `alloy:"string,attr"`
 	}
 
 	input := `
@@ -106,9 +106,9 @@ func ExampleUnmarshalValue() {
 
 func ExampleMarshal() {
 	type Person struct {
-		Name     string `river:"name,attr"`
-		Age      int    `river:"age,attr"`
-		Location string `river:"location,attr,optional"`
+		Name     string `alloy:"name,attr"`
+		Age      int    `alloy:"age,attr"`
+		Location string `alloy:"location,attr,optional"`
 	}
 
 	p := Person{
@@ -129,8 +129,8 @@ func ExampleMarshal() {
 
 func ExampleMarshalValue() {
 	type Person struct {
-		Name string `river:"name,attr"`
-		Age  int    `river:"age,attr"`
+		Name string `alloy:"name,attr"`
+		Age  int    `alloy:"age,attr"`
 	}
 
 	p := Person{

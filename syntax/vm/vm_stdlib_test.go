@@ -188,11 +188,11 @@ func BenchmarkConcat(b *testing.B) {
 	// If the code path is fully optimized, there will be no intermediate
 	// translations to interface{}.
 	type Person struct {
-		Name  string            `river:"name,attr"`
-		Attrs map[string]string `river:"attrs,attr"`
+		Name  string            `alloy:"name,attr"`
+		Attrs map[string]string `alloy:"attrs,attr"`
 	}
 	type Body struct {
-		Values []Person `river:"values,attr"`
+		Values []Person `alloy:"values,attr"`
 	}
 
 	in := `values = concat(values_ref)`

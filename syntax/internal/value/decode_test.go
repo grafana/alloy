@@ -48,11 +48,11 @@ func TestDecode(t *testing.T) {
 	// Declare some types to use for testing. Person2 is used as a struct
 	// equivalent to Person, but with a different Go type to force casting.
 	type Person struct {
-		Name string `river:"name,attr"`
+		Name string `alloy:"name,attr"`
 	}
 
 	type Person2 struct {
-		Name string `river:"name,attr"`
+		Name string `alloy:"name,attr"`
 	}
 
 	tt := []struct {
@@ -288,9 +288,9 @@ func TestDecode_CustomTypes(t *testing.T) {
 }
 
 type customUnmarshaler struct {
-	UnmarshalCalled bool `river:"unmarshal_called,attr,optional"`
-	DefaultCalled   bool `river:"default_called,attr,optional"`
-	ValidateCalled  bool `river:"validate_called,attr,optional"`
+	UnmarshalCalled bool `alloy:"unmarshal_called,attr,optional"`
+	DefaultCalled   bool `alloy:"default_called,attr,optional"`
+	ValidateCalled  bool `alloy:"validate_called,attr,optional"`
 }
 
 func (cu *customUnmarshaler) UnmarshalRiver(f func(interface{}) error) error {
@@ -359,9 +359,9 @@ func TestDecode_ErrorChain(t *testing.T) {
 	type Target struct {
 		Key struct {
 			Object struct {
-				Field1 []int `river:"field1,attr"`
-			} `river:"object,attr"`
-		} `river:"key,attr"`
+				Field1 []int `alloy:"field1,attr"`
+			} `alloy:"object,attr"`
+		} `alloy:"key,attr"`
 	}
 
 	val := value.Object(map[string]value.Value{
@@ -457,14 +457,14 @@ func TestDecode_CustomConvert(t *testing.T) {
 
 func TestDecode_SquashedFields(t *testing.T) {
 	type InnerStruct struct {
-		InnerField1 string `river:"inner_field_1,attr,optional"`
-		InnerField2 string `river:"inner_field_2,attr,optional"`
+		InnerField1 string `alloy:"inner_field_1,attr,optional"`
+		InnerField2 string `alloy:"inner_field_2,attr,optional"`
 	}
 
 	type OuterStruct struct {
-		OuterField1 string      `river:"outer_field_1,attr,optional"`
-		Inner       InnerStruct `river:",squash"`
-		OuterField2 string      `river:"outer_field_2,attr,optional"`
+		OuterField1 string      `alloy:"outer_field_1,attr,optional"`
+		Inner       InnerStruct `alloy:",squash"`
+		OuterField2 string      `alloy:"outer_field_2,attr,optional"`
 	}
 
 	var (
@@ -492,14 +492,14 @@ func TestDecode_SquashedFields(t *testing.T) {
 
 func TestDecode_SquashedFields_Pointer(t *testing.T) {
 	type InnerStruct struct {
-		InnerField1 string `river:"inner_field_1,attr,optional"`
-		InnerField2 string `river:"inner_field_2,attr,optional"`
+		InnerField1 string `alloy:"inner_field_1,attr,optional"`
+		InnerField2 string `alloy:"inner_field_2,attr,optional"`
 	}
 
 	type OuterStruct struct {
-		OuterField1 string       `river:"outer_field_1,attr,optional"`
-		Inner       *InnerStruct `river:",squash"`
-		OuterField2 string       `river:"outer_field_2,attr,optional"`
+		OuterField1 string       `alloy:"outer_field_1,attr,optional"`
+		Inner       *InnerStruct `alloy:",squash"`
+		OuterField2 string       `alloy:"outer_field_2,attr,optional"`
 	}
 
 	var (
@@ -527,11 +527,11 @@ func TestDecode_SquashedFields_Pointer(t *testing.T) {
 
 func TestDecode_Slice(t *testing.T) {
 	type Block struct {
-		Attr int `river:"attr,attr"`
+		Attr int `alloy:"attr,attr"`
 	}
 
 	type Struct struct {
-		Blocks []Block `river:"block.a,block,optional"`
+		Blocks []Block `alloy:"block.a,block,optional"`
 	}
 
 	var (
@@ -563,19 +563,19 @@ func TestDecode_Slice(t *testing.T) {
 
 func TestDecode_SquashedSlice(t *testing.T) {
 	type Block struct {
-		Attr int `river:"attr,attr"`
+		Attr int `alloy:"attr,attr"`
 	}
 
 	type InnerStruct struct {
-		BlockA Block `river:"a,block,optional"`
-		BlockB Block `river:"b,block,optional"`
-		BlockC Block `river:"c,block,optional"`
+		BlockA Block `alloy:"a,block,optional"`
+		BlockB Block `alloy:"b,block,optional"`
+		BlockC Block `alloy:"c,block,optional"`
 	}
 
 	type OuterStruct struct {
-		OuterField1 string        `river:"outer_field_1,attr,optional"`
-		Inner       []InnerStruct `river:"block,enum"`
-		OuterField2 string        `river:"outer_field_2,attr,optional"`
+		OuterField1 string        `alloy:"outer_field_1,attr,optional"`
+		Inner       []InnerStruct `alloy:"block,enum"`
+		OuterField2 string        `alloy:"outer_field_2,attr,optional"`
 	}
 
 	var (
@@ -611,19 +611,19 @@ func TestDecode_SquashedSlice(t *testing.T) {
 
 func TestDecode_SquashedSlice_Pointer(t *testing.T) {
 	type Block struct {
-		Attr int `river:"attr,attr"`
+		Attr int `alloy:"attr,attr"`
 	}
 
 	type InnerStruct struct {
-		BlockA *Block `river:"a,block,optional"`
-		BlockB *Block `river:"b,block,optional"`
-		BlockC *Block `river:"c,block,optional"`
+		BlockA *Block `alloy:"a,block,optional"`
+		BlockB *Block `alloy:"b,block,optional"`
+		BlockC *Block `alloy:"c,block,optional"`
 	}
 
 	type OuterStruct struct {
-		OuterField1 string        `river:"outer_field_1,attr,optional"`
-		Inner       []InnerStruct `river:"block,enum"`
-		OuterField2 string        `river:"outer_field_2,attr,optional"`
+		OuterField1 string        `alloy:"outer_field_1,attr,optional"`
+		Inner       []InnerStruct `alloy:"block,enum"`
+		OuterField2 string        `alloy:"outer_field_2,attr,optional"`
 	}
 
 	var (
@@ -703,7 +703,7 @@ func TestDecode_KnownTypes_Any(t *testing.T) {
 		},
 		{
 			input: struct {
-				Name string `river:"name,attr"`
+				Name string `alloy:"name,attr"`
 			}{Name: "John"},
 
 			expect: map[string]any{"name": "John"},

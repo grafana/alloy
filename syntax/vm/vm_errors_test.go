@@ -12,9 +12,9 @@ func TestVM_ExprErrors(t *testing.T) {
 	type Target struct {
 		Key struct {
 			Object struct {
-				Field1 []int `river:"field1,attr"`
-			} `river:"object,attr"`
-		} `river:"key,attr"`
+				Field1 []int `alloy:"field1,attr"`
+			} `alloy:"object,attr"`
+		} `alloy:"key,attr"`
 	}
 
 	tt := []struct {
@@ -61,7 +61,7 @@ func TestVM_ExprErrors(t *testing.T) {
 			name:  "complex expr",
 			input: `key = [0, 1, 2]`,
 			into: &struct {
-				Key string `river:"key,attr"`
+				Key string `alloy:"key,attr"`
 			}{},
 			expect: `test:1:7: [0, 1, 2] should be string, got array`,
 		},

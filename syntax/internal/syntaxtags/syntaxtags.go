@@ -109,11 +109,11 @@ func (f Field) IsLabel() bool { return f.Flags&FlagLabel != 0 }
 // Get returns the list of tagged fields for some struct type ty. Get panics if
 // ty is not a struct type.
 //
-// Get examines each tagged field in ty for a river key. The river key is then
+// Get examines each tagged field in ty for an alloy key. The alloy key is then
 // parsed as containing a name for the field, followed by a required
 // comma-separated list of options. The name may be empty for fields which do
-// not require a name. Get will ignore any field that is not tagged with a
-// river key.
+// not require a name. Get will ignore any field that is not tagged with an
+// alloy key.
 //
 // Get will treat anonymous struct fields as if the inner fields were fields in
 // the outer struct.
@@ -121,31 +121,31 @@ func (f Field) IsLabel() bool { return f.Flags&FlagLabel != 0 }
 // Examples of struct field tags and their meanings:
 //
 //	// Field is used as a required block named "my_block".
-//	Field struct{} `river:"my_block,block"`
+//	Field struct{} `alloy:"my_block,block"`
 //
 //	// Field is used as an optional block named "my_block".
-//	Field struct{} `river:"my_block,block,optional"`
+//	Field struct{} `alloy:"my_block,block,optional"`
 //
 //	// Field is used as a required attribute named "my_attr".
-//	Field string `river:"my_attr,attr"`
+//	Field string `alloy:"my_attr,attr"`
 //
 //	// Field is used as an optional attribute named "my_attr".
-//	Field string `river:"my_attr,attr,optional"`
+//	Field string `alloy:"my_attr,attr,optional"`
 //
 //	// Field is used for storing the label of the block which the struct
 //	// represents.
-//	Field string `river:",label"`
+//	Field string `alloy:",label"`
 //
 //	// Attributes and blocks inside of Field are exposed as top-level fields.
-//	Field struct{} `river:",squash"`
+//	Field struct{} `alloy:",squash"`
 //
-//	Blocks []struct{} `river:"my_block_prefix,enum"`
+//	Blocks []struct{} `alloy:"my_block_prefix,enum"`
 //
-// With the exception of the `river:",label"` and `river:",squash" tags, all
+// With the exception of the `alloy:",label"` and `alloy:",squash" tags, all
 // tagged fields must have a unique name.
 //
 // The type of tagged fields may be any Go type, with the exception of
-// `river:",label"` tags, which must be strings.
+// `alloy:",label"` tags, which must be strings.
 func Get(ty reflect.Type) []Field {
 	if k := ty.Kind(); k != reflect.Struct {
 		panic(fmt.Sprintf("syntaxtags: Get requires struct kind, got %s", k))
@@ -164,13 +164,13 @@ func Get(ty reflect.Type) []Field {
 			panic(fmt.Sprintf("syntax: anonymous fields not supported %s", printPathToField(ty, field.Index)))
 		}
 
-		tag, tagged := field.Tag.Lookup("river")
+		tag, tagged := field.Tag.Lookup("alloy")
 		if !tagged {
 			continue
 		}
 
 		if !field.IsExported() {
-			panic(fmt.Sprintf("syntax: river tag found on unexported field at %s", printPathToField(ty, field.Index)))
+			panic(fmt.Sprintf("syntax: alloy tag found on unexported field at %s", printPathToField(ty, field.Index)))
 		}
 
 		options := strings.SplitN(tag, ",", 2)
@@ -195,7 +195,7 @@ func Get(ty reflect.Type) []Field {
 
 		flags, ok := parseFlags(options[1])
 		if !ok {
-			panic(fmt.Sprintf("syntax: unrecognized river tag format %q at %s", tag, printPathToField(ty, tf.Index)))
+			panic(fmt.Sprintf("syntax: unrecognized alloy tag format %q at %s", tag, printPathToField(ty, tf.Index)))
 		}
 		tf.Flags = flags
 
