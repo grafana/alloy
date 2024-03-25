@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/grafana/alloy/internal/agentseed"
+	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/common/version"
 )
@@ -32,7 +32,7 @@ type Report struct {
 	DeployMode   string                 `json:"deployMode"`
 }
 
-func sendReport(ctx context.Context, seed *agentseed.AgentSeed, interval time.Time, metrics map[string]interface{}) error {
+func sendReport(ctx context.Context, seed *alloyseed.Seed, interval time.Time, metrics map[string]interface{}) error {
 	report := Report{
 		UsageStatsID: seed.UID,
 		CreatedAt:    seed.CreatedAt,

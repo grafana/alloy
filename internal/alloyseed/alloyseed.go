@@ -1,4 +1,4 @@
-package agentseed
+package alloyseed
 
 import (
 	"encoding/json"
@@ -15,17 +15,25 @@ import (
 	"github.com/prometheus/common/version"
 )
 
-// AgentSeed identifies a unique agent
-type AgentSeed struct {
+// Seed identifies a unique agent.
+type Seed struct {
 	UID       string    `json:"UID"`
 	CreatedAt time.Time `json:"created_at"`
 	Version   string    `json:"version"`
 }
 
-const HeaderName = "X-Agent-Id"
-const filename = "agent_seed.json"
+const (
+	// Both LegacyHeaderName and HeaderName should be used to identify the Alloy
+	// instance in the headers of requests. LegacyHeaderName is used for
+	// backwards compatibility.
 
-var savedSeed *AgentSeed
+	LegacyHeaderName = "X-Agent-Id" // LegacyHeaderName represents the header name used prior to the Alloy release.
+	HeaderName       = "X-Alloy-Id" // HeaderName represents the ID header to use for Alloy.
+)
+
+const filename = "alloy_seed.json"
+
+var savedSeed *Seed
 var once sync.Once
 
 // Init should be called by an app entrypoint as soon as it can to configure where the unique seed will be stored.
@@ -43,7 +51,7 @@ func Init(dir string, l log.Logger) {
 
 func loadOrGenerate(dir string, l log.Logger) {
 	var err error
-	var seed *AgentSeed
+	var seed *Seed
 	// list of paths in preference order.
 	// we will always write to the first path
 	paths := []string{}
@@ -76,18 +84,18 @@ func loadOrGenerate(dir string, l log.Logger) {
 	}
 }
 
-func generateNew() *AgentSeed {
-	return &AgentSeed{
+func generateNew() *Seed {
+	return &Seed{
 		UID:       uuid.NewString(),
 		Version:   version.Version,
 		CreatedAt: time.Now(),
 	}
 }
 
-// Get will return a unique agent seed for this agent.
+// Get returns a unique seed for this Alloy instance.
 // It will always return a valid seed, even if previous attempts to
 // load or save the seed file have failed
-func Get() *AgentSeed {
+func Get() *Seed {
 	// Init should have been called before this. If not, call it now with defaults.
 	once.Do(func() {
 		loadOrGenerate("", log.NewNopLogger())
@@ -100,14 +108,14 @@ func Get() *AgentSeed {
 	return generateNew()
 }
 
-// readSeedFile reads the agent seed file
-func readSeedFile(path string, logger log.Logger) (*AgentSeed, error) {
+// readSeedFile reads the Alloy seed file
+func readSeedFile(path string, logger log.Logger) (*Seed, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		level.Error(logger).Log("msg", "Reading seed file", "err", err)
 		return nil, err
 	}
-	seed := &AgentSeed{}
+	seed := &Seed{}
 	err = json.Unmarshal(data, seed)
 	if err != nil {
 		level.Error(logger).Log("msg", "Decoding seed file", "err", err)
@@ -134,8 +142,8 @@ func fileExists(path string) bool {
 	return !errors.Is(err, os.ErrNotExist)
 }
 
-// writeSeedFile writes the agent seed file
-func writeSeedFile(seed *AgentSeed, path string, logger log.Logger) {
+// writeSeedFile writes the Alloy seed file
+func writeSeedFile(seed *Seed, path string, logger log.Logger) {
 	data, err := json.Marshal(*seed)
 	if err != nil {
 		level.Error(logger).Log("msg", "Encoding seed file", "err", err)

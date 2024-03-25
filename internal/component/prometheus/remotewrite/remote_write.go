@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/agentseed"
+	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -257,12 +257,13 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	if err != nil {
 		return err
 	}
-	uid := agentseed.Get().UID
+	uid := alloyseed.Get().UID
 	for _, cfg := range convertedConfig.RemoteWriteConfigs {
 		if cfg.Headers == nil {
 			cfg.Headers = map[string]string{}
 		}
-		cfg.Headers[agentseed.HeaderName] = uid
+		cfg.Headers[alloyseed.LegacyHeaderName] = uid
+		cfg.Headers[alloyseed.HeaderName] = uid
 	}
 	err = c.remoteStore.ApplyConfig(convertedConfig)
 	if err != nil {

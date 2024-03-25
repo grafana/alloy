@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/agentseed"
+	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
@@ -163,13 +163,14 @@ func (c *Component) Update(args component.Arguments) error {
 
 	cfgs := newArgs.convertClientConfigs()
 
-	uid := agentseed.Get().UID
+	uid := alloyseed.Get().UID
 	for i := range cfgs {
 		//cfgs is slice of struct values, so we set by index
 		if cfgs[i].Headers == nil {
 			cfgs[i].Headers = map[string]string{}
 		}
-		cfgs[i].Headers[agentseed.HeaderName] = uid
+		cfgs[i].Headers[alloyseed.LegacyHeaderName] = uid
+		cfgs[i].Headers[alloyseed.HeaderName] = uid
 	}
 	walCfg := wal.Config{
 		Enabled:       newArgs.WAL.Enabled,

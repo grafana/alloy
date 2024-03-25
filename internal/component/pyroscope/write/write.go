@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/alloy/internal/agentseed"
+	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/flow/logging/level"
@@ -159,12 +159,13 @@ type fanOutClient struct {
 // NewFanOut creates a new fan out client that will fan out to all endpoints.
 func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fanOutClient, error) {
 	clients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
-	uid := agentseed.Get().UID
+	uid := alloyseed.Get().UID
 	for _, endpoint := range config.Endpoints {
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
-		endpoint.Headers[agentseed.HeaderName] = uid
+		endpoint.Headers[alloyseed.LegacyHeaderName] = uid
+		endpoint.Headers[alloyseed.HeaderName] = uid
 		httpClient, err := commonconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
 		if err != nil {
 			return nil, err

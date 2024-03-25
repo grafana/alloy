@@ -17,7 +17,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/agentseed"
+	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/converter"
@@ -274,7 +274,7 @@ func (fr *flowRun) Run(configPath string) error {
 	}
 
 	labelService := labelstore.New(l, reg)
-	agentseed.Init(fr.storagePath, l)
+	alloyseed.Init(fr.storagePath, l)
 
 	f := flow.New(flow.Options{
 		Logger:       l,

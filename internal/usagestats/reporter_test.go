@@ -61,7 +61,7 @@ func Test_ReportLoop(t *testing.T) {
 	for _, uid := range agentIDs {
 		require.Equal(t, first, uid)
 	}
-	require.Equal(t, first, r.agentSeed.UID)
+	require.Equal(t, first, r.seed.UID)
 }
 
 func Test_NextReport(t *testing.T) {
