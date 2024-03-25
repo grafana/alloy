@@ -8,7 +8,7 @@
     refresh: '10s',
     schemaVersion: 36,
     graphTooltip: 1,  // shared crosshair for all graphs
-    tags: ['grafana-agent-mixin'],
+    tags: ['alloy-mixin'],
     templating: {
       list: [{
         name: 'datasource',
@@ -122,7 +122,7 @@
       icon: 'external link',
       includeVars: true,
       keepTime: true,
-      tags: ['grafana-agent-mixin'],
+      tags: ['alloy-mixin'],
       targetBlank: false,
     }],
   },

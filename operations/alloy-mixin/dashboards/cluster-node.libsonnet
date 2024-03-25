@@ -1,12 +1,12 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
-local filename = 'agent-cluster-node.json';
+local filename = 'alloy-cluster-node.json';
 
 {
   [filename]:
-    dashboard.new(name='Grafana Agent Flow / Cluster Node') +
+    dashboard.new(name='Alloy / Cluster Node') +
     dashboard.withDocsLink(
-      url='https://grafana.com/docs/agent/latest/flow/reference/cli/run/#clustered-mode-experimental',
+      url='https://grafana.com/docs/alloy/latest/reference/cli/run/#clustered-mode',
       desc='Clustering documentation',
     ) +
     dashboard.withDashboardsLink() +
@@ -198,7 +198,7 @@ local filename = 'agent-cluster-node.json';
         panel.withDescription(|||
           The number of packets enqueued currently to be decoded or encoded and sent during communication with other nodes.
 
-          The incoming and outgoing packet queue should be as empty as possible; a growing queue means that the Agent cannot keep up with the number of messages required to have all nodes informed of cluster changes, and the nodes may not converge in a timely fashion.
+          The incoming and outgoing packet queue should be as empty as possible; a growing queue means that Alloy cannot keep up with the number of messages required to have all nodes informed of cluster changes, and the nodes may not converge in a timely fashion.
         |||) +
         panel.withPosition({
           h: 8,

@@ -1,6 +1,6 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
-local filename = 'agent-flow-opentelemetry.json';
+local filename = 'alloy-opentelemetry.json';
 
 local stackedPanelMixin = {
   fieldConfig+: {
@@ -16,7 +16,7 @@ local stackedPanelMixin = {
 
 {
   [filename]:
-    dashboard.new(name='Grafana Agent Flow / OpenTelemetry') +
+    dashboard.new(name='Alloy / OpenTelemetry') +
     dashboard.withDashboardsLink() +
     dashboard.withUID(std.md5(filename)) +
     dashboard.withTemplateVariablesMixin([

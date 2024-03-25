@@ -1,13 +1,13 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
-local filename = 'agent-cluster-overview.json';
-local cluster_node_filename = 'agent-cluster-node.json';
+local filename = 'alloy-cluster-overview.json';
+local cluster_node_filename = 'alloy-cluster-node.json';
 
 {
   [filename]:
-    dashboard.new(name='Grafana Agent Flow / Cluster Overview') +
+    dashboard.new(name='Alloy / Cluster Overview') +
     dashboard.withDocsLink(
-      url='https://grafana.com/docs/agent/latest/flow/reference/cli/run/#clustered-mode-experimental',
+      url='https://grafana.com/docs/alloy/latest/reference/cli/run/#clustered-mode',
       desc='Clustering documentation',
     ) +
     dashboard.withDashboardsLink() +
@@ -97,7 +97,7 @@ local cluster_node_filename = 'agent-cluster-node.json';
                     {
                       targetBlank: false,
                       title: 'Detail dashboard for node',
-                      url: '/d/%(uid)s/grafana-agent-flow-cluster-node?var-instance=${__data.fields.instance}&var-datasource=${datasource}&var-loki_datasource=${loki_datasource}&var-cluster=${cluster}&var-namespace=${namespace}' % { uid: std.md5(cluster_node_filename) },
+                      url: '/d/%(uid)s/alloy-cluster-node?var-instance=${__data.fields.instance}&var-datasource=${datasource}&var-loki_datasource=${loki_datasource}&var-cluster=${cluster}&var-namespace=${namespace}' % { uid: std.md5(cluster_node_filename) },
                     },
                   ],
                 },

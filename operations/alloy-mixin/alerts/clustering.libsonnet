@@ -14,14 +14,15 @@ alert.newGroup(
     alert.newRule(
       'ClusterNodeCountMismatch',
       // Assert that the number of known peers (regardless of state) reported by each
-      // agent matches the number of running agents in the same cluster
-      // and namespace as reported by a count of Prometheus metrics.
+      // Alloy instance matches the number of running Alloy instances in the
+      // same cluster and namespace as reported by a count of Prometheus
+      // metrics.
       |||
         sum without (state) (cluster_node_peers) !=
         on (cluster, namespace) group_left
         count by (cluster, namespace) (cluster_node_info)
       |||,
-      'Nodes report different number of peers vs. the count of observed agent metrics. Some agent metrics may be missing or the cluster is in a split brain state.',
+      'Nodes report different number of peers vs. the count of observed Alloy metrics. Some Alloy metrics may be missing or the cluster is in a split brain state.',
       '15m',
     ),
 
