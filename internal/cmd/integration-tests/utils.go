@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	agentBinaryPath = "../../../../../build/grafana-agent"
+	alloyBinaryPath = "../../../../../build/alloy"
 )
 
 type TestLog struct {
 	TestDir    string
-	AgentLog   string
+	AlloyLog   string
 	TestOutput string
 }
 
@@ -33,8 +33,8 @@ func executeCommand(command string, args []string, taskDescription string) {
 	}
 }
 
-func buildAgent() {
-	executeCommand("make", []string{"-C", "../../..", "agent"}, "Building agent")
+func buildAlloy() {
+	executeCommand("make", []string{"-C", "../../..", "alloy"}, "Building Alloy")
 }
 
 func setupEnvironment() {
@@ -52,16 +52,16 @@ func runSingleTest(testDir string, port int) {
 
 	dirName := filepath.Base(testDir)
 
-	var agentLogBuffer bytes.Buffer
-	cmd := exec.Command(agentBinaryPath, "run", "config.river", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port))
+	var alloyLogBuffer bytes.Buffer
+	cmd := exec.Command(alloyBinaryPath, "run", "config.river", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port))
 	cmd.Dir = testDir
-	cmd.Stdout = &agentLogBuffer
-	cmd.Stderr = &agentLogBuffer
+	cmd.Stdout = &alloyLogBuffer
+	cmd.Stderr = &alloyLogBuffer
 
 	if err := cmd.Start(); err != nil {
 		logChan <- TestLog{
 			TestDir:  dirName,
-			AgentLog: fmt.Sprintf("Failed to start agent: %v", err),
+			AlloyLog: fmt.Sprintf("Failed to start Alloy: %v", err),
 		}
 		return
 	}
@@ -75,12 +75,12 @@ func runSingleTest(testDir string, port int) {
 		panic(err)
 	}
 
-	agentLog := agentLogBuffer.String()
+	alloyLog := alloyLogBuffer.String()
 
 	if errTest != nil {
 		logChan <- TestLog{
 			TestDir:    dirName,
-			AgentLog:   agentLog,
+			AlloyLog:   alloyLog,
 			TestOutput: string(testOutput),
 		}
 	}
@@ -129,7 +129,7 @@ func reportResults() {
 		}
 		fmt.Printf("Failure detected in %s:\n", log.TestDir)
 		fmt.Println("Test output:", log.TestOutput)
-		fmt.Println("Agent logs:", log.AgentLog)
+		fmt.Println("Alloy logs:", log.AlloyLog)
 		testsFailed++
 	}
 

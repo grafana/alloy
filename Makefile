@@ -1,4 +1,4 @@
-## Build, test, and generate code for various parts of Grafana Agent.
+## Build, test, and generate code for various parts of Alloy.
 ##
 ## At least Go 1.19, git, and a moderately recent version of Docker is required
 ## to be able to use the Makefile. This list isn't exhaustive and there are other
@@ -22,20 +22,20 @@
 ## Targets for building binaries:
 ##
 ##   binaries                        Compiles all binaries.
-##   agent                           Compiles cmd/grafana-agent to $(AGENT_BINARY)
-##   agent-service                   Compiles cmd/grafana-agent-service to $(SERVICE_BINARY)
+##   alloy                           Compiles cmd/alloy to $(ALLOY_BINARY)
+##   alloy-service                   Compiles cmd/alloy-service to $(SERVICE_BINARY)
 ##
 ## Targets for building Docker images:
 ##
 ##   images                   Builds all Docker images.
-##   agent-image              Builds agent Docker image.
+##   alloy-image              Builds alloy Docker image.
 ##
 ## Targets for packaging:
 ##
 ##   dist                   Produce release assets for everything.
-##   dist-agent-binaries    Produce release-ready agent binaries.
+##   dist-alloy-binaries    Produce release-ready Alloy binaries.
 ##   dist-packages          Produce release-ready DEB and RPM packages.
-##   dist-agent-installer   Produce a Windows installer for Grafana Agent.
+##   dist-alloy-installer   Produce a Windows installer for Alloy.
 ##
 ## Targets for generating assets:
 ##
@@ -58,10 +58,10 @@
 ## Environment variables:
 ##
 ##   USE_CONTAINER      Set to 1 to enable proxying commands to build container
-##   AGENT_IMAGE        Image name:tag built by `make agent-image`
+##   ALLOY_IMAGE        Image name:tag built by `make alloy-image`
 ##   BUILD_IMAGE        Image name:tag used by USE_CONTAINER=1
-##   AGENT_BINARY       Output path of `make agent` (default build/grafana-agent)
-##   SERVICE_BINARY     Output path of `make agent-service` (default build/grafana-agent-service)
+##   ALLOY_BINARY       Output path of `make alloy` (default build/alloy)
+##   SERVICE_BINARY     Output path of `make alloy-service` (default build/alloy-service)
 ##   GOOS               Override OS to build binaries for
 ##   GOARCH             Override target architecture to build binaries for
 ##   GOARM              Override ARM version (6 or 7) when GOARCH=arm
@@ -74,9 +74,9 @@
 
 include tools/make/*.mk
 
-AGENT_IMAGE                             ?= grafana/agent:latest
-AGENT_BINARY                            ?= build/grafana-agent
-SERVICE_BINARY                          ?= build/grafana-agent-service
+ALLOY_IMAGE                             ?= grafana/alloy:latest
+ALLOY_BINARY                            ?= build/alloy
+SERVICE_BINARY                          ?= build/alloy-service
 AGENTLINT_BINARY                        ?= build/agentlint
 GOOS                                    ?= $(shell go env GOOS)
 GOARCH                                  ?= $(shell go env GOARCH)
@@ -88,9 +88,9 @@ GOEXPERIMENT                            ?= $(shell go env GOEXPERIMENT)
 # List of all environment variables which will propagate to the build
 # container. USE_CONTAINER must _not_ be included to avoid infinite recursion.
 PROPAGATE_VARS := \
-    AGENT_IMAGE \
+    ALLOY_IMAGE \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
-    AGENT_BINARY \
+    ALLOY_BINARY \
     VERSION GO_TAGS GOEXPERIMENT
 
 #
@@ -151,22 +151,22 @@ integration-test:
 # Targets for building binaries
 #
 
-.PHONY: binaries agent
-binaries: agent
+.PHONY: binaries alloy
+binaries: alloy
 
-agent:
+alloy:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	$(GO_ENV) go build $(GO_FLAGS) -o $(AGENT_BINARY) ./cmd/grafana-agent
+	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) ./cmd/alloy
 endif
 
-# agent-service is not included in binaries since it's Windows-only.
-agent-service:
+# alloy-service is not included in binaries since it's Windows-only.
+alloy-service:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	$(GO_ENV) go build $(GO_FLAGS) -o $(SERVICE_BINARY) ./cmd/grafana-agent-service
+	$(GO_ENV) go build $(GO_FLAGS) -o $(SERVICE_BINARY) ./cmd/alloy-service
 endif
 
 agentlint:
@@ -186,11 +186,11 @@ ifneq ($(DOCKER_PLATFORM),)
 DOCKER_FLAGS += --platform=$(DOCKER_PLATFORM)
 endif
 
-.PHONY: images agent-image
-images: agent-image
+.PHONY: images alloy-image
+images: alloy-image
 
-agent-image:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(AGENT_IMAGE) -f cmd/grafana-agent/Dockerfile .
+alloy-image:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f cmd/alloy/Dockerfile .
 
 #
 # Targets for generating assets
@@ -258,9 +258,9 @@ clean: clean-dist clean-build-container-cache
 .PHONY: info
 info:
 	@printf "USE_CONTAINER   = $(USE_CONTAINER)\n"
-	@printf "AGENT_IMAGE     = $(AGENT_IMAGE)\n"
+	@printf "ALLOY_IMAGE     = $(ALLOY_IMAGE)\n"
 	@printf "BUILD_IMAGE     = $(BUILD_IMAGE)\n"
-	@printf "AGENT_BINARY    = $(AGENT_BINARY)\n"
+	@printf "ALLOY_BINARY    = $(ALLOY_BINARY)\n"
 	@printf "GOOS            = $(GOOS)\n"
 	@printf "GOARCH          = $(GOARCH)\n"
 	@printf "GOARM           = $(GOARM)\n"

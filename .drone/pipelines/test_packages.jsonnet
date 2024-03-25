@@ -18,7 +18,7 @@ local pipelines = import '../util/pipelines.jsonnet';
         path: '/var/run/docker.sock',
       }],
       commands: [
-        'DOCKER_OPTS="" make dist/grafana-agent-linux-amd64',
+        'DOCKER_OPTS="" make dist/alloy-linux-amd64',
         'DOCKER_OPTS="" make test-packages',
       ],
     }],

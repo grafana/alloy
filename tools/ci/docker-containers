@@ -7,10 +7,10 @@
 # from a Drone trigger.
 set -euxo pipefail
 
-RELEASE_AGENT_IMAGE=grafana/agent
-DEVELOPMENT_AGENT_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
+RELEASE_ALLOY_IMAGE=grafana/alloy
+DEVELOPMENT_ALLOY_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
 
-DEFAULT_AGENT_IMAGE=${RELEASE_AGENT_IMAGE}
+DEFAULT_ALLOY_IMAGE=${RELEASE_ALLOY_IMAGE}
 
 # Environment variables used throughout this script. These must be set
 # otherwise bash will fail with an "unbound variable" error because of the `set
@@ -23,10 +23,10 @@ export DRONE_TAG=${DRONE_TAG:-}
 export DEVELOPMENT=${DEVELOPMENT:-}
 
 if [ -n "$DEVELOPMENT" ]; then
-  DEFAULT_AGENT_IMAGE=${DEVELOPMENT_AGENT_IMAGE}
+  DEFAULT_ALLOY_IMAGE=${DEVELOPMENT_ALLOY_IMAGE}
 fi
 
-export AGENT_IMAGE=${DEFAULT_AGENT_IMAGE}
+export ALLOY_IMAGE=${DEFAULT_ALLOY_IMAGE}
 
 # We need to determine what version to assign to built binaries. If containers
 # are being built from a Drone tag trigger, we force the version to come from the
@@ -62,19 +62,19 @@ fi
 export BUILD_PLATFORMS=linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 
 case "$TARGET_CONTAINER" in
-  agent)
+  alloy)
     docker buildx build --push        \
       --platform $BUILD_PLATFORMS     \
       --build-arg RELEASE_BUILD=1     \
       --build-arg VERSION="$VERSION"  \
-      -t "$AGENT_IMAGE:$TAG_VERSION"  \
-      -t "$AGENT_IMAGE:$BRANCH_TAG"   \
-      -f cmd/grafana-agent/Dockerfile \
+      -t "$ALLOY_IMAGE:$TAG_VERSION"  \
+      -t "$ALLOY_IMAGE:$BRANCH_TAG"   \
+      -f cmd/alloy/Dockerfile \
       .
     ;;
 
   *)
-    echo "Usage: $0 agent"
+    echo "Usage: $0 alloy"
     exit 1
     ;;
 esac

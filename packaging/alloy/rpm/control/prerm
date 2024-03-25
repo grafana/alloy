@@ -1,0 +1,20 @@
+#!/bin/sh
+
+set -e
+
+# shellcheck disable=SC1091
+[ -f /etc/sysconfig/alloy ] && . /etc/sysconfig/alloy
+
+# final uninstallation $1=0
+# If other copies of this RPM are installed, then $1>0
+
+if [ "$1" -eq 0 ] ; then
+    if [ -x /bin/systemctl ] ; then
+        /bin/systemctl stop alloy.service > /dev/null 2>&1 || :
+    elif [ -x /etc/init.d/alloy ] ; then
+        /etc/init.d/alloy stop
+    elif [ -x /etc/rc.d/init.d/alloy ] ; then
+        /etc/rc.d/init.d/alloy stop
+    fi
+fi
+exit 0

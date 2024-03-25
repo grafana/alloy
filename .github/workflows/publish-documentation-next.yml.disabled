@@ -17,17 +17,17 @@ jobs:
       - name: "Build technical documentation"
         run: >
           docker run
-          --volume "${PWD}/docs/sources:/hugo/content/docs/agent/latest"
+          --volume "${PWD}/docs/sources:/hugo/content/docs/alloy/latest"
           --env HUGO_REFLINKSERRORLEVEL=ERROR
           --rm grafana/docs-base:latest
-          /bin/bash -c 'echo -e "---\\nredirectURL: /docs/agent/latest/\\ntype: redirect\\nversioned: true\\n---\\n" > /hugo/content/docs/agent/_index.md && make hugo' 
+          /bin/bash -c 'echo -e "---\\nredirectURL: /docs/alloy/latest/\\ntype: redirect\\nversioned: true\\n---\\n" > /hugo/content/docs/alloy/_index.md && make hugo'
 
   sync:
     runs-on: ubuntu-latest
     needs: test
     steps:
 
-    - name: "Checkout Agent repo"
+    - name: "Checkout Alloy repo"
       uses: actions/checkout@v4
 
     - name: "Clone website-sync Action"
@@ -50,7 +50,7 @@ jobs:
         # The IT helpdesk can update the organization secret.
         github_pat: "grafanabot:${{ secrets.PUBLISH_TO_WEBSITE_TOKEN }}"
         source_folder: docs/sources
-        target_folder: 'content/docs/agent/next'
+        target_folder: 'content/docs/alloy/next'
         allow_no_changes: true
     - shell: bash
       run: |

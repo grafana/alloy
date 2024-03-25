@@ -69,13 +69,13 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Check Linux container (grafana/agent)
+name: Check Linux container (grafana/alloy)
 platform:
   arch: amd64
   os: linux
 steps:
 - commands:
-  - make agent-image
+  - make alloy-image
   image: grafana/agent-build-image:0.40.2
   name: Build container
   volumes:
@@ -83,7 +83,7 @@ steps:
     path: /var/run/docker.sock
 trigger:
   paths:
-  - cmd/grafana-agent/Dockerfile
+  - cmd/alloy/Dockerfile
   - tools/ci/docker-containers
   ref:
   - refs/heads/main
@@ -94,14 +94,14 @@ volumes:
   name: docker
 ---
 kind: pipeline
-name: Check Windows container (grafana/agent)
+name: Check Windows container (grafana/alloy)
 platform:
   arch: amd64
   os: windows
   version: "1809"
 steps:
 - commands:
-  - '& "C:/Program Files/git/bin/bash.exe" ./tools/ci/docker-containers-windows agent'
+  - '& "C:/Program Files/git/bin/bash.exe" ./tools/ci/docker-containers-windows alloy'
   image: grafana/agent-build-image:0.40.2-windows
   name: Build container
   volumes:
@@ -109,7 +109,7 @@ steps:
     path: //./pipe/docker_engine/
 trigger:
   paths:
-  - cmd/grafana-agent/Dockerfile.windows
+  - cmd/alloy/Dockerfile.windows
   - tools/ci/docker-containers-windows
   ref:
   - refs/heads/main
@@ -120,7 +120,7 @@ volumes:
   name: docker
 ---
 kind: pipeline
-name: Build agent (Linux amd64)
+name: Build alloy (Linux amd64)
 platform:
   arch: amd64
   os: linux
@@ -128,7 +128,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=amd64 GOARM=
-    make agent
+    make alloy
   image: grafana/agent-build-image:0.40.2
   name: Build
 trigger:
@@ -137,7 +137,7 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Build agent (Linux arm64)
+name: Build alloy (Linux arm64)
 platform:
   arch: amd64
   os: linux
@@ -145,7 +145,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=arm64 GOARM=
-    make agent
+    make alloy
   image: grafana/agent-build-image:0.40.2
   name: Build
 trigger:
@@ -154,7 +154,7 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Build agent (Linux ppc64le)
+name: Build alloy (Linux ppc64le)
 platform:
   arch: amd64
   os: linux
@@ -162,7 +162,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=ppc64le GOARM=
-    make agent
+    make alloy
   image: grafana/agent-build-image:0.40.2
   name: Build
 trigger:
@@ -171,7 +171,7 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Build agent (Linux s390x)
+name: Build alloy (Linux s390x)
 platform:
   arch: amd64
   os: linux
@@ -179,7 +179,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=s390x GOARM=
-    make agent
+    make alloy
   image: grafana/agent-build-image:0.40.2
   name: Build
 trigger:
@@ -188,14 +188,14 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Build agent (macOS Intel)
+name: Build alloy (macOS Intel)
 platform:
   arch: amd64
   os: linux
 steps:
 - commands:
   - make generate-ui
-  - GO_TAGS="builtinassets" GOOS=darwin GOARCH=amd64 GOARM= make agent
+  - GO_TAGS="builtinassets" GOOS=darwin GOARCH=amd64 GOARM= make alloy
   image: grafana/agent-build-image:0.40.2
   name: Build
 trigger:
@@ -204,14 +204,14 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Build agent (macOS Apple Silicon)
+name: Build alloy (macOS Apple Silicon)
 platform:
   arch: amd64
   os: linux
 steps:
 - commands:
   - make generate-ui
-  - GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make agent
+  - GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make alloy
   image: grafana/agent-build-image:0.40.2
   name: Build
 trigger:
@@ -220,14 +220,14 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Build agent (Windows amd64)
+name: Build alloy (Windows amd64)
 platform:
   arch: amd64
   os: linux
 steps:
 - commands:
   - make generate-ui
-  - GO_TAGS="builtinassets" GOOS=windows GOARCH=amd64 GOARM= make agent
+  - GO_TAGS="builtinassets" GOOS=windows GOARCH=amd64 GOARM= make alloy
   image: grafana/agent-build-image:0.40.2
   name: Build
 trigger:
@@ -236,14 +236,14 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Build agent (FreeBSD amd64)
+name: Build alloy (FreeBSD amd64)
 platform:
   arch: amd64
   os: linux
 steps:
 - commands:
   - make generate-ui
-  - GO_TAGS="builtinassets" GOOS=freebsd GOARCH=amd64 GOARM= make agent
+  - GO_TAGS="builtinassets" GOOS=freebsd GOARCH=amd64 GOARM= make alloy
   image: grafana/agent-build-image:0.40.2
   name: Build
 trigger:
@@ -252,7 +252,7 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Publish development Linux agent container
+name: Publish development Linux alloy container
 platform:
   arch: amd64
   os: linux
@@ -269,10 +269,10 @@ steps:
   - mkdir -p $HOME/.docker
   - printenv GCR_CREDS > $HOME/.docker/config.json
   - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
-  - docker buildx create --name multiarch-agent-agent-${DRONE_COMMIT_SHA} --driver
+  - docker buildx create --name multiarch-alloy-alloy-${DRONE_COMMIT_SHA} --driver
     docker-container --use
-  - DEVELOPMENT=1 ./tools/ci/docker-containers agent
-  - docker buildx rm multiarch-agent-agent-${DRONE_COMMIT_SHA}
+  - DEVELOPMENT=1 ./tools/ci/docker-containers alloy
+  - docker buildx rm multiarch-alloy-alloy-${DRONE_COMMIT_SHA}
   environment:
     DOCKER_LOGIN:
       from_secret: docker_login
@@ -301,7 +301,7 @@ platform:
   os: linux
 steps:
 - commands:
-  - DOCKER_OPTS="" make dist/grafana-agent-linux-amd64
+  - DOCKER_OPTS="" make dist/alloy-linux-amd64
   - DOCKER_OPTS="" make test-packages
   image: grafana/agent-build-image:0.40.2
   name: Test Linux system packages
@@ -399,6 +399,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 2088d828b5aeec4f38008f932b1402a03745e941ba06c6c4d72a96d42dfb7f01
+hmac: ba4497becf94a0f6f8dead2d99f8636683fbfba81eb869723c0a71ce4f7dcc09
 
 ...
