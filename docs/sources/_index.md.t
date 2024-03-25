@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/
 title: Grafana Alloy
-description: Grafana Alloy is a flexible, performant, vendor-neutral, telemetry collector
+description: Grafana Alloy is a a vendor-agnostic distribution of the OTel Collector
 weight: 350
 cascade:
   ALLOY_RELEASE: $ALLOY_VERSION

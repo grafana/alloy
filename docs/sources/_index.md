@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/
 title: Grafana Alloy
-description: Grafana Alloy is a flexible, performant, vendor-neutral, telemetry collector
+description: Grafana Alloy is a a vendor-agnostic distribution of the OTel Collector
 weight: 350
 cascade:
   ALLOY_RELEASE: v1.0.0
@@ -24,7 +24,7 @@ You can deploy {{< param "PRODUCT_ROOT_NAME" >}} anywhere within your IT infrast
 
 ## What can {{% param "PRODUCT_ROOT_NAME" %}} do?
 
-{{< param "PRODUCT_ROOT_NAME" >}} is more than just signals. It provides many features that help you quickly find and process your data in complex environments.
+{{< param "PRODUCT_ROOT_NAME" >}} is more than just observability signals like metrics, logs, and traces. It provides many features that help you quickly find and process your data in complex environments.
 Some of these features include:
 
 * **Modules:** {{< param "PRODUCT_ROOT_NAME" >}} uses modules to help you quickly build production-ready pipelines.
