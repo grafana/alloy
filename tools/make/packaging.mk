@@ -145,7 +145,7 @@ dist-alloy-packages: dist-alloy-packages-amd64   \
                      dist-alloy-packages-s390x
 
 .PHONY: dist-alloy-packages-amd64
-dist-alloy-packages-amd64: dist/grafana-alloy-linux-amd64
+dist-alloy-packages-amd64: dist/alloy-linux-amd64
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -154,7 +154,7 @@ else
 endif
 
 .PHONY: dist-alloy-packages-arm64
-dist-alloy-packages-arm64: dist/grafana-alloy-linux-arm64
+dist-alloy-packages-arm64: dist/alloy-linux-arm64
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
