@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"

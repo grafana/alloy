@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"
-	"github.com/grafana/alloy/internal/flow/componenttest"
-	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"

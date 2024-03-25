@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	component_config "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"

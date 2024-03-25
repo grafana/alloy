@@ -6,7 +6,7 @@ import (
 	"reflect"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/jmespath/go-jmespath"
 	json "github.com/json-iterator/go"
 )

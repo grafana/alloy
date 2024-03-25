@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	commonK8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/flow/logging/level"
 	lokiClient "github.com/grafana/alloy/internal/loki/client"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/instrument"

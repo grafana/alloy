@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/flow/logging/level"
 	agent_service "github.com/grafana/alloy/internal/service"
 	flow_service "github.com/grafana/alloy/internal/service"
 	"github.com/prometheus/client_golang/prometheus"

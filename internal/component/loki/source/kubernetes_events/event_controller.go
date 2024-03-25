@@ -10,9 +10,9 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/common/model"
