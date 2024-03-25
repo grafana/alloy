@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol"
 	"github.com/grafana/agent/internal/component/otelcol/connector"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -63,8 +63,8 @@ type Arguments struct {
 }
 
 var (
-	_ river.Validator     = (*Arguments)(nil)
-	_ river.Defaulter     = (*Arguments)(nil)
+	_ syntax.Validator    = (*Arguments)(nil)
+	_ syntax.Defaulter    = (*Arguments)(nil)
 	_ connector.Arguments = (*Arguments)(nil)
 )
 
@@ -80,12 +80,12 @@ var DefaultArguments = Arguments{
 	MetricsFlushInterval:   15 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.DimensionsCacheSize <= 0 {
 		return fmt.Errorf(

@@ -12,8 +12,8 @@ import (
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/river"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
@@ -33,7 +33,7 @@ func TestBadRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	require.Error(t, river.Unmarshal([]byte(exampleBadRiverConfig), &args), "num_traces must be greater than zero")
+	require.Error(t, syntax.Unmarshal([]byte(exampleBadRiverConfig), &args), "num_traces must be greater than zero")
 }
 
 func TestBadRiverConfigErrorMode(t *testing.T) {
@@ -62,7 +62,7 @@ func TestBadRiverConfigErrorMode(t *testing.T) {
 `
 
 	var args Arguments
-	require.ErrorContains(t, river.Unmarshal([]byte(exampleBadRiverConfig), &args), "\"\" unknown error mode")
+	require.ErrorContains(t, syntax.Unmarshal([]byte(exampleBadRiverConfig), &args), "\"\" unknown error mode")
 }
 
 func TestBadOtelConfig(t *testing.T) {
@@ -86,7 +86,7 @@ func TestBadOtelConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	var args Arguments
-	require.NoError(t, river.Unmarshal([]byte(exampleBadOtelConfig), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(exampleBadOtelConfig), &args))
 
 	// Override our arguments so traces get forwarded to traceCh.
 	traceCh := make(chan ptrace.Traces)
@@ -353,7 +353,7 @@ func TestBigConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	var args Arguments
-	require.NoError(t, river.Unmarshal([]byte(exampleBigConfig), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(exampleBigConfig), &args))
 
 	// Override our arguments so traces get forwarded to traceCh.
 	traceCh := make(chan ptrace.Traces)
@@ -388,7 +388,7 @@ func TestTraceProcessing(t *testing.T) {
 	require.NoError(t, err)
 
 	var args Arguments
-	require.NoError(t, river.Unmarshal([]byte(exampleSmallConfig), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(exampleSmallConfig), &args))
 
 	// Override our arguments so traces get forwarded to traceCh.
 	traceCh := make(chan ptrace.Traces)

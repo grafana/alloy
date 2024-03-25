@@ -7,8 +7,8 @@ import (
 
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/flow/internal/controller"
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/vm"
 	"github.com/stretchr/testify/require"
 )
 

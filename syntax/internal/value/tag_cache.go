@@ -3,7 +3,7 @@ package value
 import (
 	"reflect"
 
-	"github.com/grafana/river/internal/syntaxtags"
+	"github.com/grafana/alloy/syntax/internal/syntaxtags"
 )
 
 // tagsCache caches the river tags for a struct type. This is never cleared,

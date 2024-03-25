@@ -6,7 +6,7 @@ import (
 
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	blackbox_config "github.com/prometheus/blackbox_exporter/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -29,7 +29,7 @@ func TestUnmarshalRiver(t *testing.T) {
 		probe_timeout_offset = "0.5s"
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "modules.yml", args.ConfigFile)
 	require.Equal(t, 2, len(args.Targets))
@@ -59,7 +59,7 @@ func TestUnmarshalRiverWithInlineConfig(t *testing.T) {
 		probe_timeout_offset = "0.5s"
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "", args.ConfigFile)
 	var blackboxConfig blackbox_config.Config
@@ -94,7 +94,7 @@ func TestUnmarshalRiverWithInlineConfigYaml(t *testing.T) {
 		probe_timeout_offset = "0.5s"
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "", args.ConfigFile)
 	var blackboxConfig blackbox_config.Config
@@ -183,7 +183,7 @@ func TestUnmarshalRiverWithInvalidConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testname, func(t *testing.T) {
 			var args Arguments
-			require.EqualError(t, river.Unmarshal([]byte(tt.cfg), &args), tt.expectedError)
+			require.EqualError(t, syntax.Unmarshal([]byte(tt.cfg), &args), tt.expectedError)
 		})
 	}
 }

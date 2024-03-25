@@ -12,10 +12,10 @@ import (
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/component/pyroscope"
 	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/syntax"
 	ebpfspy "github.com/grafana/pyroscope/ebpf"
 	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/sd"
-	"github.com/grafana/river"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
@@ -151,7 +151,7 @@ func TestContextShutdown(t *testing.T) {
 
 func TestUnmarshalConfig(t *testing.T) {
 	var arg Arguments
-	err := river.Unmarshal([]byte(`targets = [{"service_name" = "foo", "container_id"= "cid"}]
+	err := syntax.Unmarshal([]byte(`targets = [{"service_name" = "foo", "container_id"= "cid"}]
 forward_to = []
 collect_interval = "3s"
 sample_rate = 239
@@ -177,7 +177,7 @@ collect_kernel_profile = false`), &arg)
 
 func TestUnmarshalBadConfig(t *testing.T) {
 	var arg Arguments
-	err := river.Unmarshal([]byte(`targets = [{"service_name" = "foo", "container_id"= "cid"}]
+	err := syntax.Unmarshal([]byte(`targets = [{"service_name" = "foo", "container_id"= "cid"}]
 forward_to = []
 collect_interval = 3s"
 sample_rate = 239

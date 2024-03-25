@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,8 +14,8 @@ func TestVM_OptionalSecret_Conversion(t *testing.T) {
 	scope := &vm.Scope{
 		Variables: map[string]any{
 			"string_val":     "hello",
-			"non_secret_val": rivertypes.OptionalSecret{IsSecret: false, Value: "world"},
-			"secret_val":     rivertypes.OptionalSecret{IsSecret: true, Value: "secret"},
+			"non_secret_val": alloytypes.OptionalSecret{IsSecret: false, Value: "world"},
+			"secret_val":     alloytypes.OptionalSecret{IsSecret: true, Value: "secret"},
 		},
 	}
 

@@ -8,8 +8,8 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth/bearer"
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
 	"go.opentelemetry.io/collector/component"
 )
@@ -41,7 +41,7 @@ func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *state, id compo
 		args, fileContents := toBearerTokenAuthExtensionWithFilename(state, bcfg)
 		overrideHook := func(val interface{}) interface{} {
 			switch value := val.(type) {
-			case rivertypes.Secret:
+			case alloytypes.Secret:
 				return common.CustomTokenizer{Expr: fileContents}
 			default:
 				return value
@@ -62,7 +62,7 @@ func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *state, id compo
 func toBearerTokenAuthExtension(cfg *bearertokenauthextension.Config) *bearer.Arguments {
 	return &bearer.Arguments{
 		Scheme: cfg.Scheme,
-		Token:  rivertypes.Secret(string(cfg.BearerToken)),
+		Token:  alloytypes.Secret(string(cfg.BearerToken)),
 	}
 }
 func toBearerTokenAuthExtensionWithFilename(state *state, cfg *bearertokenauthextension.Config) (*bearer.Arguments, string) {

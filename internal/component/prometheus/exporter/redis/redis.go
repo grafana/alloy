@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/redis_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -52,7 +52,7 @@ type Arguments struct {
 	// are the only fields that are relevant to the exporter struct.
 	RedisAddr               string            `river:"redis_addr,attr"`
 	RedisUser               string            `river:"redis_user,attr,optional"`
-	RedisPassword           rivertypes.Secret `river:"redis_password,attr,optional"`
+	RedisPassword           alloytypes.Secret `river:"redis_password,attr,optional"`
 	RedisPasswordFile       string            `river:"redis_password_file,attr,optional"`
 	RedisPasswordMapFile    string            `river:"redis_password_map_file,attr,optional"`
 	Namespace               string            `river:"namespace,attr,optional"`

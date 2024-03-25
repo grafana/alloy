@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol"
 	"github.com/grafana/agent/internal/component/otelcol/receiver"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -259,7 +259,7 @@ func (args *MetricsBuilderConfig) Convert() map[string]interface{} {
 type Arguments struct {
 	Endpoint string            `river:"endpoint,attr"`
 	Username string            `river:"username,attr"`
-	Password rivertypes.Secret `river:"password,attr"`
+	Password alloytypes.Secret `river:"password,attr"`
 
 	MetricsBuilderConfig MetricsBuilderConfig `river:",squash"`
 

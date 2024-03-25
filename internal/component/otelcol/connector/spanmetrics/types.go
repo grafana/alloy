@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 )
@@ -63,8 +63,8 @@ type HistogramConfig struct {
 }
 
 var (
-	_ river.Defaulter = (*HistogramConfig)(nil)
-	_ river.Validator = (*HistogramConfig)(nil)
+	_ syntax.Defaulter = (*HistogramConfig)(nil)
+	_ syntax.Validator = (*HistogramConfig)(nil)
 )
 
 var DefaultHistogramConfig = HistogramConfig{
@@ -137,16 +137,16 @@ type ExponentialHistogramConfig struct {
 }
 
 var (
-	_ river.Defaulter = (*ExponentialHistogramConfig)(nil)
-	_ river.Validator = (*ExponentialHistogramConfig)(nil)
+	_ syntax.Defaulter = (*ExponentialHistogramConfig)(nil)
+	_ syntax.Validator = (*ExponentialHistogramConfig)(nil)
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (ehc *ExponentialHistogramConfig) SetToDefault() {
 	ehc.MaxSize = 160
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (ehc *ExponentialHistogramConfig) Validate() error {
 	if ehc.MaxSize <= 0 {
 		return fmt.Errorf("max_size must be greater than 0")
@@ -167,7 +167,7 @@ type ExplicitHistogramConfig struct {
 }
 
 var (
-	_ river.Defaulter = (*ExplicitHistogramConfig)(nil)
+	_ syntax.Defaulter = (*ExplicitHistogramConfig)(nil)
 )
 
 func (hc *ExplicitHistogramConfig) SetToDefault() {

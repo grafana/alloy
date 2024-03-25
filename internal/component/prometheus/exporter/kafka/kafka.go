@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/kafka_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 )
 
@@ -31,7 +31,7 @@ type Arguments struct {
 	UseSASL                 bool              `river:"use_sasl,attr,optional"`
 	UseSASLHandshake        bool              `river:"use_sasl_handshake,attr,optional"`
 	SASLUsername            string            `river:"sasl_username,attr,optional"`
-	SASLPassword            rivertypes.Secret `river:"sasl_password,attr,optional"`
+	SASLPassword            alloytypes.Secret `river:"sasl_password,attr,optional"`
 	SASLMechanism           string            `river:"sasl_mechanism,attr,optional"`
 	UseTLS                  bool              `river:"use_tls,attr,optional"`
 	CAFile                  string            `river:"ca_file,attr,optional"`

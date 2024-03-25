@@ -1,4 +1,4 @@
-package riverjson
+package alloyjson
 
 // Various concrete types used to marshal River values.
 type (

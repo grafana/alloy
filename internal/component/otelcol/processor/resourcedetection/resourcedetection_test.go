@@ -19,7 +19,7 @@ import (
 	kubernetes_node "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/openshift"
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/system"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
 	"github.com/stretchr/testify/require"
@@ -1507,7 +1507,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args resourcedetection.Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			if tc.errorMsg != "" {
 				require.ErrorContains(t, err, tc.errorMsg)
 				return

@@ -9,8 +9,8 @@ import (
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/component/otelcol/auth"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -85,11 +85,11 @@ const (
 )
 
 var (
-	_ river.Validator          = (*Action)(nil)
+	_ syntax.Validator         = (*Action)(nil)
 	_ encoding.TextUnmarshaler = (*Action)(nil)
 )
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Action) Validate() error {
 	switch *a {
 	case ActionInsert, ActionUpdate, ActionUpsert, ActionDelete:
@@ -133,23 +133,23 @@ func (a *Action) UnmarshalText(text []byte) error {
 // Header is an individual Header to send along with requests.
 type Header struct {
 	Key         string                     `river:"key,attr"`
-	Value       *rivertypes.OptionalSecret `river:"value,attr,optional"`
+	Value       *alloytypes.OptionalSecret `river:"value,attr,optional"`
 	FromContext *string                    `river:"from_context,attr,optional"`
 	Action      Action                     `river:"action,attr,optional"`
 }
 
-var _ river.Defaulter = &Header{}
+var _ syntax.Defaulter = &Header{}
 
 var DefaultHeader = Header{
 	Action: ActionUpsert,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (h *Header) SetToDefault() {
 	*h = DefaultHeader
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (h *Header) Validate() error {
 	err := h.Action.Validate()
 	if err != nil {

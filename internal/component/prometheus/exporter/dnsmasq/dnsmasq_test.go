@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/static/integrations/dnsmasq_exporter"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,7 +15,7 @@ func TestUnmarshalRiver(t *testing.T) {
   expose_leases = true
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(rawCfg), &args)
+	err := syntax.Unmarshal([]byte(rawCfg), &args)
 	assert.NoError(t, err)
 
 	expected := Arguments{
@@ -29,7 +29,7 @@ func TestUnmarshalRiver(t *testing.T) {
 func TestUnmarshalRiverDefaults(t *testing.T) {
 	rawCfg := ``
 	var args Arguments
-	err := river.Unmarshal([]byte(rawCfg), &args)
+	err := syntax.Unmarshal([]byte(rawCfg), &args)
 	assert.NoError(t, err)
 
 	expected := DefaultArguments

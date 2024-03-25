@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
 	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_marathon "github.com/prometheus/prometheus/discovery/marathon"
 )
 
@@ -31,7 +31,7 @@ func toDiscoveryMarathon(sdConfig *prom_marathon.SDConfig) *marathon.Arguments {
 
 	return &marathon.Arguments{
 		Servers:          sdConfig.Servers,
-		AuthToken:        rivertypes.Secret(sdConfig.AuthToken),
+		AuthToken:        alloytypes.Secret(sdConfig.AuthToken),
 		AuthTokenFile:    sdConfig.AuthTokenFile,
 		RefreshInterval:  time.Duration(sdConfig.RefreshInterval),
 		HTTPClientConfig: *common.ToHttpClientConfig(&sdConfig.HTTPClientConfig),

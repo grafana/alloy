@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -25,13 +25,13 @@ func TestRiverUnmarshal(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 	assert.Equal(t, "datacenter_id", args.DatacenterID)
 	assert.Equal(t, 20*time.Second, args.RefreshInterval)
 	assert.Equal(t, 60, args.Port)
 	assert.Equal(t, "username", args.HTTPClientConfig.BasicAuth.Username)
-	assert.Equal(t, rivertypes.Secret("pass"), args.HTTPClientConfig.BasicAuth.Password)
+	assert.Equal(t, alloytypes.Secret("pass"), args.HTTPClientConfig.BasicAuth.Password)
 }
 
 func TestConvert(t *testing.T) {

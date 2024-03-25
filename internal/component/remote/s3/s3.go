@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -205,7 +205,7 @@ func (s *Component) handleContentPolling(newContent string, err error) {
 
 	if err == nil {
 		s.opts.OnStateChange(Exports{
-			Content: rivertypes.OptionalSecret{
+			Content: alloytypes.OptionalSecret{
 				IsSecret: s.args.IsSecret,
 				Value:    newContent,
 			},

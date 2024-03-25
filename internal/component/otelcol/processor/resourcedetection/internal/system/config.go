@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	rac "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 )
 
 const Name = "system"
@@ -19,9 +19,9 @@ type Config struct {
 	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
 }
 
-var _ river.Defaulter = (*Config)(nil)
+var _ syntax.Defaulter = (*Config)(nil)
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (c *Config) SetToDefault() {
 	*c = Config{
 		HostnameSources: []string{"dns", "os"},

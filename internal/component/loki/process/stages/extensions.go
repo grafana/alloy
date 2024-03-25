@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 )
@@ -28,8 +28,8 @@ type CRIConfig struct {
 }
 
 var (
-	_ river.Defaulter = (*CRIConfig)(nil)
-	_ river.Validator = (*CRIConfig)(nil)
+	_ syntax.Defaulter = (*CRIConfig)(nil)
+	_ syntax.Validator = (*CRIConfig)(nil)
 )
 
 // DefaultCRIConfig contains the default CRIConfig values.
@@ -39,12 +39,12 @@ var DefaultCRIConfig = CRIConfig{
 	MaxPartialLineSizeTruncate: false,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *CRIConfig) SetToDefault() {
 	*args = DefaultCRIConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *CRIConfig) Validate() error {
 	if args.MaxPartialLines <= 0 {
 		return fmt.Errorf("max_partial_lines must be greater than 0")

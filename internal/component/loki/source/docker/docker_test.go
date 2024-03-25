@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +24,7 @@ func Test(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(cfg), &args)
+	err := syntax.Unmarshal([]byte(cfg), &args)
 	require.NoError(t, err)
 
 	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.docker")
@@ -50,7 +50,7 @@ func TestDuplicateTargets(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(cfg), &args)
+	err := syntax.Unmarshal([]byte(cfg), &args)
 	require.NoError(t, err)
 
 	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.docker")

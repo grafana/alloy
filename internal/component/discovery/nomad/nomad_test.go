@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
@@ -23,7 +23,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		proxy_url = "http://example:8080"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(riverCfg), &args)
 	require.NoError(t, err)
 
 	assert.Equal(t, false, args.AllowStale)

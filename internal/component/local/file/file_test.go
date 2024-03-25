@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/component/local/file"
 	filedetector "github.com/grafana/agent/internal/filedetector"
 	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,7 +48,7 @@ func runFileTests(t *testing.T, ut filedetector.Detector) {
 		// Swallow the initial exports notification.
 		require.NoError(t, tc.WaitExports(time.Second))
 		require.Equal(t, file.Exports{
-			Content: rivertypes.OptionalSecret{
+			Content: alloytypes.OptionalSecret{
 				IsSecret: false,
 				Value:    "First load!",
 			},
@@ -65,7 +65,7 @@ func runFileTests(t *testing.T, ut filedetector.Detector) {
 
 		require.NoError(t, sc.WaitExports(time.Second))
 		require.Equal(t, file.Exports{
-			Content: rivertypes.OptionalSecret{
+			Content: alloytypes.OptionalSecret{
 				IsSecret: false,
 				Value:    "New content!",
 			},
@@ -82,7 +82,7 @@ func runFileTests(t *testing.T, ut filedetector.Detector) {
 
 		require.NoError(t, sc.WaitExports(time.Second))
 		require.Equal(t, file.Exports{
-			Content: rivertypes.OptionalSecret{
+			Content: alloytypes.OptionalSecret{
 				IsSecret: false,
 				Value:    "New content!",
 			},
@@ -109,7 +109,7 @@ func TestFile_ImmediateExports(t *testing.T) {
 
 	require.NoError(t, tc.WaitExports(time.Second))
 	require.Equal(t, file.Exports{
-		Content: rivertypes.OptionalSecret{
+		Content: alloytypes.OptionalSecret{
 			IsSecret: false,
 			Value:    "Hello, world!",
 		},

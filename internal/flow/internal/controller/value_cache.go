@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // valueCache caches component arguments and exports to expose as variables for

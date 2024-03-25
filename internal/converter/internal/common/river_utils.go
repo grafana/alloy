@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/river"
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/printer"
-	"github.com/grafana/river/scanner"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/printer"
+	"github.com/grafana/alloy/syntax/scanner"
 
 	"github.com/grafana/agent/internal/component"
 	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax/token/builder"
 )
 
 // NewBlockWithOverride generates a new [*builder.Block] using a hook to
@@ -38,15 +38,15 @@ func NewBlockWithOverrideFn(name []string, label string, args component.Argument
 func getValueOverrideHook() builder.ValueOverrideHook {
 	return func(val interface{}) interface{} {
 		switch value := val.(type) {
-		case rivertypes.Secret:
+		case alloytypes.Secret:
 			return string(value)
-		case []rivertypes.Secret:
+		case []alloytypes.Secret:
 			secrets := make([]string, 0, len(value))
 			for _, secret := range value {
 				secrets = append(secrets, string(secret))
 			}
 			return secrets
-		case map[string][]rivertypes.Secret:
+		case map[string][]alloytypes.Secret:
 			secrets := make(map[string][]string, len(value))
 			for k, v := range value {
 				secrets[k] = make([]string, 0, len(v))
@@ -127,13 +127,13 @@ func SanitizeIdentifierPanics(in string) string {
 }
 
 // DefaultValue returns the default value for a given type. If *T implements
-// river.Defaulter, a value will be returned with defaults applied. If *T does
-// not implement river.Defaulter, the zero value of T is returned.
+// syntax.Defaulter, a value will be returned with defaults applied. If *T does
+// not implement syntax.Defaulter, the zero value of T is returned.
 //
 // T must not be a pointer type.
 func DefaultValue[T any]() T {
 	var val T
-	if defaulter, ok := any(&val).(river.Defaulter); ok {
+	if defaulter, ok := any(&val).(syntax.Defaulter); ok {
 		defaulter.SetToDefault()
 	}
 	return val

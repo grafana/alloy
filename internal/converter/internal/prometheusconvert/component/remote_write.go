@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
 	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/sigv4"
 	prom_config "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
@@ -117,7 +117,7 @@ func toSigV4(sigv4Config *sigv4.SigV4Config) *remotewrite.SigV4Config {
 	return &remotewrite.SigV4Config{
 		Region:    sigv4Config.Region,
 		AccessKey: sigv4Config.AccessKey,
-		SecretKey: rivertypes.Secret(sigv4Config.SecretKey),
+		SecretKey: alloytypes.Secret(sigv4Config.SecretKey),
 		Profile:   sigv4Config.Profile,
 		RoleARN:   sigv4Config.RoleARN,
 	}

@@ -8,16 +8,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/regexp"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
 )
 
 // TLSArguments configures TLS settings for the HTTP service.
 type TLSArguments struct {
 	Cert             string            `river:"cert_pem,attr,optional"`
 	CertFile         string            `river:"cert_file,attr,optional"`
-	Key              rivertypes.Secret `river:"key_pem,attr,optional"`
+	Key              alloytypes.Secret `river:"key_pem,attr,optional"`
 	KeyFile          string            `river:"key_file,attr,optional"`
 	ClientCA         string            `river:"client_ca_pem,attr,optional"`
 	ClientCAFile     string            `river:"client_ca_file,attr,optional"`
@@ -53,14 +53,14 @@ type WindowsServerFilter struct {
 	RefreshInterval   time.Duration `river:"refresh_interval,attr,optional"`
 }
 
-var _ river.Defaulter = (*WindowsServerFilter)(nil)
+var _ syntax.Defaulter = (*WindowsServerFilter)(nil)
 
 // SetToDefault sets the default for WindowsServerFilter
 func (wcf *WindowsServerFilter) SetToDefault() {
 	wcf.RefreshInterval = 5 * time.Minute
 }
 
-var _ river.Validator = (*TLSArguments)(nil)
+var _ syntax.Validator = (*TLSArguments)(nil)
 
 // Validate returns whether args is valid.
 func (args *TLSArguments) Validate() error {

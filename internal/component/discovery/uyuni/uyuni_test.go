@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func TestUnmarshal(t *testing.T) {
 	}	
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(cfg), &args)
+	err := syntax.Unmarshal([]byte(cfg), &args)
 	require.NoError(t, err)
 }
 

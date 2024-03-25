@@ -5,7 +5,7 @@ import (
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/component/prometheus/exporter/elasticsearch"
 	"github.com/grafana/agent/internal/static/integrations/elasticsearch_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (b *ConfigBuilder) appendElasticsearchExporter(config *elasticsearch_exporter.Config, instanceKey *string) discovery.Exports {
@@ -37,7 +37,7 @@ func toElasticsearchExporter(config *elasticsearch_exporter.Config) *elasticsear
 	if config.BasicAuth != nil {
 		arg.BasicAuth = &commonCfg.BasicAuth{
 			Username:     config.BasicAuth.Username,
-			Password:     rivertypes.Secret(config.BasicAuth.Password),
+			Password:     alloytypes.Secret(config.BasicAuth.Password),
 			PasswordFile: config.BasicAuth.PasswordFile,
 		}
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol"
 	"github.com/grafana/agent/internal/component/otelcol/connector"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/servicegraphprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -73,11 +73,11 @@ func (sc *StoreConfig) SetToDefault() {
 }
 
 var (
-	_ river.Validator = (*Arguments)(nil)
-	_ river.Defaulter = (*Arguments)(nil)
+	_ syntax.Validator = (*Arguments)(nil)
+	_ syntax.Defaulter = (*Arguments)(nil)
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		LatencyHistogramBuckets: []time.Duration{
@@ -117,7 +117,7 @@ func (args *Arguments) SetToDefault() {
 	args.Store.SetToDefault()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.CacheLoop <= 0 {
 		return fmt.Errorf("cache_loop must be greater than 0")

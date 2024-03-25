@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/grafana/river/ast"
+	"github.com/grafana/alloy/syntax/ast"
 )
 
 // ComponentNodeManager is responsible for creating new component nodes and

@@ -6,7 +6,7 @@ import (
 
 	"github.com/grafana/agent/internal/component/otelcol"
 	"github.com/grafana/agent/internal/component/otelcol/exporter/loadbalancing"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -258,7 +258,7 @@ func TestConfigConversion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args loadbalancing.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.agentCfg), &args))
 			actual, err := args.Convert()
 			require.NoError(t, err)
 			require.Equal(t, &tc.expected, actual.(*loadbalancingexporter.Config))
@@ -337,7 +337,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args loadbalancing.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.agentCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

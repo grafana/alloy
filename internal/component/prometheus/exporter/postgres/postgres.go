@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/postgres_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/lib/pq"
 	config_util "github.com/prometheus/common/config"
 )
@@ -77,7 +77,7 @@ type Arguments struct {
 	// DataSourceNames to use to connect to Postgres. This is marked optional because it
 	// may also be supplied by the POSTGRES_EXPORTER_DATA_SOURCE_NAME env var,
 	// though it is not recommended to do so.
-	DataSourceNames []rivertypes.Secret `river:"data_source_names,attr,optional"`
+	DataSourceNames []alloytypes.Secret `river:"data_source_names,attr,optional"`
 
 	// Attributes
 	DisableSettingsMetrics  bool   `river:"disable_settings_metrics,attr,optional"`

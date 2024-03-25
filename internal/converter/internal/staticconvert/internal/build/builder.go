@@ -5,7 +5,7 @@ import (
 
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/static/config"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax/token/builder"
 )
 
 type ConfigBuilder struct {

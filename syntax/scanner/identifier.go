@@ -3,7 +3,7 @@ package scanner
 import (
 	"fmt"
 
-	"github.com/grafana/river/token"
+	"github.com/grafana/alloy/syntax/token"
 )
 
 // IsValidIdentifier returns true if the given string is a valid river

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/api/auth/approle"
 	"github.com/hashicorp/vault/api/auth/aws"
@@ -70,7 +70,7 @@ func (a *AuthArguments) authMethod() authMethod {
 
 // AuthToken authenticates against Vault with a token.
 type AuthToken struct {
-	Token rivertypes.Secret `river:"token,attr"`
+	Token alloytypes.Secret `river:"token,attr"`
 }
 
 func (a *AuthToken) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*vault.Secret, error) {
@@ -81,7 +81,7 @@ func (a *AuthToken) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*
 // AuthAppRole authenticates against Vault with AppRole.
 type AuthAppRole struct {
 	RoleID        string            `river:"role_id,attr"`
-	Secret        rivertypes.Secret `river:"secret,attr"`
+	Secret        alloytypes.Secret `river:"secret,attr"`
 	WrappingToken bool              `river:"wrapping_token,attr,optional"`
 	MountPath     string            `river:"mount_path,attr,optional"`
 }
@@ -370,7 +370,7 @@ func (a *AuthKubernetes) vaultAuthenticate(ctx context.Context, cli *vault.Clien
 // AuthLDAP authenticates against Vault with LDAP.
 type AuthLDAP struct {
 	Username  string            `river:"username,attr"`
-	Password  rivertypes.Secret `river:"password,attr"`
+	Password  alloytypes.Secret `river:"password,attr"`
 	MountPath string            `river:"mount_path,attr,optional"`
 }
 
@@ -407,7 +407,7 @@ func (a *AuthLDAP) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*v
 // AuthUserPass authenticates against Vault with a username and password.
 type AuthUserPass struct {
 	Username  string            `river:"username,attr"`
-	Password  rivertypes.Secret `river:"password,attr"`
+	Password  alloytypes.Secret `river:"password,attr"`
 	MountPath string            `river:"mount_path,attr,optional"`
 }
 
@@ -445,7 +445,7 @@ func (a *AuthUserPass) vaultAuthenticate(ctx context.Context, cli *vault.Client)
 type AuthCustom struct {
 	// Path to use for logging in (e.g., auth/kubernetes/login, etc.)
 	Path string                       `river:"path,attr"`
-	Data map[string]rivertypes.Secret `river:"data,attr"`
+	Data map[string]alloytypes.Secret `river:"data,attr"`
 }
 
 // Login implements vault.AuthMethod.

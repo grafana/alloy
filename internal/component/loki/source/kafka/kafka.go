@@ -12,8 +12,8 @@ import (
 	kt "github.com/grafana/agent/internal/component/loki/source/internal/kafkatarget"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/river/rivertypes"
 	"github.com/prometheus/common/model"
 )
 
@@ -56,7 +56,7 @@ type KafkaAuthentication struct {
 type KafkaSASLConfig struct {
 	Mechanism   string            `river:"mechanism,attr,optional"`
 	User        string            `river:"user,attr,optional"`
-	Password    rivertypes.Secret `river:"password,attr,optional"`
+	Password    alloytypes.Secret `river:"password,attr,optional"`
 	UseTLS      bool              `river:"use_tls,attr,optional"`
 	TLSConfig   config.TLSConfig  `river:"tls_config,block,optional"`
 	OAuthConfig OAuthConfigConfig `river:"oauth_config,block,optional"`

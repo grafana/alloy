@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/static/integrations/cloudwatch_exporter"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
 	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
 )
@@ -98,7 +98,7 @@ type Metric struct {
 	NilToZero  *bool         `river:"nil_to_zero,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = defaults
 }
@@ -246,7 +246,7 @@ func toYACEDiscoveryJob(rj DiscoveryJob) *yaceConf.Job {
 
 // getHash calculates the MD5 hash of the river representation of the config.
 func getHash(a Arguments) string {
-	bytes, err := river.Marshal(a)
+	bytes, err := syntax.Marshal(a)
 	if err != nil {
 		return "<unknown>"
 	}

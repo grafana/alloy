@@ -5,11 +5,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/diag"
-	"github.com/grafana/river/internal/reflectutil"
-	"github.com/grafana/river/internal/syntaxtags"
-	"github.com/grafana/river/internal/value"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/diag"
+	"github.com/grafana/alloy/syntax/internal/reflectutil"
+	"github.com/grafana/alloy/syntax/internal/syntaxtags"
+	"github.com/grafana/alloy/syntax/internal/value"
 )
 
 // structDecoder decodes a series of AST statements into a Go value.

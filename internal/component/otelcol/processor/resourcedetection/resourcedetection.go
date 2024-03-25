@@ -22,7 +22,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/openshift"
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/system"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -137,11 +137,11 @@ func (dc *DetectorConfig) SetToDefault() {
 
 var (
 	_ processor.Arguments = Arguments{}
-	_ river.Validator     = (*Arguments)(nil)
-	_ river.Defaulter     = (*Arguments)(nil)
+	_ syntax.Validator    = (*Arguments)(nil)
+	_ syntax.Defaulter    = (*Arguments)(nil)
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		Detectors: []string{"env"},
@@ -151,7 +151,7 @@ func (args *Arguments) SetToDefault() {
 	args.DetectorConfig.SetToDefault()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if len(args.Detectors) == 0 {
 		return fmt.Errorf("at least one detector must be specified")

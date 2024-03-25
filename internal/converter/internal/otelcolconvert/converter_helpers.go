@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/river/token"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax/token"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/mitchellh/mapstructure"
 )
 

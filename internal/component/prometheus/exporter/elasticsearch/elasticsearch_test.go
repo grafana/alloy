@@ -6,8 +6,8 @@ import (
 
 	commonCfg "github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/static/integrations/elasticsearch_exporter"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promCfg "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
@@ -37,7 +37,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
@@ -59,7 +59,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		ExportSLM:                 true,
 		BasicAuth: &commonCfg.BasicAuth{
 			Username: "username",
-			Password: rivertypes.Secret("pass"),
+			Password: alloytypes.Secret("pass"),
 		},
 	}
 
@@ -90,7 +90,7 @@ func TestConvert(t *testing.T) {
 	}
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 
 	res := args.Convert()

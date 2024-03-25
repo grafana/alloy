@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/mysqld_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -58,7 +58,7 @@ var DefaultArguments = Arguments{
 // Arguments controls the mysql component.
 type Arguments struct {
 	// DataSourceName to use to connect to MySQL.
-	DataSourceName rivertypes.Secret `river:"data_source_name,attr,optional"`
+	DataSourceName alloytypes.Secret `river:"data_source_name,attr,optional"`
 
 	// Collectors to mark as enabled in addition to the default.
 	EnableCollectors []string `river:"enable_collectors,attr,optional"`

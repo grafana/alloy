@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/static/integrations/mysqld_exporter"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,7 +55,7 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	require.Equal(t, "root:secret_password@tcp(localhost:3306)/mydb", string(args.DataSourceName))
@@ -126,7 +126,7 @@ func TestRiverConfigConvert(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	c := args.Convert()
@@ -160,14 +160,14 @@ func TestDefaultsSame(t *testing.T) {
 
 func TestValidate_ValidDataSource(t *testing.T) {
 	args := Arguments{
-		DataSourceName: rivertypes.Secret("root:secret_password@tcp(localhost:3306)/mydb"),
+		DataSourceName: alloytypes.Secret("root:secret_password@tcp(localhost:3306)/mydb"),
 	}
 	require.NoError(t, args.Validate())
 }
 
 func TestValidate_InvalidDataSource(t *testing.T) {
 	args := Arguments{
-		DataSourceName: rivertypes.Secret("root:secret_password@invalid/mydb"),
+		DataSourceName: alloytypes.Secret("root:secret_password@invalid/mydb"),
 	}
 	require.Error(t, args.Validate())
 }

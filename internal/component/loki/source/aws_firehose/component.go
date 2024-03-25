@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/relabel"
 
@@ -18,7 +19,6 @@ import (
 	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
 	"github.com/grafana/agent/internal/component/loki/source/aws_firehose/internal"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river/rivertypes"
 )
 
 func init() {
@@ -35,7 +35,7 @@ func init() {
 
 type Arguments struct {
 	Server               *fnet.ServerConfig  `river:",squash"`
-	AccessKey            rivertypes.Secret   `river:"access_key,attr,optional"`
+	AccessKey            alloytypes.Secret   `river:"access_key,attr,optional"`
 	UseIncomingTimestamp bool                `river:"use_incoming_timestamp,attr,optional"`
 	ForwardTo            []loki.LogsReceiver `river:"forward_to,attr"`
 	RelabelRules         flow_relabel.Rules  `river:"relabel_rules,attr,optional"`

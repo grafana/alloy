@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol"
 	"github.com/grafana/agent/internal/component/otelcol/receiver"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
@@ -151,7 +151,7 @@ func (args AuthenticationArguments) Convert() map[string]interface{} {
 // broker.
 type PlaintextArguments struct {
 	Username string            `river:"username,attr"`
-	Password rivertypes.Secret `river:"password,attr"`
+	Password alloytypes.Secret `river:"password,attr"`
 }
 
 // Convert converts args into the upstream type.
@@ -165,7 +165,7 @@ func (args PlaintextArguments) Convert() map[string]interface{} {
 // SASLArguments configures SASL authentication against the Kafka broker.
 type SASLArguments struct {
 	Username  string            `river:"username,attr"`
-	Password  rivertypes.Secret `river:"password,attr"`
+	Password  alloytypes.Secret `river:"password,attr"`
 	Mechanism string            `river:"mechanism,attr"`
 	Version   int               `river:"version,attr,optional"`
 	AWSMSK    AWSMSKArguments   `river:"aws_msk,block,optional"`
@@ -204,7 +204,7 @@ type KerberosArguments struct {
 	Realm       string            `river:"realm,attr,optional"`
 	UseKeyTab   bool              `river:"use_keytab,attr,optional"`
 	Username    string            `river:"username,attr"`
-	Password    rivertypes.Secret `river:"password,attr,optional"`
+	Password    alloytypes.Secret `river:"password,attr,optional"`
 	ConfigPath  string            `river:"config_file,attr,optional"`
 	KeyTabPath  string            `river:"keytab_file,attr,optional"`
 }

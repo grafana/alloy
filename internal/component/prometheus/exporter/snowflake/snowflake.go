@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/snowflake_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -35,7 +35,7 @@ var DefaultArguments = Arguments{
 type Arguments struct {
 	AccountName string            `river:"account_name,attr"`
 	Username    string            `river:"username,attr"`
-	Password    rivertypes.Secret `river:"password,attr"`
+	Password    alloytypes.Secret `river:"password,attr"`
 	Role        string            `river:"role,attr,optional"`
 	Warehouse   string            `river:"warehouse,attr"`
 }

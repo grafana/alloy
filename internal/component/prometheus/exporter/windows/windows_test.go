@@ -3,7 +3,7 @@ package windows
 import (
 	"testing"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,7 +67,7 @@ var (
 
 func TestRiverUnmarshal(t *testing.T) {
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	require.Equal(t, []string{"textfile", "cpu"}, args.EnabledCollectors)
@@ -94,7 +94,7 @@ func TestRiverUnmarshal(t *testing.T) {
 
 func TestConvert(t *testing.T) {
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 
 	conf := args.Convert()

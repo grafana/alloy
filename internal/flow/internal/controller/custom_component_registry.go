@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/grafana/river/ast"
+	"github.com/grafana/alloy/syntax/ast"
 )
 
 // CustomComponentRegistry holds custom component definitions that are available in the context.

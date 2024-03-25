@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth"
 	"github.com/grafana/agent/internal/component/otelcol/exporter"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
@@ -51,11 +51,11 @@ type Arguments struct {
 
 var (
 	_ exporter.Arguments = Arguments{}
-	_ river.Defaulter    = &Arguments{}
-	_ river.Validator    = &Arguments{}
+	_ syntax.Defaulter   = &Arguments{}
+	_ syntax.Validator   = &Arguments{}
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		RoutingKey: "traceID",
@@ -64,7 +64,7 @@ func (args *Arguments) SetToDefault() {
 	args.Protocol.OTLP.SetToDefault()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	//TODO(ptodev): Add support for "resource" and "metric" routing keys later.
 	// The reason we can't add them yet is that otelcol.exporter.loadbalancing
@@ -177,7 +177,7 @@ type DNSResolver struct {
 	Timeout  time.Duration `river:"timeout,attr,optional"`
 }
 
-var _ river.Defaulter = &DNSResolver{}
+var _ syntax.Defaulter = &DNSResolver{}
 
 // DefaultDNSResolver holds default values for DNSResolver.
 var DefaultDNSResolver = DNSResolver{
@@ -186,7 +186,7 @@ var DefaultDNSResolver = DNSResolver{
 	Timeout:  1 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *DNSResolver) SetToDefault() {
 	*args = DefaultDNSResolver
 }
@@ -206,9 +206,9 @@ type KubernetesResolver struct {
 	Ports   []int32 `river:"ports,attr,optional"`
 }
 
-var _ river.Defaulter = &KubernetesResolver{}
+var _ syntax.Defaulter = &KubernetesResolver{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *KubernetesResolver) SetToDefault() {
 	if args == nil {
 		args = &KubernetesResolver{}
@@ -257,7 +257,7 @@ type GRPCClientArguments struct {
 	Auth *auth.Handler `river:"auth,attr,optional"`
 }
 
-var _ river.Defaulter = &GRPCClientArguments{}
+var _ syntax.Defaulter = &GRPCClientArguments{}
 
 // Convert converts args into the upstream type.
 func (args *GRPCClientArguments) Convert() *otelconfiggrpc.GRPCClientSettings {
@@ -307,7 +307,7 @@ func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension
 	return m
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GRPCClientArguments) SetToDefault() {
 	*args = GRPCClientArguments{
 		Headers:         map[string]string{},

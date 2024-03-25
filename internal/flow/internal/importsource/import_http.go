@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/component"
 	common_config "github.com/grafana/agent/internal/component/common/config"
 	remote_http "github.com/grafana/agent/internal/component/remote/http"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // ImportHTTP imports a module from a HTTP server via the remote.http component.

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	promConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ func TestRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 }
 
@@ -35,7 +35,7 @@ func TestBadRiverConfig(t *testing.T) {
 
 	// Make sure the TLSConfig Validate function is being utilized correctly
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.ErrorContains(t, err, "at most one of ca_pem and ca_file must be configured")
 }
 

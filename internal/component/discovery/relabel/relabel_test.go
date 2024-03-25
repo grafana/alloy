@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/component/discovery/relabel"
 	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -60,7 +60,7 @@ rule {
 	}
 
 	var args relabel.Arguments
-	require.NoError(t, river.Unmarshal([]byte(riverArguments), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(riverArguments), &args))
 
 	tc, err := componenttest.NewControllerFromID(nil, "discovery.relabel")
 	require.NoError(t, err)
@@ -84,7 +84,7 @@ rule {
 	regex         = "up"
 }`
 	var args relabel.Arguments
-	require.NoError(t, river.Unmarshal([]byte(originalCfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(originalCfg), &args))
 
 	tc, err := componenttest.NewControllerFromID(nil, "discovery.relabel")
 	require.NoError(t, err)
@@ -108,7 +108,7 @@ rule {
 	source_labels = ["__name__"]
 	regex         = "up"
 }`
-	require.NoError(t, river.Unmarshal([]byte(updatedCfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(updatedCfg), &args))
 
 	require.NoError(t, tc.Update(args))
 	exports = tc.Exports().(relabel.Exports)

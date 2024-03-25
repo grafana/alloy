@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/uyuni"
@@ -31,7 +31,7 @@ func init() {
 type Arguments struct {
 	Server          string              `river:"server,attr"`
 	Username        string              `river:"username,attr"`
-	Password        rivertypes.Secret   `river:"password,attr"`
+	Password        alloytypes.Secret   `river:"password,attr"`
 	Entitlement     string              `river:"entitlement,attr,optional"`
 	Separator       string              `river:"separator,attr,optional"`
 	RefreshInterval time.Duration       `river:"refresh_interval,attr,optional"`

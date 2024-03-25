@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
 	"github.com/stretchr/testify/require"
 )
 

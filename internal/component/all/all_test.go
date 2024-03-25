@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +16,7 @@ import (
 // recursively traverses through its Arguments type to guarantee that no two
 // calls to SetDefault result in pointer reuse.
 //
-// Nested types that also implement river.Defaulter are also checked.
+// Nested types that also implement syntax.Defaulter are also checked.
 func TestSetDefault_NoPointerReuse(t *testing.T) {
 	allComponents := component.AllNames()
 	for _, componentName := range allComponents {
@@ -37,10 +37,10 @@ func testNoReusePointer(t *testing.T, reg component.Registration) {
 		args2 = reg.CloneArguments()
 	)
 
-	if args1, ok := args1.(river.Defaulter); ok {
+	if args1, ok := args1.(syntax.Defaulter); ok {
 		args1.SetToDefault()
 	}
-	if args2, ok := args2.(river.Defaulter); ok {
+	if args2, ok := args2.(syntax.Defaulter); ok {
 		args2.SetToDefault()
 	}
 
@@ -60,7 +60,7 @@ func testNoReusePointer(t *testing.T, reg component.Registration) {
 
 		assert.Fail(t,
 			fmt.Sprintf("Detected SetToDefault pointer reuse at %s", fullPath),
-			"Types implementing river.Defaulter must not reuse pointers across multiple calls. Doing so leads to default values being changed when unmarshaling configuration files. If you're seeing this error, check the path above and ensure that copies are being made of any pointers in all instances of SetToDefault calls where that field is used.",
+			"Types implementing syntax.Defaulter must not reuse pointers across multiple calls. Doing so leads to default values being changed when unmarshaling configuration files. If you're seeing this error, check the path above and ensure that copies are being made of any pointers in all instances of SetToDefault calls where that field is used.",
 		)
 	}
 }
@@ -165,11 +165,11 @@ func pointersMatch(a, b reflect.Value) bool {
 }
 
 // initValue initializes nil pointers. If the nil pointer implements
-// river.Defaulter, it is also set to default values.
+// syntax.Defaulter, it is also set to default values.
 func initValue(rv reflect.Value) {
 	if rv.Kind() == reflect.Pointer && rv.IsNil() {
 		rv.Set(reflect.New(rv.Type().Elem()))
-		if defaulter, ok := rv.Interface().(river.Defaulter); ok {
+		if defaulter, ok := rv.Interface().(syntax.Defaulter); ok {
 			defaulter.SetToDefault()
 		}
 	}

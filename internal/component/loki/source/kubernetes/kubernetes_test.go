@@ -3,7 +3,7 @@ package kubernetes
 import (
 	"testing"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +20,7 @@ func TestRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 }
 
@@ -40,6 +40,6 @@ func TestBadRiverConfig(t *testing.T) {
 
 	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 }

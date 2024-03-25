@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/grafana/river/token"
+	"github.com/grafana/alloy/syntax/token"
 )
 
 const tabWidth = 4

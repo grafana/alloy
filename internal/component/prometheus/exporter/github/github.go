@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/github_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -37,7 +37,7 @@ type Arguments struct {
 	Repositories  []string          `river:"repositories,attr,optional"`
 	Organizations []string          `river:"organizations,attr,optional"`
 	Users         []string          `river:"users,attr,optional"`
-	APIToken      rivertypes.Secret `river:"api_token,attr,optional"`
+	APIToken      alloytypes.Secret `river:"api_token,attr,optional"`
 	APITokenFile  string            `river:"api_token_file,attr,optional"`
 }
 

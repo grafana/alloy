@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/grafana/river/token"
+	"github.com/grafana/alloy/syntax/token"
 	"github.com/stretchr/testify/assert"
 )
 

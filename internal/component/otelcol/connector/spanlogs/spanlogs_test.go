@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/processor/processortest"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +25,7 @@ func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorCon
 	require.NoError(t, err)
 
 	var args spanlogs.Arguments
-	require.NoError(t, river.Unmarshal([]byte(processorConfig), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(processorConfig), &args))
 
 	// Override the arguments so signals get forwarded to the test channel.
 	args.Output = testSignal.MakeOutput()
@@ -700,7 +700,7 @@ func Test_ComponentIO(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			var args spanlogs.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tt.cfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tt.cfg), &args))
 			require.EqualValues(t, tt.expectedUnmarshaledCfg, args)
 
 			testRunProcessor(t, tt.cfg, processortest.NewTraceToLogSignal(tt.inputTraceJson, tt.expectedOutputLogJson))

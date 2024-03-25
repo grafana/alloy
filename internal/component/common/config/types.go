@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 )
 
@@ -18,7 +18,7 @@ type HTTPClientConfig struct {
 	BasicAuth       *BasicAuth        `river:"basic_auth,block,optional"`
 	Authorization   *Authorization    `river:"authorization,block,optional"`
 	OAuth2          *OAuth2Config     `river:"oauth2,block,optional"`
-	BearerToken     rivertypes.Secret `river:"bearer_token,attr,optional"`
+	BearerToken     alloytypes.Secret `river:"bearer_token,attr,optional"`
 	BearerTokenFile string            `river:"bearer_token_file,attr,optional"`
 	ProxyConfig     *ProxyConfig      `river:",squash"`
 	TLSConfig       TLSConfig         `river:"tls_config,block,optional"`
@@ -110,7 +110,7 @@ var DefaultHTTPClientConfig = HTTPClientConfig{
 // BasicAuth configures Basic HTTP authentication credentials.
 type BasicAuth struct {
 	Username     string            `river:"username,attr,optional"`
-	Password     rivertypes.Secret `river:"password,attr,optional"`
+	Password     alloytypes.Secret `river:"password,attr,optional"`
 	PasswordFile string            `river:"password_file,attr,optional"`
 }
 
@@ -215,7 +215,7 @@ func (u *URL) Convert() config.URL {
 }
 
 type Header struct {
-	Header map[string][]rivertypes.Secret `river:"proxy_connect_header,attr,optional"`
+	Header map[string][]alloytypes.Secret `river:"proxy_connect_header,attr,optional"`
 }
 
 func (h *Header) Convert() config.Header {
@@ -239,7 +239,7 @@ func (h *Header) Convert() config.Header {
 // Authorization sets up HTTP authorization credentials.
 type Authorization struct {
 	Type            string            `river:"type,attr,optional"`
-	Credentials     rivertypes.Secret `river:"credentials,attr,optional"`
+	Credentials     alloytypes.Secret `river:"credentials,attr,optional"`
 	CredentialsFile string            `river:"credentials_file,attr,optional"`
 }
 
@@ -305,7 +305,7 @@ type TLSConfig struct {
 	CAFile             string            `river:"ca_file,attr,optional"`
 	Cert               string            `river:"cert_pem,attr,optional"`
 	CertFile           string            `river:"cert_file,attr,optional"`
-	Key                rivertypes.Secret `river:"key_pem,attr,optional"`
+	Key                alloytypes.Secret `river:"key_pem,attr,optional"`
 	KeyFile            string            `river:"key_file,attr,optional"`
 	ServerName         string            `river:"server_name,attr,optional"`
 	InsecureSkipVerify bool              `river:"insecure_skip_verify,attr,optional"`
@@ -359,7 +359,7 @@ func (t *TLSConfig) Validate() error {
 // OAuth2Config sets up the OAuth2 client.
 type OAuth2Config struct {
 	ClientID         string            `river:"client_id,attr,optional"`
-	ClientSecret     rivertypes.Secret `river:"client_secret,attr,optional"`
+	ClientSecret     alloytypes.Secret `river:"client_secret,attr,optional"`
 	ClientSecretFile string            `river:"client_secret_file,attr,optional"`
 	Scopes           []string          `river:"scopes,attr,optional"`
 	TokenURL         string            `river:"token_url,attr,optional"`

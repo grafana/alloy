@@ -9,7 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +19,7 @@ func TestRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.NoError(t, err)
 }
 
@@ -31,12 +31,12 @@ func TestBadRiverConfig(t *testing.T) {
 
 	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 
 	// Make sure that URL defaults to https://localhost:10250
 	var args2 Arguments
-	err = river.Unmarshal([]byte{}, &args2)
+	err = syntax.Unmarshal([]byte{}, &args2)
 	require.NoError(t, err)
 	require.Equal(t, args2.URL.String(), "https://localhost:10250")
 }

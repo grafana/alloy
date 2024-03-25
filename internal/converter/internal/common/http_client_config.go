@@ -5,7 +5,7 @@ import (
 
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_config "github.com/prometheus/common/config"
 )
 
@@ -18,7 +18,7 @@ func ToHttpClientConfig(httpClientConfig *prom_config.HTTPClientConfig) *config.
 		BasicAuth:       toBasicAuth(httpClientConfig.BasicAuth),
 		Authorization:   toAuthorization(httpClientConfig.Authorization),
 		OAuth2:          toOAuth2(httpClientConfig.OAuth2),
-		BearerToken:     rivertypes.Secret(httpClientConfig.BearerToken),
+		BearerToken:     alloytypes.Secret(httpClientConfig.BearerToken),
 		BearerTokenFile: httpClientConfig.BearerTokenFile,
 		ProxyConfig:     ToProxyConfig(httpClientConfig.ProxyConfig),
 		TLSConfig:       *ToTLSConfig(&httpClientConfig.TLSConfig),
@@ -44,7 +44,7 @@ func toBasicAuth(basicAuth *prom_config.BasicAuth) *config.BasicAuth {
 
 	return &config.BasicAuth{
 		Username:     basicAuth.Username,
-		Password:     rivertypes.Secret(basicAuth.Password),
+		Password:     alloytypes.Secret(basicAuth.Password),
 		PasswordFile: basicAuth.PasswordFile,
 	}
 }
@@ -56,7 +56,7 @@ func toAuthorization(authorization *prom_config.Authorization) *config.Authoriza
 
 	return &config.Authorization{
 		Type:            authorization.Type,
-		Credentials:     rivertypes.Secret(authorization.Credentials),
+		Credentials:     alloytypes.Secret(authorization.Credentials),
 		CredentialsFile: authorization.CredentialsFile,
 	}
 }
@@ -68,7 +68,7 @@ func toOAuth2(oAuth2 *prom_config.OAuth2) *config.OAuth2Config {
 
 	return &config.OAuth2Config{
 		ClientID:         oAuth2.ClientID,
-		ClientSecret:     rivertypes.Secret(oAuth2.ClientSecret),
+		ClientSecret:     alloytypes.Secret(oAuth2.ClientSecret),
 		ClientSecretFile: oAuth2.ClientSecretFile,
 		Scopes:           oAuth2.Scopes,
 		TokenURL:         oAuth2.TokenURL,
@@ -108,14 +108,14 @@ func toProxyConnectHeader(proxyConnectHeader prom_config.Header) config.Header {
 	}
 
 	header := config.Header{
-		Header: make(map[string][]rivertypes.Secret),
+		Header: make(map[string][]alloytypes.Secret),
 	}
 	for name, values := range proxyConnectHeader {
-		var s []rivertypes.Secret
+		var s []alloytypes.Secret
 		if values != nil {
-			s = make([]rivertypes.Secret, 0, len(values))
+			s = make([]alloytypes.Secret, 0, len(values))
 			for _, value := range values {
-				s = append(s, rivertypes.Secret(value))
+				s = append(s, alloytypes.Secret(value))
 			}
 		}
 		header.Header[name] = s
@@ -133,7 +133,7 @@ func ToTLSConfig(tlsConfig *prom_config.TLSConfig) *config.TLSConfig {
 		CAFile:             tlsConfig.CAFile,
 		Cert:               tlsConfig.Cert,
 		CertFile:           tlsConfig.CertFile,
-		Key:                rivertypes.Secret(tlsConfig.Key),
+		Key:                alloytypes.Secret(tlsConfig.Key),
 		KeyFile:            tlsConfig.KeyFile,
 		ServerName:         tlsConfig.ServerName,
 		InsecureSkipVerify: tlsConfig.InsecureSkipVerify,

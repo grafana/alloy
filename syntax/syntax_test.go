@@ -1,10 +1,10 @@
-package river_test
+package syntax_test
 
 import (
 	"fmt"
 	"os"
 
-	river "github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 )
 
 func ExampleUnmarshal() {
@@ -48,7 +48,7 @@ func ExampleUnmarshal() {
 
 	// Unmarshal the config into our Book type and print out the data.
 	var b Book
-	if err := river.Unmarshal([]byte(input), &b); err != nil {
+	if err := syntax.Unmarshal([]byte(input), &b); err != nil {
 		panic(err)
 	}
 
@@ -84,7 +84,7 @@ func ExampleUnmarshal_functions() {
 	`
 
 	var d Data
-	if err := river.Unmarshal([]byte(input), &d); err != nil {
+	if err := syntax.Unmarshal([]byte(input), &d); err != nil {
 		panic(err)
 	}
 
@@ -96,7 +96,7 @@ func ExampleUnmarshalValue() {
 	input := `3 + 5`
 
 	var num int
-	if err := river.UnmarshalValue([]byte(input), &num); err != nil {
+	if err := syntax.UnmarshalValue([]byte(input), &num); err != nil {
 		panic(err)
 	}
 
@@ -116,7 +116,7 @@ func ExampleMarshal() {
 		Age:  43,
 	}
 
-	bb, err := river.Marshal(p)
+	bb, err := syntax.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
@@ -138,7 +138,7 @@ func ExampleMarshalValue() {
 		Age:  43,
 	}
 
-	bb, err := river.MarshalValue(p)
+	bb, err := syntax.MarshalValue(p)
 	if err != nil {
 		panic(err)
 	}

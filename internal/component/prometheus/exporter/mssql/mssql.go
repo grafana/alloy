@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/mssql"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"gopkg.in/yaml.v2"
 )
@@ -42,11 +42,11 @@ var DefaultArguments = Arguments{
 
 // Arguments controls the mssql exporter.
 type Arguments struct {
-	ConnectionString   rivertypes.Secret         `river:"connection_string,attr"`
+	ConnectionString   alloytypes.Secret         `river:"connection_string,attr"`
 	MaxIdleConnections int                       `river:"max_idle_connections,attr,optional"`
 	MaxOpenConnections int                       `river:"max_open_connections,attr,optional"`
 	Timeout            time.Duration             `river:"timeout,attr,optional"`
-	QueryConfig        rivertypes.OptionalSecret `river:"query_config,attr,optional"`
+	QueryConfig        alloytypes.OptionalSecret `river:"query_config,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	filedetector "github.com/grafana/agent/internal/filedetector"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 // waitReadPeriod holds the time to wait before reading a file while the
@@ -66,7 +66,7 @@ func (a *Arguments) SetToDefault() {
 // Exports holds values which are exported by the local.file component.
 type Exports struct {
 	// Content of the file.
-	Content rivertypes.OptionalSecret `river:"content,attr"`
+	Content alloytypes.OptionalSecret `river:"content,attr"`
 }
 
 // Component implements the local.file component.
@@ -173,7 +173,7 @@ func (c *Component) readFile() error {
 	c.lastAccessed.SetToCurrentTime()
 
 	c.opts.OnStateChange(Exports{
-		Content: rivertypes.OptionalSecret{
+		Content: alloytypes.OptionalSecret{
 			IsSecret: c.args.IsSecret,
 			Value:    c.latestContent,
 		},

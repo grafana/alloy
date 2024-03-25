@@ -12,8 +12,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // getCustomComponentConfig is used by the custom component to retrieve its template and the customComponentRegistry associated with it.

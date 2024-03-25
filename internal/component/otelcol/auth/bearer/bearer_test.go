@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth/bearer"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	extauth "go.opentelemetry.io/collector/extension/auth"
@@ -82,7 +82,7 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 
 		var args bearer.Arguments
-		require.NoError(t, river.Unmarshal([]byte(tt.riverConfig), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(tt.riverConfig), &args))
 
 		go func() {
 			err := ctrl.Run(ctx, args)

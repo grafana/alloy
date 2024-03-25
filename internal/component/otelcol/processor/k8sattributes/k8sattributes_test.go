@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/component/otelcol/processor/k8sattributes"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +32,7 @@ func Test_Extract(t *testing.T) {
 		}
 	`
 	var args k8sattributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -70,7 +70,7 @@ func Test_ExtractAnnotations(t *testing.T) {
 		}
 	`
 	var args k8sattributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -99,7 +99,7 @@ func Test_FilterNodeEnvironmentVariable(t *testing.T) {
 	var args k8sattributes.Arguments
 	testHostname := "test-hostname"
 	t.Setenv("K8S_ATTRIBUTES_TEST_HOSTNAME", testHostname)
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -120,7 +120,7 @@ func Test_FilterNamespace(t *testing.T) {
 		}
 	`
 	var args k8sattributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -158,7 +158,7 @@ func Test_FilterOps(t *testing.T) {
 		}
 	`
 	var args k8sattributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -190,7 +190,7 @@ func Test_DefaultToServiceAccountAuth(t *testing.T) {
 		}
 	`
 	var args k8sattributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -225,7 +225,7 @@ func Test_PodAssociation(t *testing.T) {
 		}
 	`
 	var args k8sattributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -272,7 +272,7 @@ func Test_PodAssociationPair(t *testing.T) {
 		}
 	`
 	var args k8sattributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -303,7 +303,7 @@ func Test_Passthrough(t *testing.T) {
 		}
 	`
 	var args k8sattributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -321,7 +321,7 @@ func Test_Exclude(t *testing.T) {
 			}
 	`
 		var args k8sattributes.Arguments
-		require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 		convertedArgs, err := args.Convert()
 		require.NoError(t, err)
@@ -345,7 +345,7 @@ func Test_Exclude(t *testing.T) {
 		}
 	`
 		var args k8sattributes.Arguments
-		require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 		convertedArgs, err := args.Convert()
 		require.NoError(t, err)

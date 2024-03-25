@@ -1,8 +1,8 @@
 package common
 
 import (
-	"github.com/grafana/river/token"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax/token"
+	"github.com/grafana/alloy/syntax/token/builder"
 )
 
 type CustomTokenizer struct {

@@ -5,7 +5,7 @@ package diag
 import (
 	"fmt"
 
-	"github.com/grafana/river/token"
+	"github.com/grafana/alloy/syntax/token"
 )
 
 // Severity denotes the severity level of a diagnostic. The zero value of

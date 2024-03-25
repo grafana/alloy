@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/river/encoding/riverjson"
+	"github.com/grafana/alloy/syntax/encoding/alloyjson"
 )
 
 var (
@@ -170,15 +170,15 @@ func (info *Info) MarshalJSON() ([]byte, error) {
 		referencedBy = []string{}
 	}
 
-	arguments, err = riverjson.MarshalBody(info.Arguments)
+	arguments, err = alloyjson.MarshalBody(info.Arguments)
 	if err != nil {
 		return nil, err
 	}
-	exports, err = riverjson.MarshalBody(info.Exports)
+	exports, err = alloyjson.MarshalBody(info.Exports)
 	if err != nil {
 		return nil, err
 	}
-	debugInfo, err = riverjson.MarshalBody(info.DebugInfo)
+	debugInfo, err = alloyjson.MarshalBody(info.DebugInfo)
 	if err != nil {
 		return nil, err
 	}

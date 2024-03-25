@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/processor/processortest"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor"
 	"github.com/stretchr/testify/require"
@@ -84,7 +84,7 @@ func TestSeverityLevelMatchesOtel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var matchProperties otelcol.MatchProperties
-			err := river.Unmarshal([]byte(tt.cfg), &matchProperties)
+			err := syntax.Unmarshal([]byte(tt.cfg), &matchProperties)
 
 			require.NoError(t, err)
 
@@ -118,7 +118,7 @@ func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorCon
 	require.NoError(t, err)
 
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(processorConfig), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(processorConfig), &args))
 
 	// Override the arguments so signals get forwarded to the test channel.
 	args.Output = testSignal.MakeOutput()
@@ -152,7 +152,7 @@ func Test_Insert(t *testing.T) {
 		}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -222,7 +222,7 @@ func Test_RegexExtract(t *testing.T) {
 		}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -290,7 +290,7 @@ func Test_Update(t *testing.T) {
 		}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -371,7 +371,7 @@ func Test_Upsert(t *testing.T) {
 		}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -442,7 +442,7 @@ func Test_Delete(t *testing.T) {
 		}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -507,7 +507,7 @@ func Test_Hash(t *testing.T) {
 		}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -577,7 +577,7 @@ func Test_Convert(t *testing.T) {
 		}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -646,7 +646,7 @@ func Test_ExcludeMulti(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -874,7 +874,7 @@ func Test_ExcludeResources(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -1036,7 +1036,7 @@ func Test_ExcludeLibrary(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -1212,7 +1212,7 @@ func Test_ExcludeLibraryAnyVersion(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -1389,7 +1389,7 @@ func Test_ExcludeLibraryBlankVersion(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -1621,7 +1621,7 @@ func Test_ExcludeServices(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -1844,7 +1844,7 @@ func Test_SelectiveProcessing(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -2011,7 +2011,7 @@ func Test_Complex(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -2129,7 +2129,7 @@ func Test_ExampleActions(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -2238,7 +2238,7 @@ func Test_Regexp(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -2370,7 +2370,7 @@ func Test_Regexp2(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -2462,7 +2462,7 @@ func Test_LogBodyRegexp(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -2584,7 +2584,7 @@ func Test_LogSeverityTextsRegexp(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -2709,7 +2709,7 @@ func Test_LogSeverity(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -2829,7 +2829,7 @@ func Test_FromContext(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)
@@ -2930,7 +2930,7 @@ func Test_MetricNames(t *testing.T) {
 	}
 	`
 	var args attributes.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	convertedArgs, err := args.Convert()
 	require.NoError(t, err)

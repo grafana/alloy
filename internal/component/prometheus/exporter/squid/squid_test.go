@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/static/integrations/squid_exporter"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
@@ -19,13 +19,13 @@ func TestRiverUnmarshal(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
 		SquidAddr:     "some_address:port",
 		SquidUser:     "some_user",
-		SquidPassword: rivertypes.Secret("some_password"),
+		SquidPassword: alloytypes.Secret("some_password"),
 	}
 
 	require.Equal(t, expected, args)
@@ -38,7 +38,7 @@ func TestConvert(t *testing.T) {
 	password = "some_password"
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(riverConfig), &args)
 	require.NoError(t, err)
 
 	res := args.Convert()

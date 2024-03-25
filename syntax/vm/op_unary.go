@@ -1,8 +1,8 @@
 package vm
 
 import (
-	"github.com/grafana/river/internal/value"
-	"github.com/grafana/river/token"
+	"github.com/grafana/alloy/syntax/internal/value"
+	"github.com/grafana/alloy/syntax/token"
 )
 
 func evalUnaryOp(op token.Token, val value.Value) (value.Value, error) {

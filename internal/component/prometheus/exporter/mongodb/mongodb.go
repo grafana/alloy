@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/mongodb_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -27,7 +27,7 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 }
 
 type Arguments struct {
-	URI                    rivertypes.Secret `river:"mongodb_uri,attr"`
+	URI                    alloytypes.Secret `river:"mongodb_uri,attr"`
 	DirectConnect          bool              `river:"direct_connect,attr,optional"`
 	DiscoveringMode        bool              `river:"discovering_mode,attr,optional"`
 	TLSBasicAuthConfigPath string            `river:"tls_basic_auth_config_path,attr,optional"`
