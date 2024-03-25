@@ -743,6 +743,15 @@ replace (
 	go.opentelemetry.io/collector/service => github.com/grafana/opentelemetry-collector/service v0.0.0-20231018134914-c0109e052230
 )
 
+replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
+
+// Replacing for an internal for with a bugfix for delta histograms, https://github.com/grafana/stackdriver_exporter/pull/1
+// Moving back to upstream is being tracked in an internal issue
+replace github.com/prometheus-community/stackdriver_exporter => github.com/grafana/stackdriver_exporter v0.0.0-20240228143257-3a2c9acef5a2
+
+// Submodules.
+replace github.com/grafana/alloy/syntax => ./syntax
+
 // Required to avoid an ambiguous import with github.com/tencentcloud/tencentcloud-sdk-go
 exclude github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.194
 
@@ -752,12 +761,3 @@ exclude (
 	k8s.io/client-go v8.0.0+incompatible
 	k8s.io/client-go v12.0.0+incompatible
 )
-
-replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
-
-// Replacing for an internal for with a bugfix for delta histograms, https://github.com/grafana/stackdriver_exporter/pull/1
-// Moving back to upstream is being tracked in an internal issue
-replace github.com/prometheus-community/stackdriver_exporter => github.com/grafana/stackdriver_exporter v0.0.0-20240228143257-3a2c9acef5a2
-
-// Submodules.
-replace github.com/grafana/alloy/syntax => ./syntax
