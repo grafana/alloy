@@ -17,9 +17,8 @@ cascade:
 
 {{< param "PRODUCT_NAME" >}} is a vendor-agnostic distribution of the [OpenTelemetry][] (OTel) Collector.
 {{< param "PRODUCT_ROOT_NAME" >}} uniquely combines the very best OSS observability signals in the community, and it offers native pipelines for both OTel and [Prometheus][] telemetry formats, supporting metrics, logs, traces, and profiles.
-
 {{< param "PRODUCT_ROOT_NAME" >}} is fully compatible with the OTel Collector and the Prometheus Agent.
-{{< param "PRODUCT_ROOT_NAME" >}} can be used as an alternative to either of these solutions or combined into a hybrid system of multiple collectors and agents.
+You can use {{< param "PRODUCT_ROOT_NAME" >}} as an alternative to either of these solutions or combined into a hybrid system of multiple collectors and agents.
 You can deploy {{< param "PRODUCT_ROOT_NAME" >}} anywhere within your IT infrastructure and you can pair it with a telemetry backend from Grafana Cloud or any other compatible backend from any other vendor.
 {{< param "PRODUCT_ROOT_NAME" >}} is flexible, and you can easily configure it to fit your needs in on-prem, cloud-only, or a mix of both.
 
