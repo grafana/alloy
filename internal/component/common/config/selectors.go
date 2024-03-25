@@ -8,8 +8,8 @@ import (
 // LabelSelector defines a selector to check to see if a set of Kubernetes
 // labels matches a selector.
 type LabelSelector struct {
-	MatchLabels      map[string]string `river:"match_labels,attr,optional"`
-	MatchExpressions []MatchExpression `river:"match_expression,block,optional"`
+	MatchLabels      map[string]string `alloy:"match_labels,attr,optional"`
+	MatchExpressions []MatchExpression `alloy:"match_expression,block,optional"`
 }
 
 // BuildSelector builds a [labels.Selector] from a Flow LabelSelector.
@@ -32,9 +32,9 @@ func (ls *LabelSelector) BuildSelector() (labels.Selector, error) {
 // MatchExpression defines an expression matcher to check to see if some key
 // from a Kubernetes resource matches a selector.
 type MatchExpression struct {
-	Key      string   `river:"key,attr"`
-	Operator string   `river:"operator,attr"`
-	Values   []string `river:"values,attr,optional"`
+	Key      string   `alloy:"key,attr"`
+	Operator string   `alloy:"operator,attr"`
+	Values   []string `alloy:"values,attr,optional"`
 }
 
 func (me *MatchExpression) buildExpression() metav1.LabelSelectorRequirement {

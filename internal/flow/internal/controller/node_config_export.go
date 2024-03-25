@@ -36,7 +36,7 @@ func NewExportConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *Export
 }
 
 type exportBlock struct {
-	Value any `river:"value,attr"`
+	Value any `alloy:"value,attr"`
 }
 
 // Evaluate implements BlockNode and updates the arguments for the managed config block

@@ -44,55 +44,55 @@ func init() {
 // Arguments holds values which are used to configure the prometheus.scrape
 // component.
 type Arguments struct {
-	Targets   []discovery.Target   `river:"targets,attr"`
-	ForwardTo []storage.Appendable `river:"forward_to,attr"`
+	Targets   []discovery.Target   `alloy:"targets,attr"`
+	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
 
 	// The job name to override the job label with.
-	JobName string `river:"job_name,attr,optional"`
+	JobName string `alloy:"job_name,attr,optional"`
 	// Indicator whether the scraped metrics should remain unmodified.
-	HonorLabels bool `river:"honor_labels,attr,optional"`
+	HonorLabels bool `alloy:"honor_labels,attr,optional"`
 	// Indicator whether the scraped timestamps should be respected.
-	HonorTimestamps bool `river:"honor_timestamps,attr,optional"`
+	HonorTimestamps bool `alloy:"honor_timestamps,attr,optional"`
 	// Indicator whether to track the staleness of the scraped timestamps.
-	TrackTimestampsStaleness bool `river:"track_timestamps_staleness,attr,optional"`
+	TrackTimestampsStaleness bool `alloy:"track_timestamps_staleness,attr,optional"`
 	// A set of query parameters with which the target is scraped.
-	Params url.Values `river:"params,attr,optional"`
+	Params url.Values `alloy:"params,attr,optional"`
 	// Whether to scrape a classic histogram that is also exposed as a native histogram.
-	ScrapeClassicHistograms bool `river:"scrape_classic_histograms,attr,optional"`
+	ScrapeClassicHistograms bool `alloy:"scrape_classic_histograms,attr,optional"`
 	// How frequently to scrape the targets of this scrape config.
-	ScrapeInterval time.Duration `river:"scrape_interval,attr,optional"`
+	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
 	// The timeout for scraping targets of this config.
-	ScrapeTimeout time.Duration `river:"scrape_timeout,attr,optional"`
+	ScrapeTimeout time.Duration `alloy:"scrape_timeout,attr,optional"`
 	// The HTTP resource path on which to fetch metrics from targets.
-	MetricsPath string `river:"metrics_path,attr,optional"`
+	MetricsPath string `alloy:"metrics_path,attr,optional"`
 	// The URL scheme with which to fetch metrics from targets.
-	Scheme string `river:"scheme,attr,optional"`
+	Scheme string `alloy:"scheme,attr,optional"`
 	// An uncompressed response body larger than this many bytes will cause the
 	// scrape to fail. 0 means no limit.
-	BodySizeLimit units.Base2Bytes `river:"body_size_limit,attr,optional"`
+	BodySizeLimit units.Base2Bytes `alloy:"body_size_limit,attr,optional"`
 	// More than this many samples post metric-relabeling will cause the scrape
 	// to fail.
-	SampleLimit uint `river:"sample_limit,attr,optional"`
+	SampleLimit uint `alloy:"sample_limit,attr,optional"`
 	// More than this many targets after the target relabeling will cause the
 	// scrapes to fail.
-	TargetLimit uint `river:"target_limit,attr,optional"`
+	TargetLimit uint `alloy:"target_limit,attr,optional"`
 	// More than this many labels post metric-relabeling will cause the scrape
 	// to fail.
-	LabelLimit uint `river:"label_limit,attr,optional"`
+	LabelLimit uint `alloy:"label_limit,attr,optional"`
 	// More than this label name length post metric-relabeling will cause the
 	// scrape to fail.
-	LabelNameLengthLimit uint `river:"label_name_length_limit,attr,optional"`
+	LabelNameLengthLimit uint `alloy:"label_name_length_limit,attr,optional"`
 	// More than this label value length post metric-relabeling will cause the
 	// scrape to fail.
-	LabelValueLengthLimit uint `river:"label_value_length_limit,attr,optional"`
+	LabelValueLengthLimit uint `alloy:"label_value_length_limit,attr,optional"`
 
-	HTTPClientConfig component_config.HTTPClientConfig `river:",squash"`
+	HTTPClientConfig component_config.HTTPClientConfig `alloy:",squash"`
 
 	// Scrape Options
-	ExtraMetrics              bool `river:"extra_metrics,attr,optional"`
-	EnableProtobufNegotiation bool `river:"enable_protobuf_negotiation,attr,optional"`
+	ExtraMetrics              bool `alloy:"extra_metrics,attr,optional"`
+	EnableProtobufNegotiation bool `alloy:"enable_protobuf_negotiation,attr,optional"`
 
-	Clustering cluster.ComponentBlock `river:"clustering,block,optional"`
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -327,18 +327,18 @@ func (c *Component) distTargets(
 
 // ScraperStatus reports the status of the scraper's jobs.
 type ScraperStatus struct {
-	TargetStatus []TargetStatus `river:"target,block,optional"`
+	TargetStatus []TargetStatus `alloy:"target,block,optional"`
 }
 
 // TargetStatus reports on the status of the latest scrape for a target.
 type TargetStatus struct {
-	JobName            string            `river:"job,attr"`
-	URL                string            `river:"url,attr"`
-	Health             string            `river:"health,attr"`
-	Labels             map[string]string `river:"labels,attr"`
-	LastError          string            `river:"last_error,attr,optional"`
-	LastScrape         time.Time         `river:"last_scrape,attr"`
-	LastScrapeDuration time.Duration     `river:"last_scrape_duration,attr,optional"`
+	JobName            string            `alloy:"job,attr"`
+	URL                string            `alloy:"url,attr"`
+	Health             string            `alloy:"health,attr"`
+	Labels             map[string]string `alloy:"labels,attr"`
+	LastError          string            `alloy:"last_error,attr,optional"`
+	LastScrape         time.Time         `alloy:"last_scrape,attr"`
+	LastScrapeDuration time.Duration     `alloy:"last_scrape_duration,attr,optional"`
 }
 
 // BuildTargetStatuses transforms the targets from a scrape manager into our internal status type for debug info.

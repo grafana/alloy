@@ -31,21 +31,21 @@ func init() {
 
 // Arguments configures remote.vault.
 type Arguments struct {
-	Server    string `river:"server,attr"`
-	Namespace string `river:"namespace,attr,optional"`
+	Server    string `alloy:"server,attr"`
+	Namespace string `alloy:"namespace,attr,optional"`
 
-	Path string `river:"path,attr"`
+	Path string `alloy:"path,attr"`
 
-	RereadFrequency time.Duration `river:"reread_frequency,attr,optional"`
+	RereadFrequency time.Duration `alloy:"reread_frequency,attr,optional"`
 
-	ClientOptions ClientOptions `river:"client_options,block,optional"`
+	ClientOptions ClientOptions `alloy:"client_options,block,optional"`
 
 	// The user *must* provide exactly one Auth blocks. This must be a slice
 	// because the enum flag requires a slice and being tagged as optional.
 	//
 	// TODO(rfratto): allow the enum flag to be used with a non-slice type.
 
-	Auth []AuthArguments `river:"auth,enum,optional"`
+	Auth []AuthArguments `alloy:"auth,enum,optional"`
 }
 
 // DefaultArguments holds default settings for Arguments.
@@ -112,10 +112,10 @@ func (a *Arguments) secretStore(cli *vault.Client) secretStore {
 
 // ClientOptions sets extra options on the Client.
 type ClientOptions struct {
-	MinRetryWait time.Duration `river:"min_retry_wait,attr,optional"`
-	MaxRetryWait time.Duration `river:"max_retry_wait,attr,optional"`
-	MaxRetries   int           `river:"max_retries,attr,optional"`
-	Timeout      time.Duration `river:"timeout,attr,optional"`
+	MinRetryWait time.Duration `alloy:"min_retry_wait,attr,optional"`
+	MaxRetryWait time.Duration `alloy:"max_retry_wait,attr,optional"`
+	MaxRetries   int           `alloy:"max_retries,attr,optional"`
+	Timeout      time.Duration `alloy:"timeout,attr,optional"`
 }
 
 // Exports is the values exported by remote.vault.
@@ -126,7 +126,7 @@ type Exports struct {
 	//
 	// However, it seems that most secrets engines don't actually return
 	// arbitrary data, so this limitation shouldn't cause any issues in practice.
-	Data map[string]alloytypes.Secret `river:"data,attr"`
+	Data map[string]alloytypes.Secret `alloy:"data,attr"`
 }
 
 // Component implements the remote.vault component.
@@ -318,6 +318,6 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type debugInfo struct {
-	AuthToken secretInfo `river:"auth_token,block"`
-	Secret    secretInfo `river:"secret,block"`
+	AuthToken secretInfo `alloy:"auth_token,block"`
+	Secret    secretInfo `alloy:"secret,block"`
 }

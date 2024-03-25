@@ -15,9 +15,9 @@ import (
 
 // ClientArguments controls how to connect to a Kubernetes cluster.
 type ClientArguments struct {
-	APIServer        commoncfg.URL              `river:"api_server,attr,optional"`
-	KubeConfig       string                     `river:"kubeconfig_file,attr,optional"`
-	HTTPClientConfig commoncfg.HTTPClientConfig `river:",squash"`
+	APIServer        commoncfg.URL              `alloy:"api_server,attr,optional"`
+	KubeConfig       string                     `alloy:"kubeconfig_file,attr,optional"`
+	HTTPClientConfig commoncfg.HTTPClientConfig `alloy:",squash"`
 }
 
 // DefaultClientArguments holds default values for Arguments.

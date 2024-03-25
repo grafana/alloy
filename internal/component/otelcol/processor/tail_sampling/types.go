@@ -12,13 +12,13 @@ import (
 )
 
 type PolicyConfig struct {
-	SharedPolicyConfig SharedPolicyConfig `river:",squash"`
+	SharedPolicyConfig SharedPolicyConfig `alloy:",squash"`
 
 	// Configs for defining composite policy
-	CompositeConfig CompositeConfig `river:"composite,block,optional"`
+	CompositeConfig CompositeConfig `alloy:"composite,block,optional"`
 
 	// Configs for defining and policy
-	AndConfig AndConfig `river:"and,block,optional"`
+	AndConfig AndConfig `alloy:"and,block,optional"`
 }
 
 func (policyConfig PolicyConfig) Convert() tsp.PolicyCfg {
@@ -46,25 +46,25 @@ func (policyConfig PolicyConfig) Convert() tsp.PolicyCfg {
 
 // This cannot currently have a Convert() because tsp.sharedPolicyCfg isn't public
 type SharedPolicyConfig struct {
-	Name                   string                 `river:"name,attr"`
-	Type                   string                 `river:"type,attr"`
-	LatencyConfig          LatencyConfig          `river:"latency,block,optional"`
-	NumericAttributeConfig NumericAttributeConfig `river:"numeric_attribute,block,optional"`
-	ProbabilisticConfig    ProbabilisticConfig    `river:"probabilistic,block,optional"`
-	StatusCodeConfig       StatusCodeConfig       `river:"status_code,block,optional"`
-	StringAttributeConfig  StringAttributeConfig  `river:"string_attribute,block,optional"`
-	RateLimitingConfig     RateLimitingConfig     `river:"rate_limiting,block,optional"`
-	SpanCountConfig        SpanCountConfig        `river:"span_count,block,optional"`
-	BooleanAttributeConfig BooleanAttributeConfig `river:"boolean_attribute,block,optional"`
-	OttlConditionConfig    OttlConditionConfig    `river:"ottl_condition,block,optional"`
-	TraceStateConfig       TraceStateConfig       `river:"trace_state,block,optional"`
+	Name                   string                 `alloy:"name,attr"`
+	Type                   string                 `alloy:"type,attr"`
+	LatencyConfig          LatencyConfig          `alloy:"latency,block,optional"`
+	NumericAttributeConfig NumericAttributeConfig `alloy:"numeric_attribute,block,optional"`
+	ProbabilisticConfig    ProbabilisticConfig    `alloy:"probabilistic,block,optional"`
+	StatusCodeConfig       StatusCodeConfig       `alloy:"status_code,block,optional"`
+	StringAttributeConfig  StringAttributeConfig  `alloy:"string_attribute,block,optional"`
+	RateLimitingConfig     RateLimitingConfig     `alloy:"rate_limiting,block,optional"`
+	SpanCountConfig        SpanCountConfig        `alloy:"span_count,block,optional"`
+	BooleanAttributeConfig BooleanAttributeConfig `alloy:"boolean_attribute,block,optional"`
+	OttlConditionConfig    OttlConditionConfig    `alloy:"ottl_condition,block,optional"`
+	TraceStateConfig       TraceStateConfig       `alloy:"trace_state,block,optional"`
 }
 
 // LatencyConfig holds the configurable settings to create a latency filter sampling policy
 // evaluator
 type LatencyConfig struct {
 	// ThresholdMs in milliseconds.
-	ThresholdMs int64 `river:"threshold_ms,attr"`
+	ThresholdMs int64 `alloy:"threshold_ms,attr"`
 }
 
 func (latencyConfig LatencyConfig) Convert() tsp.LatencyCfg {
@@ -77,15 +77,15 @@ func (latencyConfig LatencyConfig) Convert() tsp.LatencyCfg {
 // sampling policy evaluator.
 type NumericAttributeConfig struct {
 	// Tag that the filter is going to be matching against.
-	Key string `river:"key,attr"`
+	Key string `alloy:"key,attr"`
 	// MinValue is the minimum value of the attribute to be considered a match.
-	MinValue int64 `river:"min_value,attr"`
+	MinValue int64 `alloy:"min_value,attr"`
 	// MaxValue is the maximum value of the attribute to be considered a match.
-	MaxValue int64 `river:"max_value,attr"`
+	MaxValue int64 `alloy:"max_value,attr"`
 	// InvertMatch indicates that values must not match against attribute values.
 	// If InvertMatch is true and Values is equal to '123', all other values will be sampled except '123'.
 	// Also, if the specified Key does not match any resource or span attributes, data will be sampled.
-	InvertMatch bool `river:"invert_match,attr,optional"`
+	InvertMatch bool `alloy:"invert_match,attr,optional"`
 }
 
 func (numericAttributeConfig NumericAttributeConfig) Convert() tsp.NumericAttributeCfg {
@@ -103,10 +103,10 @@ type ProbabilisticConfig struct {
 	// HashSalt allows one to configure the hashing salts. This is important in scenarios where multiple layers of collectors
 	// have different sampling rates: if they use the same salt all passing one layer may pass the other even if they have
 	// different sampling rates, configuring different salts avoids that.
-	HashSalt string `river:"hash_salt,attr,optional"`
+	HashSalt string `alloy:"hash_salt,attr,optional"`
 	// SamplingPercentage is the percentage rate at which traces are going to be sampled. Defaults to zero, i.e.: no sample.
 	// Values greater or equal 100 are treated as "sample all traces".
-	SamplingPercentage float64 `river:"sampling_percentage,attr"`
+	SamplingPercentage float64 `alloy:"sampling_percentage,attr"`
 }
 
 func (probabilisticConfig ProbabilisticConfig) Convert() tsp.ProbabilisticCfg {
@@ -119,7 +119,7 @@ func (probabilisticConfig ProbabilisticConfig) Convert() tsp.ProbabilisticCfg {
 // StatusCodeConfig holds the configurable settings to create a status code filter sampling
 // policy evaluator.
 type StatusCodeConfig struct {
-	StatusCodes []string `river:"status_codes,attr"`
+	StatusCodes []string `alloy:"status_codes,attr"`
 }
 
 func (statusCodeConfig StatusCodeConfig) Convert() tsp.StatusCodeCfg {
@@ -132,20 +132,20 @@ func (statusCodeConfig StatusCodeConfig) Convert() tsp.StatusCodeCfg {
 // sampling policy evaluator.
 type StringAttributeConfig struct {
 	// Tag that the filter is going to be matching against.
-	Key string `river:"key,attr"`
+	Key string `alloy:"key,attr"`
 	// Values indicate the set of values or regular expressions to use when matching against attribute values.
 	// StringAttribute Policy will apply exact value match on Values unless EnabledRegexMatching is true.
-	Values []string `river:"values,attr"`
+	Values []string `alloy:"values,attr"`
 	// EnabledRegexMatching determines whether match attribute values by regexp string.
-	EnabledRegexMatching bool `river:"enabled_regex_matching,attr,optional"`
+	EnabledRegexMatching bool `alloy:"enabled_regex_matching,attr,optional"`
 	// CacheMaxSize is the maximum number of attribute entries of LRU Cache that stores the matched result
 	// from the regular expressions defined in Values.
 	// CacheMaxSize will not be used if EnabledRegexMatching is set to false.
-	CacheMaxSize int `river:"cache_max_size,attr,optional"`
+	CacheMaxSize int `alloy:"cache_max_size,attr,optional"`
 	// InvertMatch indicates that values or regular expressions must not match against attribute values.
 	// If InvertMatch is true and Values is equal to 'acme', all other values will be sampled except 'acme'.
 	// Also, if the specified Key does not match on any resource or span attributes, data will be sampled.
-	InvertMatch bool `river:"invert_match,attr,optional"`
+	InvertMatch bool `alloy:"invert_match,attr,optional"`
 }
 
 func (stringAttributeConfig StringAttributeConfig) Convert() tsp.StringAttributeCfg {
@@ -162,7 +162,7 @@ func (stringAttributeConfig StringAttributeConfig) Convert() tsp.StringAttribute
 // sampling policy evaluator.
 type RateLimitingConfig struct {
 	// SpansPerSecond sets the limit on the maximum nuber of spans that can be processed each second.
-	SpansPerSecond int64 `river:"spans_per_second,attr"`
+	SpansPerSecond int64 `alloy:"spans_per_second,attr"`
 }
 
 func (rateLimitingConfig RateLimitingConfig) Convert() tsp.RateLimitingCfg {
@@ -175,8 +175,8 @@ func (rateLimitingConfig RateLimitingConfig) Convert() tsp.RateLimitingCfg {
 // sampling policy evaluator
 type SpanCountConfig struct {
 	// Minimum number of spans in a Trace
-	MinSpans int32 `river:"min_spans,attr"`
-	MaxSpans int32 `river:"max_spans,attr,optional"`
+	MinSpans int32 `alloy:"min_spans,attr"`
+	MaxSpans int32 `alloy:"max_spans,attr,optional"`
 }
 
 func (spanCountConfig SpanCountConfig) Convert() tsp.SpanCountCfg {
@@ -190,10 +190,10 @@ func (spanCountConfig SpanCountConfig) Convert() tsp.SpanCountCfg {
 // sampling policy evaluator.
 type BooleanAttributeConfig struct {
 	// Tag that the filter is going to be matching against.
-	Key string `river:"key,attr"`
+	Key string `alloy:"key,attr"`
 	// Value indicate the bool value, either true or false to use when matching against attribute values.
 	// BooleanAttribute Policy will apply exact value match on Value
-	Value bool `river:"value,attr"`
+	Value bool `alloy:"value,attr"`
 }
 
 func (booleanAttributeConfig BooleanAttributeConfig) Convert() tsp.BooleanAttributeCfg {
@@ -264,9 +264,9 @@ func (e *ErrorMode) UnmarshalText(text []byte) error {
 // OttlConditionConfig holds the configurable setting to create a OTTL condition filter
 // sampling policy evaluator.
 type OttlConditionConfig struct {
-	ErrorMode           ErrorMode `river:"error_mode,attr"`
-	SpanConditions      []string  `river:"span,attr,optional"`
-	SpanEventConditions []string  `river:"spanevent,attr,optional"`
+	ErrorMode           ErrorMode `alloy:"error_mode,attr"`
+	SpanConditions      []string  `alloy:"span,attr,optional"`
+	SpanEventConditions []string  `alloy:"spanevent,attr,optional"`
 }
 
 func (ottlConditionConfig OttlConditionConfig) Convert() tsp.OTTLConditionCfg {
@@ -279,9 +279,9 @@ func (ottlConditionConfig OttlConditionConfig) Convert() tsp.OTTLConditionCfg {
 
 type TraceStateConfig struct {
 	// Tag that the filter is going to be matching against.
-	Key string `river:"key,attr"`
+	Key string `alloy:"key,attr"`
 	// Values indicate the set of values to use when matching against trace_state values.
-	Values []string `river:"values,attr"`
+	Values []string `alloy:"values,attr"`
 }
 
 func (traceStateConfig TraceStateConfig) Convert() tsp.TraceStateCfg {
@@ -294,10 +294,10 @@ func (traceStateConfig TraceStateConfig) Convert() tsp.TraceStateCfg {
 // CompositeConfig holds the configurable settings to create a composite
 // sampling policy evaluator.
 type CompositeConfig struct {
-	MaxTotalSpansPerSecond int64                      `river:"max_total_spans_per_second,attr"`
-	PolicyOrder            []string                   `river:"policy_order,attr"`
-	SubPolicyCfg           []CompositeSubPolicyConfig `river:"composite_sub_policy,block,optional"`
-	RateAllocation         []RateAllocationConfig     `river:"rate_allocation,block,optional"`
+	MaxTotalSpansPerSecond int64                      `alloy:"max_total_spans_per_second,attr"`
+	PolicyOrder            []string                   `alloy:"policy_order,attr"`
+	SubPolicyCfg           []CompositeSubPolicyConfig `alloy:"composite_sub_policy,block,optional"`
+	RateAllocation         []RateAllocationConfig     `alloy:"rate_allocation,block,optional"`
 }
 
 func (compositeConfig CompositeConfig) Convert() tsp.CompositeCfg {
@@ -321,10 +321,10 @@ func (compositeConfig CompositeConfig) Convert() tsp.CompositeCfg {
 
 // CompositeSubPolicyConfig holds the common configuration to all policies under composite policy.
 type CompositeSubPolicyConfig struct {
-	SharedPolicyConfig SharedPolicyConfig `river:",squash"`
+	SharedPolicyConfig SharedPolicyConfig `alloy:",squash"`
 
 	// Configs for and policy evaluator.
-	AndConfig AndConfig `river:"and,block,optional"`
+	AndConfig AndConfig `alloy:"and,block,optional"`
 }
 
 func (compositeSubPolicyConfig CompositeSubPolicyConfig) Convert() tsp.CompositeSubPolicyCfg {
@@ -351,8 +351,8 @@ func (compositeSubPolicyConfig CompositeSubPolicyConfig) Convert() tsp.Composite
 
 // RateAllocationConfig  used within composite policy
 type RateAllocationConfig struct {
-	Policy  string `river:"policy,attr"`
-	Percent int64  `river:"percent,attr"`
+	Policy  string `alloy:"policy,attr"`
+	Percent int64  `alloy:"percent,attr"`
 }
 
 func (rateAllocationConfig RateAllocationConfig) Convert() tsp.RateAllocationCfg {
@@ -363,7 +363,7 @@ func (rateAllocationConfig RateAllocationConfig) Convert() tsp.RateAllocationCfg
 }
 
 type AndConfig struct {
-	SubPolicyConfig []AndSubPolicyConfig `river:"and_sub_policy,block"`
+	SubPolicyConfig []AndSubPolicyConfig `alloy:"and_sub_policy,block"`
 }
 
 func (andConfig AndConfig) Convert() tsp.AndCfg {
@@ -379,7 +379,7 @@ func (andConfig AndConfig) Convert() tsp.AndCfg {
 
 // AndSubPolicyConfig holds the common configuration to all policies under and policy.
 type AndSubPolicyConfig struct {
-	SharedPolicyConfig SharedPolicyConfig `river:",squash"`
+	SharedPolicyConfig SharedPolicyConfig `alloy:",squash"`
 }
 
 func (andSubPolicyConfig AndSubPolicyConfig) Convert() tsp.AndSubPolicyCfg {

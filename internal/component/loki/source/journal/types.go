@@ -9,13 +9,13 @@ import (
 
 // Arguments are the arguments for the component.
 type Arguments struct {
-	FormatAsJson bool                `river:"format_as_json,attr,optional"`
-	MaxAge       time.Duration       `river:"max_age,attr,optional"`
-	Path         string              `river:"path,attr,optional"`
-	RelabelRules flow_relabel.Rules  `river:"relabel_rules,attr,optional"`
-	Matches      string              `river:"matches,attr,optional"`
-	Receivers    []loki.LogsReceiver `river:"forward_to,attr"`
-	Labels       map[string]string   `river:"labels,attr,optional"`
+	FormatAsJson bool                `alloy:"format_as_json,attr,optional"`
+	MaxAge       time.Duration       `alloy:"max_age,attr,optional"`
+	Path         string              `alloy:"path,attr,optional"`
+	RelabelRules flow_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
+	Matches      string              `alloy:"matches,attr,optional"`
+	Receivers    []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Labels       map[string]string   `alloy:"labels,attr,optional"`
 }
 
 func defaultArgs() Arguments {

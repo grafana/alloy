@@ -92,10 +92,10 @@ func (c *Component) Update(args component.Arguments) error {
 // Arguments are the arguments for the component.
 type Arguments struct {
 	// ListenAddress only supports UDP.
-	ListenAddress        string              `river:"listen_address,attr,optional"`
-	UseIncomingTimestamp bool                `river:"use_incoming_timestamp,attr,optional"`
-	RelabelRules         flow_relabel.Rules  `river:"relabel_rules,attr,optional"`
-	Receivers            []loki.LogsReceiver `river:"forward_to,attr"`
+	ListenAddress        string              `alloy:"listen_address,attr,optional"`
+	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
+	RelabelRules         flow_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
+	Receivers            []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
 
 func defaultArgs() Arguments {

@@ -13,7 +13,7 @@ import (
 // throughout values with a key lookup.
 func TestEncodeKeyLookup(t *testing.T) {
 	type Body struct {
-		Data pointerMarshaler `river:"data,attr"`
+		Data pointerMarshaler `alloy:"data,attr"`
 	}
 
 	tt := []struct {
@@ -230,7 +230,7 @@ func TestValue_Call(t *testing.T) {
 
 func TestValue_Interface_In_Array(t *testing.T) {
 	type Container struct {
-		Field io.Closer `river:"field,attr"`
+		Field io.Closer `alloy:"field,attr"`
 	}
 
 	val := value.Encode(Container{Field: io.NopCloser(nil)})

@@ -47,57 +47,57 @@ func init() {
 // Arguments holds values which are used to configure the pprof.scrape
 // component.
 type Arguments struct {
-	Targets   []discovery.Target     `river:"targets,attr"`
-	ForwardTo []pyroscope.Appendable `river:"forward_to,attr"`
+	Targets   []discovery.Target     `alloy:"targets,attr"`
+	ForwardTo []pyroscope.Appendable `alloy:"forward_to,attr"`
 
 	// The job name to override the job label with.
-	JobName string `river:"job_name,attr,optional"`
+	JobName string `alloy:"job_name,attr,optional"`
 	// A set of query parameters with which the target is scraped.
-	Params url.Values `river:"params,attr,optional"`
+	Params url.Values `alloy:"params,attr,optional"`
 	// How frequently to scrape the targets of this scrape config.
-	ScrapeInterval time.Duration `river:"scrape_interval,attr,optional"`
+	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
 	// The timeout for scraping targets of this config.
-	ScrapeTimeout time.Duration `river:"scrape_timeout,attr,optional"`
+	ScrapeTimeout time.Duration `alloy:"scrape_timeout,attr,optional"`
 	// The URL scheme with which to fetch metrics from targets.
-	Scheme string `river:"scheme,attr,optional"`
+	Scheme string `alloy:"scheme,attr,optional"`
 
 	// todo(ctovena): add support for limits.
 	// // An uncompressed response body larger than this many bytes will cause the
 	// // scrape to fail. 0 means no limit.
-	// BodySizeLimit units.Base2Bytes `river:"body_size_limit,attr,optional"`
+	// BodySizeLimit units.Base2Bytes `alloy:"body_size_limit,attr,optional"`
 	// // More than this many targets after the target relabeling will cause the
 	// // scrapes to fail.
-	// TargetLimit uint `river:"target_limit,attr,optional"`
+	// TargetLimit uint `alloy:"target_limit,attr,optional"`
 	// // More than this many labels post metric-relabeling will cause the scrape
 	// // to fail.
-	// LabelLimit uint `river:"label_limit,attr,optional"`
+	// LabelLimit uint `alloy:"label_limit,attr,optional"`
 	// // More than this label name length post metric-relabeling will cause the
 	// // scrape to fail.
-	// LabelNameLengthLimit uint `river:"label_name_length_limit,attr,optional"`
+	// LabelNameLengthLimit uint `alloy:"label_name_length_limit,attr,optional"`
 	// // More than this label value length post metric-relabeling will cause the
 	// // scrape to fail.
-	// LabelValueLengthLimit uint `river:"label_value_length_limit,attr,optional"`
+	// LabelValueLengthLimit uint `alloy:"label_value_length_limit,attr,optional"`
 
-	HTTPClientConfig component_config.HTTPClientConfig `river:",squash"`
+	HTTPClientConfig component_config.HTTPClientConfig `alloy:",squash"`
 
-	ProfilingConfig ProfilingConfig `river:"profiling_config,block,optional"`
+	ProfilingConfig ProfilingConfig `alloy:"profiling_config,block,optional"`
 
-	Clustering cluster.ComponentBlock `river:"clustering,block,optional"`
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
 type ProfilingConfig struct {
-	Memory            ProfilingTarget         `river:"profile.memory,block,optional"`
-	Block             ProfilingTarget         `river:"profile.block,block,optional"`
-	Goroutine         ProfilingTarget         `river:"profile.goroutine,block,optional"`
-	Mutex             ProfilingTarget         `river:"profile.mutex,block,optional"`
-	ProcessCPU        ProfilingTarget         `river:"profile.process_cpu,block,optional"`
-	FGProf            ProfilingTarget         `river:"profile.fgprof,block,optional"`
-	GoDeltaProfMemory ProfilingTarget         `river:"profile.godeltaprof_memory,block,optional"`
-	GoDeltaProfMutex  ProfilingTarget         `river:"profile.godeltaprof_mutex,block,optional"`
-	GoDeltaProfBlock  ProfilingTarget         `river:"profile.godeltaprof_block,block,optional"`
-	Custom            []CustomProfilingTarget `river:"profile.custom,block,optional"`
+	Memory            ProfilingTarget         `alloy:"profile.memory,block,optional"`
+	Block             ProfilingTarget         `alloy:"profile.block,block,optional"`
+	Goroutine         ProfilingTarget         `alloy:"profile.goroutine,block,optional"`
+	Mutex             ProfilingTarget         `alloy:"profile.mutex,block,optional"`
+	ProcessCPU        ProfilingTarget         `alloy:"profile.process_cpu,block,optional"`
+	FGProf            ProfilingTarget         `alloy:"profile.fgprof,block,optional"`
+	GoDeltaProfMemory ProfilingTarget         `alloy:"profile.godeltaprof_memory,block,optional"`
+	GoDeltaProfMutex  ProfilingTarget         `alloy:"profile.godeltaprof_mutex,block,optional"`
+	GoDeltaProfBlock  ProfilingTarget         `alloy:"profile.godeltaprof_block,block,optional"`
+	Custom            []CustomProfilingTarget `alloy:"profile.custom,block,optional"`
 
-	PprofPrefix string `river:"path_prefix,attr,optional"`
+	PprofPrefix string `alloy:"path_prefix,attr,optional"`
 }
 
 // AllTargets returns the set of all standard and custom profiling targets,
@@ -175,16 +175,16 @@ func (cfg *ProfilingConfig) SetToDefault() {
 }
 
 type ProfilingTarget struct {
-	Enabled bool   `river:"enabled,attr,optional"`
-	Path    string `river:"path,attr,optional"`
-	Delta   bool   `river:"delta,attr,optional"`
+	Enabled bool   `alloy:"enabled,attr,optional"`
+	Path    string `alloy:"path,attr,optional"`
+	Delta   bool   `alloy:"delta,attr,optional"`
 }
 
 type CustomProfilingTarget struct {
-	Enabled bool   `river:"enabled,attr"`
-	Path    string `river:"path,attr"`
-	Delta   bool   `river:"delta,attr,optional"`
-	Name    string `river:",label"`
+	Enabled bool   `alloy:"enabled,attr"`
+	Path    string `alloy:"path,attr"`
+	Delta   bool   `alloy:"delta,attr,optional"`
+	Name    string `alloy:",label"`
 }
 
 var DefaultArguments = NewDefaultArguments()

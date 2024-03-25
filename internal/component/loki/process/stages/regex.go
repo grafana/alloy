@@ -23,8 +23,8 @@ var (
 // RegexConfig configures a processing stage uses regular expressions to
 // extract values from log lines into the shared values map.
 type RegexConfig struct {
-	Expression string  `river:"expression,attr"`
-	Source     *string `river:"source,attr,optional"`
+	Expression string  `alloy:"expression,attr"`
+	Source     *string `alloy:"source,attr,optional"`
 }
 
 // validateRegexConfig validates the config and return a regex

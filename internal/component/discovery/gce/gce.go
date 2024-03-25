@@ -26,12 +26,12 @@ func init() {
 
 // Arguments configures the discovery.gce component.
 type Arguments struct {
-	Project         string        `river:"project,attr"`
-	Zone            string        `river:"zone,attr"`
-	Filter          string        `river:"filter,attr,optional"`
-	RefreshInterval time.Duration `river:"refresh_interval,attr,optional"`
-	Port            int           `river:"port,attr,optional"`
-	TagSeparator    string        `river:"tag_separator,attr,optional"`
+	Project         string        `alloy:"project,attr"`
+	Zone            string        `alloy:"zone,attr"`
+	Filter          string        `alloy:"filter,attr,optional"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
+	Port            int           `alloy:"port,attr,optional"`
+	TagSeparator    string        `alloy:"tag_separator,attr,optional"`
 }
 
 // DefaultArguments holds default values for Arguments.

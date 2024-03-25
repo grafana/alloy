@@ -27,12 +27,12 @@ func init() {
 }
 
 type Arguments struct {
-	HTTPClientConfig  config.HTTPClientConfig `river:",squash"`
-	RefreshInterval   time.Duration           `river:"refresh_interval,attr,optional"`
-	URL               string                  `river:"url,attr"`
-	Query             string                  `river:"query,attr"`
-	IncludeParameters bool                    `river:"include_parameters,attr,optional"`
-	Port              int                     `river:"port,attr,optional"`
+	HTTPClientConfig  config.HTTPClientConfig `alloy:",squash"`
+	RefreshInterval   time.Duration           `alloy:"refresh_interval,attr,optional"`
+	URL               string                  `alloy:"url,attr"`
+	Query             string                  `alloy:"query,attr"`
+	IncludeParameters bool                    `alloy:"include_parameters,attr,optional"`
+	Port              int                     `alloy:"port,attr,optional"`
 }
 
 var DefaultArguments = Arguments{

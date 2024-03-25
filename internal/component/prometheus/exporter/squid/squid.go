@@ -30,9 +30,9 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 
 // Arguments controls the squid exporter.
 type Arguments struct {
-	SquidAddr     string            `river:"address,attr"`
-	SquidUser     string            `river:"username,attr,optional"`
-	SquidPassword alloytypes.Secret `river:"password,attr,optional"`
+	SquidAddr     string            `alloy:"address,attr"`
+	SquidUser     string            `alloy:"username,attr,optional"`
+	SquidPassword alloytypes.Secret `alloy:"password,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

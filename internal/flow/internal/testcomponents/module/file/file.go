@@ -28,10 +28,10 @@ func init() {
 
 // Arguments holds values which are used to configure the module.file component.
 type Arguments struct {
-	LocalFileArguments file.Arguments `river:",squash"`
+	LocalFileArguments file.Arguments `alloy:",squash"`
 
 	// Arguments to pass into the module.
-	Arguments map[string]any `river:"arguments,block,optional"`
+	Arguments map[string]any `alloy:"arguments,block,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

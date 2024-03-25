@@ -22,9 +22,9 @@ type DockerConfig struct{}
 // CRIConfig is an empty struct that is used to enable a pre-defined pipeline
 // for decoding entries that are using the CRI logging format.
 type CRIConfig struct {
-	MaxPartialLines            int    `river:"max_partial_lines,attr,optional"`
-	MaxPartialLineSize         uint64 `river:"max_partial_line_size,attr,optional"`
-	MaxPartialLineSizeTruncate bool   `river:"max_partial_line_size_truncate,attr,optional"`
+	MaxPartialLines            int    `alloy:"max_partial_lines,attr,optional"`
+	MaxPartialLineSize         uint64 `alloy:"max_partial_line_size,attr,optional"`
+	MaxPartialLineSizeTruncate bool   `alloy:"max_partial_line_size_truncate,attr,optional"`
 }
 
 var (

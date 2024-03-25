@@ -8,7 +8,7 @@ import (
 const Name = "gcp"
 
 type Config struct {
-	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -49,23 +49,23 @@ func (args Config) Convert() map[string]interface{} {
 
 // ResourceAttributesConfig provides config for gcp resource attributes.
 type ResourceAttributesConfig struct {
-	CloudAccountID          rac.ResourceAttributeConfig `river:"cloud.account.id,block,optional"`
-	CloudAvailabilityZone   rac.ResourceAttributeConfig `river:"cloud.availability_zone,block,optional"`
-	CloudPlatform           rac.ResourceAttributeConfig `river:"cloud.platform,block,optional"`
-	CloudProvider           rac.ResourceAttributeConfig `river:"cloud.provider,block,optional"`
-	CloudRegion             rac.ResourceAttributeConfig `river:"cloud.region,block,optional"`
-	FaasID                  rac.ResourceAttributeConfig `river:"faas.id,block,optional"`
-	FaasInstance            rac.ResourceAttributeConfig `river:"faas.instance,block,optional"`
-	FaasName                rac.ResourceAttributeConfig `river:"faas.name,block,optional"`
-	FaasVersion             rac.ResourceAttributeConfig `river:"faas.version,block,optional"`
-	GcpCloudRunJobExecution rac.ResourceAttributeConfig `river:"gcp.cloud_run.job.execution,block,optional"`
-	GcpCloudRunJobTaskIndex rac.ResourceAttributeConfig `river:"gcp.cloud_run.job.task_index,block,optional"`
-	GcpGceInstanceHostname  rac.ResourceAttributeConfig `river:"gcp.gce.instance.hostname,block,optional"`
-	GcpGceInstanceName      rac.ResourceAttributeConfig `river:"gcp.gce.instance.name,block,optional"`
-	HostID                  rac.ResourceAttributeConfig `river:"host.id,block,optional"`
-	HostName                rac.ResourceAttributeConfig `river:"host.name,block,optional"`
-	HostType                rac.ResourceAttributeConfig `river:"host.type,block,optional"`
-	K8sClusterName          rac.ResourceAttributeConfig `river:"k8s.cluster.name,block,optional"`
+	CloudAccountID          rac.ResourceAttributeConfig `alloy:"cloud.account.id,block,optional"`
+	CloudAvailabilityZone   rac.ResourceAttributeConfig `alloy:"cloud.availability_zone,block,optional"`
+	CloudPlatform           rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
+	CloudProvider           rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
+	CloudRegion             rac.ResourceAttributeConfig `alloy:"cloud.region,block,optional"`
+	FaasID                  rac.ResourceAttributeConfig `alloy:"faas.id,block,optional"`
+	FaasInstance            rac.ResourceAttributeConfig `alloy:"faas.instance,block,optional"`
+	FaasName                rac.ResourceAttributeConfig `alloy:"faas.name,block,optional"`
+	FaasVersion             rac.ResourceAttributeConfig `alloy:"faas.version,block,optional"`
+	GcpCloudRunJobExecution rac.ResourceAttributeConfig `alloy:"gcp.cloud_run.job.execution,block,optional"`
+	GcpCloudRunJobTaskIndex rac.ResourceAttributeConfig `alloy:"gcp.cloud_run.job.task_index,block,optional"`
+	GcpGceInstanceHostname  rac.ResourceAttributeConfig `alloy:"gcp.gce.instance.hostname,block,optional"`
+	GcpGceInstanceName      rac.ResourceAttributeConfig `alloy:"gcp.gce.instance.name,block,optional"`
+	HostID                  rac.ResourceAttributeConfig `alloy:"host.id,block,optional"`
+	HostName                rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
+	HostType                rac.ResourceAttributeConfig `alloy:"host.type,block,optional"`
+	K8sClusterName          rac.ResourceAttributeConfig `alloy:"k8s.cluster.name,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {

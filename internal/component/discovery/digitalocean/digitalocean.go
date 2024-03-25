@@ -27,15 +27,15 @@ func init() {
 }
 
 type Arguments struct {
-	RefreshInterval time.Duration `river:"refresh_interval,attr,optional"`
-	Port            int           `river:"port,attr,optional"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
+	Port            int           `alloy:"port,attr,optional"`
 
-	BearerToken     alloytypes.Secret `river:"bearer_token,attr,optional"`
-	BearerTokenFile string            `river:"bearer_token_file,attr,optional"`
+	BearerToken     alloytypes.Secret `alloy:"bearer_token,attr,optional"`
+	BearerTokenFile string            `alloy:"bearer_token_file,attr,optional"`
 
-	ProxyConfig     *config.ProxyConfig `river:",squash"`
-	FollowRedirects bool                `river:"follow_redirects,attr,optional"`
-	EnableHTTP2     bool                `river:"enable_http2,attr,optional"`
+	ProxyConfig     *config.ProxyConfig `alloy:",squash"`
+	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
+	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
 }
 
 var DefaultArguments = Arguments{

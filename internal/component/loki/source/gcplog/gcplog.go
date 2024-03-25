@@ -34,10 +34,10 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.gcplog
 // component.
 type Arguments struct {
-	PullTarget   *gcptypes.PullConfig `river:"pull,block,optional"`
-	PushTarget   *gcptypes.PushConfig `river:"push,block,optional"`
-	ForwardTo    []loki.LogsReceiver  `river:"forward_to,attr"`
-	RelabelRules flow_relabel.Rules   `river:"relabel_rules,attr,optional"`
+	PullTarget   *gcptypes.PullConfig `alloy:"pull,block,optional"`
+	PushTarget   *gcptypes.PushConfig `alloy:"push,block,optional"`
+	ForwardTo    []loki.LogsReceiver  `alloy:"forward_to,attr"`
+	RelabelRules flow_relabel.Rules   `alloy:"relabel_rules,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -171,5 +171,5 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type targetDebugInfo struct {
-	Details map[string]string `river:"target_info,attr"`
+	Details map[string]string `alloy:"target_info,attr"`
 }

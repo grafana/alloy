@@ -77,22 +77,22 @@ type Arguments struct {
 	// DataSourceNames to use to connect to Postgres. This is marked optional because it
 	// may also be supplied by the POSTGRES_EXPORTER_DATA_SOURCE_NAME env var,
 	// though it is not recommended to do so.
-	DataSourceNames []alloytypes.Secret `river:"data_source_names,attr,optional"`
+	DataSourceNames []alloytypes.Secret `alloy:"data_source_names,attr,optional"`
 
 	// Attributes
-	DisableSettingsMetrics  bool   `river:"disable_settings_metrics,attr,optional"`
-	DisableDefaultMetrics   bool   `river:"disable_default_metrics,attr,optional"`
-	CustomQueriesConfigPath string `river:"custom_queries_config_path,attr,optional"`
+	DisableSettingsMetrics  bool   `alloy:"disable_settings_metrics,attr,optional"`
+	DisableDefaultMetrics   bool   `alloy:"disable_default_metrics,attr,optional"`
+	CustomQueriesConfigPath string `alloy:"custom_queries_config_path,attr,optional"`
 
 	// Blocks
-	AutoDiscovery AutoDiscovery `river:"autodiscovery,block,optional"`
+	AutoDiscovery AutoDiscovery `alloy:"autodiscovery,block,optional"`
 }
 
 // Autodiscovery controls discovery of databases outside any specified in DataSourceNames.
 type AutoDiscovery struct {
-	Enabled           bool     `river:"enabled,attr,optional"`
-	DatabaseAllowlist []string `river:"database_allowlist,attr,optional"`
-	DatabaseDenylist  []string `river:"database_denylist,attr,optional"`
+	Enabled           bool     `alloy:"enabled,attr,optional"`
+	DatabaseAllowlist []string `alloy:"database_allowlist,attr,optional"`
+	DatabaseDenylist  []string `alloy:"database_denylist,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

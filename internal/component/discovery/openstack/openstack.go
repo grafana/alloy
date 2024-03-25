@@ -28,24 +28,24 @@ func init() {
 }
 
 type Arguments struct {
-	IdentityEndpoint            string            `river:"identity_endpoint,attr,optional"`
-	Username                    string            `river:"username,attr,optional"`
-	UserID                      string            `river:"userid,attr,optional"`
-	Password                    alloytypes.Secret `river:"password,attr,optional"`
-	ProjectName                 string            `river:"project_name,attr,optional"`
-	ProjectID                   string            `river:"project_id,attr,optional"`
-	DomainName                  string            `river:"domain_name,attr,optional"`
-	DomainID                    string            `river:"domain_id,attr,optional"`
-	ApplicationCredentialName   string            `river:"application_credential_name,attr,optional"`
-	ApplicationCredentialID     string            `river:"application_credential_id,attr,optional"`
-	ApplicationCredentialSecret alloytypes.Secret `river:"application_credential_secret,attr,optional"`
-	Role                        string            `river:"role,attr"`
-	Region                      string            `river:"region,attr"`
-	RefreshInterval             time.Duration     `river:"refresh_interval,attr,optional"`
-	Port                        int               `river:"port,attr,optional"`
-	AllTenants                  bool              `river:"all_tenants,attr,optional"`
-	TLSConfig                   config.TLSConfig  `river:"tls_config,block,optional"`
-	Availability                string            `river:"availability,attr,optional"`
+	IdentityEndpoint            string            `alloy:"identity_endpoint,attr,optional"`
+	Username                    string            `alloy:"username,attr,optional"`
+	UserID                      string            `alloy:"userid,attr,optional"`
+	Password                    alloytypes.Secret `alloy:"password,attr,optional"`
+	ProjectName                 string            `alloy:"project_name,attr,optional"`
+	ProjectID                   string            `alloy:"project_id,attr,optional"`
+	DomainName                  string            `alloy:"domain_name,attr,optional"`
+	DomainID                    string            `alloy:"domain_id,attr,optional"`
+	ApplicationCredentialName   string            `alloy:"application_credential_name,attr,optional"`
+	ApplicationCredentialID     string            `alloy:"application_credential_id,attr,optional"`
+	ApplicationCredentialSecret alloytypes.Secret `alloy:"application_credential_secret,attr,optional"`
+	Role                        string            `alloy:"role,attr"`
+	Region                      string            `alloy:"region,attr"`
+	RefreshInterval             time.Duration     `alloy:"refresh_interval,attr,optional"`
+	Port                        int               `alloy:"port,attr,optional"`
+	AllTenants                  bool              `alloy:"all_tenants,attr,optional"`
+	TLSConfig                   config.TLSConfig  `alloy:"tls_config,block,optional"`
+	Availability                string            `alloy:"availability,attr,optional"`
 }
 
 var DefaultArguments = Arguments{

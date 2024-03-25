@@ -165,7 +165,7 @@ func TestPtrPropagatingDefaultWithNil(t *testing.T) {
 
 // StructPropagatingDefault has the outer defaults matching the inner block's defaults. The inner block is a struct.
 type StructPropagatingDefault struct {
-	Inner AttrWithDefault `river:"inner,block,optional"`
+	Inner AttrWithDefault `alloy:"inner,block,optional"`
 }
 
 func (o *StructPropagatingDefault) SetToDefault() {
@@ -176,7 +176,7 @@ func (o *StructPropagatingDefault) SetToDefault() {
 
 // PtrPropagatingDefault has the outer defaults matching the inner block's defaults. The inner block is a pointer.
 type PtrPropagatingDefault struct {
-	Inner *AttrWithDefault `river:"inner,block,optional"`
+	Inner *AttrWithDefault `alloy:"inner,block,optional"`
 }
 
 func (o *PtrPropagatingDefault) SetToDefault() {
@@ -187,7 +187,7 @@ func (o *PtrPropagatingDefault) SetToDefault() {
 
 // MismatchingDefault has the outer defaults NOT matching the inner block's defaults. The inner block is a pointer.
 type MismatchingDefault struct {
-	Inner *AttrWithDefault `river:"inner,block,optional"`
+	Inner *AttrWithDefault `alloy:"inner,block,optional"`
 }
 
 func (o *MismatchingDefault) SetToDefault() {
@@ -198,7 +198,7 @@ func (o *MismatchingDefault) SetToDefault() {
 
 // ZeroDefault has the outer defaults setting to zero values. The inner block is a pointer.
 type ZeroDefault struct {
-	Inner *AttrWithDefault `river:"inner,block,optional"`
+	Inner *AttrWithDefault `alloy:"inner,block,optional"`
 }
 
 func (o *ZeroDefault) SetToDefault() {
@@ -207,12 +207,12 @@ func (o *ZeroDefault) SetToDefault() {
 
 // NoDefaultDefined has no defaults defined. The inner block is a pointer.
 type NoDefaultDefined struct {
-	Inner *AttrWithDefault `river:"inner,block,optional"`
+	Inner *AttrWithDefault `alloy:"inner,block,optional"`
 }
 
 // AttrWithDefault has a default value of a non-zero number.
 type AttrWithDefault struct {
-	Number int `river:"number,attr,optional"`
+	Number int `alloy:"number,attr,optional"`
 }
 
 func (i *AttrWithDefault) SetToDefault() {

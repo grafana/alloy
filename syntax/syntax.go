@@ -18,16 +18,16 @@ import (
 )
 
 // Marshal returns the pretty-printed encoding of v as a River configuration
-// file. v must be a Go struct with river struct tags which determine the
+// file. v must be a Go struct with alloy struct tags which determine the
 // structure of the resulting file.
 //
 // Marshal traverses the value v recursively, encoding each struct field as a
-// River block or River attribute, based on the flags provided to the river
+// River block or River attribute, based on the flags provided to the alloy
 // struct tag.
 //
 // When a struct field represents a River block, Marshal creates a new block
 // and recursively encodes the value as the body of the block. The name of the
-// created block is taken from the name specified by the river struct tag.
+// created block is taken from the name specified by the alloy struct tag.
 //
 // Struct fields which represent River blocks must be either a Go struct or a
 // slice of Go structs. When the field is a Go struct, its value is encoded as
@@ -40,7 +40,7 @@ import (
 // the string type. When specified, there must not be more than one struct
 // field which represents a block label.
 //
-// The river tag specifies a name, possibly followed by a comma-separated list
+// The alloy tag specifies a name, possibly followed by a comma-separated list
 // of options. The name must be empty if the provided options do not support a
 // name being defined. The following provides examples for all supported struct
 // field tags with their meanings:
@@ -48,62 +48,62 @@ import (
 //	// Field appears as a block named "example". It will always appear in the
 //	// resulting encoding. When decoding, "example" is treated as a required
 //	// block and must be present in the source text.
-//	Field struct{...} `river:"example,block"`
+//	Field struct{...} `alloy:"example,block"`
 //
 //	// Field appears as a set of blocks named "example." It will appear in the
 //	// resulting encoding if there is at least one element in the slice. When
 //	// decoding, "example" is treated as a required block and at least one
 //	// "example" block must be present in the source text.
-//	Field []struct{...} `river:"example,block"`
+//	Field []struct{...} `alloy:"example,block"`
 //
 //	// Field appears as block named "example." It will always appear in the
 //	// resulting encoding. When decoding, "example" is treated as an optional
 //	// block and can be omitted from the source text.
-//	Field struct{...} `river:"example,block,optional"`
+//	Field struct{...} `alloy:"example,block,optional"`
 //
 //	// Field appears as a set of blocks named "example." It will appear in the
 //	// resulting encoding if there is at least one element in the slice. When
 //	// decoding, "example" is treated as an optional block and can be omitted
 //	// from the source text.
-//	Field []struct{...} `river:"example,block,optional"`
+//	Field []struct{...} `alloy:"example,block,optional"`
 //
 //	// Field appears as an attribute named "example." It will always appear in
 //	// the resulting encoding. When decoding, "example" is treated as a
 //	// required attribute and must be present in the source text.
-//	Field bool `river:"example,attr"`
+//	Field bool `alloy:"example,attr"`
 //
 //	// Field appears as an attribute named "example." If the field's value is
 //	// the Go zero value, "example" is omitted from the resulting encoding.
 //	// When decoding, "example" is treated as an optional attribute and can be
 //	// omitted from the source text.
-//	Field bool `river:"example,attr,optional"`
+//	Field bool `alloy:"example,attr,optional"`
 //
 //	// The value of Field appears as the block label for the struct being
 //	// converted into a block. When decoding, a block label must be provided.
-//	Field string `river:",label"`
+//	Field string `alloy:",label"`
 //
 //	// The inner attributes and blocks of Field are exposed as top-level
 //	// attributes and blocks of the outer struct.
-//	Field struct{...} `river:",squash"`
+//	Field struct{...} `alloy:",squash"`
 //
 //	// Field appears as a set of blocks starting with "example.". Only the
 //	// first set element in the struct will be encoded. Each field in struct
 //	// must be a block. The name of the block is prepended to the enum name.
 //	// When decoding, enum blocks are treated as optional blocks and can be
 //	// omitted from the source text.
-//	Field []struct{...} `river:"example,enum"`
+//	Field []struct{...} `alloy:"example,enum"`
 //
-//	// Field is equivalent to `river:"example,enum"`.
-//	Field []struct{...} `river:"example,enum,optional"`
+//	// Field is equivalent to `alloy:"example,enum"`.
+//	Field []struct{...} `alloy:"example,enum,optional"`
 //
-// If a river tag specifies a required or optional block, the name is permitted
+// If an alloy tag specifies a required or optional block, the name is permitted
 // to contain period `.` characters.
 //
-// Marshal will panic if it encounters a struct with invalid river tags.
+// Marshal will panic if it encounters a struct with invalid alloy tags.
 //
 // When a struct field represents a River attribute, Marshal encodes the struct
 // value as a River value. The attribute name will be taken from the name
-// specified by the river struct tag. See MarshalValue for the rules used to
+// specified by the alloy struct tag. See MarshalValue for the rules used to
 // convert a Go value into a River value.
 func Marshal(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
@@ -152,13 +152,13 @@ func Marshal(v interface{}) ([]byte, error) {
 //	// Field appears as an object field named "my_name". It will always
 //	// appear in the resulting encoding. When decoding, "my_name" is treated
 //	// as a required attribute and must be present in the source text.
-//	Field bool `river:"my_name,attr"`
+//	Field bool `alloy:"my_name,attr"`
 //
 //	// Field appears as an object field named "my_name". If the field's value
 //	// is the Go zero value, "example" is omitted from the resulting encoding.
 //	// When decoding, "my_name" is treated as an optional attribute and can be
 //	// omitted from the source text.
-//	Field bool `river:"my_name,attr,optional"`
+//	Field bool `alloy:"my_name,attr,optional"`
 func MarshalValue(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := NewEncoder(&buf).EncodeValue(v); err != nil {
@@ -219,10 +219,10 @@ func (enc *Encoder) EncodeValue(v interface{}) error {
 // unmarshaling into a map.
 //
 // To unmarshal a River body into a struct, Unmarshal matches incoming
-// attributes and blocks to the river struct tags specified by v. Incoming
-// attribute and blocks which do not match to a river struct tag cause a
+// attributes and blocks to the alloy struct tags specified by v. Incoming
+// attribute and blocks which do not match to an alloy struct tag cause a
 // decoding error. Additionally, any attribute or block marked as required by
-// the river struct tag that are not present in the source text will generate a
+// the alloy struct tag that are not present in the source text will generate a
 // decoding error.
 //
 // To unmarshal a list of River blocks into a slice, Unmarshal resets the slice
@@ -254,9 +254,9 @@ func Unmarshal(in []byte, v interface{}) error {
 // ConvertibleIntoCapsule.
 //
 // To unmarshal a River object into a struct, UnmarshalValue matches incoming
-// object fields to the river struct tags specified by v. Incoming object
-// fields which do not match to a river struct tag cause a decoding error.
-// Additionally, any object field marked as required by the river struct
+// object fields to the alloy struct tags specified by v. Incoming object
+// fields which do not match to an alloy struct tag cause a decoding error.
+// Additionally, any object field marked as required by the alloy struct
 // tag that are not present in the source text will generate a decoding error.
 //
 // To unmarshal River into an interface value, Unmarshal stores one of the

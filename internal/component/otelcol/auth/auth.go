@@ -45,7 +45,7 @@ type Arguments interface {
 type Exports struct {
 	// Handler is the managed component. Handler is updated any time the
 	// extension is updated.
-	Handler Handler `river:"handler,attr"`
+	Handler Handler `alloy:"handler,attr"`
 }
 
 // Handler combines an extension with its ID.

@@ -39,17 +39,17 @@ type (
 
 // Arguments configures the otelcol.extension.jaegerremotesampling component.
 type Arguments struct {
-	GRPC *GRPCServerArguments `river:"grpc,block,optional"`
-	HTTP *HTTPServerArguments `river:"http,block,optional"`
+	GRPC *GRPCServerArguments `alloy:"grpc,block,optional"`
+	HTTP *HTTPServerArguments `alloy:"http,block,optional"`
 
-	Source ArgumentsSource `river:"source,block"`
+	Source ArgumentsSource `alloy:"source,block"`
 }
 
 type ArgumentsSource struct {
-	Content        string               `river:"content,attr,optional"`
-	Remote         *GRPCClientArguments `river:"remote,block,optional"`
-	File           string               `river:"file,attr,optional"`
-	ReloadInterval time.Duration        `river:"reload_interval,attr,optional"`
+	Content        string               `alloy:"content,attr,optional"`
+	Remote         *GRPCClientArguments `alloy:"remote,block,optional"`
+	File           string               `alloy:"file,attr,optional"`
+	ReloadInterval time.Duration        `alloy:"reload_interval,attr,optional"`
 }
 
 var (

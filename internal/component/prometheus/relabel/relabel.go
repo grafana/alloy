@@ -39,13 +39,13 @@ func init() {
 // component.
 type Arguments struct {
 	// Where the relabelled metrics should be forwarded to.
-	ForwardTo []storage.Appendable `river:"forward_to,attr"`
+	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
 
 	// The relabelling rules to apply to each metric before it's forwarded.
-	MetricRelabelConfigs []*flow_relabel.Config `river:"rule,block,optional"`
+	MetricRelabelConfigs []*flow_relabel.Config `alloy:"rule,block,optional"`
 
 	// Cache size to use for LRU cache.
-	CacheSize int `river:"max_cache_size,attr,optional"`
+	CacheSize int `alloy:"max_cache_size,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -65,8 +65,8 @@ func (arg *Arguments) Validate() error {
 
 // Exports holds values which are exported by the prometheus.relabel component.
 type Exports struct {
-	Receiver storage.Appendable `river:"receiver,attr"`
-	Rules    flow_relabel.Rules `river:"rules,attr"`
+	Receiver storage.Appendable `alloy:"receiver,attr"`
+	Rules    flow_relabel.Rules `alloy:"rules,attr"`
 }
 
 // Component implements the prometheus.relabel component.

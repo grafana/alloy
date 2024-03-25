@@ -31,15 +31,15 @@ func init() {
 
 // Arguments configures the otelcol.auth.oauth2 component.
 type Arguments struct {
-	ClientID         string                     `river:"client_id,attr,optional"`
-	ClientIDFile     string                     `river:"client_id_file,attr,optional"`
-	ClientSecret     alloytypes.Secret          `river:"client_secret,attr,optional"`
-	ClientSecretFile string                     `river:"client_secret_file,attr,optional"`
-	TokenURL         string                     `river:"token_url,attr"`
-	EndpointParams   url.Values                 `river:"endpoint_params,attr,optional"`
-	Scopes           []string                   `river:"scopes,attr,optional"`
-	TLSSetting       otelcol.TLSClientArguments `river:"tls,block,optional"`
-	Timeout          time.Duration              `river:"timeout,attr,optional"`
+	ClientID         string                     `alloy:"client_id,attr,optional"`
+	ClientIDFile     string                     `alloy:"client_id_file,attr,optional"`
+	ClientSecret     alloytypes.Secret          `alloy:"client_secret,attr,optional"`
+	ClientSecretFile string                     `alloy:"client_secret_file,attr,optional"`
+	TokenURL         string                     `alloy:"token_url,attr"`
+	EndpointParams   url.Values                 `alloy:"endpoint_params,attr,optional"`
+	Scopes           []string                   `alloy:"scopes,attr,optional"`
+	TLSSetting       otelcol.TLSClientArguments `alloy:"tls,block,optional"`
+	Timeout          time.Duration              `alloy:"timeout,attr,optional"`
 }
 
 var _ auth.Arguments = Arguments{}

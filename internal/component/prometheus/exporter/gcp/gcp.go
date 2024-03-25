@@ -27,14 +27,14 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 }
 
 type Arguments struct {
-	ProjectIDs            []string      `river:"project_ids,attr"`
-	MetricPrefixes        []string      `river:"metrics_prefixes,attr"`
-	ExtraFilters          []string      `river:"extra_filters,attr,optional"`
-	RequestInterval       time.Duration `river:"request_interval,attr,optional"`
-	RequestOffset         time.Duration `river:"request_offset,attr,optional"`
-	IngestDelay           bool          `river:"ingest_delay,attr,optional"`
-	DropDelegatedProjects bool          `river:"drop_delegated_projects,attr,optional"`
-	ClientTimeout         time.Duration `river:"gcp_client_timeout,attr,optional"`
+	ProjectIDs            []string      `alloy:"project_ids,attr"`
+	MetricPrefixes        []string      `alloy:"metrics_prefixes,attr"`
+	ExtraFilters          []string      `alloy:"extra_filters,attr,optional"`
+	RequestInterval       time.Duration `alloy:"request_interval,attr,optional"`
+	RequestOffset         time.Duration `alloy:"request_offset,attr,optional"`
+	IngestDelay           bool          `alloy:"ingest_delay,attr,optional"`
+	DropDelegatedProjects bool          `alloy:"drop_delegated_projects,attr,optional"`
+	ClientTimeout         time.Duration `alloy:"gcp_client_timeout,attr,optional"`
 }
 
 var DefaultArguments = Arguments{

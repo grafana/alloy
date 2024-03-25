@@ -27,15 +27,15 @@ func init() {
 
 // Arguments configures the otelcol.receiver.opencensus component.
 type Arguments struct {
-	CorsAllowedOrigins []string `river:"cors_allowed_origins,attr,optional"`
+	CorsAllowedOrigins []string `alloy:"cors_allowed_origins,attr,optional"`
 
-	GRPC otelcol.GRPCServerArguments `river:",squash"`
+	GRPC otelcol.GRPCServerArguments `alloy:",squash"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	// Output configures where to send received data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var _ receiver.Arguments = Arguments{}

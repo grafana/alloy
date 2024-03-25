@@ -201,7 +201,7 @@ func TestBlock(t *testing.T) {
 
 func TestBlock_Empty_Required_Block_Slice(t *testing.T) {
 	type wrapper struct {
-		Blocks []testBlock `river:"some_block,block"`
+		Blocks []testBlock `alloy:"some_block,block"`
 	}
 
 	tt := []struct {
@@ -224,19 +224,19 @@ func TestBlock_Empty_Required_Block_Slice(t *testing.T) {
 }
 
 type testBlock struct {
-	Number  int            `river:"number,attr,optional"`
-	String  string         `river:"string,attr,optional"`
-	Boolean bool           `river:"boolean,attr,optional"`
-	Array   []any          `river:"array,attr,optional"`
-	Object  map[string]any `river:"object,attr,optional"`
+	Number  int            `alloy:"number,attr,optional"`
+	String  string         `alloy:"string,attr,optional"`
+	Boolean bool           `alloy:"boolean,attr,optional"`
+	Array   []any          `alloy:"array,attr,optional"`
+	Object  map[string]any `alloy:"object,attr,optional"`
 
-	Labeled []labeledBlock `river:"labeled_block,block,optional"`
-	Blocks  []testBlock    `river:"inner_block,block,optional"`
+	Labeled []labeledBlock `alloy:"labeled_block,block,optional"`
+	Blocks  []testBlock    `alloy:"inner_block,block,optional"`
 }
 
 type labeledBlock struct {
-	TestBlock testBlock `river:",squash"`
-	Label     string    `river:",label"`
+	TestBlock testBlock `alloy:",squash"`
+	Label     string    `alloy:",label"`
 }
 
 func TestNilBody(t *testing.T) {
@@ -300,8 +300,8 @@ func TestHideDefaults(t *testing.T) {
 }
 
 type defaultsBlock struct {
-	Name string `river:"name,attr,optional"`
-	Age  int    `river:"age,attr,optional"`
+	Name string `alloy:"name,attr,optional"`
+	Age  int    `alloy:"age,attr,optional"`
 }
 
 var _ syntax.Defaulter = (*defaultsBlock)(nil)
@@ -315,7 +315,7 @@ func (d *defaultsBlock) SetToDefault() {
 
 func TestMapBlocks(t *testing.T) {
 	type block struct {
-		Value map[string]any `river:"block,block,optional"`
+		Value map[string]any `alloy:"block,block,optional"`
 	}
 	val := block{Value: map[string]any{"field": "value"}}
 

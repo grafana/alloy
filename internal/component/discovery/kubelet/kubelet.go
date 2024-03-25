@@ -72,10 +72,10 @@ func init() {
 
 // Arguments configures the discovery.kubelet component.
 type Arguments struct {
-	URL              config.URL              `river:"url,attr,optional"`
-	Interval         time.Duration           `river:"refresh_interval,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
-	Namespaces       []string                `river:"namespaces,attr,optional"`
+	URL              config.URL              `alloy:"url,attr,optional"`
+	Interval         time.Duration           `alloy:"refresh_interval,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
+	Namespaces       []string                `alloy:"namespaces,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

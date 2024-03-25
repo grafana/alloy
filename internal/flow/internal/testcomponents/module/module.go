@@ -25,7 +25,7 @@ type ModuleComponent struct {
 // Exports holds values which are exported from the run module.
 type Exports struct {
 	// Exports exported from the running module.
-	Exports map[string]any `river:"exports,block"`
+	Exports map[string]any `alloy:"exports,block"`
 }
 
 // NewModuleComponent initializes a new ModuleComponent.

@@ -12,8 +12,8 @@ import (
 
 // Dimension defines the dimension name and optional default value if the Dimension is missing from a span attribute.
 type Dimension struct {
-	Name    string  `river:"name,attr"`
-	Default *string `river:"default,attr,optional"`
+	Name    string  `alloy:"name,attr"`
+	Default *string `alloy:"default,attr,optional"`
 }
 
 func (d Dimension) Convert() spanmetricsconnector.Dimension {
@@ -56,10 +56,10 @@ func ConvertMetricUnit(unit string) (map[string]interface{}, error) {
 }
 
 type HistogramConfig struct {
-	Disable     bool                        `river:"disable,attr,optional"`
-	Unit        string                      `river:"unit,attr,optional"`
-	Exponential *ExponentialHistogramConfig `river:"exponential,block,optional"`
-	Explicit    *ExplicitHistogramConfig    `river:"explicit,block,optional"`
+	Disable     bool                        `alloy:"disable,attr,optional"`
+	Unit        string                      `alloy:"unit,attr,optional"`
+	Exponential *ExponentialHistogramConfig `alloy:"exponential,block,optional"`
+	Explicit    *ExplicitHistogramConfig    `alloy:"explicit,block,optional"`
 }
 
 var (
@@ -123,7 +123,7 @@ func (hc HistogramConfig) Convert() (*spanmetricsconnector.HistogramConfig, erro
 }
 
 type ExemplarsConfig struct {
-	Enabled bool `river:"enabled,attr,optional"`
+	Enabled bool `alloy:"enabled,attr,optional"`
 }
 
 func (ec ExemplarsConfig) Convert() *spanmetricsconnector.ExemplarsConfig {
@@ -133,7 +133,7 @@ func (ec ExemplarsConfig) Convert() *spanmetricsconnector.ExemplarsConfig {
 }
 
 type ExponentialHistogramConfig struct {
-	MaxSize int32 `river:"max_size,attr,optional"`
+	MaxSize int32 `alloy:"max_size,attr,optional"`
 }
 
 var (
@@ -163,7 +163,7 @@ func (ehc ExponentialHistogramConfig) Convert() *spanmetricsconnector.Exponentia
 
 type ExplicitHistogramConfig struct {
 	// Buckets is the list of durations representing explicit histogram buckets.
-	Buckets []time.Duration `river:"buckets,attr,optional"`
+	Buckets []time.Duration `alloy:"buckets,attr,optional"`
 }
 
 var (

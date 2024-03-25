@@ -63,11 +63,11 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 
 // SNMPTarget defines a target to be used by the exporter.
 type SNMPTarget struct {
-	Name       string `river:",label"`
-	Target     string `river:"address,attr"`
-	Module     string `river:"module,attr,optional"`
-	Auth       string `river:"auth,attr,optional"`
-	WalkParams string `river:"walk_params,attr,optional"`
+	Name       string `alloy:",label"`
+	Target     string `alloy:"address,attr"`
+	Module     string `alloy:"module,attr,optional"`
+	Auth       string `alloy:"auth,attr,optional"`
+	WalkParams string `alloy:"walk_params,attr,optional"`
 }
 
 type TargetBlock []SNMPTarget
@@ -88,11 +88,11 @@ func (t TargetBlock) Convert() []snmp_exporter.SNMPTarget {
 }
 
 type WalkParam struct {
-	Name                    string        `river:",label"`
-	MaxRepetitions          uint32        `river:"max_repetitions,attr,optional"`
-	Retries                 int           `river:"retries,attr,optional"`
-	Timeout                 time.Duration `river:"timeout,attr,optional"`
-	UseUnconnectedUDPSocket bool          `river:"use_unconnected_udp_socket,attr,optional"`
+	Name                    string        `alloy:",label"`
+	MaxRepetitions          uint32        `alloy:"max_repetitions,attr,optional"`
+	Retries                 int           `alloy:"retries,attr,optional"`
+	Timeout                 time.Duration `alloy:"timeout,attr,optional"`
+	UseUnconnectedUDPSocket bool          `alloy:"use_unconnected_udp_socket,attr,optional"`
 }
 
 type WalkParams []WalkParam
@@ -112,10 +112,10 @@ func (w WalkParams) Convert() map[string]snmp_config.WalkParams {
 }
 
 type Arguments struct {
-	ConfigFile   string                    `river:"config_file,attr,optional"`
-	Config       alloytypes.OptionalSecret `river:"config,attr,optional"`
-	Targets      TargetBlock               `river:"target,block"`
-	WalkParams   WalkParams                `river:"walk_param,block,optional"`
+	ConfigFile   string                    `alloy:"config_file,attr,optional"`
+	Config       alloytypes.OptionalSecret `alloy:"config,attr,optional"`
+	Targets      TargetBlock               `alloy:"target,block"`
+	WalkParams   WalkParams                `alloy:"walk_param,block,optional"`
 	ConfigStruct snmp_config.Config
 }
 

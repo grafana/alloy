@@ -25,20 +25,20 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 }
 
 type Arguments struct {
-	Subscriptions            []string `river:"subscriptions,attr"`
-	ResourceGraphQueryFilter string   `river:"resource_graph_query_filter,attr,optional"`
-	ResourceType             string   `river:"resource_type,attr"`
-	Metrics                  []string `river:"metrics,attr"`
-	MetricAggregations       []string `river:"metric_aggregations,attr,optional"`
-	Timespan                 string   `river:"timespan,attr,optional"`
-	IncludedDimensions       []string `river:"included_dimensions,attr,optional"`
-	IncludedResourceTags     []string `river:"included_resource_tags,attr,optional"`
-	MetricNamespace          string   `river:"metric_namespace,attr,optional"`
-	MetricNameTemplate       string   `river:"metric_name_template,attr,optional"`
-	MetricHelpTemplate       string   `river:"metric_help_template,attr,optional"`
-	AzureCloudEnvironment    string   `river:"azure_cloud_environment,attr,optional"`
-	ValidateDimensions       bool     `river:"validate_dimensions,attr,optional"`
-	Regions                  []string `river:"regions,attr,optional"`
+	Subscriptions            []string `alloy:"subscriptions,attr"`
+	ResourceGraphQueryFilter string   `alloy:"resource_graph_query_filter,attr,optional"`
+	ResourceType             string   `alloy:"resource_type,attr"`
+	Metrics                  []string `alloy:"metrics,attr"`
+	MetricAggregations       []string `alloy:"metric_aggregations,attr,optional"`
+	Timespan                 string   `alloy:"timespan,attr,optional"`
+	IncludedDimensions       []string `alloy:"included_dimensions,attr,optional"`
+	IncludedResourceTags     []string `alloy:"included_resource_tags,attr,optional"`
+	MetricNamespace          string   `alloy:"metric_namespace,attr,optional"`
+	MetricNameTemplate       string   `alloy:"metric_name_template,attr,optional"`
+	MetricHelpTemplate       string   `alloy:"metric_help_template,attr,optional"`
+	AzureCloudEnvironment    string   `alloy:"azure_cloud_environment,attr,optional"`
+	ValidateDimensions       bool     `alloy:"validate_dimensions,attr,optional"`
+	Regions                  []string `alloy:"regions,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

@@ -30,11 +30,11 @@ func init() {
 
 // Arguments configures the otelcol.connector.host_info component.
 type Arguments struct {
-	HostIdentifiers      []string      `river:"host_identifiers,attr,optional"`
-	MetricsFlushInterval time.Duration `river:"metrics_flush_interval,attr,optional"`
+	HostIdentifiers      []string      `alloy:"host_identifiers,attr,optional"`
+	MetricsFlushInterval time.Duration `alloy:"metrics_flush_interval,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (

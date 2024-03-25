@@ -27,11 +27,11 @@ func init() {
 
 // Arguments configure the discovery.kuma component.
 type Arguments struct {
-	Server          string        `river:"server,attr"`
-	RefreshInterval time.Duration `river:"refresh_interval,attr,optional"`
-	FetchTimeout    time.Duration `river:"fetch_timeout,attr,optional"`
+	Server          string        `alloy:"server,attr"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
+	FetchTimeout    time.Duration `alloy:"fetch_timeout,attr,optional"`
 
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
 }
 
 // DefaultArguments is used to initialize default values for Arguments.

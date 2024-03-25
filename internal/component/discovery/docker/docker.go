@@ -29,19 +29,19 @@ func init() {
 
 // Arguments configures the discovery.docker component.
 type Arguments struct {
-	Host               string                  `river:"host,attr"`
-	Port               int                     `river:"port,attr,optional"`
-	HostNetworkingHost string                  `river:"host_networking_host,attr,optional"`
-	RefreshInterval    time.Duration           `river:"refresh_interval,attr,optional"`
-	Filters            []Filter                `river:"filter,block,optional"`
-	HTTPClientConfig   config.HTTPClientConfig `river:",squash"`
+	Host               string                  `alloy:"host,attr"`
+	Port               int                     `alloy:"port,attr,optional"`
+	HostNetworkingHost string                  `alloy:"host_networking_host,attr,optional"`
+	RefreshInterval    time.Duration           `alloy:"refresh_interval,attr,optional"`
+	Filters            []Filter                `alloy:"filter,block,optional"`
+	HTTPClientConfig   config.HTTPClientConfig `alloy:",squash"`
 }
 
 // Filter is used to limit the discovery process to a subset of available
 // resources.
 type Filter struct {
-	Name   string   `river:"name,attr"`
-	Values []string `river:"values,attr"`
+	Name   string   `alloy:"name,attr"`
+	Values []string `alloy:"values,attr"`
 }
 
 // Convert converts a Filter to the upstream Prometheus SD type.

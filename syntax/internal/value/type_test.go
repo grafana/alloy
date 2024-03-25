@@ -43,7 +43,7 @@ var typeTests = []struct {
 
 	// A slice of labeled blocks should be an object.
 	{[]struct {
-		Label string `river:",label"`
+		Label string `alloy:",label"`
 	}{}, value.TypeObject},
 
 	{map[string]interface{}{}, value.TypeObject},

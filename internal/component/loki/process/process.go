@@ -34,14 +34,14 @@ func init() {
 // Arguments holds values which are used to configure the loki.process
 // component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver  `river:"forward_to,attr"`
-	Stages    []stages.StageConfig `river:"stage,enum,optional"`
+	ForwardTo []loki.LogsReceiver  `alloy:"forward_to,attr"`
+	Stages    []stages.StageConfig `alloy:"stage,enum,optional"`
 }
 
 // Exports exposes the receiver that can be used to send log entries to
 // loki.process.
 type Exports struct {
-	Receiver loki.LogsReceiver `river:"receiver,attr"`
+	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
 }
 
 var (

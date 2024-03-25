@@ -28,7 +28,7 @@ func init() {
 
 // Arguments configures the otelcol.exporter.loki component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver `river:"forward_to,attr"`
+	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
 
 // Component is the otelcol.exporter.loki component.

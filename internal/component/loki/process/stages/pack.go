@@ -101,8 +101,8 @@ func (w Packed) MarshalJSON() ([]byte, error) {
 
 // PackConfig contains the configuration for a packStage
 type PackConfig struct {
-	Labels          []string `river:"labels,attr"`
-	IngestTimestamp bool     `river:"ingest_timestamp,attr,optional"`
+	Labels          []string `alloy:"labels,attr"`
+	IngestTimestamp bool     `alloy:"ingest_timestamp,attr,optional"`
 }
 
 // DefaultPackConfig sets the defaults.

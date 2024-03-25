@@ -16,9 +16,9 @@ var (
 // ScraperControllerArguments defines common settings for a scraper controller
 // configuration.
 type ScraperControllerArguments struct {
-	CollectionInterval time.Duration `river:"collection_interval,attr,optional"`
-	InitialDelay       time.Duration `river:"initial_delay,attr,optional"`
-	Timeout            time.Duration `river:"timeout,attr,optional"`
+	CollectionInterval time.Duration `alloy:"collection_interval,attr,optional"`
+	InitialDelay       time.Duration `alloy:"initial_delay,attr,optional"`
+	Timeout            time.Duration `alloy:"timeout,attr,optional"`
 }
 
 // DefaultScraperControllerArguments holds default settings for ScraperControllerArguments.

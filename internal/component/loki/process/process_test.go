@@ -64,7 +64,7 @@ func TestJSONLabelsStage(t *testing.T) {
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
-		Stages []stages.StageConfig `river:"stage,enum"`
+		Stages []stages.StageConfig `alloy:"stage,enum"`
 	}
 	var stagesCfg cfg
 	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
@@ -151,7 +151,7 @@ stage.label_keep {
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
-		Stages []stages.StageConfig `river:"stage,enum"`
+		Stages []stages.StageConfig `alloy:"stage,enum"`
 	}
 	var stagesCfg cfg
 	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
@@ -246,7 +246,7 @@ stage.labels {
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
-		Stages []stages.StageConfig `river:"stage,enum"`
+		Stages []stages.StageConfig `alloy:"stage,enum"`
 	}
 	var stagesCfg cfg
 	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
@@ -412,7 +412,7 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
-		Stages []stages.StageConfig `river:"stage,enum"`
+		Stages []stages.StageConfig `alloy:"stage,enum"`
 	}
 	var stagesCfg cfg
 	err := syntax.Unmarshal([]byte(stg), &stagesCfg)

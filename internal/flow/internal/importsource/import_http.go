@@ -36,15 +36,15 @@ func NewImportHTTP(managedOpts component.Options, eval *vm.Evaluator, onContentC
 
 // HTTPArguments holds values which are used to configure the remote.http component.
 type HTTPArguments struct {
-	URL           string        `river:"url,attr"`
-	PollFrequency time.Duration `river:"poll_frequency,attr,optional"`
-	PollTimeout   time.Duration `river:"poll_timeout,attr,optional"`
+	URL           string        `alloy:"url,attr"`
+	PollFrequency time.Duration `alloy:"poll_frequency,attr,optional"`
+	PollTimeout   time.Duration `alloy:"poll_timeout,attr,optional"`
 
-	Method  string            `river:"method,attr,optional"`
-	Headers map[string]string `river:"headers,attr,optional"`
-	Body    string            `river:"body,attr,optional"`
+	Method  string            `alloy:"method,attr,optional"`
+	Headers map[string]string `alloy:"headers,attr,optional"`
+	Body    string            `alloy:"body,attr,optional"`
 
-	Client common_config.HTTPClientConfig `river:"client,block,optional"`
+	Client common_config.HTTPClientConfig `alloy:"client,block,optional"`
 }
 
 // DefaultHTTPArguments holds default settings for HTTPArguments.

@@ -13,7 +13,7 @@ import (
 // testArguments mimics an arguments type used by a component, applying the defaults to ServerConfig
 // from it's UnmarshalRiver implementation, since the block is squashed.
 type testArguments struct {
-	Server *ServerConfig `river:",squash"`
+	Server *ServerConfig `alloy:",squash"`
 }
 
 func (t *testArguments) UnmarshalRiver(f func(v interface{}) error) error {

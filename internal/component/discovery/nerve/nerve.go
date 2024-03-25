@@ -26,9 +26,9 @@ func init() {
 
 // Arguments configure the discovery.nerve component.
 type Arguments struct {
-	Servers []string      `river:"servers,attr"`
-	Paths   []string      `river:"paths,attr"`
-	Timeout time.Duration `river:"timeout,attr,optional"`
+	Servers []string      `alloy:"servers,attr"`
+	Paths   []string      `alloy:"paths,attr"`
+	Timeout time.Duration `alloy:"timeout,attr,optional"`
 }
 
 // DefaultArguments is used to initialize default values for Arguments.

@@ -34,11 +34,11 @@ func init() {
 }
 
 type Arguments struct {
-	Server               *fnet.ServerConfig  `river:",squash"`
-	AccessKey            alloytypes.Secret   `river:"access_key,attr,optional"`
-	UseIncomingTimestamp bool                `river:"use_incoming_timestamp,attr,optional"`
-	ForwardTo            []loki.LogsReceiver `river:"forward_to,attr"`
-	RelabelRules         flow_relabel.Rules  `river:"relabel_rules,attr,optional"`
+	Server               *fnet.ServerConfig  `alloy:",squash"`
+	AccessKey            alloytypes.Secret   `alloy:"access_key,attr,optional"`
+	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
+	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
+	RelabelRules         flow_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

@@ -49,8 +49,8 @@ func init() {
 // Arguments represents the input state of the pyroscope.write
 // component.
 type Arguments struct {
-	ExternalLabels map[string]string  `river:"external_labels,attr,optional"`
-	Endpoints      []*EndpointOptions `river:"endpoint,block,optional"`
+	ExternalLabels map[string]string  `alloy:"external_labels,attr,optional"`
+	Endpoints      []*EndpointOptions `alloy:"endpoint,block,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -61,14 +61,14 @@ func (rc *Arguments) SetToDefault() {
 // EndpointOptions describes an individual location for where profiles
 // should be delivered to using the Pyroscope push API.
 type EndpointOptions struct {
-	Name              string                   `river:"name,attr,optional"`
-	URL               string                   `river:"url,attr"`
-	RemoteTimeout     time.Duration            `river:"remote_timeout,attr,optional"`
-	Headers           map[string]string        `river:"headers,attr,optional"`
-	HTTPClientConfig  *config.HTTPClientConfig `river:",squash"`
-	MinBackoff        time.Duration            `river:"min_backoff_period,attr,optional"`  // start backoff at this level
-	MaxBackoff        time.Duration            `river:"max_backoff_period,attr,optional"`  // increase exponentially to this level
-	MaxBackoffRetries int                      `river:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+	Name              string                   `alloy:"name,attr,optional"`
+	URL               string                   `alloy:"url,attr"`
+	RemoteTimeout     time.Duration            `alloy:"remote_timeout,attr,optional"`
+	Headers           map[string]string        `alloy:"headers,attr,optional"`
+	HTTPClientConfig  *config.HTTPClientConfig `alloy:",squash"`
+	MinBackoff        time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
+	MaxBackoff        time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
+	MaxBackoffRetries int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
 }
 
 func GetDefaultEndpointOptions() EndpointOptions {
@@ -107,7 +107,7 @@ type Component struct {
 
 // Exports are the set of fields exposed by the pyroscope.write component.
 type Exports struct {
-	Receiver pyroscope.Appendable `river:"receiver,attr"`
+	Receiver pyroscope.Appendable `alloy:"receiver,attr"`
 }
 
 // New creates a new pyroscope.write component.

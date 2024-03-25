@@ -40,8 +40,8 @@ func init() {
 }
 
 type TestFailArguments struct {
-	Content string `river:"content,attr"`
-	Fail    bool   `river:"fail,attr,optional"`
+	Content string `alloy:"content,attr"`
+	Fail    bool   `alloy:"fail,attr,optional"`
 }
 
 type TestFailModule struct {

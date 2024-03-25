@@ -16,31 +16,31 @@ import (
 // exactly one is set.
 type StageConfig struct {
 	//TODO(thampiotr): sync these with new stages
-	CRIConfig             *CRIConfig             `river:"cri,block,optional"`
-	DecolorizeConfig      *DecolorizeConfig      `river:"decolorize,block,optional"`
-	DockerConfig          *DockerConfig          `river:"docker,block,optional"`
-	DropConfig            *DropConfig            `river:"drop,block,optional"`
-	EventLogMessageConfig *EventLogMessageConfig `river:"eventlogmessage,block,optional"`
-	GeoIPConfig           *GeoIPConfig           `river:"geoip,block,optional"`
-	JSONConfig            *JSONConfig            `river:"json,block,optional"`
-	LabelAllowConfig      *LabelAllowConfig      `river:"label_keep,block,optional"`
-	LabelDropConfig       *LabelDropConfig       `river:"label_drop,block,optional"`
-	LabelsConfig          *LabelsConfig          `river:"labels,block,optional"`
-	LimitConfig           *LimitConfig           `river:"limit,block,optional"`
-	LogfmtConfig          *LogfmtConfig          `river:"logfmt,block,optional"`
-	MatchConfig           *MatchConfig           `river:"match,block,optional"`
-	MetricsConfig         *MetricsConfig         `river:"metrics,block,optional"`
-	MultilineConfig       *MultilineConfig       `river:"multiline,block,optional"`
-	OutputConfig          *OutputConfig          `river:"output,block,optional"`
-	PackConfig            *PackConfig            `river:"pack,block,optional"`
-	RegexConfig           *RegexConfig           `river:"regex,block,optional"`
-	ReplaceConfig         *ReplaceConfig         `river:"replace,block,optional"`
-	StaticLabelsConfig    *StaticLabelsConfig    `river:"static_labels,block,optional"`
-	StructuredMetadata    *LabelsConfig          `river:"structured_metadata,block,optional"`
-	SamplingConfig        *SamplingConfig        `river:"sampling,block,optional"`
-	TemplateConfig        *TemplateConfig        `river:"template,block,optional"`
-	TenantConfig          *TenantConfig          `river:"tenant,block,optional"`
-	TimestampConfig       *TimestampConfig       `river:"timestamp,block,optional"`
+	CRIConfig             *CRIConfig             `alloy:"cri,block,optional"`
+	DecolorizeConfig      *DecolorizeConfig      `alloy:"decolorize,block,optional"`
+	DockerConfig          *DockerConfig          `alloy:"docker,block,optional"`
+	DropConfig            *DropConfig            `alloy:"drop,block,optional"`
+	EventLogMessageConfig *EventLogMessageConfig `alloy:"eventlogmessage,block,optional"`
+	GeoIPConfig           *GeoIPConfig           `alloy:"geoip,block,optional"`
+	JSONConfig            *JSONConfig            `alloy:"json,block,optional"`
+	LabelAllowConfig      *LabelAllowConfig      `alloy:"label_keep,block,optional"`
+	LabelDropConfig       *LabelDropConfig       `alloy:"label_drop,block,optional"`
+	LabelsConfig          *LabelsConfig          `alloy:"labels,block,optional"`
+	LimitConfig           *LimitConfig           `alloy:"limit,block,optional"`
+	LogfmtConfig          *LogfmtConfig          `alloy:"logfmt,block,optional"`
+	MatchConfig           *MatchConfig           `alloy:"match,block,optional"`
+	MetricsConfig         *MetricsConfig         `alloy:"metrics,block,optional"`
+	MultilineConfig       *MultilineConfig       `alloy:"multiline,block,optional"`
+	OutputConfig          *OutputConfig          `alloy:"output,block,optional"`
+	PackConfig            *PackConfig            `alloy:"pack,block,optional"`
+	RegexConfig           *RegexConfig           `alloy:"regex,block,optional"`
+	ReplaceConfig         *ReplaceConfig         `alloy:"replace,block,optional"`
+	StaticLabelsConfig    *StaticLabelsConfig    `alloy:"static_labels,block,optional"`
+	StructuredMetadata    *LabelsConfig          `alloy:"structured_metadata,block,optional"`
+	SamplingConfig        *SamplingConfig        `alloy:"sampling,block,optional"`
+	TemplateConfig        *TemplateConfig        `alloy:"template,block,optional"`
+	TenantConfig          *TenantConfig          `alloy:"tenant,block,optional"`
+	TimestampConfig       *TimestampConfig       `alloy:"timestamp,block,optional"`
 }
 
 var rateLimiter *rate.Limiter

@@ -30,15 +30,15 @@ func init() {
 
 // Arguments configures the otelcol.exporter.otlp component.
 type Arguments struct {
-	Timeout time.Duration `river:"timeout,attr,optional"`
+	Timeout time.Duration `alloy:"timeout,attr,optional"`
 
-	Queue otelcol.QueueArguments `river:"sending_queue,block,optional"`
-	Retry otelcol.RetryArguments `river:"retry_on_failure,block,optional"`
+	Queue otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
+	Retry otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
-	Client GRPCClientArguments `river:"client,block"`
+	Client GRPCClientArguments `alloy:"client,block"`
 }
 
 var _ exporter.Arguments = Arguments{}

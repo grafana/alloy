@@ -37,21 +37,21 @@ var DefaultArguments = Arguments{
 
 // Arguments configures the prometheus.exporter.process component
 type Arguments struct {
-	ProcessExporter []MatcherGroup `river:"matcher,block,optional"`
+	ProcessExporter []MatcherGroup `alloy:"matcher,block,optional"`
 
-	ProcFSPath string `river:"procfs_path,attr,optional"`
-	Children   bool   `river:"track_children,attr,optional"`
-	Threads    bool   `river:"track_threads,attr,optional"`
-	SMaps      bool   `river:"gather_smaps,attr,optional"`
-	Recheck    bool   `river:"recheck_on_scrape,attr,optional"`
+	ProcFSPath string `alloy:"procfs_path,attr,optional"`
+	Children   bool   `alloy:"track_children,attr,optional"`
+	Threads    bool   `alloy:"track_threads,attr,optional"`
+	SMaps      bool   `alloy:"gather_smaps,attr,optional"`
+	Recheck    bool   `alloy:"recheck_on_scrape,attr,optional"`
 }
 
 // MatcherGroup taken and converted to River from github.com/ncabatoff/process-exporter/config
 type MatcherGroup struct {
-	Name         string   `river:"name,attr,optional"`
-	CommRules    []string `river:"comm,attr,optional"`
-	ExeRules     []string `river:"exe,attr,optional"`
-	CmdlineRules []string `river:"cmdline,attr,optional"`
+	Name         string   `alloy:"name,attr,optional"`
+	CommRules    []string `alloy:"comm,attr,optional"`
+	ExeRules     []string `alloy:"exe,attr,optional"`
+	CmdlineRules []string `alloy:"cmdline,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

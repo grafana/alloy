@@ -9,7 +9,7 @@ import (
 const Name = "kubernetes_node"
 
 type Config struct {
-	KubernetesAPIConfig otelcol.KubernetesAPIConfig `river:",squash"`
+	KubernetesAPIConfig otelcol.KubernetesAPIConfig `alloy:",squash"`
 	// NodeFromEnv can be used to extract the node name from an environment
 	// variable. The value must be the name of the environment variable.
 	// This is useful when the node where an Agent will run on cannot be
@@ -29,8 +29,8 @@ type Config struct {
 	// the agent is running on.
 	//
 	// More on downward API here: https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/
-	NodeFromEnvVar     string                   `river:"node_from_env_var,attr,optional"`
-	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+	NodeFromEnvVar     string                   `alloy:"node_from_env_var,attr,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 var DefaultArguments = Config{
@@ -63,8 +63,8 @@ func (args Config) Convert() map[string]interface{} {
 
 // ResourceAttributesConfig provides config for k8snode resource attributes.
 type ResourceAttributesConfig struct {
-	K8sNodeName rac.ResourceAttributeConfig `river:"k8s.node.name,block,optional"`
-	K8sNodeUID  rac.ResourceAttributeConfig `river:"k8s.node.uid,block,optional"`
+	K8sNodeName rac.ResourceAttributeConfig `alloy:"k8s.node.name,block,optional"`
+	K8sNodeUID  rac.ResourceAttributeConfig `alloy:"k8s.node.uid,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {
