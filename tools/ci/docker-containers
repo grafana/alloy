@@ -69,7 +69,7 @@ case "$TARGET_CONTAINER" in
       --build-arg VERSION="$VERSION"  \
       -t "$ALLOY_IMAGE:$TAG_VERSION"  \
       -t "$ALLOY_IMAGE:$BRANCH_TAG"   \
-      -f cmd/alloy/Dockerfile \
+      -f Dockerfile \
       .
     ;;
 

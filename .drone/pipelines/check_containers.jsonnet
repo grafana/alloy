@@ -2,11 +2,11 @@ local build_image = import '../util/build_image.jsonnet';
 local pipelines = import '../util/pipelines.jsonnet';
 
 local linux_containers = [
-  { name: 'grafana/alloy', make: 'make alloy-image', path: 'cmd/alloy/Dockerfile' },
+  { name: 'grafana/alloy', make: 'make alloy-image', path: 'Dockerfile' },
 ];
 
 local windows_containers = [
-  { name: 'grafana/alloy', argument: 'alloy', path: 'cmd/alloy/Dockerfile.windows' },
+  { name: 'grafana/alloy', argument: 'alloy', path: 'Dockerfile.windows' },
 ];
 
 (

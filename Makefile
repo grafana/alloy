@@ -22,7 +22,7 @@
 ## Targets for building binaries:
 ##
 ##   binaries                        Compiles all binaries.
-##   alloy                           Compiles cmd/alloy to $(ALLOY_BINARY)
+##   alloy                           Compiles Alloy to $(ALLOY_BINARY)
 ##   alloy-service                   Compiles internal/cmd/alloy-service to $(SERVICE_BINARY)
 ##
 ## Targets for building Docker images:
@@ -158,7 +158,7 @@ alloy:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) ./cmd/alloy
+	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
 endif
 
 # alloy-service is not included in binaries since it's Windows-only.
@@ -190,7 +190,7 @@ endif
 images: alloy-image
 
 alloy-image:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f cmd/alloy/Dockerfile .
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
 
 #
 # Targets for generating assets

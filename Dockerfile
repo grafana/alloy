@@ -46,7 +46,7 @@ RUN <<EOF
 EOF
 
 COPY --from=build /src/alloy/build/alloy /bin/alloy
-COPY cmd/alloy/example-config.river /etc/alloy/config.river
+COPY example-config.river /etc/alloy/config.river
 
 # Create alloy user in container, but do not set it as default
 RUN groupadd --gid $UID $USERNAME
