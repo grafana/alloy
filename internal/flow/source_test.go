@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/stretchr/testify/require"
 
-	_ "github.com/grafana/agent/internal/flow/internal/testcomponents" // Include test components
+	_ "github.com/grafana/alloy/internal/flow/internal/testcomponents" // Include test components
 )
 
 func TestParseSource(t *testing.T) {

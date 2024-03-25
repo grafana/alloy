@@ -3,7 +3,7 @@ package postgres
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/static/integrations/postgres_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/postgres_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	rivertypes "github.com/grafana/alloy/syntax/alloytypes"

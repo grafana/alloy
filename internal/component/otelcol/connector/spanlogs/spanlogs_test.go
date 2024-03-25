@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/connector/spanlogs"
-	"github.com/grafana/agent/internal/component/otelcol/processor/processortest"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/connector/spanlogs"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/processortest"
+	"github.com/grafana/alloy/internal/flow/componenttest"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )

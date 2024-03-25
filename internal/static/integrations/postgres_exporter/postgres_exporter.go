@@ -9,9 +9,9 @@ import (
 	config_util "github.com/prometheus/common/config"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/static/integrations"
-	integrations_v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/metricsutils"
+	"github.com/grafana/alloy/internal/static/integrations"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/lib/pq"
 	"github.com/prometheus-community/postgres_exporter/exporter"
 )

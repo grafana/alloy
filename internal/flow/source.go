@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/grafana/agent/internal/static/config/encoder"
+	"github.com/grafana/alloy/internal/static/config/encoder"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/parser"

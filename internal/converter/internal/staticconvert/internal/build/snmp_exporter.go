@@ -1,11 +1,11 @@
 package build
 
 import (
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/exporter/snmp"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/static/integrations/snmp_exporter"
-	snmp_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/snmp_exporter"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/snmp"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
+	snmp_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/snmp_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	snmp_config "github.com/prometheus/snmp_exporter/config"
 )

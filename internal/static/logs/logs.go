@@ -4,7 +4,7 @@ package logs
 import (
 	_ "time/tzdata" // embed timezone data
 
-	"github.com/grafana/agent/internal/useragent"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/loki/clients/pkg/promtail/client"
 	"github.com/grafana/loki/clients/pkg/promtail/config"
 	"github.com/grafana/loki/clients/pkg/promtail/server"

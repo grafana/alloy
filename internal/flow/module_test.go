@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/internal/controller"
-	"github.com/grafana/agent/internal/flow/internal/worker"
-	"github.com/grafana/agent/internal/flow/logging"
-	"github.com/grafana/agent/internal/service"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/internal/controller"
+	"github.com/grafana/alloy/internal/flow/internal/worker"
+	"github.com/grafana/alloy/internal/flow/logging"
+	"github.com/grafana/alloy/internal/service"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )

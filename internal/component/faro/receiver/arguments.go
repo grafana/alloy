@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )

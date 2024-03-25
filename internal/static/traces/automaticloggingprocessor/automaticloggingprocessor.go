@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	util_log "github.com/grafana/agent/internal/util/log"
+	util_log "github.com/grafana/alloy/internal/util/log"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/ptrace"

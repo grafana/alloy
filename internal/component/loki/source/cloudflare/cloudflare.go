@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
-	cft "github.com/grafana/agent/internal/component/loki/source/cloudflare/internal/cloudflaretarget"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	cft "github.com/grafana/alloy/internal/component/loki/source/cloudflare/internal/cloudflaretarget"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/model"
 )

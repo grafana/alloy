@@ -2,7 +2,7 @@ package kafkatarget
 
 import (
 	"github.com/IBM/sarama"
-	"github.com/grafana/agent/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/dskit/flagext"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"

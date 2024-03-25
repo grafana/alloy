@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/flow/internal/controller"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/flow/internal/controller"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 	"github.com/stretchr/testify/require"

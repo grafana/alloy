@@ -1,8 +1,8 @@
 package integrations
 
 import (
-	"github.com/grafana/agent/internal/static/integrations/v2/autoscrape"
-	"github.com/grafana/agent/internal/static/metrics"
+	"github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
+	"github.com/grafana/alloy/internal/static/metrics"
 )
 
 const (

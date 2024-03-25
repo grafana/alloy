@@ -4,10 +4,10 @@ package span
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/processor"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/processor"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"

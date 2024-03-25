@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"

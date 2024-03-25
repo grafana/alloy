@@ -3,7 +3,7 @@ package unix
 import (
 	"time"
 
-	node_integration "github.com/grafana/agent/internal/static/integrations/node_exporter"
+	node_integration "github.com/grafana/alloy/internal/static/integrations/node_exporter"
 	"github.com/grafana/dskit/flagext"
 )
 

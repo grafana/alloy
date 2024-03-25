@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"

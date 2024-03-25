@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	log "github.com/go-kit/log"
-	"github.com/grafana/agent/internal/mimir/client/internal"
+	"github.com/grafana/alloy/internal/mimir/client/internal"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/user"
 	"github.com/prometheus/client_golang/prometheus"

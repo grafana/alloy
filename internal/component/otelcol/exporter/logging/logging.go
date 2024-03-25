@@ -2,10 +2,10 @@
 package logging
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/exporter"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
 	loggingexporter "go.opentelemetry.io/collector/exporter/loggingexporter"

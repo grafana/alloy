@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	mod "github.com/grafana/agent/internal/flow/internal/testcomponents/module"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	mod "github.com/grafana/alloy/internal/flow/internal/testcomponents/module"
 )
 
 func init() {

@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/discovery/relabel"
-	"github.com/grafana/agent/internal/flow/componenttest"
+	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery/relabel"
+	"github.com/grafana/alloy/internal/flow/componenttest"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )

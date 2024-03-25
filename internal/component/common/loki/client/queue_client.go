@@ -14,7 +14,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	agentWal "github.com/grafana/agent/internal/component/common/loki/wal"
+	agentWal "github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"

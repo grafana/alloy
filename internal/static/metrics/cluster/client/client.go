@@ -4,7 +4,7 @@ import (
 	"flag"
 	"reflect"
 
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/grpcclient"
 )
 

@@ -3,10 +3,10 @@ package flow
 import (
 	"context"
 
-	"github.com/grafana/agent/internal/flow/internal/controller"
-	"github.com/grafana/agent/internal/flow/internal/dag"
-	"github.com/grafana/agent/internal/flow/internal/worker"
-	"github.com/grafana/agent/internal/service"
+	"github.com/grafana/alloy/internal/flow/internal/controller"
+	"github.com/grafana/alloy/internal/flow/internal/dag"
+	"github.com/grafana/alloy/internal/flow/internal/worker"
+	"github.com/grafana/alloy/internal/service"
 )
 
 // GetServiceConsumers implements [service.Host]. It returns a slice of

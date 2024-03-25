@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	v1 "github.com/grafana/agent/internal/static/integrations"
-	v2 "github.com/grafana/agent/internal/static/integrations/v2"
+	v1 "github.com/grafana/alloy/internal/static/integrations"
+	v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/stretchr/testify/require"
 )
 

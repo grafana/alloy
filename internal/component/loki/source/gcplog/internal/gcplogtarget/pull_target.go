@@ -13,14 +13,14 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"google.golang.org/api/option"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/loki/source/gcplog/gcptypes"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
 )
 
 // PullTarget represents a target that scrapes logs from a GCP project id and

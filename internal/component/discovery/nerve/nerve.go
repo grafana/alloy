@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/zookeeper"
 )

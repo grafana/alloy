@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/pyroscope"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"

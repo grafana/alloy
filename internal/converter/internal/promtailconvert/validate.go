@@ -1,7 +1,7 @@
 package promtailconvert
 
 import (
-	"github.com/grafana/agent/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/diag"
 	promtailcfg "github.com/grafana/loki/clients/pkg/promtail/config"
 )
 

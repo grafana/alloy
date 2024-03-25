@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/service"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )

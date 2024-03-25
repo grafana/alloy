@@ -7,9 +7,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	common_config "github.com/grafana/agent/internal/component/common/config"
-	remote_http "github.com/grafana/agent/internal/component/remote/http"
+	"github.com/grafana/alloy/internal/component"
+	common_config "github.com/grafana/alloy/internal/component/common/config"
+	remote_http "github.com/grafana/alloy/internal/component/remote/http"
 	"github.com/grafana/alloy/syntax/vm"
 )
 

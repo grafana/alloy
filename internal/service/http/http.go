@@ -15,12 +15,12 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/service"
-	"github.com/grafana/agent/internal/static/server"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow"
+	"github.com/grafana/alloy/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/static/server"
 	"github.com/grafana/ckit/memconn"
 	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof" // Register godeltaprof handler
 	"github.com/prometheus/client_golang/prometheus"

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/prometheus/remotewrite"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
+	"github.com/grafana/alloy/internal/flow/componenttest"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"

@@ -8,12 +8,12 @@ import (
 
 	"context"
 
-	"github.com/grafana/agent/internal/component"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/prometheus"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/service/labelstore"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/flow/componenttest"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"

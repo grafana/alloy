@@ -1,9 +1,9 @@
 package prometheusconvert
 
 import (
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/component"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
 	prom_config "github.com/prometheus/prometheus/config"
 	prom_discover "github.com/prometheus/prometheus/discovery"
 

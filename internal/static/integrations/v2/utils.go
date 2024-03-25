@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // FuncIntegration is a function that implements Integration.

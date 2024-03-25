@@ -1,9 +1,9 @@
 package build
 
 import (
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/exporter/mysql"
-	"github.com/grafana/agent/internal/static/integrations/mysqld_exporter"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
+	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 

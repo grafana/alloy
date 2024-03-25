@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/pyroscope"
-	"github.com/grafana/agent/internal/component/pyroscope/java/asprof"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/java/asprof"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/logging/level"
 )
 
 const (

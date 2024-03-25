@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol/exporter/prometheus"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"

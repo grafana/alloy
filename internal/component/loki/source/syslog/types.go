@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/config"
-	st "github.com/grafana/agent/internal/component/loki/source/syslog/internal/syslogtarget"
+	"github.com/grafana/alloy/internal/component/common/config"
+	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 )

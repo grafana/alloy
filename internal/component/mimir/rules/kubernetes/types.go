@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
 )
 
 type Arguments struct {

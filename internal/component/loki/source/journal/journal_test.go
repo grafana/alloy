@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/v22/journal"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )

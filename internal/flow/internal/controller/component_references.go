@@ -3,7 +3,7 @@ package controller
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/flow/internal/dag"
+	"github.com/grafana/alloy/internal/flow/internal/dag"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/vm"

@@ -6,14 +6,14 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	promsdconsumer "github.com/grafana/agent/internal/static/traces/promsdprocessor/consumer"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/logging/level"
+	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	"github.com/grafana/alloy/syntax"
 )
 

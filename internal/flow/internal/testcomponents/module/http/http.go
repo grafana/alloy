@@ -6,10 +6,10 @@ import (
 
 	"go.uber.org/atomic"
 
-	"github.com/grafana/agent/internal/component"
-	remote_http "github.com/grafana/agent/internal/component/remote/http"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/internal/testcomponents/module"
+	"github.com/grafana/alloy/internal/component"
+	remote_http "github.com/grafana/alloy/internal/component/remote/http"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/internal/testcomponents/module"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 

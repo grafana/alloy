@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/grafana/agent/internal/agentseed"
-	"github.com/grafana/agent/internal/useragent"
+	"github.com/grafana/alloy/internal/agentseed"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/common/version"
 )
 

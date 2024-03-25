@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/internal/controller"
-	"github.com/grafana/agent/internal/flow/internal/dag"
-	"github.com/grafana/agent/internal/flow/logging"
-	"github.com/grafana/agent/internal/service"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/internal/controller"
+	"github.com/grafana/alloy/internal/flow/internal/dag"
+	"github.com/grafana/alloy/internal/flow/logging"
+	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/parser"
@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
 
-	_ "github.com/grafana/agent/internal/flow/internal/testcomponents" // Include test components
+	_ "github.com/grafana/alloy/internal/flow/internal/testcomponents" // Include test components
 )
 
 func TestLoader(t *testing.T) {

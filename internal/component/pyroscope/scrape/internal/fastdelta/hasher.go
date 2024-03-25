@@ -13,7 +13,7 @@ import (
 
 	"github.com/spaolacci/murmur3"
 
-	"github.com/grafana/agent/internal/component/pyroscope/scrape/internal/pproflite"
+	"github.com/grafana/alloy/internal/component/pyroscope/scrape/internal/pproflite"
 )
 
 // Hash is a 128-bit hash representing sample identity

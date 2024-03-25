@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/stretchr/testify/require"
 )
 

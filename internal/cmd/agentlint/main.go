@@ -3,8 +3,8 @@
 package main
 
 import (
-	"github.com/grafana/agent/internal/cmd/agentlint/internal/findcomponents"
-	"github.com/grafana/agent/internal/cmd/agentlint/internal/syntaxtags"
+	"github.com/grafana/alloy/internal/cmd/agentlint/internal/findcomponents"
+	"github.com/grafana/alloy/internal/cmd/agentlint/internal/syntaxtags"
 	"golang.org/x/tools/go/analysis/multichecker"
 )
 

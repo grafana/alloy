@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/grafana/agent/internal/static/integrations/statsd_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/statsd_exporter"
 	"gopkg.in/yaml.v3"
 )
 

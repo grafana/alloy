@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/agent/internal/static/integrations/config"
+	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
 // Integration is the process_exporter integration. On non-Linux platforms,

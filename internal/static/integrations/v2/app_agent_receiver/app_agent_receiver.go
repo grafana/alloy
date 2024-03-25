@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2"
 )
 
 func init() {

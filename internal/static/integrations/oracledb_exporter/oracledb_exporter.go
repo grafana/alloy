@@ -7,14 +7,14 @@ import (
 	"os"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations"
 	oe "github.com/iamseth/oracledb_exporter/collector"
 
 	// required driver for integration
 	_ "github.com/sijms/go-ora/v2"
 
-	integrations_v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/metricsutils"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	config_util "github.com/prometheus/common/config"
 )
 

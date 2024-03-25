@@ -1,11 +1,11 @@
 package apache
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/apache_http"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/apache_http"
 )
 
 func init() {

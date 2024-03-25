@@ -3,11 +3,11 @@ package blackbox_exporter_v2
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/static/integrations/blackbox_exporter"
-	"github.com/grafana/agent/internal/static/integrations/v2"
-	integrations_v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	autoscrape "github.com/grafana/agent/internal/static/integrations/v2/autoscrape"
-	"github.com/grafana/agent/internal/static/integrations/v2/common"
+	"github.com/grafana/alloy/internal/static/integrations/blackbox_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/v2"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	autoscrape "github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
+	"github.com/grafana/alloy/internal/static/integrations/v2/common"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/stretchr/testify/require"

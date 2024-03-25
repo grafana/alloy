@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/pyroscope"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	ebpfspy "github.com/grafana/pyroscope/ebpf"
 	"github.com/grafana/pyroscope/ebpf/pprof"

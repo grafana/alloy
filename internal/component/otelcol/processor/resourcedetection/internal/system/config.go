@@ -3,7 +3,7 @@ package system
 import (
 	"fmt"
 
-	rac "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
+	rac "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
 	"github.com/grafana/alloy/syntax"
 )
 

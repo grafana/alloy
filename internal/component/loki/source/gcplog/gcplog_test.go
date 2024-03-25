@@ -14,12 +14,12 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	fnet "github.com/grafana/agent/internal/component/common/net"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/gcplog/gcptypes"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // TODO (@tpaschalis) We can't test this easily as there's no way to inject

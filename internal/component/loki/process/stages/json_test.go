@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
 

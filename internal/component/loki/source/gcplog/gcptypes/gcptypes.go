@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	fnet "github.com/grafana/agent/internal/component/common/net"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
 )
 
 // PullConfig configures a GCPLog target with the 'pull' strategy.

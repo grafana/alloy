@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/common/model"
 	"golang.org/x/exp/slices"
 
-	"github.com/grafana/agent/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/loki/pkg/logproto"
 )
 

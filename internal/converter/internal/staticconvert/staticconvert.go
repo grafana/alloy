@@ -5,14 +5,14 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert"
-	"github.com/grafana/agent/internal/converter/internal/promtailconvert"
-	"github.com/grafana/agent/internal/converter/internal/staticconvert/internal/build"
-	"github.com/grafana/agent/internal/static/config"
-	"github.com/grafana/agent/internal/static/logs"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
+	"github.com/grafana/alloy/internal/converter/internal/promtailconvert"
+	"github.com/grafana/alloy/internal/converter/internal/staticconvert/internal/build"
+	"github.com/grafana/alloy/internal/static/config"
+	"github.com/grafana/alloy/internal/static/logs"
 	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/grafana/alloy/syntax/token/builder"
 	promtail_config "github.com/grafana/loki/clients/pkg/promtail/config"
@@ -20,7 +20,7 @@ import (
 	"github.com/grafana/loki/clients/pkg/promtail/targets/file"
 	prom_config "github.com/prometheus/prometheus/config"
 
-	_ "github.com/grafana/agent/internal/static/integrations/install" // Install integrations
+	_ "github.com/grafana/alloy/internal/static/integrations/install" // Install integrations
 )
 
 // Convert implements a Static config converter.

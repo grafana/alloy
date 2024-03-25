@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 
 	"github.com/grafana/dskit/flagext"
 	"github.com/prometheus/common/config"

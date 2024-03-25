@@ -9,11 +9,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	http_service "github.com/grafana/agent/internal/service/http"
-	"github.com/grafana/agent/internal/static/integrations"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/flow/logging/level"
+	http_service "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/prometheus/common/model"
 )
 

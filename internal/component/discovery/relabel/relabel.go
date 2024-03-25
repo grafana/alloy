@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 )

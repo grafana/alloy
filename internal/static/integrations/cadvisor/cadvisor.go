@@ -20,7 +20,7 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/utils/clock"
 
-	"github.com/grafana/agent/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations"
 
 	// Register container providers
 

@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/agent/internal/agentseed"
+	"github.com/grafana/alloy/internal/agentseed"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/multierror"
 )

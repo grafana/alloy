@@ -3,9 +3,9 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/otelcol/exporter/logging"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/logging"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/exporter/loggingexporter"
 	"go.uber.org/zap/zapcore"

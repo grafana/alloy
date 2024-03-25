@@ -8,9 +8,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/autoscrape"
-	"github.com/grafana/agent/internal/static/integrations/v2/common"
+	"github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
+	"github.com/grafana/alloy/internal/static/integrations/v2/common"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"

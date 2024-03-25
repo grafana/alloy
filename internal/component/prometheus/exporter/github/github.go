@@ -1,11 +1,11 @@
 package github
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/github_exporter"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/github_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )

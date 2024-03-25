@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
-	types "github.com/grafana/agent/internal/component/common/config"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
+	types "github.com/grafana/alloy/internal/component/common/config"
+	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/syntax/alloytypes"
 
 	"github.com/google/uuid"

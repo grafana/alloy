@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 func init() {

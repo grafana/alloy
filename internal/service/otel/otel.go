@@ -8,9 +8,9 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/service"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // ServiceName defines the name used for the otel service.

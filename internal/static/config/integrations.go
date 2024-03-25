@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"reflect"
 
-	v1 "github.com/grafana/agent/internal/static/integrations"
-	v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/metrics"
-	"github.com/grafana/agent/internal/static/server"
-	"github.com/grafana/agent/internal/util"
+	v1 "github.com/grafana/alloy/internal/static/integrations"
+	v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/metrics"
+	"github.com/grafana/alloy/internal/static/server"
+	"github.com/grafana/alloy/internal/util"
 	"gopkg.in/yaml.v2"
 )
 

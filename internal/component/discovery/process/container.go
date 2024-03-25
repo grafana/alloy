@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/grafana/agent/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery"
 )
 
 var (

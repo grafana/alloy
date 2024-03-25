@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/grafana/agent/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/token"
 	"github.com/grafana/alloy/syntax/token/builder"

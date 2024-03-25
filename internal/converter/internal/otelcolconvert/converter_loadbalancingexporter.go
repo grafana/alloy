@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/auth"
-	"github.com/grafana/agent/internal/component/otelcol/exporter/loadbalancing"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	"go.opentelemetry.io/collector/component"
 )

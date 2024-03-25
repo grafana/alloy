@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-kit/log"
 	gokitlevel "github.com/go-kit/log/level"
-	"github.com/grafana/agent/internal/flow/logging"
+	"github.com/grafana/alloy/internal/flow/logging"
 )
 
 const (

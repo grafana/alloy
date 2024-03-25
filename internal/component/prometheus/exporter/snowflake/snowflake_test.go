@@ -3,7 +3,7 @@ package snowflake
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/static/integrations/snowflake_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/snowflake_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"

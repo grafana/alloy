@@ -3,7 +3,7 @@ package process
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery"
 )
 
 type Arguments struct {

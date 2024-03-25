@@ -5,9 +5,9 @@ package journal
 import (
 	"context"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/logging/level"
 )
 
 func init() {

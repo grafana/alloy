@@ -10,9 +10,9 @@ import (
 	"path"
 
 	"github.com/gorilla/mux"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/service"
-	"github.com/grafana/agent/internal/service/cluster"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/prometheus/prometheus/util/httputil"
 )
 

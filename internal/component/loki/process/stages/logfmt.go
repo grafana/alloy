@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-logfmt/logfmt"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/prometheus/common/model"
 )
 

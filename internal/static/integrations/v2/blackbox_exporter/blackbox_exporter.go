@@ -2,10 +2,10 @@ package blackbox_exporter_v2
 
 import (
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/static/integrations/blackbox_exporter"
-	integrations_v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/common"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/static/integrations/blackbox_exporter"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/common"
+	"github.com/grafana/alloy/internal/util"
 	blackbox_config "github.com/prometheus/blackbox_exporter/config"
 	"gopkg.in/yaml.v3"
 )

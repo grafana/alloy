@@ -10,10 +10,10 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	filedetector "github.com/grafana/agent/internal/filedetector"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	filedetector "github.com/grafana/alloy/internal/filedetector"
+	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 

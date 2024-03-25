@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/grafana/agent/internal/static/integrations/squid_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/squid_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"golang.org/x/time/rate"

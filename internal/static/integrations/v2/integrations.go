@@ -25,8 +25,8 @@ import (
 	"net/url"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/static/integrations/v2/autoscrape"
-	"github.com/grafana/agent/internal/static/server"
+	"github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
+	"github.com/grafana/alloy/internal/static/server"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 )

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/slogadapter"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/common/model"
 )

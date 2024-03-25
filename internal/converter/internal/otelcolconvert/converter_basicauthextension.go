@@ -3,9 +3,9 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/otelcol/auth/basic"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/otelcol/auth/basic"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension"
 	"go.opentelemetry.io/collector/component"

@@ -5,12 +5,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/flow/logging/level"
 	"github.com/grafana/alloy/syntax"
 )
 

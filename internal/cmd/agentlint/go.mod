@@ -1,4 +1,4 @@
-module github.com/grafana/agent/internal/cmd/agentlint
+module github.com/grafana/alloy/internal/cmd/agentlint
 
 go 1.21
 

@@ -6,8 +6,8 @@ import (
 
 	config_util "github.com/prometheus/common/config"
 
-	"github.com/grafana/agent/internal/static/metrics"
-	"github.com/grafana/agent/internal/static/server"
+	"github.com/grafana/alloy/internal/static/metrics"
+	"github.com/grafana/alloy/internal/static/server"
 	"github.com/prometheus/common/model"
 	promConfig "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/relabel"

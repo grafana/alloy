@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/agentseed"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/client"
-	"github.com/grafana/agent/internal/component/common/loki/limit"
-	"github.com/grafana/agent/internal/component/common/loki/wal"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/agentseed"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/client"
+	"github.com/grafana/alloy/internal/component/common/loki/limit"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 func init() {

@@ -7,12 +7,12 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/scrape"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/agent/internal/service/cluster"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/scrape"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
+	"github.com/grafana/alloy/internal/service/cluster"
 	prom_config "github.com/prometheus/prometheus/config"
 	prom_discovery "github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/storage"

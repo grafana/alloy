@@ -3,8 +3,8 @@ package journal
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 )
 
 // Arguments are the arguments for the component.

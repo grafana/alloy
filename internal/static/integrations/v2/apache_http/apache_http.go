@@ -8,9 +8,9 @@ import (
 	ae "github.com/Lusitaniae/apache_exporter/collector"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	integrations_v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/common"
-	"github.com/grafana/agent/internal/static/integrations/v2/metricsutils"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/common"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

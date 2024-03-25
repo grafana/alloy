@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grafana/agent/internal/component"
-	_ "github.com/grafana/agent/internal/component/all"
-	"github.com/grafana/agent/internal/component/metadata"
-	generator "github.com/grafana/agent/internal/tools/docs_generator"
+	"github.com/grafana/alloy/internal/component"
+	_ "github.com/grafana/alloy/internal/component/all"
+	"github.com/grafana/alloy/internal/component/metadata"
+	generator "github.com/grafana/alloy/internal/tools/docs_generator"
 	"github.com/stretchr/testify/require"
 )
 

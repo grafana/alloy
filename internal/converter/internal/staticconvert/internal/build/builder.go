@@ -3,8 +3,8 @@ package build
 import (
 	"strings"
 
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/static/config"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/static/config"
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 

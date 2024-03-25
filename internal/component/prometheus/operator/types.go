@@ -3,11 +3,11 @@ package operator
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/common/kubernetes"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/prometheus/scrape"
-	"github.com/grafana/agent/internal/service/cluster"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/prometheus/scrape"
+	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/prometheus/common/model"
 	promconfig "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage"
