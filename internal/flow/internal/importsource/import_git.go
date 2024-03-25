@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/vcs"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // ImportGit imports a module from a git repository.

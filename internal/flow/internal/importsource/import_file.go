@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/agent/internal/component"
 	filedetector "github.com/grafana/agent/internal/filedetector"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // ImportFile imports a module from a file or a folder.

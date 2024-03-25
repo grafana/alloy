@@ -6,7 +6,7 @@ import (
 
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/static/integrations/memcached_exporter"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 )
 

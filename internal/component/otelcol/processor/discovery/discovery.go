@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	promsdconsumer "github.com/grafana/agent/internal/static/traces/promsdprocessor/consumer"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 )
 
 func init() {

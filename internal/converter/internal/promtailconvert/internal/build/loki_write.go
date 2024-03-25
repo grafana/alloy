@@ -8,9 +8,9 @@ import (
 	lokiwrite "github.com/grafana/agent/internal/component/loki/write"
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/grafana/loki/clients/pkg/promtail/client"
 	lokiflag "github.com/grafana/loki/pkg/util/flagext"
-	"github.com/grafana/river/token/builder"
 )
 
 func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, labelPrefix string) (*builder.Block, loki.LogsReceiver) {

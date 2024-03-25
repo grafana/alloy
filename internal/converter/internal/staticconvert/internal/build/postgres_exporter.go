@@ -4,7 +4,7 @@ import (
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/component/prometheus/exporter/postgres"
 	"github.com/grafana/agent/internal/static/integrations/postgres_exporter"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (b *ConfigBuilder) appendPostgresExporter(config *postgres_exporter.Config, instanceKey *string) discovery.Exports {

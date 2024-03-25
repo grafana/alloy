@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/flow/componenttest"
 	promsdconsumer "github.com/grafana/agent/internal/static/traces/promsdprocessor/consumer"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
 )

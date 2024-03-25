@@ -19,7 +19,7 @@ import (
 	cft "github.com/grafana/agent/internal/component/loki/source/cloudflare/internal/cloudflaretarget"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/model"
 )
 

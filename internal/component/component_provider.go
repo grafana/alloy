@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/river/encoding/riverjson"
+	"github.com/grafana/alloy/syntax/encoding/riverjson"
 )
 
 var (

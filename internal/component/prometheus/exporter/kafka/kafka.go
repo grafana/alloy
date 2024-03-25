@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/kafka_exporter"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 )
 

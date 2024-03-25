@@ -22,7 +22,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/openshift"
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/system"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"

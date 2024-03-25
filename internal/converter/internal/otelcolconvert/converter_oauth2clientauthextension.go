@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth/oauth2"
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension"
 	"go.opentelemetry.io/collector/component"
 )

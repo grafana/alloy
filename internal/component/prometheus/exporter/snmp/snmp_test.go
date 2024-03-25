@@ -6,7 +6,7 @@ import (
 
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/snmp_exporter/config"

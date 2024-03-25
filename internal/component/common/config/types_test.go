@@ -3,7 +3,7 @@ package config
 import (
 	"testing"
 
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 

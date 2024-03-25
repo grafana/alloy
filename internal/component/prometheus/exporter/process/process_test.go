@@ -3,7 +3,7 @@ package process
 import (
 	"testing"
 
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/ncabatoff/process-exporter/config"
 	"github.com/stretchr/testify/require"
 )

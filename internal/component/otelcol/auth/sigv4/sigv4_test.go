@@ -13,7 +13,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth/sigv4"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	extauth "go.opentelemetry.io/collector/extension/auth"

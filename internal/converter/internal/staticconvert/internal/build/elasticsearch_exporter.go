@@ -5,7 +5,7 @@ import (
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/component/prometheus/exporter/elasticsearch"
 	"github.com/grafana/agent/internal/static/integrations/elasticsearch_exporter"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (b *ConfigBuilder) appendElasticsearchExporter(config *elasticsearch_exporter.Config, instanceKey *string) discovery.Exports {

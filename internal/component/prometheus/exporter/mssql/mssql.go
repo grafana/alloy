@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/mssql"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"gopkg.in/yaml.v2"
 )

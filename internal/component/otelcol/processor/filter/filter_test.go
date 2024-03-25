@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/component/otelcol/processor/filter"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor"
 	"github.com/stretchr/testify/require"

@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/static/integrations/redis_exporter"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 

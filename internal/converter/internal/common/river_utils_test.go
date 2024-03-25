@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/diag"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/diag"
 	"github.com/stretchr/testify/require"
 
 	_ "github.com/grafana/agent/internal/flow/internal/testcomponents" // Include test components

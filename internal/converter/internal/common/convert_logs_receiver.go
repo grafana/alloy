@@ -2,9 +2,9 @@ package common
 
 import (
 	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/river"
-	"github.com/grafana/river/token"
-	"github.com/grafana/river/token/builder"
+	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/token"
+	"github.com/grafana/alloy/syntax/token/builder"
 )
 
 // ConvertLogsReceiver allows us to override how the loki.LogsReceiver is tokenized.

@@ -10,8 +10,8 @@ import (
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
 	app_agent_receiver_v2 "github.com/grafana/agent/internal/static/integrations/v2/app_agent_receiver"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/scanner"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/scanner"
 )
 
 func (b *ConfigBuilder) appendAppAgentReceiverV2(config *app_agent_receiver_v2.Config) {

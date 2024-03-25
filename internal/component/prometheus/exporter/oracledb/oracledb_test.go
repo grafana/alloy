@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/static/integrations/oracledb_exporter"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	river "github.com/grafana/alloy/syntax"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )

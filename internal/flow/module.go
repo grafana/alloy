@@ -13,8 +13,8 @@ import (
 	"github.com/grafana/agent/internal/flow/logging"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/flow/tracing"
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/scanner"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/exp/maps"
 )

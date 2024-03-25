@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	river "github.com/grafana/alloy/syntax"
 	util_log "github.com/grafana/loki/pkg/util/log"
-	"github.com/grafana/river"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

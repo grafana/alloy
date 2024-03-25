@@ -5,7 +5,7 @@ import (
 
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/static/integrations/kafka_exporter"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 

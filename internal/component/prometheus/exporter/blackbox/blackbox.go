@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/blackbox_exporter"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func init() {

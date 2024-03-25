@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/agent/internal/component/pyroscope"
 	"github.com/grafana/agent/internal/service/cluster"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"

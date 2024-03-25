@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/otelcol/exporter/prometheus"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 )

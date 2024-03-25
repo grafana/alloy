@@ -12,8 +12,8 @@ import (
 	kt "github.com/grafana/agent/internal/component/loki/source/internal/kafkatarget"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/river/rivertypes"
 	"github.com/prometheus/common/model"
 )
 

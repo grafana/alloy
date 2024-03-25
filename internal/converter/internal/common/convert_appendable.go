@@ -1,9 +1,9 @@
 package common
 
 import (
-	"github.com/grafana/river"
-	"github.com/grafana/river/token"
-	"github.com/grafana/river/token/builder"
+	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/token"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/prometheus/prometheus/storage"
 )
 

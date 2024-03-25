@@ -8,7 +8,7 @@ import (
 
 	types "github.com/grafana/agent/internal/component/common/config"
 	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 
 	"github.com/google/uuid"
 	common "github.com/prometheus/common/config"

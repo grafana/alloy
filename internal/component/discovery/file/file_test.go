@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 )

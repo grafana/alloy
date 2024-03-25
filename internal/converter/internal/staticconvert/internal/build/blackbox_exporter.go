@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/agent/internal/component/prometheus/exporter/blackbox"
 	"github.com/grafana/agent/internal/static/integrations/blackbox_exporter"
 	blackbox_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/blackbox_exporter"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (b *ConfigBuilder) appendBlackboxExporter(config *blackbox_exporter.Config) discovery.Exports {

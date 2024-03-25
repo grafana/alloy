@@ -11,7 +11,7 @@ import (
 	flowprometheus "github.com/grafana/agent/internal/component/prometheus"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"

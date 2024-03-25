@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	promaws "github.com/prometheus/prometheus/discovery/aws"

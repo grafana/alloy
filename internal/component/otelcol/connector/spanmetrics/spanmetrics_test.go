@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/processor/processortest"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	"github.com/stretchr/testify/require"
 )

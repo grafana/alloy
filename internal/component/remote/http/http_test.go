@@ -14,9 +14,9 @@ import (
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/util"
+	river "github.com/grafana/alloy/syntax"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
 	"github.com/stretchr/testify/require"
 )
 

@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	filedetector "github.com/grafana/agent/internal/filedetector"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 )
 
 // waitReadPeriod holds the time to wait before reading a file while the

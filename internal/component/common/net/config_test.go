@@ -7,7 +7,7 @@ import (
 	dskit "github.com/grafana/dskit/server"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 )
 
 // testArguments mimics an arguments type used by a component, applying the defaults to ServerConfig

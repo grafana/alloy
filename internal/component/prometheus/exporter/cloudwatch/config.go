@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/static/integrations/cloudwatch_exporter"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
 	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
 )

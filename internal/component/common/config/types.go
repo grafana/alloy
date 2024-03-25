@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 )
 

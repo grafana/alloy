@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	otelexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 

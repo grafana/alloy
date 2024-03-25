@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol"
 	"github.com/grafana/agent/internal/component/otelcol/connector"
 	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 )

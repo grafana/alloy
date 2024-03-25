@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/river"
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/printer"
-	"github.com/grafana/river/scanner"
+	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/printer"
+	"github.com/grafana/alloy/syntax/scanner"
 
 	"github.com/grafana/agent/internal/component"
 	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/token/builder"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/token/builder"
 )
 
 // NewBlockWithOverride generates a new [*builder.Block] using a hook to

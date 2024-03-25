@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/service/labelstore"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"

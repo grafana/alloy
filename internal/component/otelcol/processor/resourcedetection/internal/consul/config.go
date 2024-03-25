@@ -2,8 +2,8 @@ package consul
 
 import (
 	rac "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	river "github.com/grafana/alloy/syntax"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"go.opentelemetry.io/collector/config/configopaque"
 )
 

@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/loki"
 	"github.com/grafana/agent/internal/component/loki/source/cloudflare"
 	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (s *ScrapeConfigBuilder) AppendCloudFlareConfig() {

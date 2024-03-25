@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/agent/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/agent/internal/util/zapadapter"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"

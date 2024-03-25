@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/grafana/agent/internal/flow/internal/importsource"
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/diag"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/diag"
 )
 
 const (

@@ -7,7 +7,7 @@ import (
 
 	"github.com/grafana/agent/internal/component/otelcol"
 
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
 )

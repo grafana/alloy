@@ -12,7 +12,7 @@ import (
 
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/component/common/kubernetes"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	client_go "k8s.io/client-go/kubernetes"

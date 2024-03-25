@@ -4,8 +4,8 @@ import (
 	"github.com/grafana/agent/internal/component/common/relabel"
 	"github.com/grafana/agent/internal/component/loki/source/kafka"
 	"github.com/grafana/agent/internal/converter/internal/common"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/river/rivertypes"
 )
 
 func (s *ScrapeConfigBuilder) AppendKafka() {

@@ -46,7 +46,7 @@ import (
 	metricsutils_v2 "github.com/grafana/agent/internal/static/integrations/v2/metricsutils"
 	snmp_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/snmp_exporter"
 	"github.com/grafana/agent/internal/static/integrations/windows_exporter"
-	"github.com/grafana/river/scanner"
+	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/prometheus/common/model"
 	prom_config "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/relabel"

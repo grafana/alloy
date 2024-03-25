@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	river "github.com/grafana/alloy/syntax"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	prom_sd "github.com/prometheus/prometheus/discovery/eureka"

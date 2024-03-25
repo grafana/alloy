@@ -19,7 +19,7 @@ import (
 	"github.com/grafana/agent/internal/flow/logging"
 	"github.com/grafana/agent/internal/service"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

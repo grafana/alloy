@@ -8,9 +8,9 @@ import (
 	"os"
 	"time"
 
+	river "github.com/grafana/alloy/syntax"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/regexp"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
 )
 
 // TLSArguments configures TLS settings for the HTTP service.

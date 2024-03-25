@@ -2,7 +2,7 @@ package elasticbeanstalk
 
 import (
 	rac "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 )
 
 const Name = "elasticbeanstalk"

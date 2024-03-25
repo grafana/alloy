@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

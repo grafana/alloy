@@ -8,8 +8,8 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth/bearer"
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/token/builder"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
 	"go.opentelemetry.io/collector/component"
 )

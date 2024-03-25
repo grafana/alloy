@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 )

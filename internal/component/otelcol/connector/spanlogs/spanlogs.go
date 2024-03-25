@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 )
 
 func init() {

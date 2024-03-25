@@ -19,7 +19,7 @@ import (
 	kubernetes_node "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/openshift"
 	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/system"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
 	"github.com/stretchr/testify/require"

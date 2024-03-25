@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 )
 
 func TestParseConfig(t *testing.T) {

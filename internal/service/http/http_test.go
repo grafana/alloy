@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/service"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"

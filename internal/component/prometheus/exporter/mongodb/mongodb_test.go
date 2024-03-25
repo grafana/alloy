@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/grafana/agent/internal/static/integrations/mongodb_exporter"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 

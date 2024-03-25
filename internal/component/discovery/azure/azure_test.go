@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"

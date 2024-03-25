@@ -6,8 +6,8 @@ import (
 
 	commonCfg "github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/static/integrations/elasticsearch_exporter"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	river "github.com/grafana/alloy/syntax"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	promCfg "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )

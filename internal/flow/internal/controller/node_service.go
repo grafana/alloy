@@ -8,8 +8,8 @@ import (
 
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/service"
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // ServiceNode is a Flow DAG node which represents a running service.

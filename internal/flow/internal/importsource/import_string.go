@@ -6,8 +6,8 @@ import (
 	"reflect"
 
 	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/vm"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // ImportString imports a module from a string.

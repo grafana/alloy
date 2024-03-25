@@ -20,7 +20,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/service"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	commonconfig "github.com/prometheus/common/config"
 )
 

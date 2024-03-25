@@ -6,8 +6,8 @@ import (
 	"github.com/grafana/agent/internal/component/discovery/consulagent"
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	promtail_consulagent "github.com/grafana/loki/clients/pkg/promtail/discovery/consulagent"
-	"github.com/grafana/river/rivertypes"
 )
 
 func (s *ScrapeConfigBuilder) AppendConsulAgentSDs() {

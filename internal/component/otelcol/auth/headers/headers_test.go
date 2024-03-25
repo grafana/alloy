@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth/headers"
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

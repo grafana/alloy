@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/converter/internal/common"
 	"github.com/grafana/agent/internal/static/integrations/snmp_exporter"
 	snmp_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/snmp_exporter"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	snmp_config "github.com/prometheus/snmp_exporter/config"
 )
 

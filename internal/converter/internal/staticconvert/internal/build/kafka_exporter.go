@@ -4,7 +4,7 @@ import (
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/component/prometheus/exporter/kafka"
 	"github.com/grafana/agent/internal/static/integrations/kafka_exporter"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (b *ConfigBuilder) appendKafkaExporter(config *kafka_exporter.Config, instanceKey *string) discovery.Exports {

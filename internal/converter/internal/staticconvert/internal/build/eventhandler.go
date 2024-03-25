@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
 	eventhandler_v2 "github.com/grafana/agent/internal/static/integrations/v2/eventhandler"
-	"github.com/grafana/river/scanner"
+	"github.com/grafana/alloy/syntax/scanner"
 )
 
 func (b *ConfigBuilder) appendEventHandlerV2(config *eventhandler_v2.Config) {

@@ -6,8 +6,8 @@ import (
 	"github.com/alecthomas/units"
 	"github.com/grafana/agent/internal/component/common/loki"
 	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	river "github.com/grafana/alloy/syntax"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 )
 
 // Arguments configures the app_agent_receiver component.

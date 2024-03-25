@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/component/local/file"
 	filedetector "github.com/grafana/agent/internal/filedetector"
 	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/river/rivertypes"
+	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/stretchr/testify/require"
 )
 

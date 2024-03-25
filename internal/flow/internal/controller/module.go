@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/river/ast"
+	"github.com/grafana/alloy/syntax/ast"
 )
 
 // ModuleController is a lower-level interface for module controllers which
