@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/featuregate"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 )
@@ -28,12 +28,12 @@ func init() {
 
 type Arguments struct {
 	Server          string            `river:"server,attr,optional"`
-	Token           rivertypes.Secret `river:"token,attr,optional"`
+	Token           alloytypes.Secret `river:"token,attr,optional"`
 	Datacenter      string            `river:"datacenter,attr,optional"`
 	TagSeparator    string            `river:"tag_separator,attr,optional"`
 	Scheme          string            `river:"scheme,attr,optional"`
 	Username        string            `river:"username,attr,optional"`
-	Password        rivertypes.Secret `river:"password,attr,optional"`
+	Password        alloytypes.Secret `river:"password,attr,optional"`
 	RefreshInterval time.Duration     `river:"refresh_interval,attr,optional"`
 	Services        []string          `river:"services,attr,optional"`
 	ServiceTags     []string          `river:"tags,attr,optional"`

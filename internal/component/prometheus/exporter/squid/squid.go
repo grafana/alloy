@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/squid_exporter"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 )
 
@@ -32,7 +32,7 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 type Arguments struct {
 	SquidAddr     string            `river:"address,attr"`
 	SquidUser     string            `river:"username,attr,optional"`
-	SquidPassword rivertypes.Secret `river:"password,attr,optional"`
+	SquidPassword alloytypes.Secret `river:"password,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

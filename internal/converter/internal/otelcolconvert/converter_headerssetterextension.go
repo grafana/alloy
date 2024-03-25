@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth/headers"
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
 	"go.opentelemetry.io/collector/component"
 )
@@ -43,9 +43,9 @@ func (headersSetterExtensionConverter) ConvertAndAppend(state *state, id compone
 func toHeadersSetterExtension(cfg *headerssetterextension.Config) *headers.Arguments {
 	res := make([]headers.Header, 0, len(cfg.HeadersConfig))
 	for _, h := range cfg.HeadersConfig {
-		var val *rivertypes.OptionalSecret
+		var val *alloytypes.OptionalSecret
 		if h.Value != nil {
-			val = &rivertypes.OptionalSecret{
+			val = &alloytypes.OptionalSecret{
 				IsSecret: false, // we default to non-secret so that the converted configuration includes the actual value instead of (secret).
 				Value:    *h.Value,
 			}

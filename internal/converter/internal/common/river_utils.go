@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/printer"
 	"github.com/grafana/alloy/syntax/scanner"
@@ -14,7 +15,6 @@ import (
 	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/converter/diag"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 
@@ -38,15 +38,15 @@ func NewBlockWithOverrideFn(name []string, label string, args component.Argument
 func getValueOverrideHook() builder.ValueOverrideHook {
 	return func(val interface{}) interface{} {
 		switch value := val.(type) {
-		case rivertypes.Secret:
+		case alloytypes.Secret:
 			return string(value)
-		case []rivertypes.Secret:
+		case []alloytypes.Secret:
 			secrets := make([]string, 0, len(value))
 			for _, secret := range value {
 				secrets = append(secrets, string(secret))
 			}
 			return secrets
-		case map[string][]rivertypes.Secret:
+		case map[string][]alloytypes.Secret:
 			secrets := make(map[string][]string, len(value))
 			for k, v := range value {
 				secrets[k] = make([]string, 0, len(v))

@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
 	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_discovery "github.com/prometheus/prometheus/discovery/ovhcloud"
 )
 
@@ -32,8 +32,8 @@ func toDiscoveryOvhcloud(sdConfig *prom_discovery.SDConfig) *ovhcloud.Arguments 
 	return &ovhcloud.Arguments{
 		Endpoint:          sdConfig.Endpoint,
 		ApplicationKey:    sdConfig.ApplicationKey,
-		ApplicationSecret: rivertypes.Secret(sdConfig.ApplicationSecret),
-		ConsumerKey:       rivertypes.Secret(sdConfig.ConsumerKey),
+		ApplicationSecret: alloytypes.Secret(sdConfig.ApplicationSecret),
+		ConsumerKey:       alloytypes.Secret(sdConfig.ConsumerKey),
 		RefreshInterval:   time.Duration(sdConfig.RefreshInterval),
 		Service:           sdConfig.Service,
 	}

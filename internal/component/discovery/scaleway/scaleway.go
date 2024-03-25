@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/featuregate"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_config "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/scaleway"
@@ -37,7 +37,7 @@ type Arguments struct {
 	APIURL          string            `river:"api_url,attr,optional"`
 	Zone            string            `river:"zone,attr,optional"`
 	AccessKey       string            `river:"access_key,attr"`
-	SecretKey       rivertypes.Secret `river:"secret_key,attr,optional"`
+	SecretKey       alloytypes.Secret `river:"secret_key,attr,optional"`
 	SecretKeyFile   string            `river:"secret_key_file,attr,optional"`
 	NameFilter      string            `river:"name_filter,attr,optional"`
 	TagsFilter      []string          `river:"tags_filter,attr,optional"`

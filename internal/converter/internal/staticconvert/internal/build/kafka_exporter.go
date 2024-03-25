@@ -4,7 +4,7 @@ import (
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/component/prometheus/exporter/kafka"
 	"github.com/grafana/agent/internal/static/integrations/kafka_exporter"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (b *ConfigBuilder) appendKafkaExporter(config *kafka_exporter.Config, instanceKey *string) discovery.Exports {
@@ -18,7 +18,7 @@ func toKafkaExporter(config *kafka_exporter.Config) *kafka.Arguments {
 		UseSASL:                 config.UseSASL,
 		UseSASLHandshake:        config.UseSASLHandshake,
 		SASLUsername:            config.SASLUsername,
-		SASLPassword:            rivertypes.Secret(config.SASLPassword),
+		SASLPassword:            alloytypes.Secret(config.SASLPassword),
 		SASLMechanism:           config.SASLMechanism,
 		UseTLS:                  config.UseTLS,
 		CAFile:                  config.CAFile,

@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/util"
 	river "github.com/grafana/alloy/syntax"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
 )
@@ -71,7 +71,7 @@ func Test(t *testing.T) {
 	}
 
 	requireExports(http_component.Exports{
-		Content: rivertypes.OptionalSecret{
+		Content: alloytypes.OptionalSecret{
 			IsSecret: false,
 			Value:    "Hello, world!",
 		},
@@ -87,7 +87,7 @@ func Test(t *testing.T) {
 	})
 	require.NoError(t, ctrl.WaitExports(time.Second), "component didn't update exports")
 	requireExports(http_component.Exports{
-		Content: rivertypes.OptionalSecret{
+		Content: alloytypes.OptionalSecret{
 			IsSecret: false,
 			Value:    "Testing!\nMethod: PUT\nHeader: value",
 		},

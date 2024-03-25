@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/receiver/kafka"
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
@@ -93,7 +93,7 @@ func toKafkaPlaintext(cfg map[string]any) *kafka.PlaintextArguments {
 
 	return &kafka.PlaintextArguments{
 		Username: cfg["username"].(string),
-		Password: rivertypes.Secret(cfg["password"].(string)),
+		Password: alloytypes.Secret(cfg["password"].(string)),
 	}
 }
 
@@ -104,7 +104,7 @@ func toKafkaSASL(cfg map[string]any) *kafka.SASLArguments {
 
 	return &kafka.SASLArguments{
 		Username:  cfg["username"].(string),
-		Password:  rivertypes.Secret(cfg["password"].(string)),
+		Password:  alloytypes.Secret(cfg["password"].(string)),
 		Mechanism: cfg["mechanism"].(string),
 		Version:   cfg["version"].(int),
 		AWSMSK:    toKafkaAWSMSK(encodeMapstruct(cfg["aws_msk"])),
@@ -147,7 +147,7 @@ func toKafkaKerberos(cfg map[string]any) *kafka.KerberosArguments {
 		Realm:       cfg["realm"].(string),
 		UseKeyTab:   cfg["use_keytab"].(bool),
 		Username:    cfg["username"].(string),
-		Password:    rivertypes.Secret(cfg["password"].(string)),
+		Password:    alloytypes.Secret(cfg["password"].(string)),
 		ConfigPath:  cfg["config_file"].(string),
 		KeyTabPath:  cfg["keytab_file"].(string),
 	}

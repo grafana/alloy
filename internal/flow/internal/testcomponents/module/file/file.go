@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/component/local/file"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/internal/testcomponents/module"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func init() {
@@ -46,7 +46,7 @@ type Component struct {
 
 	mut     sync.RWMutex
 	args    Arguments
-	content rivertypes.OptionalSecret
+	content alloytypes.OptionalSecret
 
 	managedLocalFile *file.Component
 	inUpdate         atomic.Bool
@@ -169,14 +169,14 @@ func (c *Component) setArgs(args Arguments) {
 }
 
 // getContent is a goroutine safe way to get content
-func (c *Component) getContent() rivertypes.OptionalSecret {
+func (c *Component) getContent() alloytypes.OptionalSecret {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 	return c.content
 }
 
 // setContent is a goroutine safe way to set content
-func (c *Component) setContent(content rivertypes.OptionalSecret) {
+func (c *Component) setContent(content alloytypes.OptionalSecret) {
 	c.mut.Lock()
 	c.content = content
 	c.mut.Unlock()

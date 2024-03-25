@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/agent/internal/flow/componenttest"
 	"github.com/grafana/agent/internal/util"
 	river "github.com/grafana/alloy/syntax"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -61,8 +61,8 @@ func Test_GetSecrets(t *testing.T) {
 
 	var (
 		expectExports = Exports{
-			Data: map[string]rivertypes.Secret{
-				"key": rivertypes.Secret("value"),
+			Data: map[string]alloytypes.Secret{
+				"key": alloytypes.Secret("value"),
 			},
 		}
 		actualExports = ctrl.Exports().(Exports)
@@ -112,8 +112,8 @@ func Test_PollSecrets(t *testing.T) {
 
 		var (
 			expectExports = Exports{
-				Data: map[string]rivertypes.Secret{
-					"key": rivertypes.Secret("value"),
+				Data: map[string]alloytypes.Secret{
+					"key": alloytypes.Secret("value"),
 				},
 			}
 			actualExports = ctrl.Exports().(Exports)
@@ -132,8 +132,8 @@ func Test_PollSecrets(t *testing.T) {
 
 		var (
 			expectExports = Exports{
-				Data: map[string]rivertypes.Secret{
-					"key": rivertypes.Secret("newvalue"),
+				Data: map[string]alloytypes.Secret{
+					"key": alloytypes.Secret("newvalue"),
 				},
 			}
 			actualExports = ctrl.Exports().(Exports)

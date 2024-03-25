@@ -4,7 +4,7 @@ import (
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/component/prometheus/exporter/mongodb"
 	"github.com/grafana/agent/internal/static/integrations/mongodb_exporter"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (b *ConfigBuilder) appendMongodbExporter(config *mongodb_exporter.Config, instanceKey *string) discovery.Exports {
@@ -14,7 +14,7 @@ func (b *ConfigBuilder) appendMongodbExporter(config *mongodb_exporter.Config, i
 
 func toMongodbExporter(config *mongodb_exporter.Config) *mongodb.Arguments {
 	return &mongodb.Arguments{
-		URI:                    rivertypes.Secret(config.URI),
+		URI:                    alloytypes.Secret(config.URI),
 		DirectConnect:          config.DirectConnect,
 		DiscoveringMode:        config.DiscoveringMode,
 		TLSBasicAuthConfigPath: config.TLSBasicAuthConfigPath,

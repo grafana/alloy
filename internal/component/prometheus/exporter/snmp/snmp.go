@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/snmp_exporter"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	snmp_config "github.com/prometheus/snmp_exporter/config"
 	"gopkg.in/yaml.v2"
 )
@@ -113,7 +113,7 @@ func (w WalkParams) Convert() map[string]snmp_config.WalkParams {
 
 type Arguments struct {
 	ConfigFile   string                    `river:"config_file,attr,optional"`
-	Config       rivertypes.OptionalSecret `river:"config,attr,optional"`
+	Config       alloytypes.OptionalSecret `river:"config,attr,optional"`
 	Targets      TargetBlock               `river:"target,block"`
 	WalkParams   WalkParams                `river:"walk_param,block,optional"`
 	ConfigStruct snmp_config.Config

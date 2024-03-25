@@ -5,7 +5,7 @@ import (
 
 	"github.com/grafana/agent/internal/static/integrations/mysqld_exporter"
 	river "github.com/grafana/alloy/syntax"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -160,14 +160,14 @@ func TestDefaultsSame(t *testing.T) {
 
 func TestValidate_ValidDataSource(t *testing.T) {
 	args := Arguments{
-		DataSourceName: rivertypes.Secret("root:secret_password@tcp(localhost:3306)/mydb"),
+		DataSourceName: alloytypes.Secret("root:secret_password@tcp(localhost:3306)/mydb"),
 	}
 	require.NoError(t, args.Validate())
 }
 
 func TestValidate_InvalidDataSource(t *testing.T) {
 	args := Arguments{
-		DataSourceName: rivertypes.Secret("root:secret_password@invalid/mydb"),
+		DataSourceName: alloytypes.Secret("root:secret_password@invalid/mydb"),
 	}
 	require.Error(t, args.Validate())
 }

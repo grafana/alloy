@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
 	"github.com/grafana/agent/internal/useragent"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_config "github.com/prometheus/common/config"
 )
 
@@ -82,7 +82,7 @@ func (args *Arguments) Validate() error {
 
 // Exports holds settings exported by remote.http.
 type Exports struct {
-	Content rivertypes.OptionalSecret `river:"content,attr"`
+	Content alloytypes.OptionalSecret `river:"content,attr"`
 }
 
 // Component implements the remote.http component.
@@ -231,7 +231,7 @@ func (c *Component) pollError() error {
 	stringContent := strings.TrimSpace(string(bb))
 
 	newExports := Exports{
-		Content: rivertypes.OptionalSecret{
+		Content: alloytypes.OptionalSecret{
 			IsSecret: c.args.IsSecret,
 			Value:    stringContent,
 		},

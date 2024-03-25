@@ -7,7 +7,7 @@ import (
 	commonCfg "github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/static/integrations/elasticsearch_exporter"
 	river "github.com/grafana/alloy/syntax"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promCfg "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
@@ -59,7 +59,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		ExportSLM:                 true,
 		BasicAuth: &commonCfg.BasicAuth{
 			Username: "username",
-			Password: rivertypes.Secret("pass"),
+			Password: alloytypes.Secret("pass"),
 		},
 	}
 

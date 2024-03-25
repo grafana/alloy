@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/loki"
 	"github.com/grafana/agent/internal/component/otelcol"
 	river "github.com/grafana/alloy/syntax"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 // Arguments configures the app_agent_receiver component.
@@ -33,7 +33,7 @@ type ServerArguments struct {
 	Host                  string            `river:"listen_address,attr,optional"`
 	Port                  int               `river:"listen_port,attr,optional"`
 	CORSAllowedOrigins    []string          `river:"cors_allowed_origins,attr,optional"`
-	APIKey                rivertypes.Secret `river:"api_key,attr,optional"`
+	APIKey                alloytypes.Secret `river:"api_key,attr,optional"`
 	MaxAllowedPayloadSize units.Base2Bytes  `river:"max_allowed_payload_size,attr,optional"`
 
 	RateLimiting RateLimitingArguments `river:"rate_limiting,block,optional"`

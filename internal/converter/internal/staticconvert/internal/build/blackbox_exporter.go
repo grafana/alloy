@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/agent/internal/component/prometheus/exporter/blackbox"
 	"github.com/grafana/agent/internal/static/integrations/blackbox_exporter"
 	blackbox_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/blackbox_exporter"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (b *ConfigBuilder) appendBlackboxExporter(config *blackbox_exporter.Config) discovery.Exports {
@@ -18,7 +18,7 @@ func (b *ConfigBuilder) appendBlackboxExporter(config *blackbox_exporter.Config)
 func toBlackboxExporter(config *blackbox_exporter.Config) *blackbox.Arguments {
 	return &blackbox.Arguments{
 		ConfigFile: config.BlackboxConfigFile,
-		Config: rivertypes.OptionalSecret{
+		Config: alloytypes.OptionalSecret{
 			IsSecret: false,
 			Value:    string(config.BlackboxConfig),
 		},
@@ -35,7 +35,7 @@ func (b *ConfigBuilder) appendBlackboxExporterV2(config *blackbox_exporter_v2.Co
 func toBlackboxExporterV2(config *blackbox_exporter_v2.Config) *blackbox.Arguments {
 	return &blackbox.Arguments{
 		ConfigFile: config.BlackboxConfigFile,
-		Config: rivertypes.OptionalSecret{
+		Config: alloytypes.OptionalSecret{
 			IsSecret: false,
 			Value:    string(config.BlackboxConfig),
 		},

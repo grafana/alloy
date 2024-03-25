@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/agent/internal/static/integrations"
 	"github.com/grafana/agent/internal/static/integrations/blackbox_exporter"
 	"github.com/grafana/agent/internal/util"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func init() {
@@ -92,7 +92,7 @@ func (t TargetBlock) Convert() []blackbox_exporter.BlackboxTarget {
 
 type Arguments struct {
 	ConfigFile         string                    `river:"config_file,attr,optional"`
-	Config             rivertypes.OptionalSecret `river:"config,attr,optional"`
+	Config             alloytypes.OptionalSecret `river:"config,attr,optional"`
 	Targets            TargetBlock               `river:"target,block"`
 	ProbeTimeoutOffset time.Duration             `river:"probe_timeout_offset,attr,optional"`
 }

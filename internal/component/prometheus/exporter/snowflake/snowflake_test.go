@@ -5,7 +5,7 @@ import (
 
 	"github.com/grafana/agent/internal/static/integrations/snowflake_exporter"
 	river "github.com/grafana/alloy/syntax"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +26,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	expected := Arguments{
 		AccountName: "some_account",
 		Username:    "some_user",
-		Password:    rivertypes.Secret("some_password"),
+		Password:    alloytypes.Secret("some_password"),
 		Role:        "some_role",
 		Warehouse:   "some_warehouse",
 	}

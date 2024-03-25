@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol"
 	"github.com/grafana/agent/internal/component/otelcol/auth"
 	"github.com/grafana/agent/internal/featuregate"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -33,7 +33,7 @@ func init() {
 type Arguments struct {
 	ClientID         string                     `river:"client_id,attr,optional"`
 	ClientIDFile     string                     `river:"client_id_file,attr,optional"`
-	ClientSecret     rivertypes.Secret          `river:"client_secret,attr,optional"`
+	ClientSecret     alloytypes.Secret          `river:"client_secret,attr,optional"`
 	ClientSecretFile string                     `river:"client_secret_file,attr,optional"`
 	TokenURL         string                     `river:"token_url,attr"`
 	EndpointParams   url.Values                 `river:"endpoint_params,attr,optional"`

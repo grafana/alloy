@@ -9,7 +9,7 @@ import (
 	"time"
 
 	river "github.com/grafana/alloy/syntax"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/regexp"
 )
 
@@ -17,7 +17,7 @@ import (
 type TLSArguments struct {
 	Cert             string            `river:"cert_pem,attr,optional"`
 	CertFile         string            `river:"cert_file,attr,optional"`
-	Key              rivertypes.Secret `river:"key_pem,attr,optional"`
+	Key              alloytypes.Secret `river:"key_pem,attr,optional"`
 	KeyFile          string            `river:"key_file,attr,optional"`
 	ClientCA         string            `river:"client_ca_pem,attr,optional"`
 	ClientCAFile     string            `river:"client_ca_file,attr,optional"`

@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth/basic"
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension"
 	"go.opentelemetry.io/collector/component"
 )
@@ -43,6 +43,6 @@ func (basicAuthConverterConverter) ConvertAndAppend(state *state, id component.I
 func toBasicAuthExtension(cfg *basicauthextension.Config) *basic.Arguments {
 	return &basic.Arguments{
 		Username: cfg.ClientAuth.Username,
-		Password: rivertypes.Secret(string(cfg.ClientAuth.Password)),
+		Password: alloytypes.Secret(string(cfg.ClientAuth.Password)),
 	}
 }

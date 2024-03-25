@@ -6,7 +6,7 @@ import (
 
 	"github.com/grafana/agent/internal/component/common/config"
 	river "github.com/grafana/alloy/syntax"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	prom_sd "github.com/prometheus/prometheus/discovery/eureka"
@@ -28,7 +28,7 @@ func TestUnmarshal(t *testing.T) {
 	require.Equal(t, "http://localhost:8080/eureka/v1", args.Server)
 	require.Equal(t, "10s", args.RefreshInterval.String())
 	require.Equal(t, "exampleuser", args.HTTPClientConfig.BasicAuth.Username)
-	require.Equal(t, rivertypes.Secret("examplepassword"), args.HTTPClientConfig.BasicAuth.Password)
+	require.Equal(t, alloytypes.Secret("examplepassword"), args.HTTPClientConfig.BasicAuth.Password)
 }
 
 func TestValidate(t *testing.T) {

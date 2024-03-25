@@ -4,7 +4,7 @@ import (
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/component/prometheus/exporter/mysql"
 	"github.com/grafana/agent/internal/static/integrations/mysqld_exporter"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (b *ConfigBuilder) appendMysqldExporter(config *mysqld_exporter.Config, instanceKey *string) discovery.Exports {
@@ -14,7 +14,7 @@ func (b *ConfigBuilder) appendMysqldExporter(config *mysqld_exporter.Config, ins
 
 func toMysqldExporter(config *mysqld_exporter.Config) *mysql.Arguments {
 	return &mysql.Arguments{
-		DataSourceName:    rivertypes.Secret(config.DataSourceName),
+		DataSourceName:    alloytypes.Secret(config.DataSourceName),
 		EnableCollectors:  config.EnableCollectors,
 		DisableCollectors: config.DisableCollectors,
 		SetCollectors:     config.SetCollectors,

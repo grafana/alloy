@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth/oauth2"
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension"
 	"go.opentelemetry.io/collector/component"
 )
@@ -43,7 +43,7 @@ func (oauth2ClientAuthExtensionConverter) ConvertAndAppend(state *state, id comp
 func toOAuth2ClientAuthExtension(cfg *oauth2clientauthextension.Config) *oauth2.Arguments {
 	return &oauth2.Arguments{
 		ClientID:       cfg.ClientID,
-		ClientSecret:   rivertypes.Secret(cfg.ClientSecret),
+		ClientSecret:   alloytypes.Secret(cfg.ClientSecret),
 		TokenURL:       cfg.TokenURL,
 		EndpointParams: cfg.EndpointParams,
 		Scopes:         cfg.Scopes,

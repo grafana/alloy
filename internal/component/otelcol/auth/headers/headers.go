@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/component/otelcol/auth"
 	"github.com/grafana/agent/internal/featuregate"
 	river "github.com/grafana/alloy/syntax"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -133,7 +133,7 @@ func (a *Action) UnmarshalText(text []byte) error {
 // Header is an individual Header to send along with requests.
 type Header struct {
 	Key         string                     `river:"key,attr"`
-	Value       *rivertypes.OptionalSecret `river:"value,attr,optional"`
+	Value       *alloytypes.OptionalSecret `river:"value,attr,optional"`
 	FromContext *string                    `river:"from_context,attr,optional"`
 	Action      Action                     `river:"action,attr,optional"`
 }

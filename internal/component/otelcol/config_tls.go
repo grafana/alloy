@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"go.opentelemetry.io/collector/config/configopaque"
 	otelconfigtls "go.opentelemetry.io/collector/config/configtls"
 )
@@ -58,7 +58,7 @@ type TLSSetting struct {
 	CAFile         string            `river:"ca_file,attr,optional"`
 	Cert           string            `river:"cert_pem,attr,optional"`
 	CertFile       string            `river:"cert_file,attr,optional"`
-	Key            rivertypes.Secret `river:"key_pem,attr,optional"`
+	Key            alloytypes.Secret `river:"key_pem,attr,optional"`
 	KeyFile        string            `river:"key_file,attr,optional"`
 	MinVersion     string            `river:"min_version,attr,optional"`
 	MaxVersion     string            `river:"max_version,attr,optional"`

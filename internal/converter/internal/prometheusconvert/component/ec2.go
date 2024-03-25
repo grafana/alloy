@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/converter/diag"
 	"github.com/grafana/agent/internal/converter/internal/common"
 	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_aws "github.com/prometheus/prometheus/discovery/aws"
 )
 
@@ -33,7 +33,7 @@ func toDiscoveryEC2(sdConfig *prom_aws.EC2SDConfig) *aws.EC2Arguments {
 		Endpoint:         sdConfig.Endpoint,
 		Region:           sdConfig.Region,
 		AccessKey:        sdConfig.AccessKey,
-		SecretKey:        rivertypes.Secret(sdConfig.SecretKey),
+		SecretKey:        alloytypes.Secret(sdConfig.SecretKey),
 		Profile:          sdConfig.Profile,
 		RoleARN:          sdConfig.RoleARN,
 		RefreshInterval:  time.Duration(sdConfig.RefreshInterval),

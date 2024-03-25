@@ -6,7 +6,7 @@ import (
 
 	"github.com/grafana/agent/internal/static/integrations/squid_exporter"
 	river "github.com/grafana/alloy/syntax"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	expected := Arguments{
 		SquidAddr:     "some_address:port",
 		SquidUser:     "some_user",
-		SquidPassword: rivertypes.Secret("some_password"),
+		SquidPassword: alloytypes.Secret("some_password"),
 	}
 
 	require.Equal(t, expected, args)

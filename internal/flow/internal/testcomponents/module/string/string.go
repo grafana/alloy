@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/internal/testcomponents/module"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func init() {
@@ -26,7 +26,7 @@ func init() {
 // component.
 type Arguments struct {
 	// Content to load for the module.
-	Content rivertypes.OptionalSecret `river:"content,attr"`
+	Content alloytypes.OptionalSecret `river:"content,attr"`
 
 	// Arguments to pass into the module.
 	Arguments map[string]any `river:"arguments,block,optional"`

@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/featuregate"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/digitalocean"
 )
@@ -30,7 +30,7 @@ type Arguments struct {
 	RefreshInterval time.Duration `river:"refresh_interval,attr,optional"`
 	Port            int           `river:"port,attr,optional"`
 
-	BearerToken     rivertypes.Secret `river:"bearer_token,attr,optional"`
+	BearerToken     alloytypes.Secret `river:"bearer_token,attr,optional"`
 	BearerTokenFile string            `river:"bearer_token_file,attr,optional"`
 
 	ProxyConfig     *config.ProxyConfig `river:",squash"`

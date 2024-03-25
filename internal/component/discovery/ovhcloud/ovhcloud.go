@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/featuregate"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/ovhcloud"
@@ -30,8 +30,8 @@ func init() {
 type Arguments struct {
 	Endpoint          string            `river:"endpoint,attr,optional"`
 	ApplicationKey    string            `river:"application_key,attr"`
-	ApplicationSecret rivertypes.Secret `river:"application_secret,attr"`
-	ConsumerKey       rivertypes.Secret `river:"consumer_key,attr"`
+	ApplicationSecret alloytypes.Secret `river:"application_secret,attr"`
+	ConsumerKey       alloytypes.Secret `river:"consumer_key,attr"`
 	RefreshInterval   time.Duration     `river:"refresh_interval,attr,optional"`
 	Service           string            `river:"service,attr"`
 }

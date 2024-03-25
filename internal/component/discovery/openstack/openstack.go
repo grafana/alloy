@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/featuregate"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/openstack"
@@ -31,14 +31,14 @@ type Arguments struct {
 	IdentityEndpoint            string            `river:"identity_endpoint,attr,optional"`
 	Username                    string            `river:"username,attr,optional"`
 	UserID                      string            `river:"userid,attr,optional"`
-	Password                    rivertypes.Secret `river:"password,attr,optional"`
+	Password                    alloytypes.Secret `river:"password,attr,optional"`
 	ProjectName                 string            `river:"project_name,attr,optional"`
 	ProjectID                   string            `river:"project_id,attr,optional"`
 	DomainName                  string            `river:"domain_name,attr,optional"`
 	DomainID                    string            `river:"domain_id,attr,optional"`
 	ApplicationCredentialName   string            `river:"application_credential_name,attr,optional"`
 	ApplicationCredentialID     string            `river:"application_credential_id,attr,optional"`
-	ApplicationCredentialSecret rivertypes.Secret `river:"application_credential_secret,attr,optional"`
+	ApplicationCredentialSecret alloytypes.Secret `river:"application_credential_secret,attr,optional"`
 	Role                        string            `river:"role,attr"`
 	Region                      string            `river:"region,attr"`
 	RefreshInterval             time.Duration     `river:"refresh_interval,attr,optional"`

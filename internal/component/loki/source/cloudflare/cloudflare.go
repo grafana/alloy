@@ -19,7 +19,7 @@ import (
 	cft "github.com/grafana/agent/internal/component/loki/source/cloudflare/internal/cloudflaretarget"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/model"
 )
 
@@ -38,7 +38,7 @@ func init() {
 // Arguments holds values which are used to configure the
 // loki.source.cloudflare component.
 type Arguments struct {
-	APIToken         rivertypes.Secret   `river:"api_token,attr"`
+	APIToken         alloytypes.Secret   `river:"api_token,attr"`
 	ZoneID           string              `river:"zone_id,attr"`
 	Labels           map[string]string   `river:"labels,attr,optional"`
 	Workers          int                 `river:"workers,attr,optional"`

@@ -8,7 +8,7 @@ import (
 
 	types "github.com/grafana/agent/internal/component/common/config"
 	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 
 	"github.com/google/uuid"
 	common "github.com/prometheus/common/config"
@@ -323,7 +323,7 @@ func (a *AzureADConfig) toPrometheusType() *azuread.AzureADConfig {
 type SigV4Config struct {
 	Region    string            `river:"region,attr,optional"`
 	AccessKey string            `river:"access_key,attr,optional"`
-	SecretKey rivertypes.Secret `river:"secret_key,attr,optional"`
+	SecretKey alloytypes.Secret `river:"secret_key,attr,optional"`
 	Profile   string            `river:"profile,attr,optional"`
 	RoleARN   string            `river:"role_arn,attr,optional"`
 }

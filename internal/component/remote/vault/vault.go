@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/agent/internal/component"
 	"github.com/grafana/agent/internal/featuregate"
 	"github.com/grafana/agent/internal/flow/logging/level"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/oklog/run"
 
 	vault "github.com/hashicorp/vault/api"
@@ -126,7 +126,7 @@ type Exports struct {
 	//
 	// However, it seems that most secrets engines don't actually return
 	// arbitrary data, so this limitation shouldn't cause any issues in practice.
-	Data map[string]rivertypes.Secret `river:"data,attr"`
+	Data map[string]alloytypes.Secret `river:"data,attr"`
 }
 
 // Component implements the remote.vault component.
@@ -276,15 +276,15 @@ func (c *Component) getSecret(ctx context.Context, cli *vault.Client) (*vault.Se
 // controller.
 func (c *Component) exportSecret(secret *vault.Secret) {
 	newExports := Exports{
-		Data: make(map[string]rivertypes.Secret),
+		Data: make(map[string]alloytypes.Secret),
 	}
 
 	for key, value := range secret.Data {
 		switch value := value.(type) {
 		case string:
-			newExports.Data[key] = rivertypes.Secret(value)
+			newExports.Data[key] = alloytypes.Secret(value)
 		case []byte:
-			newExports.Data[key] = rivertypes.Secret(value)
+			newExports.Data[key] = alloytypes.Secret(value)
 
 		default:
 			// Non-string secrets are ignored.

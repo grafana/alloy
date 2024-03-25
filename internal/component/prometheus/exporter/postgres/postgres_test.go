@@ -5,6 +5,7 @@ import (
 
 	"github.com/grafana/agent/internal/static/integrations/postgres_exporter"
 	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
@@ -28,7 +29,7 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := Arguments{
-		DataSourceNames:        []rivertypes.Secret{rivertypes.Secret("postgresql://username:password@localhost:5432/database?sslmode=disable")},
+		DataSourceNames:        []alloytypes.Secret{rivertypes.Secret("postgresql://username:password@localhost:5432/database?sslmode=disable")},
 		DisableSettingsMetrics: true,
 		AutoDiscovery: AutoDiscovery{
 			Enabled:           false,

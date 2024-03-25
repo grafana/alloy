@@ -3,7 +3,7 @@ package consul
 import (
 	rac "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
 	river "github.com/grafana/alloy/syntax"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"go.opentelemetry.io/collector/config/configopaque"
 )
 
@@ -23,7 +23,7 @@ type Config struct {
 	// agent's default (empty) token. Token is only required if
 	// [Consul's ACL System](https://www.consul.io/docs/security/acl/acl-system)
 	// is enabled.
-	Token rivertypes.Secret `river:"token,attr,optional"`
+	Token alloytypes.Secret `river:"token,attr,optional"`
 
 	// TokenFile is not necessary in River because users can use the local.file
 	// Flow component instead.

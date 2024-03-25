@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/config"
 	"github.com/grafana/agent/internal/component/discovery"
 	"github.com/grafana/agent/internal/featuregate"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	common "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/azure"
@@ -46,7 +46,7 @@ type Arguments struct {
 type OAuth struct {
 	ClientID     string            `river:"client_id,attr"`
 	TenantID     string            `river:"tenant_id,attr"`
-	ClientSecret rivertypes.Secret `river:"client_secret,attr"`
+	ClientSecret alloytypes.Secret `river:"client_secret,attr"`
 }
 
 type ManagedIdentity struct {

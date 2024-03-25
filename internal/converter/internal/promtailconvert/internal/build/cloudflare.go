@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/agent/internal/component/common/loki"
 	"github.com/grafana/agent/internal/component/loki/source/cloudflare"
 	"github.com/grafana/agent/internal/converter/internal/common"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (s *ScrapeConfigBuilder) AppendCloudFlareConfig() {
@@ -15,7 +15,7 @@ func (s *ScrapeConfigBuilder) AppendCloudFlareConfig() {
 	}
 
 	args := cloudflare.Arguments{
-		APIToken:   rivertypes.Secret(s.cfg.CloudflareConfig.APIToken),
+		APIToken:   alloytypes.Secret(s.cfg.CloudflareConfig.APIToken),
 		ZoneID:     s.cfg.CloudflareConfig.ZoneID,
 		Labels:     convertPromLabels(s.cfg.CloudflareConfig.Labels),
 		Workers:    s.cfg.CloudflareConfig.Workers,
@@ -26,7 +26,7 @@ func (s *ScrapeConfigBuilder) AppendCloudFlareConfig() {
 		switch conv := val.(type) {
 		case []loki.LogsReceiver:
 			return common.CustomTokenizer{Expr: s.getOrNewLokiRelabel()}
-		case rivertypes.Secret:
+		case alloytypes.Secret:
 			return string(conv)
 		default:
 			return val
