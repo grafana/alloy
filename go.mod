@@ -2,12 +2,6 @@ module github.com/grafana/alloy
 
 go 1.22.1
 
-retract (
-	v1.3.191 // Published accidentally
-	v1.2.99 // Published accidentally
-	v1.2.99-rc1 // Published accidentally
-)
-
 require (
 	cloud.google.com/go/pubsub v1.33.0
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.9.0-beta.1
