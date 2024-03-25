@@ -28,14 +28,14 @@ func init() {
 
 // Arguments configures the otelcol.processor.probabilistic_sampler component.
 type Arguments struct {
-	SamplingPercentage float32 `river:"sampling_percentage,attr,optional"`
-	HashSeed           uint32  `river:"hash_seed,attr,optional"`
-	AttributeSource    string  `river:"attribute_source,attr,optional"`
-	FromAttribute      string  `river:"from_attribute,attr,optional"`
-	SamplingPriority   string  `river:"sampling_priority,attr,optional"`
+	SamplingPercentage float32 `alloy:"sampling_percentage,attr,optional"`
+	HashSeed           uint32  `alloy:"hash_seed,attr,optional"`
+	AttributeSource    string  `alloy:"attribute_source,attr,optional"`
+	FromAttribute      string  `alloy:"from_attribute,attr,optional"`
+	SamplingPriority   string  `alloy:"sampling_priority,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (

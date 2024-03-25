@@ -29,7 +29,7 @@ type Arguments struct{}
 
 // Exports holds the values exported by the loki.echo component.
 type Exports struct {
-	Receiver loki.LogsReceiver `river:"receiver,attr"`
+	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
 }
 
 // DefaultArguments defines the default settings for log scraping.

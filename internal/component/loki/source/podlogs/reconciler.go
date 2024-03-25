@@ -361,24 +361,24 @@ func podReady(pod *corev1.Pod) model.LabelValue {
 }
 
 type DiscoveredPodLogs struct {
-	Namespace      string    `river:"namespace,attr"`
-	Name           string    `river:"name,attr"`
-	LastReconcile  time.Time `river:"last_reconcile,attr,optional"`
-	ReconcileError string    `river:"reconcile_error,attr,optional"`
+	Namespace      string    `alloy:"namespace,attr"`
+	Name           string    `alloy:"name,attr"`
+	LastReconcile  time.Time `alloy:"last_reconcile,attr,optional"`
+	ReconcileError string    `alloy:"reconcile_error,attr,optional"`
 
-	Pods []DiscoveredPod `river:"pod,block"`
+	Pods []DiscoveredPod `alloy:"pod,block"`
 }
 
 type DiscoveredPod struct {
-	Namespace      string `river:"namespace,attr"`
-	Name           string `river:"name,attr"`
-	ReconcileError string `river:"reconcile_error,attr,optional"`
+	Namespace      string `alloy:"namespace,attr"`
+	Name           string `alloy:"name,attr"`
+	ReconcileError string `alloy:"reconcile_error,attr,optional"`
 
-	Containers []DiscoveredContainer `river:"container,block"`
+	Containers []DiscoveredContainer `alloy:"container,block"`
 }
 
 type DiscoveredContainer struct {
-	DiscoveredLabels map[string]string `river:"discovered_labels,attr"`
-	Labels           map[string]string `river:"labels,attr"`
-	ReconcileError   string            `river:"reconcile_error,attr,optional"`
+	DiscoveredLabels map[string]string `alloy:"discovered_labels,attr"`
+	Labels           map[string]string `alloy:"labels,attr"`
+	ReconcileError   string            `alloy:"reconcile_error,attr,optional"`
 }

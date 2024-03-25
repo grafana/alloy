@@ -28,12 +28,12 @@ func init() {
 
 // Arguments configure the discovery.ovhcloud component.
 type Arguments struct {
-	Endpoint          string            `river:"endpoint,attr,optional"`
-	ApplicationKey    string            `river:"application_key,attr"`
-	ApplicationSecret alloytypes.Secret `river:"application_secret,attr"`
-	ConsumerKey       alloytypes.Secret `river:"consumer_key,attr"`
-	RefreshInterval   time.Duration     `river:"refresh_interval,attr,optional"`
-	Service           string            `river:"service,attr"`
+	Endpoint          string            `alloy:"endpoint,attr,optional"`
+	ApplicationKey    string            `alloy:"application_key,attr"`
+	ApplicationSecret alloytypes.Secret `alloy:"application_secret,attr"`
+	ConsumerKey       alloytypes.Secret `alloy:"consumer_key,attr"`
+	RefreshInterval   time.Duration     `alloy:"refresh_interval,attr,optional"`
+	Service           string            `alloy:"service,attr"`
 }
 
 // DefaultArguments is used to initialize default values for Arguments.

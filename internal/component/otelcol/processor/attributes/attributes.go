@@ -31,14 +31,14 @@ func init() {
 // Arguments configures the otelcol.processor.attributes component.
 type Arguments struct {
 	// Pre-processing filtering to include/exclude data from the processor.
-	Match otelcol.MatchConfig `river:",squash"`
+	Match otelcol.MatchConfig `alloy:",squash"`
 
 	// Actions performed on the input data in the order specified in the config.
 	// Example actions are "insert", "update", "upsert", "delete", "hash".
-	Actions otelcol.AttrActionKeyValueSlice `river:"action,block,optional"`
+	Actions otelcol.AttrActionKeyValueSlice `alloy:"action,block,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (

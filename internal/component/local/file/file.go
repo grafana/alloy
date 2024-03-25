@@ -40,15 +40,15 @@ func init() {
 // Arguments holds values which are used to configure the local.file component.
 type Arguments struct {
 	// Filename indicates the file to watch.
-	Filename string `river:"filename,attr"`
+	Filename string `alloy:"filename,attr"`
 	// Type indicates how to detect changes to the file.
-	Type filedetector.Detector `river:"detector,attr,optional"`
+	Type filedetector.Detector `alloy:"detector,attr,optional"`
 	// PollFrequency determines the frequency to check for changes when Type is
 	// Poll.
-	PollFrequency time.Duration `river:"poll_frequency,attr,optional"`
+	PollFrequency time.Duration `alloy:"poll_frequency,attr,optional"`
 	// IsSecret marks the file as holding a secret value which should not be
 	// displayed to the user.
-	IsSecret bool `river:"is_secret,attr,optional"`
+	IsSecret bool `alloy:"is_secret,attr,optional"`
 }
 
 // DefaultArguments provides the default arguments for the local.file
@@ -66,7 +66,7 @@ func (a *Arguments) SetToDefault() {
 // Exports holds values which are exported by the local.file component.
 type Exports struct {
 	// Content of the file.
-	Content alloytypes.OptionalSecret `river:"content,attr"`
+	Content alloytypes.OptionalSecret `alloy:"content,attr"`
 }
 
 // Component implements the local.file component.

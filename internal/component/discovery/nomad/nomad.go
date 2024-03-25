@@ -27,13 +27,13 @@ func init() {
 }
 
 type Arguments struct {
-	AllowStale       bool                    `river:"allow_stale,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
-	Namespace        string                  `river:"namespace,attr,optional"`
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
-	Region           string                  `river:"region,attr,optional"`
-	Server           string                  `river:"server,attr,optional"`
-	TagSeparator     string                  `river:"tag_separator,attr,optional"`
+	AllowStale       bool                    `alloy:"allow_stale,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
+	Namespace        string                  `alloy:"namespace,attr,optional"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	Region           string                  `alloy:"region,attr,optional"`
+	Server           string                  `alloy:"server,attr,optional"`
+	TagSeparator     string                  `alloy:"tag_separator,attr,optional"`
 }
 
 var DefaultArguments = Arguments{

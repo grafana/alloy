@@ -27,13 +27,13 @@ const (
 
 // Arguments control the component.
 type Arguments struct {
-	Namespace     string        `river:"namespace,attr"`
-	Name          string        `river:"name,attr"`
-	PollFrequency time.Duration `river:"poll_frequency,attr,optional"`
-	PollTimeout   time.Duration `river:"poll_timeout,attr,optional"`
+	Namespace     string        `alloy:"namespace,attr"`
+	Name          string        `alloy:"name,attr"`
+	PollFrequency time.Duration `alloy:"poll_frequency,attr,optional"`
+	PollTimeout   time.Duration `alloy:"poll_timeout,attr,optional"`
 
 	// Client settings to connect to Kubernetes.
-	Client kubernetes.ClientArguments `river:"client,block,optional"`
+	Client kubernetes.ClientArguments `alloy:"client,block,optional"`
 }
 
 // DefaultArguments holds default settings for Arguments.
@@ -60,7 +60,7 @@ func (args *Arguments) Validate() error {
 
 // Exports holds settings exported by this component.
 type Exports struct {
-	Data map[string]alloytypes.OptionalSecret `river:"data,attr"`
+	Data map[string]alloytypes.OptionalSecret `alloy:"data,attr"`
 }
 
 // Component implements the remote.kubernetes.* component.

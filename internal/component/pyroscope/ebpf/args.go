@@ -8,17 +8,17 @@ import (
 )
 
 type Arguments struct {
-	ForwardTo            []pyroscope.Appendable `river:"forward_to,attr"`
-	Targets              []discovery.Target     `river:"targets,attr,optional"`
-	CollectInterval      time.Duration          `river:"collect_interval,attr,optional"`
-	SampleRate           int                    `river:"sample_rate,attr,optional"`
-	PidCacheSize         int                    `river:"pid_cache_size,attr,optional"`
-	BuildIDCacheSize     int                    `river:"build_id_cache_size,attr,optional"`
-	SameFileCacheSize    int                    `river:"same_file_cache_size,attr,optional"`
-	ContainerIDCacheSize int                    `river:"container_id_cache_size,attr,optional"`
-	CacheRounds          int                    `river:"cache_rounds,attr,optional"`
-	CollectUserProfile   bool                   `river:"collect_user_profile,attr,optional"`
-	CollectKernelProfile bool                   `river:"collect_kernel_profile,attr,optional"`
-	Demangle             string                 `river:"demangle,attr,optional"`
-	PythonEnabled        bool                   `river:"python_enabled,attr,optional"`
+	ForwardTo            []pyroscope.Appendable `alloy:"forward_to,attr"`
+	Targets              []discovery.Target     `alloy:"targets,attr,optional"`
+	CollectInterval      time.Duration          `alloy:"collect_interval,attr,optional"`
+	SampleRate           int                    `alloy:"sample_rate,attr,optional"`
+	PidCacheSize         int                    `alloy:"pid_cache_size,attr,optional"`
+	BuildIDCacheSize     int                    `alloy:"build_id_cache_size,attr,optional"`
+	SameFileCacheSize    int                    `alloy:"same_file_cache_size,attr,optional"`
+	ContainerIDCacheSize int                    `alloy:"container_id_cache_size,attr,optional"`
+	CacheRounds          int                    `alloy:"cache_rounds,attr,optional"`
+	CollectUserProfile   bool                   `alloy:"collect_user_profile,attr,optional"`
+	CollectKernelProfile bool                   `alloy:"collect_kernel_profile,attr,optional"`
+	Demangle             string                 `alloy:"demangle,attr,optional"`
+	PythonEnabled        bool                   `alloy:"python_enabled,attr,optional"`
 }

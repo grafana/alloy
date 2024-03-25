@@ -63,8 +63,8 @@ func init() {
 
 // TemplateConfig configures template value extraction.
 type TemplateConfig struct {
-	Source   string `river:"source,attr"`
-	Template string `river:"template,attr"`
+	Source   string `alloy:"source,attr"`
+	Template string `alloy:"template,attr"`
 }
 
 // validateTemplateConfig validates the templateStage config.

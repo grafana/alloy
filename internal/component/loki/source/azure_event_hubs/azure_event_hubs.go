@@ -33,26 +33,26 @@ func init() {
 
 // Arguments holds values which are used to configure the loki.source.azure_event_hubs component.
 type Arguments struct {
-	FullyQualifiedNamespace string   `river:"fully_qualified_namespace,attr"`
-	EventHubs               []string `river:"event_hubs,attr"`
+	FullyQualifiedNamespace string   `alloy:"fully_qualified_namespace,attr"`
+	EventHubs               []string `alloy:"event_hubs,attr"`
 
-	Authentication AzureEventHubsAuthentication `river:"authentication,block"`
+	Authentication AzureEventHubsAuthentication `alloy:"authentication,block"`
 
-	GroupID                string             `river:"group_id,attr,optional"`
-	UseIncomingTimestamp   bool               `river:"use_incoming_timestamp,attr,optional"`
-	DisallowCustomMessages bool               `river:"disallow_custom_messages,attr,optional"`
-	RelabelRules           flow_relabel.Rules `river:"relabel_rules,attr,optional"`
-	Labels                 map[string]string  `river:"labels,attr,optional"`
-	Assignor               string             `river:"assignor,attr,optional"`
+	GroupID                string             `alloy:"group_id,attr,optional"`
+	UseIncomingTimestamp   bool               `alloy:"use_incoming_timestamp,attr,optional"`
+	DisallowCustomMessages bool               `alloy:"disallow_custom_messages,attr,optional"`
+	RelabelRules           flow_relabel.Rules `alloy:"relabel_rules,attr,optional"`
+	Labels                 map[string]string  `alloy:"labels,attr,optional"`
+	Assignor               string             `alloy:"assignor,attr,optional"`
 
-	ForwardTo []loki.LogsReceiver `river:"forward_to,attr"`
+	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
 
 // AzureEventHubsAuthentication describe the configuration for authentication with Azure Event Hub
 type AzureEventHubsAuthentication struct {
-	Mechanism        string   `river:"mechanism,attr"`
-	Scopes           []string `river:"scopes,attr,optional"`
-	ConnectionString string   `river:"connection_string,attr,optional"`
+	Mechanism        string   `alloy:"mechanism,attr"`
+	Scopes           []string `alloy:"scopes,attr,optional"`
+	ConnectionString string   `alloy:"connection_string,attr,optional"`
 }
 
 func getDefault() Arguments {

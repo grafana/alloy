@@ -29,28 +29,28 @@ func init() {
 }
 
 type Arguments struct {
-	Environment     string           `river:"environment,attr,optional"`
-	Port            int              `river:"port,attr,optional"`
-	SubscriptionID  string           `river:"subscription_id,attr,optional"`
-	OAuth           *OAuth           `river:"oauth,block,optional"`
-	ManagedIdentity *ManagedIdentity `river:"managed_identity,block,optional"`
-	RefreshInterval time.Duration    `river:"refresh_interval,attr,optional"`
-	ResourceGroup   string           `river:"resource_group,attr,optional"`
+	Environment     string           `alloy:"environment,attr,optional"`
+	Port            int              `alloy:"port,attr,optional"`
+	SubscriptionID  string           `alloy:"subscription_id,attr,optional"`
+	OAuth           *OAuth           `alloy:"oauth,block,optional"`
+	ManagedIdentity *ManagedIdentity `alloy:"managed_identity,block,optional"`
+	RefreshInterval time.Duration    `alloy:"refresh_interval,attr,optional"`
+	ResourceGroup   string           `alloy:"resource_group,attr,optional"`
 
-	ProxyConfig     *config.ProxyConfig `river:",squash"`
-	FollowRedirects bool                `river:"follow_redirects,attr,optional"`
-	EnableHTTP2     bool                `river:"enable_http2,attr,optional"`
-	TLSConfig       config.TLSConfig    `river:"tls_config,block,optional"`
+	ProxyConfig     *config.ProxyConfig `alloy:",squash"`
+	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
+	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
+	TLSConfig       config.TLSConfig    `alloy:"tls_config,block,optional"`
 }
 
 type OAuth struct {
-	ClientID     string            `river:"client_id,attr"`
-	TenantID     string            `river:"tenant_id,attr"`
-	ClientSecret alloytypes.Secret `river:"client_secret,attr"`
+	ClientID     string            `alloy:"client_id,attr"`
+	TenantID     string            `alloy:"tenant_id,attr"`
+	ClientSecret alloytypes.Secret `alloy:"client_secret,attr"`
 }
 
 type ManagedIdentity struct {
-	ClientID string `river:"client_id,attr"`
+	ClientID string `alloy:"client_id,attr"`
 }
 
 var DefaultArguments = Arguments{

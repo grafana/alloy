@@ -26,10 +26,10 @@ func init() {
 // component.
 type Arguments struct {
 	// Content to load for the module.
-	Content alloytypes.OptionalSecret `river:"content,attr"`
+	Content alloytypes.OptionalSecret `alloy:"content,attr"`
 
 	// Arguments to pass into the module.
-	Arguments map[string]any `river:"arguments,block,optional"`
+	Arguments map[string]any `alloy:"arguments,block,optional"`
 }
 
 // Component implements the module.string component.

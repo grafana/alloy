@@ -8,7 +8,7 @@ import (
 const Name = "heroku"
 
 type Config struct {
-	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -40,14 +40,14 @@ func (args Config) Convert() map[string]interface{} {
 
 // ResourceAttributesConfig provides config for heroku resource attributes.
 type ResourceAttributesConfig struct {
-	CloudProvider                  rac.ResourceAttributeConfig `river:"cloud.provider,block,optional"`
-	HerokuAppID                    rac.ResourceAttributeConfig `river:"heroku.app.id,block,optional"`
-	HerokuDynoID                   rac.ResourceAttributeConfig `river:"heroku.dyno.id,block,optional"`
-	HerokuReleaseCommit            rac.ResourceAttributeConfig `river:"heroku.release.commit,block,optional"`
-	HerokuReleaseCreationTimestamp rac.ResourceAttributeConfig `river:"heroku.release.creation_timestamp,block,optional"`
-	ServiceInstanceID              rac.ResourceAttributeConfig `river:"service.instance.id,block,optional"`
-	ServiceName                    rac.ResourceAttributeConfig `river:"service.name,block,optional"`
-	ServiceVersion                 rac.ResourceAttributeConfig `river:"service.version,block,optional"`
+	CloudProvider                  rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
+	HerokuAppID                    rac.ResourceAttributeConfig `alloy:"heroku.app.id,block,optional"`
+	HerokuDynoID                   rac.ResourceAttributeConfig `alloy:"heroku.dyno.id,block,optional"`
+	HerokuReleaseCommit            rac.ResourceAttributeConfig `alloy:"heroku.release.commit,block,optional"`
+	HerokuReleaseCreationTimestamp rac.ResourceAttributeConfig `alloy:"heroku.release.creation_timestamp,block,optional"`
+	ServiceInstanceID              rac.ResourceAttributeConfig `alloy:"service.instance.id,block,optional"`
+	ServiceName                    rac.ResourceAttributeConfig `alloy:"service.name,block,optional"`
+	ServiceVersion                 rac.ResourceAttributeConfig `alloy:"service.version,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {

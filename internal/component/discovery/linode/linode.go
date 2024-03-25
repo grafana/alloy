@@ -27,10 +27,10 @@ func init() {
 
 // Arguments configure the discovery.linode component.
 type Arguments struct {
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
-	Port             int                     `river:"port,attr,optional"`
-	TagSeparator     string                  `river:"tag_separator,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	Port             int                     `alloy:"port,attr,optional"`
+	TagSeparator     string                  `alloy:"tag_separator,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
 }
 
 // DefaultArguments is used to initialize default values for Arguments.

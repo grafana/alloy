@@ -16,7 +16,7 @@ var ErrEmptyStaticLabelStageConfig = errors.New("static_labels stage config cann
 
 // StaticLabelsConfig contains a map of static labels to be set.
 type StaticLabelsConfig struct {
-	Values map[string]*string `river:"values,attr"`
+	Values map[string]*string `alloy:"values,attr"`
 }
 
 func newStaticLabelsStage(logger log.Logger, config StaticLabelsConfig) (Stage, error) {

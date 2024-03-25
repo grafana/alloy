@@ -24,12 +24,12 @@ func init() {
 }
 
 type SummationConfig struct {
-	Input int `river:"input,attr"`
+	Input int `alloy:"input,attr"`
 }
 
 type SummationExports struct {
-	Sum       int `river:"sum,attr"`
-	LastAdded int `river:"last_added,attr"`
+	Sum       int `alloy:"sum,attr"`
+	LastAdded int `alloy:"last_added,attr"`
 }
 
 type Summation struct {

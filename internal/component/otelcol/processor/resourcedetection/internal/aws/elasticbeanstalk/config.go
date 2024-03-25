@@ -8,7 +8,7 @@ import (
 const Name = "elasticbeanstalk"
 
 type Config struct {
-	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -37,11 +37,11 @@ func (args Config) Convert() map[string]interface{} {
 
 // ResourceAttributesConfig provides config for elastic_beanstalk resource attributes.
 type ResourceAttributesConfig struct {
-	CloudPlatform         rac.ResourceAttributeConfig `river:"cloud.platform,block,optional"`
-	CloudProvider         rac.ResourceAttributeConfig `river:"cloud.provider,block,optional"`
-	DeploymentEnvironment rac.ResourceAttributeConfig `river:"deployment.environment,block,optional"`
-	ServiceInstanceID     rac.ResourceAttributeConfig `river:"service.instance.id,block,optional"`
-	ServiceVersion        rac.ResourceAttributeConfig `river:"service.version,block,optional"`
+	CloudPlatform         rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
+	CloudProvider         rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
+	DeploymentEnvironment rac.ResourceAttributeConfig `alloy:"deployment.environment,block,optional"`
+	ServiceInstanceID     rac.ResourceAttributeConfig `alloy:"service.instance.id,block,optional"`
+	ServiceVersion        rac.ResourceAttributeConfig `alloy:"service.version,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {

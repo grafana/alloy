@@ -42,11 +42,11 @@ var DefaultArguments = Arguments{
 
 // Arguments controls the mssql exporter.
 type Arguments struct {
-	ConnectionString   alloytypes.Secret         `river:"connection_string,attr"`
-	MaxIdleConnections int                       `river:"max_idle_connections,attr,optional"`
-	MaxOpenConnections int                       `river:"max_open_connections,attr,optional"`
-	Timeout            time.Duration             `river:"timeout,attr,optional"`
-	QueryConfig        alloytypes.OptionalSecret `river:"query_config,attr,optional"`
+	ConnectionString   alloytypes.Secret         `alloy:"connection_string,attr"`
+	MaxIdleConnections int                       `alloy:"max_idle_connections,attr,optional"`
+	MaxOpenConnections int                       `alloy:"max_open_connections,attr,optional"`
+	Timeout            time.Duration             `alloy:"timeout,attr,optional"`
+	QueryConfig        alloytypes.OptionalSecret `alloy:"query_config,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

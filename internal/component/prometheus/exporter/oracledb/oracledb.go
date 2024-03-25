@@ -44,10 +44,10 @@ var (
 
 // Arguments controls the oracledb exporter.
 type Arguments struct {
-	ConnectionString alloytypes.Secret `river:"connection_string,attr"`
-	MaxIdleConns     int               `river:"max_idle_conns,attr,optional"`
-	MaxOpenConns     int               `river:"max_open_conns,attr,optional"`
-	QueryTimeout     int               `river:"query_timeout,attr,optional"`
+	ConnectionString alloytypes.Secret `alloy:"connection_string,attr"`
+	MaxIdleConns     int               `alloy:"max_idle_conns,attr,optional"`
+	MaxOpenConns     int               `alloy:"max_open_conns,attr,optional"`
+	QueryTimeout     int               `alloy:"query_timeout,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

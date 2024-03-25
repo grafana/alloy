@@ -44,43 +44,43 @@ var DefaultArguments = Arguments{
 }
 
 type Arguments struct {
-	IncludeExporterMetrics bool `river:"include_exporter_metrics,attr,optional"`
+	IncludeExporterMetrics bool `alloy:"include_exporter_metrics,attr,optional"`
 
 	// exporter-specific config.
 	//
 	// The exporter binary config differs to this, but these
 	// are the only fields that are relevant to the exporter struct.
-	RedisAddr               string            `river:"redis_addr,attr"`
-	RedisUser               string            `river:"redis_user,attr,optional"`
-	RedisPassword           alloytypes.Secret `river:"redis_password,attr,optional"`
-	RedisPasswordFile       string            `river:"redis_password_file,attr,optional"`
-	RedisPasswordMapFile    string            `river:"redis_password_map_file,attr,optional"`
-	Namespace               string            `river:"namespace,attr,optional"`
-	ConfigCommand           string            `river:"config_command,attr,optional"`
-	CheckKeys               []string          `river:"check_keys,attr,optional"`
-	CheckKeyGroups          []string          `river:"check_key_groups,attr,optional"`
-	CheckKeyGroupsBatchSize int64             `river:"check_key_groups_batch_size,attr,optional"`
-	MaxDistinctKeyGroups    int64             `river:"max_distinct_key_groups,attr,optional"`
-	CheckSingleKeys         []string          `river:"check_single_keys,attr,optional"`
-	CheckStreams            []string          `river:"check_streams,attr,optional"`
-	CheckSingleStreams      []string          `river:"check_single_streams,attr,optional"`
-	ExportKeyValues         bool              `river:"export_key_values,attr,optional"`
-	CountKeys               []string          `river:"count_keys,attr,optional"`
-	ScriptPath              string            `river:"script_path,attr,optional"`
-	ScriptPaths             []string          `river:"script_paths,attr,optional"`
-	ConnectionTimeout       time.Duration     `river:"connection_timeout,attr,optional"`
-	TLSClientKeyFile        string            `river:"tls_client_key_file,attr,optional"`
-	TLSClientCertFile       string            `river:"tls_client_cert_file,attr,optional"`
-	TLSCaCertFile           string            `river:"tls_ca_cert_file,attr,optional"`
-	SetClientName           bool              `river:"set_client_name,attr,optional"`
-	IsTile38                bool              `river:"is_tile38,attr,optional"`
-	IsCluster               bool              `river:"is_cluster,attr,optional"`
-	ExportClientList        bool              `river:"export_client_list,attr,optional"`
-	ExportClientPort        bool              `river:"export_client_port,attr,optional"`
-	RedisMetricsOnly        bool              `river:"redis_metrics_only,attr,optional"`
-	PingOnConnect           bool              `river:"ping_on_connect,attr,optional"`
-	InclSystemMetrics       bool              `river:"incl_system_metrics,attr,optional"`
-	SkipTLSVerification     bool              `river:"skip_tls_verification,attr,optional"`
+	RedisAddr               string            `alloy:"redis_addr,attr"`
+	RedisUser               string            `alloy:"redis_user,attr,optional"`
+	RedisPassword           alloytypes.Secret `alloy:"redis_password,attr,optional"`
+	RedisPasswordFile       string            `alloy:"redis_password_file,attr,optional"`
+	RedisPasswordMapFile    string            `alloy:"redis_password_map_file,attr,optional"`
+	Namespace               string            `alloy:"namespace,attr,optional"`
+	ConfigCommand           string            `alloy:"config_command,attr,optional"`
+	CheckKeys               []string          `alloy:"check_keys,attr,optional"`
+	CheckKeyGroups          []string          `alloy:"check_key_groups,attr,optional"`
+	CheckKeyGroupsBatchSize int64             `alloy:"check_key_groups_batch_size,attr,optional"`
+	MaxDistinctKeyGroups    int64             `alloy:"max_distinct_key_groups,attr,optional"`
+	CheckSingleKeys         []string          `alloy:"check_single_keys,attr,optional"`
+	CheckStreams            []string          `alloy:"check_streams,attr,optional"`
+	CheckSingleStreams      []string          `alloy:"check_single_streams,attr,optional"`
+	ExportKeyValues         bool              `alloy:"export_key_values,attr,optional"`
+	CountKeys               []string          `alloy:"count_keys,attr,optional"`
+	ScriptPath              string            `alloy:"script_path,attr,optional"`
+	ScriptPaths             []string          `alloy:"script_paths,attr,optional"`
+	ConnectionTimeout       time.Duration     `alloy:"connection_timeout,attr,optional"`
+	TLSClientKeyFile        string            `alloy:"tls_client_key_file,attr,optional"`
+	TLSClientCertFile       string            `alloy:"tls_client_cert_file,attr,optional"`
+	TLSCaCertFile           string            `alloy:"tls_ca_cert_file,attr,optional"`
+	SetClientName           bool              `alloy:"set_client_name,attr,optional"`
+	IsTile38                bool              `alloy:"is_tile38,attr,optional"`
+	IsCluster               bool              `alloy:"is_cluster,attr,optional"`
+	ExportClientList        bool              `alloy:"export_client_list,attr,optional"`
+	ExportClientPort        bool              `alloy:"export_client_port,attr,optional"`
+	RedisMetricsOnly        bool              `alloy:"redis_metrics_only,attr,optional"`
+	PingOnConnect           bool              `alloy:"ping_on_connect,attr,optional"`
+	InclSystemMetrics       bool              `alloy:"incl_system_metrics,attr,optional"`
+	SkipTLSVerification     bool              `alloy:"skip_tls_verification,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

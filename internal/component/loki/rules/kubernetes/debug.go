@@ -3,21 +3,21 @@ package rules
 import "fmt"
 
 type DebugInfo struct {
-	Error              string                   `river:"error,attr,optional"`
-	PrometheusRules    []DebugK8sPrometheusRule `river:"prometheus_rule,block,optional"`
-	LokiRuleNamespaces []DebugLokiNamespace     `river:"loki_rule_namespace,block,optional"`
+	Error              string                   `alloy:"error,attr,optional"`
+	PrometheusRules    []DebugK8sPrometheusRule `alloy:"prometheus_rule,block,optional"`
+	LokiRuleNamespaces []DebugLokiNamespace     `alloy:"loki_rule_namespace,block,optional"`
 }
 
 type DebugK8sPrometheusRule struct {
-	Namespace     string `river:"namespace,attr"`
-	Name          string `river:"name,attr"`
-	UID           string `river:"uid,attr"`
-	NumRuleGroups int    `river:"num_rule_groups,attr"`
+	Namespace     string `alloy:"namespace,attr"`
+	Name          string `alloy:"name,attr"`
+	UID           string `alloy:"uid,attr"`
+	NumRuleGroups int    `alloy:"num_rule_groups,attr"`
 }
 
 type DebugLokiNamespace struct {
-	Name          string `river:"name,attr"`
-	NumRuleGroups int    `river:"num_rule_groups,attr"`
+	Name          string `alloy:"name,attr"`
+	NumRuleGroups int    `alloy:"num_rule_groups,attr"`
 }
 
 func (c *Component) DebugInfo() interface{} {

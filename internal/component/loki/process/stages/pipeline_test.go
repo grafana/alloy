@@ -22,7 +22,7 @@ import (
 
 // Configs defines multiple StageConfigs as consequent blocks.
 type Configs struct {
-	Stages []StageConfig `river:"stage,enum,optional"`
+	Stages []StageConfig `alloy:"stage,enum,optional"`
 }
 
 func withInboundEntries(entries ...Entry) chan Entry {

@@ -31,25 +31,25 @@ func init() {
 
 // Arguments configures the otelcol.receiver.kafka component.
 type Arguments struct {
-	Brokers         []string `river:"brokers,attr"`
-	ProtocolVersion string   `river:"protocol_version,attr"`
-	Topic           string   `river:"topic,attr,optional"`
-	Encoding        string   `river:"encoding,attr,optional"`
-	GroupID         string   `river:"group_id,attr,optional"`
-	ClientID        string   `river:"client_id,attr,optional"`
-	InitialOffset   string   `river:"initial_offset,attr,optional"`
+	Brokers         []string `alloy:"brokers,attr"`
+	ProtocolVersion string   `alloy:"protocol_version,attr"`
+	Topic           string   `alloy:"topic,attr,optional"`
+	Encoding        string   `alloy:"encoding,attr,optional"`
+	GroupID         string   `alloy:"group_id,attr,optional"`
+	ClientID        string   `alloy:"client_id,attr,optional"`
+	InitialOffset   string   `alloy:"initial_offset,attr,optional"`
 
-	Authentication   AuthenticationArguments `river:"authentication,block,optional"`
-	Metadata         MetadataArguments       `river:"metadata,block,optional"`
-	AutoCommit       AutoCommitArguments     `river:"autocommit,block,optional"`
-	MessageMarking   MessageMarkingArguments `river:"message_marking,block,optional"`
-	HeaderExtraction HeaderExtraction        `river:"header_extraction,block,optional"`
+	Authentication   AuthenticationArguments `alloy:"authentication,block,optional"`
+	Metadata         MetadataArguments       `alloy:"metadata,block,optional"`
+	AutoCommit       AutoCommitArguments     `alloy:"autocommit,block,optional"`
+	MessageMarking   MessageMarkingArguments `alloy:"message_marking,block,optional"`
+	HeaderExtraction HeaderExtraction        `alloy:"header_extraction,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	// Output configures where to send received data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var _ receiver.Arguments = Arguments{}
@@ -118,10 +118,10 @@ func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
 
 // AuthenticationArguments configures how to authenticate to the Kafka broker.
 type AuthenticationArguments struct {
-	Plaintext *PlaintextArguments         `river:"plaintext,block,optional"`
-	SASL      *SASLArguments              `river:"sasl,block,optional"`
-	TLS       *otelcol.TLSClientArguments `river:"tls,block,optional"`
-	Kerberos  *KerberosArguments          `river:"kerberos,block,optional"`
+	Plaintext *PlaintextArguments         `alloy:"plaintext,block,optional"`
+	SASL      *SASLArguments              `alloy:"sasl,block,optional"`
+	TLS       *otelcol.TLSClientArguments `alloy:"tls,block,optional"`
+	Kerberos  *KerberosArguments          `alloy:"kerberos,block,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -150,8 +150,8 @@ func (args AuthenticationArguments) Convert() map[string]interface{} {
 // PlaintextArguments configures plaintext authentication against the Kafka
 // broker.
 type PlaintextArguments struct {
-	Username string            `river:"username,attr"`
-	Password alloytypes.Secret `river:"password,attr"`
+	Username string            `alloy:"username,attr"`
+	Password alloytypes.Secret `alloy:"password,attr"`
 }
 
 // Convert converts args into the upstream type.
@@ -164,11 +164,11 @@ func (args PlaintextArguments) Convert() map[string]interface{} {
 
 // SASLArguments configures SASL authentication against the Kafka broker.
 type SASLArguments struct {
-	Username  string            `river:"username,attr"`
-	Password  alloytypes.Secret `river:"password,attr"`
-	Mechanism string            `river:"mechanism,attr"`
-	Version   int               `river:"version,attr,optional"`
-	AWSMSK    AWSMSKArguments   `river:"aws_msk,block,optional"`
+	Username  string            `alloy:"username,attr"`
+	Password  alloytypes.Secret `alloy:"password,attr"`
+	Mechanism string            `alloy:"mechanism,attr"`
+	Version   int               `alloy:"version,attr,optional"`
+	AWSMSK    AWSMSKArguments   `alloy:"aws_msk,block,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -185,8 +185,8 @@ func (args SASLArguments) Convert() map[string]interface{} {
 // AWSMSKArguments exposes additional SASL authentication measures required to
 // use the AWS_MSK_IAM mechanism.
 type AWSMSKArguments struct {
-	Region     string `river:"region,attr"`
-	BrokerAddr string `river:"broker_addr,attr"`
+	Region     string `alloy:"region,attr"`
+	BrokerAddr string `alloy:"broker_addr,attr"`
 }
 
 // Convert converts args into the upstream type.
@@ -200,13 +200,13 @@ func (args AWSMSKArguments) Convert() map[string]interface{} {
 // KerberosArguments configures Kerberos authentication against the Kafka
 // broker.
 type KerberosArguments struct {
-	ServiceName string            `river:"service_name,attr,optional"`
-	Realm       string            `river:"realm,attr,optional"`
-	UseKeyTab   bool              `river:"use_keytab,attr,optional"`
-	Username    string            `river:"username,attr"`
-	Password    alloytypes.Secret `river:"password,attr,optional"`
-	ConfigPath  string            `river:"config_file,attr,optional"`
-	KeyTabPath  string            `river:"keytab_file,attr,optional"`
+	ServiceName string            `alloy:"service_name,attr,optional"`
+	Realm       string            `alloy:"realm,attr,optional"`
+	UseKeyTab   bool              `alloy:"use_keytab,attr,optional"`
+	Username    string            `alloy:"username,attr"`
+	Password    alloytypes.Secret `alloy:"password,attr,optional"`
+	ConfigPath  string            `alloy:"config_file,attr,optional"`
+	KeyTabPath  string            `alloy:"keytab_file,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -225,8 +225,8 @@ func (args KerberosArguments) Convert() map[string]interface{} {
 // MetadataArguments configures how the otelcol.receiver.kafka component will
 // retrieve metadata from the Kafka broker.
 type MetadataArguments struct {
-	IncludeAllTopics bool                   `river:"include_all_topics,attr,optional"`
-	Retry            MetadataRetryArguments `river:"retry,block,optional"`
+	IncludeAllTopics bool                   `alloy:"include_all_topics,attr,optional"`
+	Retry            MetadataRetryArguments `alloy:"retry,block,optional"`
 }
 
 func (args *MetadataArguments) SetToDefault() {
@@ -251,8 +251,8 @@ func (args MetadataArguments) Convert() kafkaexporter.Metadata {
 // Kafka broker. Retrying is useful to avoid race conditions when the Kafka
 // broker is starting at the same time as the otelcol.receiver.kafka component.
 type MetadataRetryArguments struct {
-	MaxRetries int           `river:"max_retries,attr,optional"`
-	Backoff    time.Duration `river:"backoff,attr,optional"`
+	MaxRetries int           `alloy:"max_retries,attr,optional"`
+	Backoff    time.Duration `alloy:"backoff,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -266,8 +266,8 @@ func (args MetadataRetryArguments) Convert() kafkaexporter.MetadataRetry {
 // AutoCommitArguments configures how to automatically commit updated topic
 // offsets back to the Kafka broker.
 type AutoCommitArguments struct {
-	Enable   bool          `river:"enable,attr,optional"`
-	Interval time.Duration `river:"interval,attr,optional"`
+	Enable   bool          `alloy:"enable,attr,optional"`
+	Interval time.Duration `alloy:"interval,attr,optional"`
 }
 
 func (args *AutoCommitArguments) SetToDefault() {
@@ -287,8 +287,8 @@ func (args AutoCommitArguments) Convert() kafkareceiver.AutoCommit {
 
 // MessageMarkingArguments configures when Kafka messages are marked as read.
 type MessageMarkingArguments struct {
-	AfterExecution      bool `river:"after_execution,attr,optional"`
-	IncludeUnsuccessful bool `river:"include_unsuccessful,attr,optional"`
+	AfterExecution      bool `alloy:"after_execution,attr,optional"`
+	IncludeUnsuccessful bool `alloy:"include_unsuccessful,attr,optional"`
 }
 
 func (args *MessageMarkingArguments) SetToDefault() {
@@ -307,8 +307,8 @@ func (args MessageMarkingArguments) Convert() kafkareceiver.MessageMarking {
 }
 
 type HeaderExtraction struct {
-	ExtractHeaders bool     `river:"extract_headers,attr,optional"`
-	Headers        []string `river:"headers,attr,optional"`
+	ExtractHeaders bool     `alloy:"extract_headers,attr,optional"`
+	Headers        []string `alloy:"headers,attr,optional"`
 }
 
 func (h *HeaderExtraction) SetToDefault() {

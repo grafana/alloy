@@ -15,10 +15,10 @@ type KubernetesAPIConfig struct {
 	// (for no auth), `serviceAccount` (to use the standard service account
 	// token provided to the agent pod), or `kubeConfig` to use credentials
 	// from `~/.kube/config`.
-	AuthType string `river:"auth_type,attr,optional"`
+	AuthType string `alloy:"auth_type,attr,optional"`
 
 	// When using auth_type `kubeConfig`, override the current context.
-	Context string `river:"context,attr,optional"`
+	Context string `alloy:"context,attr,optional"`
 }
 
 // Validate returns an error if the config is invalid.

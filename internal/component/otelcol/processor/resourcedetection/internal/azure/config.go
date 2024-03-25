@@ -8,7 +8,7 @@ import (
 const Name = "azure"
 
 type Config struct {
-	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -42,16 +42,16 @@ func (args Config) Convert() map[string]interface{} {
 
 // ResourceAttributesConfig provides config for azure resource attributes.
 type ResourceAttributesConfig struct {
-	AzureResourcegroupName rac.ResourceAttributeConfig `river:"azure.resourcegroup.name,block,optional"`
-	AzureVMName            rac.ResourceAttributeConfig `river:"azure.vm.name,block,optional"`
-	AzureVMScalesetName    rac.ResourceAttributeConfig `river:"azure.vm.scaleset.name,block,optional"`
-	AzureVMSize            rac.ResourceAttributeConfig `river:"azure.vm.size,block,optional"`
-	CloudAccountID         rac.ResourceAttributeConfig `river:"cloud.account.id,block,optional"`
-	CloudPlatform          rac.ResourceAttributeConfig `river:"cloud.platform,block,optional"`
-	CloudProvider          rac.ResourceAttributeConfig `river:"cloud.provider,block,optional"`
-	CloudRegion            rac.ResourceAttributeConfig `river:"cloud.region,block,optional"`
-	HostID                 rac.ResourceAttributeConfig `river:"host.id,block,optional"`
-	HostName               rac.ResourceAttributeConfig `river:"host.name,block,optional"`
+	AzureResourcegroupName rac.ResourceAttributeConfig `alloy:"azure.resourcegroup.name,block,optional"`
+	AzureVMName            rac.ResourceAttributeConfig `alloy:"azure.vm.name,block,optional"`
+	AzureVMScalesetName    rac.ResourceAttributeConfig `alloy:"azure.vm.scaleset.name,block,optional"`
+	AzureVMSize            rac.ResourceAttributeConfig `alloy:"azure.vm.size,block,optional"`
+	CloudAccountID         rac.ResourceAttributeConfig `alloy:"cloud.account.id,block,optional"`
+	CloudPlatform          rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
+	CloudProvider          rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
+	CloudRegion            rac.ResourceAttributeConfig `alloy:"cloud.region,block,optional"`
+	HostID                 rac.ResourceAttributeConfig `alloy:"host.id,block,optional"`
+	HostName               rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {

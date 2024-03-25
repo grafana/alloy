@@ -62,11 +62,11 @@ type Options struct {
 
 // Arguments holds runtime settings for the remotecfg service.
 type Arguments struct {
-	URL              string                   `river:"url,attr,optional"`
-	ID               string                   `river:"id,attr,optional"`
-	Metadata         map[string]string        `river:"metadata,attr,optional"`
-	PollFrequency    time.Duration            `river:"poll_frequency,attr,optional"`
-	HTTPClientConfig *config.HTTPClientConfig `river:",squash"`
+	URL              string                   `alloy:"url,attr,optional"`
+	ID               string                   `alloy:"id,attr,optional"`
+	Metadata         map[string]string        `alloy:"metadata,attr,optional"`
+	PollFrequency    time.Duration            `alloy:"poll_frequency,attr,optional"`
+	HTTPClientConfig *config.HTTPClientConfig `alloy:",squash"`
 }
 
 // GetDefaultArguments populates the default values for the Arguments struct.

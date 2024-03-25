@@ -29,25 +29,25 @@ func init() {
 
 // Arguments configures the otelcol.connector.spanlogs component.
 type Arguments struct {
-	Spans             bool           `river:"spans,attr,optional"`
-	Roots             bool           `river:"roots,attr,optional"`
-	Processes         bool           `river:"processes,attr,optional"`
-	SpanAttributes    []string       `river:"span_attributes,attr,optional"`
-	ProcessAttributes []string       `river:"process_attributes,attr,optional"`
-	Overrides         OverrideConfig `river:"overrides,block,optional"`
-	Labels            []string       `river:"labels,attr,optional"`
+	Spans             bool           `alloy:"spans,attr,optional"`
+	Roots             bool           `alloy:"roots,attr,optional"`
+	Processes         bool           `alloy:"processes,attr,optional"`
+	SpanAttributes    []string       `alloy:"span_attributes,attr,optional"`
+	ProcessAttributes []string       `alloy:"process_attributes,attr,optional"`
+	Overrides         OverrideConfig `alloy:"overrides,block,optional"`
+	Labels            []string       `alloy:"labels,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 type OverrideConfig struct {
-	LogsTag     string `river:"logs_instance_tag,attr,optional"`
-	ServiceKey  string `river:"service_key,attr,optional"`
-	SpanNameKey string `river:"span_name_key,attr,optional"`
-	StatusKey   string `river:"status_key,attr,optional"`
-	DurationKey string `river:"duration_key,attr,optional"`
-	TraceIDKey  string `river:"trace_id_key,attr,optional"`
+	LogsTag     string `alloy:"logs_instance_tag,attr,optional"`
+	ServiceKey  string `alloy:"service_key,attr,optional"`
+	SpanNameKey string `alloy:"span_name_key,attr,optional"`
+	StatusKey   string `alloy:"status_key,attr,optional"`
+	DurationKey string `alloy:"duration_key,attr,optional"`
+	TraceIDKey  string `alloy:"trace_id_key,attr,optional"`
 }
 
 var (

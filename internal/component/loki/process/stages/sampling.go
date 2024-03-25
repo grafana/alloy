@@ -22,8 +22,8 @@ var (
 
 // SamplingConfig contains the configuration for a samplingStage
 type SamplingConfig struct {
-	DropReason   *string `river:"drop_counter_reason,attr,optional"`
-	SamplingRate float64 `river:"rate,attr"`
+	DropReason   *string `alloy:"drop_counter_reason,attr,optional"`
+	SamplingRate float64 `alloy:"rate,attr"`
 }
 
 func (s *SamplingConfig) SetToDefault() {

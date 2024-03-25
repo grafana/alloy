@@ -27,17 +27,17 @@ func init() {
 }
 
 type Arguments struct {
-	Host             string                  `river:"host,attr"`
-	Role             string                  `river:"role,attr"`
-	Port             int                     `river:"port,attr,optional"`
-	Filters          []Filter                `river:"filter,block,optional"`
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
+	Host             string                  `alloy:"host,attr"`
+	Role             string                  `alloy:"role,attr"`
+	Port             int                     `alloy:"port,attr,optional"`
+	Filters          []Filter                `alloy:"filter,block,optional"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
 }
 
 type Filter struct {
-	Name   string   `river:"name,attr"`
-	Values []string `river:"values,attr"`
+	Name   string   `alloy:"name,attr"`
+	Values []string `alloy:"values,attr"`
 }
 
 var DefaultArguments = Arguments{

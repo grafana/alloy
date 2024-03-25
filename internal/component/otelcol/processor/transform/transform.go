@@ -56,20 +56,20 @@ func (c *ContextID) UnmarshalText(text []byte) error {
 type ContextStatementsSlice []ContextStatements
 
 type ContextStatements struct {
-	Context    ContextID `river:"context,attr"`
-	Statements []string  `river:"statements,attr"`
+	Context    ContextID `alloy:"context,attr"`
+	Statements []string  `alloy:"statements,attr"`
 }
 
 // Arguments configures the otelcol.processor.transform component.
 type Arguments struct {
 	// ErrorMode determines how the processor reacts to errors that occur while processing a statement.
-	ErrorMode        ottl.ErrorMode         `river:"error_mode,attr,optional"`
-	TraceStatements  ContextStatementsSlice `river:"trace_statements,block,optional"`
-	MetricStatements ContextStatementsSlice `river:"metric_statements,block,optional"`
-	LogStatements    ContextStatementsSlice `river:"log_statements,block,optional"`
+	ErrorMode        ottl.ErrorMode         `alloy:"error_mode,attr,optional"`
+	TraceStatements  ContextStatementsSlice `alloy:"trace_statements,block,optional"`
+	MetricStatements ContextStatementsSlice `alloy:"metric_statements,block,optional"`
+	LogStatements    ContextStatementsSlice `alloy:"log_statements,block,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (

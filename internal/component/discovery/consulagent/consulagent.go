@@ -27,17 +27,17 @@ func init() {
 }
 
 type Arguments struct {
-	Server          string            `river:"server,attr,optional"`
-	Token           alloytypes.Secret `river:"token,attr,optional"`
-	Datacenter      string            `river:"datacenter,attr,optional"`
-	TagSeparator    string            `river:"tag_separator,attr,optional"`
-	Scheme          string            `river:"scheme,attr,optional"`
-	Username        string            `river:"username,attr,optional"`
-	Password        alloytypes.Secret `river:"password,attr,optional"`
-	RefreshInterval time.Duration     `river:"refresh_interval,attr,optional"`
-	Services        []string          `river:"services,attr,optional"`
-	ServiceTags     []string          `river:"tags,attr,optional"`
-	TLSConfig       config.TLSConfig  `river:"tls_config,block,optional"`
+	Server          string            `alloy:"server,attr,optional"`
+	Token           alloytypes.Secret `alloy:"token,attr,optional"`
+	Datacenter      string            `alloy:"datacenter,attr,optional"`
+	TagSeparator    string            `alloy:"tag_separator,attr,optional"`
+	Scheme          string            `alloy:"scheme,attr,optional"`
+	Username        string            `alloy:"username,attr,optional"`
+	Password        alloytypes.Secret `alloy:"password,attr,optional"`
+	RefreshInterval time.Duration     `alloy:"refresh_interval,attr,optional"`
+	Services        []string          `alloy:"services,attr,optional"`
+	ServiceTags     []string          `alloy:"tags,attr,optional"`
+	TLSConfig       config.TLSConfig  `alloy:"tls_config,block,optional"`
 }
 
 var DefaultArguments = Arguments{

@@ -26,24 +26,24 @@ const (
 type ServerConfig struct {
 	// HTTP configures the HTTP dskit. Note that despite the block being present or not,
 	// the dskit is always started.
-	HTTP *HTTPConfig `river:"http,block,optional"`
+	HTTP *HTTPConfig `alloy:"http,block,optional"`
 
 	// GRPC configures the gRPC dskit. Note that despite the block being present or not,
 	// the dskit is always started.
-	GRPC *GRPCConfig `river:"grpc,block,optional"`
+	GRPC *GRPCConfig `alloy:"grpc,block,optional"`
 
 	// GracefulShutdownTimeout configures a timeout to gracefully shut down the server.
-	GracefulShutdownTimeout time.Duration `river:"graceful_shutdown_timeout,attr,optional"`
+	GracefulShutdownTimeout time.Duration `alloy:"graceful_shutdown_timeout,attr,optional"`
 }
 
 // HTTPConfig configures the HTTP dskit started by dskit.Server.
 type HTTPConfig struct {
-	ListenAddress      string        `river:"listen_address,attr,optional"`
-	ListenPort         int           `river:"listen_port,attr,optional"`
-	ConnLimit          int           `river:"conn_limit,attr,optional"`
-	ServerReadTimeout  time.Duration `river:"server_read_timeout,attr,optional"`
-	ServerWriteTimeout time.Duration `river:"server_write_timeout,attr,optional"`
-	ServerIdleTimeout  time.Duration `river:"server_idle_timeout,attr,optional"`
+	ListenAddress      string        `alloy:"listen_address,attr,optional"`
+	ListenPort         int           `alloy:"listen_port,attr,optional"`
+	ConnLimit          int           `alloy:"conn_limit,attr,optional"`
+	ServerReadTimeout  time.Duration `alloy:"server_read_timeout,attr,optional"`
+	ServerWriteTimeout time.Duration `alloy:"server_write_timeout,attr,optional"`
+	ServerIdleTimeout  time.Duration `alloy:"server_idle_timeout,attr,optional"`
 }
 
 // Into applies the configs from HTTPConfig into a dskit.Into.
@@ -58,15 +58,15 @@ func (h *HTTPConfig) Into(c *dskit.Config) {
 
 // GRPCConfig configures the gRPC dskit started by dskit.Server.
 type GRPCConfig struct {
-	ListenAddress              string        `river:"listen_address,attr,optional"`
-	ListenPort                 int           `river:"listen_port,attr,optional"`
-	ConnLimit                  int           `river:"conn_limit,attr,optional"`
-	MaxConnectionAge           time.Duration `river:"max_connection_age,attr,optional"`
-	MaxConnectionAgeGrace      time.Duration `river:"max_connection_age_grace,attr,optional"`
-	MaxConnectionIdle          time.Duration `river:"max_connection_idle,attr,optional"`
-	ServerMaxRecvMsg           int           `river:"server_max_recv_msg_size,attr,optional"`
-	ServerMaxSendMsg           int           `river:"server_max_send_msg_size,attr,optional"`
-	ServerMaxConcurrentStreams uint          `river:"server_max_concurrent_streams,attr,optional"`
+	ListenAddress              string        `alloy:"listen_address,attr,optional"`
+	ListenPort                 int           `alloy:"listen_port,attr,optional"`
+	ConnLimit                  int           `alloy:"conn_limit,attr,optional"`
+	MaxConnectionAge           time.Duration `alloy:"max_connection_age,attr,optional"`
+	MaxConnectionAgeGrace      time.Duration `alloy:"max_connection_age_grace,attr,optional"`
+	MaxConnectionIdle          time.Duration `alloy:"max_connection_idle,attr,optional"`
+	ServerMaxRecvMsg           int           `alloy:"server_max_recv_msg_size,attr,optional"`
+	ServerMaxSendMsg           int           `alloy:"server_max_send_msg_size,attr,optional"`
+	ServerMaxConcurrentStreams uint          `alloy:"server_max_concurrent_streams,attr,optional"`
 }
 
 // Into applies the configs from GRPCConfig into a dskit.Into.

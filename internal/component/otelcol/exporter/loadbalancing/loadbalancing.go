@@ -41,12 +41,12 @@ func init() {
 
 // Arguments configures the otelcol.exporter.loadbalancing component.
 type Arguments struct {
-	Protocol   Protocol         `river:"protocol,block"`
-	Resolver   ResolverSettings `river:"resolver,block"`
-	RoutingKey string           `river:"routing_key,attr,optional"`
+	Protocol   Protocol         `alloy:"protocol,block"`
+	Resolver   ResolverSettings `alloy:"resolver,block"`
+	RoutingKey string           `alloy:"routing_key,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 var (
@@ -91,7 +91,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Protocol holds the individual protocol-specific settings. Only OTLP is supported at the moment.
 type Protocol struct {
-	OTLP OtlpConfig `river:"otlp,block"`
+	OTLP OtlpConfig `alloy:"otlp,block"`
 }
 
 func (protocol Protocol) Convert() loadbalancingexporter.Protocol {
@@ -102,12 +102,12 @@ func (protocol Protocol) Convert() loadbalancingexporter.Protocol {
 
 // OtlpConfig defines the config for an OTLP exporter
 type OtlpConfig struct {
-	Timeout time.Duration          `river:"timeout,attr,optional"`
-	Queue   otelcol.QueueArguments `river:"queue,block,optional"`
-	Retry   otelcol.RetryArguments `river:"retry,block,optional"`
+	Timeout time.Duration          `alloy:"timeout,attr,optional"`
+	Queue   otelcol.QueueArguments `alloy:"queue,block,optional"`
+	Retry   otelcol.RetryArguments `alloy:"retry,block,optional"`
 	// Most of the time, the user will not have to set anything in the client block.
 	// However, the block should not be "optional" so that the defaults are populated.
-	Client GRPCClientArguments `river:"client,block"`
+	Client GRPCClientArguments `alloy:"client,block"`
 }
 
 func (oc *OtlpConfig) SetToDefault() {
@@ -132,9 +132,9 @@ func (oc OtlpConfig) Convert() otlpexporter.Config {
 
 // ResolverSettings defines the configurations for the backend resolver
 type ResolverSettings struct {
-	Static     *StaticResolver     `river:"static,block,optional"`
-	DNS        *DNSResolver        `river:"dns,block,optional"`
-	Kubernetes *KubernetesResolver `river:"kubernetes,block,optional"`
+	Static     *StaticResolver     `alloy:"static,block,optional"`
+	DNS        *DNSResolver        `alloy:"dns,block,optional"`
+	Kubernetes *KubernetesResolver `alloy:"kubernetes,block,optional"`
 }
 
 func (resolverSettings ResolverSettings) Convert() loadbalancingexporter.ResolverSettings {
@@ -160,7 +160,7 @@ func (resolverSettings ResolverSettings) Convert() loadbalancingexporter.Resolve
 
 // StaticResolver defines the configuration for the resolver providing a fixed list of backends
 type StaticResolver struct {
-	Hostnames []string `river:"hostnames,attr"`
+	Hostnames []string `alloy:"hostnames,attr"`
 }
 
 func (staticResolver StaticResolver) Convert() loadbalancingexporter.StaticResolver {
@@ -171,10 +171,10 @@ func (staticResolver StaticResolver) Convert() loadbalancingexporter.StaticResol
 
 // DNSResolver defines the configuration for the DNS resolver
 type DNSResolver struct {
-	Hostname string        `river:"hostname,attr"`
-	Port     string        `river:"port,attr,optional"`
-	Interval time.Duration `river:"interval,attr,optional"`
-	Timeout  time.Duration `river:"timeout,attr,optional"`
+	Hostname string        `alloy:"hostname,attr"`
+	Port     string        `alloy:"port,attr,optional"`
+	Interval time.Duration `alloy:"interval,attr,optional"`
+	Timeout  time.Duration `alloy:"timeout,attr,optional"`
 }
 
 var _ syntax.Defaulter = &DNSResolver{}
@@ -202,8 +202,8 @@ func (dnsResolver *DNSResolver) Convert() loadbalancingexporter.DNSResolver {
 
 // KubernetesResolver defines the configuration for the k8s resolver
 type KubernetesResolver struct {
-	Service string  `river:"service,attr"`
-	Ports   []int32 `river:"ports,attr,optional"`
+	Service string  `alloy:"service,attr"`
+	Ports   []int32 `alloy:"ports,attr,optional"`
 }
 
 var _ syntax.Defaulter = &KubernetesResolver{}
@@ -240,21 +240,21 @@ func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
 
 // GRPCClientArguments is the same as otelcol.GRPCClientArguments, but without an "endpoint" attribute
 type GRPCClientArguments struct {
-	Compression otelcol.CompressionType `river:"compression,attr,optional"`
+	Compression otelcol.CompressionType `alloy:"compression,attr,optional"`
 
-	TLS       otelcol.TLSClientArguments        `river:"tls,block,optional"`
-	Keepalive *otelcol.KeepaliveClientArguments `river:"keepalive,block,optional"`
+	TLS       otelcol.TLSClientArguments        `alloy:"tls,block,optional"`
+	Keepalive *otelcol.KeepaliveClientArguments `alloy:"keepalive,block,optional"`
 
-	ReadBufferSize  units.Base2Bytes  `river:"read_buffer_size,attr,optional"`
-	WriteBufferSize units.Base2Bytes  `river:"write_buffer_size,attr,optional"`
-	WaitForReady    bool              `river:"wait_for_ready,attr,optional"`
-	Headers         map[string]string `river:"headers,attr,optional"`
-	BalancerName    string            `river:"balancer_name,attr,optional"`
-	Authority       string            `river:"authority,attr,optional"`
+	ReadBufferSize  units.Base2Bytes  `alloy:"read_buffer_size,attr,optional"`
+	WriteBufferSize units.Base2Bytes  `alloy:"write_buffer_size,attr,optional"`
+	WaitForReady    bool              `alloy:"wait_for_ready,attr,optional"`
+	Headers         map[string]string `alloy:"headers,attr,optional"`
+	BalancerName    string            `alloy:"balancer_name,attr,optional"`
+	Authority       string            `alloy:"authority,attr,optional"`
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `river:"auth,attr,optional"`
+	Auth *auth.Handler `alloy:"auth,attr,optional"`
 }
 
 var _ syntax.Defaulter = &GRPCClientArguments{}

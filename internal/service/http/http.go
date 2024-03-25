@@ -52,7 +52,7 @@ type Options struct {
 
 // Arguments holds runtime settings for the HTTP service.
 type Arguments struct {
-	TLS *TLSArguments `river:"tls,block,optional"`
+	TLS *TLSArguments `alloy:"tls,block,optional"`
 }
 
 type Service struct {

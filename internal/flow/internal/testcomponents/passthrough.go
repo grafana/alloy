@@ -25,14 +25,14 @@ func init() {
 
 // PassthroughConfig configures the testcomponents.passthrough component.
 type PassthroughConfig struct {
-	Input string        `river:"input,attr"`
-	Lag   time.Duration `river:"lag,attr,optional"`
+	Input string        `alloy:"input,attr"`
+	Lag   time.Duration `alloy:"lag,attr,optional"`
 }
 
 // PassthroughExports describes exported fields for the
 // testcomponents.passthrough component.
 type PassthroughExports struct {
-	Output string `river:"output,attr,optional"`
+	Output string `alloy:"output,attr,optional"`
 }
 
 // Passthrough implements the testcomponents.passthrough component, where it
@@ -88,5 +88,5 @@ func (t *Passthrough) DebugInfo() interface{} {
 }
 
 type passthroughDebugInfo struct {
-	ComponentVersion string `river:"component_version,attr"`
+	ComponentVersion string `alloy:"component_version,attr"`
 }

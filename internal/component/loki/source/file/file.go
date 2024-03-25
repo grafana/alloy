@@ -39,17 +39,17 @@ const (
 // Arguments holds values which are used to configure the loki.source.file
 // component.
 type Arguments struct {
-	Targets             []discovery.Target  `river:"targets,attr"`
-	ForwardTo           []loki.LogsReceiver `river:"forward_to,attr"`
-	Encoding            string              `river:"encoding,attr,optional"`
-	DecompressionConfig DecompressionConfig `river:"decompression,block,optional"`
-	FileWatch           FileWatch           `river:"file_watch,block,optional"`
-	TailFromEnd         bool                `river:"tail_from_end,attr,optional"`
+	Targets             []discovery.Target  `alloy:"targets,attr"`
+	ForwardTo           []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Encoding            string              `alloy:"encoding,attr,optional"`
+	DecompressionConfig DecompressionConfig `alloy:"decompression,block,optional"`
+	FileWatch           FileWatch           `alloy:"file_watch,block,optional"`
+	TailFromEnd         bool                `alloy:"tail_from_end,attr,optional"`
 }
 
 type FileWatch struct {
-	MinPollFrequency time.Duration `river:"min_poll_frequency,attr,optional"`
-	MaxPollFrequency time.Duration `river:"max_poll_frequency,attr,optional"`
+	MinPollFrequency time.Duration `alloy:"min_poll_frequency,attr,optional"`
+	MaxPollFrequency time.Duration `alloy:"max_poll_frequency,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -65,9 +65,9 @@ func (a *Arguments) SetToDefault() {
 }
 
 type DecompressionConfig struct {
-	Enabled      bool              `river:"enabled,attr"`
-	InitialDelay time.Duration     `river:"initial_delay,attr,optional"`
-	Format       CompressionFormat `river:"format,attr"`
+	Enabled      bool              `alloy:"enabled,attr"`
+	InitialDelay time.Duration     `alloy:"initial_delay,attr,optional"`
+	Format       CompressionFormat `alloy:"format,attr"`
 }
 
 var (
@@ -280,14 +280,14 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type readerDebugInfo struct {
-	TargetsInfo []targetInfo `river:"targets_info,block"`
+	TargetsInfo []targetInfo `alloy:"targets_info,block"`
 }
 
 type targetInfo struct {
-	Path       string `river:"path,attr"`
-	Labels     string `river:"labels,attr"`
-	IsRunning  bool   `river:"is_running,attr"`
-	ReadOffset int64  `river:"read_offset,attr"`
+	Path       string `alloy:"path,attr"`
+	Labels     string `alloy:"labels,attr"`
+	IsRunning  bool   `alloy:"is_running,attr"`
+	ReadOffset int64  `alloy:"read_offset,attr"`
 }
 
 // Returns the elements from set b which are missing from set a

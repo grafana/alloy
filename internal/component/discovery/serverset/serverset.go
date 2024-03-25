@@ -27,9 +27,9 @@ func init() {
 }
 
 type Arguments struct {
-	Servers []string      `river:"servers,attr"`
-	Paths   []string      `river:"paths,attr"`
-	Timeout time.Duration `river:"timeout,attr,optional"`
+	Servers []string      `alloy:"servers,attr"`
+	Paths   []string      `alloy:"paths,attr"`
+	Timeout time.Duration `alloy:"timeout,attr,optional"`
 }
 
 var DefaultArguments = Arguments{

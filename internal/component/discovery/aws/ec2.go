@@ -31,23 +31,23 @@ func init() {
 
 // EC2Filter is the configuration for filtering EC2 instances.
 type EC2Filter struct {
-	Name   string   `river:"name,attr"`
-	Values []string `river:"values,attr"`
+	Name   string   `alloy:"name,attr"`
+	Values []string `alloy:"values,attr"`
 }
 
 // EC2Arguments is the configuration for EC2 based service discovery.
 type EC2Arguments struct {
-	Endpoint        string            `river:"endpoint,attr,optional"`
-	Region          string            `river:"region,attr,optional"`
-	AccessKey       string            `river:"access_key,attr,optional"`
-	SecretKey       alloytypes.Secret `river:"secret_key,attr,optional"`
-	Profile         string            `river:"profile,attr,optional"`
-	RoleARN         string            `river:"role_arn,attr,optional"`
-	RefreshInterval time.Duration     `river:"refresh_interval,attr,optional"`
-	Port            int               `river:"port,attr,optional"`
-	Filters         []*EC2Filter      `river:"filter,block,optional"`
+	Endpoint        string            `alloy:"endpoint,attr,optional"`
+	Region          string            `alloy:"region,attr,optional"`
+	AccessKey       string            `alloy:"access_key,attr,optional"`
+	SecretKey       alloytypes.Secret `alloy:"secret_key,attr,optional"`
+	Profile         string            `alloy:"profile,attr,optional"`
+	RoleARN         string            `alloy:"role_arn,attr,optional"`
+	RefreshInterval time.Duration     `alloy:"refresh_interval,attr,optional"`
+	Port            int               `alloy:"port,attr,optional"`
+	Filters         []*EC2Filter      `alloy:"filter,block,optional"`
 
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
 }
 
 func (args EC2Arguments) Convert() *promaws.EC2SDConfig {

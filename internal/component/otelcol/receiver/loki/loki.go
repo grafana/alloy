@@ -37,13 +37,13 @@ var hintAttributes = "loki.attribute.labels"
 // Arguments configures the otelcol.receiver.loki component.
 type Arguments struct {
 	// Output configures where to send received data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 // Exports holds the receiver that is used to send log entries to the
 // loki.write component.
 type Exports struct {
-	Receiver loki.LogsReceiver `river:"receiver,attr"`
+	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
 }
 
 // Component is the otelcol.receiver.loki component.

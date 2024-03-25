@@ -38,24 +38,24 @@ var DefaultArguments = Arguments{
 }
 
 type Arguments struct {
-	Address                   string               `river:"address,attr,optional"`
-	Timeout                   time.Duration        `river:"timeout,attr,optional"`
-	AllNodes                  bool                 `river:"all,attr,optional"`
-	Node                      string               `river:"node,attr,optional"`
-	ExportIndices             bool                 `river:"indices,attr,optional"`
-	ExportIndicesSettings     bool                 `river:"indices_settings,attr,optional"`
-	ExportClusterSettings     bool                 `river:"cluster_settings,attr,optional"`
-	ExportShards              bool                 `river:"shards,attr,optional"`
-	IncludeAliases            bool                 `river:"aliases,attr,optional"`
-	ExportSnapshots           bool                 `river:"snapshots,attr,optional"`
-	ExportClusterInfoInterval time.Duration        `river:"clusterinfo_interval,attr,optional"`
-	CA                        string               `river:"ca,attr,optional"`
-	ClientPrivateKey          string               `river:"client_private_key,attr,optional"`
-	ClientCert                string               `river:"client_cert,attr,optional"`
-	InsecureSkipVerify        bool                 `river:"ssl_skip_verify,attr,optional"`
-	ExportDataStreams         bool                 `river:"data_stream,attr,optional"`
-	ExportSLM                 bool                 `river:"slm,attr,optional"`
-	BasicAuth                 *commonCfg.BasicAuth `river:"basic_auth,block,optional"`
+	Address                   string               `alloy:"address,attr,optional"`
+	Timeout                   time.Duration        `alloy:"timeout,attr,optional"`
+	AllNodes                  bool                 `alloy:"all,attr,optional"`
+	Node                      string               `alloy:"node,attr,optional"`
+	ExportIndices             bool                 `alloy:"indices,attr,optional"`
+	ExportIndicesSettings     bool                 `alloy:"indices_settings,attr,optional"`
+	ExportClusterSettings     bool                 `alloy:"cluster_settings,attr,optional"`
+	ExportShards              bool                 `alloy:"shards,attr,optional"`
+	IncludeAliases            bool                 `alloy:"aliases,attr,optional"`
+	ExportSnapshots           bool                 `alloy:"snapshots,attr,optional"`
+	ExportClusterInfoInterval time.Duration        `alloy:"clusterinfo_interval,attr,optional"`
+	CA                        string               `alloy:"ca,attr,optional"`
+	ClientPrivateKey          string               `alloy:"client_private_key,attr,optional"`
+	ClientCert                string               `alloy:"client_cert,attr,optional"`
+	InsecureSkipVerify        bool                 `alloy:"ssl_skip_verify,attr,optional"`
+	ExportDataStreams         bool                 `alloy:"data_stream,attr,optional"`
+	ExportSLM                 bool                 `alloy:"slm,attr,optional"`
+	BasicAuth                 *commonCfg.BasicAuth `alloy:"basic_auth,block,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

@@ -32,7 +32,7 @@ func init() {
 
 // Arguments configures the otelcol.auth.headers component.
 type Arguments struct {
-	Headers []Header `river:"header,block,optional"`
+	Headers []Header `alloy:"header,block,optional"`
 }
 
 var _ auth.Arguments = Arguments{}
@@ -132,10 +132,10 @@ func (a *Action) UnmarshalText(text []byte) error {
 
 // Header is an individual Header to send along with requests.
 type Header struct {
-	Key         string                     `river:"key,attr"`
-	Value       *alloytypes.OptionalSecret `river:"value,attr,optional"`
-	FromContext *string                    `river:"from_context,attr,optional"`
-	Action      Action                     `river:"action,attr,optional"`
+	Key         string                     `alloy:"key,attr"`
+	Value       *alloytypes.OptionalSecret `alloy:"value,attr,optional"`
+	FromContext *string                    `alloy:"from_context,attr,optional"`
+	Action      Action                     `alloy:"action,attr,optional"`
 }
 
 var _ syntax.Defaulter = &Header{}

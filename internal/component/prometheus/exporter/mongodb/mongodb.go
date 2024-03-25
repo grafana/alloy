@@ -27,10 +27,10 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 }
 
 type Arguments struct {
-	URI                    alloytypes.Secret `river:"mongodb_uri,attr"`
-	DirectConnect          bool              `river:"direct_connect,attr,optional"`
-	DiscoveringMode        bool              `river:"discovering_mode,attr,optional"`
-	TLSBasicAuthConfigPath string            `river:"tls_basic_auth_config_path,attr,optional"`
+	URI                    alloytypes.Secret `alloy:"mongodb_uri,attr"`
+	DirectConnect          bool              `alloy:"direct_connect,attr,optional"`
+	DiscoveringMode        bool              `alloy:"discovering_mode,attr,optional"`
+	TLSBasicAuthConfigPath string            `alloy:"tls_basic_auth_config_path,attr,optional"`
 }
 
 func (a *Arguments) Convert() *mongodb_exporter.Config {

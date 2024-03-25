@@ -27,12 +27,12 @@ func init() {
 
 // TickConfig configures the testcomponents.tick component.
 type TickConfig struct {
-	Frequency time.Duration `river:"frequency,attr"`
+	Frequency time.Duration `alloy:"frequency,attr"`
 }
 
 // TickExports describes exported fields for the testcomponents.tick component.
 type TickExports struct {
-	Time time.Time `river:"tick_time,attr,optional"`
+	Time time.Time `alloy:"tick_time,attr,optional"`
 }
 
 // Tick implements the testcomponents.tick component, where the wallclock time

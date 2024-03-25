@@ -8,7 +8,7 @@ import (
 const Name = "docker"
 
 type Config struct {
-	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -34,8 +34,8 @@ func (args Config) Convert() map[string]interface{} {
 
 // ResourceAttributesConfig provides config for docker resource attributes.
 type ResourceAttributesConfig struct {
-	HostName rac.ResourceAttributeConfig `river:"host.name,block,optional"`
-	OsType   rac.ResourceAttributeConfig `river:"os.type,block,optional"`
+	HostName rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
+	OsType   rac.ResourceAttributeConfig `alloy:"os.type,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {

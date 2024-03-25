@@ -38,28 +38,28 @@ type Arguments struct {
 	// - status.code
 	// The dimensions will be fetched from the span's attributes. Examples of some conventionally used attributes:
 	// https://github.com/open-telemetry/opentelemetry-collector/blob/main/model/semconv/opentelemetry.go.
-	Dimensions        []Dimension `river:"dimension,block,optional"`
-	ExcludeDimensions []string    `river:"exclude_dimensions,attr,optional"`
+	Dimensions        []Dimension `alloy:"dimension,block,optional"`
+	ExcludeDimensions []string    `alloy:"exclude_dimensions,attr,optional"`
 
 	// DimensionsCacheSize defines the size of cache for storing Dimensions, which helps to avoid cache memory growing
 	// indefinitely over the lifetime of the collector.
-	DimensionsCacheSize int `river:"dimensions_cache_size,attr,optional"`
+	DimensionsCacheSize int `alloy:"dimensions_cache_size,attr,optional"`
 
-	AggregationTemporality string `river:"aggregation_temporality,attr,optional"`
+	AggregationTemporality string `alloy:"aggregation_temporality,attr,optional"`
 
-	Histogram HistogramConfig `river:"histogram,block"`
+	Histogram HistogramConfig `alloy:"histogram,block"`
 
 	// MetricsEmitInterval is the time period between when metrics are flushed or emitted to the downstream components.
-	MetricsFlushInterval time.Duration `river:"metrics_flush_interval,attr,optional"`
+	MetricsFlushInterval time.Duration `alloy:"metrics_flush_interval,attr,optional"`
 
 	// Namespace is the namespace of the metrics emitted by the connector.
-	Namespace string `river:"namespace,attr,optional"`
+	Namespace string `alloy:"namespace,attr,optional"`
 
 	// Exemplars defines the configuration for exemplars.
-	Exemplars ExemplarsConfig `river:"exemplars,block,optional"`
+	Exemplars ExemplarsConfig `alloy:"exemplars,block,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (

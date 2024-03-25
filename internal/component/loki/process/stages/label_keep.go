@@ -12,7 +12,7 @@ var ErrEmptyLabelAllowStageConfig = errors.New("labelallow stage config cannot b
 
 // LabelAllowConfig contains the slice of labels to allow through.
 type LabelAllowConfig struct {
-	Values []string `river:"values,attr"`
+	Values []string `alloy:"values,attr"`
 }
 
 func newLabelAllowStage(config LabelAllowConfig) (Stage, error) {

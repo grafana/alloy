@@ -32,13 +32,13 @@ func init() {
 
 // Arguments configures the module.git component.
 type Arguments struct {
-	Repository    string        `river:"repository,attr"`
-	Revision      string        `river:"revision,attr,optional"`
-	Path          string        `river:"path,attr"`
-	PullFrequency time.Duration `river:"pull_frequency,attr,optional"`
+	Repository    string        `alloy:"repository,attr"`
+	Revision      string        `alloy:"revision,attr,optional"`
+	Path          string        `alloy:"path,attr"`
+	PullFrequency time.Duration `alloy:"pull_frequency,attr,optional"`
 
-	Arguments     map[string]any    `river:"arguments,block,optional"`
-	GitAuthConfig vcs.GitAuthConfig `river:",squash"`
+	Arguments     map[string]any    `alloy:"arguments,block,optional"`
+	GitAuthConfig vcs.GitAuthConfig `alloy:",squash"`
 }
 
 // DefaultArguments holds default settings for Arguments.
@@ -255,8 +255,8 @@ func (c *Component) CurrentHealth() component.Health {
 // DebugInfo implements component.DebugComponent.
 func (c *Component) DebugInfo() interface{} {
 	type DebugInfo struct {
-		SHA       string `river:"sha,attr"`
-		RepoError string `river:"repo_error,attr,optional"`
+		SHA       string `alloy:"sha,attr"`
+		RepoError string `alloy:"repo_error,attr,optional"`
 	}
 
 	c.mut.RLock()

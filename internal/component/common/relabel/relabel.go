@@ -109,13 +109,13 @@ func (re Regexp) String() string {
 
 // Config describes a relabelling step to be applied on a target.
 type Config struct {
-	SourceLabels []string `river:"source_labels,attr,optional"`
-	Separator    string   `river:"separator,attr,optional"`
-	Regex        Regexp   `river:"regex,attr,optional"`
-	Modulus      uint64   `river:"modulus,attr,optional"`
-	TargetLabel  string   `river:"target_label,attr,optional"`
-	Replacement  string   `river:"replacement,attr,optional"`
-	Action       Action   `river:"action,attr,optional"`
+	SourceLabels []string `alloy:"source_labels,attr,optional"`
+	Separator    string   `alloy:"separator,attr,optional"`
+	Regex        Regexp   `alloy:"regex,attr,optional"`
+	Modulus      uint64   `alloy:"modulus,attr,optional"`
+	TargetLabel  string   `alloy:"target_label,attr,optional"`
+	Replacement  string   `alloy:"replacement,attr,optional"`
+	Action       Action   `alloy:"action,attr,optional"`
 }
 
 // DefaultRelabelConfig sets the default values of fields when decoding a RelabelConfig block.

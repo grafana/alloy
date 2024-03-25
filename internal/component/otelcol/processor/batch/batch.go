@@ -30,14 +30,14 @@ func init() {
 
 // Arguments configures the otelcol.processor.batch component.
 type Arguments struct {
-	Timeout                  time.Duration `river:"timeout,attr,optional"`
-	SendBatchSize            uint32        `river:"send_batch_size,attr,optional"`
-	SendBatchMaxSize         uint32        `river:"send_batch_max_size,attr,optional"`
-	MetadataKeys             []string      `river:"metadata_keys,attr,optional"`
-	MetadataCardinalityLimit uint32        `river:"metadata_cardinality_limit,attr,optional"`
+	Timeout                  time.Duration `alloy:"timeout,attr,optional"`
+	SendBatchSize            uint32        `alloy:"send_batch_size,attr,optional"`
+	SendBatchMaxSize         uint32        `alloy:"send_batch_max_size,attr,optional"`
+	MetadataKeys             []string      `alloy:"metadata_keys,attr,optional"`
+	MetadataCardinalityLimit uint32        `alloy:"metadata_cardinality_limit,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (

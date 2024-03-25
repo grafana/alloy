@@ -32,12 +32,12 @@ func init() {
 
 // Arguments configures the otelcol.processor.discovery component.
 type Arguments struct {
-	Targets         []discovery.Target `river:"targets,attr"`
-	OperationType   string             `river:"operation_type,attr,optional"`
-	PodAssociations []string           `river:"pod_associations,attr,optional"`
+	Targets         []discovery.Target `alloy:"targets,attr"`
+	OperationType   string             `alloy:"operation_type,attr,optional"`
+	PodAssociations []string           `alloy:"pod_associations,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (

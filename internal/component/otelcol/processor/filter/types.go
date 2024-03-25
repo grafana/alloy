@@ -1,16 +1,16 @@
 package filter
 
 type TraceConfig struct {
-	Span      []string `river:"span,attr,optional"`
-	SpanEvent []string `river:"spanevent,attr,optional"`
+	Span      []string `alloy:"span,attr,optional"`
+	SpanEvent []string `alloy:"spanevent,attr,optional"`
 }
 
 type MetricConfig struct {
-	Metric    []string `river:"metric,attr,optional"`
-	Datapoint []string `river:"datapoint,attr,optional"`
+	Metric    []string `alloy:"metric,attr,optional"`
+	Datapoint []string `alloy:"datapoint,attr,optional"`
 }
 type LogConfig struct {
-	LogRecord []string `river:"log_record,attr,optional"`
+	LogRecord []string `alloy:"log_record,attr,optional"`
 }
 
 func (args *TraceConfig) convert() map[string]interface{} {

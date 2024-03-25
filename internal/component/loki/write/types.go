@@ -17,19 +17,19 @@ import (
 
 // EndpointOptions describes an individual location to send logs to.
 type EndpointOptions struct {
-	Name              string                  `river:"name,attr,optional"`
-	URL               string                  `river:"url,attr"`
-	BatchWait         time.Duration           `river:"batch_wait,attr,optional"`
-	BatchSize         units.Base2Bytes        `river:"batch_size,attr,optional"`
-	RemoteTimeout     time.Duration           `river:"remote_timeout,attr,optional"`
-	Headers           map[string]string       `river:"headers,attr,optional"`
-	MinBackoff        time.Duration           `river:"min_backoff_period,attr,optional"`  // start backoff at this level
-	MaxBackoff        time.Duration           `river:"max_backoff_period,attr,optional"`  // increase exponentially to this level
-	MaxBackoffRetries int                     `river:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
-	TenantID          string                  `river:"tenant_id,attr,optional"`
-	RetryOnHTTP429    bool                    `river:"retry_on_http_429,attr,optional"`
-	HTTPClientConfig  *types.HTTPClientConfig `river:",squash"`
-	QueueConfig       QueueConfig             `river:"queue_config,block,optional"`
+	Name              string                  `alloy:"name,attr,optional"`
+	URL               string                  `alloy:"url,attr"`
+	BatchWait         time.Duration           `alloy:"batch_wait,attr,optional"`
+	BatchSize         units.Base2Bytes        `alloy:"batch_size,attr,optional"`
+	RemoteTimeout     time.Duration           `alloy:"remote_timeout,attr,optional"`
+	Headers           map[string]string       `alloy:"headers,attr,optional"`
+	MinBackoff        time.Duration           `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
+	MaxBackoff        time.Duration           `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
+	MaxBackoffRetries int                     `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+	TenantID          string                  `alloy:"tenant_id,attr,optional"`
+	RetryOnHTTP429    bool                    `alloy:"retry_on_http_429,attr,optional"`
+	HTTPClientConfig  *types.HTTPClientConfig `alloy:",squash"`
+	QueueConfig       QueueConfig             `alloy:"queue_config,block,optional"`
 }
 
 // GetDefaultEndpointOptions defines the default settings for sending logs to a
@@ -74,8 +74,8 @@ func (r *EndpointOptions) Validate() error {
 // QueueConfig controls how the queue logs remote write client is configured. Note that this client is only used when the
 // loki.write component has WAL support enabled.
 type QueueConfig struct {
-	Capacity     units.Base2Bytes `river:"capacity,attr,optional"`
-	DrainTimeout time.Duration    `river:"drain_timeout,attr,optional"`
+	Capacity     units.Base2Bytes `alloy:"capacity,attr,optional"`
+	DrainTimeout time.Duration    `alloy:"drain_timeout,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

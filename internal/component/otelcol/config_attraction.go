@@ -18,11 +18,11 @@ func (actions AttrActionKeyValueSlice) Convert() []interface{} {
 type AttrActionKeyValue struct {
 	// Key specifies the attribute to act upon.
 	// This is a required field.
-	Key string `river:"key,attr"`
+	Key string `alloy:"key,attr"`
 
 	// Value specifies the value to populate for the key.
 	// The type of the value is inferred from the configuration.
-	Value interface{} `river:"value,attr,optional"`
+	Value interface{} `alloy:"value,attr,optional"`
 
 	// A regex pattern  must be specified for the action EXTRACT.
 	// It uses the attribute specified by `key' to extract values from
@@ -32,22 +32,22 @@ type AttrActionKeyValue struct {
 	// Note: All subexpressions must have a name.
 	// Note: The value type of the source key must be a string. If it isn't,
 	// no extraction will occur.
-	RegexPattern string `river:"pattern,attr,optional"`
+	RegexPattern string `alloy:"pattern,attr,optional"`
 
 	// FromAttribute specifies the attribute to use to populate
 	// the value. If the attribute doesn't exist, no action is performed.
-	FromAttribute string `river:"from_attribute,attr,optional"`
+	FromAttribute string `alloy:"from_attribute,attr,optional"`
 
 	// FromContext specifies the context value to use to populate
 	// the value. The values would be searched in client.Info.Metadata.
 	// If the key doesn't exist, no action is performed.
 	// If the key has multiple values the values will be joined with `;` separator.
-	FromContext string `river:"from_context,attr,optional"`
+	FromContext string `alloy:"from_context,attr,optional"`
 
 	// ConvertedType specifies the target type of an attribute to be converted
 	// If the key doesn't exist, no action is performed.
 	// If the value cannot be converted, the original value will be left as-is
-	ConvertedType string `river:"converted_type,attr,optional"`
+	ConvertedType string `alloy:"converted_type,attr,optional"`
 
 	// Action specifies the type of action to perform.
 	// The set of values are {INSERT, UPDATE, UPSERT, DELETE, HASH}.
@@ -72,7 +72,7 @@ type AttrActionKeyValue struct {
 	//           already exists, it will be overridden.
 	// CONVERT  - converts the type of an existing attribute, if convertable
 	// This is a required field.
-	Action string `river:"action,attr"`
+	Action string `alloy:"action,attr"`
 }
 
 // Convert converts args into the upstream type.

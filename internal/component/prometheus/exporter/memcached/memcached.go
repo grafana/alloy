@@ -36,14 +36,14 @@ var DefaultArguments = Arguments{
 // Arguments configures the prometheus.exporter.memcached component.
 type Arguments struct {
 	// Address is the address of the memcached server to connect to (host:port).
-	Address string `river:"address,attr,optional"`
+	Address string `alloy:"address,attr,optional"`
 
 	// Timeout is the timeout for the memcached exporter to use when connecting to the
 	// memcached server.
-	Timeout time.Duration `river:"timeout,attr,optional"`
+	Timeout time.Duration `alloy:"timeout,attr,optional"`
 
 	// TLSConfig is used to configure TLS for connection to memcached.
-	TLSConfig *config.TLSConfig `river:"tls_config,block,optional"`
+	TLSConfig *config.TLSConfig `alloy:"tls_config,block,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

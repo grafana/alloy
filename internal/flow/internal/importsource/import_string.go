@@ -27,7 +27,7 @@ func NewImportString(eval *vm.Evaluator, onContentChange func(map[string]string)
 }
 
 type importStringConfigBlock struct {
-	Content alloytypes.OptionalSecret `river:"content,attr"`
+	Content alloytypes.OptionalSecret `alloy:"content,attr"`
 }
 
 func (im *ImportString) Evaluate(scope *vm.Scope) error {

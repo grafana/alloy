@@ -45,7 +45,7 @@ func TestRelabeling(t *testing.T) {
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
-		Rcs []*flow_relabel.Config `river:"rule,block,optional"`
+		Rcs []*flow_relabel.Config `alloy:"rule,block,optional"`
 	}
 	var relabelConfigs cfg
 	err := syntax.Unmarshal([]byte(rc), &relabelConfigs)
@@ -108,7 +108,7 @@ func TestRelabeling(t *testing.T) {
 
 func BenchmarkRelabelComponent(b *testing.B) {
 	type cfg struct {
-		Rcs []*flow_relabel.Config `river:"rule,block,optional"`
+		Rcs []*flow_relabel.Config `alloy:"rule,block,optional"`
 	}
 	var relabelConfigs cfg
 	_ = syntax.Unmarshal([]byte(rc), &relabelConfigs)
@@ -154,7 +154,7 @@ func BenchmarkRelabelComponent(b *testing.B) {
 
 func TestCache(t *testing.T) {
 	type cfg struct {
-		Rcs []*flow_relabel.Config `river:"rule,block,optional"`
+		Rcs []*flow_relabel.Config `alloy:"rule,block,optional"`
 	}
 	var relabelConfigs cfg
 	err := syntax.Unmarshal([]byte(rc), &relabelConfigs)

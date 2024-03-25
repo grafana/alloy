@@ -53,13 +53,13 @@ const (
 // Arguments holds values which are used to configure the loki.source.docker
 // component.
 type Arguments struct {
-	Host             string                  `river:"host,attr"`
-	Targets          []discovery.Target      `river:"targets,attr"`
-	ForwardTo        []loki.LogsReceiver     `river:"forward_to,attr"`
-	Labels           map[string]string       `river:"labels,attr,optional"`
-	RelabelRules     flow_relabel.Rules      `river:"relabel_rules,attr,optional"`
-	HTTPClientConfig *types.HTTPClientConfig `river:"http_client_config,block,optional"`
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
+	Host             string                  `alloy:"host,attr"`
+	Targets          []discovery.Target      `alloy:"targets,attr"`
+	ForwardTo        []loki.LogsReceiver     `alloy:"forward_to,attr"`
+	Labels           map[string]string       `alloy:"labels,attr,optional"`
+	RelabelRules     flow_relabel.Rules      `alloy:"relabel_rules,attr,optional"`
+	HTTPClientConfig *types.HTTPClientConfig `alloy:"http_client_config,block,optional"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
 }
 
 // GetDefaultArguments return an instance of Arguments with the optional fields
@@ -328,13 +328,13 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type readerDebugInfo struct {
-	TargetsInfo []targetInfo `river:"targets_info,block"`
+	TargetsInfo []targetInfo `alloy:"targets_info,block"`
 }
 
 type targetInfo struct {
-	ID         string `river:"id,attr"`
-	LastError  string `river:"last_error,attr"`
-	Labels     string `river:"labels,attr"`
-	IsRunning  string `river:"is_running,attr"`
-	ReadOffset string `river:"read_offset,attr"`
+	ID         string `alloy:"id,attr"`
+	LastError  string `alloy:"last_error,attr"`
+	Labels     string `alloy:"labels,attr"`
+	IsRunning  string `alloy:"is_running,attr"`
+	ReadOffset string `alloy:"read_offset,attr"`
 }

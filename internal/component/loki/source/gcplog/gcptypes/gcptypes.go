@@ -9,20 +9,20 @@ import (
 
 // PullConfig configures a GCPLog target with the 'pull' strategy.
 type PullConfig struct {
-	ProjectID            string            `river:"project_id,attr"`
-	Subscription         string            `river:"subscription,attr"`
-	Labels               map[string]string `river:"labels,attr,optional"`
-	UseIncomingTimestamp bool              `river:"use_incoming_timestamp,attr,optional"`
-	UseFullLine          bool              `river:"use_full_line,attr,optional"`
+	ProjectID            string            `alloy:"project_id,attr"`
+	Subscription         string            `alloy:"subscription,attr"`
+	Labels               map[string]string `alloy:"labels,attr,optional"`
+	UseIncomingTimestamp bool              `alloy:"use_incoming_timestamp,attr,optional"`
+	UseFullLine          bool              `alloy:"use_full_line,attr,optional"`
 }
 
 // PushConfig configures a GCPLog target with the 'push' strategy.
 type PushConfig struct {
-	Server               *fnet.ServerConfig `river:",squash"`
-	PushTimeout          time.Duration      `river:"push_timeout,attr,optional"`
-	Labels               map[string]string  `river:"labels,attr,optional"`
-	UseIncomingTimestamp bool               `river:"use_incoming_timestamp,attr,optional"`
-	UseFullLine          bool               `river:"use_full_line,attr,optional"`
+	Server               *fnet.ServerConfig `alloy:",squash"`
+	PushTimeout          time.Duration      `alloy:"push_timeout,attr,optional"`
+	Labels               map[string]string  `alloy:"labels,attr,optional"`
+	UseIncomingTimestamp bool               `alloy:"use_incoming_timestamp,attr,optional"`
+	UseFullLine          bool               `alloy:"use_full_line,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

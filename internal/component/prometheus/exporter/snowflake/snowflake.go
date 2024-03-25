@@ -33,11 +33,11 @@ var DefaultArguments = Arguments{
 
 // Arguments controls the snowflake exporter.
 type Arguments struct {
-	AccountName string            `river:"account_name,attr"`
-	Username    string            `river:"username,attr"`
-	Password    alloytypes.Secret `river:"password,attr"`
-	Role        string            `river:"role,attr,optional"`
-	Warehouse   string            `river:"warehouse,attr"`
+	AccountName string            `alloy:"account_name,attr"`
+	Username    string            `alloy:"username,attr"`
+	Password    alloytypes.Secret `alloy:"password,attr"`
+	Role        string            `alloy:"role,attr,optional"`
+	Warehouse   string            `alloy:"warehouse,attr"`
 }
 
 // SetToDefault implements river.Defaulter.

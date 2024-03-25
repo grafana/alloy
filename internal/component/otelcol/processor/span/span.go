@@ -31,16 +31,16 @@ func init() {
 
 // Arguments configures the otelcol.processor.span component.
 type Arguments struct {
-	Match otelcol.MatchConfig `river:",squash"`
+	Match otelcol.MatchConfig `alloy:",squash"`
 
 	// Name specifies the components required to re-name a span.
-	Name Name `river:"name,block,optional"`
+	Name Name `alloy:"name,block,optional"`
 
 	// SetStatus specifies status which should be set for this span.
-	SetStatus *Status `river:"status,block,optional"`
+	SetStatus *Status `alloy:"status,block,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (
@@ -132,15 +132,15 @@ type Name struct {
 	// will occur.
 	// Note: The new span name is constructed in order of the `from_attributes`
 	// specified in the configuration. This field is required and cannot be empty.
-	FromAttributes []string `river:"from_attributes,attr,optional"`
+	FromAttributes []string `alloy:"from_attributes,attr,optional"`
 
 	// Separator is the string used to separate attributes values in the new
 	// span name. If no value is set, no separator is used between attribute
 	// values. Used with FromAttributes only.
-	Separator string `river:"separator,attr,optional"`
+	Separator string `alloy:"separator,attr,optional"`
 
 	// ToAttributes specifies a configuration to extract attributes from span name.
-	ToAttributes *ToAttributes `river:"to_attributes,block,optional"`
+	ToAttributes *ToAttributes `alloy:"to_attributes,block,optional"`
 }
 
 func (n *Name) Convert() *spanprocessor.Name {
@@ -167,12 +167,12 @@ type ToAttributes struct {
 	// already exist in the span then they will be overwritten. The process is repeated
 	// for all rules in the order they are specified. Each subsequent rule works on the
 	// span name that is the output after processing the previous rule.
-	Rules []string `river:"rules,attr"`
+	Rules []string `alloy:"rules,attr"`
 
 	// BreakAfterMatch specifies if processing of rules should stop after the first
 	// match. If it is false rule processing will continue to be performed over the
 	// modified span name.
-	BreakAfterMatch bool `river:"break_after_match,attr,optional"`
+	BreakAfterMatch bool `alloy:"break_after_match,attr,optional"`
 }
 
 // DefaultArguments holds default settings for Arguments.
@@ -203,10 +203,10 @@ func (ta *ToAttributes) Convert() *spanprocessor.ToAttributes {
 type Status struct {
 	// Code is one of three values "Ok" or "Error" or "Unset". Please check:
 	// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/api.md#set-status
-	Code string `river:"code,attr"`
+	Code string `alloy:"code,attr"`
 
 	// Description is an optional field documenting Error statuses.
-	Description string `river:"description,attr,optional"`
+	Description string `alloy:"description,attr,optional"`
 }
 
 var (

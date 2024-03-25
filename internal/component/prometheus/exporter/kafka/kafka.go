@@ -26,28 +26,28 @@ var DefaultArguments = Arguments{
 }
 
 type Arguments struct {
-	Instance                string            `river:"instance,attr,optional"`
-	KafkaURIs               []string          `river:"kafka_uris,attr,optional"`
-	UseSASL                 bool              `river:"use_sasl,attr,optional"`
-	UseSASLHandshake        bool              `river:"use_sasl_handshake,attr,optional"`
-	SASLUsername            string            `river:"sasl_username,attr,optional"`
-	SASLPassword            alloytypes.Secret `river:"sasl_password,attr,optional"`
-	SASLMechanism           string            `river:"sasl_mechanism,attr,optional"`
-	UseTLS                  bool              `river:"use_tls,attr,optional"`
-	CAFile                  string            `river:"ca_file,attr,optional"`
-	CertFile                string            `river:"cert_file,attr,optional"`
-	KeyFile                 string            `river:"key_file,attr,optional"`
-	InsecureSkipVerify      bool              `river:"insecure_skip_verify,attr,optional"`
-	KafkaVersion            string            `river:"kafka_version,attr,optional"`
-	UseZooKeeperLag         bool              `river:"use_zookeeper_lag,attr,optional"`
-	ZookeeperURIs           []string          `river:"zookeeper_uris,attr,optional"`
-	ClusterName             string            `river:"kafka_cluster_name,attr,optional"`
-	MetadataRefreshInterval string            `river:"metadata_refresh_interval,attr,optional"`
-	AllowConcurrent         bool              `river:"allow_concurrency,attr,optional"`
-	MaxOffsets              int               `river:"max_offsets,attr,optional"`
-	PruneIntervalSeconds    int               `river:"prune_interval_seconds,attr,optional"`
-	TopicsFilter            string            `river:"topics_filter_regex,attr,optional"`
-	GroupFilter             string            `river:"groups_filter_regex,attr,optional"`
+	Instance                string            `alloy:"instance,attr,optional"`
+	KafkaURIs               []string          `alloy:"kafka_uris,attr,optional"`
+	UseSASL                 bool              `alloy:"use_sasl,attr,optional"`
+	UseSASLHandshake        bool              `alloy:"use_sasl_handshake,attr,optional"`
+	SASLUsername            string            `alloy:"sasl_username,attr,optional"`
+	SASLPassword            alloytypes.Secret `alloy:"sasl_password,attr,optional"`
+	SASLMechanism           string            `alloy:"sasl_mechanism,attr,optional"`
+	UseTLS                  bool              `alloy:"use_tls,attr,optional"`
+	CAFile                  string            `alloy:"ca_file,attr,optional"`
+	CertFile                string            `alloy:"cert_file,attr,optional"`
+	KeyFile                 string            `alloy:"key_file,attr,optional"`
+	InsecureSkipVerify      bool              `alloy:"insecure_skip_verify,attr,optional"`
+	KafkaVersion            string            `alloy:"kafka_version,attr,optional"`
+	UseZooKeeperLag         bool              `alloy:"use_zookeeper_lag,attr,optional"`
+	ZookeeperURIs           []string          `alloy:"zookeeper_uris,attr,optional"`
+	ClusterName             string            `alloy:"kafka_cluster_name,attr,optional"`
+	MetadataRefreshInterval string            `alloy:"metadata_refresh_interval,attr,optional"`
+	AllowConcurrent         bool              `alloy:"allow_concurrency,attr,optional"`
+	MaxOffsets              int               `alloy:"max_offsets,attr,optional"`
+	PruneIntervalSeconds    int               `alloy:"prune_interval_seconds,attr,optional"`
+	TopicsFilter            string            `alloy:"topics_filter_regex,attr,optional"`
+	GroupFilter             string            `alloy:"groups_filter_regex,attr,optional"`
 }
 
 func init() {

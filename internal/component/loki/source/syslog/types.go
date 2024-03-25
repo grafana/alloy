@@ -12,15 +12,15 @@ import (
 
 // ListenerConfig defines a syslog listener.
 type ListenerConfig struct {
-	ListenAddress        string            `river:"address,attr"`
-	ListenProtocol       string            `river:"protocol,attr,optional"`
-	IdleTimeout          time.Duration     `river:"idle_timeout,attr,optional"`
-	LabelStructuredData  bool              `river:"label_structured_data,attr,optional"`
-	Labels               map[string]string `river:"labels,attr,optional"`
-	UseIncomingTimestamp bool              `river:"use_incoming_timestamp,attr,optional"`
-	UseRFC5424Message    bool              `river:"use_rfc5424_message,attr,optional"`
-	MaxMessageLength     int               `river:"max_message_length,attr,optional"`
-	TLSConfig            config.TLSConfig  `river:"tls_config,block,optional"`
+	ListenAddress        string            `alloy:"address,attr"`
+	ListenProtocol       string            `alloy:"protocol,attr,optional"`
+	IdleTimeout          time.Duration     `alloy:"idle_timeout,attr,optional"`
+	LabelStructuredData  bool              `alloy:"label_structured_data,attr,optional"`
+	Labels               map[string]string `alloy:"labels,attr,optional"`
+	UseIncomingTimestamp bool              `alloy:"use_incoming_timestamp,attr,optional"`
+	UseRFC5424Message    bool              `alloy:"use_rfc5424_message,attr,optional"`
+	MaxMessageLength     int               `alloy:"max_message_length,attr,optional"`
+	TLSConfig            config.TLSConfig  `alloy:"tls_config,block,optional"`
 }
 
 // DefaultListenerConfig provides the default arguments for a syslog listener.

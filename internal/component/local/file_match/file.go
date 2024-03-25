@@ -26,8 +26,8 @@ func init() {
 // Arguments holds values which are used to configure the local.file_match
 // component.
 type Arguments struct {
-	PathTargets []discovery.Target `river:"path_targets,attr"`
-	SyncPeriod  time.Duration      `river:"sync_period,attr,optional"`
+	PathTargets []discovery.Target `alloy:"path_targets,attr"`
+	SyncPeriod  time.Duration      `alloy:"sync_period,attr,optional"`
 }
 
 var _ component.Component = (*Component)(nil)

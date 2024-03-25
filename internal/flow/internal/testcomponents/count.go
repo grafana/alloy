@@ -27,12 +27,12 @@ func init() {
 }
 
 type CountConfig struct {
-	Frequency time.Duration `river:"frequency,attr"`
-	Max       int           `river:"max,attr"`
+	Frequency time.Duration `alloy:"frequency,attr"`
+	Max       int           `alloy:"max,attr"`
 }
 
 type CountExports struct {
-	Count int `river:"count,attr,optional"`
+	Count int `alloy:"count,attr,optional"`
 }
 
 type Count struct {

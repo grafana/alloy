@@ -32,22 +32,22 @@ func init() {
 }
 
 type Arguments struct {
-	Project         string            `river:"project_id,attr"`
-	Role            Role              `river:"role,attr"`
-	APIURL          string            `river:"api_url,attr,optional"`
-	Zone            string            `river:"zone,attr,optional"`
-	AccessKey       string            `river:"access_key,attr"`
-	SecretKey       alloytypes.Secret `river:"secret_key,attr,optional"`
-	SecretKeyFile   string            `river:"secret_key_file,attr,optional"`
-	NameFilter      string            `river:"name_filter,attr,optional"`
-	TagsFilter      []string          `river:"tags_filter,attr,optional"`
-	RefreshInterval time.Duration     `river:"refresh_interval,attr,optional"`
-	Port            int               `river:"port,attr,optional"`
+	Project         string            `alloy:"project_id,attr"`
+	Role            Role              `alloy:"role,attr"`
+	APIURL          string            `alloy:"api_url,attr,optional"`
+	Zone            string            `alloy:"zone,attr,optional"`
+	AccessKey       string            `alloy:"access_key,attr"`
+	SecretKey       alloytypes.Secret `alloy:"secret_key,attr,optional"`
+	SecretKeyFile   string            `alloy:"secret_key_file,attr,optional"`
+	NameFilter      string            `alloy:"name_filter,attr,optional"`
+	TagsFilter      []string          `alloy:"tags_filter,attr,optional"`
+	RefreshInterval time.Duration     `alloy:"refresh_interval,attr,optional"`
+	Port            int               `alloy:"port,attr,optional"`
 
-	ProxyConfig     *config.ProxyConfig `river:",squash"`
-	TLSConfig       config.TLSConfig    `river:"tls_config,block,optional"`
-	FollowRedirects bool                `river:"follow_redirects,attr,optional"`
-	EnableHTTP2     bool                `river:"enable_http2,attr,optional"`
+	ProxyConfig     *config.ProxyConfig `alloy:",squash"`
+	TLSConfig       config.TLSConfig    `alloy:"tls_config,block,optional"`
+	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
+	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
 }
 
 var DefaultArguments = Arguments{

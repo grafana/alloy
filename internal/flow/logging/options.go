@@ -12,10 +12,10 @@ import (
 
 // Options is a set of options used to construct and configure a Logger.
 type Options struct {
-	Level  Level  `river:"level,attr,optional"`
-	Format Format `river:"format,attr,optional"`
+	Level  Level  `alloy:"level,attr,optional"`
+	Format Format `alloy:"format,attr,optional"`
 
-	WriteTo []loki.LogsReceiver `river:"write_to,attr,optional"`
+	WriteTo []loki.LogsReceiver `alloy:"write_to,attr,optional"`
 }
 
 // DefaultOptions holds defaults for creating a Logger.

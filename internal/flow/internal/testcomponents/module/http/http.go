@@ -28,9 +28,9 @@ func init() {
 
 // Arguments holds values which are used to configure the module.http component.
 type Arguments struct {
-	RemoteHTTPArguments remote_http.Arguments `river:",squash"`
+	RemoteHTTPArguments remote_http.Arguments `alloy:",squash"`
 
-	Arguments map[string]any `river:"arguments,block,optional"`
+	Arguments map[string]any `alloy:"arguments,block,optional"`
 }
 
 // SetToDefault implements river.Defaulter.

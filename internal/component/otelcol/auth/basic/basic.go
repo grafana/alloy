@@ -30,8 +30,8 @@ func init() {
 type Arguments struct {
 	// TODO(rfratto): should we support htpasswd?
 
-	Username string            `river:"username,attr"`
-	Password alloytypes.Secret `river:"password,attr"`
+	Username string            `alloy:"username,attr"`
+	Password alloytypes.Secret `alloy:"password,attr"`
 }
 
 var _ auth.Arguments = Arguments{}

@@ -328,7 +328,7 @@ func TestLoader_Services(t *testing.T) {
 			return service.Definition{
 				Name: "testsvc",
 				ConfigType: struct {
-					Name string `river:"name,attr,optional"`
+					Name string `alloy:"name,attr,optional"`
 				}{},
 				Stability: featuregate.StabilityBeta,
 			}
