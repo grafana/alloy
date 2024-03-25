@@ -21,21 +21,20 @@ cascade:
 {{< param "PRODUCT_ROOT_NAME" >}} is fully compatible with the OTel Collector and the Prometheus Agent.
 {{< param "PRODUCT_ROOT_NAME" >}} can be used as an alternative to either of these solutions or combined into a hybrid system of multiple collectors and agents.
 You can deploy {{< param "PRODUCT_ROOT_NAME" >}} anywhere within your IT infrastructure and you can pair it with a telemetry backend from Grafana Cloud or any other compatible backend from any other vendor.
-{{< param "PRODUCT_ROOT_NAME" >}} is flexible and you can easily configure it to fit your needs in on-prem, cloud only, or a mix of both.
+{{< param "PRODUCT_ROOT_NAME" >}} is flexible, and you can easily configure it to fit your needs in on-prem, cloud-only, or a mix of both.
 
 ## What can {{% param "PRODUCT_ROOT_NAME" %}} do?
 
-{{< param "PRODUCT_ROOT_NAME" >}} 
-
-Some of the features in {{< param "PRODUCT_ROOT_NAME" >}} include:
+{{< param "PRODUCT_ROOT_NAME" >}} is more than just signals. It provides many features that help you quickly find and process your data in complex environments.
+Some of these features include:
 
 * **Modules:** {{< param "PRODUCT_ROOT_NAME" >}} uses modules to help you quickly build production-ready pipelines.
-  Modules break down large congiuration files into single, easy to understand modules that are just a few lines long.
-  You can use pre-built community modules, modules packaged by Grafana, or you can create your own.
+  Modules break down large configuration files into single, easy-to-understand modules that are just a few lines long.
+  You can use pre-built community modules or modules packaged by Grafana, or create your own custom modules.
 * **GitOps compatibility:** {{< param "PRODUCT_ROOT_NAME" >}} uses frameworks to pull configurations from Git, S3, HTTP endpoints, and just about any other source.
-* **Built for scale:** {{< param "PRODUCT_ROOT_NAME" >}} has native clustering support.
-  Clustering helps distribute the workload and ensure you have high availability.
-  You can quickly create horizontally scalable deployments with minimal resource and operational overhead
+* **Clustering support:** {{< param "PRODUCT_ROOT_NAME" >}} has native clustering support.
+  Clustering helps distribute the workload and ensures you have high availability.
+  You can quickly create horizontally scalable deployments with minimal resource and operational overhead.
 * **Security:** {{< param "PRODUCT_ROOT_NAME" >}} helps you manage authentication credentials and connect to HashiCorp Vaults to retrieve secrets.
 * **Debugging utilities:** {{< param "PRODUCT_ROOT_NAME" >}} provides troubleshooting support and an embedded [user interface][UI] to help you identify and resolve configuration problems.
 
