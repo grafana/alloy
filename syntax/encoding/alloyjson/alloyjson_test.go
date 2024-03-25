@@ -1,11 +1,11 @@
-package riverjson_test
+package alloyjson_test
 
 import (
 	"testing"
 
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/grafana/alloy/syntax/encoding/riverjson"
+	"github.com/grafana/alloy/syntax/encoding/alloyjson"
 	"github.com/stretchr/testify/require"
 )
 
@@ -107,7 +107,7 @@ func TestValues(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			actual, err := riverjson.MarshalValue(tc.input)
+			actual, err := alloyjson.MarshalValue(tc.input)
 			require.NoError(t, err)
 			require.JSONEq(t, tc.expectJSON, string(actual))
 		})
@@ -194,7 +194,7 @@ func TestBlock(t *testing.T) {
 		}
 	]`
 
-	actual, err := riverjson.MarshalBody(val)
+	actual, err := alloyjson.MarshalBody(val)
 	require.NoError(t, err)
 	require.JSONEq(t, expect, string(actual))
 }
@@ -216,7 +216,7 @@ func TestBlock_Empty_Required_Block_Slice(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			expect := `[]`
 
-			actual, err := riverjson.MarshalBody(tc.val)
+			actual, err := alloyjson.MarshalBody(tc.val)
 			require.NoError(t, err)
 			require.JSONEq(t, expect, string(actual))
 		})
@@ -240,7 +240,7 @@ type labeledBlock struct {
 }
 
 func TestNilBody(t *testing.T) {
-	actual, err := riverjson.MarshalBody(nil)
+	actual, err := alloyjson.MarshalBody(nil)
 	require.NoError(t, err)
 	require.JSONEq(t, `[]`, string(actual))
 }
@@ -248,7 +248,7 @@ func TestNilBody(t *testing.T) {
 func TestEmptyBody(t *testing.T) {
 	type block struct{}
 
-	actual, err := riverjson.MarshalBody(block{})
+	actual, err := alloyjson.MarshalBody(block{})
 	require.NoError(t, err)
 	require.JSONEq(t, `[]`, string(actual))
 }
@@ -292,7 +292,7 @@ func TestHideDefaults(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			actual, err := riverjson.MarshalBody(tc.val)
+			actual, err := alloyjson.MarshalBody(tc.val)
 			require.NoError(t, err)
 			require.JSONEq(t, tc.expectJSON, string(actual))
 		})
@@ -329,7 +329,7 @@ func TestMapBlocks(t *testing.T) {
 		}]
 	}]`
 
-	bb, err := riverjson.MarshalBody(val)
+	bb, err := alloyjson.MarshalBody(val)
 	require.NoError(t, err)
 	require.JSONEq(t, expect, string(bb))
 }
@@ -343,7 +343,7 @@ func TestRawMap(t *testing.T) {
         "value": { "type": "string", "value": "value" }
     }]`
 
-	bb, err := riverjson.MarshalBody(val)
+	bb, err := alloyjson.MarshalBody(val)
 	require.NoError(t, err)
 	require.JSONEq(t, expect, string(bb))
 }
@@ -357,7 +357,7 @@ func TestRawMap_Capsule(t *testing.T) {
         "value": { "type": "capsule", "value": "(secret)" }
     }]`
 
-	bb, err := riverjson.MarshalBody(val)
+	bb, err := alloyjson.MarshalBody(val)
 	require.NoError(t, err)
 	require.JSONEq(t, expect, string(bb))
 }
