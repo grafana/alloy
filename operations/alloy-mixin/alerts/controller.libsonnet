@@ -1,7 +1,7 @@
 local alert = import './utils/alert.jsonnet';
 
 alert.newGroup(
-  'agent_controller',
+  'alloy_controller',
   [
     // Component evaluations are taking too long, which can lead to e.g. stale targets.
     alert.newRule(

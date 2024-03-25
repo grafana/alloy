@@ -1,6 +1,6 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
-local filename = 'agent-flow-prometheus-remote-write.json';
+local filename = 'alloy-prometheus-remote-write.json';
 
 local stackedPanelMixin = {
   fieldConfig+: {
@@ -30,7 +30,7 @@ local scrapePanels(y_offset) = [
       across all the namespaces in the selected cluster.
 
       Low success rates can indicate a problem with scrape targets,
-      stale service discovery, or agent misconfiguration.
+      stale service discovery, or Alloy misconfiguration.
     |||) +
     panel.withPosition({ x: 0, y: 1 + y_offset, w: 12, h: 10 }) +
     panel.withQueries([
@@ -55,7 +55,7 @@ local scrapePanels(y_offset) = [
 
       This metric should be below your configured scrape interval.
       High durations can indicate a problem with a scrape target or
-      a performance issue with the agent.
+      a performance issue with Alloy.
     |||) +
     panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
     panel.withQueries([
@@ -346,7 +346,7 @@ local remoteWritePanels(y_offset) = [
     panel.withUnit('short') +
     panel.withDescription(|||
       Total number of active series which are currently being tracked by
-      prometheus.remote_write components, with separate lines for each agent instance.
+      prometheus.remote_write components, with separate lines for each Alloy instance.
 
       An "active series" is a series that prometheus.remote_write recently
       received a sample for. Active series are garbage collected whenever a
@@ -389,9 +389,9 @@ local remoteWritePanels(y_offset) = [
 
 {
   [filename]:
-    dashboard.new(name='Grafana Agent Flow / Prometheus Components') +
+    dashboard.new(name='Alloy / Prometheus Components') +
     dashboard.withDocsLink(
-      url='https://grafana.com/docs/agent/latest/flow/reference/components/prometheus.remote_write/',
+      url='https://grafana.com/docs/alloy/latest/reference/components/prometheus.remote_write/',
       desc='Component documentation',
     ) +
     dashboard.withDashboardsLink() +

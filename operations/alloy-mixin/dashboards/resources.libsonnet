@@ -1,6 +1,6 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
-local filename = 'agent-flow-resources.json';
+local filename = 'alloy-resources.json';
 
 local pointsMixin = {
   fieldConfig+: {
@@ -28,7 +28,7 @@ local stackedPanelMixin = {
 
 {
   [filename]:
-    dashboard.new(name='Grafana Agent Flow / Resources') +
+    dashboard.new(name='Alloy / Resources') +
     dashboard.withDashboardsLink() +
     dashboard.withUID(std.md5(filename)) +
     dashboard.withTemplateVariablesMixin([
@@ -52,7 +52,7 @@ local stackedPanelMixin = {
         panel.new(title='CPU usage', type='timeseries') +
         panel.withUnit('percentunit') +
         panel.withDescription(|||
-          CPU usage of the Grafana Agent process relative to 1 CPU core.
+          CPU usage of the Alloy process relative to 1 CPU core.
 
           For example, 100% means using one entire CPU core.
         |||) +
@@ -70,7 +70,7 @@ local stackedPanelMixin = {
         panel.new(title='Memory (RSS)', type='timeseries') +
         panel.withUnit('decbytes') +
         panel.withDescription(|||
-          Resident memory size of the Grafana Agent process.
+          Resident memory size of the Alloy process.
         |||) +
         panel.withPosition({ x: 12, y: 0, w: 12, h: 8 }) +
         panel.withQueries([
@@ -87,13 +87,13 @@ local stackedPanelMixin = {
         pointsMixin +
         panel.withUnit('ops') +
         panel.withDescription(|||
-          Rate at which the Grafana Agent process performs garbage collections.
+          Rate at which the Alloy process performs garbage collections.
         |||) +
         panel.withPosition({ x: 0, y: 8, w: 8, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
             // Lots of programs export go_goroutines so we ignore anything that
-            // doesn't also have a Grafana Agent-specific metric (i.e.,
+            // doesn't also have an Alloy-specific metric (i.e.,
             // agent_build_info).
             expr=|||
               rate(go_gc_duration_seconds_count{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[5m])
@@ -117,7 +117,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             // Lots of programs export go_goroutines so we ignore anything that
-            // doesn't also have a Grafana Agent-specific metric (i.e.,
+            // doesn't also have an Alloy-specific metric (i.e.,
             // agent_build_info).
             expr=|||
               go_goroutines{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
@@ -134,13 +134,13 @@ local stackedPanelMixin = {
         panel.new(title='Memory (heap inuse)', type='timeseries') +
         panel.withUnit('decbytes') +
         panel.withDescription(|||
-          Heap memory currently in use by the Grafana Agent process.
+          Heap memory currently in use by the Alloy process.
         |||) +
         panel.withPosition({ x: 16, y: 8, w: 8, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
             // Lots of programs export go_memstats_heap_inuse_bytes so we ignore
-            // anything that doesn't also have a Grafana Agent-specific metric
+            // anything that doesn't also have an Alloy-specific metric
             // (i.e., agent_build_info).
             expr=|||
               go_memstats_heap_inuse_bytes{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
@@ -159,10 +159,10 @@ local stackedPanelMixin = {
         panel.withUnit('Bps') +
         panel.withDescription(|||
           Rate of data received across all network interfaces for the machine
-          Grafana Agent is running on.
+          Alloy is running on.
 
           Data shown here is across all running processes and not exclusive to
-          the running Grafana Agent process.
+          the running Alloy process.
         |||) +
         panel.withPosition({ x: 0, y: 16, w: 12, h: 8 }) +
         panel.withQueries([
@@ -182,10 +182,10 @@ local stackedPanelMixin = {
         panel.withUnit('Bps') +
         panel.withDescription(|||
           Rate of data sent across all network interfaces for the machine
-          Grafana Agent is running on.
+          Alloy is running on.
 
           Data shown here is across all running processes and not exclusive to
-          the running Grafana Agent process.
+          the running Alloy process.
         |||) +
         panel.withPosition({ x: 12, y: 16, w: 12, h: 8 }) +
         panel.withQueries([

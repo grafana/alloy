@@ -1,12 +1,12 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
-local filename = 'agent-flow-controller.json';
+local filename = 'alloy-controller.json';
 
 {
   [filename]:
-    dashboard.new(name='Grafana Agent Flow / Controller') +
+    dashboard.new(name='Alloy / Controller') +
     dashboard.withDocsLink(
-      url='https://grafana.com/docs/agent/latest/flow/concepts/component_controller/',
+      url='https://grafana.com/docs/alloy/latest/concepts/component_controller/',
       desc='Component controller documentation',
     ) +
     dashboard.withDashboardsLink() +
@@ -24,12 +24,12 @@ local filename = 'agent-flow-controller.json';
       dashboard.newLokiAnnotation('Deployments', '{cluster="$cluster", container="kube-diff-logger"} | json | namespace_extracted="grafana-agent" | name_extracted=~"grafana-agent.*"', 'rgba(0, 211, 255, 1)'),
     ]) +
     dashboard.withPanelsMixin([
-      // Running agents
+      // Running instances
       (
-        panel.newSingleStat('Running agents') +
-        panel.withUnit('agents') +
+        panel.newSingleStat('Running instances') +
+        panel.withUnit('instances') +
         panel.withDescription(|||
-          The number of Grafana Agent Flow instances whose metrics are being sent and reported.
+          The number of Alloy instances whose metrics are being sent and reported.
         |||) +
         panel.withPosition({ x: 0, y: 0, w: 10, h: 4 }) +
         panel.withQueries([
@@ -44,7 +44,7 @@ local filename = 'agent-flow-controller.json';
         panel.newSingleStat('Running components') +
         panel.withUnit('components') +
         panel.withDescription(|||
-          The number of running components across all running agents.
+          The number of running components across all running instances.
         |||) +
         panel.withPosition({ x: 0, y: 4, w: 10, h: 4 }) +
         panel.withQueries([
@@ -139,7 +139,7 @@ local filename = 'agent-flow-controller.json';
           },
         } +
         panel.withDescription(|||
-          Breakdown of components by health across all running agents.
+          Breakdown of components by health across all running instances.
 
           * Healthy: components have been evaluated completely and are reporting themselves as healthy.
           * Unhealthy: Components either could not be evaluated or are reporting themselves as unhealthy.
@@ -147,7 +147,7 @@ local filename = 'agent-flow-controller.json';
           * Exited: A component has exited. It will not return to the running state.
 
           More information on a component's health state can be retrieved using
-          the Grafana Agent Flow UI.
+          the Alloy UI.
 
           Note that components may be in a degraded state even if they report
           themselves as healthy. Use component-specific dashboards and alerts
