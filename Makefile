@@ -77,7 +77,7 @@ include tools/make/*.mk
 ALLOY_IMAGE                             ?= grafana/alloy:latest
 ALLOY_BINARY                            ?= build/alloy
 SERVICE_BINARY                          ?= build/alloy-service
-AGENTLINT_BINARY                        ?= build/agentlint
+ALLOYLINT_BINARY                        ?= build/alloylint
 GOOS                                    ?= $(shell go env GOOS)
 GOARCH                                  ?= $(shell go env GOARCH)
 GOARM                                   ?= $(shell go env GOARM)
@@ -126,9 +126,9 @@ endif
 #
 
 .PHONY: lint
-lint: agentlint
+lint: alloylint
 	find . -name go.mod -execdir golangci-lint run -v --timeout=10m \;
-	$(AGENTLINT_BINARY) ./...
+	$(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
@@ -169,11 +169,11 @@ else
 	$(GO_ENV) go build $(GO_FLAGS) -o $(SERVICE_BINARY) ./cmd/alloy-service
 endif
 
-agentlint:
+alloylint:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./internal/cmd/agentlint && $(GO_ENV) go build $(GO_FLAGS) -o ../../../$(AGENTLINT_BINARY) .
+	cd ./internal/cmd/alloylint && $(GO_ENV) go build $(GO_FLAGS) -o ../../../$(ALLOYLINT_BINARY) .
 endif
 
 #
