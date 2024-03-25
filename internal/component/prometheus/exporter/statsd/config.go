@@ -35,7 +35,7 @@ type Arguments struct {
 // DefaultConfig holds non-zero default options for the Config when it is
 // unmarshaled from YAML.
 //
-// Some defaults are populated from init functions in the github.com/grafana/agent/internal/static/integrations/statsd_exporter package.
+// Some defaults are populated from init functions in the github.com/grafana/alloy/internal/static/integrations/statsd_exporter package.
 var DefaultConfig = Arguments{
 
 	ListenUDP:      statsd_exporter.DefaultConfig.ListenUDP,
@@ -56,7 +56,7 @@ var DefaultConfig = Arguments{
 	RelayPacketLength: statsd_exporter.DefaultConfig.RelayPacketLength,
 }
 
-// Convert gives a config suitable for use with github.com/grafana/agent/internal/static/integrations/statsd_exporter.
+// Convert gives a config suitable for use with github.com/grafana/alloy/internal/static/integrations/statsd_exporter.
 func (c *Arguments) Convert() (*statsd_exporter.Config, error) {
 	var (
 		mappingConfig any

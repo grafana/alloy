@@ -129,7 +129,7 @@ To engage with the Alloy community:
 
 * Attend the monthly [community call][community-call].
 
-[discussions]: https://github.com/grafana/agent/discussions
+[discussions]: https://github.com/grafana/alloy/discussions
 [issue]: https://github.com/grafana/alloy/issues/new
 [community-call]: https://docs.google.com/document/d/1TqaZD1JPfNadZ4V81OCBPCG_TksDYGlNlGdMnTWUSpo
 

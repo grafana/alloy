@@ -102,7 +102,7 @@ GO_ENV := GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED
 VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
-VPREFIX      := github.com/grafana/agent/internal/build
+VPREFIX      := github.com/grafana/alloy/internal/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).Version=$(VERSION)                          \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \

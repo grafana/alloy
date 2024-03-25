@@ -62,7 +62,7 @@ To build Grafana Agent from source code, please install the following tools:
 
 You can directly use the go tool to download and install the agent binary into your GOPATH:
 
-    $ GO111MODULE=on go install github.com/grafana/agent/cmd/alloy
+    $ GO111MODULE=on go install github.com/grafana/alloy/cmd/alloy
     $ alloy run your_config.river
 
 An example of the above configuration file can be found [here][example-config].
@@ -71,7 +71,7 @@ You can also clone the repository yourself and build using `make agent`:
 
     $ mkdir -p $GOPATH/src/github.com/grafana
     $ cd $GOPATH/src/github.com/grafana
-    $ git clone https://github.com/grafana/agent.git
+    $ git clone https://github.com/grafana/alloy.git
     $ cd agent
     $ make agent
     $ ./build/alloy run your_config.river
@@ -197,13 +197,13 @@ acceptable, and remove the `replace` directive as soon as possible.
 If upstream is unresponsive, consider choosing a different dependency or making
 a hard fork (i.e., creating a new Go module with the same source).
 
-[new-issue]: https://github.com/grafana/agent/issues/new
+[new-issue]: https://github.com/grafana/alloy/issues/new
 [RFC]: ../rfcs/0001-designing-in-the-open.md
 [code-review-comments]: https://code.google.com/p/go-wiki/wiki/CodeReviewComments
 [best-practices]: https://peter.bourgon.org/go-in-production/#formatting-and-style
 [uber-style-guide]: https://github.com/uber-go/guide/blob/master/style.md
-[CLA]: https://cla-assistant.io/grafana/agent
-[good-first-issue]: https://github.com/grafana/agent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22
+[CLA]: https://cla-assistant.io/grafana/alloy
+[good-first-issue]: https://github.com/grafana/alloy/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22
 [community-slack]: https://slack.grafana.com/
 [example-config]: ../../cmd/alloy/example-config.river
 [go-modules]: https://golang.org/cmd/go/#hdr-Modules__module_versions__and_more

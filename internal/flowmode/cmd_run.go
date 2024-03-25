@@ -302,7 +302,7 @@ func (fr *flowRun) Run(configPath string) error {
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
 		if err := f.LoadSource(flowSource, nil); err != nil {
-			return flowSource, fmt.Errorf("error during the initial grafana/agent load: %w", err)
+			return flowSource, fmt.Errorf("error during the initial load: %w", err)
 		}
 
 		return flowSource, nil

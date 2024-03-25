@@ -4,7 +4,7 @@ This is how to publish the release in GitHub.
 
 ## Before you begin
 
-1. You should see a new draft release created [here](https://github.com/grafana/agent/releases). If not go back to [Tag Release](./4-tag-release.md).
+1. You should see a new draft release created [here](https://github.com/grafana/alloy/releases). If not go back to [Tag Release](./4-tag-release.md).
 
 ## Steps
 
@@ -14,9 +14,9 @@ This is how to publish the release in GitHub.
 
 3. Add a footer to the `Notable Changes` section:
 
-    `For a full list of changes, please refer to the [CHANGELOG](https://github.com/grafana/agent/blob/RELEASE_VERSION/CHANGELOG.md)!`
-    
-    Do not substitute the value for `CHANGELOG`.  
+    `For a full list of changes, please refer to the [CHANGELOG](https://github.com/grafana/alloy/blob/RELEASE_VERSION/CHANGELOG.md)!`
+
+    Do not substitute the value for `CHANGELOG`.
 
 4. At the bottom of the release page, perform the following:
     - Tick the check box to "add a discussion" under the category for "announcements".

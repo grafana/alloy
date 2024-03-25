@@ -34,7 +34,7 @@ the literal River expression `env("HOME")`.
 ## Example
 
 ```jsonnet
-local river = import 'github.com/grafana/agent/operations/river-jsonnet/main.libsonnet';
+local river = import 'github.com/grafana/alloy/operations/river-jsonnet/main.libsonnet';
 
 river.manifestRiver({
   attr_1: "Hello, world!",

@@ -62,7 +62,7 @@ from `prometheus.exporter.github`:
 ```river
 prometheus.exporter.github "example" {
   api_token_file = "/etc/github-api-token"
-  repositories   = ["grafana/agent"]
+  repositories   = ["grafana/alloy"]
 }
 
 // Configure a prometheus.scrape component to collect github metrics.

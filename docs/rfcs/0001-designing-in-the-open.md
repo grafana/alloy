@@ -57,7 +57,7 @@ Public proposals may take one of two forms:
 ### Issues
 
 Issues are the quickest path towards proposing a change. Issue proposals must
-be opened at the [grafana/agent issues page](https://github.com/grafana/agent/issues).
+be opened at the [issues page](https://github.com/grafana/alloy/issues).
 
 There are no strict set of rules for issue-based proposals, but authors are
 recommended to prefix the issue title with `Proposal:` so it may be found more
@@ -155,5 +155,5 @@ A few existing public proposal processes have been examined for inspiration:
 All of these processes are similar, but in the end, the current objective is to
 start collecting proposals publicly rather than to be prescriptive yet.
 
-[rough consensus]: https://github.com/grafana/agent/blob/main/GOVERNANCE.md#technical-decisions
-[governance]: https://github.com/grafana/agent/blob/main/GOVERNANCE.md#team-members
+[rough consensus]: https://github.com/grafana/alloy/blob/main/GOVERNANCE.md#technical-decisions
+[governance]: https://github.com/grafana/alloy/blob/main/GOVERNANCE.md#team-members

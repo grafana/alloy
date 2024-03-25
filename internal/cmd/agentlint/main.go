@@ -1,4 +1,4 @@
-// Command agentlint provides custom linting utilities for the grafana/agent
+// Command agentlint provides custom linting utilities for the grafana/alloy
 // repo.
 package main
 

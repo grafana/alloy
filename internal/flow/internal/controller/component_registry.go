@@ -19,7 +19,7 @@ type defaultComponentRegistry struct {
 }
 
 // NewDefaultComponentRegistry creates a new [ComponentRegistry] which gets
-// components registered to github.com/grafana/agent/component.
+// components registered to github.com/grafana/alloy/internal/component.
 func NewDefaultComponentRegistry(minStability featuregate.Stability) ComponentRegistry {
 	return defaultComponentRegistry{
 		minStability: minStability,

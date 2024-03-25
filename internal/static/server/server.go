@@ -1,7 +1,7 @@
 // Package server implements the HTTP and gRPC server used throughout Grafana
 // Agent.
 //
-// It is a grafana/agent-specific fork of github.com/weaveworks/common/server.
+// It is a grafana/alloy-specific fork of github.com/weaveworks/common/server.
 package server
 
 import (

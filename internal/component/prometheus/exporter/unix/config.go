@@ -10,7 +10,7 @@ import (
 // DefaultArguments holds non-zero default options for Arguments when it is
 // unmarshaled from YAML.
 //
-// Some defaults are populated from init functions in the github.com/grafana/agent/internal/static/integrations/node_exporter package.
+// Some defaults are populated from init functions in the github.com/grafana/alloy/internal/static/integrations/node_exporter package.
 var DefaultArguments = Arguments{
 	ProcFSPath:   node_integration.DefaultConfig.ProcFSPath,
 	RootFSPath:   node_integration.DefaultConfig.RootFSPath,
@@ -101,7 +101,7 @@ type Arguments struct {
 	VMStat      VMStatConfig      `alloy:"vmstat,block,optional"`
 }
 
-// Convert gives a config suitable for use with github.com/grafana/agent/internal/static/integrations/node_exporter.
+// Convert gives a config suitable for use with github.com/grafana/alloy/internal/static/integrations/node_exporter.
 func (a *Arguments) Convert() *node_integration.Config {
 	return &node_integration.Config{
 		IncludeExporterMetrics:           a.IncludeExporterMetrics,

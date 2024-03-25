@@ -28,7 +28,7 @@ Our Helm charts require some version updates as well.
 
 3. Open a PR, following the pattern in PR [#2233](https://github.com/grafana/helm-charts/pull/2233).
 
-4. Create a branch from `main` for [grafana/agent](https://github.com/grafana/agent).
+4. Create a branch from `main` for [grafana/alloy](https://github.com/grafana/alloy).
 
 5. Update the helm chart code in `$agentRepo/operations/helm`:
 
