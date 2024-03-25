@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/grafana/river/internal/reflectutil"
+	"github.com/grafana/alloy/syntax/internal/reflectutil"
 )
 
 // The Defaulter interface allows a type to implement default functionality

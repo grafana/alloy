@@ -3,9 +3,9 @@ package riverjson_test
 import (
 	"testing"
 
-	river "github.com/grafana/river"
-	"github.com/grafana/river/encoding/riverjson"
-	"github.com/grafana/river/rivertypes"
+	river "github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/encoding/riverjson"
 	"github.com/stretchr/testify/require"
 )
 
@@ -86,7 +86,7 @@ func TestValues(t *testing.T) {
 		},
 		{
 			name:       "capsule",
-			input:      rivertypes.Secret("foo"),
+			input:      alloytypes.Secret("foo"),
 			expectJSON: `{ "type": "capsule", "value": "(secret)" }`,
 		},
 		{
@@ -349,7 +349,7 @@ func TestRawMap(t *testing.T) {
 }
 
 func TestRawMap_Capsule(t *testing.T) {
-	val := map[string]any{"capsule": rivertypes.Secret("foo")}
+	val := map[string]any{"capsule": alloytypes.Secret("foo")}
 
 	expect := `[{
         "name": "capsule",

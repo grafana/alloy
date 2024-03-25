@@ -3,7 +3,7 @@ package value
 import (
 	"reflect"
 
-	"github.com/grafana/river/internal/reflectutil"
+	"github.com/grafana/alloy/syntax/internal/reflectutil"
 )
 
 // structWrapper allows for partially traversing structs which contain fields

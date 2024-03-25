@@ -1,10 +1,10 @@
-package river_test
+package syntax_test
 
 import (
 	"fmt"
 	"os"
 
-	river "github.com/grafana/river"
+	river "github.com/grafana/alloy/syntax"
 )
 
 func ExampleUnmarshal() {

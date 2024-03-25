@@ -6,10 +6,10 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/scanner"
-	"github.com/grafana/river/token"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/scanner"
+	"github.com/grafana/alloy/syntax/token"
+	"github.com/grafana/alloy/syntax/vm"
 	"github.com/stretchr/testify/require"
 )
 

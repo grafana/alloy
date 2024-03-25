@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/grafana/river/internal/syntaxtags"
+	"github.com/grafana/alloy/syntax/internal/syntaxtags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

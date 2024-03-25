@@ -1,4 +1,4 @@
-// Package river implements a high-level API for decoding and encoding River
+// Package syntax implements a high-level API for decoding and encoding River
 // configuration files. The mapping between River and Go values is described in
 // the documentation for the Unmarshal and Marshal functions.
 //
@@ -6,15 +6,15 @@
 // available in the inner packages. The implementation of this package is
 // minimal and serves as a reference for how to consume the lower-level
 // packages.
-package river
+package syntax
 
 import (
 	"bytes"
 	"io"
 
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/token/builder"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/token/builder"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // Marshal returns the pretty-printed encoding of v as a River configuration

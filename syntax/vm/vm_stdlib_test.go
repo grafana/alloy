@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/grafana/river/internal/value"
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/vm"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/internal/value"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
 	"github.com/stretchr/testify/require"
 )
 
@@ -108,8 +108,8 @@ func TestStdlibJsonPath(t *testing.T) {
 func TestStdlib_Nonsensitive(t *testing.T) {
 	scope := &vm.Scope{
 		Variables: map[string]any{
-			"secret":         rivertypes.Secret("foo"),
-			"optionalSecret": rivertypes.OptionalSecret{Value: "bar"},
+			"secret":         alloytypes.Secret("foo"),
+			"optionalSecret": alloytypes.OptionalSecret{Value: "bar"},
 		},
 	}
 

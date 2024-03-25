@@ -5,9 +5,9 @@ import (
 	"math"
 	"reflect"
 
-	"github.com/grafana/river/internal/value"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/token"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/internal/value"
+	"github.com/grafana/alloy/syntax/token"
 )
 
 func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, error) {
@@ -208,13 +208,13 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 }
 
 // tryUnwrapOptionalSecret accepts a value and, if it is a
-// rivertypes.OptionalSecret where IsSecret is false, returns a string value
+// alloytypes.OptionalSecret where IsSecret is false, returns a string value
 // instead.
 //
-// If val is not a rivertypes.OptionalSecret or IsSecret is true,
+// If val is not a alloytypes.OptionalSecret or IsSecret is true,
 // tryUnwrapOptionalSecret returns the input value unchanged.
 func tryUnwrapOptionalSecret(val value.Value) value.Value {
-	optSecret, ok := val.Interface().(rivertypes.OptionalSecret)
+	optSecret, ok := val.Interface().(alloytypes.OptionalSecret)
 	if !ok || optSecret.IsSecret {
 		return val
 	}

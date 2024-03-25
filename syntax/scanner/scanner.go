@@ -6,7 +6,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/grafana/river/token"
+	"github.com/grafana/alloy/syntax/token"
 )
 
 // EBNF for the scanner:

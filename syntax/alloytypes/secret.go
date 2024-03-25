@@ -1,11 +1,11 @@
-package rivertypes
+package alloytypes
 
 import (
 	"fmt"
 
-	"github.com/grafana/river/internal/value"
-	"github.com/grafana/river/token"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax/internal/value"
+	"github.com/grafana/alloy/syntax/token"
+	"github.com/grafana/alloy/syntax/token/builder"
 )
 
 // Secret is a River capsule holding a sensitive string. The contents of a

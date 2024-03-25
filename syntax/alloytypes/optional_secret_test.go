@@ -1,16 +1,16 @@
-package rivertypes_test
+package alloytypes_test
 
 import (
 	"testing"
 
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/stretchr/testify/require"
 )
 
 func TestOptionalSecret(t *testing.T) {
 	t.Run("non-sensitive conversion to string is allowed", func(t *testing.T) {
-		input := rivertypes.OptionalSecret{IsSecret: false, Value: "testval"}
+		input := alloytypes.OptionalSecret{IsSecret: false, Value: "testval"}
 
 		var s string
 		err := decodeTo(t, input, &s)
@@ -19,7 +19,7 @@ func TestOptionalSecret(t *testing.T) {
 	})
 
 	t.Run("sensitive conversion to string is disallowed", func(t *testing.T) {
-		input := rivertypes.OptionalSecret{IsSecret: true, Value: "testval"}
+		input := alloytypes.OptionalSecret{IsSecret: true, Value: "testval"}
 
 		var s string
 		err := decodeTo(t, input, &s)
@@ -28,29 +28,29 @@ func TestOptionalSecret(t *testing.T) {
 	})
 
 	t.Run("non-sensitive conversion to secret is allowed", func(t *testing.T) {
-		input := rivertypes.OptionalSecret{IsSecret: false, Value: "testval"}
+		input := alloytypes.OptionalSecret{IsSecret: false, Value: "testval"}
 
-		var s rivertypes.Secret
+		var s alloytypes.Secret
 		err := decodeTo(t, input, &s)
 		require.NoError(t, err)
-		require.Equal(t, rivertypes.Secret("testval"), s)
+		require.Equal(t, alloytypes.Secret("testval"), s)
 	})
 
 	t.Run("sensitive conversion to secret is allowed", func(t *testing.T) {
-		input := rivertypes.OptionalSecret{IsSecret: true, Value: "testval"}
+		input := alloytypes.OptionalSecret{IsSecret: true, Value: "testval"}
 
-		var s rivertypes.Secret
+		var s alloytypes.Secret
 		err := decodeTo(t, input, &s)
 		require.NoError(t, err)
-		require.Equal(t, rivertypes.Secret("testval"), s)
+		require.Equal(t, alloytypes.Secret("testval"), s)
 	})
 
 	t.Run("conversion from string is allowed", func(t *testing.T) {
-		var s rivertypes.OptionalSecret
+		var s alloytypes.OptionalSecret
 		err := decodeTo(t, string("Hello, world!"), &s)
 		require.NoError(t, err)
 
-		expect := rivertypes.OptionalSecret{
+		expect := alloytypes.OptionalSecret{
 			IsSecret: false,
 			Value:    "Hello, world!",
 		}
@@ -58,11 +58,11 @@ func TestOptionalSecret(t *testing.T) {
 	})
 
 	t.Run("conversion from secret is allowed", func(t *testing.T) {
-		var s rivertypes.OptionalSecret
-		err := decodeTo(t, rivertypes.Secret("Hello, world!"), &s)
+		var s alloytypes.OptionalSecret
+		err := decodeTo(t, alloytypes.Secret("Hello, world!"), &s)
 		require.NoError(t, err)
 
-		expect := rivertypes.OptionalSecret{
+		expect := alloytypes.OptionalSecret{
 			IsSecret: true,
 			Value:    "Hello, world!",
 		}
@@ -76,10 +76,10 @@ func TestOptionalSecret_Write(t *testing.T) {
 		value  interface{}
 		expect string
 	}{
-		{"non-sensitive", rivertypes.OptionalSecret{Value: "foobar"}, `"foobar"`},
-		{"sensitive", rivertypes.OptionalSecret{IsSecret: true, Value: "foobar"}, `(secret)`},
-		{"non-sensitive pointer", &rivertypes.OptionalSecret{Value: "foobar"}, `"foobar"`},
-		{"sensitive pointer", &rivertypes.OptionalSecret{IsSecret: true, Value: "foobar"}, `(secret)`},
+		{"non-sensitive", alloytypes.OptionalSecret{Value: "foobar"}, `"foobar"`},
+		{"sensitive", alloytypes.OptionalSecret{IsSecret: true, Value: "foobar"}, `(secret)`},
+		{"non-sensitive pointer", &alloytypes.OptionalSecret{Value: "foobar"}, `"foobar"`},
+		{"sensitive pointer", &alloytypes.OptionalSecret{IsSecret: true, Value: "foobar"}, `(secret)`},
 	}
 
 	for _, tc := range tt {

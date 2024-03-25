@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/river/ast"
-	"github.com/grafana/river/diag"
-	"github.com/grafana/river/scanner"
-	"github.com/grafana/river/token"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/diag"
+	"github.com/grafana/alloy/syntax/scanner"
+	"github.com/grafana/alloy/syntax/token"
 )
 
 // parser implements the River parser.
