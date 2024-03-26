@@ -28,7 +28,7 @@ func ToHttpClientConfig(httpClientConfig *prom_config.HTTPClientConfig) *config.
 }
 
 // ValidateHttpClientConfig returns [diag.Diagnostics] for currently
-// unsupported Flow features available in Prometheus.
+// unsupported Alloy features available in Prometheus.
 func ValidateHttpClientConfig(httpClientConfig *prom_config.HTTPClientConfig) diag.Diagnostics {
 	var diags diag.Diagnostics
 

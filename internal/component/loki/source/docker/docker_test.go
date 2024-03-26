@@ -65,7 +65,7 @@ func TestDuplicateTargets(t *testing.T) {
 
 	cmp, err := New(component.Options{
 		ID:         "loki.source.docker.test",
-		Logger:     util.TestFlowLogger(t),
+		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus.NewRegistry(),
 		DataPath:   t.TempDir(),
 	}, args)

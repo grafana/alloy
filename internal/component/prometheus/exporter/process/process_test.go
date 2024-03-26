@@ -11,8 +11,8 @@ import (
 func TestRiverConfigUnmarshal(t *testing.T) {
 	var exampleRiverConfig = `
 	matcher {
-		name    = "flow"
-		comm    = ["grafana-agent"]
+		name    = "alloy"
+		comm    = ["alloy"]
 		cmdline = ["*run*"]
 	}
 	track_children    = false
@@ -32,8 +32,8 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 
 	expected := []MatcherGroup{
 		{
-			Name:         "flow",
-			CommRules:    []string{"grafana-agent"},
+			Name:         "alloy",
+			CommRules:    []string{"alloy"},
 			CmdlineRules: []string{"*run*"},
 		},
 	}

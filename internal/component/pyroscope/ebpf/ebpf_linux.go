@@ -51,12 +51,12 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		return nil, fmt.Errorf("ebpf session create: %w", err)
 	}
 
-	flowAppendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
+	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
 
 	res := &Component{
 		options:      opts,
 		metrics:      ms,
-		appendable:   flowAppendable,
+		appendable:   alloyAppendable,
 		args:         args,
 		targetFinder: targetFinder,
 		session:      session,

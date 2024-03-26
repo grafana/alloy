@@ -1,7 +1,7 @@
-// Package auth provides utilities to create a Flow component from
+// Package auth provides utilities to create an Alloy component from
 // OpenTelemetry Collector authentication extensions.
 //
-// Other OpenTelemetry Collector extensions are better served as generic Flow
+// Other OpenTelemetry Collector extensions are better served as generic Alloy
 // components rather than being placed in the otelcol namespace.
 package auth
 
@@ -40,7 +40,7 @@ type Arguments interface {
 	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
 }
 
-// Exports is a common Exports type for Flow components which expose
+// Exports is a common Exports type for Alloy components which expose
 // OpenTelemetry Collector authentication extensions.
 type Exports struct {
 	// Handler is the managed component. Handler is updated any time the
@@ -59,7 +59,7 @@ var _ syntax.Capsule = Handler{}
 // RiverCapsule marks Handler as a capsule type.
 func (Handler) RiverCapsule() {}
 
-// Auth is a Flow component shim which manages an OpenTelemetry Collector
+// Auth is an Alloy component shim which manages an OpenTelemetry Collector
 // authentication extension.
 type Auth struct {
 	ctx    context.Context
@@ -77,9 +77,9 @@ var (
 	_ component.HealthComponent = (*Auth)(nil)
 )
 
-// New creates a new Flow component which encapsulates an OpenTelemetry
+// New creates a new Alloy component which encapsulates an OpenTelemetry
 // Collector authentication extension. args must hold a value of the argument
-// type registered with the Flow component.
+// type registered with the Alloy component.
 //
 // The registered component must be registered to export the Exports type from
 // this package, otherwise New will panic.

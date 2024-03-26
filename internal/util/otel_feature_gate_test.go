@@ -15,7 +15,7 @@ func Test_FeatureGates(t *testing.T) {
 
 	fgSet := make(map[string]struct{})
 
-	for _, fg := range flowModeOtelFeatureGates {
+	for _, fg := range otelFeatureGates {
 		fgSet[fg] = struct{}{}
 	}
 
@@ -31,7 +31,7 @@ func Test_FeatureGates(t *testing.T) {
 		require.Falsef(t, g.IsEnabled(), "feature gate %s is enabled - should it be removed from the Agent?", g.ID())
 	})
 
-	require.NoError(t, SetupFlowModeOtelFeatureGates())
+	require.NoError(t, SetupOtelFeatureGates())
 
 	reg.VisitAll(func(g *featuregate.Gate) {
 		if _, ok := fgSet[g.ID()]; !ok {

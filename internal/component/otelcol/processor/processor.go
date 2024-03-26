@@ -1,4 +1,4 @@
-// Package processor exposes utilities to create a Flow component from
+// Package processor exposes utilities to create an Alloy component from
 // OpenTelemetry Collector processors.
 package processor
 
@@ -44,8 +44,8 @@ type Arguments interface {
 	NextConsumers() *otelcol.ConsumerArguments
 }
 
-// Processor is a Flow component shim which manages an OpenTelemetry Collector
-// processor component.
+// Processor is an Alloy component shim which manages an OpenTelemetry
+// Collector processor component.
 type Processor struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -63,9 +63,9 @@ var (
 	_ component.HealthComponent = (*Processor)(nil)
 )
 
-// New creates a new Flow component which encapsulates an OpenTelemetry
+// New creates a new Alloy component which encapsulates an OpenTelemetry
 // Collector processor. args must hold a value of the argument type registered
-// with the Flow component.
+// with the Alloy component.
 //
 // The registered component must be registered to export the
 // otelcol.ConsumerExports type, otherwise New will panic.

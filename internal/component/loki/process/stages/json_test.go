@@ -45,7 +45,7 @@ var testJSONLogLine = `
 
 func TestPipeline_JSON(t *testing.T) {
 	t.Parallel()
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 
 	tests := map[string]struct {
 		config          string
@@ -212,7 +212,7 @@ var logFixture = `
 
 func TestJSONParser_Parse(t *testing.T) {
 	t.Parallel()
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 
 	var logString = "log"
 	tests := map[string]struct {
@@ -351,7 +351,7 @@ func TestJSONParser_Parse(t *testing.T) {
 }
 
 func TestValidateJSONDrop(t *testing.T) {
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	labels := map[string]string{"foo": "bar"}
 	matchConfig := &JSONConfig{
 		DropMalformed: true,

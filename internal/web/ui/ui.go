@@ -1,4 +1,4 @@
-// Package ui exposes utilities to get a Handler for the Grafana Agent Flow UI.
+// Package ui exposes utilities to get a Handler for the Grafana Alloy UI.
 package ui
 
 import (
@@ -18,7 +18,7 @@ import (
 )
 
 // RegisterRoutes registers routes to the provided mux.Router for serving the
-// Grafana Agent Flow UI. The UI will be served relative to pathPrefix. If no
+// Grafana Alloy UI. The UI will be served relative to pathPrefix. If no
 // pathPrefix is specified, the UI will be served at root.
 //
 // By default, the UI is retrieved from the ./internal/web/ui/build directory

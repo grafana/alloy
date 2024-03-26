@@ -71,7 +71,7 @@ func (m *mockSession) DebugInfo() interface{} {
 }
 
 func TestShutdownOnError(t *testing.T) {
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	ms := newMetrics(nil)
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/foo"), logger, sd.TargetsOptions{
 		ContainerCacheSize: 1024,
@@ -98,7 +98,7 @@ func TestShutdownOnError(t *testing.T) {
 }
 
 func TestContextShutdown(t *testing.T) {
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	ms := newMetrics(nil)
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/foo"), logger, sd.TargetsOptions{
 		ContainerCacheSize: 1024,
@@ -192,11 +192,11 @@ collect_kernel_profile = false`), &arg)
 }
 
 func newTestComponent(opts component.Options, args Arguments, session *mockSession, targetFinder sd.TargetFinder, ms *metrics) *Component {
-	flowAppendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
+	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
 	res := &Component{
 		options:      opts,
 		metrics:      ms,
-		appendable:   flowAppendable,
+		appendable:   alloyAppendable,
 		args:         args,
 		targetFinder: targetFinder,
 		session:      session,

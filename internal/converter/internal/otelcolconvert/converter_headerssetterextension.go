@@ -26,7 +26,7 @@ func (headersSetterExtensionConverter) InputComponentName() string { return "ote
 func (headersSetterExtensionConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toHeadersSetterExtension(cfg.(*headerssetterextension.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "auth", "headers"}, label, args)

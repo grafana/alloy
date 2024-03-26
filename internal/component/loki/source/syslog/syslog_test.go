@@ -10,7 +10,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/regexp"
 	"github.com/phayes/freeport"
@@ -21,7 +21,7 @@ import (
 
 func Test(t *testing.T) {
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -103,7 +103,7 @@ func Test(t *testing.T) {
 
 func TestWithRelabelRules(t *testing.T) {
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -121,16 +121,16 @@ func TestWithRelabelRules(t *testing.T) {
 	args.ForwardTo = []loki.LogsReceiver{ch1}
 
 	// Create a handler which will be used to retrieve relabeling rules.
-	args.RelabelRules = []*flow_relabel.Config{
+	args.RelabelRules = []*alloy_relabel.Config{
 		{
 			SourceLabels: []string{"__name__"},
 			Regex:        mustNewRegexp("__syslog_(.*)"),
-			Action:       flow_relabel.LabelMap,
+			Action:       alloy_relabel.LabelMap,
 			Replacement:  "syslog_${1}",
 		},
 		{
 			Regex:  mustNewRegexp("syslog_connection_hostname"),
-			Action: flow_relabel.LabelDrop,
+			Action: alloy_relabel.LabelDrop,
 		},
 	}
 
@@ -194,10 +194,10 @@ var (
 	fmtNewline       = func(s string) string { return s + "\n" }
 )
 
-func mustNewRegexp(s string) flow_relabel.Regexp {
+func mustNewRegexp(s string) alloy_relabel.Regexp {
 	re, err := regexp.Compile("^(?:" + s + ")$")
 	if err != nil {
 		panic(err)
 	}
-	return flow_relabel.Regexp{Regexp: re}
+	return alloy_relabel.Regexp{Regexp: re}
 }

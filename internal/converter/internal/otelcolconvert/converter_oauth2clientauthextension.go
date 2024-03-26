@@ -26,7 +26,7 @@ func (oauth2ClientAuthExtensionConverter) InputComponentName() string { return "
 func (oauth2ClientAuthExtensionConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toOAuth2ClientAuthExtension(cfg.(*oauth2clientauthextension.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "auth", "oauth2"}, label, args)

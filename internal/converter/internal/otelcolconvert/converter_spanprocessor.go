@@ -25,7 +25,7 @@ func (spanProcessorConverter) InputComponentName() string { return "otelcol.proc
 func (spanProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toSpanProcessor(state, id, cfg.(*spanprocessor.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "span"}, label, args)

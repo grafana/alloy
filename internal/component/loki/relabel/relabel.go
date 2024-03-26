@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/featuregate"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/common/model"
@@ -35,7 +35,7 @@ type Arguments struct {
 	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 
 	// The relabelling rules to apply to each log entry before it's forwarded.
-	RelabelConfigs []*flow_relabel.Config `alloy:"rule,block,optional"`
+	RelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 
 	// The maximum number of items to hold in the component's LRU cache.
 	MaxCacheSize int `alloy:"max_cache_size,attr,optional"`
@@ -54,8 +54,8 @@ func (a *Arguments) SetToDefault() {
 
 // Exports holds values which are exported by the loki.relabel component.
 type Exports struct {
-	Receiver loki.LogsReceiver  `alloy:"receiver,attr"`
-	Rules    flow_relabel.Rules `alloy:"rules,attr"`
+	Receiver loki.LogsReceiver   `alloy:"receiver,attr"`
+	Rules    alloy_relabel.Rules `alloy:"rules,attr"`
 }
 
 // Component implements the loki.relabel component.
@@ -136,7 +136,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	newRCS := flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
+	newRCS := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
 	if relabelingChanged(c.rcs, newRCS) {
 		level.Debug(c.opts.Logger).Log("msg", "received new relabel configs, purging cache")
 		c.cache.Purge()

@@ -1,4 +1,4 @@
-# Grafana Agent Flow UI
+# Grafana Alloy UI
 
 ## Prerequisites
 

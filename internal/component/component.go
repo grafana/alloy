@@ -1,6 +1,6 @@
-// Package component describes the interfaces which Flow components implement.
+// Package component describes the interfaces which components implement.
 //
-// A Flow component is a distinct piece of business logic that accepts inputs
+// A component is a distinct piece of business logic that accepts inputs
 // (Arguments) for its configuration and can optionally export a set of outputs
 // (Exports).
 //
@@ -23,7 +23,7 @@
 //
 // The set of River element names of a given component's Arguments and Exports
 // types must not overlap. Additionally, the following River field and block
-// names are reserved for use by the Flow controller:
+// names are reserved for use by the Alloy controller:
 //
 //   - for_each
 //   - enabled
@@ -76,9 +76,9 @@ type Arguments interface{}
 // Exports implementations.
 type Exports interface{}
 
-// Component is the base interface for a Flow component. Components may
-// implement extension interfaces (named <Extension>Component) to implement
-// extra known behavior.
+// Component is the base interface for a component. Components may implement
+// extension interfaces (named <Extension>Component) to implement extra known
+// behavior.
 type Component interface {
 	// Run starts the component, blocking until ctx is canceled or the component
 	// suffers a fatal error. Run is guaranteed to be called exactly once per

@@ -1,4 +1,4 @@
-// Package findcomponents exposes an Analyzer which ensures that created Flow
+// Package findcomponents exposes an Analyzer which ensures that created
 // components are imported by a registry package.
 package findcomponents
 
@@ -13,7 +13,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name: "findcomponents",
-	Doc:  "ensure Flow components are imported",
+	Doc:  "ensure components are imported",
 	Run:  run,
 }
 
@@ -67,8 +67,8 @@ func run(p *analysis.Pass) (interface{}, error) {
 }
 
 // findComponentPackages returns a map of discovered packages which declare
-// Flow components. The pattern argument controls the full list of patterns
-// which are searched (e.g., "./..." or "./component/...").
+// components. The pattern argument controls the full list of patterns which
+// are searched (e.g., "./..." or "./component/...").
 func findComponentPackages(pattern string) (map[string]struct{}, error) {
 	pkgs, err := packages.Load(&packages.Config{
 		Mode: packages.NeedName | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo,

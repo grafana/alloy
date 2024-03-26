@@ -1,4 +1,4 @@
-// Package otel implements the otel service for Flow.
+// Package otel implements the otel service.
 // This service registers feature gates will be used by the otelcol components
 // based on upstream Collector components.
 package otel
@@ -30,7 +30,7 @@ func New(logger log.Logger) *Service {
 	// an Otel component. If we set the feature gates in Run(), it will
 	// be too late - Otel would have already checked the feature gate by then.
 	// This is because the services are not started prior to the graph evaluation.
-	err := util.SetupFlowModeOtelFeatureGates()
+	err := util.SetupOtelFeatureGates()
 	if err != nil {
 		logger.Log("msg", "failed to set up Otel feature gates", "err", err)
 		return nil

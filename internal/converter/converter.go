@@ -1,5 +1,5 @@
 // Package converter exposes utilities to convert config files from other
-// programs to Grafana Agent Flow configurations.
+// programs to Grafana Alloy configurations.
 package converter
 
 import (
@@ -29,8 +29,7 @@ var SupportedFormats = []string{
 	string(InputStatic),
 }
 
-// Convert generates a Grafana Agent Flow config given an input configuration
-// file.
+// Convert generates a Grafana Alloy config given an input configuration file.
 //
 // extraArgs are supported to be passed along to a converter such as enabling
 // integrations-next for the static converter. Converters that do not support
@@ -41,10 +40,10 @@ var SupportedFormats = []string{
 // should just be the starting point rather than the final destination.
 //
 // Note that not all functionality defined in the input configuration may have
-// an equivalent in Grafana Agent Flow. If the conversion could not complete
-// because of mismatched functionality, an error is returned with no resulting
-// config. If the conversion completed successfully but generated warnings, an
-// error is returned alongside the resulting config.
+// an equivalent in Grafana Alloy. If the conversion could not complete because
+// of mismatched functionality, an error is returned with no resulting config.
+// If the conversion completed successfully but generated warnings, an error is
+// returned alongside the resulting config.
 func Convert(in []byte, kind Input, extraArgs []string) ([]byte, diag.Diagnostics) {
 	switch kind {
 	case InputPrometheus:

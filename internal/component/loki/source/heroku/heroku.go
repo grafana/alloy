@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	ht "github.com/grafana/alloy/internal/component/loki/source/heroku/internal/herokutarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
@@ -37,7 +37,7 @@ type Arguments struct {
 	Labels               map[string]string   `alloy:"labels,attr,optional"`
 	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
 	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
-	RelabelRules         flow_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
+	RelabelRules         alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -123,7 +123,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	var rcs []*relabel.Config
 	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
-		rcs = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
 	restartRequired := changed(c.args.Server, newArgs.Server) ||

@@ -64,7 +64,7 @@ var testMatchLogLineApp2 = `
 func TestMatchStage(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_match_pipeline"
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	pl, err := NewPipeline(logger, loadConfig(testMatchRiver), &plName, registry)
 	if err != nil {
 		t.Fatal(err)
@@ -159,7 +159,7 @@ func TestMatcher(t *testing.T) {
 				"",
 				"",
 			}
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			s, err := newMatcherStage(logger, nil, matchConfig, prometheus.DefaultRegisterer)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("withMatcher() error = %v, wantErr %v", err, tt.wantErr)

@@ -29,7 +29,7 @@ func (bearerTokenAuthExtensionConverter) InputComponentName() string { return "o
 func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	bcfg := cfg.(*bearertokenauthextension.Config)
 	var block *builder.Block
@@ -66,7 +66,7 @@ func toBearerTokenAuthExtension(cfg *bearertokenauthextension.Config) *bearer.Ar
 	}
 }
 func toBearerTokenAuthExtensionWithFilename(state *state, cfg *bearertokenauthextension.Config) (*bearer.Arguments, string) {
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 	args := &file.Arguments{
 		Filename:      cfg.Filename,
 		Type:          file.DefaultArguments.Type, // Using the default type (fsnotify) since that's what upstream also uses.

@@ -1,9 +1,9 @@
-(Error) Promtail's WAL is currently not supported in Flow Mode
-(Error) limits_config is not yet supported in Flow Mode
-(Warning) If you have a tracing set up for Promtail, it cannot be migrated to Flow Mode automatically. Refer to the documentation on how to configure tracing in Flow Mode.
-(Error) reading targets from stdin is not supported in Flow Mode configuration file
+(Error) Promtail's WAL is currently not supported in Alloy
+(Error) limits_config is not yet supported in Alloy
+(Warning) If you have a tracing set up for Promtail, it cannot be migrated to Alloy automatically. Refer to the documentation on how to configure tracing in Alloy.
+(Error) reading targets from stdin is not supported in Alloy configuration file
 (Warning) server.profiling_enabled is not supported - use Agent's main HTTP server's profiling endpoints instead
-(Warning) The Agent's Flow Mode metrics are different from the metrics emitted by Promtail. If you rely on Promtail's metrics, you must change your configuration, for example, your alerts and dashboards.
-(Warning) The converter does not support converting the provided server.log_level config: The equivalent feature in Flow mode is to use the logging config block to set the level argument.
+(Warning) Alloy's metrics are different from the metrics emitted by Promtail. If you rely on Promtail's metrics, you must change your configuration, for example, your alerts and dashboards.
+(Warning) The converter does not support converting the provided server.log_level config: The equivalent feature in Alloy is to use the logging config block to set the level argument.
 (Error) server.http_path_prefix is not supported
-(Warning) server.health_check_target disabling is not supported in Flow mode
+(Warning) server.health_check_target disabling is not supported in Alloy

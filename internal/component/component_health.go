@@ -16,7 +16,7 @@ type HealthComponent interface {
 
 	// CurrentHealth returns the current Health status for the component.
 	//
-	// CurrentHealth may be overridden by the Flow controller if there is a
+	// CurrentHealth may be overridden by the Alloy controller if there is a
 	// higher-level issue, such as a config file being invalid or a Component
 	// shutting down unexpectedly.
 	CurrentHealth() Health

@@ -73,7 +73,7 @@ func TestBadRiverConfig(t *testing.T) {
 
 func TestForwardingToAppendable(t *testing.T) {
 	opts := component.Options{
-		Logger:     util.TestFlowLogger(t),
+		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus_client.NewRegistry(),
 		GetServiceData: func(name string) (interface{}, error) {
 			switch name {
@@ -177,7 +177,7 @@ func TestCustomDialer(t *testing.T) {
 	require.NoError(t, err)
 
 	opts := component.Options{
-		Logger:     util.TestFlowLogger(t),
+		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus_client.NewRegistry(),
 		GetServiceData: func(name string) (interface{}, error) {
 			switch name {

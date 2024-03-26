@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/labelstore"
@@ -42,7 +42,7 @@ type Arguments struct {
 	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
 
 	// The relabelling rules to apply to each metric before it's forwarded.
-	MetricRelabelConfigs []*flow_relabel.Config `alloy:"rule,block,optional"`
+	MetricRelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 
 	// Cache size to use for LRU cache.
 	CacheSize int `alloy:"max_cache_size,attr,optional"`
@@ -65,8 +65,8 @@ func (arg *Arguments) Validate() error {
 
 // Exports holds values which are exported by the prometheus.relabel component.
 type Exports struct {
-	Receiver storage.Appendable `alloy:"receiver,attr"`
-	Rules    flow_relabel.Rules `alloy:"rules,attr"`
+	Receiver storage.Appendable  `alloy:"receiver,attr"`
+	Rules    alloy_relabel.Rules `alloy:"rules,attr"`
 }
 
 // Component implements the prometheus.relabel component.
@@ -218,7 +218,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 	c.clearCache(newArgs.CacheSize)
-	c.mrc = flow_relabel.ComponentToPromRelabelConfigs(newArgs.MetricRelabelConfigs)
+	c.mrc = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.MetricRelabelConfigs)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	c.opts.OnStateChange(Exports{Receiver: c.receiver, Rules: newArgs.MetricRelabelConfigs})

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	types "github.com/grafana/alloy/internal/component/common/config"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/syntax/alloytypes"
 
 	"github.com/google/uuid"
@@ -76,7 +76,7 @@ type EndpointOptions struct {
 	HTTPClientConfig     *types.HTTPClientConfig `alloy:",squash"`
 	QueueOptions         *QueueOptions           `alloy:"queue_config,block,optional"`
 	MetadataOptions      *MetadataOptions        `alloy:"metadata_config,block,optional"`
-	WriteRelabelConfigs  []*flow_relabel.Config  `alloy:"write_relabel_config,block,optional"`
+	WriteRelabelConfigs  []*alloy_relabel.Config `alloy:"write_relabel_config,block,optional"`
 	SigV4                *SigV4Config            `alloy:"sigv4,block,optional"`
 	AzureAD              *AzureADConfig          `alloy:"azuread,block,optional"`
 }
@@ -242,7 +242,7 @@ func convertConfigs(cfg Arguments) (*config.Config, error) {
 			SendExemplars:        rw.SendExemplars,
 			SendNativeHistograms: rw.SendNativeHistograms,
 
-			WriteRelabelConfigs: flow_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
+			WriteRelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
 			HTTPClientConfig:    *rw.HTTPClientConfig.Convert(),
 			QueueConfig:         rw.QueueOptions.toPrometheusType(),
 			MetadataConfig:      rw.MetadataOptions.toPrometheusType(),

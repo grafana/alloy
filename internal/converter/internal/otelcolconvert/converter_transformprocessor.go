@@ -28,7 +28,7 @@ func (transformProcessorConverter) InputComponentName() string {
 func (transformProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toTransformProcessor(state, id, cfg.(*transformprocessor.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "transform"}, label, args)

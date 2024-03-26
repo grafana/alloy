@@ -44,7 +44,7 @@ type pipelineGroup struct {
 // traces/2]. The key used for grouping is the name of the pipeline, so that
 // pipelines with matching names belong to the same group.
 //
-// This allows us to emit a Flow-native pipeline, where one component is
+// This allows us to emit an Alloy-native pipeline, where one component is
 // responsible for multiple telemetry types, as opposed as to creating the
 // otlp/2 receiver two separate times (once for metrics and once for traces).
 //

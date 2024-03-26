@@ -23,8 +23,8 @@ func TestLogger(t testing.TB) log.Logger {
 	return l
 }
 
-// TestFlowLogger generates a Flow-compatible logger for a test.
-func TestFlowLogger(t require.TestingT) *logging.Logger {
+// TestAlloyLogger generates an Alloy-compatible logger for a test.
+func TestAlloyLogger(t require.TestingT) *logging.Logger {
 	if t, ok := t.(*testing.T); ok {
 		t.Helper()
 	}

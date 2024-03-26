@@ -18,7 +18,7 @@ import (
 
 var _ storage.Appendable = (*Fanout)(nil)
 
-// Fanout supports the default Flow style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
+// Fanout supports the default Alloy style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
 type Fanout struct {
 	mut sync.RWMutex
 	// children is where to fan out.
@@ -69,7 +69,7 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 	// code from the prometheusreceiver which expects the Appender context to
 	// be contain both a scrape target and a metadata store, and fails the
 	// conversion if they are missing. We should find a way around this as both
-	// Targets and Metadata will be handled in a different way in Flow.
+	// Targets and Metadata will be handled in a different way in Alloy.
 	ctx = scrape.ContextWithTarget(ctx, &scrape.Target{})
 	ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
 

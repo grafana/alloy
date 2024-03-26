@@ -15,7 +15,7 @@ func DefaultWeaveWorksServerCfg() server.Config {
 	return cfg
 }
 
-func WeaveWorksServerToFlowServer(config server.Config) *fnet.ServerConfig {
+func WeaveworksServerToAlloyServer(config server.Config) *fnet.ServerConfig {
 	return &fnet.ServerConfig{
 		HTTP: &fnet.HTTPConfig{
 			ListenAddress:      config.HTTPListenAddress,

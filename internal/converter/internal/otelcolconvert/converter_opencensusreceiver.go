@@ -26,7 +26,7 @@ func (opencensusReceiverConverter) InputComponentName() string { return "" }
 func (opencensusReceiverConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toOpencensusReceiver(state, id, cfg.(*opencensusreceiver.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "opencensus"}, label, args)

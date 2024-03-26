@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus"
-	flowprometheus "github.com/grafana/alloy/internal/component/prometheus"
+	alloyprometheus "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
@@ -80,7 +80,7 @@ func Test(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		ctx = scrape.ContextWithMetricMetadataStore(ctx, flowprometheus.NoopMetadataStore{})
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, alloyprometheus.NoopMetadataStore{})
 		ctx = scrape.ContextWithTarget(ctx, &scrape.Target{})
 		app := exports.Receiver.Appender(ctx)
 		_, err := app.Append(0, l, ts, v)

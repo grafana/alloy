@@ -253,7 +253,7 @@ func (t *tailer) readLines() {
 			if err != nil {
 				level.Debug(t.logger).Log("msg", "failed to convert encoding", "error", err)
 				t.metrics.encodingFailures.WithLabelValues(t.path).Inc()
-				text = fmt.Sprintf("the requested encoding conversion for this line failed in Grafana Agent Flow: %s", err.Error())
+				text = fmt.Sprintf("the requested encoding conversion for this line failed in Alloy: %s", err.Error())
 			}
 		} else {
 			text = line.Text

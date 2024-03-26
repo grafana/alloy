@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/alloy/componenttest"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/discovery/relabel"
 	"github.com/grafana/alloy/syntax"
@@ -118,8 +118,8 @@ rule {
 	require.Len(t, gotOriginal, 1)
 	require.Len(t, gotUpdated, 1)
 
-	require.Equal(t, gotOriginal[0].Action, flow_relabel.Keep)
-	require.Equal(t, gotUpdated[0].Action, flow_relabel.Drop)
+	require.Equal(t, gotOriginal[0].Action, alloy_relabel.Keep)
+	require.Equal(t, gotUpdated[0].Action, alloy_relabel.Drop)
 	require.Equal(t, gotUpdated[0].SourceLabels, gotOriginal[0].SourceLabels)
 	require.Equal(t, gotUpdated[0].Regex, gotOriginal[0].Regex)
 }

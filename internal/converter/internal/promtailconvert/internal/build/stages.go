@@ -459,7 +459,7 @@ func convertMetrics(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfi
 
 	for _, name := range sortedNames {
 		pMetric := (*pMetrics)[name]
-		fMetric, ok := toFlowMetricProcessStage(name, pMetric, diags)
+		fMetric, ok := toAlloyMetricsProcessStage(name, pMetric, diags)
 		if !ok {
 			return stages.StageConfig{}, false
 		}
@@ -470,7 +470,7 @@ func convertMetrics(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfi
 	}}, true
 }
 
-func toFlowMetricProcessStage(name string, pMetric promtailstages.MetricConfig, diags *diag.Diagnostics) (stages.MetricConfig, bool) {
+func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig, diags *diag.Diagnostics) (stages.MetricConfig, bool) {
 	var fMetric stages.MetricConfig
 
 	var maxIdle time.Duration

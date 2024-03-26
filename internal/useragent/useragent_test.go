@@ -11,76 +11,53 @@ func TestUserAgent(t *testing.T) {
 	build.Version = "v1.2.3"
 	tests := []struct {
 		Name       string
-		Mode       string
 		Expected   string
 		DeployMode string
 		GOOS       string
 		Exe        string
 	}{
 		{
-			Name:     "basic",
-			Mode:     "",
-			Expected: "GrafanaAgent/v1.2.3 (static; linux; binary)",
+			Name:     "linux",
+			Expected: "Alloy/v1.2.3 (linux; binary)",
 			GOOS:     "linux",
 		},
 		{
-			Name:     "flow",
-			Mode:     "flow",
-			Expected: "GrafanaAgent/v1.2.3 (flow; windows; binary)",
+			Name:     "windows",
+			Expected: "Alloy/v1.2.3 (windows; binary)",
 			GOOS:     "windows",
 		},
 		{
-			Name:     "static",
-			Mode:     "static",
-			Expected: "GrafanaAgent/v1.2.3 (static; darwin; binary)",
+			Name:     "darwin",
+			Expected: "Alloy/v1.2.3 (darwin; binary)",
 			GOOS:     "darwin",
 		},
 		{
-			Name: "unknown",
-			Mode: "blahlahblah",
-			// unknown mode, should not happen. But we will substitute 'unknown' to avoid allowing arbitrary cardinality.
-			Expected: "GrafanaAgent/v1.2.3 (unknown; freebsd; binary)",
-			GOOS:     "freebsd",
-		},
-		{
-			Name:       "operator",
-			Mode:       "static",
-			DeployMode: "operator",
-			Expected:   "GrafanaAgent/v1.2.3 (static; linux; operator)",
-			GOOS:       "linux",
-		},
-		{
 			Name:       "deb",
-			Mode:       "flow",
 			DeployMode: "deb",
-			Expected:   "GrafanaAgent/v1.2.3 (flow; linux; deb)",
+			Expected:   "Alloy/v1.2.3 (linux; deb)",
 			GOOS:       "linux",
 		},
 		{
 			Name:       "rpm",
-			Mode:       "static",
 			DeployMode: "rpm",
-			Expected:   "GrafanaAgent/v1.2.3 (static; linux; rpm)",
+			Expected:   "Alloy/v1.2.3 (linux; rpm)",
 			GOOS:       "linux",
 		},
 		{
 			Name:       "docker",
-			Mode:       "flow",
 			DeployMode: "docker",
-			Expected:   "GrafanaAgent/v1.2.3 (flow; linux; docker)",
+			Expected:   "Alloy/v1.2.3 (linux; docker)",
 			GOOS:       "linux",
 		},
 		{
 			Name:       "helm",
-			Mode:       "flow",
 			DeployMode: "helm",
-			Expected:   "GrafanaAgent/v1.2.3 (flow; linux; helm)",
+			Expected:   "Alloy/v1.2.3 (linux; helm)",
 			GOOS:       "linux",
 		},
 		{
 			Name:     "brew",
-			Mode:     "flow",
-			Expected: "GrafanaAgent/v1.2.3 (flow; darwin; brew)",
+			Expected: "Alloy/v1.2.3 (darwin; brew)",
 			GOOS:     "darwin",
 			Exe:      "/opt/homebrew/bin/agent",
 		},
@@ -94,7 +71,6 @@ func TestUserAgent(t *testing.T) {
 			}
 			goos = tst.GOOS
 			t.Setenv(deployModeEnv, tst.DeployMode)
-			t.Setenv(modeEnv, tst.Mode)
 			actual := Get()
 			require.Equal(t, tst.Expected, actual)
 		})

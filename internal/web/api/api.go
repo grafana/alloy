@@ -1,4 +1,4 @@
-// Package api implements the HTTP API used for the Grafana Agent Flow UI.
+// Package api implements the HTTP API used for the Grafana Alloy UI.
 //
 // The API is internal only; it is not stable and shouldn't be relied on
 // externally.
@@ -16,29 +16,29 @@ import (
 	"github.com/prometheus/prometheus/util/httputil"
 )
 
-// FlowAPI is a wrapper around the component API.
-type FlowAPI struct {
-	flow service.Host
+// AlloyAPI is a wrapper around the component API.
+type AlloyAPI struct {
+	alloy service.Host
 }
 
-// NewFlowAPI instantiates a new Flow API.
-func NewFlowAPI(flow service.Host) *FlowAPI {
-	return &FlowAPI{flow: flow}
+// NewAlloyAPI instantiates a new Alloy API.
+func NewAlloyAPI(alloy service.Host) *AlloyAPI {
+	return &AlloyAPI{alloy: alloy}
 }
 
 // RegisterRoutes registers all the API's routes.
-func (f *FlowAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
+func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	// NOTE(rfratto): {id:.+} is used in routes below to allow the
 	// id to contain / characters, which is used by nested module IDs and
 	// component IDs.
 
-	r.Handle(path.Join(urlPrefix, "/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: f.listComponentsHandler()})
-	r.Handle(path.Join(urlPrefix, "/components"), httputil.CompressionHandler{Handler: f.listComponentsHandler()})
-	r.Handle(path.Join(urlPrefix, "/components/{id:.+}"), httputil.CompressionHandler{Handler: f.getComponentHandler()})
-	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: f.getClusteringPeersHandler()})
+	r.Handle(path.Join(urlPrefix, "/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
+	r.Handle(path.Join(urlPrefix, "/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
+	r.Handle(path.Join(urlPrefix, "/components/{id:.+}"), httputil.CompressionHandler{Handler: a.getComponentHandler()})
+	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: a.getClusteringPeersHandler()})
 }
 
-func (f *FlowAPI) listComponentsHandler() http.HandlerFunc {
+func (a *AlloyAPI) listComponentsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// moduleID is set from the /modules/{moduleID:.+}/components route above
 		// but not from the /components route.
@@ -47,7 +47,7 @@ func (f *FlowAPI) listComponentsHandler() http.HandlerFunc {
 			moduleID = vars["moduleID"]
 		}
 
-		components, err := f.flow.ListComponents(moduleID, component.InfoOptions{
+		components, err := a.alloy.ListComponents(moduleID, component.InfoOptions{
 			GetHealth: true,
 		})
 		if err != nil {
@@ -64,12 +64,12 @@ func (f *FlowAPI) listComponentsHandler() http.HandlerFunc {
 	}
 }
 
-func (f *FlowAPI) getComponentHandler() http.HandlerFunc {
+func (a *AlloyAPI) getComponentHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		requestedComponent := component.ParseID(vars["id"])
 
-		component, err := f.flow.GetComponent(requestedComponent, component.InfoOptions{
+		component, err := a.alloy.GetComponent(requestedComponent, component.InfoOptions{
 			GetHealth:    true,
 			GetArguments: true,
 			GetExports:   true,
@@ -89,11 +89,11 @@ func (f *FlowAPI) getComponentHandler() http.HandlerFunc {
 	}
 }
 
-func (f *FlowAPI) getClusteringPeersHandler() http.HandlerFunc {
+func (a *AlloyAPI) getClusteringPeersHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		// TODO(@tpaschalis) Detect if clustering is disabled and propagate to
 		// the Typescript code (eg. via the returned status code?).
-		svc, found := f.flow.GetService(cluster.ServiceName)
+		svc, found := a.alloy.GetService(cluster.ServiceName)
 		if !found {
 			http.Error(w, "cluster service not running", http.StatusInternalServerError)
 			return

@@ -312,7 +312,7 @@ func TestConsumeLogs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			promReg := prometheus.NewRegistry()
 			receiver := loki.NewLogsReceiverWithChannel(make(chan loki.Entry, maxTestedLogEntries))
 

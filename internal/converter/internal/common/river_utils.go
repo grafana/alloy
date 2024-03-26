@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/syntax/scanner"
 
 	"github.com/grafana/alloy/internal/component"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/syntax/token/builder"
@@ -55,7 +55,7 @@ func getValueOverrideHook() builder.ValueOverrideHook {
 				}
 			}
 			return secrets
-		case flow_relabel.Regexp:
+		case alloy_relabel.Regexp:
 			return value.String()
 		case []discovery.Target:
 			return ConvertTargets{

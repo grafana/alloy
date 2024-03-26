@@ -97,7 +97,7 @@ func NewConsumer(opts Options, logger log.Logger) (*Consumer, error) {
 	return c, nil
 }
 
-// UpdateOptions is used in flow mode, where all options need to be updated.
+// UpdateOptions is used in Alloy where all options need to be updated.
 func (c *Consumer) UpdateOptions(opts Options) error {
 	c.optsMut.Lock()
 	defer c.optsMut.Unlock()

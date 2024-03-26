@@ -1,6 +1,6 @@
-// Package service defines a pluggable service for the Flow system.
+// Package service defines a pluggable service.
 //
-// Services are low-level constructs which run for the lifetime of the Flow
+// Services are low-level constructs which run for the lifetime of the Alloy
 // controller, and are given deeper levels of access to the overall system
 // compared to components, such as the individual instances of running
 // components.
@@ -14,9 +14,9 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 )
 
-// Definition describes an individual Flow service. Services have unique names
-// and optional ConfigTypes where they can be configured within the root Flow
-// module.
+// Definition describes an individual service. Services have unique names
+// and optional ConfigTypes where they can be configured within the main
+// configuration.
 type Definition struct {
 	// Name uniquely defines a service.
 	Name string
@@ -34,7 +34,7 @@ type Definition struct {
 	// specific service by name. If DependsOn includes an invalid
 	// reference to a service (either because of a cyclic dependency,
 	// or a named service doesn't exist), it is treated as a fatal
-	// error and the root Flow module will exit.
+	// error and the main configuration will exit.
 	DependsOn []string
 
 	// Stability is the overall stability level of the service. This is used to
@@ -46,7 +46,7 @@ type Definition struct {
 	Stability featuregate.Stability
 }
 
-// Host is a controller for services and Flow components.
+// Host is a controller for services and components.
 type Host interface {
 	// GetComponent gets a running component by ID.
 	//
@@ -72,7 +72,7 @@ type Host interface {
 	NewController(id string) Controller
 }
 
-// Controller is implemented by flow.Flow.
+// Controller is implemented by alloy.Alloy.
 type Controller interface {
 	Run(ctx context.Context)
 	LoadSource(source []byte, args map[string]any) error

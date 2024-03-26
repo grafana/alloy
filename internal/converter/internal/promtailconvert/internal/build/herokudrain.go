@@ -12,7 +12,7 @@ func (s *ScrapeConfigBuilder) AppendHerokuDrainConfig() {
 	}
 	hCfg := s.cfg.HerokuDrainConfig
 	args := heroku.Arguments{
-		Server:               common.WeaveWorksServerToFlowServer(hCfg.Server),
+		Server:               common.WeaveworksServerToAlloyServer(hCfg.Server),
 		Labels:               convertPromLabels(hCfg.Labels),
 		UseIncomingTimestamp: hCfg.UseIncomingTimestamp,
 		ForwardTo:            s.getOrNewProcessStageReceivers(),

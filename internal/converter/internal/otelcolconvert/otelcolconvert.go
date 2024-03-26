@@ -24,7 +24,7 @@ import (
 
 // This package is split into a set of [componentConverter] implementations
 // which convert a single OpenTelemetry Collector component into one or more
-// Flow components.
+// Alloy components.
 //
 // To support converting a new OpenTelmetry Component, follow these steps and
 // replace COMPONENT with the name of the component being converted:
@@ -70,7 +70,7 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 
 	var buf bytes.Buffer
 	if _, err := f.WriteTo(&buf); err != nil {
-		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to render Flow config: %s", err.Error()))
+		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to render Alloy config: %s", err.Error()))
 		return nil, diags
 	}
 
@@ -142,7 +142,7 @@ func getFactories() otelcol.Factories {
 }
 
 // AppendConfig converts the provided OpenTelemetry config into an equivalent
-// Flow config and appends the result to the provided file.
+// Alloy config and appends the result to the provided file.
 func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -171,7 +171,7 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string) d
 	// listen on the same port.
 	//
 	// This isn't a problem in pure OpenTelemetry Collector because it internally
-	// deduplicates receiver instances, but since Flow don't have this logic we
+	// deduplicates receiver instances, but since Alloy don't have this logic we
 	// need to reject these kinds of configs for now.
 	if duplicateDiags := validateNoDuplicateReceivers(groups, connectorIDs); len(duplicateDiags) > 0 {
 		diags.AddAll(duplicateDiags)
@@ -179,7 +179,7 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string) d
 	}
 
 	// We build the list of extensions 'activated' (defined in the service) as
-	// Flow components and keep a mapping of their OTel IDs to the blocks we've
+	// Alloy components and keep a mapping of their OTel IDs to the blocks we've
 	// built.
 	// Since there's no concept of multiple extensions per group or telemetry
 	// signal, we can build them before iterating over the groups.
@@ -192,7 +192,7 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string) d
 			cfg:  cfg,
 			file: file,
 			// We pass an empty pipelineGroup to make calls to
-			// FlowComponentLabel valid for both the converter authors and the
+			// AlloyComponentLabel valid for both the converter authors and the
 			// extension table mapping.
 			group: &pipelineGroup{},
 
@@ -213,7 +213,7 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string) d
 
 		extensionTable[ext] = componentID{
 			Name:  strings.Split(conv.InputComponentName(), "."),
-			Label: state.FlowComponentLabel(),
+			Label: state.AlloyComponentLabel(),
 		}
 	}
 
@@ -265,7 +265,7 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string) d
 }
 
 // validateNoDuplicateReceivers validates that a given receiver does not appear
-// in two different pipeline groups. This is required because Flow does not
+// in two different pipeline groups. This is required because Alloy does not
 // allow the same receiver to be instantiated more than once, while this is
 // fine in OpenTelemetry due to internal deduplication rules.
 func validateNoDuplicateReceivers(groups []pipelineGroup, connectorIDs []component.ID) diag.Diagnostics {

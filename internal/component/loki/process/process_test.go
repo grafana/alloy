@@ -74,7 +74,7 @@ func TestJSONLabelsStage(t *testing.T) {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -161,7 +161,7 @@ stage.label_keep {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -256,7 +256,7 @@ stage.labels {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -422,7 +422,7 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}

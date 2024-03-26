@@ -27,7 +27,7 @@ func TestEventLogger(t *testing.T) {
 	rec := loki.NewLogsReceiver()
 	c, err := New(component.Options{
 		ID:       "loki.source.windowsevent.test",
-		Logger:   util.TestFlowLogger(t),
+		Logger:   util.TestAlloyLogger(t),
 		DataPath: dataPath,
 		OnStateChange: func(e component.Exports) {
 

@@ -247,14 +247,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	clusterData := data.(cluster.Cluster)
 
-	flowAppendable := pyroscope.NewFanout(args.ForwardTo, o.ID, o.Registerer)
-	scraper := NewManager(flowAppendable, o.Logger)
+	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, o.ID, o.Registerer)
+	scraper := NewManager(alloyAppendable, o.Logger)
 	c := &Component{
 		opts:          o,
 		cluster:       clusterData,
 		reloadTargets: make(chan struct{}, 1),
 		scraper:       scraper,
-		appendable:    flowAppendable,
+		appendable:    alloyAppendable,
 	}
 
 	// Call to Update() to set the receivers and targets once at the start.

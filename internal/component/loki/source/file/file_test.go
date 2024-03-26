@@ -175,7 +175,7 @@ func TestUpdate_NoLeak(t *testing.T) {
 func TestTwoTargets(t *testing.T) {
 	// Create opts for component
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 		DataPath:      t.TempDir(),
@@ -250,7 +250,7 @@ func TestTwoTargets(t *testing.T) {
 func TestEncoding(t *testing.T) {
 	// Create opts for component
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 		DataPath:      t.TempDir(),

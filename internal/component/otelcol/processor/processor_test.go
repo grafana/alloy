@@ -24,7 +24,7 @@ func TestProcessor(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
 	// Create an instance of a fake OpenTelemetry Collector processor which our
-	// Flow component will wrap around. Our fake processor will immediately
+	// Alloy component will wrap around. Our fake processor will immediately
 	// forward data to the connected consumer once one is made available to it.
 	var (
 		consumer otelconsumer.Traces
@@ -53,7 +53,7 @@ func TestProcessor(t *testing.T) {
 		}
 	)
 
-	// Create and start our Flow component. We then wait for it to export a
+	// Create and start our Alloy component. We then wait for it to export a
 	// consumer that we can send data to.
 	te := newTestEnvironment(t, innerProcessor, onTracesConsumer)
 	te.Start(fakeProcessorArgs{

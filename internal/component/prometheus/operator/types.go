@@ -5,7 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/prometheus/common/model"
@@ -29,7 +29,7 @@ type Arguments struct {
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 
-	RelabelConfigs []*flow_relabel.Config `alloy:"rule,block,optional"`
+	RelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 
 	Scrape ScrapeOptions `alloy:"scrape,block,optional"`
 }

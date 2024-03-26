@@ -157,7 +157,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	ls := service.(labelstore.LabelStore)
 
-	flowAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
+	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
 		ExtraMetrics: args.ExtraMetrics,
 		HTTPClientOptions: []config_util.HTTPClientOption{
@@ -165,7 +165,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		},
 		EnableProtobufNegotiation: args.EnableProtobufNegotiation,
 	}
-	scraper := scrape.NewManager(scrapeOptions, o.Logger, flowAppendable)
+	scraper := scrape.NewManager(scrapeOptions, o.Logger, alloyAppendable)
 
 	targetsGauge := client_prometheus.NewGauge(client_prometheus.GaugeOpts{
 		Name: "agent_prometheus_scrape_targets_gauge",
@@ -180,7 +180,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		cluster:       clusterData,
 		reloadTargets: make(chan struct{}, 1),
 		scraper:       scraper,
-		appendable:    flowAppendable,
+		appendable:    alloyAppendable,
 		targetsGauge:  targetsGauge,
 	}
 
@@ -319,9 +319,9 @@ func (c *Component) distTargets(
 	// NOTE(@tpaschalis) First approach, manually building the
 	// 'clustered' targets implementation every time.
 	dt := discovery.NewDistributedTargets(clustering, c.cluster, targets)
-	flowTargets := dt.Get()
-	c.targetsGauge.Set(float64(len(flowTargets)))
-	promTargets := c.componentTargetsToProm(jobName, flowTargets)
+	alloyTargets := dt.Get()
+	c.targetsGauge.Set(float64(len(alloyTargets)))
+	promTargets := c.componentTargetsToProm(jobName, alloyTargets)
 	return promTargets
 }
 

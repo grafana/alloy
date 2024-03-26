@@ -27,7 +27,7 @@ func (jaegerReceiverConverter) InputComponentName() string { return "" }
 func (jaegerReceiverConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toJaegerReceiver(state, id, cfg.(*jaegerreceiver.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "jaeger"}, label, args)

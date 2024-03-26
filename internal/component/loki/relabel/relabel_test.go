@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/util"
@@ -45,7 +45,7 @@ func TestRelabeling(t *testing.T) {
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
-		Rcs []*flow_relabel.Config `alloy:"rule,block,optional"`
+		Rcs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 	}
 	var relabelConfigs cfg
 	err := syntax.Unmarshal([]byte(rc), &relabelConfigs)
@@ -55,7 +55,7 @@ func TestRelabeling(t *testing.T) {
 
 	// Create and run the component, so that it relabels and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -108,7 +108,7 @@ func TestRelabeling(t *testing.T) {
 
 func BenchmarkRelabelComponent(b *testing.B) {
 	type cfg struct {
-		Rcs []*flow_relabel.Config `alloy:"rule,block,optional"`
+		Rcs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 	}
 	var relabelConfigs cfg
 	_ = syntax.Unmarshal([]byte(rc), &relabelConfigs)
@@ -116,7 +116,7 @@ func BenchmarkRelabelComponent(b *testing.B) {
 
 	// Create and run the component, so that it relabels and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(b),
+		Logger:        util.TestAlloyLogger(b),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -154,7 +154,7 @@ func BenchmarkRelabelComponent(b *testing.B) {
 
 func TestCache(t *testing.T) {
 	type cfg struct {
-		Rcs []*flow_relabel.Config `alloy:"rule,block,optional"`
+		Rcs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 	}
 	var relabelConfigs cfg
 	err := syntax.Unmarshal([]byte(rc), &relabelConfigs)
@@ -164,16 +164,16 @@ func TestCache(t *testing.T) {
 
 	// Create and run the component, so that it relabels and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1},
-		RelabelConfigs: []*flow_relabel.Config{
+		RelabelConfigs: []*alloy_relabel.Config{
 			{
 				SourceLabels: []string{"name", "A"},
-				Regex:        flow_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
+				Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
 
 				Action:      "replace",
 				TargetLabel: "env",
@@ -419,8 +419,8 @@ func TestRuleGetter(t *testing.T) {
 	require.Len(t, gotOriginal, 1)
 	require.Len(t, gotUpdated, 1)
 
-	require.Equal(t, gotOriginal[0].Action, flow_relabel.Keep)
-	require.Equal(t, gotUpdated[0].Action, flow_relabel.Drop)
+	require.Equal(t, gotOriginal[0].Action, alloy_relabel.Keep)
+	require.Equal(t, gotUpdated[0].Action, alloy_relabel.Drop)
 	require.Equal(t, gotUpdated[0].SourceLabels, gotOriginal[0].SourceLabels)
 	require.Equal(t, gotUpdated[0].Regex, gotOriginal[0].Regex)
 }

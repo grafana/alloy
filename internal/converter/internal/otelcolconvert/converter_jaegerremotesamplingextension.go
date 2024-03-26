@@ -27,7 +27,7 @@ func (jaegerRemoteSamplingExtensionConverter) InputComponentName() string {
 func (jaegerRemoteSamplingExtensionConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toJaegerRemoteSamplingExtension(cfg.(*jaegerremotesampling.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "extension", "jaeger_remote_sampling"}, label, args)

@@ -11,7 +11,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/journal/internal/target"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
@@ -112,7 +112,7 @@ func (c *Component) Update(args component.Arguments) error {
 			return err
 		}
 	}
-	rcs := flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+	rcs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	entryHandler := loki.NewEntryHandler(c.handler, func() {})
 
 	newTarget, err := target.NewJournalTarget(c.metrics, c.o.Logger, entryHandler, c.positions, c.o.ID, rcs, convertArgs(c.o.ID, newArgs))

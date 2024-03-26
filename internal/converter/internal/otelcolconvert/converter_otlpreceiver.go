@@ -29,7 +29,7 @@ func (otlpReceiverConverter) InputComponentName() string { return "" }
 func (otlpReceiverConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toOtelcolReceiverOTLP(state, id, cfg.(*otlpreceiver.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "otlp"}, label, args)
