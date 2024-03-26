@@ -59,7 +59,7 @@ Section "install"
   # stack, and must be popped after calling.
 
   # Preemptively stop the existing service if it's running.
-  nsExec::ExecToLog 'sc stop "Grafana Alloy"'
+  nsExec::ExecToLog 'sc stop "Alloy"'
   Pop $0
 
   # Configure the out path and copy files to it.
@@ -97,15 +97,15 @@ Section "install"
   Call InitializeRegistry
 
   # Create the service.
-  nsExec::ExecToLog 'sc create "Grafana Alloy" start= delayed-auto binpath= "$INSTDIR\alloy-service-windows-amd64.exe"'
+  nsExec::ExecToLog 'sc create "Alloy" start= delayed-auto binpath= "$INSTDIR\alloy-service-windows-amd64.exe"'
   Pop $0
 
   # Start the service.
-  nsExec::ExecToLog 'sc start "Grafana Alloy"'
+  nsExec::ExecToLog 'sc start "Alloy"'
   Pop $0
 
   # Auto-restart Alloy on failure. Reset failure counter after 60 seconds without failure
-  nsExec::ExecToLog `sc failure "Grafana Alloy" reset= 60 actions= restart/5000 reboot= "Grafana Alloy has failed. Restarting in 5 seconds"`
+  nsExec::ExecToLog `sc failure "Alloy" reset= 60 actions= restart/5000 reboot= "Alloy has failed. Restarting in 5 seconds"`
   Pop $0
 SectionEnd
 
@@ -209,9 +209,9 @@ Section "uninstall"
   DetailPrint "Starting uninstaller."
 
   # Stop and remove service.
-  nsExec::ExecToLog 'sc stop "Grafana Alloy"'
+  nsExec::ExecToLog 'sc stop "Alloy"'
   Pop $0
-  nsExec::ExecToLog 'sc delete "Grafana Alloy"'
+  nsExec::ExecToLog 'sc delete "Alloy"'
   Pop $0
 
   RMDir /r "$SMPROGRAMS\${APPNAME}"  # Start Menu folder.
