@@ -276,7 +276,7 @@ All spans for a given trace ID must go to the same tail sampling {{< param "PROD
 * This can be done by configuring `otelcol.exporter.loadbalancing` with `routing_key = "traceID"`.
 * If you do not configure `routing_key = "traceID"`, the sampling decision may be incorrect.
   The tail sampler must have a full view of the trace when making a sampling decision.
-  For example, a `rate_limiting` tail sampling strategy may incorrectly pass through 
+  For example, a `rate_limiting` tail sampling strategy may incorrectly pass through
   more spans than expected if the spans for the same trace are spread out to more than
   one {{< param "PRODUCT_NAME" >}} instance.
 
@@ -288,7 +288,7 @@ All spans for a given `service.name` must go to the same spanmetrics {{< param "
 * If you do not configure `routing_key = "service"`, metrics generated from spans might be incorrect.
 For example, if similar spans for the same `service.name` end up on different {{< param "PRODUCT_ROOT_NAME" >}} instances, the two {{< param "PRODUCT_ROOT_NAME" >}}s will have identical metric series for calculating span latency, errors, and number of requests.
 When both {{< param "PRODUCT_ROOT_NAME" >}} instances attempt to write the metrics to a database such as Mimir, the series may clash with each other.
-At best, this will lead to an error in {{< param "PRODUCT_ROOT_NAME" >}} and a rejected write to the metrics database. 
+At best, this will lead to an error in {{< param "PRODUCT_ROOT_NAME" >}} and a rejected write to the metrics database.
 At worst, it could lead to inaccurate data due to overlapping samples for the metric series.
 
 However, there are ways to scale `otelcol.connector.spanmetrics` without the need for a load balancer:
@@ -354,8 +354,8 @@ information.
 
 ### Static resolver
 
-This example accepts OTLP logs and traces over gRPC. It then sends them in a load-balanced 
-way to "localhost:55690" or "localhost:55700".
+This example accepts OTLP logs and traces over gRPC.
+It then sends them in a load-balanced way to "localhost:55690" or "localhost:55700".
 
 ```river
 otelcol.receiver.otlp "default" {
@@ -389,7 +389,7 @@ on regular intervals. Spans are exported to the addresses the DNS lookup returne
 otelcol.exporter.loadbalancing "default" {
     resolver {
         dns {
-            hostname = "grafana-alloy-traces-sampling.grafana-cloud-monitoring.svc.cluster.local"
+            hostname = "alloy-traces-sampling.grafana-cloud-monitoring.svc.cluster.local"
             port     = "34621"
             interval = "5s"
             timeout  = "1s"
@@ -484,7 +484,7 @@ spec:
         - run
         - /etc/alloy/alloy_lb.river
         command:
-        - /bin/grafana-alloy
+        - /bin/alloy
         image: grafana/alloy:v1.0
         imagePullPolicy: IfNotPresent
         name: alloy-traces
@@ -541,7 +541,7 @@ spec:
         - run
         - /etc/alloy/alloy_sampling.river
         command:
-        - /bin/grafana-alloy
+        - /bin/alloy
         image: grafana/alloy:v1.0
         imagePullPolicy: IfNotPresent
         name: alloy-traces
@@ -631,14 +631,14 @@ You can use [k3d][] to start the example:
 
 <!-- TODO: Link to the k3d page -->
 ```bash
-k3d cluster create grafana-alloy-lb-test
+k3d cluster create alloy-lb-test
 kubectl apply -f kubernetes_config.yaml
 ```
 
 To delete the cluster, run:
 
 ```bash
-k3d cluster delete grafana-alloy-lb-test
+k3d cluster delete alloy-lb-test
 ```
 
 [k3d]: https://k3d.io/v5.6.0/
@@ -652,7 +652,7 @@ Spans are exported to the addresses from the Kubernetes API, combined with all t
 otelcol.exporter.loadbalancing "default" {
     resolver {
         kubernetes {
-            service = "grafana-alloy-traces-headless"
+            service = "alloy-traces-headless"
             ports   = [ 34621 ]
         }
     }
@@ -783,7 +783,7 @@ spec:
         - run
         - /etc/alloy/alloy_lb.river
         command:
-        - /bin/grafana-alloy
+        - /bin/alloy
         image: grafana/alloy:v1.0
         imagePullPolicy: IfNotPresent
         name: alloy-traces
@@ -837,7 +837,7 @@ spec:
         - run
         - /etc/alloy/alloy_sampling.river
         command:
-        - /bin/grafana-alloy
+        - /bin/alloy
         image: grafana/alloy:v1.0
         imagePullPolicy: IfNotPresent
         name: alloy-traces
@@ -924,14 +924,14 @@ You must fill in the correct OTLP credentials prior to running the example.
 You can use [k3d][] to start the example:
 
 ```bash
-k3d cluster create grafana-alloy-lb-test
+k3d cluster create alloy-lb-test
 kubectl apply -f kubernetes_config.yaml
 ```
 
 To delete the cluster, run:
 
 ```bash
-k3d cluster delete grafana-alloy-lb-test
+k3d cluster delete alloy-lb-test
 ```
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->

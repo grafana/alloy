@@ -46,13 +46,13 @@ To deploy {{< param "PRODUCT_ROOT_NAME" >}} on Kubernetes using Helm, run the fo
 1. Install {{< param "PRODUCT_ROOT_NAME" >}}:
 
    ```shell
-   helm install --namespace <NAMESPACE> <RELEASE_NAME> grafana/grafana-alloy
+   helm install --namespace <NAMESPACE> <RELEASE_NAME> grafana/alloy
    ```
 
    Replace the following:
 
    - _`<NAMESPACE>`_: The namespace created in the previous step.
-   - _`<RELEASE_NAME>`_: The name to use for your {{< param "PRODUCT_ROOT_NAME" >}} installation, such as `grafana-alloy`.
+   - _`<RELEASE_NAME>`_: The name to use for your {{< param "PRODUCT_ROOT_NAME" >}} installation, such as `alloy`.
 
 1. Verify that the {{< param "PRODUCT_NAME" >}} pods are running:
 
@@ -74,5 +74,5 @@ To configure {{< param "PRODUCT_NAME" >}}, see the [Configure {{< param "PRODUCT
 - Refer to the [{{< param "PRODUCT_NAME" >}} Helm chart documentation on Artifact Hub][Artifact Hub] for more information about the Helm chart.
 
 [Helm]: https://helm.sh
-[Artifact Hub]: https://artifacthub.io/packages/helm/grafana/grafana-alloy
+[Artifact Hub]: https://artifacthub.io/packages/helm/grafana/alloy
 [Configure]: ../../../tasks/configure/configure-kubernetes/

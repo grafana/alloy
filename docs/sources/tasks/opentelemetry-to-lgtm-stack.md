@@ -270,8 +270,8 @@ loki.write "grafana_cloud_loki" {
 Running {{< param "PRODUCT_NAME" >}} now will give you the following:
 
 ```
-./grafana-alloy run alloy-config.river
-./grafana-alloy run alloy-config.river
+./alloy run alloy-config.alloy
+./alloy run alloy-config.alloy
 ts=2023-05-09T09:37:15.300959Z level=info msg="running usage stats reporter"
 ts=2023-05-09T09:37:15.300958Z level=info msg="now listening for http traffic" addr=127.0.0.1:12345
 ts=2023-05-09T09:37:15.301104Z level=info trace_id=6466516c9e1a556422df7a84c0ade6b0 msg="starting complete graph evaluation"

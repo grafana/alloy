@@ -19,7 +19,7 @@ You can use Ansible to install and manage {{< param "PRODUCT_NAME" >}} on Linux 
 
 To add {{% param "PRODUCT_NAME" %}} to a host:
 
-1. Create a file named `grafana-alloy.yml` and add the following:
+1. Create a file named `alloy.yml` and add the following:
 
     ```yaml
     - name: Install Grafana Alloy
@@ -44,7 +44,7 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
 1. Run the Ansible playbook. Open a terminal window and run the following command from the Ansible playbook directory.
 
    ```shell
-   ansible-playbook grafana-alloy.yml
+   ansible-playbook alloy.yml
    ```
 
 ## Validate

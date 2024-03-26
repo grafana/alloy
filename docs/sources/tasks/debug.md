@@ -23,10 +23,10 @@ This default prevents other machines on the network from being able to view the 
 
 To expose the UI to other machines on the network on non-containerized platforms, refer to the documentation for how you [installed][install] {{< param "PRODUCT_NAME" >}}.
 
-If you are running a custom installation of {{< param "PRODUCT_NAME" >}}, refer to the documentation for the [`grafana-alloy run` command][grafana-alloy run] to learn how to change the HTTP listen address, > and pass the appropriate flag when running {{< param "PRODUCT_NAME" >}}.
+If you are running a custom installation of {{< param "PRODUCT_NAME" >}}, refer to the documentation for the [`alloy run` command][alloy run] to learn how to change the HTTP listen address, > and pass the appropriate flag when running {{< param "PRODUCT_NAME" >}}.
 
 [install]: ../../get-started/install/
-[grafana-alloy run]: ../../reference/cli/run/
+[alloy run]: ../../reference/cli/run/
 {{< /admonition >}}
 
 ### Home page

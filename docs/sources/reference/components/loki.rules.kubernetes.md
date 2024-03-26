@@ -230,13 +230,13 @@ The following example is an RBAC configuration for Kubernetes. It authorizes {{<
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: grafana-alloy
+  name: alloy
   namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: grafana-alloy
+  name: alloy
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -248,13 +248,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: grafana-alloy
+  name: alloy
 subjects:
 - kind: ServiceAccount
-  name: grafana-alloy
+  name: alloy
   namespace: default
 roleRef:
   kind: ClusterRole
-  name: grafana-alloy
+  name: alloy
   apiGroup: rbac.authorization.k8s.io
 ```

@@ -55,10 +55,10 @@ To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the follo
 
 ```shell
 docker run \
-  -v <CONFIG_FILE_PATH>:C:\etc\grafana-alloy\config.river \
+  -v <CONFIG_FILE_PATH>:C:\etc\alloy\config.alloy \
   -p 12345:12345 \
   grafana/alloy:latest-windows \
-    run --server.http.listen-addr=0.0.0.0:12345 C:\etc\grafana-alloy\config.river
+    run --server.http.listen-addr=0.0.0.0:12345 C:\etc\alloy\config.alloy
 ```
 
 Replace the following:

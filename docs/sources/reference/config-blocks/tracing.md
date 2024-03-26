@@ -92,7 +92,7 @@ Name               | Type           | Description                               
 `type`             | `string`       | Type of DNS record to query. Must be one of SRV, A, AAAA, or MX. | `"SRV"` | no
 
 Requests to the remote sampling strategies server are made through an HTTP `GET` request to the configured `url` argument.
-A `service=grafana-alloy` query parameter is always added to the URL to allow the server to respond with service-specific strategies.
+A `service=alloy` query parameter is always added to the URL to allow the server to respond with service-specific strategies.
 The HTTP response body is read as JSON matching the schema specified by Jaeger's [`strategies.json` file][Jaeger sampling strategies].
 
 The `max_operations` limits the amount of custom span names that can have custom sampling rules.
