@@ -6,7 +6,7 @@ weight: 350
 cascade:
   ALLOY_RELEASE: v1.0.0
   OTEL_VERSION: v0.87.0
-  PRODUCT_NAME: Grafana Alloy
+  FULL_PRODUCT_NAME: Grafana Alloy
   PRODUCT_NAME: Alloy
   _build:
     list: false
@@ -15,7 +15,7 @@ cascade:
 
 # {{% param "PRODUCT_NAME" %}}
 
-{{< param "PRODUCT_NAME" >}} is a vendor-neutral distribution of the [OpenTelemetry][] (OTel) Collector.
+{{< param "FULL_PRODUCT_NAME" >}} is a vendor-neutral distribution of the [OpenTelemetry][] (OTel) Collector.
 {{< param "PRODUCT_NAME" >}} uniquely combines the very best OSS observability signals in the community.
 It offers native pipelines for OTel, [Prometheus][], [Pyroscope][], [Loki][], and many other metrics, logs, traces, and profile tools.
 In additon, you can also use {{< param "PRODUCT_NAME" >}} pipelines to do other tasks such as configure alert rules in Loki and Mimir.
