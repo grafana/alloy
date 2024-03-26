@@ -8,7 +8,7 @@ title: remote.kubernetes.secret
 
 `remote.kubernetes.secret` reads a Secret from the Kubernetes API server and exposes its data for other components to consume.
 
-A common use case for this is loading credentials or other information from secrets that are not already mounted into the {{< param "PRODUCT_ROOT_NAME" >}} pod at deployment time.
+A common use case for this is loading credentials or other information from secrets that are not already mounted into the {{< param "PRODUCT_NAME" >}} pod at deployment time.
 
 ## Usage
 
@@ -65,7 +65,7 @@ refers to a `basic_auth` block defined inside a `client` block.
 ### client block
 
 The `client` block configures the Kubernetes client used to discover Probes. If the `client` block isn't provided, the default in-cluster
-configuration with the service account of the running {{< param "PRODUCT_ROOT_NAME" >}} pod is used.
+configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
 
 The following arguments are supported:
 

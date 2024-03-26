@@ -7,7 +7,7 @@ title: discovery.file
 # discovery.file
 
 {{< admonition type="note" >}}
-In {{< param "PRODUCT_ROOT_NAME" >}} `v0.35.0`, the `discovery.file` component was renamed to [local.file_match][], and `discovery.file` was repurposed to discover scrape targets from one or more files.
+In {{< param "PRODUCT_NAME" >}} `v0.35.0`, the `discovery.file` component was renamed to [local.file_match][], and `discovery.file` was repurposed to discover scrape targets from one or more files.
 
 If you are trying to discover files on the local filesystem rather than scrape targets within a set of files, you should use [local.file_match][] instead.
 

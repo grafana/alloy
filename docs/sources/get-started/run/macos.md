@@ -15,7 +15,7 @@ weight: 400
 To start {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-brew services start grafana-alloy
+brew services start alloy
 ```
 
 {{< param "PRODUCT_NAME" >}} automatically runs when the system starts.
@@ -23,7 +23,7 @@ brew services start grafana-alloy
 (Optional) To verify that the service is running, run the following command in a terminal window:
 
 ```shell
-brew services info grafana-alloy
+brew services info alloy
 ```
 
 ## Restart {{% param "PRODUCT_NAME" %}}
@@ -31,7 +31,7 @@ brew services info grafana-alloy
 To restart {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-brew services restart grafana-alloy
+brew services restart alloy
 ```
 
 ## Stop {{% param "PRODUCT_NAME" %}}
@@ -39,12 +39,12 @@ brew services restart grafana-alloy
 To stop {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-brew services stop grafana-alloy
+brew services stop  alloy
 ```
 
 ## View {{% param "PRODUCT_NAME" %}} logs on macOS
 
-By default, logs are written to `$(brew --prefix)/var/log/grafana-alloy.log` and `$(brew --prefix)/var/log/grafana-alloy.err.log`.
+By default, logs are written to `$(brew --prefix)/var/log/alloy.log` and `$(brew --prefix)/var/log/alloy.err.log`.
 
 If you followed [Configure the {{< param "PRODUCT_NAME" >}} service][ConfigureService] and changed the path where logs are written, refer to your current copy of the {{< param "PRODUCT_NAME" >}} formula to locate your log files.
 
@@ -54,4 +54,4 @@ If you followed [Configure the {{< param "PRODUCT_NAME" >}} service][ConfigureSe
 
 [InstallMacOS]: ../../install/macos/
 [ConfigureMacOS]: ../../../tasks/configure/configure-macos/
-[ConfigureService]: ../../../tasks/configure/configure-macos/#configure-the-grafana-alloy-service
+[ConfigureService]: ../../../tasks/configure/configure-macos/#configure-the-alloy-service

@@ -66,26 +66,27 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
     end
     ```
 
-1. Add the following resources to install and enable the `grafana-alloy` service:
+1. Add the following resources to install and enable the `alloy` service:
 
     ```ruby
-    package 'grafana-alloy' do
+    package 'alloy' do
       action :install
       flush_cache [ :before ] if platform_family?('amazon', 'rhel', 'fedora')
-      notifies :restart, 'service[grafana-alloy]', :delayed
+      notifies :restart, 'service[alloy]', :delayed
     end
 
-    service 'grafana-alloy' do
-      service_name 'grafana-alloy'
+    service 'alloy' do
+      service_name 'alloy'
       action [:enable, :start]
     end
     ```
 
 ## Configuration
 
-The `grafana-alloy` package installs a default configuration file that doesn't send telemetry anywhere.
+The `alloy` package installs a default configuration file that doesn't send telemetry anywhere.
 
-The default configuration file location is `/etc/grafana-alloy.river`. You can replace this file with your own configuration or create a new configuration file for the service to use.
+The default configuration file location is `/etc/alloy/config.alloy`.
+You can replace this file with your own configuration or create a new configuration file for the service to use.
 
 ## Next steps
 

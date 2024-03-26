@@ -57,15 +57,15 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt' | sudo tee /etc/yum.repos.d/grafana.
 
    {{< code >}}
    ```debian-ubuntu
-   sudo apt-get install grafana-alloy
+   sudo apt-get install alloy
    ```
 
    ```rhel-fedora
-   sudo dnf install grafana-alloy
+   sudo dnf install alloy
    ```
 
    ```suse-opensuse
-   sudo zypper install grafana-alloy
+   sudo zypper install alloy
    ```
    {{< /code >}}
 
@@ -76,22 +76,22 @@ To uninstall {{< param "PRODUCT_NAME" >}} on Linux, run the following commands i
 1. Stop the systemd service for {{< param "PRODUCT_NAME" >}}.
 
    ```All-distros
-   sudo systemctl stop grafana-alloy
+   sudo systemctl stop alloy
    ```
 
 1. Uninstall {{< param "PRODUCT_NAME" >}}.
 
    {{< code >}}
    ```debian-ubuntu
-   sudo apt-get remove grafana-alloy
+   sudo apt-get remove alloy
    ```
 
    ```rhel-fedora
-   sudo dnf remove grafana-alloy
+   sudo dnf remove alloy
    ```
 
    ```suse-opensuse
-   sudo zypper remove grafana-alloy
+   sudo zypper remove alloy
    ```
    {{< /code >}}
 

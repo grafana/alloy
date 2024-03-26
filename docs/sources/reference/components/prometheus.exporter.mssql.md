@@ -49,7 +49,7 @@ See [sql_exporter](https://github.com/burningalchemist/sql_exporter#collectors) 
 ### Authentication
 By default, the `USERNAME` and `PASSWORD` used within the `connection_string` argument corresponds to a SQL Server username and password.
 
-If {{< param "PRODUCT_ROOT_NAME" >}} is running in the same Windows domain as the SQL Server, then you can use the parameter `authenticator=winsspi` within the `connection_string` to authenticate without any additional credentials.
+If {{< param "PRODUCT_NAME" >}} is running in the same Windows domain as the SQL Server, then you can use the parameter `authenticator=winsspi` within the `connection_string` to authenticate without any additional credentials.
 
 ```conn
 sqlserver://@<HOST>:<PORT>?authenticator=winsspi

@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/stability/
-description: Grafana Alloy features fall into one of three stability categories, experimental, beta, or stable
+description: Alloy features fall into one of three stability categories, experimental, beta, or stable
 title: Stability
 weight: 600
 _build:
@@ -12,7 +12,7 @@ noindex: true
 
 Stability of functionality usually refers to the stability of a _use case,_ such as collecting and forwarding OpenTelemetry metrics.
 
-Features within the {{< param "PRODUCT_NAME" >}} project will fall into one of three stability categories:
+Features within the {{< param "FULL_PRODUCT_NAME" >}} project will fall into one of three stability categories:
 
 * **Experimental**: A new use case is being explored.
 * **Beta**: Functionality covering a use case is being matured.

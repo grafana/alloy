@@ -47,7 +47,7 @@ declare "add" {
 ```
 {{< /collapse >}}
 
-{{< collapse title="importer.river" >}}
+{{< collapse title="importer.alloy" >}}
 ```river
 import.http "math" {
   url = SERVER_URL

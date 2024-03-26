@@ -40,7 +40,7 @@ This example imports a module from the content of a file stored in an S3 bucket 
 
 ```river
 remote.s3 "module" {
-  path = "s3://test-bucket/module.river"
+  path = "s3://test-bucket/module.alloy"
 }
 
 import.string "math" {

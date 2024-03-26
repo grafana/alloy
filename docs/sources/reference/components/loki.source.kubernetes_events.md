@@ -89,7 +89,7 @@ inside a `client` block.
 
 The `client` block configures the Kubernetes client used to tail logs from
 containers. If the `client` block isn't provided, the default in-cluster
-configuration with the service account of the running {{< param "PRODUCT_ROOT_NAME" >}} pod is used.
+configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
 
 The following arguments are supported:
 
@@ -151,7 +151,7 @@ Name                     | Type                | Description                    
 
 The component uses its data path, a directory named after the domain's
 fully qualified name, to store its _positions file_. The positions file is used
-to store read offsets, so that if a component or {{< param "PRODUCT_ROOT_NAME" >}} restarts,
+to store read offsets, so that if a component or {{< param "PRODUCT_NAME" >}} restarts,
 `loki.source.kubernetes_events` can pick up tailing from the same spot.
 
 The data path is inside the directory configured by the `--storage.path` [command line argument][cmd-args].

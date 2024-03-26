@@ -399,7 +399,7 @@ subset per node, where each node is roughly assigned the same number of
 targets. If the state of the cluster changes, such as a new node joins, then
 the subset of targets to scrape per node will be recalculated.
 
-When clustering mode is enabled, all {{< param "PRODUCT_ROOT_NAME" >}}s participating in the cluster must
+When clustering mode is enabled, all {{< param "PRODUCT_NAME" >}}s participating in the cluster must
 use the same configuration file and have access to the same service discovery
 APIs.
 
@@ -446,7 +446,7 @@ scrape job on the component's debug endpoint.
 ### Default endpoints of static targets
 
 The following example sets up a scrape job of a statically configured 
-list of targets - {{< param "PRODUCT_ROOT_NAME" >}} itself and Pyroscope.
+list of targets - {{< param "PRODUCT_NAME" >}} itself and Pyroscope.
 The scraped profiles are sent to `pyroscope.write` which remote writes them to a Pyroscope database.
 
 ```river

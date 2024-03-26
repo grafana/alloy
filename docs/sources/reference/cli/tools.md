@@ -22,7 +22,7 @@ Utilities in this command have no backward compatibility guarantees and may chan
 
 Usage:
 
-* `grafana-alloy tools prometheus.remote_write sample-stats [FLAG ...] WAL_DIRECTORY`
+* `alloy tools prometheus.remote_write sample-stats [FLAG ...] WAL_DIRECTORY`
 
 The `sample-stats` command reads the Write-Ahead Log (WAL) specified by `WAL_DIRECTORY` and collects information on metric samples within it.
 
@@ -43,7 +43,7 @@ The following flag is supported:
 
 Usage:
 
-* `grafana-alloy tools prometheus.remote_write target-stats --job JOB --instance INSTANCE WAL_DIRECTORY`
+* `alloy tools prometheus.remote_write target-stats --job JOB --instance INSTANCE WAL_DIRECTORY`
 
 The `target-stats` command reads the Write-Ahead Log (WAL) specified by `WAL_DIRECTORY` and collects metric cardinality information for a specific target.
 
@@ -60,7 +60,7 @@ The `--job` and `--instance` labels are required.
 
 Usage:
 
-* `grafana-alloy tools prometheus.remote_write wal-stats WAL_DIRECTORY`
+* `alloy tools prometheus.remote_write wal-stats WAL_DIRECTORY`
 
 The `wal-stats` command reads the Write-Ahead Log (WAL) specified by `WAL_DIRECTORY` and collects general information about it.
 

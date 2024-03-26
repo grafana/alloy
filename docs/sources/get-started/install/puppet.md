@@ -35,7 +35,7 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
     }
     ```
 
-1. Create a new [Puppet][] manifest with the following class to add the Grafana package repositories, install the `grafana-alloy` package, and run the service:
+1. Create a new [Puppet][] manifest with the following class to add the Grafana package repositories, install the `alloy` package, and run the service:
 
     ```ruby
     class grafana_agent::grafana_agent_flow () {
@@ -49,13 +49,13 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
               id     => 'B53AE77BADB630A683046005963FA27710458545',
               source => 'https://apt.grafana.com/gpg.key',
             },
-          } -> package { 'grafana-alloy':
+          } -> package { 'alloy':
             require => Exec['apt_update'],
-          } -> service { 'grafana-alloy':
+          } -> service { 'alloy':
             ensure    => running,
-            name      => 'grafana-alloy',
+            name      => 'alloy',
             enable    => true,
-            subscribe => Package['grafana-alloy'],
+            subscribe => Package['alloy'],
           }
         }
         'redhat': {
@@ -68,12 +68,12 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
             enabled  => '1',
             gpgcheck => '1',
             target   => '/etc/yum.repo.d/grafana.repo',
-          } -> package { 'grafana-alloy':
-          } -> service { 'grafana-alloy':
+          } -> package { 'alloy':
+          } -> service { 'alloy':
             ensure    => running,
-            name      => 'grafana-alloy',
+            name      => 'alloy',
             enable    => true,
-            subscribe => Package['grafana-alloy'],
+            subscribe => Package['alloy'],
           }
         }
         default: {
@@ -91,9 +91,9 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
 
 ## Configuration
 
-The `grafana-alloy` package installs a default configuration file that doesn't send telemetry anywhere.
+The `alloy` package installs a default configuration file that doesn't send telemetry anywhere.
 
-The default configuration file location is `/etc/grafana-alloy.river`.
+The default configuration file location is `/etc/alloy/config.alloy`.
 You can replace this file with your own configuration, or create a new configuration file for the service to use.
 
 ## Next steps

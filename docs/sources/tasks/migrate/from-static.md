@@ -8,7 +8,7 @@ weight: 340
 
 # Migrate from Grafana Agent Static to {{% param "PRODUCT_NAME" %}}
 
-The built-in {{< param "PRODUCT_ROOT_NAME" >}} convert command can migrate your [Grafana Agent Static][Static] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Grafana Agent Static][Static] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
 
 This topic describes how to:
 
@@ -39,21 +39,9 @@ This conversion will enable you to take full advantage of the many additional fe
 
 1. Open a terminal window and run the following command.
 
-   {{< code >}}
-
-   ```static-binary
-   AGENT_MODE=flow grafana-agent convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```shell
+   graalloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
-
-   ```flow-binary
-   grafana-agent-flow convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   ```alloy-binary
-   grafana-alloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   {{< /code >}}
 
    Replace the following:
 
@@ -72,21 +60,9 @@ This conversion will enable you to take full advantage of the many additional fe
    Make sure you fully test the converted configuration before using it in a production environment.
    {{< /admonition >}}
 
-   {{< code >}}
-
-   ```static-binary
-   AGENT_MODE=flow grafana-agent convert --source-format=static --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```shell
+   alloy convert --source-format=static --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
-
-   ```flow-binary
-   grafana-agent-flow convert --source-format=static --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   ```alloy-binary
-   grafana-alloy convert --source-format=static --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   {{< /code >}}
 
    Replace the following:
 
@@ -95,21 +71,9 @@ This conversion will enable you to take full advantage of the many additional fe
 
 1. You can use the `--report` flag to output a diagnostic report.
 
-   {{< code >}}
-
-   ```static-binary
-   AGENT_MODE=flow grafana-agent convert --source-format=static --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   ```flow-binary
-   grafana-agent-flow convert --source-format=static --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```shell
+   alloy convert --source-format=static --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
     ```
-
-   ```alloy-binary
-   grafana-alloy convert --source-format=static --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-    ```
-
-   {{< /code >}}
 
    Replace the following:
 
@@ -125,8 +89,8 @@ This conversion will enable you to take full advantage of the many additional fe
 
 ## Run a Grafana Agent Static mode configuration
 
-If you’re not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_ROOT_NAME" >}} using your existing Grafana Agent Static configuration.
-The `--config.format=static` flag tells {{< param "PRODUCT_ROOT_NAME" >}} to convert your Grafana Agent Static configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the new configuration.
+If you’re not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Grafana Agent Static configuration.
+The `--config.format=static` flag tells {{< param "PRODUCT_NAME" >}} to convert your Grafana Agent Static configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the new configuration.
 This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your existing Grafana Agent Static configuration infrastructure.
 
 > In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Static configuration.
@@ -210,22 +174,9 @@ logs:
 
 The convert command takes the YAML file as input and outputs a [River][] file.
 
-{{< code >}}
-
-```static-binary
-AGENT_MODE=flow grafana-agent convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+```shell
+alloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
 ```
-
-```flow-binary
-grafana-agent-flow convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-```
-
-```alloy-binary
-grafana-alloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-```
-
-
-{{< /code >}}
 
 Replace the following:
 
@@ -313,21 +264,9 @@ loki.write "logs_varlogs" {
 
 You can convert [integrations next][] configurations by adding the `extra-args` flag for [convert][] or `config.extra-args` for [run][].
 
-{{< code >}}
-
-```static-binary
-AGENT_MODE=flow grafana-agent convert --source-format=static --extra-args="-enable-features=integrations-next" --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+```shell
+alloy convert --source-format=static --extra-args="-enable-features=integrations-next" --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
 ```
-
-```flow-binary
-grafana-agent-flow convert --source-format=static --extra-args="-enable-features=integrations-next" --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-```
-
-```alloy-binary
-grafana-alloy convert --source-format=static --extra-args="-enable-features=integrations-next" --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-```
-
-{{< /code >}}
 
  Replace the following:
    * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
@@ -343,7 +282,7 @@ You can pass these flags to [convert][] with `--extra-args="-config.expand-env"`
 
 ## Limitations
 
-Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_ROOT_NAME" >}} will issue warnings or errors where the conversion can't be performed.
+Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_NAME" >}} will issue warnings or errors where the conversion can't be performed.
 
 After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} configuration file and verify that it's correct before starting to use it in a production environment.
 
@@ -358,7 +297,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * Review additional [Prometheus Limitations][] for limitations specific to your [Metrics][] configuration.
 * Review additional [Promtail Limitations][] for limitations specific to your [Logs][] configuration.
 * The logs produced by {{< param "PRODUCT_NAME" >}} mode will differ from those produced by Static.
-* {{< param "PRODUCT_ROOT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
+* {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
 
 [debugging]: #debugging
 [example]: #example

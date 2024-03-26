@@ -42,7 +42,7 @@ The `ATTRIBUTE_VALUE` can be either a constant value of a valid River [type][] (
 
 ### Blocks
 
-You use _Blocks_ to configure the {{< param "PRODUCT_ROOT_NAME" >}}'s behavior as well as {{< param "PRODUCT_NAME" >}} components by grouping any number of attributes or nested blocks using curly braces.
+You use _Blocks_ to configure the {{< param "PRODUCT_NAME" >}}'s behavior as well as {{< param "PRODUCT_NAME" >}} components by grouping any number of attributes or nested blocks using curly braces.
 Blocks have a _name_, an optional _label_ and a body that contains any number of arguments and nested unlabeled blocks.
 
 Some blocks can be defined more than once.

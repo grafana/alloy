@@ -9,9 +9,9 @@ _build:
 noindex: true
 ---
 
-# {{% param "PRODUCT_NAME" %}} Data collection
+# {{% param "FULL_PRODUCT_NAME" %}} Data collection
 
-By default, {{< param "PRODUCT_NAME" >}} sends anonymous but uniquely identifiable usage information from your {{< param "PRODUCT_NAME" >}} instance to Grafana Labs.
+By default, {{< param "FULL_PRODUCT_NAME" >}} sends anonymous but uniquely identifiable usage information from your {{< param "PRODUCT_NAME" >}} instance to Grafana Labs.
 These statistics are sent to `stats.grafana.org`.
 
 Statistics help us better understand how {{< param "PRODUCT_NAME" >}} is used. This helps us prioritize features and documentation.

@@ -8,15 +8,15 @@ weight: 500
 
 # Distribute Prometheus metrics scrape load
 
-A good predictor for the size of an {{< param "PRODUCT_NAME" >}} deployment is the number of Prometheus targets each {{< param "PRODUCT_ROOT_NAME" >}} scrapes.
-[Clustering][] with target auto-distribution allows a fleet of {{< param "PRODUCT_ROOT_NAME" >}}s to work together to dynamically distribute their scrape load, providing high-availability.
+A good predictor for the size of an {{< param "PRODUCT_NAME" >}} deployment is the number of Prometheus targets each {{< param "PRODUCT_NAME" >}} scrapes.
+[Clustering][] with target auto-distribution allows a fleet of {{< param "PRODUCT_NAME" >}}s to work together to dynamically distribute their scrape load, providing high-availability.
 
 ## Before you begin
 
 - Familiarize yourself with how to [configure][] existing {{< param "PRODUCT_NAME" >}} installations.
 - [Configure Prometheus metrics collection][].
 - [Configure clustering][].
-- Ensure that all of your clustered {{< param "PRODUCT_ROOT_NAME" >}}s have the same configuration file.
+- Ensure that all of your clustered {{< param "PRODUCT_NAME" >}}s have the same configuration file.
 
 ## Steps
 
@@ -30,13 +30,13 @@ To distribute Prometheus metrics scrape load with clustering:
    }
    ```
 
-1. Restart or reload {{< param "PRODUCT_ROOT_NAME" >}}s for them to use the new configuration.
+1. Restart or reload {{< param "PRODUCT_NAME" >}}s for them to use the new configuration.
 
 1. Validate that auto-distribution is functioning:
 
-   1. Using the {{< param "PRODUCT_ROOT_NAME" >}} [UI][] on each {{< param "PRODUCT_ROOT_NAME" >}}, navigate to the details page for one of the `prometheus.scrape` components you modified.
+   1. Using the {{< param "PRODUCT_NAME" >}} [UI][] on each {{< param "PRODUCT_NAME" >}}, navigate to the details page for one of the `prometheus.scrape` components you modified.
 
-   1. Compare the Debug Info sections between two different {{< param "PRODUCT_ROOT_NAME" >}} to ensure that they're not scraping the same sets of targets.
+   1. Compare the Debug Info sections between two different {{< param "PRODUCT_NAME" >}} to ensure that they're not scraping the same sets of targets.
 
 [Clustering]: ../../concepts/clustering/
 [configure]: ../configure/

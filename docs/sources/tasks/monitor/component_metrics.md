@@ -15,7 +15,7 @@ These component-specific metrics are only generated when an instance of that com
 
 Component-specific metrics are exposed at the `/metrics` HTTP endpoint of the {{< param "PRODUCT_NAME" >}} HTTP server, which defaults to listening on `http://localhost:12345`.
 
-> The documentation for the [`grafana-alloy run`][grafana-alloy run] command describes how to modify the address {{< param "PRODUCT_NAME" >}} listens on for HTTP traffic.
+> The documentation for the [`alloy run`][alloy run] command describes how to modify the address {{< param "PRODUCT_NAME" >}} listens on for HTTP traffic.
 
 Component-specific metrics have a `component_id` label matching the component ID generating those metrics.
 For example, component-specific metrics for a `prometheus.remote_write` component labeled `production` will have a `component_id` label with the value `prometheus.remote_write.production`.
@@ -24,5 +24,5 @@ The [reference documentation][] for each component described the list of compone
 Not all components expose metrics.
 
 [components]: ../../../concepts/components/
-[grafana-alloy run]: ../../../reference/cli/run/
+[alloy run]: ../../../reference/cli/run/
 [reference documentation]: ../../../reference/components/

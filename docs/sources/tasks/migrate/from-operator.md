@@ -8,19 +8,19 @@ weight: 320
 
 # Migrate from Grafana Agent Operator to {{% param "PRODUCT_NAME" %}}
 
-With the release of {{< param "PRODUCT_NAME" >}}, Grafana Agent Operator is no longer the recommended way to deploy {{< param "PRODUCT_ROOT_NAME" >}} in Kubernetes.
+With the release of {{< param "PRODUCT_NAME" >}}, Grafana Agent Operator is no longer the recommended way to deploy {{< param "PRODUCT_NAME" >}} in Kubernetes.
 Some of the Operator functionality has moved into {{< param "PRODUCT_NAME" >}} itself, and the Helm Chart has replaced the remaining functionality.
 
 - The Monitor types (`PodMonitor`, `ServiceMonitor`, `Probe`, and `PodLogs`) are all supported natively by {{< param "PRODUCT_NAME" >}}.
   You are no longer required to use the Operator to consume those CRDs for dynamic monitoring in your cluster.
-- The parts of the Operator that deploy the {{< param "PRODUCT_ROOT_NAME" >}} itself (`GrafanaAgent`, `MetricsInstance`, and `LogsInstance` CRDs) are deprecated.
-  Operator users should use the {{< param "PRODUCT_ROOT_NAME" >}} [Helm Chart][] to deploy {{< param "PRODUCT_ROOT_NAME" >}} directly to your clusters.
+- The parts of the Operator that deploy the {{< param "PRODUCT_NAME" >}} itself (`GrafanaAgent`, `MetricsInstance`, and `LogsInstance` CRDs) are deprecated.
+  Operator users should use the {{< param "PRODUCT_NAME" >}} [Helm Chart][] to deploy {{< param "PRODUCT_NAME" >}} directly to your clusters.
 
 This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} for users coming from Grafana Agent Operator.
 
 ## Deploy {{% param "PRODUCT_NAME" %}} with Helm
 
-1. Create a `values.yaml` file, which contains options for deploying your {{< param "PRODUCT_ROOT_NAME" >}}.
+1. Create a `values.yaml` file, which contains options for deploying your {{< param "PRODUCT_NAME" >}}.
    You can start with the [default values][] and customize as you see fit, or start with this snippet, which should be a good starting point for what the Operator does.
 
     ```yaml
@@ -37,12 +37,12 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
       create: false
     ```
 
-    This configuration deploys {{< param "PRODUCT_NAME" >}} as a `StatefulSet` using the built-in [clustering][] functionality to allow distributing scrapes across all {{< param "PRODUCT_ROOT_NAME" >}} Pods.
+    This configuration deploys {{< param "PRODUCT_NAME" >}} as a `StatefulSet` using the built-in [clustering][] functionality to allow distributing scrapes across all {{< param "PRODUCT_NAME" >}} Pods.
 
     This is one of many deployment possible modes. For example, you may want to use a `DaemonSet` to collect host-level logs or metrics.
     See the {{< param "PRODUCT_NAME" >}} [deployment guide][] for more details about different topologies.
 
-1. Create a {{< param "PRODUCT_ROOT_NAME" >}} configuration file, `alloy.river`.
+1. Create a {{< param "PRODUCT_NAME" >}} configuration file, `alloy.alloy`.
 
     In the next step, you add to this configuration as you convert `MetricsInstances`. You can add any additional configuration to this file as you need.
 
@@ -53,10 +53,10 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
     helm repo update
     ```
 
-1. Create a Helm release. You can name the release anything you like. The following command installs a release called `grafana-alloy-metrics` in the `monitoring` namespace.
+1. Create a Helm release. You can name the release anything you like. The following command installs a release called `alloy-metrics` in the `monitoring` namespace.
 
     ```shell
-    helm upgrade grafana-alloy-metrics grafana/grafana-alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=alloy.river
+    helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=alloy.alloy
     ```
 
     This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular River file.
@@ -66,7 +66,7 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
 A `MetricsInstance` resource primarily defines:
 
 - The remote endpoints {{< param "PRODUCT_NAME" >}} should send metrics to.
-- The `PodMonitor`, `ServiceMonitor`, and `Probe` resources this {{< param "PRODUCT_ROOT_NAME" >}} should discover.
+- The `PodMonitor`, `ServiceMonitor`, and `Probe` resources this {{< param "PRODUCT_NAME" >}} should discover.
 
 You can use these functions in {{< param "PRODUCT_NAME" >}} with the `prometheus.remote_write`, `prometheus.operator.podmonitors`, `prometheus.operator.servicemonitors`, and `prometheus.operator.probes` components respectively.
 
@@ -127,7 +127,7 @@ Refer to the documentation for the relevant components for additional informatio
 
 ## Collecting Logs
 
-Our current recommendation is to create an additional DaemonSet deployment of {{< param "PRODUCT_ROOT_NAME" >}}s to scrape logs.
+Our current recommendation is to create an additional DaemonSet deployment of {{< param "PRODUCT_NAME" >}}s to scrape logs.
 
 > We have components that can scrape pod logs directly from the Kubernetes API without needing a DaemonSet deployment. These are
 > still considered experimental, but if you would like to try them, see the documentation for [loki.source.kubernetes][] and
@@ -152,7 +152,7 @@ agent:
 This command installs a release named `grafana-agent-logs` in the `monitoring` namespace:
 
 ```
-helm upgrade grafana-agent-logs grafana/grafana-agent -i -n monitoring -f values-logs.yaml --set-file agent.configMap.content=agent-logs.river
+helm upgrade grafana-agent-logs grafana/grafana-agent -i -n monitoring -f values-logs.yaml --set-file agent.configMap.content=agent-logs.alloy
 ```
 
 This simple configuration scrapes logs for every Pod on each node:

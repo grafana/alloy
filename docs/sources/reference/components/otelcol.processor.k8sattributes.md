@@ -47,12 +47,12 @@ Setting `passthrough` to `true` enables the "passthrough mode" of `otelcol.proce
 * Only a `k8s.pod.ip` resource attribute will be added.
 * No other metadata will be added.
 * The Kubernetes API will not be accessed.
-* To correctly detect the pod IPs, {{< param "PRODUCT_ROOT_NAME" >}} must receive spans directly from services.
+* To correctly detect the pod IPs, {{< param "PRODUCT_NAME" >}} must receive spans directly from services.
 * The `passthrough` setting is useful when configuring the Agent as a Kubernetes Deployment.
-A {{< param "PRODUCT_ROOT_NAME" >}} running as a Deployment cannot detect the IP addresses of pods generating telemetry
-data without any of the well-known IP attributes. If the Deployment {{< param "PRODUCT_ROOT_NAME" >}} receives telemetry from
-{{< param "PRODUCT_ROOT_NAME" >}}s deployed as DaemonSet, then some of those attributes might be missing. As a workaround,
-you can configure the DaemonSet {{< param "PRODUCT_ROOT_NAME" >}}s with `passthrough` set to `true`.
+A {{< param "PRODUCT_NAME" >}} running as a Deployment cannot detect the IP addresses of pods generating telemetry
+data without any of the well-known IP attributes. If the Deployment {{< param "PRODUCT_NAME" >}} receives telemetry from
+{{< param "PRODUCT_NAME" >}}s deployed as DaemonSet, then some of those attributes might be missing. As a workaround,
+you can configure the DaemonSet {{< param "PRODUCT_NAME" >}}s with `passthrough` set to `true`.
 
 ## Blocks
 

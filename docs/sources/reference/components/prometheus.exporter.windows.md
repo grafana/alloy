@@ -282,7 +282,7 @@ Name     | Description | Enabled by default
 Refer to the linked documentation on each collector for more information on reported metrics, configuration settings and usage examples.
 
 {{< admonition type="caution" >}}
-Certain collectors will cause {{< param "PRODUCT_ROOT_NAME" >}} to crash if those collectors are used and the required infrastructure isn't installed.
+Certain collectors will cause {{< param "PRODUCT_NAME" >}} to crash if those collectors are used and the required infrastructure isn't installed.
 These include but aren't limited to mscluster_*, vmware, nps, dns, msmq, teradici_pcoip, ad, hyperv, and scheduled_task.
 {{< /admonition >}}
 

@@ -10,7 +10,7 @@ weight: 500
 
 To configure {{< param "PRODUCT_NAME" >}} on Windows, perform the following steps:
 
-1. Edit the default configuration file at `C:\Program Files\Grafana Alloy\config.river`.
+1. Edit the default configuration file at `C:\Program Files\Grafana Alloy\config.alloy`.
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
 
@@ -30,10 +30,10 @@ By default, the {{< param "PRODUCT_NAME" >}} service will launch and pass the
 following arguments to the {{< param "PRODUCT_NAME" >}} binary:
 
 * `run`
-* `C:\Program Files\Grafana Alloy\config.river`
+* `C:\Program Files\Grafana Alloy\config.alloy`
 * `--storage.path=C:\ProgramData\Grafana Alloy\data`
 
-To change the set of command-line arguments passed to the {{< param "PRODUCT_ROOT_NAME" >}}
+To change the set of command-line arguments passed to the {{< param "PRODUCT_NAME" >}}
 binary, perform the following steps:
 
 1. Open the Registry Editor:
@@ -46,7 +46,7 @@ binary, perform the following steps:
 
 1. Double-click on the value called **Arguments***.
 
-1. In the dialog box, enter the new set of arguments to pass to the {{< param "PRODUCT_ROOT_NAME" >}} binary.
+1. In the dialog box, enter the new set of arguments to pass to the {{< param "PRODUCT_NAME" >}} binary.
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
 
@@ -84,4 +84,4 @@ To expose the UI to other machines, complete the following steps:
 
        To listen on all interfaces, replace `LISTEN_ADDR` with `0.0.0.0`.
 
-[UI]: ../../debug/#grafana-alloy-ui
+[UI]: ../../debug/#alloy-ui

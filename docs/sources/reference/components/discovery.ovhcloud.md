@@ -7,7 +7,7 @@ title: discovery.ovhcloud
 # discovery.ovhcloud
 
 `discovery.ovhcloud` discovers scrape targets from OVHcloud's [dedicated servers][] and [VPS][] using their [API][].
-{{< param "PRODUCT_ROOT_NAME" >}} will periodically check the REST endpoint and create a target for every discovered server.
+{{< param "PRODUCT_NAME" >}} will periodically check the REST endpoint and create a target for every discovered server.
 The public IPv4 address will be used by default - if there's none, the IPv6 address will be used.
 This may be changed via relabeling with `discovery.relabel`.
 For OVHcloud's [public cloud][] instances you can use `discovery.openstack`.

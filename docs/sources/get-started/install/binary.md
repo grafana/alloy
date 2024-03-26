@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/binary/
-description: Learn how to install Grafana Alloy as a standalone binary
+description: Learn how to install Alloy as a standalone binary
 menuTitle: Standalone
-title: Install Grafana Alloy as a standalone binary
+title: Install Alloy as a standalone binary
 weight: 600
 ---
 
@@ -15,15 +15,15 @@ weight: 600
 * macOS: AMD64 (Intel), ARM64 (Apple Silicon)
 * FreeBSD: AMD64
 
-## Download {{% param "PRODUCT_ROOT_NAME" %}}
+## Download {{% param "PRODUCT_NAME" %}}
 
 To download {{< param "PRODUCT_NAME" >}} as a standalone binary, perform the following steps.
 
-1. Navigate to the current {{< param "PRODUCT_ROOT_NAME" >}} [release][] page.
+1. Navigate to the current {{< param "PRODUCT_NAME" >}} [release][] page.
 
 1. Scroll down to the **Assets** section.
 
-1. Download the `grafana-alloy` zip file that matches your operating system and machine's architecture.
+1. Download the `alloy` zip file that matches your operating system and machine's architecture.
 
 1. Extract the package contents into a directory.
 

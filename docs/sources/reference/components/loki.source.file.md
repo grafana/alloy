@@ -138,7 +138,7 @@ passed to other `loki.*` components.
 
 The component uses its data path, a directory named after the domain's
 fully qualified name, to store its _positions file_. The positions file is used
-to store read offsets, so that if a component or {{< param "PRODUCT_ROOT_NAME" >}} restarts,
+to store read offsets, so that if a component or {{< param "PRODUCT_NAME" >}} restarts,
 `loki.source.file` can pick up tailing from the same spot.
 
 The data path is inside the directory configured by the `--storage.path` [command line argument][cmd-args].

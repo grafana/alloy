@@ -31,10 +31,10 @@ To run {{< param "PRODUCT_NAME" >}} as a Linux Docker container, run the followi
 
 ```shell
 docker run \
-  -v <CONFIG_FILE_PATH>:/etc/alloy/config.river \
+  -v <CONFIG_FILE_PATH>:/etc/alloy/config.alloy \
   -p 12345:12345 \
   grafana/alloy:latest \
-    run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.river
+    run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
 ```
 
 Replace the following:
@@ -55,10 +55,10 @@ To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the follo
 
 ```shell
 docker run \
-  -v <CONFIG_FILE_PATH>:C:\etc\grafana-alloy\config.river \
+  -v <CONFIG_FILE_PATH>:C:\etc\alloy\config.alloy \
   -p 12345:12345 \
   grafana/alloy:latest-windows \
-    run --server.http.listen-addr=0.0.0.0:12345 C:\etc\grafana-alloy\config.river
+    run --server.http.listen-addr=0.0.0.0:12345 C:\etc\alloy\config.alloy
 ```
 
 Replace the following:
@@ -81,4 +81,4 @@ To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to
 [Windows containers]: #run-a-windows-docker-container
 [Docker]: https://docker.io
 [run]: ../../../reference/cli/run/
-[UI]: ../../../tasks/debug/#grafana-alloy-ui
+[UI]: ../../../tasks/debug/#alloy-ui

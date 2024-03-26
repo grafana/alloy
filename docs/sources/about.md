@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/about/
-description: Grafana Alloy is a flexible, performant, vendor-neutral, telemetry collector
+description: Alloy is a flexible, performant, vendor-neutral, telemetry collector
 menuTitle: Introduction
-title: Introduction to Grafana Alloy
+title: Introduction to Alloy
 weight: 10
 _build:
   list: false
@@ -13,7 +13,7 @@ noindex: true
 
 {{< param "PRODUCT_NAME" >}} is a flexible, high performance, vendor-neutral telemetry collector. It's fully compatible with the most popular open source observability standards such as OpenTelemetry (OTel) and Prometheus.
 
-{{< param "PRODUCT_NAME" >}} is a _component-based_ revision of {{< param "PRODUCT_ROOT_NAME" >}} with a focus on ease-of-use,
+{{< param "PRODUCT_NAME" >}} is a _component-based_ revision of {{< param "PRODUCT_NAME" >}} with a focus on ease-of-use,
 debuggability, and ability to adapt to the needs of power users.
 
 Components allow for reusability, composability, and focus on a single task.
@@ -62,16 +62,6 @@ prometheus.remote_write "default" {
   }
 }
 ```
-
-<!--
-## Stability
-
-| Project | Stability |
-| ------- | --------- |
-| Static mode | Stable |
-| Static mode Kubernetes operator | Beta |
-| Flow mode | Stable |
--->
 
 ## {{% param "PRODUCT_NAME" %}} configuration generator
 

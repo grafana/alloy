@@ -18,8 +18,8 @@ the discovered them.
 resources rather than being fed targets from another Flow component.
 
 {{< admonition type="note" >}}
-Unlike `loki.source.kubernetes`, it is not possible to distribute responsibility of collecting logs across multiple {{< param "PRODUCT_ROOT_NAME" >}}s.
-To avoid collecting duplicate logs, only one {{< param "PRODUCT_ROOT_NAME" >}} should be running a `loki.source.podlogs` component.
+Unlike `loki.source.kubernetes`, it is not possible to distribute responsibility of collecting logs across multiple {{< param "PRODUCT_NAME" >}}s.
+To avoid collecting duplicate logs, only one {{< param "PRODUCT_NAME" >}} should be running a `loki.source.podlogs` component.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -57,7 +57,7 @@ The `PodLogs` resource describes a set of Pods to collect logs from.
 
 > **NOTE**: `loki.source.podlogs` looks for `PodLogs` of
 > `monitoring.grafana.com/v1alpha2`, and is not compatible with `PodLogs` from
-> the {{< param "PRODUCT_ROOT_NAME" >}} Operator, which are version `v1alpha1`.
+> the {{< param "PRODUCT_NAME" >}} Operator, which are version `v1alpha1`.
 
 Field        | Type            | Description
 -------------|-----------------|----------------------------------------------
@@ -131,7 +131,7 @@ selector                              | [selector][]         | Label selector fo
 selector > match_expression           | [match_expression][] | Label selector expression for which `PodLogs` to discover.                                       | no
 namespace_selector                    | [selector][]         | Label selector for which namespaces to discover `PodLogs` in.                                    | no
 namespace_selector > match_expression | [match_expression][] | Label selector expression for which namespaces to discover `PodLogs` in.                         | no
-clustering                            | [clustering][]       | Configure the component for when {{< param "PRODUCT_ROOT_NAME" >}} is running in clustered mode. | no
+clustering                            | [clustering][]       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `client > basic_auth` refers to a `basic_auth` block defined inside a `client` block.
@@ -149,7 +149,7 @@ For example, `client > basic_auth` refers to a `basic_auth` block defined inside
 
 The `client` block configures the Kubernetes client used to tail logs from
 containers. If the `client` block isn't provided, the default in-cluster
-configuration with the service account of the running {{< param "PRODUCT_ROOT_NAME" >}} pod is used.
+configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
 
 The following arguments are supported:
 

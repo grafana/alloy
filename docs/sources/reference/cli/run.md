@@ -16,7 +16,7 @@ The `run` command runs {{< param "PRODUCT_NAME" >}} in the foreground until an i
 
 Usage:
 
-* `grafana-alloy run [FLAG ...] PATH_NAME`
+* `alloy run [FLAG ...] PATH_NAME`
 
    Replace the following:
 
@@ -25,7 +25,7 @@ Usage:
 
 If the `PATH_NAME` argument is not provided, or if the configuration path can't be loaded or contains errors during the initial load, the `run` command will immediately exit and show an error message.
 
-If you give the `PATH_NAME` argument a directory path, {{< param "PRODUCT_NAME" >}} will find `*.river` files (ignoring nested directories) and load them as a single configuration source.
+If you give the `PATH_NAME` argument a directory path, {{< param "PRODUCT_NAME" >}} will find `*.alloy` files (ignoring nested directories) and load them as a single configuration source.
 However, component names must be **unique** across all River files, and configuration blocks must not be repeated.
 
 {{< param "PRODUCT_NAME" >}} will continue to run if subsequent reloads of the configuration file fail, potentially marking components as unhealthy depending on the nature of the failure.
@@ -69,7 +69,7 @@ All components managed by the component controller are reevaluated after reloadi
 
 ## Clustering
 
-The `--cluster.enabled` command-line argument starts {{< param "PRODUCT_ROOT_NAME" >}} in [clustering][] mode.
+The `--cluster.enabled` command-line argument starts {{< param "PRODUCT_NAME" >}} in [clustering][] mode.
 The rest of the `--cluster.*` command-line flags can be used to configure how nodes discover and connect to one another.
 
 Each cluster member’s name must be unique within the cluster.
@@ -115,21 +115,21 @@ Attempting to join a cluster with a wrong `--cluster.name` will result in a "fai
 
 ### Clustering states
 
-Clustered {{< param "PRODUCT_ROOT_NAME" >}}s are in one of three states:
+Clustered {{< param "PRODUCT_NAME" >}}s are in one of three states:
 
 * **Viewer**: {{< param "PRODUCT_NAME" >}} has a read-only view of the cluster and isn't participating in workload distribution.
 * **Participant**: {{< param "PRODUCT_NAME" >}} is participating in workload distribution for components that have clustering enabled.
 * **Terminating**: {{< param "PRODUCT_NAME" >}} is shutting down and will no longer assign new work to itself.
 
-Each {{< param "PRODUCT_ROOT_NAME" >}} initially joins the cluster in the viewer state and then transitions to the participant state after the process startup completes.
-Each {{< param "PRODUCT_ROOT_NAME" >}} then transitions to the terminating state when shutting down.
+Each {{< param "PRODUCT_NAME" >}} initially joins the cluster in the viewer state and then transitions to the participant state after the process startup completes.
+Each {{< param "PRODUCT_NAME" >}} then transitions to the terminating state when shutting down.
 
-The current state of a clustered {{< param "PRODUCT_ROOT_NAME" >}} is shown on the clustering page in the [UI][].
+The current state of a clustered {{< param "PRODUCT_NAME" >}} is shown on the clustering page in the [UI][].
 
 ## Configuration conversion (beta)
 
-When you use the `--config.format` command-line argument with a value other than `alloy`, {{< param "PRODUCT_ROOT_NAME" >}} converts the configuration file from the source format to River and immediately starts running with the new configuration.
-This conversion uses the converter API described in the [grafana-alloy convert][] docs.
+When you use the `--config.format` command-line argument with a value other than `alloy`, {{< param "PRODUCT_NAME" >}} converts the configuration file from the source format to River and immediately starts running with the new configuration.
+This conversion uses the converter API described in the [alloy convert][] docs.
 
 If you include the `--config.bypass-conversion-errors` command-line argument,
 {{< param "PRODUCT_NAME" >}} will ignore any errors from the converter. Use this argument
@@ -137,9 +137,9 @@ with caution because the resulting conversion may not be equivalent to the
 original configuration.
 
 Include `--config.extra-args` to pass additional command line flags from the original format to the converter.
-Refer to [grafana-alloy convert][] for more details on how `extra-args` work.
+Refer to [alloy convert][] for more details on how `extra-args` work.
 
-[grafana-alloy convert]: ../convert/
+[alloy convert]: ../convert/
 [clustering]:  ../../../concepts/clustering/
 [go-discover]: https://github.com/hashicorp/go-discover
 [in-memory HTTP traffic]: ../../../concepts/component_controller/#in-memory-traffic

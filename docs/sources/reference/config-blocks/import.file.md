@@ -43,7 +43,7 @@ The following arguments are supported:
 
 This example imports a module from a file and instantiates a custom component from the import that adds two numbers:
 
-{{< collapse title="module.river" >}}
+{{< collapse title="module.alloy" >}}
 
 ```river
 declare "add" {
@@ -58,11 +58,11 @@ declare "add" {
 
 {{< /collapse >}}
 
-{{< collapse title="importer.river" >}}
+{{< collapse title="importer.alloy" >}}
 
 ```river
 import.file "math" {
-  filename = "module.river"
+  filename = "module.alloy"
 }
 
 math.add "default" {
