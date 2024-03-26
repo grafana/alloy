@@ -6,7 +6,7 @@ title: Install Alloy as a standalone binary
 weight: 600
 ---
 
-# Install {{% param "FULL_PRODUCT_NAME %}} as a standalone binary
+# Install {{% param "FULL_PRODUCT_NAME" %}} as a standalone binary
 
 {{< param "PRODUCT_NAME" >}} is distributed as a standalone binary for the following operating systems and architectures:
 
