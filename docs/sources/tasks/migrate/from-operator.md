@@ -59,7 +59,7 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
     helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=alloy.alloy
     ```
 
-    This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular River file.
+    This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular {{< param "PRODUCT_NAME" >}} configuration file.
 
 ## Convert `MetricsIntances` to {{% param "PRODUCT_NAME" %}} components
 
@@ -70,7 +70,7 @@ A `MetricsInstance` resource primarily defines:
 
 You can use these functions in {{< param "PRODUCT_NAME" >}} with the `prometheus.remote_write`, `prometheus.operator.podmonitors`, `prometheus.operator.servicemonitors`, and `prometheus.operator.probes` components respectively.
 
-The following River sample is equivalent to the `MetricsInstance` from the [operator guide][].
+The following {{< param "PRODUCT_NAME" >}} syntax sample is equivalent to the `MetricsInstance` from the [operator guide][].
 
 ```river
 

@@ -926,7 +926,7 @@ The `expression` field needs to be a RE2 regex string.
 Every matched capture group is added to the extracted map, so it must be named like: `(?P<name>re)`.
 The name of the capture group is then used as the key in the extracted map for the matched value.
 
-Because of how River strings work, any backslashes in `expression` must be escaped with a double backslash; for example `"\\w"` or `"\\S+"`.
+Because of how {{< param "PRODUCT_NAME" >}} syntax strings work, any backslashes in `expression` must be escaped with a double backslash; for example `"\\w"` or `"\\S+"`.
 
 If the `source` is empty or missing, then the stage parses the log line itself.
 If it's set, the stage parses a previously extracted value with the same name.
@@ -995,7 +995,7 @@ The replaced value is assigned back to the `source` key.
 The `expression` must be a valid RE2 regex.
 Every named capture group `(?P<name>re)` is set into the extracted map with its name.
 
-Because of how River treats backslashes in double-quoted strings, note that all backslashes in a regex expression must be escaped like `"\\w*"`.
+Because of how {{< param "PRODUCT_NAME" >}} syntax treats backslashes in double-quoted strings, note that all backslashes in a regex expression must be escaped like `"\\w*"`.
 
 Let's see how this works with the following log line and stage. Since `source` is omitted, the replacement occurs  on the log line itself.
 

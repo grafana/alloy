@@ -296,7 +296,7 @@ otelcol.processor.attributes "default" {
     // it will be updated.
     //
     // Note: The regex pattern is enclosed in backticks instead of quotation marks.
-    // This constitutes a raw River string, and lets us avoid the need to escape backslash characters.
+    // This constitutes a raw {{< param "PRODUCT_NAME" >}} syntax string, and lets us avoid the need to escape backslash characters.
     action {
         key = "example_user_key"
         pattern = `\/api\/v1\/document\/(?P<new_user_key>.*)\/update\/(?P<version>.*)$`

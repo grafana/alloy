@@ -8,10 +8,10 @@ title: json_decode
 
 # json_decode
 
-The `json_decode` function decodes a string representing JSON into a River value.
+The `json_decode` function decodes a string representing JSON into an {{< param "PRODUCT_NAME" >}} value.
 `json_decode` fails if the string argument provided can't be parsed as JSON.
 
-A common use case of `json_decode` is to decode the output of a [`local.file`][] component to a River value.
+A common use case of `json_decode` is to decode the output of a [`local.file`][] component to an {{< param "PRODUCT_NAME" >}} value.
 
 > Remember to escape double quotes when passing JSON string literals to `json_decode`.
 >

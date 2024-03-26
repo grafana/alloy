@@ -172,7 +172,7 @@ logs:
         - url: https://USER_ID:API_KEY@logs-prod3.grafana.net/loki/api/v1/push
 ```
 
-The convert command takes the YAML file as input and outputs a [River][] file.
+The convert command takes the YAML file as input and outputs a [{{< param "PRODUCT_NAME" >}} configuration][] file.
 
 ```shell
 alloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
@@ -316,7 +316,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [run]: ../../../reference/cli/run/
 [run alloy]: ../../../get-started/run/
 [DebuggingUI]: ../../debug/
-[River]: ../../../concepts/config-language/
+[{{< param "PRODUCT_NAME" >}} configuration]: ../../../concepts/config-language/
 
 <!--ToDo: Check path -->
 [Integrations next]: https://grafana.com/docs/agent/latest/static/configuration/integrations/integrations-next/

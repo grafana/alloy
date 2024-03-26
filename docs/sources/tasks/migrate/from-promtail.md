@@ -126,7 +126,7 @@ scrape_configs:
           __path__: /var/log/*.log
 ```
 
-The convert command takes the YAML file as input and outputs a [River][] file.
+The convert command takes the YAML file as input and outputs a [{{< param "PRODUCT_NAME" >}} configuration][] file.
 
 ```shell
 alloy convert --source-format=promtail --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
@@ -189,5 +189,5 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [run]: ../../../reference/cli/run/
 [run alloy]: ../../../get-started/run/
 [DebuggingUI]: ../../../tasks/debug/
-[River]: ../../../concepts/config-language/
+[{{< param "PRODUCT_NAME" >}} configuration]: ../../../concepts/config-language/
 [UI]: ../../tasks/debug/#alloy-ui

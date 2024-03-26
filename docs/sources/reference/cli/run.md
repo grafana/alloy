@@ -130,7 +130,7 @@ The current state of a clustered {{< param "PRODUCT_NAME" >}} is shown on the cl
 
 ## Configuration conversion (beta)
 
-When you use the `--config.format` command-line argument with a value other than `alloy`, {{< param "PRODUCT_NAME" >}} converts the configuration file from the source format to River and immediately starts running with the new configuration.
+When you use the `--config.format` command-line argument with a value other than `alloy`, {{< param "PRODUCT_NAME" >}} converts the configuration file from the source format to {{< param "PRODUCT_NAME" >}} and immediately starts running with the new configuration.
 This conversion uses the converter API described in the [alloy convert][] docs.
 
 If you include the `--config.bypass-conversion-errors` command-line argument,

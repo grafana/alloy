@@ -34,8 +34,8 @@ In addition to the [standard OTTL Converter functions][OTTL Converter functions]
   * `sum([1, 2, 3, 4]) + (10 / 1) - 1`
 
 {{< admonition type="note" >}}
-Raw River strings can be used to write OTTL statements.
-For example, the OTTL statement `attributes["grpc"] == true` is written in River as \`attributes["grpc"] == true\`
+Raw {{< param "PRODUCT_NAME" >}} syntax strings can be used to write OTTL statements.
+For example, the OTTL statement `attributes["grpc"] == true` is written in {{< param "PRODUCT_NAME" >}} syntax as \`attributes["grpc"] == true\`
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -212,7 +212,7 @@ otelcol.processor.filter "default" {
 }
 ```
 
-Each `"` is [escaped][river-strings] with `\"` inside the River string.
+Each `"` is [escaped][river-strings] with `\"` inside the {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Drop metrics based on either of two criteria
 
@@ -240,7 +240,7 @@ otelcol.processor.filter "default" {
 ```
 
 
-Some values in the River string are [escaped][river-strings]:
+Some values in the {{< param "PRODUCT_NAME" >}} syntax string are [escaped][river-strings]:
 * `\` is escaped with `\\`
 * `"` is escaped with `\"`
 
@@ -271,10 +271,10 @@ otelcol.processor.filter "default" {
 }
 ```
 
-Each `"` is [escaped][river-strings] with `\"` inside the River string.
+Each `"` is [escaped][river-strings] with `\"` inside the {{< param "PRODUCT_NAME" >}} syntax string.
 
 
-Some values in the River strings are [escaped][river-strings]:
+Some values in the {{< param "PRODUCT_NAME" >}} syntax strings are [escaped][river-strings]:
 * `\` is escaped with `\\`
 * `"` is escaped with `\"`
 

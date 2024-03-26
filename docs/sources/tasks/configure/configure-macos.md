@@ -36,7 +36,7 @@ To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the foll
 
 1. Modify the `service` section as desired to change things such as:
 
-   * The River configuration file used by {{< param "PRODUCT_NAME" >}}.
+   * The configuration file used by {{< param "PRODUCT_NAME" >}}.
    * Flags passed to the {{< param "PRODUCT_NAME" >}} binary.
    * Location of log files.
 

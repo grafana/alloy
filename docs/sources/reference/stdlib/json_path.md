@@ -14,7 +14,7 @@ The function expects two strings. The first string is the JSON string used look 
 
 `json_path` always returns a list of values. If the JSONPath expression doesn't match any values, an empty list is returned.
 
-A common use case of `json_path` is to decode and filter the output of a [`local.file`][] or [`remote.http`][] component to a River value.
+A common use case of `json_path` is to decode and filter the output of a [`local.file`][] or [`remote.http`][] component to an {{< param "PRODUCT_NAME" >}} syntax value.
 
 > Remember to escape double quotes when passing JSON string literals to `json_path`.
 >

@@ -68,7 +68,7 @@ prometheus.remote_write "default" {
 The {{< param "PRODUCT_NAME" >}} [configuration generator][] helps you get a head start on creating {{< param "PRODUCT_NAME" >}} configurations.
 
 {{< admonition type="note" >}}
-This feature is experimental, and it doesn't support all River components.
+This feature is experimental, and it doesn't support all {{< param "PRODUCT_NAME" >}} components.
 {{< /admonition >}}
 
 ## Next steps

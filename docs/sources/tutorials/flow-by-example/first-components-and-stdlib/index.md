@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/first-components-and-stdlib/
-description: Learn about the basics of River and the configuration language
+description: Learn about the basics of the {{< param "PRODUCT_NAME" >}} configuration syntax
 title: First components and introducing the standard library
 weight: 20
 ---
@@ -10,15 +10,15 @@ weight: 20
 This tutorial covers the basics of the {{< param "PRODUCT_NAME" >}} configuration syntax and the standard library.
 It introduces a basic pipeline that collects metrics from the host and sends them to Prometheus.
 
-## River basics
+## {{< param "PRODUCT_NAME" >}} configuration syntax basics
 
 **Recommended reading**
 
 - [Configuration language][]
 - [Configuration language concepts][]
 
-[River][] is an HCL-inspired configuration language used to configure {{< param "PRODUCT_NAME" >}}.
-A River file is comprised of three things:
+The [{{< param "PRODUCT_NAME" >}} configuration syntax][] is an HCL-inspired configuration language used to configure {{< param "PRODUCT_NAME" >}}.
+An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
 
 1. **Attributes**
 
@@ -53,10 +53,11 @@ The default log level is `info` and the default log format is `logfmt`.
 
     Try pasting this into `config.alloy` and running `/path/to/alloy run config.alloy` to see what happens.
 
-    Congratulations, you've just written your first River file! You've also just written your first {{< param "PRODUCT_NAME" >}} configuration file. This configuration won't do anything, so let's add some components to it.
+    Congratulations, you've just written your first {{< param "PRODUCT_NAME" >}} configuration file.
+    This configuration won't do anything, so let's add some components to it.
 
     {{< admonition type="note" >}}
-Comments in River are prefixed with `//` and are single-line only. For example: `// This is a comment`.
+Comments in {{< param "PRODUCT_NAME" >}} syntax are prefixed with `//` and are single-line only. For example: `// This is a comment`.
     {{< /admonition >}}
 
 ## Components
@@ -282,7 +283,7 @@ You will also look at using different components to process metrics and logs bef
 [Configuration language concepts]: ../../../concepts/configuration_language/
 [Standard library documentation]: ../../../reference/stdlib/
 [node_exporter]: https://github.com/prometheus/node_exporter
-[River]: https://github.com/grafana/river
+[{{< param "PRODUCT_NAME" >}} configuration syntax]: https://github.com/grafana/river
 [prometheus.exporter.redis]: ../../../reference/components/prometheus.exporter.redis/
 [http://localhost:3000/explore]: http://localhost:3000/explore
 [prometheus.exporter.unix]: ../../../reference/components/prometheus.exporter.unix/

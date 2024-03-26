@@ -19,11 +19,11 @@ To verify that {{< param "PRODUCT_NAME" >}} is running as a Windows Service:
 
     1. Type: `services.msc` and click **OK**.
 
-1. Scroll down to find the **{{< param "FULL_PRODUCT_NAME" >}}** service and verify that the **Status** is **Running**.
+1. Scroll down to find the **{{< param "PRODUCT_NAME" >}}** service and verify that the **Status** is **Running**.
 
 ## View {{% param "PRODUCT_NAME" %}} logs
 
-When running on Windows, {{< param "PRODUCT_NAME" >}} writes its logs to Windows Event Logs with an event source name of **{{< param "FULL_PRODUCT_NAME" >}}**.
+When running on Windows, {{< param "PRODUCT_NAME" >}} writes its logs to Windows Event Logs with an event source name of **{{< param "PRODUCT_NAME" >}}**.
 
 To view the logs, perform the following steps:
 
