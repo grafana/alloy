@@ -12,13 +12,15 @@ weight: 100
 
 # The convert command
 
-The `convert` command converts a supported configuration format to {{< param "PRODUCT_NAME" >}} River format.
+The `convert` command converts a supported configuration format to the {{< param "PRODUCT_NAME" >}} configuration format.
 
 ## Usage
 
 Usage:
 
-* `alloy convert [<FLAG> ...] <FILE_NAME>`
+```shell
+alloy convert [<FLAG> ...] <FILE_NAME>
+```
 
    Replace the following:
 

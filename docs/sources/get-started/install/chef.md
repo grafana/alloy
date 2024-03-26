@@ -6,7 +6,7 @@ title: Install Grafana Alloy with Chef
 weight: 550
 ---
 
-# Install {{% param "PRODUCT_NAME" %}} with Chef
+# Install {{% param "FULL_PRODUCT_NAME" %}} with Chef
 
 You can use Chef to install and manage {{< param "PRODUCT_NAME" >}}.
 

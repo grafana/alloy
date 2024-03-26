@@ -6,7 +6,7 @@ title: Get started with Grafana Alloy
 weight: 50
 ---
 
-# Get started with {{% param "PRODUCT_NAME" %}}
+# Get started with {{% param "FULL_PRODUCT_NAME" %}}
 
 This section covers topics that help you get started with {{< param "PRODUCT_NAME" >}}, including installation, running {{< param "PRODUCT_NAME" >}}, overview of deployment topologies, and more.
 

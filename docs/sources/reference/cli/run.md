@@ -16,7 +16,9 @@ The `run` command runs {{< param "PRODUCT_NAME" >}} in the foreground until an i
 
 Usage:
 
-* `alloy run [FLAG ...] PATH_NAME`
+```shell
+alloy run [FLAG ...] PATH_NAME
+```
 
    Replace the following:
 

@@ -6,7 +6,7 @@ title: Deploy Grafana Alloy on Kubernetes
 weight: 200
 ---
 
-# Deploy {{% param "PRODUCT_NAME" %}} on Kubernetes
+# Deploy {{% param "FULL_PRODUCT_NAME" %}} on Kubernetes
 
 {{< param "PRODUCT_NAME" >}} can be deployed on Kubernetes by using the Helm chart for {{< param "PRODUCT_NAME" >}}.
 
@@ -40,8 +40,7 @@ To deploy {{< param "PRODUCT_NAME" >}} on Kubernetes using Helm, run the followi
 
    Replace the following:
 
-   - _`<NAMESPACE>`_: The namespace to use for your {{< param "PRODUCT_NAME" >}}
-     installation, such as `alloy`.
+   - _`<NAMESPACE>`_: The namespace to use for your {{< param "PRODUCT_NAME" >}} installation, such as `alloy`.
 
 1. Install {{< param "PRODUCT_NAME" >}}:
 

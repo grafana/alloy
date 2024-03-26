@@ -8,7 +8,7 @@ title: The Grafana Alloy command-line interface
 weight: 100
 ---
 
-# The {{% param "PRODUCT_NAME" %}} command-line interface
+# The {{% param "FULL_PRODUCT_NAME" %}} command-line interface
 
 The `alloy` binary exposes a command-line interface with subcommands to perform various operations.
 

@@ -6,7 +6,7 @@ title: Install Grafana Alloy on Windows
 weight: 500
 ---
 
-# Install {{% param "PRODUCT_NAME" %}} on Windows
+# Install {{% param "FULL_PRODUCT_NAME" %}} on Windows
 
 You can install {{< param "PRODUCT_NAME" >}} on Windows as a standard graphical install, or as a silent install.
 

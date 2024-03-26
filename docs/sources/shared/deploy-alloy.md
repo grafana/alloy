@@ -5,7 +5,7 @@ headless: true
 title: Deploy Grafana Alloy
 ---
 
-# Deploy {{% param "PRODUCT_NAME" %}}
+# Deploy {{% param "FULL_PRODUCT_NAME" %}}
 
 {{< param "PRODUCT_NAME" >}} is a flexible, vendor-neutral telemetry collector.
 This flexibility means that {{< param "PRODUCT_NAME" >}} doesn’t enforce a specific deployment topology but can work in multiple scenarios.

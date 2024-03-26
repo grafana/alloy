@@ -6,7 +6,7 @@ title: Install Grafana Alloy with Ansible
 weight: 550
 ---
 
-# Install or uninstall {{% param "PRODUCT_NAME" %}} using Ansible
+# Install or uninstall {{% param "FULL_PRODUCT_NAME" %}} using Ansible
 
 You can use Ansible to install and manage {{< param "PRODUCT_NAME" >}} on Linux hosts.
 
