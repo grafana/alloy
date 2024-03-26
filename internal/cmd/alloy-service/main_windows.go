@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sys/windows/svc"
 )
 
-const serviceName = "Grafana Alloy"
+const serviceName = "Alloy"
 
 func main() {
 	logger, err := newLogger()
