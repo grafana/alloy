@@ -10,41 +10,41 @@ weight: 300
 
 To configure {{< param "PRODUCT_NAME" >}} on Linux, perform the following steps:
 
-1. Edit the default configuration file at `/etc/grafana-alloy.river`.
+1. Edit the default configuration file at `/etc/alloy.config.alloy`.
 
 1. Run the following command in a terminal to reload the configuration file:
 
    ```shell
-   sudo systemctl reload grafana-alloy
+   sudo systemctl reload alloy
    ```
 
 To change the configuration file used by the service, perform the following steps:
 
 1. Edit the environment file for the service:
 
-   * Debian or Ubuntu: edit `/etc/default/grafana-alloy`
-   * RHEL/Fedora or SUSE/openSUSE: edit `/etc/sysconfig/grafana-alloy`
+   * Debian or Ubuntu: edit `/etc/default/alloy`
+   * RHEL/Fedora or SUSE/openSUSE: edit `/etc/sysconfig/alloy`
 
 1. Change the contents of the `CONFIG_FILE` environment variable to point at the new configuration file to use.
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
 
    ```shell
-   sudo systemctl restart grafana-alloy
+   sudo systemctl restart alloy
    ```
 
 ## Pass additional command-line flags
 
 By default, the {{< param "PRODUCT_NAME" >}} service launches with the [run][] command, passing the following flags:
 
-* `--storage.path=/var/lib/grafana-alloy`
+* `--storage.path=/var/lib/alloy`
 
 To pass additional command-line flags to the {{< param "PRODUCT_NAME" >}} binary, perform the following steps:
 
 1. Edit the environment file for the service:
 
-   * Debian-based systems: edit `/etc/default/grafana-alloy`
-   * RedHat or SUSE-based systems: edit `/etc/sysconfig/grafana-alloy`
+   * Debian-based systems: edit `/etc/default/alloy`
+   * RedHat or SUSE-based systems: edit `/etc/sysconfig/alloy`
 
 1. Change the contents of the `CUSTOM_ARGS` environment variable to specify
    command-line flags to pass.
@@ -52,7 +52,7 @@ To pass additional command-line flags to the {{< param "PRODUCT_NAME" >}} binary
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
 
    ```shell
-   sudo systemctl restart grafana-alloy
+   sudo systemctl restart alloy
    ```
 
 To see the list of valid command-line flags that can be passed to the service, refer to the documentation for the [run][] command.

@@ -39,21 +39,9 @@ This conversion will enable you to take full advantage of the many additional fe
 
 1. Open a terminal window and run the following command.
 
-   {{< code >}}
-
-   ```static-binary
-   AGENT_MODE=flow grafana-agent convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```shell
+   graalloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
-
-   ```flow-binary
-   grafana-agent-flow convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   ```alloy-binary
-   grafana-alloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   {{< /code >}}
 
    Replace the following:
 
@@ -72,18 +60,8 @@ This conversion will enable you to take full advantage of the many additional fe
    Make sure you fully test the converted configuration before using it in a production environment.
    {{< /admonition >}}
 
-   {{< code >}}
-
-   ```static-binary
-   AGENT_MODE=flow grafana-agent convert --source-format=static --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   ```flow-binary
-   grafana-agent-flow convert --source-format=static --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   ```alloy-binary
-   grafana-alloy convert --source-format=static --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```shell
+   alloy convert --source-format=static --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
    {{< /code >}}
@@ -95,21 +73,9 @@ This conversion will enable you to take full advantage of the many additional fe
 
 1. You can use the `--report` flag to output a diagnostic report.
 
-   {{< code >}}
-
-   ```static-binary
-   AGENT_MODE=flow grafana-agent convert --source-format=static --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   ```flow-binary
-   grafana-agent-flow convert --source-format=static --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```shell
+   alloy convert --source-format=static --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
     ```
-
-   ```alloy-binary
-   grafana-alloy convert --source-format=static --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-    ```
-
-   {{< /code >}}
 
    Replace the following:
 
@@ -210,22 +176,9 @@ logs:
 
 The convert command takes the YAML file as input and outputs a [River][] file.
 
-{{< code >}}
-
-```static-binary
-AGENT_MODE=flow grafana-agent convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+```shell
+alloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
 ```
-
-```flow-binary
-grafana-agent-flow convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-```
-
-```alloy-binary
-grafana-alloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-```
-
-
-{{< /code >}}
 
 Replace the following:
 
@@ -313,21 +266,9 @@ loki.write "logs_varlogs" {
 
 You can convert [integrations next][] configurations by adding the `extra-args` flag for [convert][] or `config.extra-args` for [run][].
 
-{{< code >}}
-
-```static-binary
-AGENT_MODE=flow grafana-agent convert --source-format=static --extra-args="-enable-features=integrations-next" --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+```shell
+alloy convert --source-format=static --extra-args="-enable-features=integrations-next" --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
 ```
-
-```flow-binary
-grafana-agent-flow convert --source-format=static --extra-args="-enable-features=integrations-next" --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-```
-
-```alloy-binary
-grafana-alloy convert --source-format=static --extra-args="-enable-features=integrations-next" --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-```
-
-{{< /code >}}
 
  Replace the following:
    * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.

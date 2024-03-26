@@ -10,12 +10,12 @@ weight: 400
 
 To configure {{< param "PRODUCT_NAME" >}} on macOS, perform the following steps:
 
-1. Edit the default configuration file at `$(brew --prefix)/etc/grafana-alloy/config.river`.
+1. Edit the default configuration file at `$(brew --prefix)/etc/alloy/config.alloy`.
 
 1. Run the following command in a terminal to restart the {{< param "PRODUCT_NAME" >}} service:
 
    ```shell
-   brew services restart grafana-alloy
+   brew services restart alloy
    ```
 
 ## Configure the {{% param "PRODUCT_NAME" %}} service
@@ -29,7 +29,7 @@ To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the foll
 1. Run the following command in a terminal:
 
    ```shell
-   brew edit grafana-alloy
+   brew edit alloy
    ```
 
    This will open the {{< param "PRODUCT_NAME" >}} Homebrew Formula in an editor.
@@ -45,13 +45,13 @@ To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the foll
 1. Reinstall the {{< param "PRODUCT_NAME" >}} Formula by running the following command in a terminal:
 
    ```shell
-   brew reinstall grafana-alloy
+   brew reinstall alloy
    ```
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service by running the command in a terminal:
 
    ```shell
-   brew services restart grafana-aalloy
+   brew services restart alloy
    ```
 
 ## Expose the UI to other machines

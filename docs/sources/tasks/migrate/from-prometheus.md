@@ -36,21 +36,9 @@ This conversion will enable you to take full advantage of the many additional fe
 
 1. Open a terminal window and run the following command.
 
-   {{< code >}}
-
-   ```agent-static-binary
-   AGENT_MODE=flow grafana-agent convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```shell
+   alloy convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
-
-   ```agent-flow-binary
-   grafana-agent-flow convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-```alloy-binary
-   grafana-alloy convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   {{< /code >}}
 
    Replace the following:
 
@@ -69,21 +57,9 @@ This conversion will enable you to take full advantage of the many additional fe
    Make sure you fully test the converted configuration before using it in a production environment.
    {{< /admonition >}}
 
-   {{< code >}}
-
-   ```static-binary
-   AGENT_MODE=flow grafana-agent convert --source-format=prometheus --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```shell
+   alloy convert --source-format=prometheus --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
-
-   ```flow-binary
-   grafana-agent-flow convert --source-format=prometheus --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   ```alloy-binary
-   grafana-alloy convert --source-format=prometheus --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   {{< /code >}}
 
    Replace the following:
 
@@ -92,21 +68,9 @@ This conversion will enable you to take full advantage of the many additional fe
 
 1. You can also output a diagnostic report by including the `--report` flag.
 
-   {{< code >}}
-
-   ```static-binary
-   AGENT_MODE=flow grafana-agent convert --source-format=prometheus --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   ```shell
+   alloy convert --source-format=prometheus --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
-
-   ```flow-binary
-   grafana-agent-flow convert --source-format=prometheus --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   ```alloy-binary
-   grafana-alloy convert --source-format=prometheus --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-   ```
-
-   {{< /code >}}
 
    Replace the following:
 
@@ -174,21 +138,9 @@ remote_write:
 
 The convert command takes the YAML file as input and outputs a [River][] file.
 
-{{< code >}}
-
-```static-binary
-AGENT_MODE=flow grafana-agent convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+```shell
+alloy convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
 ```
-
-```flow-binary
-grafana-agent-flow convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-```
-
-```alloy-binary
-grafana-alloy convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
-```
-
-{{< /code >}}
 
 Replace the following:
 

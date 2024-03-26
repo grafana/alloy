@@ -11,7 +11,7 @@ The {{< param "PRODUCT_NAME" >}} [component controller][] exposes Prometheus met
 
 Metrics for the controller are exposed at the `/metrics` HTTP endpoint of the {{< param "PRODUCT_NAME" >}} HTTP server, which defaults to listening on `http://localhost:12345`.
 
-> The documentation for the [`grafana-alloy run`][grafana-alloy run] command describes how to modify the address {{< param "PRODUCT_NAME" >}} listens on for HTTP traffic.
+> The documentation for the [`alloy run`][alloy run] command describes how to modify the address {{< param "PRODUCT_NAME" >}} listens on for HTTP traffic.
 
 The controller exposes the following metrics:
 
@@ -24,4 +24,4 @@ The controller exposes the following metrics:
 * `alloy_component_evaluation_queue_size` (Gauge): The current number of component evaluations waiting to be performed.
 
 [component controller]: ../../../concepts/component_controller/
-[grafana-alloy run]: ../../../reference/cli/run/
+[alloy run]: ../../../reference/cli/run/

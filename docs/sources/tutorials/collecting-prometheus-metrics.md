@@ -88,7 +88,7 @@ prometheus.remote_write "prom" {
 
 To try out {{< param "PRODUCT_ROOT_NAME" >}} without using Docker:
 1. Download {{< param "PRODUCT_ROOT_NAME" >}}.
-1. Run the {{< param "PRODUCT_ROOT_NAME" >}} with `grafana-alloy run <path_to_flow_config>`.
+1. Run the {{< param "PRODUCT_ROOT_NAME" >}} with `alloy run <path_to_flow_config>`.
 
 
 [Docker]: https://www.docker.com/products/docker-desktop

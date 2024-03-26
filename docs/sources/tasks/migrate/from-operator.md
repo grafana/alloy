@@ -53,10 +53,10 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
     helm repo update
     ```
 
-1. Create a Helm release. You can name the release anything you like. The following command installs a release called `grafana-alloy-metrics` in the `monitoring` namespace.
+1. Create a Helm release. You can name the release anything you like. The following command installs a release called `alloy-metrics` in the `monitoring` namespace.
 
     ```shell
-    helm upgrade grafana-alloy-metrics grafana/grafana-alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=alloy.river
+    helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=alloy.river
     ```
 
     This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular River file.

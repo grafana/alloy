@@ -83,4 +83,4 @@ The Recommended Reading sections in each tutorial provide a list of documentatio
 
 [alloy]: https://grafana.com/docs/alloy/latest/
 [River]: https://github.com/grafana/river
-[install]: ../../../get-started/install/binary/#install-grafana-alloy-as-a-standalone-binary
+[install]: ../../../get-started/install/binary/#install-alloy-as-a-standalone-binary
