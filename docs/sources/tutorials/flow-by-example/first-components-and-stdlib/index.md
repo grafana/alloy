@@ -7,7 +7,7 @@ weight: 20
 
 # First components and the standard library
 
-This tutorial covers the basics of the River language and the standard library.
+This tutorial covers the basics of the {{< param "PRODUCT_NAME" >}} configuration syntax and the standard library.
 It introduces a basic pipeline that collects metrics from the host and sends them to Prometheus.
 
 ## River basics

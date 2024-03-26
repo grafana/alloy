@@ -25,7 +25,7 @@ Most user interactions with components center around two basic concepts, _argume
   They can be any number of attributes or nested unlabeled blocks, some required and some optional.
   Any optional arguments that aren't set take on their default values.
 
-* _Exports_ are zero or more output values that other components can refer to and can be of any River type.
+* _Exports_ are zero or more output values that other components can refer to and can be of any {{< param "PRODUCT_NAME" >}} type.
 
 The following block defines a `local.file` component labeled "targets".
 The `local.file.targets` component exposes the file `content` as a string in its exports.
@@ -75,7 +75,7 @@ prometheus.scrape "default" {
 Each time the file contents change, the `local.file` updates its exports. The new value is sent to the `prometheus.scrape` targets field.
 
 Each argument and exported field has an underlying [type][].
-River checks the expression type before assigning a value to an attribute.
+{{< param "PRODUCT_NAME" >}} checks the expression type before assigning a value to an attribute.
 The documentation of each [component][components] provides more information about how to wire components together.
 
 In the previous example, the contents of the `local.file.targets.content` expression is evaluated to a concrete value.

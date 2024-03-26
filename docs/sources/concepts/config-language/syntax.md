@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/concepts/config-language/syntax/
-description: Learn about the River syntax
+description: Learn about the {{< param "PRODUCT_NAME" >}} syntax
 title: Syntax
 weight: 200
 ---
@@ -10,7 +10,7 @@ weight: 200
 The {{< param "PRODUCT_NAME" >}} syntax is easy to read and write. It has only two high-level elements, _Attributes_ and _Blocks_.
 
 The {{< param "PRODUCT_NAME" >}} configuration syntax is a _declarative_ language used to build programmable pipelines.
-The order of blocks and attributes within the River configuration file isn't important.
+The order of blocks and attributes within the {{< param "PRODUCT_NAME" >}} configuration file isn't important.
 The language considers all direct and indirect dependencies between elements to determine their relationships.
 
 ## Comments

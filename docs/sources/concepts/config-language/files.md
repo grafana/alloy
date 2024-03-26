@@ -1,13 +1,13 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/concepts/config-language/files/
-description: Learn about River files
+description: Learn about {{< param "PRODUCT_NAME" >}} configuration files
 title: Files
 weight: 100
 ---
 
 # Files
 
-River files are plain text files with the `.alloy` file extension.
+{{< param "PRODUCT_NAME" >}} configuration files are plain text files with the `.alloy` file extension.
 You can refer to each {{< param "PRODUCT_NAME" >}} file as a "configuration file" or an "{{< param "PRODUCT_NAME" >}} configuration."
 
 {{< param "PRODUCT_NAME" >}} configuration files must be UTF-8 encoded and can contain Unicode characters.

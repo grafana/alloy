@@ -34,7 +34,7 @@ There are several different flags available for the `convert` command. You can u
 You can use the `--report` flag to generate a diagnostic report.
 The `--bypass-errors` flag allows you to bypass any [errors][] generated during the file conversion.
 
-The command fails if the source configuration has syntactically incorrect configuration or can't be converted to {{< param "PRODUCT_NAME" >}} River format.
+The command fails if the source configuration has syntactically incorrect configuration or can't be converted to an {{< param "PRODUCT_NAME" >}} configuration.
 
 The following flags are supported:
 

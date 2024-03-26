@@ -31,7 +31,7 @@ Otherwise, `fmt` reads and formats the file from disk specified by the argument.
 The `--write` flag can be specified to replace the contents of the original file on disk with the formatted results.
 `--write` can only be provided when `fmt` isn't reading from standard input.
 
-The command fails if the file being formatted has syntactically incorrect River configuration, but doesn't validate whether {{< param "PRODUCT_NAME" >}} components are configured properly.
+The command fails if the file being formatted has syntactically incorrect {{< param "PRODUCT_NAME" >}} configuration, but doesn't validate whether {{< param "PRODUCT_NAME" >}} components are configured properly.
 
 The following flags are supported:
 

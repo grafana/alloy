@@ -39,7 +39,7 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
     ```
 
    Replace the following:
-   - _`<path-to-config-file-on-localhost>`_: The path to the River configuration file on the Ansible Controller (Localhost).
+   - _`<path-to-config-file-on-localhost>`_: The path to the {{< param "PRODUCT_NAME" >}} configuration file on the Ansible Controller (Localhost).
 
 1. Run the Ansible playbook. Open a terminal window and run the following command from the Ansible playbook directory.
 
