@@ -7,13 +7,13 @@ curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tuto
 mkdir -p ./flow_configs
 curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/agent.flow -o ./flow_configs/agent.flow
 curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/example.flow -o ./flow_configs/example.flow
-curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/relabel.river -o ./flow_configs/relabel.river
-curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/multiple-inputs.river -o ./flow_configs/multiple-inputs.river
+curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/relabel.alloy -o ./flow_configs/relabel.alloy
+curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/multiple-inputs.alloy -o ./flow_configs/multiple-inputs.alloy
 curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/README.md -o ./flow_configs/README.md
 curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/relabel.flow -o ./flow_configs/relabel.flow
 curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/multiple-inputs.flow -o ./flow_configs/multiple-inputs.flow
-curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/agent.river -o ./flow_configs/agent.river
-curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/example.river -o ./flow_configs/example.river
+curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/agent.alloy -o ./flow_configs/agent.alloy
+curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/flow_configs/example.alloy -o ./flow_configs/example.alloy
 mkdir -p ./grafana
 mkdir -p ./grafana/datasources
 curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/grafana/datasources/datasource.yml -o ./grafana/datasources/datasource.yml

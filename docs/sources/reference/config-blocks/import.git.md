@@ -38,7 +38,7 @@ You must set the `repository` attribute to a repository address that Git would r
 When provided, the `revision` attribute must be set to a valid branch, tag, or commit SHA within the repository.
 
 You must set the `path` attribute to a path accessible from the repository's root.
-It can either be a River file such as `FILE_NAME.river` or `DIR_NAME/FILE_NAME.river` or
+It can either be a River file such as `FILE_NAME.alloy` or `DIR_NAME/FILE_NAME.alloy` or
 a directory containing River files such as `DIR_NAME` or `.` if the River files are stored at the root
 of the repository.
 
@@ -79,7 +79,7 @@ This example imports custom components from a Git repository and uses a custom c
 import.git "math" {
   repository = "https://github.com/wildum/module.git"
   revision   = "master"
-  path       = "math.river"
+  path       = "math.alloy"
 }
 
 math.add "default" {

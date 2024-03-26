@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/about/
-description: Grafana Alloy is a flexible, performant, vendor-neutral, telemetry collector
+description: Alloy is a flexible, performant, vendor-neutral, telemetry collector
 menuTitle: Introduction
-title: Introduction to Grafana Alloy
+title: Introduction to Alloy
 weight: 10
 _build:
   list: false
@@ -62,16 +62,6 @@ prometheus.remote_write "default" {
   }
 }
 ```
-
-<!--
-## Stability
-
-| Project | Stability |
-| ------- | --------- |
-| Static mode | Stable |
-| Static mode Kubernetes operator | Beta |
-| Flow mode | Stable |
--->
 
 ## {{% param "PRODUCT_NAME" %}} configuration generator
 

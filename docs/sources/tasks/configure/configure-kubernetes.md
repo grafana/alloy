@@ -68,7 +68,7 @@ The following is an example snippet of a `kustomization` that disables this beha
 configMapGenerator:
   - name: alloy
     files:
-      - config.river
+      - config.alloy
     options:
       disableNameSuffixHash: true
 ```
@@ -111,7 +111,7 @@ Use this method if you prefer to embed your {{< param "PRODUCT_NAME" >}} configu
 
 Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configuration in a separate file.
 
-1. Write your configuration to a file, for example, `config.river`.
+1. Write your configuration to a file, for example, `config.alloy`.
 
    ```river
    // Write your Agent config here:
@@ -124,7 +124,7 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
 1. Create a ConfigMap called `agent-config` from the above file:
 
    ```shell
-   kubectl create configmap --namespace <NAMESPACE> agent-config "--from-file=config.river=./config.river"
+   kubectl create configmap --namespace <NAMESPACE> agent-config "--from-file=config.alloy=./config.alloy"
    ```
 
    Replace the following:
@@ -138,7 +138,7 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
      configMap:
        create: false
        name: agent-config
-       key: config.river
+       key: config.alloy
    ```
 
 1. Run the following command in a terminal to upgrade your {{< param "PRODUCT_NAME" >}} installation:

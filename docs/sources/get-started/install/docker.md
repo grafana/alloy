@@ -31,10 +31,10 @@ To run {{< param "PRODUCT_NAME" >}} as a Linux Docker container, run the followi
 
 ```shell
 docker run \
-  -v <CONFIG_FILE_PATH>:/etc/alloy/config.river \
+  -v <CONFIG_FILE_PATH>:/etc/alloy/config.alloy \
   -p 12345:12345 \
   grafana/alloy:latest \
-    run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.river
+    run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
 ```
 
 Replace the following:

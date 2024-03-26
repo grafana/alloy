@@ -482,7 +482,7 @@ spec:
       containers:
       - args:
         - run
-        - /etc/alloy/alloy_lb.river
+        - /etc/alloy/alloy_lb.alloy
         command:
         - /bin/alloy
         image: grafana/alloy:v1.0
@@ -539,7 +539,7 @@ spec:
       containers:
       - args:
         - run
-        - /etc/alloy/alloy_sampling.river
+        - /etc/alloy/alloy_sampling.alloy
         command:
         - /bin/alloy
         image: grafana/alloy:v1.0
@@ -566,7 +566,7 @@ metadata:
   name: alloy-traces
   namespace: grafana-cloud-monitoring
 data:
-  alloy_lb.river: |
+  alloy_lb.alloy: |
     otelcol.receiver.otlp "default" {
       grpc {
         endpoint = "0.0.0.0:9411"
@@ -598,7 +598,7 @@ data:
       }
     }
 
-  alloy_sampling.river: |
+  alloy_sampling.alloy: |
     otelcol.receiver.otlp "default" {
       grpc {
         endpoint = "0.0.0.0:34621"
@@ -781,7 +781,7 @@ spec:
       containers:
       - args:
         - run
-        - /etc/alloy/alloy_lb.river
+        - /etc/alloy/alloy_lb.alloy
         command:
         - /bin/alloy
         image: grafana/alloy:v1.0
@@ -835,7 +835,7 @@ spec:
       containers:
       - args:
         - run
-        - /etc/alloy/alloy_sampling.river
+        - /etc/alloy/alloy_sampling.alloy
         command:
         - /bin/alloy
         image: grafana/alloy:v1.0
@@ -859,7 +859,7 @@ metadata:
   name: alloy-traces
   namespace: grafana-cloud-monitoring
 data:
-  alloy_lb.river: |
+  alloy_lb.alloy: |
     otelcol.receiver.otlp "default" {
       grpc {
         endpoint = "0.0.0.0:9411"
@@ -891,7 +891,7 @@ data:
       }
     }
 
-  alloy_sampling.river: |
+  alloy_sampling.alloy: |
     otelcol.receiver.otlp "default" {
       grpc {
         endpoint = "0.0.0.0:34621"

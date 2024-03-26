@@ -20,7 +20,7 @@ In this tutorial, you'll set up {{< param "PRODUCT_NAME" >}}.
 Run the following command in a terminal window:
 
 ```bash
-curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/runt.sh -O && bash ./runt.sh agent.river
+curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tutorials/assets/runt.sh -O && bash ./runt.sh agent.alloy
 ```
 
 The `runt.sh` script does:

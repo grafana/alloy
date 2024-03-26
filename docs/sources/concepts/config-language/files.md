@@ -7,7 +7,7 @@ weight: 100
 
 # Files
 
-River files are plain text files with the `.river` file extension.
+River files are plain text files with the `.alloy` file extension.
 You can refer to each River file as a "configuration file" or a "River configuration."
 
 River files must be UTF-8 encoded and can contain Unicode characters.

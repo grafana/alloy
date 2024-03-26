@@ -42,7 +42,7 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
     This is one of many deployment possible modes. For example, you may want to use a `DaemonSet` to collect host-level logs or metrics.
     See the {{< param "PRODUCT_NAME" >}} [deployment guide][] for more details about different topologies.
 
-1. Create a {{< param "PRODUCT_NAME" >}} configuration file, `alloy.river`.
+1. Create a {{< param "PRODUCT_NAME" >}} configuration file, `alloy.alloy`.
 
     In the next step, you add to this configuration as you convert `MetricsInstances`. You can add any additional configuration to this file as you need.
 
@@ -56,7 +56,7 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
 1. Create a Helm release. You can name the release anything you like. The following command installs a release called `alloy-metrics` in the `monitoring` namespace.
 
     ```shell
-    helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=alloy.river
+    helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=alloy.alloy
     ```
 
     This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular River file.
@@ -152,7 +152,7 @@ agent:
 This command installs a release named `grafana-agent-logs` in the `monitoring` namespace:
 
 ```
-helm upgrade grafana-agent-logs grafana/grafana-agent -i -n monitoring -f values-logs.yaml --set-file agent.configMap.content=agent-logs.river
+helm upgrade grafana-agent-logs grafana/grafana-agent -i -n monitoring -f values-logs.yaml --set-file agent.configMap.content=agent-logs.alloy
 ```
 
 This simple configuration scrapes logs for every Pod on each node:

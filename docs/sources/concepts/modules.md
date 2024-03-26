@@ -69,13 +69,13 @@ declare "log_filter" {
 }
 ```
 
-You can save this module to a file called `helpers.river` and import it:
+You can save this module to a file called `helpers.alloy` and import it:
 
 ```river
-// Import our helpers.river module, exposing its custom components as
+// Import our helpers.alloy module, exposing its custom components as
 // helpers.COMPONENT_NAME.
 import.file "helpers" {
-  filename = "helpers.river"
+  filename = "helpers.alloy"
 }
 
 loki.source.file "self" {

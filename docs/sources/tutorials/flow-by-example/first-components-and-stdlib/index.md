@@ -51,7 +51,7 @@ A River file is comprised of three things:
 The default log level is `info` and the default log format is `logfmt`.
     {{< /admonition >}}
 
-    Try pasting this into `config.river` and running `/path/to/alloy run config.river` to see what happens.
+    Try pasting this into `config.alloy` and running `/path/to/alloy run config.alloy` to see what happens.
 
     Congratulations, you've just written your first River file! You've also just written your first {{< param "PRODUCT_NAME" >}} configuration file. This configuration won't do anything, so let's add some components to it.
 
@@ -150,7 +150,7 @@ prometheus.remote_write "local_prom" {
 Run {{< param "PRODUCT_NAME" >}} with:
 
 ```bash
-/path/to/alloy run config.river
+/path/to/alloy run config.alloy
 ```
 
 Navigate to [http://localhost:3000/explore][] in your browser.
@@ -212,7 +212,7 @@ You may find the [concat][] standard library function useful.
 You can run {{< param "PRODUCT_NAME" >}} with the new configuration file by running:
 
 ```bash
-/path/to/alloy run config.river
+/path/to/alloy run config.alloy
 ```
 
 Navigate to [http://localhost:3000/explore][] in your browser.

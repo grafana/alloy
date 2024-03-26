@@ -50,7 +50,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 ### Silent install options
 
-* `/CONFIG=<path>` Path to the configuration file. Default: `$INSTDIR\config.river`
+* `/CONFIG=<path>` Path to the configuration file. Default: `$INSTDIR\config.alloy`
 * `/DISABLEREPORTING=<yes|no>` Disable [data collection][]. Default: `no`
 * `/DISABLEPROFILING=<yes|no>` Disable profiling endpoint. Default: `no`
 * `/ENVIRONMENT="KEY=VALUE\0KEY2=VALUE2"` Define environment variables for Windows Service. Default: ``

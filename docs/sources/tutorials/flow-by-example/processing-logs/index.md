@@ -322,10 +322,10 @@ This stage doesn't modify the extracted map.
 ## Putting it all together
 
 Now that you have all of the pieces, let's run {{< param "PRODUCT_NAME" >}} and send some logs to it.
-Modify `config.river` with the config from the previous example and start {{< param "PRODUCT_NAME" >}} with:
+Modify `config.alloy` with the config from the previous example and start {{< param "PRODUCT_NAME" >}} with:
 
 ```bash
-/path/to/alloy run config.river
+/path/to/alloy run config.alloy
 ```
 
 To get the current time in `RFC3339` format, you can run:
