@@ -122,16 +122,16 @@ define generate_alloy_fpm =
 		--url "https://github.com/grafana/alloy" \
 		--rpm-digest sha256 \
 		-t $(1) \
-		--after-install packaging/alloy/$(1)/control/postinst \
-		--before-remove packaging/alloy/$(1)/control/prerm \
+		--after-install packaging/$(1)/control/postinst \
+		--before-remove packaging/$(1)/control/prerm \
 		--config-files /etc/alloy.river \
 		--config-files $(ALLOY_ENVIRONMENT_FILE_$(1)) \
 		--rpm-rpmbuild-define "_build_id_links none" \
 		--package $(4) \
 			dist/alloy-linux-$(3)=/usr/bin/alloy \
-			packaging/alloy/alloy.river=/etc/alloy.river \
-			packaging/alloy/environment-file=$(ALLOY_ENVIRONMENT_FILE_$(1)) \
-			packaging/alloy/$(1)/alloy.service=/usr/lib/systemd/system/alloy.service
+			packaging/alloy.river=/etc/alloy.river \
+			packaging/environment-file=$(ALLOY_ENVIRONMENT_FILE_$(1)) \
+			packaging/$(1)/alloy.service=/usr/lib/systemd/system/alloy.service
 endef
 
 ALLOY_PACKAGE_VERSION := $(patsubst v%,%,$(VERSION))
@@ -191,5 +191,5 @@ ifeq ($(USE_CONTAINER),1)
 else
 	# quotes around mkdir are mandatory. ref: https://github.com/grafana/agent/pull/5664#discussion_r1378796371
 	"mkdir" -p dist
-	makensis -V4 -DVERSION=$(VERSION) -DOUT="../../../dist/alloy-installer.exe" ./packaging/alloy/windows/install_script.nsis
+	makensis -V4 -DVERSION=$(VERSION) -DOUT="../../../dist/alloy-installer.exe" ./alloy/windows/install_script.nsis
 endif
