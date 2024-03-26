@@ -6,10 +6,10 @@ title: Run Grafana Alloy
 weight: 50
 ---
 
-# Run {{% param "PRODUCT_NAME" %}}
+# Run {{% param "FULL_PRODUCT_NAME" %}}
 
 Use the following pages to learn how to start, restart, and stop {{< param "PRODUCT_NAME" >}} after it's installed.
-For installation instructions, refer to [Install {{< param "PRODUCT_NAME" >}}][Install].
+For installation instructions, refer to [Install {{< param "FULL_PRODUCT_NAME" >}}][Install].
 
 {{< section >}}
 

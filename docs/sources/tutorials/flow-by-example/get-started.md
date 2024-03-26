@@ -17,7 +17,7 @@ This set of tutorials contains a collection of examples that build on each other
 
 You will need a Linux or Unix environment with Docker installed. The examples are designed to be run on a single host so that you can run them on your laptop or in a VM. You are encouraged to follow along with the examples using a `config.alloy` file and experiment with the examples yourself.
 
-To run the examples, you should have a {{< param "PRODUCT_NAME" >}} binary available. You can follow the instructions on how to [Install {{< param "PRODUCT_NAME" >}} as a Standalone Binary][install] to get a binary.
+To run the examples, you should have an {{< param "PRODUCT_NAME" >}} binary available. You can follow the instructions on how to [Install {{< param "PRODUCT_NAME" >}} as a Standalone Binary][install] to get a binary.
 
 ## How should I follow along?
 

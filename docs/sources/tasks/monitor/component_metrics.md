@@ -5,7 +5,7 @@ title: Monitor components
 weight: 200
 ---
 
-# How to monitor components
+# Monitor components
 
 {{< param "PRODUCT_NAME" >}} [components][] may optionally expose Prometheus metrics which can be used to investigate the behavior of that component.
 These component-specific metrics are only generated when an instance of that component is running.

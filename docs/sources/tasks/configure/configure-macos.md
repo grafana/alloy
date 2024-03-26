@@ -6,7 +6,7 @@ title: Configure Grafana Alloy on macOS
 weight: 400
 ---
 
-# Configure {{% param "PRODUCT_NAME" %}} on macOS
+# Configure {{% param "FULL_PRODUCT_NAME" %}} on macOS
 
 To configure {{< param "PRODUCT_NAME" >}} on macOS, perform the following steps:
 

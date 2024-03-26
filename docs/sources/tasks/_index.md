@@ -6,7 +6,7 @@ title: Tasks with Grafana Alloy
 weight: 200
 ---
 
-# Tasks with {{% param "PRODUCT_NAME" %}}
+# Tasks with {{% param "FULL_PRODUCT_NAME" %}}
 
 This section details how to perform common tasks with {{< param "PRODUCT_NAME" >}}.
 

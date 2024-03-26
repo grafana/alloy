@@ -6,13 +6,13 @@ title: Migrate from Promtail to Grafana Alloy
 weight: 330
 ---
 
-# Migrate from Promtail to {{% param "PRODUCT_NAME" %}}
+# Migrate from Promtail to {{% param "FULL_PRODUCT_NAME" %}}
 
-The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Promtail][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Promtail][] configuration to an {{< param "PRODUCT_NAME" >}} configuration.
 
 This topic describes how to:
 
-* Convert a Promtail configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+* Convert a Promtail configuration to an {{< param "PRODUCT_NAME" >}} configuration.
 * Run a Promtail configuration natively using {{< param "PRODUCT_NAME" >}}.
 
 ## Components used in this topic
@@ -28,10 +28,10 @@ This topic describes how to:
 
 ## Convert a Promtail configuration
 
-To fully migrate from [Promtail] to {{< param "PRODUCT_NAME" >}}, you must convert your Promtail configuration into a {{< param "PRODUCT_NAME" >}} configuration.
+To fully migrate from [Promtail] to {{< param "PRODUCT_NAME" >}}, you must convert your Promtail configuration into an {{< param "PRODUCT_NAME" >}} configuration.
 This conversion will enable you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
 
-> In this task, you will use the [convert][] CLI command to output a {{< param "PRODUCT_NAME" >}}
+> In this task, you will use the [convert][] CLI command to output an {{< param "PRODUCT_NAME" >}}
 > configuration from a Promtail configuration.
 
 1. Open a terminal window and run the following command.
@@ -85,14 +85,14 @@ This conversion will enable you to take full advantage of the many additional fe
 
 ## Run a Promtail configuration
 
-If you’re not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Promtail configuration.
+If you’re not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Promtail configuration.
 The `--config.format=promtail` flag tells {{< param "PRODUCT_NAME" >}} to convert your Promtail configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the new configuration.
 This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your existing Promtail configuration infrastructure.
 
 > In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Promtail configuration.
 
 [Run][run alloy] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=promtail`.
-Your configuration file must be a valid Promtail configuration file rather than a {{< param "PRODUCT_NAME" >}} configuration file.
+Your configuration file must be a valid Promtail configuration file rather than an {{< param "PRODUCT_NAME" >}} configuration file.
 
 ### Debugging
 
@@ -110,7 +110,7 @@ Your configuration file must be a valid Promtail configuration file rather than 
 
 ## Example
 
-This example demonstrates converting a Promtail configuration file to a {{< param "PRODUCT_NAME" >}} configuration file.
+This example demonstrates converting a Promtail configuration file to an {{< param "PRODUCT_NAME" >}} configuration file.
 
 The following Promtail configuration file provides the input for the conversion.
 

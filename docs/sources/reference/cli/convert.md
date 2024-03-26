@@ -47,9 +47,9 @@ The following flags are supported:
 ### Defaults
 
 {{< param "PRODUCT_NAME" >}} defaults are managed as follows:
-* If a provided source configuration value matches a {{< param "PRODUCT_NAME" >}} default value, the property is left off the output.
-* If a non-provided source configuration value default matches a {{< param "PRODUCT_NAME" >}} default value, the property is left off the output.
-* If a non-provided source configuration value default doesn't match a {{< param "PRODUCT_NAME" >}} default value, the default value is included in the output.
+* If a provided source configuration value matches an {{< param "PRODUCT_NAME" >}} default value, the property is left off the output.
+* If a non-provided source configuration value default matches an {{< param "PRODUCT_NAME" >}} default value, the property is left off the output.
+* If a non-provided source configuration value default doesn't match an {{< param "PRODUCT_NAME" >}} default value, the default value is included in the output.
 
 ### Errors
 
@@ -58,7 +58,7 @@ These can be bypassed using the `--bypass-errors` flag.
 
 ### Prometheus
 
-Using the `--source-format=prometheus` will convert the source configuration from [Prometheus v2.45][] to a {{< param "PRODUCT_NAME" >}} configuration.
+Using the `--source-format=prometheus` will convert the source configuration from [Prometheus v2.45][] to an {{< param "PRODUCT_NAME" >}} configuration.
 
 This includes Prometheus features such as [scrape_config][], [relabel_config][], [metric_relabel_configs][], [remote_write][], and many supported *_sd_configs.
 Unsupported features in a source configuration result in [errors][].
@@ -67,25 +67,25 @@ Refer to [Migrate from Prometheus to {{< param "PRODUCT_NAME" >}}][migrate prome
 
 ### Promtail
 
-Using the `--source-format=promtail` will convert the source configuration from [Promtail v2.8.x][] to a {{< param "PRODUCT_NAME" >}} configuration.
+Using the `--source-format=promtail` will convert the source configuration from [Promtail v2.8.x][] to an {{< param "PRODUCT_NAME" >}} configuration.
 
 Nearly all [Promtail features][] are supported and can be converted to {{< param "PRODUCT_NAME" >}} configuration.
 
-If you have unsupported features in a source configuration, you will receive [errors][] when you convert to a {{< param "PRODUCT_NAME" >}} configuration.
+If you have unsupported features in a source configuration, you will receive [errors][] when you convert to an {{< param "PRODUCT_NAME" >}} configuration.
 The converter will also raise warnings for configuration options that may require your attention.
 
 Refer to [Migrate from Promtail to {{< param "PRODUCT_NAME" >}}][migrate promtail] for a detailed migration guide.
 
 ### Static
 
-Using the `--source-format=static` will convert the source configuration from a [Grafana Agent Static][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+Using the `--source-format=static` will convert the source configuration from a [Grafana Agent Static][] configuration to an {{< param "PRODUCT_NAME" >}} configuration.
 
 Include `--extra-args` for passing additional command line flags from the original format.
-For example, `--extra-args="-enable-features=integrations-next"` converts a Grafana Agent Static [integrations-next][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+For example, `--extra-args="-enable-features=integrations-next"` converts a Grafana Agent Static [integrations-next][] configuration to an {{< param "PRODUCT_NAME" >}} configuration.
 You can also expand environment variables with `--extra-args="-config.expand-env"`.
 You can combine multiple command line flags with a space between each flag, for example `--extra-args="-enable-features=integrations-next -config.expand-env"`.
 
-If you have unsupported features in a Grafana Agent Static mode source configuration, you will receive [errors][] when you convert to a {{< param "PRODUCT_NAME" >}} configuration.
+If you have unsupported features in a Grafana Agent Static mode source configuration, you will receive [errors][] when you convert to an {{< param "PRODUCT_NAME" >}} configuration.
 The converter also raises warnings for configuration options that may require your attention.
 
 Refer to [Migrate from Grafana Agent Static to {{< param "PRODUCT_NAME" >}}][migrate static] for a detailed migration guide.

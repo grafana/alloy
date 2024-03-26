@@ -6,7 +6,7 @@ title: Configure Grafana Alloy on Windows
 weight: 500
 ---
 
-# Configure {{% param "PRODUCT_NAME" %}} on Windows
+# Configure {{% param "FULL_PRODUCT_NAME" %}} on Windows
 
 To configure {{< param "PRODUCT_NAME" >}} on Windows, perform the following steps:
 
@@ -33,8 +33,7 @@ following arguments to the {{< param "PRODUCT_NAME" >}} binary:
 * `C:\Program Files\Grafana Alloy\config.alloy`
 * `--storage.path=C:\ProgramData\Grafana Alloy\data`
 
-To change the set of command-line arguments passed to the {{< param "PRODUCT_NAME" >}}
-binary, perform the following steps:
+To change the set of command-line arguments passed to the {{< param "PRODUCT_NAME" >}} binary, perform the following steps:
 
 1. Open the Registry Editor:
 
@@ -56,7 +55,7 @@ binary, perform the following steps:
 
       1. Type `services.msc` and click **OK**.
 
-   1. Right click on the service called **{{< param "PRODUCT_NAME" >}}**.
+   1. Right click on the service called **{{< param "FULL_PRODUCT_NAME" >}}**.
 
    1. Click on **All Tasks > Restart**.
 
@@ -69,8 +68,7 @@ the [UI for debugging][UI].
 To expose the UI to other machines, complete the following steps:
 
 1. Follow [Change command-line arguments](#change-command-line-arguments)
-   to edit command line flags passed to {{< param "PRODUCT_NAME" >}}, including the
-   following customizations:
+   to edit command line flags passed to {{< param "PRODUCT_NAME" >}}, including the following customizations:
 
     1. Add the following command line argument:
 

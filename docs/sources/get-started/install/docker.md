@@ -16,7 +16,7 @@ weight: 100
 ## Before you begin
 
 * Install [Docker][] on your computer.
-* Create and save a {{< param "PRODUCT_NAME" >}} River configuration file on your computer, for example:
+* Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
 
   ```river
   logging {

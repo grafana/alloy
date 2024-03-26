@@ -7,20 +7,19 @@ weight: 200
 
 # Syntax
 
-The River syntax is easy to read and write. It has only two high-level elements, _Attributes_ and _Blocks_.
+The {{< param "PRODUCT_NAME" >}} syntax is easy to read and write. It has only two high-level elements, _Attributes_ and _Blocks_.
 
-River is a _declarative_ language used to build programmable pipelines.
+The {{< param "PRODUCT_NAME" >}} configuration syntax is a _declarative_ language used to build programmable pipelines.
 The order of blocks and attributes within the River configuration file isn't important.
 The language considers all direct and indirect dependencies between elements to determine their relationships.
 
 ## Comments
 
-River configuration files support single-line `//` and block `/* */` comments.
+{{< param "PRODUCT_NAME" >}} configuration files support single-line `//` and block `/* */` comments.
 
 ## Identifiers
 
-River considers an identifier as valid if it consists of one or more UTF-8 letters (A through Z, both upper- and lower-case),
-digits or underscores, but doesn't start with a digit.
+{{< param "PRODUCT_NAME" >}} syntax considers an identifier as valid if it consists of one or more UTF-8 letters (A through Z, both upper- and lower-case), digits or underscores, but doesn't start with a digit.
 
 ## Attributes and Blocks
 
@@ -36,9 +35,9 @@ The following example sets the `log_level` attribute to `"debug"`.
 log_level = "debug"
 ```
 
-The `ATTRIBUTE_NAME` must be a valid River [identifier][].
+The `ATTRIBUTE_NAME` must be a valid {{< param "PRODUCT_NAME" >}} [identifier][].
 
-The `ATTRIBUTE_VALUE` can be either a constant value of a valid River [type][] (for example, a string, boolean, number), or an [_expression_][expression] to represent or compute more complex attribute values.
+The `ATTRIBUTE_VALUE` can be either a constant value of a valid {{< param "PRODUCT_NAME" >}} [type][] (for example, a string, boolean, number), or an [_expression_][expression] to represent or compute more complex attribute values.
 
 ### Blocks
 
@@ -79,7 +78,7 @@ BLOCK_NAME "BLOCK_LABEL" {
 #### Block naming rules
 
 The `BLOCK_NAME` has to be recognized by {{< param "PRODUCT_NAME" >}} as either a valid component name or a special block for configuring global settings.
-If the `BLOCK_LABEL` must be set, it must be a valid River [identifier][] wrapped in double quotes.
+If the `BLOCK_LABEL` must be set, it must be a valid {{< param "PRODUCT_NAME" >}} [identifier][] wrapped in double quotes.
 In these cases, you use the label to disambiguate between multiple top-level blocks of the same name.
 
 The following snippet defines a block named `local.file` with its label set to "token".
@@ -94,13 +93,12 @@ local.file "token" {
 
 ## Terminators
 
-All block and attribute definitions are followed by a newline, which River calls a _terminator_, as it terminates the current statement.
+All block and attribute definitions are followed by a newline, which {{< param "PRODUCT_NAME" >}} calls a _terminator_, as it terminates the current statement.
 
 A newline is treated as a terminator when it follows any expression, `]`, `)`, or `}`.
-River ignores other newlines and you can can enter as many newlines as you want.
+{{< param "PRODUCT_NAME" >}} ignores other newlines and you can can enter as many newlines as you want.
 
 [identifier]: #identifiers
 [identifier]: #identifiers
 [expression]: ../expressions/
 [type]: ../expressions/types_and_values
-"/docs/agent/ -> /docs/agent/<ALLOY_VERSION>/flow/concepts/config-language/expressions/"/docs/agent/ -> /docs/agent/<ALLOY_VERSION>/flow/concepts/config-language/expressions/

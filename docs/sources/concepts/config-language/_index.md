@@ -7,14 +7,14 @@ weight: 10
 
 # Configuration language
 
-{{< param "PRODUCT_NAME" >}} dynamically configures and connects components with a custom configuration language called River.
+{{< param "PRODUCT_NAME" >}} dynamically configures and connects components with the {{< param "PRODUCT_NAME" >}} configuration syntax.
 
-River aims to reduce errors in configuration files by making configurations easier to read and write.
-River configurations use blocks that can be easily copied and pasted from the documentation to help you get started as quickly as possible.
+The {{< param "PRODUCT_NAME" >}} syntax aims to reduce errors in configuration files by making configurations easier to read and write.
+{{< param "PRODUCT_NAME" >}} configurations use blocks that can be easily copied and pasted from the documentation to help you get started as quickly as possible.
 
-A River configuration file tells {{< param "PRODUCT_NAME" >}} which components to launch and how to bind them together into a pipeline.
+An {{< param "PRODUCT_NAME" >}} configuration file tells {{< param "PRODUCT_NAME" >}} which components to launch and how to bind them together into a pipeline.
 
-The River syntax uses blocks, attributes, and expressions.
+The {{< param "PRODUCT_NAME" >}} syntax uses blocks, attributes, and expressions.
 
 ```river
 // Create a local.file component labeled my_file.
@@ -36,13 +36,13 @@ BLOCK_NAME {
 }
 ```
 
-[River is designed][RFC] with the following requirements in mind:
+[{{< param "PRODUCT_NAME" >}} is designed][RFC] with the following requirements in mind:
 
 * _Fast_: The configuration language must be fast so the component controller can quickly evaluate changes.
 * _Simple_: The configuration language must be easy to read and write to minimize the learning curve.
 * _Debuggable_: The configuration language must give detailed information when there's a mistake in the configuration file.
 
-River is similar to HCL, the language Terraform and other Hashicorp projects use.
+The {{< param "PRODUCT_NAME" >}} configuration syntax is similar to HCL, the language Terraform and other Hashicorp projects use.
 It's a distinct language with custom syntax and features, such as first-class functions.
 
 * Blocks are a group of related settings and usually represent creating a component.
@@ -51,7 +51,7 @@ It's a distinct language with custom syntax and features, such as first-class fu
 * Expressions represent a value, either literally or by referencing and combining other values.
   You use expressions to compute a value for an attribute.
 
-River is declarative, so ordering components, blocks, and attributes within a block isn't significant.
+The {{< param "PRODUCT_NAME" >}} syntax is declarative, so ordering components, blocks, and attributes within a block isn't significant.
 The relationship between components determines the order of operations.
 
 ## Attributes
@@ -69,7 +69,7 @@ log_level = "debug"
 
 You use expressions to compute the value of an attribute.
 The simplest expressions are constant values like `"debug"`, `32`, or `[1, 2, 3, 4]`.
-River supports complex expressions, for example:
+The {{< param "PRODUCT_NAME" >}} syntax supports complex expressions, for example:
 
 * Referencing the exports of components: `local.file.password_file.content`
 * Mathematical operations: `1 + 2`, `3 * 4`, `(5 * 6) + (7 + 8)`
@@ -107,7 +107,7 @@ The preceding example has two blocks:
 
 ## Tooling
 
-You can use one or all of the following tools to help you write configuration files in River.
+You can use one or all of the following tools to help you write {{< param "PRODUCT_NAME" >}} configuration files.
 
 * Editor support for:
   * [VSCode](https://github.com/grafana/vscode-alloy)

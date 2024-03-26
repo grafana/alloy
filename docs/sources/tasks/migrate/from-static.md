@@ -6,13 +6,13 @@ title: Migrate Grafana Agent Static to Grafana Alloy
 weight: 340
 ---
 
-# Migrate from Grafana Agent Static to {{% param "PRODUCT_NAME" %}}
+# Migrate from Grafana Agent Static to {{% param "FULL_PRODUCT_NAME" %}}
 
-The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Grafana Agent Static][Static] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Grafana Agent Static][Static] configuration to an {{< param "PRODUCT_NAME" >}} configuration.
 
 This topic describes how to:
 
-* Convert a Grafana Agent Static configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+* Convert a Grafana Agent Static configuration to an {{< param "PRODUCT_NAME" >}} configuration.
 * Run a Grafana Agent Static configuration natively using {{< param "PRODUCT_NAME" >}}.
 
 ## Components used in this topic
@@ -31,10 +31,10 @@ This topic describes how to:
 
 ## Convert a Grafana Agent Static configuration
 
-To fully migrate Grafana Agent Static to {{< param "PRODUCT_NAME" >}}, you must convert your Grafana Agent Static configuration into a {{< param "PRODUCT_NAME" >}} configuration.
+To fully migrate Grafana Agent Static to {{< param "PRODUCT_NAME" >}}, you must convert your Grafana Agent Static configuration into an {{< param "PRODUCT_NAME" >}} configuration.
 This conversion will enable you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
 
-> In this task, you will use the [convert][] CLI command to output a {{< param "PRODUCT_NAME" >}}
+> In this task, you will use the [convert][] CLI command to output an {{< param "PRODUCT_NAME" >}}
 > configuration from a Static configuration.
 
 1. Open a terminal window and run the following command.
@@ -89,7 +89,7 @@ This conversion will enable you to take full advantage of the many additional fe
 
 ## Run a Grafana Agent Static mode configuration
 
-If you’re not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Grafana Agent Static configuration.
+If you’re not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Grafana Agent Static configuration.
 The `--config.format=static` flag tells {{< param "PRODUCT_NAME" >}} to convert your Grafana Agent Static configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the new configuration.
 This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your existing Grafana Agent Static configuration infrastructure.
 
@@ -114,7 +114,7 @@ Your configuration file must be a valid Grafana Agent Static configuration file.
 
 ## Example
 
-This example demonstrates converting a Grafana Agent Static configuration file to a {{< param "PRODUCT_NAME" >}} configuration file.
+This example demonstrates converting a Grafana Agent Static configuration file to an {{< param "PRODUCT_NAME" >}} configuration file.
 
 The following Grafana Agent Static configuration file provides the input for the conversion.
 

@@ -67,7 +67,7 @@ Comments in River are prefixed with `//` and are single-line only. For example: 
 - [Components configuration language][]
 - [Component controller][]
 
-Components are the building blocks of a {{< param "PRODUCT_NAME" >}} configuration. They are configured and linked to create pipelines that collect, process, and output your telemetry data. Components are configured with `Arguments` and have `Exports` that may be referenced by other components.
+Components are the building blocks of an {{< param "PRODUCT_NAME" >}} configuration. They are configured and linked to create pipelines that collect, process, and output your telemetry data. Components are configured with `Arguments` and have `Exports` that may be referenced by other components.
 
 Let's look at a simple example pipeline:
 

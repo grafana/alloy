@@ -39,7 +39,7 @@ To decide whether scaling is necessary, check metrics such as:
 #### Stateful and stateless components
 
 In the context of tracing, a "stateful component" is a component that needs to aggregate certain spans to work correctly.
-A "stateless {{< param "PRODUCT_NAME" >}}" is a {{< param "PRODUCT_NAME" >}} which does not contain stateful components.
+A "stateless {{< param "PRODUCT_NAME" >}}" is an {{< param "PRODUCT_NAME" >}} which does not contain stateful components.
 
 Scaling stateful {{< param "PRODUCT_NAME" >}}s is more difficult, because spans must be forwarded to a specific {{< param "PRODUCT_NAME" >}} according to a span property such as trace ID or a `service.name` attribute.
 You can forward spans with `otelcol.exporter.loadbalancing`.

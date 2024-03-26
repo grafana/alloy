@@ -6,7 +6,7 @@ title: Migrate from Grafana Agent Operator to Grafana Alloy
 weight: 320
 ---
 
-# Migrate from Grafana Agent Operator to {{% param "PRODUCT_NAME" %}}
+# Migrate from Grafana Agent Operator to {{% param "FULL_PRODUCT_NAME" %}}
 
 With the release of {{< param "PRODUCT_NAME" >}}, Grafana Agent Operator is no longer the recommended way to deploy {{< param "PRODUCT_NAME" >}} in Kubernetes.
 Some of the Operator functionality has moved into {{< param "PRODUCT_NAME" >}} itself, and the Helm Chart has replaced the remaining functionality.
@@ -42,7 +42,7 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
     This is one of many deployment possible modes. For example, you may want to use a `DaemonSet` to collect host-level logs or metrics.
     See the {{< param "PRODUCT_NAME" >}} [deployment guide][] for more details about different topologies.
 
-1. Create a {{< param "PRODUCT_NAME" >}} configuration file, `alloy.alloy`.
+1. Create an {{< param "PRODUCT_NAME" >}} configuration file, `alloy.alloy`.
 
     In the next step, you add to this configuration as you convert `MetricsInstances`. You can add any additional configuration to this file as you need.
 

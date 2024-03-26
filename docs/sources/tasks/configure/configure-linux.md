@@ -6,7 +6,7 @@ title: Configure Grafana Alloy on Linux
 weight: 300
 ---
 
-# Configure {{% param "PRODUCT_NAME" %}} on Linux
+# Configure {{% param "FULL_PRODUCT_NAME" %}} on Linux
 
 To configure {{< param "PRODUCT_NAME" >}} on Linux, perform the following steps:
 

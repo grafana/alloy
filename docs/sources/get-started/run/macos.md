@@ -6,7 +6,7 @@ title: Run Grafana Alloy on macOS
 weight: 400
 ---
 
-# Run {{% param "PRODUCT_NAME" %}} on macOS
+# Run {{% param "FULL_PRODUCT_NAME" %}} on macOS
 
 {{< param "PRODUCT_NAME" >}} is [installed][InstallMacOS] as a launchd service on macOS.
 

@@ -7,6 +7,6 @@ weight: 100
 
 # Concepts
 
-This section explains the primary concepts of {{< param "PRODUCT_NAME" >}}.
+This section explains the primary concepts of {{< param "FULL_PRODUCT_NAME" >}}.
 
 {{< section >}}
