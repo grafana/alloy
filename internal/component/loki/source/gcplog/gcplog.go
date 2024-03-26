@@ -13,7 +13,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
 	gt "github.com/grafana/alloy/internal/component/loki/source/gcplog/internal/gcplogtarget"
 	"github.com/grafana/alloy/internal/util"
@@ -37,7 +37,7 @@ type Arguments struct {
 	PullTarget   *gcptypes.PullConfig `alloy:"pull,block,optional"`
 	PushTarget   *gcptypes.PushConfig `alloy:"push,block,optional"`
 	ForwardTo    []loki.LogsReceiver  `alloy:"forward_to,attr"`
-	RelabelRules flow_relabel.Rules   `alloy:"relabel_rules,attr,optional"`
+	RelabelRules alloy_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -122,7 +122,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	var rcs []*relabel.Config
 	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
-		rcs = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
 	if c.target != nil {

@@ -37,7 +37,7 @@ stage.match {
 func TestPackPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_pack_pipeline"
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	pl, err := NewPipeline(logger, loadConfig(testPackRiver), &plName, registry)
 	require.NoError(t, err)
 
@@ -335,7 +335,7 @@ func TestPackStage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			m := newPackStage(logger, *tt.config, prometheus.DefaultRegisterer)
 			// Normal pipeline operation will put all the labels into the extracted map
 			// replicate that here.

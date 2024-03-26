@@ -11,9 +11,10 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-// TargetServer is wrapper around dskit.Server that handles some common configuration used in all flow components
-// that expose a network server. It just handles configuration and initialization, the handlers implementation are left
-// to the consumer.
+// TargetServer is wrapper around dskit.Server that handles some common
+// configuration used in all components that expose a network server. It just
+// handles configuration and initialization, the handlers implementation are
+// left to the consumer.
 type TargetServer struct {
 	logger           log.Logger
 	config           *dskit.Config
@@ -48,9 +49,10 @@ func NewTargetServer(logger log.Logger, metricsNamespace string, reg prometheus.
 	ts.config = &serverCfg
 	// To prevent metric collisions because all metrics are going to be registered in the global Prometheus registry.
 	ts.config.MetricsNamespace = ts.metricsNamespace
-	// We don't want the /debug and /metrics endpoints running, since this is not the main Flow HTTP server.
-	// We want this target to expose the least surface area possible, hence disabling dskit HTTP server metrics
-	// and debugging functionality.
+	// We don't want the /debug and /metrics endpoints running, since this is not
+	// the main HTTP server. We want this target to expose the least surface area
+	// possible, hence disabling dskit HTTP server metrics and debugging
+	// functionality.
 	ts.config.RegisterInstrumentation = false
 	// Add logger to dskit
 	ts.config.Log = ts.logger

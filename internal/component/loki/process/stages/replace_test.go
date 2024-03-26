@@ -70,7 +70,7 @@ var testReplaceLogLineAdjacentCaptureGroups = `abc`
 
 func TestReplace(t *testing.T) {
 	t.Parallel()
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 
 	tests := map[string]struct {
 		config        string

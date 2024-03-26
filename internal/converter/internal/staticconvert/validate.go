@@ -69,7 +69,7 @@ func validate(staticConfig *config.Config) diag.Diagnostics {
 func validateCommandLine() diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	diags.Add(diag.SeverityLevelWarn, "Please review your agent command line flags and ensure they are set in your Flow mode config file where necessary.")
+	diags.Add(diag.SeverityLevelWarn, "Please review your agent command line flags and ensure they are set in your Alloy config file where necessary.")
 
 	return diags
 }
@@ -78,7 +78,7 @@ func validateServer(serverConfig *server.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	defaultServerConfig := server.DefaultConfig()
-	diags.AddAll(common.ValidateSupported(common.NotDeepEquals, serverConfig.GRPC, defaultServerConfig.GRPC, "grpc_tls_config server", "flow mode does not have a gRPC server to configure."))
+	diags.AddAll(common.ValidateSupported(common.NotDeepEquals, serverConfig.GRPC, defaultServerConfig.GRPC, "grpc_tls_config server", "Alloy does not have a gRPC server to configure."))
 	diags.AddAll(common.ValidateSupported(common.NotEquals, serverConfig.HTTP.TLSConfig.PreferServerCipherSuites, defaultServerConfig.HTTP.TLSConfig.PreferServerCipherSuites, "prefer_server_cipher_suites server", ""))
 
 	return diags
@@ -101,7 +101,7 @@ func validateMetrics(metricsConfig metrics.Config, grpcListenPort int) diag.Diag
 	diags.AddAll(common.ValidateSupported(common.NotEquals, metricsConfig.IdleConnTimeout, defaultMetrics.IdleConnTimeout, "http_idle_conn_timeout metrics", ""))
 
 	if metricsConfig.WALDir != defaultMetrics.WALDir {
-		diags.Add(diag.SeverityLevelWarn, "The converter does not support converting the provided metrics wal_directory config: Use the run command flag --storage.path for Flow mode instead.")
+		diags.Add(diag.SeverityLevelWarn, "The converter does not support converting the provided metrics wal_directory config: Use the run command flag --storage.path instead.")
 	}
 
 	return diags
@@ -177,7 +177,7 @@ func validateIntegrationsV2(integrationsConfig *v2.SubsystemOptions) diag.Diagno
 		case *vmware_exporter_v2.Config:
 			diags.AddWithDetail(
 				diag.SeverityLevelError,
-				"Support for the vsphere integration has been removed in Grafana Alloy v1.0, and conversion will not be performed.",
+				"Support for the vsphere integration has been removed in Alloy v1.0, and conversion will not be performed.",
 				"To achieve similar functionality, consider creating an otelcol.receiver.vcenter component and converting generated metrics to a Prometheus pipeline using otelcol.exporter.prometheus.",
 			)
 		case *metricsutils_v2.ConfigShim:

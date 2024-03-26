@@ -40,7 +40,7 @@ func NewModuleComponent(o component.Options) (*ModuleComponent, error) {
 	return c, err
 }
 
-// LoadAlloySource loads the flow controller with the current component source.
+// LoadAlloySource loads the controller with the current component source.
 // It will set the component health in addition to return the error so that the consumer can rely on either or both.
 // If the content is the same as the last time it was successfully loaded, it will not be reloaded.
 func (c *ModuleComponent) LoadAlloySource(args map[string]any, contentValue string) error {
@@ -70,7 +70,7 @@ func (c *ModuleComponent) LoadAlloySource(args map[string]any, contentValue stri
 	return nil
 }
 
-// RunAlloyController runs the flow controller that all module components start.
+// RunAlloyController runs the controller that all module components start.
 func (c *ModuleComponent) RunAlloyController(ctx context.Context) {
 	err := c.mod.Run(ctx)
 	if err != nil {

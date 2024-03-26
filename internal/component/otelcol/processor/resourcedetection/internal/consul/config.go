@@ -26,7 +26,7 @@ type Config struct {
 	Token alloytypes.Secret `alloy:"token,attr,optional"`
 
 	// TokenFile is not necessary in River because users can use the local.file
-	// Flow component instead.
+	// Alloy component instead.
 	//
 	// TokenFile string `alloy:"token_file"`
 

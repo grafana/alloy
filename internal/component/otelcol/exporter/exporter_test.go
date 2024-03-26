@@ -26,7 +26,7 @@ func TestExporter(t *testing.T) {
 	tracesCh := make(chan ptrace.Traces, 1)
 
 	// Create an instance of a fake OpenTelemetry Collector exporter which our
-	// Flow component will wrap around.
+	// Alloy component will wrap around.
 	innerExporter := &fakeExporter{
 		ConsumeTracesFunc: func(_ context.Context, td ptrace.Traces) error {
 			select {
@@ -37,7 +37,7 @@ func TestExporter(t *testing.T) {
 		},
 	}
 
-	// Create and start our Flow component. We then wait for it to export a
+	// Create and start our Alloy component. We then wait for it to export a
 	// consumer that we can send data to.
 	te := newTestEnvironment(t, innerExporter)
 	te.Start()

@@ -133,7 +133,7 @@ func (s *PushAPIServer) getRelabelRules() []*relabel.Config {
 }
 
 // NOTE: This code is copied from Promtail (https://github.com/grafana/loki/commit/47e2c5884f443667e64764f3fc3948f8f11abbb8) with changes kept to the minimum.
-// Only the HTTP handler functions are copied to allow for flow-specific server configuration and lifecycle management.
+// Only the HTTP handler functions are copied to allow for Alloy-specific server configuration and lifecycle management.
 func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	logger := util_log.WithContext(r.Context(), util_log.Logger)
 	userID, _ := tenant.TenantID(r.Context())
@@ -209,7 +209,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 }
 
 // NOTE: This code is copied from Promtail (https://github.com/grafana/loki/commit/47e2c5884f443667e64764f3fc3948f8f11abbb8) with changes kept to the minimum.
-// Only the HTTP handler functions are copied to allow for flow-specific server configuration and lifecycle management.
+// Only the HTTP handler functions are copied to allow for Alloy-specific server configuration and lifecycle management.
 func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) {
 	entries := s.handler.Chan()
 	defer r.Body.Close()
@@ -245,7 +245,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 }
 
 // NOTE: This code is copied from Promtail (https://github.com/grafana/loki/commit/47e2c5884f443667e64764f3fc3948f8f11abbb8) with changes kept to the minimum.
-// Only the HTTP handler functions are copied to allow for flow-specific server configuration and lifecycle management.
+// Only the HTTP handler functions are copied to allow for Alloy-specific server configuration and lifecycle management.
 func (s *PushAPIServer) ready(w http.ResponseWriter, r *http.Request) {
 	resp := "ready"
 	if _, err := w.Write([]byte(resp)); err != nil {

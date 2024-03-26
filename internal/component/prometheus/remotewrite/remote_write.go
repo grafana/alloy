@@ -105,7 +105,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		// they are responsible for generating ref IDs. This means two
 		// remote_writes may return the same ref ID for two different series. We
 		// treat the remote_write ID as a "local ID" and translate it to a "global
-		// ID" to ensure Flow compatibility.
+		// ID" to ensure Alloy compatibility.
 
 		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			if res.exited.Load() {

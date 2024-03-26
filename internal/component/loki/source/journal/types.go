@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 )
 
 // Arguments are the arguments for the component.
@@ -12,7 +12,7 @@ type Arguments struct {
 	FormatAsJson bool                `alloy:"format_as_json,attr,optional"`
 	MaxAge       time.Duration       `alloy:"max_age,attr,optional"`
 	Path         string              `alloy:"path,attr,optional"`
-	RelabelRules flow_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
+	RelabelRules alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 	Matches      string              `alloy:"matches,attr,optional"`
 	Receivers    []loki.LogsReceiver `alloy:"forward_to,attr"`
 	Labels       map[string]string   `alloy:"labels,attr,optional"`

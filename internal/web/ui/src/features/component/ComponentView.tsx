@@ -95,7 +95,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
         </h1>
 
         <div className={styles.docsLink}>
-          <a href={`https://grafana.com/docs/agent/latest/flow/reference/components/${props.component.name}`}>
+          <a href={`https://grafana.com/docs/alloy/latest/reference/components/${props.component.name}`}>
             Documentation <FontAwesomeIcon icon={faLink} />
           </a>
         </div>

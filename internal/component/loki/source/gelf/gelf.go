@@ -6,7 +6,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/gelf/internal/target"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
@@ -78,7 +78,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	var rcs []*relabel.Config
 	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
-		rcs = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
 	t, err := target.NewTarget(c.metrics, c.o.Logger, c.handler, rcs, convertConfig(newArgs))
@@ -94,7 +94,7 @@ type Arguments struct {
 	// ListenAddress only supports UDP.
 	ListenAddress        string              `alloy:"listen_address,attr,optional"`
 	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
-	RelabelRules         flow_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
+	RelabelRules         alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 	Receivers            []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
 

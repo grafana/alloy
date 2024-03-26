@@ -66,12 +66,14 @@ func (p watcherClientPair) Stop(drain bool) {
 	p.client.Stop()
 }
 
-// Manager manages remote write client instantiation, and connects the related components to orchestrate the flow of loki.Entry
-// from the scrape targets, to the remote write clients themselves.
+// Manager manages remote write client instantiation, and connects the related
+// components to orchestrate the flow of loki.Entry from the scrape targets, to
+// the remote write clients themselves.
 //
-// Right now it just supports instantiating the WAL writer side of the future-to-be WAL enabled client. In follow-up
-// work, tracked in https://github.com/grafana/loki/issues/8197, this Manager will be responsible for instantiating all client
-// types: Logger, Multi and WAL.
+// Right now it just supports instantiating the WAL writer side of the
+// future-to-be WAL enabled client. In follow-up work, tracked in
+// https://github.com/grafana/loki/issues/8197, this Manager will be
+// responsible for instantiating all client types: Logger, Multi and WAL.
 type Manager struct {
 	name string
 

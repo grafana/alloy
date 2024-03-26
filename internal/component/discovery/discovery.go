@@ -21,7 +21,7 @@ import (
 type Target map[string]string
 
 // DistributedTargets uses the node's Lookup method to distribute discovery
-// targets when a Flow component runs in a cluster.
+// targets when a component runs in a cluster.
 type DistributedTargets struct {
 	useClustering bool
 	cluster       cluster.Cluster

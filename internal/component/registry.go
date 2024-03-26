@@ -80,7 +80,7 @@ type Options struct {
 	DataPath string
 
 	// OnStateChange may be invoked at any time by a component whose Export value
-	// changes. The Flow controller then will queue re-processing components
+	// changes. The Alloy controller then will queue re-processing components
 	// which depend on the changed component.
 	//
 	// OnStateChange will panic if e does not match the Exports type registered

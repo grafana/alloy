@@ -18,7 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_config "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -59,7 +59,7 @@ func (r *receiver) run(ctx context.Context) {
 func TestComponent(t *testing.T) {
 	opts := component.Options{
 		ID:            "loki.source.awsfirehose",
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -137,7 +137,7 @@ func TestComponent(t *testing.T) {
 func TestComponent_UpdateWithNewArguments(t *testing.T) {
 	opts := component.Options{
 		ID:            "loki.source.awsfirehose",
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -169,13 +169,13 @@ func TestComponent_UpdateWithNewArguments(t *testing.T) {
 		GRPC: &fnet.GRPCConfig{ListenPort: 0},
 	}
 	args.ForwardTo = []loki.LogsReceiver{ch1}
-	args.RelabelRules = flow_relabel.Rules{
+	args.RelabelRules = alloy_config.Rules{
 		{
 			SourceLabels: []string{"__aws_firehose_source_arn"},
-			Regex:        flow_relabel.Regexp{Regexp: regexp.MustCompile("(.*)")},
+			Regex:        alloy_config.Regexp{Regexp: regexp.MustCompile("(.*)")},
 			Replacement:  "$1",
 			TargetLabel:  "source_arn",
-			Action:       flow_relabel.Replace,
+			Action:       alloy_config.Replace,
 		},
 	}
 

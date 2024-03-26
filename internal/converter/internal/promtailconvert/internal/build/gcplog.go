@@ -30,9 +30,9 @@ func (s *ScrapeConfigBuilder) AppendGCPLog() {
 		}
 	case "push":
 		s.diags.AddAll(common.ValidateWeaveWorksServerCfg(cfg.Server))
-		flowServer := common.WeaveWorksServerToFlowServer(cfg.Server)
+		alloyServer := common.WeaveworksServerToAlloyServer(cfg.Server)
 		pushConfig = &gcptypes.PushConfig{
-			Server:               flowServer,
+			Server:               alloyServer,
 			PushTimeout:          cfg.PushTimeout,
 			Labels:               convertPromLabels(cfg.Labels),
 			UseIncomingTimestamp: cfg.UseIncomingTimestamp,

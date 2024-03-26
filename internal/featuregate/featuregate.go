@@ -1,5 +1,5 @@
 // Package featuregate provides a way to gate features in the collector based on different options, such as the
-// feature's stability level and user-defined minimum allowed stability level. This package is used by Flow Mode only.
+// feature's stability level and user-defined minimum allowed stability level.
 package featuregate
 
 import (

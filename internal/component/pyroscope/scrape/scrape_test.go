@@ -29,7 +29,7 @@ func TestComponent(t *testing.T) {
 	arg := NewDefaultArguments()
 	arg.JobName = "test"
 	c, err := New(component.Options{
-		Logger:         util.TestFlowLogger(t),
+		Logger:         util.TestAlloyLogger(t),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
@@ -209,7 +209,7 @@ func TestUpdateWhileScraping(t *testing.T) {
 	args.ScrapeInterval = 1 * time.Second
 
 	c, err := New(component.Options{
-		Logger:         util.TestFlowLogger(t),
+		Logger:         util.TestAlloyLogger(t),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,

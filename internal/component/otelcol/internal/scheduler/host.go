@@ -8,7 +8,7 @@ import (
 	otelextension "go.opentelemetry.io/collector/extension"
 )
 
-// Host implements otelcomponent.Host for Grafana Agent Flow.
+// Host implements otelcomponent.Host for Grafana Alloy.
 type Host struct {
 	log log.Logger
 

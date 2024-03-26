@@ -29,7 +29,7 @@ func (spanmetricsConnectorConverter) InputComponentName() string {
 func (spanmetricsConnectorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toSpanmetricsConnector(state, id, cfg.(*spanmetricsconnector.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "connector", "spanmetrics"}, label, args)

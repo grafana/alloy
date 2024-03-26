@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/aws_firehose/internal"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -38,7 +38,7 @@ type Arguments struct {
 	AccessKey            alloytypes.Secret   `alloy:"access_key,attr,optional"`
 	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
 	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
-	RelabelRules         flow_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
+	RelabelRules         alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
 // SetToDefault implements river.Defaulter.
@@ -129,7 +129,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// then, if the relabel rules changed
 	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
 		handlerNeedsUpdate = true
-		newRelabels = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		newRelabels = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	} else if c.rbs != nil && len(c.rbs) > 0 && (newArgs.RelabelRules == nil || len(newArgs.RelabelRules) == 0) {
 		// nil out relabel rules if they need to be cleared
 		handlerNeedsUpdate = true

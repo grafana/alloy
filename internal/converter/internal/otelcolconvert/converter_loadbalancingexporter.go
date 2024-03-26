@@ -31,7 +31,7 @@ func (loadbalancingExporterConverter) InputComponentName() string {
 func (loadbalancingExporterConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case auth.Handler:

@@ -42,7 +42,7 @@ var testTimestampLogLineWithMissingKey = `
 `
 
 func TestTimestampPipeline(t *testing.T) {
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	pl, err := NewPipeline(logger, loadConfig(testTimestampRiver), nil, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
 
@@ -287,7 +287,7 @@ func TestTimestampStage_Process(t *testing.T) {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			st, err := newTimestampStage(logger, test.config)
 			require.NoError(t, err)
 
@@ -428,7 +428,7 @@ func TestTimestampStage_ProcessActionOnFailure(t *testing.T) {
 			// Ensure the test has been correctly set
 			require.Equal(t, len(testData.inputEntries), len(testData.expectedTimestamps))
 
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			s, err := newTimestampStage(logger, testData.config)
 			require.NoError(t, err)
 

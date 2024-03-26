@@ -75,7 +75,7 @@ func getEndpointOptions(remoteWriteConfigs []*prom_config.RemoteWriteConfig) []*
 			HTTPClientConfig:     common.ToHttpClientConfig(&remoteWriteConfig.HTTPClientConfig),
 			QueueOptions:         toQueueOptions(&remoteWriteConfig.QueueConfig),
 			MetadataOptions:      toMetadataOptions(&remoteWriteConfig.MetadataConfig),
-			WriteRelabelConfigs:  ToFlowRelabelConfigs(remoteWriteConfig.WriteRelabelConfigs),
+			WriteRelabelConfigs:  ToAlloyRelabelConfigs(remoteWriteConfig.WriteRelabelConfigs),
 			SigV4:                toSigV4(remoteWriteConfig.SigV4Config),
 			AzureAD:              toAzureAD(remoteWriteConfig.AzureADConfig),
 		}

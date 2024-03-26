@@ -8,8 +8,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/featuregate"
-	agent_service "github.com/grafana/alloy/internal/service"
-	flow_service "github.com/grafana/alloy/internal/service"
+	alloy_service "github.com/grafana/alloy/internal/service"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
@@ -36,7 +35,7 @@ type staleMarker struct {
 
 type Arguments struct{}
 
-var _ flow_service.Service = (*service)(nil)
+var _ alloy_service.Service = (*service)(nil)
 
 func New(l log.Logger, r prometheus.Registerer) *service {
 	if l == nil {
@@ -63,8 +62,8 @@ func New(l log.Logger, r prometheus.Registerer) *service {
 // Definition returns the Definition of the Service.
 // Definition must always return the same value across all
 // calls.
-func (s *service) Definition() agent_service.Definition {
-	return agent_service.Definition{
+func (s *service) Definition() alloy_service.Definition {
+	return alloy_service.Definition{
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  nil,
@@ -90,7 +89,7 @@ func (s *service) Collect(m chan<- prometheus.Metric) {
 // Run starts a Service. Run must block until the provided
 // context is canceled. Returning an error should be treated
 // as a fatal error for the Service.
-func (s *service) Run(ctx context.Context, host agent_service.Host) error {
+func (s *service) Run(ctx context.Context, host alloy_service.Host) error {
 	staleCheck := time.NewTicker(10 * time.Minute)
 	for {
 		select {

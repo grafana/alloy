@@ -26,7 +26,7 @@ func (basicAuthConverterConverter) InputComponentName() string { return "otelcol
 func (basicAuthConverterConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toBasicAuthExtension(cfg.(*basicauthextension.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "auth", "basic"}, label, args)

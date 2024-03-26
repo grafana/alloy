@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/azure_event_hubs/internal/parser"
 	kt "github.com/grafana/alloy/internal/component/loki/source/internal/kafkatarget"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -38,12 +38,12 @@ type Arguments struct {
 
 	Authentication AzureEventHubsAuthentication `alloy:"authentication,block"`
 
-	GroupID                string             `alloy:"group_id,attr,optional"`
-	UseIncomingTimestamp   bool               `alloy:"use_incoming_timestamp,attr,optional"`
-	DisallowCustomMessages bool               `alloy:"disallow_custom_messages,attr,optional"`
-	RelabelRules           flow_relabel.Rules `alloy:"relabel_rules,attr,optional"`
-	Labels                 map[string]string  `alloy:"labels,attr,optional"`
-	Assignor               string             `alloy:"assignor,attr,optional"`
+	GroupID                string              `alloy:"group_id,attr,optional"`
+	UseIncomingTimestamp   bool                `alloy:"use_incoming_timestamp,attr,optional"`
+	DisallowCustomMessages bool                `alloy:"disallow_custom_messages,attr,optional"`
+	RelabelRules           alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
+	Labels                 map[string]string   `alloy:"labels,attr,optional"`
+	Assignor               string              `alloy:"assignor,attr,optional"`
 
 	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
@@ -163,7 +163,7 @@ func (a *Arguments) Convert() (kt.Config, error) {
 	}
 
 	cfg := kt.Config{
-		RelabelConfigs: flow_relabel.ComponentToPromRelabelConfigs(a.RelabelRules),
+		RelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(a.RelabelRules),
 		KafkaConfig: kt.TargetConfig{
 			Brokers:              []string{a.FullyQualifiedNamespace},
 			Topics:               a.EventHubs,

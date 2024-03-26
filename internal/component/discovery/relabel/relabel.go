@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/prometheus/model/labels"
@@ -31,13 +31,13 @@ type Arguments struct {
 	Targets []discovery.Target `alloy:"targets,attr"`
 
 	// The relabelling rules to apply to each target's label set.
-	RelabelConfigs []*flow_relabel.Config `alloy:"rule,block,optional"`
+	RelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 }
 
 // Exports holds values which are exported by the discovery.relabel component.
 type Exports struct {
-	Output []discovery.Target `alloy:"output,attr"`
-	Rules  flow_relabel.Rules `alloy:"rules,attr"`
+	Output []discovery.Target  `alloy:"output,attr"`
+	Rules  alloy_relabel.Rules `alloy:"rules,attr"`
 }
 
 // Component implements the discovery.relabel component.
@@ -76,7 +76,7 @@ func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
 	targets := make([]discovery.Target, 0, len(newArgs.Targets))
-	relabelConfigs := flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
+	relabelConfigs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
 	c.rcs = relabelConfigs
 
 	for _, t := range newArgs.Targets {

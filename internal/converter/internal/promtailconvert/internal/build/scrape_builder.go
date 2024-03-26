@@ -102,7 +102,7 @@ func (s *ScrapeConfigBuilder) getOrNewLokiRelabel() string {
 	if s.lokiRelabelReceiverExpr == "" {
 		args := lokirelabel.Arguments{
 			ForwardTo:      s.getOrNewProcessStageReceivers(),
-			RelabelConfigs: component.ToFlowRelabelConfigs(s.cfg.RelabelConfigs),
+			RelabelConfigs: component.ToAlloyRelabelConfigs(s.cfg.RelabelConfigs),
 			// max_cache_size doesnt exist in static, and we need to manually set it to default.
 			// Since the default is 10_000 if we didnt set the value, it would compare the default 10k to 0 and emit 0.
 			// We actually dont want to emit anything since this setting doesnt exist in static, setting to 10k matches the default
@@ -125,15 +125,15 @@ func (s *ScrapeConfigBuilder) getOrNewProcessStageReceivers() []loki.LogsReceive
 		return s.processStageReceivers
 	}
 
-	flowStages := make([]stages.StageConfig, len(s.cfg.PipelineStages))
+	alloyStages := make([]stages.StageConfig, len(s.cfg.PipelineStages))
 	for i, ps := range s.cfg.PipelineStages {
 		if fs, ok := convertStage(ps, s.diags); ok {
-			flowStages[i] = fs
+			alloyStages[i] = fs
 		}
 	}
 	args := process.Arguments{
 		ForwardTo: s.globalCtx.WriteReceivers,
-		Stages:    flowStages,
+		Stages:    alloyStages,
 	}
 	compLabel := common.LabelForParts(s.globalCtx.LabelPrefix, s.cfg.JobName)
 	s.f.Body().AppendBlock(common.NewBlockWithOverride([]string{"loki", "process"}, compLabel, args))
@@ -153,7 +153,7 @@ func (s *ScrapeConfigBuilder) appendDiscoveryRelabel() {
 		return
 	}
 
-	relabelConfigs := component.ToFlowRelabelConfigs(s.cfg.RelabelConfigs)
+	relabelConfigs := component.ToAlloyRelabelConfigs(s.cfg.RelabelConfigs)
 	args := relabel.Arguments{
 		RelabelConfigs: relabelConfigs,
 	}

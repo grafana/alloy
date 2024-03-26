@@ -12,7 +12,7 @@ type Consumer interface {
 	otelconsumer.Logs
 }
 
-// ConsumerArguments is a common Arguments type for Flow components which can
+// ConsumerArguments is a common Arguments type for Alloy components which can
 // send data to otelcol consumers.
 //
 // It is expected to use ConsumerArguments as a block within the top-level
@@ -23,7 +23,7 @@ type ConsumerArguments struct {
 	Traces  []Consumer `alloy:"traces,attr,optional"`
 }
 
-// ConsumerExports is a common Exports type for Flow components which are
+// ConsumerExports is a common Exports type for Alloy components which are
 // otelcol processors or otelcol exporters.
 type ConsumerExports struct {
 	Input Consumer `alloy:"input,attr"`

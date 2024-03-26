@@ -1,4 +1,4 @@
-// Package http implements the HTTP service for Flow.
+// Package http implements the HTTP service.
 package http
 
 import (
@@ -384,7 +384,7 @@ func (d Data) HTTPPathForComponent(componentID string) string {
 	return merged
 }
 
-// Component is a Flow component which also contains a custom HTTP handler.
+// Component is a component which also contains a custom HTTP handler.
 type Component interface {
 	component.Component
 

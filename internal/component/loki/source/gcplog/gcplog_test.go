@@ -17,7 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -28,7 +28,7 @@ func TestPull(t *testing.T) {}
 
 func TestPush(t *testing.T) {
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -104,27 +104,27 @@ const testPushPayload = `
 	"subscription": "projects/test-project/subscriptions/test"
 }`
 
-var exportedRules = flow_relabel.Rules{
+var exportedRules = alloy_relabel.Rules{
 	{
 		SourceLabels: []string{"__gcp_message_id"},
 		Regex:        mustNewRegexp("(.*)"),
-		Action:       flow_relabel.Replace,
+		Action:       alloy_relabel.Replace,
 		Replacement:  "$1",
 		TargetLabel:  "message_id",
 	},
 	{
 		SourceLabels: []string{"__gcp_resource_type"},
 		Regex:        mustNewRegexp("(.*)"),
-		Action:       flow_relabel.Replace,
+		Action:       alloy_relabel.Replace,
 		Replacement:  "$1",
 		TargetLabel:  "resource_type",
 	},
 }
 
-func mustNewRegexp(s string) flow_relabel.Regexp {
+func mustNewRegexp(s string) alloy_relabel.Regexp {
 	re, err := regexp.Compile("^(?:" + s + ")$")
 	if err != nil {
 		panic(err)
 	}
-	return flow_relabel.Regexp{Regexp: re}
+	return alloy_relabel.Regexp{Regexp: re}
 }

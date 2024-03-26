@@ -28,7 +28,7 @@ func (memoryLimiterProcessorConverter) InputComponentName() string {
 func (memoryLimiterProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toMemoryLimiterProcessor(state, id, cfg.(*memorylimiterprocessor.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "memory_limiter"}, label, args)

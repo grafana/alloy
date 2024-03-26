@@ -28,7 +28,7 @@ func (loggingExporterConverter) InputComponentName() string {
 func (loggingExporterConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 	args := toOtelcolExporterLogging(cfg.(*loggingexporter.Config))
 	block := common.NewBlockWithOverrideFn([]string{"otelcol", "exporter", "logging"}, label, args, nil)
 

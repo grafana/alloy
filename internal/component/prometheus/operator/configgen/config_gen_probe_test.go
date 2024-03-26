@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/util"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	commonConfig "github.com/prometheus/common/config"
@@ -188,7 +188,7 @@ func TestGenerateProbeConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cg := &ConfigGenerator{
 				Client: &kubernetes.ClientArguments{},
-				AdditionalRelabelConfigs: []*flow_relabel.Config{
+				AdditionalRelabelConfigs: []*alloy_relabel.Config{
 					{TargetLabel: "__meta_foo", Replacement: "bar"},
 				},
 			}

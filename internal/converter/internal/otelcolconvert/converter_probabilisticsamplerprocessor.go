@@ -28,7 +28,7 @@ func (probabilisticSamplerProcessorConverter) InputComponentName() string {
 func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toProbabilisticSamplerProcessor(state, id, cfg.(*probabilisticsamplerprocessor.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "probabilistic_sampler"}, label, args)

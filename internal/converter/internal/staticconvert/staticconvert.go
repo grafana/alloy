@@ -48,7 +48,7 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 
 	var buf bytes.Buffer
 	if _, err := f.WriteTo(&buf); err != nil {
-		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to render Flow config: %s", err.Error()))
+		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to render Alloy config: %s", err.Error()))
 		return nil, diags
 	}
 
@@ -61,10 +61,10 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 	return prettyByte, diags
 }
 
-// AppendAll analyzes the entire static config in memory and transforms it
-// into Flow Arguments. It then appends each argument to the file builder.
-// Exports from other components are correctly referenced to build the Flow
-// pipeline.
+// AppendAll analyzes the entire static config in memory and transforms it into
+// Alloy component Arguments. It then appends each argument to the file
+// builder. Exports from other components are correctly referenced to build the
+// Alloy pipeline.
 func AppendAll(f *builder.File, staticConfig *config.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 

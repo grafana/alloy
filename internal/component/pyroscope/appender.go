@@ -31,7 +31,7 @@ type RawSample struct {
 
 var _ Appendable = (*Fanout)(nil)
 
-// Fanout supports the default Flow style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
+// Fanout supports the default Alloy style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
 type Fanout struct {
 	mut sync.RWMutex
 	// children is where to fan out.

@@ -29,7 +29,7 @@ func (kafkaReceiverConverter) InputComponentName() string { return "" }
 func (kafkaReceiverConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toKafkaReceiver(state, id, cfg.(*kafkareceiver.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "kafka"}, label, args)
@@ -183,8 +183,8 @@ func toKafkaMessageMarking(cfg kafkareceiver.MessageMarking) kafka.MessageMarkin
 
 func toKafkaHeaderExtraction(cfg kafkareceiver.HeaderExtraction) kafka.HeaderExtraction {
 	// If cfg.Headers is nil, we set it to an empty slice to align with
-	// the default of the Flow component; if this isn't done than default headers
-	// will be explicitly set as `[]` in the generated Flow configuration file, which
+	// the default of the Alloy component; if this isn't done than default headers
+	// will be explicitly set as `[]` in the generated Alloy configuration file, which
 	// may confuse users.
 	if cfg.Headers == nil {
 		cfg.Headers = []string{}

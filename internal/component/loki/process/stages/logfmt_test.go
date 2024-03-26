@@ -128,7 +128,7 @@ var testLogfmtLogFixture = `
 
 func TestLogfmtParser_Parse(t *testing.T) {
 	t.Parallel()
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	tests := map[string]struct {
 		config          LogfmtConfig
 		extracted       map[string]interface{}

@@ -28,7 +28,7 @@ func (filterProcessorConverter) InputComponentName() string {
 func (filterProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toFilterProcessor(state, id, cfg.(*filterprocessor.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "filter"}, label, args)

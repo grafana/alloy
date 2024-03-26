@@ -48,8 +48,8 @@ type Source struct {
 	// ReloadInterval determines the periodicity to refresh the strategies
 	ReloadInterval time.Duration `mapstructure:"reload_interval"`
 
-	// Contents is a field added for the Grafana Agent that allows dynamic mapping of sampling rules
-	//  through flow
+	// Contents is a field added for Alloy that allows dynamic mapping of
+	// sampling rules.
 	Contents string `mapstructure:"contents"`
 }
 

@@ -115,9 +115,9 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}()
 
 	// Start prometheus scrape manager.
-	flowAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
+	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
 	opts := &scrape.Options{}
-	c.scrapeManager = scrape.NewManager(opts, c.logger, flowAppendable)
+	c.scrapeManager = scrape.NewManager(opts, c.logger, alloyAppendable)
 	defer c.scrapeManager.Stop()
 	targetSetsChan := make(chan map[string][]*targetgroup.Group)
 	go func() {

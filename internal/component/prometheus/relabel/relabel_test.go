@@ -10,7 +10,7 @@ import (
 
 	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
@@ -45,7 +45,7 @@ func TestUpdateReset(t *testing.T) {
 	require.True(t, relabeller.cache.Len() == 1)
 	_ = relabeller.Update(Arguments{
 		CacheSize:            100000,
-		MetricRelabelConfigs: []*flow_relabel.Config{},
+		MetricRelabelConfigs: []*alloy_relabel.Config{},
 	})
 	require.True(t, relabeller.cache.Len() == 0)
 }
@@ -68,7 +68,7 @@ func TestNil(t *testing.T) {
 	}))
 	relabeller, err := New(component.Options{
 		ID:            "1",
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		OnStateChange: func(e component.Exports) {},
 		Registerer:    prom.NewRegistry(),
 		GetServiceData: func(name string) (interface{}, error) {
@@ -76,10 +76,10 @@ func TestNil(t *testing.T) {
 		},
 	}, Arguments{
 		ForwardTo: []storage.Appendable{fanout},
-		MetricRelabelConfigs: []*flow_relabel.Config{
+		MetricRelabelConfigs: []*alloy_relabel.Config{
 			{
 				SourceLabels: []string{"__address__"},
-				Regex:        flow_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
+				Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
 				Action:       "drop",
 			},
 		},
@@ -120,7 +120,7 @@ func BenchmarkCache(b *testing.B) {
 	var entry storage.Appendable
 	_, _ = New(component.Options{
 		ID:     "1",
-		Logger: util.TestFlowLogger(b),
+		Logger: util.TestAlloyLogger(b),
 		OnStateChange: func(e component.Exports) {
 			newE := e.(Exports)
 			entry = newE.Receiver
@@ -128,10 +128,10 @@ func BenchmarkCache(b *testing.B) {
 		Registerer: prom.NewRegistry(),
 	}, Arguments{
 		ForwardTo: []storage.Appendable{fanout},
-		MetricRelabelConfigs: []*flow_relabel.Config{
+		MetricRelabelConfigs: []*alloy_relabel.Config{
 			{
 				SourceLabels: []string{"__address__"},
-				Regex:        flow_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
+				Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
 				TargetLabel:  "new_label",
 				Replacement:  "new_value",
 				Action:       "replace",
@@ -155,7 +155,7 @@ func generateRelabel(t *testing.T) *Component {
 	}))
 	relabeller, err := New(component.Options{
 		ID:            "1",
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		OnStateChange: func(e component.Exports) {},
 		Registerer:    prom.NewRegistry(),
 		GetServiceData: func(name string) (interface{}, error) {
@@ -163,10 +163,10 @@ func generateRelabel(t *testing.T) *Component {
 		},
 	}, Arguments{
 		ForwardTo: []storage.Appendable{fanout},
-		MetricRelabelConfigs: []*flow_relabel.Config{
+		MetricRelabelConfigs: []*alloy_relabel.Config{
 			{
 				SourceLabels: []string{"__address__"},
-				Regex:        flow_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
+				Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
 				TargetLabel:  "new_label",
 				Replacement:  "new_value",
 				Action:       "replace",
@@ -220,8 +220,8 @@ func TestRuleGetter(t *testing.T) {
 	require.Len(t, gotOriginal, 1)
 	require.Len(t, gotUpdated, 1)
 
-	require.Equal(t, gotOriginal[0].Action, flow_relabel.Keep)
-	require.Equal(t, gotUpdated[0].Action, flow_relabel.Drop)
+	require.Equal(t, gotOriginal[0].Action, alloy_relabel.Keep)
+	require.Equal(t, gotUpdated[0].Action, alloy_relabel.Drop)
 	require.Equal(t, gotUpdated[0].SourceLabels, gotOriginal[0].SourceLabels)
 	require.Equal(t, gotUpdated[0].Regex, gotOriginal[0].Regex)
 }

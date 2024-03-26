@@ -1,5 +1,5 @@
-// Package cluster implements the cluster service for Flow, where multiple
-// instances of Flow connect to each other for work distribution.
+// Package cluster implements the cluster service, where multiple instances of
+// Alloy connect to each other for work distribution.
 package cluster
 
 import (
@@ -55,7 +55,7 @@ type Options struct {
 	Tracer  trace.TracerProvider  // Where to send traces.
 
 	// EnableClustering toggles clustering as a whole. When EnableClustering is
-	// false, the instance of Flow acts as a single-node cluster and it is not
+	// false, the instance of Alloy acts as a single-node cluster and it is not
 	// possible for other nodes to join the cluster.
 	EnableClustering bool
 
@@ -347,7 +347,7 @@ func (s *Service) Data() any {
 	return &sharderCluster{sharder: s.sharder}
 }
 
-// Component is a Flow component which subscribes to clustering updates.
+// Component is a component which subscribes to clustering updates.
 type Component interface {
 	component.Component
 

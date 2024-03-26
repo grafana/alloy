@@ -43,7 +43,7 @@ var testOutputLogLineWithMissingKey = `
 `
 
 func TestPipeline_Output(t *testing.T) {
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	pl, err := NewPipeline(logger, loadConfig(testOutputRiver), nil, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
 

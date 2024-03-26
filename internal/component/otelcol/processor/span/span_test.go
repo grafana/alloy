@@ -16,12 +16,12 @@ import (
 
 func TestArguments_UnmarshalRiver(t *testing.T) {
 	tests := []struct {
-		flowCfg              string
+		alloyCfg             string
 		otelCfg              map[string]interface{}
 		expectUnmarshalError bool
 	}{
 		{
-			flowCfg: `
+			alloyCfg: `
 			name {
 				separator    = "::"
 				from_attributes  = ["db.svc", "operation", "id"]
@@ -37,7 +37,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 			},
 		},
 		{
-			flowCfg: `
+			alloyCfg: `
 			name {
 				from_attributes  = ["db.svc", "operation", "id"]
 			}
@@ -51,7 +51,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 			},
 		},
 		{
-			flowCfg: `
+			alloyCfg: `
 			name {
 				to_attributes {
 					rules = ["^\\/api\\/v1\\/document\\/(?P<documentId>.*)\\/update$"]
@@ -69,7 +69,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 			},
 		},
 		{
-			flowCfg: `
+			alloyCfg: `
 			include {
 				match_type = "regexp"
 				services   = ["banks"]
@@ -105,7 +105,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 			},
 		},
 		{
-			flowCfg: `
+			alloyCfg: `
 			status {
 				code  =  "Error"
 				description = "some additional error description"
@@ -121,7 +121,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 			},
 		},
 		{
-			flowCfg: `
+			alloyCfg: `
 			include {
 				match_type = "strict"
 				attribute {
@@ -154,7 +154,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 
 	for _, tc := range tests {
 		var args span.Arguments
-		err := syntax.Unmarshal([]byte(tc.flowCfg), &args)
+		err := syntax.Unmarshal([]byte(tc.alloyCfg), &args)
 
 		if tc.expectUnmarshalError {
 			require.Error(t, err)

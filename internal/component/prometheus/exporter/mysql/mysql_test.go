@@ -152,7 +152,7 @@ func TestRiverConfigConvert(t *testing.T) {
 	require.False(t, c.MySQLUserPrivileges)
 }
 
-// Checks that the flow and static default configs have not drifted
+// Checks that the configs have not drifted between Grafana Agent static mode and Alloy.
 func TestDefaultsSame(t *testing.T) {
 	convertedDefaults := DefaultArguments.Convert()
 	require.Equal(t, mysqld_exporter.DefaultConfig, *convertedDefaults)

@@ -8,7 +8,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promConfig "github.com/prometheus/common/config"
@@ -22,7 +22,7 @@ import (
 var (
 	configGen = &ConfigGenerator{
 		Secrets: &fakeSecrets{},
-		AdditionalRelabelConfigs: []*flow_relabel.Config{
+		AdditionalRelabelConfigs: []*alloy_relabel.Config{
 			{TargetLabel: "__meta_foo", Replacement: "bar"},
 		},
 	}

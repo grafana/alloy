@@ -28,7 +28,7 @@ func (batchProcessorConverter) InputComponentName() string {
 func (batchProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toBatchProcessor(state, id, cfg.(*batchprocessor.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "batch"}, label, args)

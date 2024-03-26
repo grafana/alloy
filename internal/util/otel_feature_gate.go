@@ -10,19 +10,19 @@ import (
 var (
 	// Enable the "telemetry.useOtelForInternalMetrics" Collector feature gate.
 	// Currently, Collector components uses OpenCensus metrics by default.
-	// Those metrics cannot be integrated with Agent Flow,
-	// so we need to always use OpenTelemetry metrics.
+	// Those metrics cannot be integrated with Alloy, so we need to always use
+	// OpenTelemetry metrics.
 	//
 	// TODO: Remove "telemetry.useOtelForInternalMetrics" when Collector components
 	//       use OpenTelemetry metrics by default.
-	flowModeOtelFeatureGates = []string{
+	otelFeatureGates = []string{
 		"telemetry.useOtelForInternalMetrics",
 	}
 )
 
-// Enables a set of feature gates which should always be enabled for Flow mode.
-func SetupFlowModeOtelFeatureGates() error {
-	return EnableOtelFeatureGates(flowModeOtelFeatureGates...)
+// Enables a set of feature gates which should always be enabled in Alloy.
+func SetupOtelFeatureGates() error {
+	return EnableOtelFeatureGates(otelFeatureGates...)
 }
 
 // Enables a set of feature gates in Otel's Global Feature Gate Registry.

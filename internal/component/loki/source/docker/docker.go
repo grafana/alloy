@@ -20,7 +20,7 @@ import (
 	types "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
 	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -57,7 +57,7 @@ type Arguments struct {
 	Targets          []discovery.Target      `alloy:"targets,attr"`
 	ForwardTo        []loki.LogsReceiver     `alloy:"forward_to,attr"`
 	Labels           map[string]string       `alloy:"labels,attr,optional"`
-	RelabelRules     flow_relabel.Rules      `alloy:"relabel_rules,attr,optional"`
+	RelabelRules     alloy_relabel.Rules     `alloy:"relabel_rules,attr,optional"`
 	HTTPClientConfig *types.HTTPClientConfig `alloy:"http_client_config,block,optional"`
 	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
 }
@@ -210,7 +210,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.defaultLabels = defaultLabels
 
 	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
-		c.rcs = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		c.rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	} else {
 		c.rcs = []*relabel.Config{}
 	}

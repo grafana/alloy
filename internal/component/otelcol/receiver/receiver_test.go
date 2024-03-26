@@ -38,7 +38,7 @@ func TestReceiver(t *testing.T) {
 		}
 	)
 
-	// Create and start our Flow component. We then wait for it to export a
+	// Create and start our Alloy component. We then wait for it to export a
 	// consumer that we can send data to.
 	te := newTestEnvironment(t, onTracesConsumer)
 	te.Start(fakeReceiverArgs{

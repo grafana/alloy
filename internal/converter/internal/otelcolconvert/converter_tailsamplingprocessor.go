@@ -29,7 +29,7 @@ func (tailSamplingProcessorConverter) InputComponentName() string {
 func (tailSamplingProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toTailSamplingProcessor(state, id, cfg.(*tailsamplingprocessor.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "tail_sampling"}, label, args)

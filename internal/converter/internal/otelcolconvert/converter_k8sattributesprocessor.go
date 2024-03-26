@@ -28,7 +28,7 @@ func (k8sAttributesProcessorConverter) InputComponentName() string {
 func (k8sAttributesProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toK8SAttributesProcessor(state, id, cfg.(*k8sattributesprocessor.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "k8sattributes"}, label, args)

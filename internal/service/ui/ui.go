@@ -75,7 +75,7 @@ func (s *Service) Data() any {
 func (s *Service) ServiceHandler(host service.Host) (base string, handler http.Handler) {
 	r := mux.NewRouter()
 
-	fa := api.NewFlowAPI(host)
+	fa := api.NewAlloyAPI(host)
 	fa.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), r)
 	ui.RegisterRoutes(s.opts.UIPrefix, r)
 

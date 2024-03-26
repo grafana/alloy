@@ -16,8 +16,8 @@ import (
 )
 
 // Scheduler implements manages a set of OpenTelemetry Collector components.
-// Scheduler is intended to be used from Flow components which need to schedule
-// OpenTelemetry Collector components; it does not implement the full
+// Scheduler is intended to be used from Alloy components which need to
+// schedule OpenTelemetry Collector components; it does not implement the full
 // component.Component interface.
 //
 // Each OpenTelemetry Collector component has one instance per supported

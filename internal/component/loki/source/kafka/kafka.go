@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	flow_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	kt "github.com/grafana/alloy/internal/component/loki/source/internal/kafkatarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -42,7 +42,7 @@ type Arguments struct {
 	Labels               map[string]string   `alloy:"labels,attr,optional"`
 
 	ForwardTo    []loki.LogsReceiver `alloy:"forward_to,attr"`
-	RelabelRules flow_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
+	RelabelRules alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
 // KafkaAuthentication describe the configuration for authentication with Kafka brokers
@@ -190,7 +190,7 @@ func (args *Arguments) Convert() kt.Config {
 			Assignor:             args.Assignor,
 			Authentication:       args.Authentication.Convert(),
 		},
-		RelabelConfigs: flow_relabel.ComponentToPromRelabelConfigs(args.RelabelRules),
+		RelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(args.RelabelRules),
 	}
 }
 

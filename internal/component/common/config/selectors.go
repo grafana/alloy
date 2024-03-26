@@ -12,7 +12,7 @@ type LabelSelector struct {
 	MatchExpressions []MatchExpression `alloy:"match_expression,block,optional"`
 }
 
-// BuildSelector builds a [labels.Selector] from a Flow LabelSelector.
+// BuildSelector builds a [labels.Selector] from an Alloy LabelSelector.
 func (ls *LabelSelector) BuildSelector() (labels.Selector, error) {
 	if ls == nil {
 		return metav1.LabelSelectorAsSelector(nil)

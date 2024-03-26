@@ -38,6 +38,6 @@ func toLokiApiArguments(config *scrapeconfig.PushTargetConfig, forwardTo []loki.
 		RelabelRules:         make(relabel.Rules, 0),
 		Labels:               convertPromLabels(config.Labels),
 		UseIncomingTimestamp: config.KeepTimestamp,
-		Server:               common.WeaveWorksServerToFlowServer(config.Server),
+		Server:               common.WeaveworksServerToAlloyServer(config.Server),
 	}
 }
