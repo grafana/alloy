@@ -64,8 +64,6 @@ This conversion will enable you to take full advantage of the many additional fe
    alloy convert --source-format=static --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
-   {{< /code >}}
-
    Replace the following:
 
    * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
