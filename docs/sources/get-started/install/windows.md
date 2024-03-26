@@ -6,7 +6,7 @@ title: Install Grafana Alloy on Windows
 weight: 500
 ---
 
-# Install {{% param "PRODUCT_NAME" %}} on Windows
+# Install {{% param "FULL_PRODUCT_NAME" %}} on Windows
 
 You can install {{< param "PRODUCT_NAME" >}} on Windows as a standard graphical install, or as a silent install.
 
@@ -24,7 +24,7 @@ To do a standard graphical install of {{< param "PRODUCT_NAME" >}} on Windows, p
 
 1. Double-click on `alloy-installer.exe` to install {{< param "PRODUCT_NAME" >}}.
 
-{{< param "PRODUCT_NAME" >}} is installed into the default directory `C:\Program Files\Grafana Alloy`.
+{{< param "PRODUCT_NAME" >}} is installed into the default directory `C:\Program Files\Grafana\Alloy`.
 
 ## Silent install
 
@@ -64,7 +64,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 ## Uninstall
 
-You can uninstall {{< param "PRODUCT_NAME" >}} with Windows Remove Programs or `C:\Program Files\Grafana Alloy\uninstaller.exe`.
+You can uninstall {{< param "PRODUCT_NAME" >}} with Windows Remove Programs or `C:\Program Files\Grafana\Alloy\uninstaller.exe`.
 Uninstalling {{< param "PRODUCT_NAME" >}} stops the service and removes it from disk.
 This includes any configuration files in the installation directory.
 

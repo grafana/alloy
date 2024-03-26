@@ -622,7 +622,7 @@ This problem can be solved by doing **either** of the following:
 
 - **Recommended approach:** Prior to `otelcol.connector.spanmetrics`, remove all resource attributes from the incoming spans which are not needed by `otelcol.connector.spanmetrics`.
 
-  {{< collapse title="Example River configuration to remove unnecessary resource attributes." >}}
+  {{< collapse title="Example configuration to remove unnecessary resource attributes." >}}
   ```river
   otelcol.receiver.otlp "default" {
     http {}
@@ -690,7 +690,7 @@ This has the advantage that the resource attributes will be visible as metric la
 However, the {{< term "cardinality" >}}cardinality{{< /term >}} of the metrics may be much higher, which could increase the cost of storing and querying them.
 The example below uses the [merge_maps][] OTTL function.
 
-  {{< collapse title="Example River configuration to add all resource attributes as metric datapoint attributes." >}}
+  {{< collapse title="Example configuration to add all resource attributes as metric datapoint attributes." >}}
   ```river
   otelcol.receiver.otlp "default" {
     http {}

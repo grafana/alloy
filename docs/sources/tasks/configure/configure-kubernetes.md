@@ -6,7 +6,7 @@ title: Configure Grafana Alloy on Kubernetes
 weight: 200
 ---
 
-# Configure {{% param "PRODUCT_NAME" %}} on Kubernetes
+# Configure {{% param "FULL_PRODUCT_NAME" %}} on Kubernetes
 
 This page describes how to apply a new configuration to {{< param "PRODUCT_NAME" >}} when running on Kubernetes with the Helm chart.
 It assumes that:

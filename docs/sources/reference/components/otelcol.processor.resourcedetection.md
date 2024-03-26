@@ -62,12 +62,12 @@ Name        | Type           | Description                                      
 * `openshift`
 * `kubernetes_node`
 
-`env` is the only detector that is not configured through a River block.
+`env` is the only detector that is not configured through a block.
 The `env` detector reads resource information from the `OTEL_RESOURCE_ATTRIBUTES` environment variable.
 This variable must be in the format `<key1>=<value1>,<key2>=<value2>,...`,
 the details of which are currently pending confirmation in the OpenTelemetry specification.
 
-If a detector other than `env` is needed, you can customize it with the relevant River block.
+If a detector other than `env` is needed, you can customize it with the relevant block.
 For example, you can customize the `ec2` detector with the [ec2][] block.
 If you omit the [ec2][] block, the defaults specified in the [ec2][] block documentation are used.
 
@@ -786,7 +786,7 @@ otelcol.processor.resourcedetection "default" {
 
 ### env and ec2
 
-There is no need to put in an `ec2 {}` River block.
+There is no need to put in an `ec2 {}` block.
 The `ec2` defaults are applied automatically, as specified in [ec2][].
 
 ```river
@@ -803,7 +803,7 @@ otelcol.processor.resourcedetection "default" {
 
 ### ec2 with default resource attributes
 
-There is no need to put in a `ec2 {}` River block.
+There is no need to put in a `ec2 {}` block.
 The `ec2` defaults are applied automatically, as specified in [ec2][].
 
 ```river
@@ -850,7 +850,7 @@ otelcol.processor.resourcedetection "default" {
 
 This example uses the default `node_from_env_var` option of `K8S_NODE_NAME`.
 
-There is no need to put in a `kubernetes_node {}` River block.
+There is no need to put in a `kubernetes_node {}` block.
 The `kubernetes_node` defaults are applied automatically, as specified in [kubernetes_node][].
 
 ```river

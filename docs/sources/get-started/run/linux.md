@@ -6,7 +6,7 @@ title: Run Grafana Alloy on Linux
 weight: 300
 ---
 
-# Run {{% param "PRODUCT_NAME" %}} on Linux
+# Run {{% param "FULL_PRODUCT_NAME" %}} on Linux
 
 {{< param "PRODUCT_NAME" >}} is [installed][InstallLinux] as a [systemd][] service on Linux.
 

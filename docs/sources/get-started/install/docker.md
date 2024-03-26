@@ -6,7 +6,7 @@ title: Run Grafana Alloy in a Docker container
 weight: 100
 ---
 
-# Run {{% param "PRODUCT_NAME" %}} in a Docker container
+# Run {{% param "FULL_PRODUCT_NAME" %}} in a Docker container
 
 {{< param "PRODUCT_NAME" >}} is available as a Docker container image on the following platforms:
 
@@ -16,7 +16,7 @@ weight: 100
 ## Before you begin
 
 * Install [Docker][] on your computer.
-* Create and save a {{< param "PRODUCT_NAME" >}} River configuration file on your computer, for example:
+* Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
 
   ```river
   logging {

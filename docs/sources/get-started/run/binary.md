@@ -6,7 +6,7 @@ title: Run Grafana Alloy as a standalone binary
 weight: 600
 ---
 
-# Run {{% param "PRODUCT_NAME" %}} as a standalone binary
+# Run {{% param "FULL_PRODUCT_NAME" %}} as a standalone binary
 
 If you [downloaded][InstallBinary] the standalone binary, you must run {{< param "PRODUCT_NAME" >}} from a terminal or command window.
 

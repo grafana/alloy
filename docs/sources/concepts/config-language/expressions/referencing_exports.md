@@ -7,7 +7,7 @@ weight: 200
 
 # Referencing component exports
 
-Referencing exports enables River to configure and connect components dynamically using expressions.
+Referencing exports enables {{< param "PRODUCT_NAME" >}} to configure and connect components dynamically using expressions.
 While components can work in isolation, they're more useful when one component's behavior and data flow are bound to the exports of another, building a dependency relationship between the two.
 
 Such references can only appear as part of another component's arguments or a configuration block's fields.
@@ -39,12 +39,12 @@ prometheus.remote_write "onprem" {
 }
 ```
 
-In the preceding example, you wired together a very simple pipeline by writing a few River expressions.
+In the preceding example, you wired together a very simple pipeline by writing a few {{< param "PRODUCT_NAME" >}} expressions.
 
 ![Flow of example pipeline](/media/docs/agent/flow_referencing_exports_diagram.svg)
 
 After the value is resolved, it must match the [type][] of the attribute it is assigned to.
-While you can only configure attributes using the basic River types,
-the exports of components can take on special internal River types, such as Secrets or Capsules, which expose different functionality.
+While you can only configure attributes using the basic {{< param "PRODUCT_NAME" >}} types,
+the exports of components can take on special internal {{< param "PRODUCT_NAME" >}} types, such as Secrets or Capsules, which expose different functionality.
 
 [type]: ../types_and_values/

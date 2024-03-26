@@ -14,7 +14,7 @@ Expressions may also do things like [refer to values][] exported by components, 
 
 You use expressions when you configure any component.
 All component arguments have an underlying [type][].
-River checks the expression type before assigning the result to an attribute.
+{{< param "PRODUCT_NAME" >}} checks the expression type before assigning the result to an attribute.
 
 [refer to values]: ./referencing_exports/
 [call functions]: ./function_calls/

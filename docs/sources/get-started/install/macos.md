@@ -6,7 +6,7 @@ title: Install Grafana Alloy on macOS
 weight: 400
 ---
 
-# Install {{% param "PRODUCT_NAME" %}} on macOS
+# Install {{% param "FULL_PRODUCT_NAME" %}} on macOS
 
 You can install {{< param "PRODUCT_NAME" >}} on macOS with Homebrew .
 

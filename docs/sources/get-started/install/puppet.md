@@ -6,7 +6,7 @@ title: Install Grafana Alloy with Puppet
 weight: 560
 ---
 
-# Install {{% param "PRODUCT_NAME" %}} with Puppet
+# Install {{% param "FULL_PRODUCT_NAME" %}} with Puppet
 
 You can use Puppet to install and manage {{< param "PRODUCT_NAME" >}}.
 

@@ -5,7 +5,7 @@ title: Monitor controller
 weight: 100
 ---
 
-# How to monitor controller
+# Monitor controller
 
 The {{< param "PRODUCT_NAME" >}} [component controller][] exposes Prometheus metrics which you can use to investigate the controller state.
 

@@ -7,7 +7,7 @@ weight: 300
 
 # Collect OpenTelemetry data
 
-{{< param "PRODUCT_NAME" >}} can be configured to collect [OpenTelemetry][]-compatible data and forward it to any OpenTelemetry-compatible endpoint.
+Youc an configure {{< param "PRODUCT_NAME" >}} to collect [OpenTelemetry][]-compatible data and forward it to any OpenTelemetry-compatible endpoint.
 
 This topic describes how to:
 

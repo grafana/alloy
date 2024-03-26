@@ -6,7 +6,7 @@ menuTitle: Debug issues
 weight: 1000
 ---
 
-# Debug {{< param "PRODUCT_NAME" >}}
+# Debug {{< param "FULL_PRODUCT_NAME" >}}
 
 Follow these steps to debug issues with {{< param "PRODUCT_NAME" >}}:
 
@@ -31,7 +31,7 @@ If you are running a custom installation of {{< param "PRODUCT_NAME" >}}, refer 
 
 ### Home page
 
-![](../../assets/ui_home_page.png)
+![](/media/docs/agent/ui_home_page.png)
 
 The home page shows a table of components defined in the configuration file and their health.
 
@@ -41,14 +41,14 @@ Click the {{< param "PRODUCT_NAME" >}} logo to navigate back to the home page.
 
 ### Graph page
 
-![](../../assets/ui_graph_page.png)
+![](/media/docs/agent/ui_graph_page.png)
 
 The **Graph** page shows a graph view of components defined in the configuration file and their health.
 Clicking a component in the graph navigates to the [Component detail page](#component-detail-page) for that component.
 
 ### Component detail page
 
-![](../../assets/ui_component_detail_page.png)
+![](/media/docs/agent/ui_component_detail_page.png)
 
 The component detail page shows the following information for each component:
 
@@ -61,7 +61,7 @@ The component detail page shows the following information for each component:
 
 ### Clustering page
 
-![](../../assets/ui_clustering_page.png)
+![](/media/docs/agent/ui_clustering_page.png)
 
 The clustering page shows the following information for each cluster node:
 

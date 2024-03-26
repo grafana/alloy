@@ -6,7 +6,7 @@ title: Run Grafana Alloy on Windows
 weight: 500
 ---
 
-# Run {{% param "PRODUCT_NAME" %}} on Windows
+# Run {{% param "FULL_PRODUCT_NAME" %}} on Windows
 
 {{< param "PRODUCT_NAME" >}} is [installed][InstallWindows] as a Windows Service.
 The service is configured to automatically run on startup.
@@ -35,7 +35,7 @@ To view the logs, perform the following steps:
 
 1. In the Event Viewer, click on **Windows Logs > Application**.
 
-1. Search for events with the source **{{< param "PRODUCT_NAME" >}}**.
+1. Search for events with the source **{{< param "FULL_PRODUCT_NAME" >}}**.
 
 ## Next steps
 

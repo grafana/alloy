@@ -2,12 +2,12 @@
 canonical: https://grafana.com/docs/alloy/latest/tasks/resource-usage/
 description: Estimate expected Grafana Alloy resource usage
 headless: true
-title: Estimate resource usage
+title: Estimate Grafana Alloy resource usage
 menuTitle: Estimate resource usage
 weight: 190
 ---
 
-# Estimate {{% param "PRODUCT_NAME" %}} resource usage
+# Estimate {{% param "FULL_PRODUCT_NAME" %}} resource usage
 
 This page provides guidance for expected resource usage of {{< param "PRODUCT_NAME" >}} for each telemetry type, based on operational experience of some of the {{< param "PRODUCT_NAME" >}} maintainers.
 

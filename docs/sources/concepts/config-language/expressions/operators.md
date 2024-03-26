@@ -7,7 +7,7 @@ weight: 300
 
 # Operators
 
-River uses a common set of operators.
+The {{< param "PRODUCT_NAME" >}} configuration syntax uses a common set of operators.
 All operations follow the standard [PEMDAS][] order of mathematical operations.
 
 ## Arithmetic operators
@@ -61,7 +61,7 @@ Logical operators apply to boolean values and yield a boolean result.
 
 ## Assignment operator
 
-River uses `=` as its assignment operator.
+The {{< param "PRODUCT_NAME" >}} configuration syntax uses `=` as its assignment operator.
 
 An assignment statement may only assign a single value.
 Each value must be _assignable_ to the attribute or object key.
@@ -94,7 +94,7 @@ Operator | Description
 `[ ]`    | Access a member of an array or object.
 `.`      | Access a named member of an object or an exported field of a component.
 
-You can access arbitrarily nested values with River's access operators.
+You can access arbitrarily nested values with {{< param "PRODUCT_NAME" >}}'s access operators.
 You can use square brackets to access zero-indexed array indices and object fields by enclosing the field name in double quotes.
 You can use the dot operator to access object fields without double quotes and component exports.
 

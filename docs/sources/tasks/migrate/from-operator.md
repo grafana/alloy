@@ -6,7 +6,7 @@ title: Migrate from Grafana Agent Operator to Grafana Alloy
 weight: 320
 ---
 
-# Migrate from Grafana Agent Operator to {{% param "PRODUCT_NAME" %}}
+# Migrate from Grafana Agent Operator to {{% param "FULL_PRODUCT_NAME" %}}
 
 With the release of {{< param "PRODUCT_NAME" >}}, Grafana Agent Operator is no longer the recommended way to deploy {{< param "PRODUCT_NAME" >}} in Kubernetes.
 Some of the Operator functionality has moved into {{< param "PRODUCT_NAME" >}} itself, and the Helm Chart has replaced the remaining functionality.
@@ -42,7 +42,7 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
     This is one of many deployment possible modes. For example, you may want to use a `DaemonSet` to collect host-level logs or metrics.
     See the {{< param "PRODUCT_NAME" >}} [deployment guide][] for more details about different topologies.
 
-1. Create a {{< param "PRODUCT_NAME" >}} configuration file, `alloy.alloy`.
+1. Create an {{< param "PRODUCT_NAME" >}} configuration file, `alloy.alloy`.
 
     In the next step, you add to this configuration as you convert `MetricsInstances`. You can add any additional configuration to this file as you need.
 
@@ -59,7 +59,7 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
     helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=alloy.alloy
     ```
 
-    This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular River file.
+    This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular {{< param "PRODUCT_NAME" >}} configuration file.
 
 ## Convert `MetricsIntances` to {{% param "PRODUCT_NAME" %}} components
 
@@ -70,7 +70,7 @@ A `MetricsInstance` resource primarily defines:
 
 You can use these functions in {{< param "PRODUCT_NAME" >}} with the `prometheus.remote_write`, `prometheus.operator.podmonitors`, `prometheus.operator.servicemonitors`, and `prometheus.operator.probes` components respectively.
 
-The following River sample is equivalent to the `MetricsInstance` from the [operator guide][].
+The following {{< param "PRODUCT_NAME" >}} syntax sample is equivalent to the `MetricsInstance` from the [operator guide][].
 
 ```river
 

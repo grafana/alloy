@@ -6,10 +6,10 @@ title: Configure Grafana Alloy
 weight: 90
 ---
 
-# Configure {{% param "PRODUCT_NAME" %}}
+# Configure {{% param "FULL_PRODUCT_NAME" %}}
 
 You can configure {{< param "PRODUCT_NAME" >}} after it is [installed][Install].
-The default River configuration file for {{< param "PRODUCT_NAME" >}} is located at:
+The default configuration file for {{< param "PRODUCT_NAME" >}} is located at:
 
 * Linux: `/etc/alloy/config.alloy`
 * macOS: `$(brew --prefix)/etc/alloy/config.alloy`

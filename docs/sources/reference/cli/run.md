@@ -16,7 +16,9 @@ The `run` command runs {{< param "PRODUCT_NAME" >}} in the foreground until an i
 
 Usage:
 
-* `alloy run [FLAG ...] PATH_NAME`
+```shell
+alloy run [FLAG ...] PATH_NAME
+```
 
    Replace the following:
 
@@ -26,7 +28,7 @@ Usage:
 If the `PATH_NAME` argument is not provided, or if the configuration path can't be loaded or contains errors during the initial load, the `run` command will immediately exit and show an error message.
 
 If you give the `PATH_NAME` argument a directory path, {{< param "PRODUCT_NAME" >}} will find `*.alloy` files (ignoring nested directories) and load them as a single configuration source.
-However, component names must be **unique** across all River files, and configuration blocks must not be repeated.
+However, component names must be **unique** across all {{< param "PRODUCT_NAME" >}} configuration files, and configuration blocks must not be repeated.
 
 {{< param "PRODUCT_NAME" >}} will continue to run if subsequent reloads of the configuration file fail, potentially marking components as unhealthy depending on the nature of the failure.
 When this happens, {{< param "PRODUCT_NAME" >}} will continue functioning in the last valid state.
@@ -128,7 +130,7 @@ The current state of a clustered {{< param "PRODUCT_NAME" >}} is shown on the cl
 
 ## Configuration conversion (beta)
 
-When you use the `--config.format` command-line argument with a value other than `alloy`, {{< param "PRODUCT_NAME" >}} converts the configuration file from the source format to River and immediately starts running with the new configuration.
+When you use the `--config.format` command-line argument with a value other than `alloy`, {{< param "PRODUCT_NAME" >}} converts the configuration file from the source format to {{< param "PRODUCT_NAME" >}} and immediately starts running with the new configuration.
 This conversion uses the converter API described in the [alloy convert][] docs.
 
 If you include the `--config.bypass-conversion-errors` command-line argument,

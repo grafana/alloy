@@ -1,13 +1,13 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/concepts/config-language/expressions/types_and_values/
-description: Learn about the River types and values
+description: Learn about the {{< param "PRODUCT_NAME" >}} syntax types and values
 title: Types and values
 weight: 100
 ---
 
 # Types and values
 
-River uses the following types for its values:
+The {{< param "PRODUCT_NAME" >}} syntax uses the following types for its values:
 
 * `number`: Any numeric value, like `3` or `3.14`.
 * `string`: A sequence of Unicode characters representing text, like `"Hello, world!"`.
@@ -42,7 +42,7 @@ In addition to the preceding types, the [component reference][] documentation us
 
 ## Numbers
 
-River handles integers, unsigned integers, and floating-point values as a single 'number' type, simplifying writing and reading River configuration files.
+The {{< param "PRODUCT_NAME" >}} syntax handles integers, unsigned integers, and floating-point values as a single 'number' type, simplifying writing and reading {{< param "PRODUCT_NAME" >}} configuration files.
 
 ```river
 3    == 3.00     // true

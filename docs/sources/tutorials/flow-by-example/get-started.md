@@ -7,17 +7,17 @@ weight: 10
 
 ## Who is this for?
 
-This set of tutorials contains a collection of examples that build on each other to demonstrate how to configure and use [{{< param "PRODUCT_NAME" >}}][alloy]. It assumes you have a basic understanding of what {{< param "PRODUCT_NAME" >}} is and telemetry collection in general. It also assumes a base level of familiarity with Prometheus and PromQL, Loki and LogQL, and basic Grafana navigation. It assumes no knowledge of {{< param "PRODUCT_NAME" >}} or River concepts.
+This set of tutorials contains a collection of examples that build on each other to demonstrate how to configure and use [{{< param "PRODUCT_NAME" >}}][alloy]. It assumes you have a basic understanding of what {{< param "PRODUCT_NAME" >}} is and telemetry collection in general. It also assumes a base level of familiarity with Prometheus and PromQL, Loki and LogQL, and basic Grafana navigation. It assumes no knowledge of the {{< param "PRODUCT_NAME" >}} configuration syntax concepts.
 
 ## What is {{% param "PRODUCT_NAME" %}}?
 
-{{< param "PRODUCT_NAME" >}} uses a declarative configuration language that allows you to define a pipeline of telemetry collection, processing, and output. It is built on top of the [River][] configuration language, which is designed to be fast, simple, and debuggable.
+{{< param "PRODUCT_NAME" >}} uses a declarative configuration language that allows you to define a pipeline of telemetry collection, processing, and output. It is built on top of the [{{< param "PRODUCT_NAME" >}}][river] configuration language, which is designed to be fast, simple, and debuggable.
 
 ## What do I need to get started?
 
 You will need a Linux or Unix environment with Docker installed. The examples are designed to be run on a single host so that you can run them on your laptop or in a VM. You are encouraged to follow along with the examples using a `config.alloy` file and experiment with the examples yourself.
 
-To run the examples, you should have a {{< param "PRODUCT_NAME" >}} binary available. You can follow the instructions on how to [Install {{< param "PRODUCT_NAME" >}} as a Standalone Binary][install] to get a binary.
+To run the examples, you should have an {{< param "PRODUCT_NAME" >}} binary available. You can follow the instructions on how to [Install {{< param "PRODUCT_NAME" >}} as a Standalone Binary][install] to get a binary.
 
 ## How should I follow along?
 
@@ -82,5 +82,5 @@ The tutorials are designed to be followed in order and generally build on each o
 The Recommended Reading sections in each tutorial provide a list of documentation topics. To help you understand the concepts used in the example, read the recommended topics in the order given.
 
 [alloy]: https://grafana.com/docs/alloy/latest/
-[River]: https://github.com/grafana/river
+[river]: https://github.com/grafana/river
 [install]: ../../../get-started/install/binary/#install-alloy-as-a-standalone-binary

@@ -6,13 +6,13 @@ title: Migrate from Prometheus to Grafana Alloy
 weight: 320
 ---
 
-# Migrate from Prometheus to {{% param "PRODUCT_NAME" %}}
+# Migrate from Prometheus to {{% param "FULL_PRODUCT_NAME" %}}
 
-The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Prometheus][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Prometheus][] configuration to an {{< param "PRODUCT_NAME" >}} configuration.
 
 This topic describes how to:
 
-* Convert a Prometheus configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+* Convert a Prometheus configuration to an {{< param "PRODUCT_NAME" >}} configuration.
 * Run a Prometheus configuration natively using {{< param "PRODUCT_NAME" >}}.
 
 ## Components used in this topic
@@ -28,10 +28,10 @@ This topic describes how to:
 
 ## Convert a Prometheus configuration
 
-To fully migrate your configuration from [Prometheus] to {{< param "PRODUCT_NAME" >}}, you must convert your Prometheus configuration into a {{< param "PRODUCT_NAME" >}} configuration.
+To fully migrate your configuration from [Prometheus] to {{< param "PRODUCT_NAME" >}}, you must convert your Prometheus configuration into an {{< param "PRODUCT_NAME" >}} configuration.
 This conversion will enable you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
 
-> In this task, you will use the [convert][] CLI command to output a {{< param "PRODUCT_NAME" >}}
+> In this task, you will use the [convert][] CLI command to output an {{< param "PRODUCT_NAME" >}}
 > configuration from a Prometheus configuration.
 
 1. Open a terminal window and run the following command.
@@ -89,15 +89,15 @@ This conversion will enable you to take full advantage of the many additional fe
 
 ## Run a Prometheus configuration
 
-If you’re not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Prometheus configuration.
-The `--config.format=prometheus` flag tells {{< param "PRODUCT_NAME" >}} to convert your Prometheus configuration to a {{< param "PRODUCT_NAME" >}} configuration and load it directly without saving the new configuration.
+If you’re not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Prometheus configuration.
+The `--config.format=prometheus` flag tells {{< param "PRODUCT_NAME" >}} to convert your Prometheus configuration to an {{< param "PRODUCT_NAME" >}} configuration and load it directly without saving the new configuration.
 This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your existing Prometheus configuration infrastructure.
 
 > In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}}
 > using a Prometheus configuration.
 
 [Run][run alloy] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=prometheus`.
-Your configuration file must be a valid Prometheus configuration file rather than a {{< param "PRODUCT_NAME" >}} configuration file.
+Your configuration file must be a valid Prometheus configuration file rather than an {{< param "PRODUCT_NAME" >}} configuration file.
 
 ### Debugging
 
@@ -115,7 +115,7 @@ Your configuration file must be a valid Prometheus configuration file rather tha
 
 ## Example
 
-This example demonstrates converting a Prometheus configuration file to a {{< param "PRODUCT_NAME" >}} configuration file.
+This example demonstrates converting a Prometheus configuration file to an {{< param "PRODUCT_NAME" >}} configuration file.
 
 The following Prometheus configuration file provides the input for the conversion.
 
@@ -136,7 +136,7 @@ remote_write:
       password: <PASSWORD>
 ```
 
-The convert command takes the YAML file as input and outputs a [River][] file.
+The convert command takes the YAML file as input and outputs a [{{< param "PRODUCT_NAME" >}} configuration][] file.
 
 ```shell
 alloy convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
@@ -208,5 +208,5 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [run]: ../../../reference/cli/run/
 [run alloy]: ../../../get-started/run/
 [DebuggingUI]: ../../tasks/debug/
-[River]: ../../../concepts/config-language/
+[{{< param "PRODUCT_NAME" >}} configuration]: ../../../concepts/config-language/
 [UI]: ../../debug/#alloy-ui
