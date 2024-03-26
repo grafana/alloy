@@ -272,7 +272,7 @@ You might have noticed that running {{< param "PRODUCT_NAME" >}} with the config
 This directory is where components can store data, such as the `prometheus.exporter.unix` component storing its WAL (Write Ahead Log).
 If you look in the directory, do you notice anything interesting? The directory for each component is the fully qualified name.
 
-If you'd like to store the data elsewhere, you can specify a different directory by supplying the `--storage.path` flag to {{< param "PRODUCT_ROOT_NAME" >}}'s run command, for example, `/path/to/alloy run config.alloy --storage.path /etc/alloy`.
+If you'd like to store the data elsewhere, you can specify a different directory by supplying the `--storage.path` flag to {{< param "PRODUCT_NAME" >}}'s run command, for example, `/path/to/alloy run config.alloy --storage.path /etc/alloy`.
 Generally, you can use a persistent directory for this, as some components may use the data stored in this directory to perform their function.
 
 In the next tutorial, you will look at how to configure {{< param "PRODUCT_NAME" >}} to collect logs from a file and send them to Loki.

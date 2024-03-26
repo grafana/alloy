@@ -27,11 +27,11 @@ curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tuto
 
 The `runt.sh` script does:
 
-1. Downloads the configurations necessary for Mimir, Grafana, and {{< param "PRODUCT_ROOT_NAME" >}}.
-1. Downloads the docker image for {{< param "PRODUCT_ROOT_NAME" >}} explicitly.
+1. Downloads the configurations necessary for Mimir, Grafana, and {{< param "PRODUCT_NAME" >}}.
+1. Downloads the docker image for {{< param "PRODUCT_NAME" >}} explicitly.
 1. Runs the `docker-compose up` command to bring all the services up.
 
-Allow {{< param "PRODUCT_ROOT_NAME" >}} to run for two minutes, then navigate to [Grafana][] to see {{< param "PRODUCT_ROOT_NAME" >}} scrape metrics.
+Allow {{< param "PRODUCT_NAME" >}} to run for two minutes, then navigate to [Grafana][] to see {{< param "PRODUCT_NAME" >}} scrape metrics.
 The [node_exporter][] metrics also show up now.
 
 There are two scrapes each sending metrics to one filter. Note the `job` label lists the full name of the scrape component.
@@ -70,7 +70,7 @@ prometheus.remote_write "prom" {
 }
 ```
 
-In the {{< param "PRODUCT_ROOT_NAME" >}} block, `prometheus.relabel.service` is being forwarded metrics from two sources `prometheus.scrape.agent` and `prometheus.exporter.unix default`.
+In the {{< param "PRODUCT_NAME" >}} block, `prometheus.relabel.service` is being forwarded metrics from two sources `prometheus.scrape.agent` and `prometheus.exporter.unix default`.
 This allows for a single relabel component to be used with any number of inputs.
 
 ## Adding another relabel

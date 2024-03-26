@@ -26,10 +26,10 @@ These attributes result in a final metric name of:
 
 ## Authentication
 
-{{< param "PRODUCT_ROOT_NAME" >}} must be running in an environment with access to the GCP project it is scraping. The exporter
+{{< param "PRODUCT_NAME" >}} must be running in an environment with access to the GCP project it is scraping. The exporter
 uses the Google Golang Client Library, which offers a variety of ways to [provide credentials](https://developers.google.com/identity/protocols/application-default-credentials). Choose the option that works best for you.
 
-After deciding how {{< param "PRODUCT_ROOT_NAME" >}} will obtain credentials, ensure the account is set up with the IAM role `roles/monitoring.viewer`.
+After deciding how {{< param "PRODUCT_NAME" >}} will obtain credentials, ensure the account is set up with the IAM role `roles/monitoring.viewer`.
 Since the exporter gathers all of its data from [GCP monitoring APIs](https://cloud.google.com/monitoring/api/v3), this is the only permission needed.
 
 ## Usage

@@ -8,7 +8,7 @@ weight: 330
 
 # Migrate from Promtail to {{% param "PRODUCT_NAME" %}}
 
-The built-in {{< param "PRODUCT_ROOT_NAME" >}} convert command can migrate your [Promtail][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Promtail][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
 
 This topic describes how to:
 
@@ -85,8 +85,8 @@ This conversion will enable you to take full advantage of the many additional fe
 
 ## Run a Promtail configuration
 
-If you’re not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_ROOT_NAME" >}} using your existing Promtail configuration.
-The `--config.format=promtail` flag tells {{< param "PRODUCT_ROOT_NAME" >}} to convert your Promtail configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the new configuration.
+If you’re not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Promtail configuration.
+The `--config.format=promtail` flag tells {{< param "PRODUCT_NAME" >}} to convert your Promtail configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the new configuration.
 This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your existing Promtail configuration infrastructure.
 
 > In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Promtail configuration.
@@ -100,8 +100,8 @@ Your configuration file must be a valid Promtail configuration file rather than 
 
 1. Refer to the {{< param "PRODUCT_NAME" >}}  [Debugging][DebuggingUI] for more information about running {{< param "PRODUCT_NAME" >}}.
 
-1. If your Promtail configuration can't be converted and loaded directly into {{< param "PRODUCT_ROOT_NAME" >}}, diagnostic information is sent to `stderr`.
-   You can bypass any non-critical issues and start {{< param "PRODUCT_ROOT_NAME" >}} by including the `--config.bypass-conversion-errors` flag in addition to `--config.format=promtail`.
+1. If your Promtail configuration can't be converted and loaded directly into {{< param "PRODUCT_NAME" >}}, diagnostic information is sent to `stderr`.
+   You can bypass any non-critical issues and start {{< param "PRODUCT_NAME" >}} by including the `--config.bypass-conversion-errors` flag in addition to `--config.format=promtail`.
 
    {{< admonition type="caution" >}}
    If you bypass the errors, the behavior of the converted configuration may not match the original Promtail configuration.
@@ -162,7 +162,7 @@ loki.write "default" {
 
 ## Limitations
 
-Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_ROOT_NAME" >}} will issue warnings or errors where the conversion can't be performed.
+Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_NAME" >}} will issue warnings or errors where the conversion can't be performed.
 
 After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} configuration file created and verify that it's correct before starting to use it in a production environment.
 

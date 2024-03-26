@@ -13,7 +13,7 @@ noindex: true
 
 {{< param "PRODUCT_NAME" >}} is a flexible, high performance, vendor-neutral telemetry collector. It's fully compatible with the most popular open source observability standards such as OpenTelemetry (OTel) and Prometheus.
 
-{{< param "PRODUCT_NAME" >}} is a _component-based_ revision of {{< param "PRODUCT_ROOT_NAME" >}} with a focus on ease-of-use,
+{{< param "PRODUCT_NAME" >}} is a _component-based_ revision of {{< param "PRODUCT_NAME" >}} with a focus on ease-of-use,
 debuggability, and ability to adapt to the needs of power users.
 
 Components allow for reusability, composability, and focus on a single task.

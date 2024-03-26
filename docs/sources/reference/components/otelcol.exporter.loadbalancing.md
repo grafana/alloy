@@ -272,7 +272,7 @@ The use of `otelcol.exporter.loadbalancing` is only necessary for [stateful Flow
 
 ### otelcol.processor.tail_sampling
 <!-- TODO: Add a picture of the architecture?  -->
-All spans for a given trace ID must go to the same tail sampling {{< param "PRODUCT_ROOT_NAME" >}} instance.
+All spans for a given trace ID must go to the same tail sampling {{< param "PRODUCT_NAME" >}} instance.
 * This can be done by configuring `otelcol.exporter.loadbalancing` with `routing_key = "traceID"`.
 * If you do not configure `routing_key = "traceID"`, the sampling decision may be incorrect.
   The tail sampler must have a full view of the trace when making a sampling decision.
@@ -283,38 +283,38 @@ All spans for a given trace ID must go to the same tail sampling {{< param "PROD
 <!-- Make "rate limiting" a URL to the tail sampler doc -->
 
 ### otelcol.connector.spanmetrics
-All spans for a given `service.name` must go to the same spanmetrics {{< param "PRODUCT_ROOT_NAME" >}}.
+All spans for a given `service.name` must go to the same spanmetrics {{< param "PRODUCT_NAME" >}}.
 * This can be done by configuring `otelcol.exporter.loadbalancing` with `routing_key = "service"`.
 * If you do not configure `routing_key = "service"`, metrics generated from spans might be incorrect.
-For example, if similar spans for the same `service.name` end up on different {{< param "PRODUCT_ROOT_NAME" >}} instances, the two {{< param "PRODUCT_ROOT_NAME" >}}s will have identical metric series for calculating span latency, errors, and number of requests.
-When both {{< param "PRODUCT_ROOT_NAME" >}} instances attempt to write the metrics to a database such as Mimir, the series may clash with each other.
-At best, this will lead to an error in {{< param "PRODUCT_ROOT_NAME" >}} and a rejected write to the metrics database.
+For example, if similar spans for the same `service.name` end up on different {{< param "PRODUCT_NAME" >}} instances, the two {{< param "PRODUCT_NAME" >}}s will have identical metric series for calculating span latency, errors, and number of requests.
+When both {{< param "PRODUCT_NAME" >}} instances attempt to write the metrics to a database such as Mimir, the series may clash with each other.
+At best, this will lead to an error in {{< param "PRODUCT_NAME" >}} and a rejected write to the metrics database.
 At worst, it could lead to inaccurate data due to overlapping samples for the metric series.
 
 However, there are ways to scale `otelcol.connector.spanmetrics` without the need for a load balancer:
-1. Each {{< param "PRODUCT_ROOT_NAME" >}} could add an attribute such as `collector.id` in order to make its series unique.
-   Then, for example, you could use a `sum by` PromQL query to aggregate the metrics from different {{< param "PRODUCT_ROOT_NAME" >}}s.
+1. Each {{< param "PRODUCT_NAME" >}} could add an attribute such as `collector.id` in order to make its series unique.
+   Then, for example, you could use a `sum by` PromQL query to aggregate the metrics from different {{< param "PRODUCT_NAME" >}}s.
    Unfortunately, an extra `collector.id` attribute has a downside that the metrics stored in the database will have higher {{< term "cardinality" >}}cardinality{{< /term >}}.
-2. Spanmetrics could be generated in the backend database instead of in {{< param "PRODUCT_ROOT_NAME" >}}.
+2. Spanmetrics could be generated in the backend database instead of in {{< param "PRODUCT_NAME" >}}.
     For example, span metrics can be [generated][tempo-spanmetrics] in Grafana Cloud by the Tempo traces database.
 
 [tempo-spanmetrics]: https://grafana.com/docs/tempo/latest/metrics-generator/span_metrics/
 
 ### otelcol.connector.servicegraph
-It is challenging to scale `otelcol.connector.servicegraph` over multiple {{< param "PRODUCT_ROOT_NAME" >}} instances.
+It is challenging to scale `otelcol.connector.servicegraph` over multiple {{< param "PRODUCT_NAME" >}} instances.
 For `otelcol.connector.servicegraph` to work correctly, each "client" span must be paired with a "server" span to calculate metrics such as span duration.
-If a "client" span goes to one {{< param "PRODUCT_ROOT_NAME" >}}, but a "server" span goes to another {{< param "PRODUCT_ROOT_NAME" >}},  then no single {{< param "PRODUCT_ROOT_NAME" >}} will be able to pair the spans and a metric won't be generated.
+If a "client" span goes to one {{< param "PRODUCT_NAME" >}}, but a "server" span goes to another {{< param "PRODUCT_NAME" >}},  then no single {{< param "PRODUCT_NAME" >}} will be able to pair the spans and a metric won't be generated.
 
 `otelcol.exporter.loadbalancing` can solve this problem partially if it is configured with `routing_key = "traceID"`.
-Each {{< param "PRODUCT_ROOT_NAME" >}} will then be able to calculate a service graph for each "client"/"server" pair in a trace.
-It is possible to have a span with similar "server"/"client" values in a different trace, processed by another {{< param "PRODUCT_ROOT_NAME" >}}.
-If two different {{< param "PRODUCT_ROOT_NAME" >}} instances process similar "server"/"client" spans, they will generate the same service graph metric series.
-If the series from two {{< param "PRODUCT_ROOT_NAME" >}} are the same, this will lead to issues when writing them to the backend database.
+Each {{< param "PRODUCT_NAME" >}} will then be able to calculate a service graph for each "client"/"server" pair in a trace.
+It is possible to have a span with similar "server"/"client" values in a different trace, processed by another {{< param "PRODUCT_NAME" >}}.
+If two different {{< param "PRODUCT_NAME" >}} instances process similar "server"/"client" spans, they will generate the same service graph metric series.
+If the series from two {{< param "PRODUCT_NAME" >}} are the same, this will lead to issues when writing them to the backend database.
 You could differentiate the series by adding an attribute such as `"collector.id"`.
-The series from different {{< param "PRODUCT_ROOT_NAME" >}}s can be aggregated using PromQL queries on the backed metrics database.
+The series from different {{< param "PRODUCT_NAME" >}}s can be aggregated using PromQL queries on the backed metrics database.
 If the metrics are stored in Grafana Mimir, cardinality issues due to `"collector.id"` labels can be solved using [Adaptive Metrics][adaptive-metrics].
 
-A simpler, more scalable alternative to generating service graph metrics in {{< param "PRODUCT_ROOT_NAME" >}} is to generate them entirely in the backend database. 
+A simpler, more scalable alternative to generating service graph metrics in {{< param "PRODUCT_NAME" >}} is to generate them entirely in the backend database. 
 For example, service graphs can be [generated][tempo-servicegraphs] in Grafana Cloud by the Tempo traces database.
 
 [tempo-servicegraphs]: https://grafana.com/docs/tempo/latest/metrics-generator/service_graphs/
@@ -326,12 +326,12 @@ Different {{< param "PRODUCT_NAME" >}} components may require a different `routi
 For example, `otelcol.processor.tail_sampling` requires `routing_key = "traceID"` whereas `otelcol.connector.spanmetrics` requires `routing_key = "service"`.
 To load balance both types of components, two different sets of load balancers have to be set up:
 
-* One set of `otelcol.exporter.loadbalancing` with `routing_key = "traceID"`, sending spans to {{< param "PRODUCT_ROOT_NAME" >}}s doing tail sampling and no span metrics.
-* Another set of `otelcol.exporter.loadbalancing` with `routing_key = "service"`, sending spans to {{< param "PRODUCT_ROOT_NAME" >}}s doing span metrics and no service graphs.
+* One set of `otelcol.exporter.loadbalancing` with `routing_key = "traceID"`, sending spans to {{< param "PRODUCT_NAME" >}}s doing tail sampling and no span metrics.
+* Another set of `otelcol.exporter.loadbalancing` with `routing_key = "service"`, sending spans to {{< param "PRODUCT_NAME" >}}s doing span metrics and no service graphs.
 
 Unfortunately, this can also lead to side effects.
-For example, if `otelcol.connector.spanmetrics` is configured to generate exemplars, the tail sampling {{< param "PRODUCT_ROOT_NAME" >}}s might drop the trace that the exemplar points to.
-There is no coordination between the tail sampling {{< param "PRODUCT_ROOT_NAME" >}}s and the span metrics {{< param "PRODUCT_ROOT_NAME" >}}s to make sure trace IDs for exemplars are kept.
+For example, if `otelcol.connector.spanmetrics` is configured to generate exemplars, the tail sampling {{< param "PRODUCT_NAME" >}}s might drop the trace that the exemplar points to.
+There is no coordination between the tail sampling {{< param "PRODUCT_NAME" >}}s and the span metrics {{< param "PRODUCT_NAME" >}}s to make sure trace IDs for exemplars are kept.
 
 <!--
 TODO: Add a troubleshooting section?
@@ -403,13 +403,13 @@ otelcol.exporter.loadbalancing "default" {
 }
 ```
 
-The following example shows a Kubernetes configuration that configures two sets of {{< param "PRODUCT_ROOT_NAME" >}}s:
-* A pool of load-balancer {{< param "PRODUCT_ROOT_NAME" >}}s:
+The following example shows a Kubernetes configuration that configures two sets of {{< param "PRODUCT_NAME" >}}s:
+* A pool of load-balancer {{< param "PRODUCT_NAME" >}}s:
   * Spans are received from instrumented applications via `otelcol.receiver.otlp`
   * Spans are exported via `otelcol.exporter.loadbalancing`.
-* A pool of sampling {{< param "PRODUCT_ROOT_NAME" >}}s:
-  * The sampling {{< param "PRODUCT_ROOT_NAME" >}}s run behind a headless service to enable the load-balancer {{< param "PRODUCT_ROOT_NAME" >}}s to discover them.
-  * Spans are received from the load-balancer {{< param "PRODUCT_ROOT_NAME" >}}s via `otelcol.receiver.otlp`
+* A pool of sampling {{< param "PRODUCT_NAME" >}}s:
+  * The sampling {{< param "PRODUCT_NAME" >}}s run behind a headless service to enable the load-balancer {{< param "PRODUCT_NAME" >}}s to discover them.
+  * Spans are received from the load-balancer {{< param "PRODUCT_NAME" >}}s via `otelcol.receiver.otlp`
   * Traces are sampled via `otelcol.processor.tail_sampling`.
   * The traces are exported via `otelcol.exporter.otlp` to an OTLP-compatible database such as Tempo.
 
@@ -664,15 +664,15 @@ otelcol.exporter.loadbalancing "default" {
 }
 ```
 
-The following example shows a Kubernetes configuration that sets up two sets of {{< param "PRODUCT_ROOT_NAME" >}}s:
-* A pool of load-balancer {{< param "PRODUCT_ROOT_NAME" >}}s:
+The following example shows a Kubernetes configuration that sets up two sets of {{< param "PRODUCT_NAME" >}}s:
+* A pool of load-balancer {{< param "PRODUCT_NAME" >}}s:
   * Spans are received from instrumented applications via `otelcol.receiver.otlp`
   * Spans are exported via `otelcol.exporter.loadbalancing`.
-  * The load-balancer {{< param "PRODUCT_ROOT_NAME" >}}s will get notified by the Kubernetes API any time a pod 
-    is added or removed from the pool of sampling {{< param "PRODUCT_ROOT_NAME" >}}s.
-* A pool of sampling {{< param "PRODUCT_ROOT_NAME" >}}s:
-  * The sampling {{< param "PRODUCT_ROOT_NAME" >}}s do not need to run behind a headless service.
-  * Spans are received from the load-balancer {{< param "PRODUCT_ROOT_NAME" >}}s via `otelcol.receiver.otlp`
+  * The load-balancer {{< param "PRODUCT_NAME" >}}s will get notified by the Kubernetes API any time a pod 
+    is added or removed from the pool of sampling {{< param "PRODUCT_NAME" >}}s.
+* A pool of sampling {{< param "PRODUCT_NAME" >}}s:
+  * The sampling {{< param "PRODUCT_NAME" >}}s do not need to run behind a headless service.
+  * Spans are received from the load-balancer {{< param "PRODUCT_NAME" >}}s via `otelcol.receiver.otlp`
   * Traces are sampled via `otelcol.processor.tail_sampling`.
   * The traces are exported via `otelcol.exporter.otlp` to a an OTLP-compatible database such as Tempo.
 

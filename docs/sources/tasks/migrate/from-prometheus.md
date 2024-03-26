@@ -8,7 +8,7 @@ weight: 320
 
 # Migrate from Prometheus to {{% param "PRODUCT_NAME" %}}
 
-The built-in {{< param "PRODUCT_ROOT_NAME" >}} convert command can migrate your [Prometheus][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Prometheus][] configuration to a {{< param "PRODUCT_NAME" >}} configuration.
 
 This topic describes how to:
 
@@ -89,8 +89,8 @@ This conversion will enable you to take full advantage of the many additional fe
 
 ## Run a Prometheus configuration
 
-If you’re not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_ROOT_NAME" >}} using your existing Prometheus configuration.
-The `--config.format=prometheus` flag tells {{< param "PRODUCT_ROOT_NAME" >}} to convert your Prometheus configuration to a {{< param "PRODUCT_NAME" >}} configuration and load it directly without saving the new configuration.
+If you’re not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Prometheus configuration.
+The `--config.format=prometheus` flag tells {{< param "PRODUCT_NAME" >}} to convert your Prometheus configuration to a {{< param "PRODUCT_NAME" >}} configuration and load it directly without saving the new configuration.
 This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your existing Prometheus configuration infrastructure.
 
 > In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}}
@@ -184,7 +184,7 @@ prometheus.remote_write "default" {
 
 ## Limitations
 
-Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_ROOT_NAME" >}} will issue warnings or errors where the conversion can't be performed.
+Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_NAME" >}} will issue warnings or errors where the conversion can't be performed.
 
 After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} configuration file created and verify that it's correct before starting to use it in a production environment.
 
@@ -196,7 +196,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Prometheus metamonitoring metrics but will use a different name.
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
 * The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Prometheus.
-* {{< param "PRODUCT_ROOT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
+* {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
 
 [Prometheus]: https://prometheus.io/docs/prometheus/latest/configuration/configuration/
 [debugging]: #debugging

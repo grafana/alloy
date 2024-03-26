@@ -6,7 +6,7 @@ title: Install Alloy as a standalone binary
 weight: 600
 ---
 
-# Install {{% param "PRODUCT_ROOT_NAME" %}} as a standalone binary
+# Install {{% param "PRODUCT_NAME" %}} as a standalone binary
 
 {{< param "PRODUCT_NAME" >}} is distributed as a standalone binary for the following operating systems and architectures:
 
@@ -15,11 +15,11 @@ weight: 600
 * macOS: AMD64 (Intel), ARM64 (Apple Silicon)
 * FreeBSD: AMD64
 
-## Download {{% param "PRODUCT_ROOT_NAME" %}}
+## Download {{% param "PRODUCT_NAME" %}}
 
 To download {{< param "PRODUCT_NAME" >}} as a standalone binary, perform the following steps.
 
-1. Navigate to the current {{< param "PRODUCT_ROOT_NAME" >}} [release][] page.
+1. Navigate to the current {{< param "PRODUCT_NAME" >}} [release][] page.
 
 1. Scroll down to the **Assets** section.
 

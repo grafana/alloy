@@ -8,7 +8,7 @@ weight: 200
 
 # Deploy {{% param "PRODUCT_NAME" %}} on Kubernetes
 
-{{< param "PRODUCT_NAME" >}} can be deployed on Kubernetes by using the Helm chart for {{< param "PRODUCT_ROOT_NAME" >}}.
+{{< param "PRODUCT_NAME" >}} can be deployed on Kubernetes by using the Helm chart for {{< param "PRODUCT_NAME" >}}.
 
 ## Before you begin
 
@@ -18,7 +18,7 @@ weight: 200
 
 ## Deploy
 
-To deploy {{< param "PRODUCT_ROOT_NAME" >}} on Kubernetes using Helm, run the following commands in a terminal window:
+To deploy {{< param "PRODUCT_NAME" >}} on Kubernetes using Helm, run the following commands in a terminal window:
 
 1. Add the Grafana Helm chart repository:
 
@@ -43,7 +43,7 @@ To deploy {{< param "PRODUCT_ROOT_NAME" >}} on Kubernetes using Helm, run the fo
    - _`<NAMESPACE>`_: The namespace to use for your {{< param "PRODUCT_NAME" >}}
      installation, such as `alloy`.
 
-1. Install {{< param "PRODUCT_ROOT_NAME" >}}:
+1. Install {{< param "PRODUCT_NAME" >}}:
 
    ```shell
    helm install --namespace <NAMESPACE> <RELEASE_NAME> grafana/alloy
@@ -52,7 +52,7 @@ To deploy {{< param "PRODUCT_ROOT_NAME" >}} on Kubernetes using Helm, run the fo
    Replace the following:
 
    - _`<NAMESPACE>`_: The namespace created in the previous step.
-   - _`<RELEASE_NAME>`_: The name to use for your {{< param "PRODUCT_ROOT_NAME" >}} installation, such as `alloy`.
+   - _`<RELEASE_NAME>`_: The name to use for your {{< param "PRODUCT_NAME" >}} installation, such as `alloy`.
 
 1. Verify that the {{< param "PRODUCT_NAME" >}} pods are running:
 

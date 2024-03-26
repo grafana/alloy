@@ -69,7 +69,7 @@ All components managed by the component controller are reevaluated after reloadi
 
 ## Clustering
 
-The `--cluster.enabled` command-line argument starts {{< param "PRODUCT_ROOT_NAME" >}} in [clustering][] mode.
+The `--cluster.enabled` command-line argument starts {{< param "PRODUCT_NAME" >}} in [clustering][] mode.
 The rest of the `--cluster.*` command-line flags can be used to configure how nodes discover and connect to one another.
 
 Each cluster member’s name must be unique within the cluster.
@@ -115,20 +115,20 @@ Attempting to join a cluster with a wrong `--cluster.name` will result in a "fai
 
 ### Clustering states
 
-Clustered {{< param "PRODUCT_ROOT_NAME" >}}s are in one of three states:
+Clustered {{< param "PRODUCT_NAME" >}}s are in one of three states:
 
 * **Viewer**: {{< param "PRODUCT_NAME" >}} has a read-only view of the cluster and isn't participating in workload distribution.
 * **Participant**: {{< param "PRODUCT_NAME" >}} is participating in workload distribution for components that have clustering enabled.
 * **Terminating**: {{< param "PRODUCT_NAME" >}} is shutting down and will no longer assign new work to itself.
 
-Each {{< param "PRODUCT_ROOT_NAME" >}} initially joins the cluster in the viewer state and then transitions to the participant state after the process startup completes.
-Each {{< param "PRODUCT_ROOT_NAME" >}} then transitions to the terminating state when shutting down.
+Each {{< param "PRODUCT_NAME" >}} initially joins the cluster in the viewer state and then transitions to the participant state after the process startup completes.
+Each {{< param "PRODUCT_NAME" >}} then transitions to the terminating state when shutting down.
 
-The current state of a clustered {{< param "PRODUCT_ROOT_NAME" >}} is shown on the clustering page in the [UI][].
+The current state of a clustered {{< param "PRODUCT_NAME" >}} is shown on the clustering page in the [UI][].
 
 ## Configuration conversion (beta)
 
-When you use the `--config.format` command-line argument with a value other than `alloy`, {{< param "PRODUCT_ROOT_NAME" >}} converts the configuration file from the source format to River and immediately starts running with the new configuration.
+When you use the `--config.format` command-line argument with a value other than `alloy`, {{< param "PRODUCT_NAME" >}} converts the configuration file from the source format to River and immediately starts running with the new configuration.
 This conversion uses the converter API described in the [alloy convert][] docs.
 
 If you include the `--config.bypass-conversion-errors` command-line argument,

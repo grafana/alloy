@@ -13,6 +13,6 @@ noindex: true
 
 The release notes provide information about deprecations and breaking changes in {{< param "PRODUCT_NAME" >}}.
 
-For a complete list of changes to {{< param "PRODUCT_ROOT_NAME" >}}, with links to pull requests and related issues when available, refer to the [Changelog][].
+For a complete list of changes to {{< param "PRODUCT_NAME" >}}, with links to pull requests and related issues when available, refer to the [Changelog][].
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md

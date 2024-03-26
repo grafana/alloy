@@ -23,7 +23,7 @@ Usage:
    Replace the following:
 
    * _`<FLAG>`_: One or more flags that define the input and output of the command.
-   * _`<FILE_NAME>`_: The {{< param "PRODUCT_ROOT_NAME" >}} configuration file.
+   * _`<FILE_NAME>`_: The {{< param "PRODUCT_NAME" >}} configuration file.
 
 If the `FILE_NAME` argument isn't provided or if the `FILE_NAME` argument is equal to `-`, `convert` converts the contents of standard input.
 Otherwise, `convert` reads and converts the file from disk specified by the argument.

@@ -8,7 +8,7 @@ weight: 200
 
 # Collect Prometheus metrics
 
-{{< param "PRODUCT_ROOT_NAME" >}} is a telemetry collector with the primary goal of moving telemetry data from one location to another.
+{{< param "PRODUCT_NAME" >}} is a telemetry collector with the primary goal of moving telemetry data from one location to another.
 In this tutorial, you'll set up {{< param "PRODUCT_NAME" >}}.
 
 ## Prerequisites
@@ -25,11 +25,11 @@ curl https://raw.githubusercontent.com/grafana/agent/main/docs/sources/flow/tuto
 
 The `runt.sh` script does:
 
-1. Downloads the configurations necessary for Mimir, Grafana, and {{< param "PRODUCT_ROOT_NAME" >}}.
-1. Downloads the docker image for {{< param "PRODUCT_ROOT_NAME" >}} explicitly.
+1. Downloads the configurations necessary for Mimir, Grafana, and {{< param "PRODUCT_NAME" >}}.
+1. Downloads the docker image for {{< param "PRODUCT_NAME" >}} explicitly.
 1. Runs the docker-compose up command to bring all the services up.
 
-Allow {{< param "PRODUCT_ROOT_NAME" >}} to run for two minutes, then navigate to [Grafana][].
+Allow {{< param "PRODUCT_NAME" >}} to run for two minutes, then navigate to [Grafana][].
 
 ![Dashboard showing agent_build_info metrics](/media/docs/agent/screenshot-grafana-agent-collect-metrics-build-info.png)
 
@@ -39,7 +39,7 @@ Navigate to `http://localhost:12345/graph` to view the {{< param "PRODUCT_NAME" 
 
 ![The User Interface](/media/docs/agent/screenshot-grafana-agent-collect-metrics-graph.png)
 
-{{< param "PRODUCT_ROOT_NAME" >}} displays the component pipeline in a dependency graph.
+{{< param "PRODUCT_NAME" >}} displays the component pipeline in a dependency graph.
 See [Scraping component](#scraping-component) and [Remote Write component](#remote-write-component) for details about the components used in this configuration.
 Click the nodes to navigate to the associated component page. There, you can view the state, health information, and, if applicable, the debug information.
 
@@ -86,9 +86,9 @@ prometheus.remote_write "prom" {
 
 ## Running without Docker
 
-To try out {{< param "PRODUCT_ROOT_NAME" >}} without using Docker:
-1. Download {{< param "PRODUCT_ROOT_NAME" >}}.
-1. Run the {{< param "PRODUCT_ROOT_NAME" >}} with `alloy run <path_to_flow_config>`.
+To try out {{< param "PRODUCT_NAME" >}} without using Docker:
+1. Download {{< param "PRODUCT_NAME" >}}.
+1. Run the {{< param "PRODUCT_NAME" >}} with `alloy run <path_to_flow_config>`.
 
 
 [Docker]: https://www.docker.com/products/docker-desktop

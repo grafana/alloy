@@ -274,7 +274,7 @@ on how to explore metrics, to easily pick the ones you need.
 #### period and length
 
 `period` controls primarily the width of the time bucket used for aggregating metrics collected from CloudWatch. `length`
-controls how far back in time CloudWatch metrics are considered during each {{< param "PRODUCT_ROOT_NAME" >}} scrape.
+controls how far back in time CloudWatch metrics are considered during each {{< param "PRODUCT_NAME" >}} scrape.
 If both settings are configured, the time parameters when calling CloudWatch APIs works as follows:
 
 ![](https://grafana.com/media/docs/agent/cloudwatch-period-and-length-time-model-2.png)
@@ -308,7 +308,7 @@ that corresponds to the credentials configured in the environment will be used.
 
 Multiple roles can be useful when scraping metrics from different AWS accounts with a single pair of credentials. In
 this case, a different role
-is configured for {{< param "PRODUCT_ROOT_NAME" >}} to assume before calling AWS APIs. Therefore, the credentials configured in the system need
+is configured for {{< param "PRODUCT_NAME" >}} to assume before calling AWS APIs. Therefore, the credentials configured in the system need
 permission to assume the target role.
 See [Granting a user permissions to switch roles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_permissions-to-switch.html)
 in the AWS IAM documentation for more information about how to configure this.

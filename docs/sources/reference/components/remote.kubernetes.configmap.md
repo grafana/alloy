@@ -8,7 +8,7 @@ title: remote.kubernetes.configmap
 
 `remote.kubernetes.configmap` reads a ConfigMap from the Kubernetes API server and exposes its data for other components to consume.
 
-This can be useful anytime {{< param "PRODUCT_NAME" >}} needs data from a ConfigMap that is not directly mounted to the {{< param "PRODUCT_ROOT_NAME" >}} pod.
+This can be useful anytime {{< param "PRODUCT_NAME" >}} needs data from a ConfigMap that is not directly mounted to the {{< param "PRODUCT_NAME" >}} pod.
 
 ## Usage
 
@@ -65,7 +65,7 @@ refers to a `basic_auth` block defined inside a `client` block.
 ### client block
 
 The `client` block configures the Kubernetes client used to discover Probes. If the `client` block isn't provided, the default in-cluster
-configuration with the service account of the running {{< param "PRODUCT_ROOT_NAME" >}} pod is
+configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is
 used.
 
 The following arguments are supported:

@@ -8,7 +8,7 @@ title: prometheus.receive_http
 
 `prometheus.receive_http` listens for HTTP requests containing Prometheus metric samples and forwards them to other components capable of receiving metrics.
 
-The HTTP API exposed is compatible with [Prometheus `remote_write` API][prometheus-remote-write-docs]. This means that other [`prometheus.remote_write`][prometheus.remote_write] components can be used as a client and send requests to `prometheus.receive_http` which enables using {{< param "PRODUCT_ROOT_NAME" >}} as a proxy for Prometheus metrics.
+The HTTP API exposed is compatible with [Prometheus `remote_write` API][prometheus-remote-write-docs]. This means that other [`prometheus.remote_write`][prometheus.remote_write] components can be used as a client and send requests to `prometheus.receive_http` which enables using {{< param "PRODUCT_NAME" >}} as a proxy for Prometheus metrics.
 
 [prometheus.remote_write]: ../prometheus.remote_write/
 [prometheus-remote-write-docs]: https://prometheus.io/docs/prometheus/2.45/querying/api/#remote-write-receiver
@@ -27,7 +27,7 @@ prometheus.receive_http "LABEL" {
 
 The component will start an HTTP server supporting the following endpoint:
 
-- `POST /api/v1/metrics/write` - send metrics to the component, which in turn will be forwarded to the receivers as configured in `forward_to` argument. The request format must match that of [Prometheus `remote_write` API][prometheus-remote-write-docs]. One way to send valid requests to this component is to use another {{< param "PRODUCT_ROOT_NAME" >}} with a [`prometheus.remote_write`][prometheus.remote_write] component.
+- `POST /api/v1/metrics/write` - send metrics to the component, which in turn will be forwarded to the receivers as configured in `forward_to` argument. The request format must match that of [Prometheus `remote_write` API][prometheus-remote-write-docs]. One way to send valid requests to this component is to use another {{< param "PRODUCT_NAME" >}} with a [`prometheus.remote_write`][prometheus.remote_write] component.
 
 ## Arguments
 
@@ -101,7 +101,7 @@ prometheus.remote_write "local" {
 
 ### Proxying metrics
 
-In order to send metrics to the `prometheus.receive_http` component defined in the previous example, another {{< param "PRODUCT_ROOT_NAME" >}} can run with the following configuration:
+In order to send metrics to the `prometheus.receive_http` component defined in the previous example, another {{< param "PRODUCT_NAME" >}} can run with the following configuration:
 
 ```river
 // Collects metrics of localhost:12345

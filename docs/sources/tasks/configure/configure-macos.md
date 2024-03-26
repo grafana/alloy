@@ -18,7 +18,7 @@ To configure {{< param "PRODUCT_NAME" >}} on macOS, perform the following steps:
    brew services restart alloy
    ```
 
-## Configure the {{% param "PRODUCT_ROOT_NAME" %}} service
+## Configure the {{% param "PRODUCT_NAME" %}} service
 
 {{< admonition type="note" >}}
 Due to limitations in Homebrew, customizing the service used by {{< param "PRODUCT_NAME" >}} on macOS requires changing the Homebrew formula and reinstalling {{< param "PRODUCT_NAME" >}}.

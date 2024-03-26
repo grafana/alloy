@@ -11,7 +11,7 @@ components and places them into batches. Batching improves the compression of
 data and reduces the number of outgoing network requests required to transmit
 data. This processor supports both size and time based batching.
 
-We strongly recommend that you configure the batch processor on every {{< param "PRODUCT_NAME" >}} that uses OpenTelemetry (otelcol) {{< param "PRODUCT_ROOT_NAME" >}} components.
+We strongly recommend that you configure the batch processor on every {{< param "PRODUCT_NAME" >}} that uses OpenTelemetry (otelcol) {{< param "PRODUCT_NAME" >}} components.
 The batch processor should be defined in the pipeline after the `otelcol.processor.memory_limiter` as well as any sampling processors.
 This is because batching should happen after any data drops such as sampling.
 

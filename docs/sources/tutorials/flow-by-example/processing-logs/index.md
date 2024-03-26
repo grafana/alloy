@@ -17,7 +17,7 @@ It covers using `loki.source.api` to receive logs over HTTP, processing and filt
 - Optional: [loki.source.api][]
 
 The `loki.source.api` component can receive logs over HTTP.
-It can be useful for receiving logs from other {{< param "PRODUCT_ROOT_NAME" >}}s or collectors, or directly from applications that can send logs over HTTP, and then processing them centrally.
+It can be useful for receiving logs from other {{< param "PRODUCT_NAME" >}}s or collectors, or directly from applications that can send logs over HTTP, and then processing them centrally.
 
 Your pipeline is going to look like this:
 
@@ -321,8 +321,8 @@ This stage doesn't modify the extracted map.
 
 ## Putting it all together
 
-Now that you have all of the pieces, let's run {{< param "PRODUCT_ROOT_NAME" >}} and send some logs to it.
-Modify `config.river` with the config from the previous example and start {{< param "PRODUCT_ROOT_NAME" >}} with:
+Now that you have all of the pieces, let's run {{< param "PRODUCT_NAME" >}} and send some logs to it.
+Modify `config.river` with the config from the previous example and start {{< param "PRODUCT_NAME" >}} with:
 
 ```bash
 /path/to/alloy run config.river

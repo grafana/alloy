@@ -75,7 +75,7 @@ inside a `client` block.
 ### client block
 
 The `client` block configures the Kubernetes client used to discover ServiceMonitors.
-If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_ROOT_NAME" >}} pod is used.
+If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
 
 The following arguments are supported:
 

@@ -401,8 +401,8 @@ Replace the following:
 
 ### Limit to only pods on the same node
 
-This example limits the search to pods on the same node as this {{< param "PRODUCT_ROOT_NAME" >}}.
-This configuration could be useful if you are running {{< param "PRODUCT_ROOT_NAME" >}} as a DaemonSet.
+This example limits the search to pods on the same node as this {{< param "PRODUCT_NAME" >}}.
+This configuration could be useful if you are running {{< param "PRODUCT_NAME" >}} as a DaemonSet.
 
 {{< admonition type="note" >}}
 This example assumes you have used Helm chart to deploy {{< param "PRODUCT_NAME" >}} in Kubernetes and sets `HOSTNAME` to the Kubernetes host name.

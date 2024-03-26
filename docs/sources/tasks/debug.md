@@ -13,9 +13,9 @@ Follow these steps to debug issues with {{< param "PRODUCT_NAME" >}}:
 1. Use the {{< param "PRODUCT_NAME" >}} UI to debug issues.
 1. If the {{< param "PRODUCT_NAME" >}} UI doesn't help with debugging an issue, logs can be examined instead.
 
-## {{% param "PRODUCT_ROOT_NAME" %}} UI
+## {{% param "PRODUCT_NAME" %}} UI
 
-{{< param "PRODUCT_ROOT_NAME" >}} includes an embedded UI viewable from the {{< param "PRODUCT_ROOT_NAME" >}} HTTP server, which defaults to listening at `http://localhost:12345`.
+{{< param "PRODUCT_NAME" >}} includes an embedded UI viewable from the {{< param "PRODUCT_NAME" >}} HTTP server, which defaults to listening at `http://localhost:12345`.
 
 {{< admonition type="note" >}}
 For security reasons, installations of {{< param "PRODUCT_NAME" >}} on non-containerized platforms default to listening on `localhost`.
@@ -37,7 +37,7 @@ The home page shows a table of components defined in the configuration file and 
 
 Click **View** on a row in the table to navigate to the [Component detail page](#component-detail-page) for that component.
 
-Click the {{< param "PRODUCT_ROOT_NAME" >}} logo to navigate back to the home page.
+Click the {{< param "PRODUCT_NAME" >}} logo to navigate back to the home page.
 
 ### Graph page
 
@@ -103,7 +103,7 @@ To debug issues when using [clustering][], check for the following symptoms.
   Nodes with conflicting names are rejected and won't join the cluster.
   Look at the clustering UI page for the list of current peers with their names, and check the logs for any reported name conflict events.
 - **Node stuck in terminating state**: The node attempted to gracefully shut down and set its state to Terminating, but it has not completely gone away.
-  Check the clustering page to view the state of the peers and verify that the terminating {{< param "PRODUCT_ROOT_NAME" >}} has been shut down.
+  Check the clustering page to view the state of the peers and verify that the terminating {{< param "PRODUCT_NAME" >}} has been shut down.
 
 {{< admonition type="note" >}}
 Some issues that appear to be clustering issues may be symptoms of other issues, for example, problems with scraping or service discovery can result in missing metrics for an agent that can be interpreted as a node not joining the cluster.

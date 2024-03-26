@@ -191,8 +191,8 @@ Interpreted methods will display the interpreter function’s name rather than t
 ### Kubernetes discovery
 
 In the following example, performance profiles are collected from pods on the same node, discovered using
-`discovery.kubernetes`. Pod selection relies on the `HOSTNAME` environment variable, which is a pod name if {{< param "PRODUCT_ROOT_NAME" >}} is
-used as a {{< param "PRODUCT_ROOT_NAME" >}} Helm chart. The `service_name` label is set
+`discovery.kubernetes`. Pod selection relies on the `HOSTNAME` environment variable, which is a pod name if {{< param "PRODUCT_NAME" >}} is
+used as a {{< param "PRODUCT_NAME" >}} Helm chart. The `service_name` label is set
 to `{__meta_kubernetes_namespace}/{__meta_kubernetes_pod_container_name}` from Kubernetes meta labels.
 
 ```river

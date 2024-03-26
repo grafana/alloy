@@ -138,13 +138,13 @@ If you are using a proxy server on your EC2 instance, it's important that you ex
 Failing to do so can result in proxied or missing instance data.
 
 If the instance is part of AWS ParallelCluster and the detector is failing to connect to the metadata server,
-check the iptable and make sure the chain `PARALLELCLUSTER_IMDS` contains a rule that allows the {{< param "PRODUCT_ROOT_NAME" >}} user to access `169.254.169.254/32`.
+check the iptable and make sure the chain `PARALLELCLUSTER_IMDS` contains a rule that allows the {{< param "PRODUCT_NAME" >}} user to access `169.254.169.254/32`.
 
 [AWS SDK for Go]: https://docs.aws.amazon.com/sdk-for-go/api/aws/ec2metadata/
 [EC2 instance metadata API]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
 [AWS cli user guide]: https://github.com/awsdocs/aws-cli-user-guide/blob/a2393582590b64bd2a1d9978af15b350e1f9eb8e/doc_source/cli-configure-proxy.md#using-a-proxy-on-amazon-ec2-instances
 
-`tags` can be used to gather tags for the EC2 instance which {{< param "PRODUCT_ROOT_NAME" >}} is running on.
+`tags` can be used to gather tags for the EC2 instance which {{< param "PRODUCT_NAME" >}} is running on.
 To fetch EC2 tags, the IAM role assigned to the EC2 instance must have a policy that includes the `ec2:DescribeTags` permission.
 
 The `ec2` block supports the following blocks:
@@ -419,7 +419,7 @@ Block                     | Description                                         
 The `gcp` block detects resource attributes using the [Google Cloud Client Libraries for Go][], which reads resource information from the [GCP metadata server][].
 The detector also uses environment variables to identify which GCP platform the application is running on, and assigns appropriate resource attributes for that platform.
 
-Use the `gcp` detector regardless of the GCP platform {{< param "PRODUCT_ROOT_NAME" >}} is running on.
+Use the `gcp` detector regardless of the GCP platform {{< param "PRODUCT_NAME" >}} is running on.
 
 [Google Cloud Client Libraries for Go]: https://github.com/googleapis/google-cloud-go
 [GCP metadata server]: https://cloud.google.com/compute/docs/storing-retrieving-metadata
@@ -576,7 +576,7 @@ For more information, see the [Heroku cloud provider documentation][] under the 
 The `system` block queries the host machine to retrieve various resource attributes.
 
 {{< admonition type="note" >}}
-Use the [Docker](#docker) detector if running {{< param "PRODUCT_ROOT_NAME" >}} as a Docker container.
+Use the [Docker](#docker) detector if running {{< param "PRODUCT_NAME" >}} as a Docker container.
 {{< /admonition >}}
 
 The `system` block supports the following attributes:
@@ -700,7 +700,7 @@ rules:
 
 `auth_type` can be set to one of the following:
 * `none`: no authentication.
-* `serviceAccount`: use the standard service account token provided to the {{< param "PRODUCT_ROOT_NAME" >}} pod.
+* `serviceAccount`: use the standard service account token provided to the {{< param "PRODUCT_NAME" >}} pod.
 * `kubeConfig`: use credentials from `~/.kube/config`.
 
 The `kubernetes_node` block supports the following blocks:
