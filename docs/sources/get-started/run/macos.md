@@ -54,4 +54,4 @@ If you followed [Configure the {{< param "PRODUCT_NAME" >}} service][ConfigureSe
 
 [InstallMacOS]: ../../install/macos/
 [ConfigureMacOS]: ../../../tasks/configure/configure-macos/
-[ConfigureService]: ../../../tasks/configure/configure-macos/#configure-the-grafana-alloy-service
+[ConfigureService]: ../../../tasks/configure/configure-macos/#configure-the-alloy-service

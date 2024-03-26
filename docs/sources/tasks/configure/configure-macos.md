@@ -18,7 +18,7 @@ To configure {{< param "PRODUCT_NAME" >}} on macOS, perform the following steps:
    brew services restart alloy
    ```
 
-## Configure the {{% param "PRODUCT_NAME" %}} service
+## Configure the {{% param "PRODUCT_ROOT_NAME" %}} service
 
 {{< admonition type="note" >}}
 Due to limitations in Homebrew, customizing the service used by {{< param "PRODUCT_NAME" >}} on macOS requires changing the Homebrew formula and reinstalling {{< param "PRODUCT_NAME" >}}.
@@ -61,7 +61,7 @@ This prevents other machines on the network from being able to access the [UI fo
 
 To expose the UI to other machines, complete the following steps:
 
-1. Follow [Configure the {{< param "PRODUCT_NAME" >}} service](#configure-the-grafana-alloy-service)
+1. Follow [Configure the {{< param "PRODUCT_NAME" >}} service](#configure-the-alloy-service)
    to edit command line flags passed to {{< param "PRODUCT_NAME" >}}, including the
    following customizations:
 
@@ -72,4 +72,4 @@ To expose the UI to other machines, complete the following steps:
 
        To listen on all interfaces, replace `127.0.0.1` with `0.0.0.0`.
 
-[UI]: ../../debug/#grafana-alloy-ui
+[UI]: ../../debug/#alloy-ui

@@ -190,4 +190,4 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [run alloy]: ../../../get-started/run/
 [DebuggingUI]: ../../../tasks/debug/
 [River]: ../../../concepts/config-language/
-[UI]: ../../tasks/debug/#grafana-alloy-ui
+[UI]: ../../tasks/debug/#alloy-ui

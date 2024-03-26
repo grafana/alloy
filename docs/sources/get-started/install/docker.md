@@ -81,4 +81,4 @@ To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to
 [Windows containers]: #run-a-windows-docker-container
 [Docker]: https://docker.io
 [run]: ../../../reference/cli/run/
-[UI]: ../../../tasks/debug/#grafana-alloy-ui
+[UI]: ../../../tasks/debug/#alloy-ui

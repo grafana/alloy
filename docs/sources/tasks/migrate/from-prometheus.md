@@ -209,4 +209,4 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [run alloy]: ../../../get-started/run/
 [DebuggingUI]: ../../tasks/debug/
 [River]: ../../../concepts/config-language/
-[UI]: ../../debug/#grafana-alloy-ui
+[UI]: ../../debug/#alloy-ui

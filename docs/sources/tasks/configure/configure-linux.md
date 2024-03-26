@@ -81,4 +81,4 @@ To expose the UI to other machines, complete the following steps:
        To listen on all interfaces, replace `LISTEN_ADDR` with `0.0.0.0`.
 
 [run]:../../../reference/cli/run/
-[UI]: ../../debug/#grafana-alloy-ui
+[UI]: ../../debug/#alloy-ui

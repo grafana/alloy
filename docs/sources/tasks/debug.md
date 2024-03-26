@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tasks/debug/
 description: Learn about debugging issues with Grafana alloy
-title: Debug issues with Grafana Alloy
+title: Debug Grafana Alloy
 menuTitle: Debug issues
 weight: 1000
 ---
@@ -13,9 +13,9 @@ Follow these steps to debug issues with {{< param "PRODUCT_NAME" >}}:
 1. Use the {{< param "PRODUCT_NAME" >}} UI to debug issues.
 1. If the {{< param "PRODUCT_NAME" >}} UI doesn't help with debugging an issue, logs can be examined instead.
 
-## {{% param "PRODUCT_NAME" %}} UI
+## {{% param "PRODUCT_ROOT_NAME" %}} UI
 
-{{< param "PRODUCT_NAME" >}} includes an embedded UI viewable from the {{< param "PRODUCT_ROOT_NAME" >}} HTTP server, which defaults to listening at `http://localhost:12345`.
+{{< param "PRODUCT_ROOT_NAME" >}} includes an embedded UI viewable from the {{< param "PRODUCT_ROOT_NAME" >}} HTTP server, which defaults to listening at `http://localhost:12345`.
 
 {{< admonition type="note" >}}
 For security reasons, installations of {{< param "PRODUCT_NAME" >}} on non-containerized platforms default to listening on `localhost`.
