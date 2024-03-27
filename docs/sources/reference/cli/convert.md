@@ -3,12 +3,12 @@ aliases:
 - ./reference/cli/convert/
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/convert/
 description: Learn about the convert command
-labels:
-  stage: beta
 menuTitle: convert
 title: The convert command
 weight: 100
 ---
+
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
 
 # The convert command
 

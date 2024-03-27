@@ -1,10 +1,10 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.kubelet/
 description: Learn about discovery.kubelet
-labels:
-  stage: beta
 title: discovery.kubelet
 ---
+
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
 
 # discovery.kubelet
 

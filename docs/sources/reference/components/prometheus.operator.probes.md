@@ -1,14 +1,15 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.operator.probes/
 description: Learn about prometheus.operator.probes
-labels:
-  stage: beta
+
 title: prometheus.operator.probes
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # prometheus.operator.probes
 
-{{< docs/shared lookup="stability/public-preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `prometheus.operator.probes` discovers [Probe](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.Probe) resources in your Kubernetes cluster and scrapes the targets they reference.
  This component performs three main functions:
