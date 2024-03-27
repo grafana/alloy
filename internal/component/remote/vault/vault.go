@@ -19,7 +19,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "remote.vault",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 

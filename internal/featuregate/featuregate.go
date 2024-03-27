@@ -15,12 +15,15 @@ type Stability int
 const (
 	// StabilityUndefined is the default value for Stability, which indicates an error and should never be used.
 	StabilityUndefined Stability = iota
-	// StabilityExperimental is used to designate experimental features.
+	// StabilityExperimental is used to designate features in the Experimental
+	// stage.
 	StabilityExperimental
-	// StabilityBeta is used to designate beta features.
-	StabilityBeta
-	// StabilityStable is used to designate stable features.
-	StabilityStable
+	// StabilityPublicPreview is used to designate features in the Public Preview
+	// stage.
+	StabilityPublicPreview
+	// StabilityGenerallyAvailable is used to designate features in the Generally
+	// Available stage.
+	StabilityGenerallyAvailable
 )
 
 func CheckAllowed(stability Stability, minStability Stability, featureName string) error {
@@ -47,8 +50,8 @@ func CheckAllowed(stability Stability, minStability Stability, featureName strin
 
 func AllowedValues() []string {
 	return []string{
-		StabilityStable.String(),
-		StabilityBeta.String(),
+		StabilityGenerallyAvailable.String(),
+		StabilityPublicPreview.String(),
 		StabilityExperimental.String(),
 	}
 }
@@ -58,9 +61,9 @@ var (
 	_ pflag.Value = (*Stability)(nil)
 	// stabilityToString defines how to convert a Stability to a string.
 	stabilityToString = map[Stability]string{
-		StabilityExperimental: "experimental",
-		StabilityBeta:         "beta",
-		StabilityStable:       "stable",
+		StabilityExperimental:       "experimental",
+		StabilityPublicPreview:      "public-preview",
+		StabilityGenerallyAvailable: "generally-available",
 	}
 )
 

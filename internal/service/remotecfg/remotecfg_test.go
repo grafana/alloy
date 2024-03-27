@@ -170,7 +170,7 @@ func (f fakeHost) NewController(id string) service.Controller {
 		Logger:          logger,
 		Tracer:          nil,
 		DataPath:        "",
-		MinStability:    featuregate.StabilityStable,
+		MinStability:    featuregate.StabilityGenerallyAvailable,
 		Reg:             prometheus.NewRegistry(),
 		OnExportsChange: func(map[string]interface{}) {},
 		Services:        []service.Service{},

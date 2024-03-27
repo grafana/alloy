@@ -10,7 +10,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.operator.servicemonitors",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      operator.Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

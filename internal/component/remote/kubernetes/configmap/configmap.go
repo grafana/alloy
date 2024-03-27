@@ -9,7 +9,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "remote.kubernetes.configmap",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      kubernetes.Arguments{},
 		Exports:   kubernetes.Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

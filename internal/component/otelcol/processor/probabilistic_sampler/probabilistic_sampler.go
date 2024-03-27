@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.probabilistic_sampler",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 

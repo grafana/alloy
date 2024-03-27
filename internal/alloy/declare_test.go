@@ -387,7 +387,7 @@ func TestDeclareError(t *testing.T) {
 			ctrl := alloy.New(alloy.Options{
 				Logger:       s,
 				DataPath:     t.TempDir(),
-				MinStability: featuregate.StabilityBeta,
+				MinStability: featuregate.StabilityPublicPreview,
 				Reg:          nil,
 				Services:     []service.Service{},
 			})

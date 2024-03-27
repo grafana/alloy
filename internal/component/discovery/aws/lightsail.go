@@ -20,7 +20,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.lightsail",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      LightsailArguments{},
 		Exports:   discovery.Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

@@ -335,7 +335,7 @@ func setup(t *testing.T, config string) (*alloy.Alloy, *alloy.Source) {
 	ctrl := alloy.New(alloy.Options{
 		Logger:       s,
 		DataPath:     t.TempDir(),
-		MinStability: featuregate.StabilityBeta,
+		MinStability: featuregate.StabilityPublicPreview,
 		Reg:          nil,
 		Services:     []service.Service{},
 	})

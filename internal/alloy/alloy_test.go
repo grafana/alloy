@@ -73,7 +73,7 @@ func testOptions(t *testing.T) Options {
 	return Options{
 		Logger:       s,
 		DataPath:     t.TempDir(),
-		MinStability: featuregate.StabilityBeta,
+		MinStability: featuregate.StabilityPublicPreview,
 		Reg:          nil,
 	}
 }

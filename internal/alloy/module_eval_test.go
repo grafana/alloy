@@ -334,7 +334,7 @@ func testOptions(t *testing.T) alloy.Options {
 	return alloy.Options{
 		Logger:       s,
 		DataPath:     t.TempDir(),
-		MinStability: featuregate.StabilityBeta,
+		MinStability: featuregate.StabilityPublicPreview,
 		Reg:          nil,
 		Services: []service.Service{
 			http_service.New(http_service.Options{}),

@@ -18,7 +18,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.memory_limiter",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 

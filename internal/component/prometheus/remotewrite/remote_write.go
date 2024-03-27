@@ -38,7 +38,7 @@ func init() {
 
 	component.Register(component.Registration{
 		Name:      "prometheus.remote_write",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 

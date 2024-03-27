@@ -16,7 +16,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.consulagent",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 

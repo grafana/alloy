@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.logging",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 

@@ -67,7 +67,7 @@ func (s *service) Definition() alloy_service.Definition {
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  nil,
-		Stability:  featuregate.StabilityStable,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 

@@ -25,7 +25,7 @@ var userAgent = useragent.Get()
 func init() {
 	component.Register(component.Registration{
 		Name:      "remote.http",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

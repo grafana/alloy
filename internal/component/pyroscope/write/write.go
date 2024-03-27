@@ -37,7 +37,7 @@ var (
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.write",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {

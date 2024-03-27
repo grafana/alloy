@@ -16,7 +16,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.eureka",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 

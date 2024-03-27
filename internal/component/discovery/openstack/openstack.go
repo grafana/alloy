@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.openstack",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 

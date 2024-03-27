@@ -21,7 +21,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "remote.s3",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

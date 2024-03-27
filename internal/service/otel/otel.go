@@ -51,7 +51,7 @@ func (*Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: nil, // otel does not accept configuration
 		DependsOn:  []string{},
-		Stability:  featuregate.StabilityStable,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 

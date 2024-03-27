@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "testcomponents.tick",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      TickConfig{},
 		Exports:   TickExports{},
 

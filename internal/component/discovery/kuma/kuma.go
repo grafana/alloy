@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.kuma",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 

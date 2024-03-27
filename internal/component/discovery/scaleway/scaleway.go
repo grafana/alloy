@@ -21,7 +21,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.scaleway",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 

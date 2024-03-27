@@ -11,7 +11,7 @@ import (
 func TestGlobalID(t *testing.T) {
 	mo := getManagedOptions(ComponentGlobals{
 		DataPath:     "/data/",
-		MinStability: featuregate.StabilityBeta,
+		MinStability: featuregate.StabilityPublicPreview,
 		ControllerID: "module.file",
 		NewModuleController: func(id string) ModuleController {
 			return nil
@@ -26,7 +26,7 @@ func TestGlobalID(t *testing.T) {
 func TestLocalID(t *testing.T) {
 	mo := getManagedOptions(ComponentGlobals{
 		DataPath:     "/data/",
-		MinStability: featuregate.StabilityBeta,
+		MinStability: featuregate.StabilityPublicPreview,
 		ControllerID: "",
 		NewModuleController: func(id string) ModuleController {
 			return nil

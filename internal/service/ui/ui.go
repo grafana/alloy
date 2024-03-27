@@ -47,7 +47,7 @@ func (s *Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: nil, // ui does not accept configuration
 		DependsOn:  []string{http_service.ServiceName},
-		Stability:  featuregate.StabilityStable,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 

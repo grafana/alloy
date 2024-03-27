@@ -33,7 +33,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.rules.kubernetes",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   nil,
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
