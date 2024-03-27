@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	targets         = [{ "target1" = "target1" }]
 	forward_to      = []
 	scrape_interval = "10s"
@@ -47,12 +47,12 @@ func TestRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestBadRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestBadAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	targets         = [{ "target1" = "target1" }]
 	forward_to      = []
 	scrape_interval = "10s"
@@ -67,7 +67,7 @@ func TestBadRiverConfig(t *testing.T) {
 
 	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 }
 
@@ -212,7 +212,7 @@ func TestCustomDialer(t *testing.T) {
 }
 
 func TestValidateScrapeConfig(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	targets         = [{ "target1" = "target1" }]
 	forward_to      = []
 	scrape_interval = "10s"
@@ -220,6 +220,6 @@ func TestValidateScrapeConfig(t *testing.T) {
 	job_name        = "local"
 `
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "scrape_timeout (20s) greater than scrape_interval (10s) for scrape config with job name \"local\"")
 }

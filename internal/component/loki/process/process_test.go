@@ -60,7 +60,7 @@ func TestJSONLabelsStage(t *testing.T) {
 			    }
 			}`
 
-	// Unmarshal the River relabel rules into a custom struct, as we don't have
+	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
@@ -147,7 +147,7 @@ stage.label_keep {
     values = [ "foo", "baz", "filename" ]
 }`
 
-	// Unmarshal the River relabel rules into a custom struct, as we don't have
+	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
@@ -242,7 +242,7 @@ stage.labels {
 		values = { src = "stream" }
 }`
 
-	// Unmarshal the River relabel rules into a custom struct, as we don't have
+	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
@@ -408,7 +408,7 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 			    }
 			}`
 
-	// Unmarshal the River relabel rules into a custom struct, as we don't have
+	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {

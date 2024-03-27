@@ -55,7 +55,7 @@ var DefaultGitArguments = GitArguments{
 	PullFrequency: time.Minute,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GitArguments) SetToDefault() {
 	*args = DefaultGitArguments
 }
@@ -254,7 +254,7 @@ func (im *ImportGit) handleDirectory(path string) error {
 
 	content := make(map[string]string)
 	for _, fi := range filesInfo {
-		if fi.IsDir() || !strings.HasSuffix(fi.Name(), ".river") {
+		if fi.IsDir() || !strings.HasSuffix(fi.Name(), ".alloy") {
 			continue
 		}
 		bb, err := im.repo.ReadFile(filepath.Join(path, fi.Name()))

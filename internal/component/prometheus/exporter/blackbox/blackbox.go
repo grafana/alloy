@@ -62,7 +62,7 @@ func buildBlackboxTargets(baseTarget discovery.Target, args component.Arguments)
 }
 
 // DefaultArguments holds non-zero default options for Arguments when it is
-// unmarshaled from river.
+// unmarshaled from Alloy.
 var DefaultArguments = Arguments{
 	ProbeTimeoutOffset: 500 * time.Millisecond,
 }
@@ -97,12 +97,12 @@ type Arguments struct {
 	ProbeTimeoutOffset time.Duration             `alloy:"probe_timeout_offset,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if a.ConfigFile != "" && a.Config.Value != "" {
 		return errors.New("config and config_file are mutually exclusive")

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	in := `
 		endpoint = "http://localhost:1234"
 		username = "user"

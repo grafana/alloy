@@ -100,7 +100,7 @@ func (a *Action) Validate() error {
 	return nil
 }
 
-// Convert the River type to the Otel type.
+// Convert the Alloy type to the Otel type.
 // TODO: When headerssetterextension.actionValue is made external,
 // remove the input parameter and make this output the Otel type.
 func (a *Action) Convert(hc *headerssetterextension.HeaderConfig) error {

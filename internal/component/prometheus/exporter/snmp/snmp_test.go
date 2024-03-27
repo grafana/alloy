@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUnmarshalRiver(t *testing.T) {
-	riverCfg := `
+func TestUnmarshalAlloy(t *testing.T) {
+	alloyCfg := `
 		config_file = "modules.yml"
 		target "network_switch_1" {
 			address = "192.168.1.2"
@@ -35,7 +35,7 @@ func TestUnmarshalRiver(t *testing.T) {
 		}		
 `
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "modules.yml", args.ConfigFile)
 	require.Equal(t, 2, len(args.Targets))
@@ -145,8 +145,8 @@ func TestBuildSNMPTargets(t *testing.T) {
 	require.Equal(t, "public_v2", targets[0]["__param_auth"])
 }
 
-func TestUnmarshalRiverWithInlineConfig(t *testing.T) {
-	riverCfg := `
+func TestUnmarshalAlloyWithInlineConfig(t *testing.T) {
+	alloyCfg := `
 		config = "{ modules: {if_mib: {walk: [1.3.6.1.2.1.2], get: [1.3.6.1.2.1.1.3.0], metrics: [{name: sysUpTime, oid: 1.3.6.1.2.1.1.3, type: gauge}]}}, auths: { public_v1: { community: public, security_level: noAuthNoPriv, auth_protocol: MD5, priv_protocol: DES, version: 1 } } }"
 
 		target "network_switch_1" {
@@ -162,7 +162,7 @@ func TestUnmarshalRiverWithInlineConfig(t *testing.T) {
 		}
 `
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "", args.ConfigFile)
 	require.Equal(t, args.ConfigStruct.Modules["if_mib"].Walk, []string{"1.3.6.1.2.1.2"})
@@ -190,7 +190,7 @@ func TestUnmarshalRiverWithInlineConfig(t *testing.T) {
 	require.Contains(t, "private", args.Targets[1].WalkParams)
 	require.Contains(t, "public_v2", args.Targets[1].Auth)
 }
-func TestUnmarshalRiverWithInvalidInlineConfig(t *testing.T) {
+func TestUnmarshalAlloyWithInvalidInlineConfig(t *testing.T) {
 	var tests = []struct {
 		testname      string
 		cfg           string

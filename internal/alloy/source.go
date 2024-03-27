@@ -17,14 +17,14 @@ type Source struct {
 	sourceMap map[string][]byte // Map that links parsed Alloy source's name with its content.
 	hash      [sha256.Size]byte // Hash of all files in sourceMap sorted by name.
 
-	// Components holds the list of raw River AST blocks describing components.
+	// Components holds the list of raw Alloy AST blocks describing components.
 	// The Alloy controller can interpret them.
 	components    []*ast.BlockStmt
 	configBlocks  []*ast.BlockStmt
 	declareBlocks []*ast.BlockStmt
 }
 
-// ParseSource parses the River file specified by bb into a File. name should be
+// ParseSource parses the Alloy file specified by bb into a File. name should be
 // the name of the file used for reporting errors.
 //
 // bb must not be modified after passing to ParseSource.
@@ -123,7 +123,7 @@ func ParseSources(sources map[string][]byte) (*Source, error) {
 		return sortedSources[i].Name < sortedSources[j].Name
 	})
 
-	// Parse each .river source and compute new hash for the whole sourceMap
+	// Parse each .alloy source and compute new hash for the whole sourceMap
 	for _, namedSource := range sortedSources {
 		hash.Write(namedSource.Content)
 

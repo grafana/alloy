@@ -34,7 +34,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - run
-            - /etc/alloy/config.river
+            - /etc/alloy/config.alloy
             - --storage.path=/tmp/alloy
             - --server.http.listen-addr=0.0.0.0:80
             - --server.http.ui-path-prefix=/

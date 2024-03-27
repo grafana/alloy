@@ -46,7 +46,7 @@ type Arguments struct {
 	Recheck    bool   `alloy:"recheck_on_scrape,attr,optional"`
 }
 
-// MatcherGroup taken and converted to River from github.com/ncabatoff/process-exporter/config
+// MatcherGroup taken and converted to Alloy from github.com/ncabatoff/process-exporter/config
 type MatcherGroup struct {
 	Name         string   `alloy:"name,attr,optional"`
 	CommRules    []string `alloy:"comm,attr,optional"`
@@ -54,7 +54,7 @@ type MatcherGroup struct {
 	CmdlineRules []string `alloy:"cmdline,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

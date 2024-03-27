@@ -40,7 +40,7 @@ func defaultArgs() Arguments {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (r *Arguments) SetToDefault() {
 	*r = defaultArgs()
 }

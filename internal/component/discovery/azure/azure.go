@@ -61,12 +61,12 @@ var DefaultArguments = Arguments{
 	EnableHTTP2:     true,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if a.OAuth == nil && a.ManagedIdentity == nil || a.OAuth != nil && a.ManagedIdentity != nil {
 		return fmt.Errorf("exactly one of oauth or managed_identity must be specified")

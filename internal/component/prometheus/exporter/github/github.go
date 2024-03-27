@@ -27,7 +27,7 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 }
 
 // DefaultArguments holds non-zero default options for Arguments when it is
-// unmarshaled from river.
+// unmarshaled from Alloy.
 var DefaultArguments = Arguments{
 	APIURL: github_exporter.DefaultConfig.APIURL,
 }
@@ -41,7 +41,7 @@ type Arguments struct {
 	APITokenFile  string            `alloy:"api_token_file,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

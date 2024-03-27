@@ -49,12 +49,12 @@ type Arguments struct {
 	QueryConfig        alloytypes.OptionalSecret `alloy:"query_config,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if a.MaxOpenConnections < 1 {
 		return errors.New("max_open_connections must be at least 1")

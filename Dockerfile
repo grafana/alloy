@@ -46,7 +46,7 @@ RUN <<EOF
 EOF
 
 COPY --from=build /src/alloy/build/alloy /bin/alloy
-COPY example-config.river /etc/alloy/config.river
+COPY example-config.alloy /etc/alloy/config.alloy
 
 # Create alloy user in container, but do not set it as default
 RUN groupadd --gid $UID $USERNAME
@@ -56,4 +56,4 @@ RUN chown -R $USERNAME:$USERNAME /bin/alloy
 
 ENTRYPOINT ["/bin/alloy"]
 ENV ALLOY_DEPLOY_MODE=docker
-CMD ["run", "/etc/alloy/config.river", "--storage.path=/etc/alloy/data"]
+CMD ["run", "/etc/alloy/config.alloy", "--storage.path=/etc/alloy/data"]

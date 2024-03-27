@@ -10,7 +10,7 @@ import (
 	"gotest.tools/assert"
 )
 
-var exampleRiverConfig = `
+var exampleAlloyConfig = `
 url = "https://www.example.com"
 query = "abc"
 include_parameters = true
@@ -22,9 +22,9 @@ basic_auth {
 }
 `
 
-func TestRiverConfig(t *testing.T) {
+func TestAlloyConfig(t *testing.T) {
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 	assert.Equal(t, args.HTTPClientConfig.BasicAuth.Username, "123")
 	assert.Equal(t, args.RefreshInterval, time.Minute)
@@ -36,7 +36,7 @@ func TestRiverConfig(t *testing.T) {
 
 func TestConvert(t *testing.T) {
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	sd := args.Convert()
@@ -48,21 +48,21 @@ func TestConvert(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	riverArgsBadUrl := Arguments{
+	alloyArgsBadUrl := Arguments{
 		URL: string([]byte{0x7f}), // a control character to make url.Parse fail
 	}
-	err := riverArgsBadUrl.Validate()
+	err := alloyArgsBadUrl.Validate()
 	assert.ErrorContains(t, err, "net/url: invalid")
 
-	riverArgsBadScheme := Arguments{
+	alloyArgsBadScheme := Arguments{
 		URL: "smtp://foo.bar",
 	}
-	err = riverArgsBadScheme.Validate()
+	err = alloyArgsBadScheme.Validate()
 	assert.ErrorContains(t, err, "URL scheme must be")
 
-	riverArgsNoHost := Arguments{
+	alloyArgsNoHost := Arguments{
 		URL: "http://#abc",
 	}
-	err = riverArgsNoHost.Validate()
+	err = alloyArgsNoHost.Validate()
 	assert.ErrorContains(t, err, "host is missing in URL")
 }

@@ -35,7 +35,7 @@ var DefaultArguments = Arguments{
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
 
-func (args *Arguments) UnmarshalRiver(f func(interface{}) error) error {
+func (args *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 	*args = DefaultArguments
 
 	type arguments Arguments

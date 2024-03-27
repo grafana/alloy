@@ -3,9 +3,9 @@
 //
 // # Components
 //
-// Each component has a set of arguments (River attributes and blocks) and
+// Each component has a set of arguments (Alloy attributes and blocks) and
 // optionally a set of exported fields. Components can reference the exports of
-// other components using River expressions.
+// other components using Alloy expressions.
 //
 // See the top-level component package for more information on components, and
 // subpackages for defined components.
@@ -29,7 +29,7 @@
 //
 // # Node Evaluation
 //
-// The process of converting the River block associated with a node into
+// The process of converting the Alloy block associated with a node into
 // the appropriate Go struct is called "node evaluation."
 //
 // Nodes are only evaluated after all nodes they reference have been

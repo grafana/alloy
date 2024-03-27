@@ -35,7 +35,7 @@ type Exports struct {
 // DefaultArguments defines the default settings for log scraping.
 var DefaultArguments = Arguments{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }

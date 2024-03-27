@@ -124,7 +124,7 @@ func getFreeAddr(t *testing.T) string {
 }
 
 func TestUnmarshalGrpc(t *testing.T) {
-	riverCfg := `
+	alloyCfg := `
 		grpc {
 			endpoint = "/v1/traces"
 		}
@@ -133,12 +133,12 @@ func TestUnmarshalGrpc(t *testing.T) {
 		}
 	`
 	var args otlp.Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 }
 
 func TestUnmarshalHttp(t *testing.T) {
-	riverCfg := `
+	alloyCfg := `
 		http {
 			endpoint = "/v1/traces"
 		}
@@ -147,7 +147,7 @@ func TestUnmarshalHttp(t *testing.T) {
 		}
 	`
 	var args otlp.Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	assert.Equal(t, "/v1/logs", args.HTTP.LogsURLPath)
 	assert.Equal(t, "/v1/metrics", args.HTTP.MetricsURLPath)
@@ -155,7 +155,7 @@ func TestUnmarshalHttp(t *testing.T) {
 }
 
 func TestUnmarshalHttpUrls(t *testing.T) {
-	riverCfg := `
+	alloyCfg := `
 		http {
 			endpoint = "/v1/traces"
 			traces_url_path = "custom/traces"
@@ -167,7 +167,7 @@ func TestUnmarshalHttpUrls(t *testing.T) {
 		}
 	`
 	var args otlp.Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	assert.Equal(t, "custom/logs", args.HTTP.LogsURLPath)
 	assert.Equal(t, "custom/metrics", args.HTTP.MetricsURLPath)

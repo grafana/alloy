@@ -119,8 +119,8 @@ type Arguments struct {
 	ConfigStruct snmp_config.Config
 }
 
-// UnmarshalRiver implements River unmarshalling for Arguments.
-func (a *Arguments) UnmarshalRiver(f func(interface{}) error) error {
+// UnmarshalAlloy implements Alloy unmarshalling for Arguments.
+func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 	type args Arguments
 	if err := f((*args)(a)); err != nil {
 		return err

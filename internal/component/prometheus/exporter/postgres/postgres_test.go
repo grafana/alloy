@@ -6,13 +6,12 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations/postgres_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	rivertypes "github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfigUnmarshal(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigUnmarshal(t *testing.T) {
+	var exampleAlloyConfig = `
 	data_source_names = ["postgresql://username:password@localhost:5432/database?sslmode=disable"]
 	disable_settings_metrics = true
 	disable_default_metrics = true
@@ -25,11 +24,11 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 	}`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
-		DataSourceNames:        []alloytypes.Secret{rivertypes.Secret("postgresql://username:password@localhost:5432/database?sslmode=disable")},
+		DataSourceNames:        []alloytypes.Secret{alloytypes.Secret("postgresql://username:password@localhost:5432/database?sslmode=disable")},
 		DisableSettingsMetrics: true,
 		AutoDiscovery: AutoDiscovery{
 			Enabled:           false,
@@ -43,8 +42,8 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 	require.Equal(t, expected, args)
 }
 
-func TestRiverConfigConvert(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigConvert(t *testing.T) {
+	var exampleAlloyConfig = `
 	data_source_names = ["postgresql://username:password@localhost:5432/database?sslmode=disable"]
 	disable_settings_metrics = true
 	disable_default_metrics = true
@@ -57,7 +56,7 @@ func TestRiverConfigConvert(t *testing.T) {
 	}`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	c := args.Convert()

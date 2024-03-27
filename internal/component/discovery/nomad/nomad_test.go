@@ -10,8 +10,8 @@ import (
 	"gotest.tools/assert"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverCfg := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyCfg := `
 		allow_stale = false
 		namespace = "foo"
 		refresh_interval = "20s"
@@ -23,7 +23,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		proxy_url = "http://example:8080"`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 
 	assert.Equal(t, false, args.AllowStale)
@@ -38,7 +38,7 @@ func TestRiverUnmarshal(t *testing.T) {
 }
 
 func TestConvert(t *testing.T) {
-	riverArgsOAuth := Arguments{
+	alloyArgsOAuth := Arguments{
 		AllowStale:      false,
 		Namespace:       "test",
 		RefreshInterval: time.Minute,
@@ -47,7 +47,7 @@ func TestConvert(t *testing.T) {
 		TagSeparator:    ";",
 	}
 
-	promArgs := riverArgsOAuth.Convert()
+	promArgs := alloyArgsOAuth.Convert()
 	assert.Equal(t, false, promArgs.AllowStale)
 	assert.Equal(t, "test", promArgs.Namespace)
 	assert.Equal(t, "a", promArgs.Region)
@@ -57,9 +57,9 @@ func TestConvert(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	riverArgsNoServer := Arguments{
+	alloyArgsNoServer := Arguments{
 		Server: "",
 	}
-	err := riverArgsNoServer.Validate()
+	err := alloyArgsNoServer.Validate()
 	assert.Error(t, err, "nomad SD configuration requires a server address")
 }

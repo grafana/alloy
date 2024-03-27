@@ -64,12 +64,12 @@ var DefaultLightsailSDConfig = LightsailArguments{
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *LightsailArguments) SetToDefault() {
 	*args = DefaultLightsailSDConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *LightsailArguments) Validate() error {
 	if args.Region == "" {
 		cfgCtx := context.TODO()

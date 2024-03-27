@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfigUnmarshal(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigUnmarshal(t *testing.T) {
+	var exampleAlloyConfig = `
 	matcher {
 		name    = "alloy"
 		comm    = ["alloy"]
@@ -22,7 +22,7 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	require.False(t, args.Children)
@@ -40,8 +40,8 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 	require.Equal(t, expected, args.ProcessExporter)
 }
 
-func TestRiverConfigConvert(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigConvert(t *testing.T) {
+	var exampleAlloyConfig = `
 	matcher {
 		name    = "static"
 		comm    = ["grafana-agent"]
@@ -54,7 +54,7 @@ func TestRiverConfigConvert(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	require.True(t, args.Children)

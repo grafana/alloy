@@ -83,7 +83,7 @@ func (args *TLSSetting) Convert() *otelconfigtls.TLSSetting {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (t *TLSSetting) Validate() error {
 	if len(t.CA) > 0 && len(t.CAFile) > 0 {
 		return fmt.Errorf("at most one of ca_pem and ca_file must be configured")

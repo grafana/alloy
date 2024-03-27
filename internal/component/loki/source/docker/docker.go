@@ -71,12 +71,12 @@ func GetDefaultArguments() Arguments {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = GetDefaultArguments()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if _, err := url.Parse(a.Host); err != nil {
 		return fmt.Errorf("failed to parse Docker host %q: %w", a.Host, err)

@@ -48,14 +48,14 @@ type Arguments struct {
 	CacheSize int `alloy:"max_cache_size,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (arg *Arguments) SetToDefault() {
 	*arg = Arguments{
 		CacheSize: 100_000,
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (arg *Arguments) Validate() error {
 	if arg.CacheSize <= 0 {
 		return fmt.Errorf("max_cache_size must be greater than 0 and is %d", arg.CacheSize)

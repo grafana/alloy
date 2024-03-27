@@ -38,12 +38,12 @@ var DefaultArguments = Arguments{
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	switch args.Role {
 	case string(prom_discovery.HetznerRoleRobot), string(prom_discovery.HetznerRoleHcloud):

@@ -25,7 +25,7 @@ type Config struct {
 	// is enabled.
 	Token alloytypes.Secret `alloy:"token,attr,optional"`
 
-	// TokenFile is not necessary in River because users can use the local.file
+	// TokenFile is not necessary in Alloy because users can use the local.file
 	// Alloy component instead.
 	//
 	// TokenFile string `alloy:"token_file"`

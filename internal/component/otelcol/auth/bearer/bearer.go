@@ -40,7 +40,7 @@ var DefaultArguments = Arguments{
 	Scheme: "Bearer",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }

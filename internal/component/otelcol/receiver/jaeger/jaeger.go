@@ -42,13 +42,13 @@ type Arguments struct {
 
 var _ receiver.Arguments = Arguments{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{}
 	args.DebugMetrics.SetToDefault()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.Protocols.GRPC == nil &&
 		args.Protocols.ThriftHTTP == nil &&
@@ -101,7 +101,7 @@ type GRPC struct {
 	GRPCServerArguments *otelcol.GRPCServerArguments `alloy:",squash"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GRPC) SetToDefault() {
 	*args = GRPC{
 		GRPCServerArguments: &otelcol.GRPCServerArguments{
@@ -124,7 +124,7 @@ type ThriftHTTP struct {
 	HTTPServerArguments *otelcol.HTTPServerArguments `alloy:",squash"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *ThriftHTTP) SetToDefault() {
 	*args = ThriftHTTP{
 		HTTPServerArguments: &otelcol.HTTPServerArguments{
@@ -173,7 +173,7 @@ type ThriftCompact struct {
 	ProtocolUDP *ProtocolUDP `alloy:",squash"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *ThriftCompact) SetToDefault() {
 	*args = ThriftCompact{
 		ProtocolUDP: &ProtocolUDP{
@@ -199,7 +199,7 @@ type ThriftBinary struct {
 	ProtocolUDP *ProtocolUDP `alloy:",squash"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *ThriftBinary) SetToDefault() {
 	*args = ThriftBinary{
 		ProtocolUDP: &ProtocolUDP{

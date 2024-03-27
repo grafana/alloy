@@ -60,12 +60,12 @@ var DefaultArguments = Arguments{
 	EnableHTTP2:     true,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.Project == "" {
 		return fmt.Errorf("project_id must not be empty")

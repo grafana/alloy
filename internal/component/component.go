@@ -9,20 +9,20 @@
 // configuration changes. A component may also update its Exports throughout
 // its lifetime, such as a component which outputs the current day of the week.
 //
-// Components are built by users with River, where they can use River
-// expressions to refer to any input or exported field from other components.
-// This allows users to connect components together to declaratively form a
-// pipeline.
+// Components are built by users with Alloy configuration, where they can use
+// Alloy expressions to refer to any input or exported field from other
+// components. This allows users to connect components together to
+// declaratively form a pipeline.
 //
 // # Defining Arguments and Exports structs
 //
 // Arguments and Exports implemented by new components must be able to be
-// encoded to and from River. "river" struct field tags are used for encoding;
-// refer to the package documentation at pkg/river for a description of how to
+// encoded to and from Alloy. "alloy" struct field tags are used for encoding;
+// refer to the package documentation at syntax for a description of how to
 // write these tags.
 //
-// The set of River element names of a given component's Arguments and Exports
-// types must not overlap. Additionally, the following River field and block
+// The set of Alloy element names of a given component's Arguments and Exports
+// types must not overlap. Additionally, the following Alloy field and block
 // names are reserved for use by the Alloy controller:
 //
 //   - for_each
@@ -31,7 +31,7 @@
 //   - debug
 //
 // Default values for Arguments may be provided by implementing
-// river.Unmarshaler.
+// syntax.Unmarshaler.
 //
 // # Arguments and Exports immutability
 //
@@ -44,11 +44,11 @@
 // Similarly, Exports and the fields within Exports must be considered
 // immutable after they are written for the same reason.
 //
-// # Mapping River strings to custom types
+// # Mapping Alloy strings to custom types
 //
 // Custom encoding and decoding of fields is available by implementing
 // encoding.TextMarshaler and encoding.TextUnmarshaler. Types implementing
-// these interfaces will be represented as strings in River.
+// these interfaces will be represented as strings in Alloy.
 //
 // # Component registration
 //
@@ -63,14 +63,14 @@ import (
 )
 
 // The Arguments contains the input fields for a specific component, which is
-// unmarshaled from River.
+// unmarshaled from Alloy.
 //
 // Refer to the package documentation for details around how to build proper
 // Arguments implementations.
 type Arguments interface{}
 
 // Exports contains the current set of outputs for a specific component, which
-// is then marshaled to River.
+// is then marshaled to Alloy.
 //
 // Refer to the package documentation for details around how to build proper
 // Exports implementations.
@@ -105,7 +105,7 @@ type DebugComponent interface {
 
 	// DebugInfo returns the current debug information of the component. May
 	// return nil if there is no debug info to currently report. The result of
-	// DebugInfo must be encodable to River like Arguments and Exports.
+	// DebugInfo must be encodable to Alloy like Arguments and Exports.
 	//
 	// Values from DebugInfo are not exposed to other components for use in
 	// expressions.

@@ -45,12 +45,12 @@ var DefaultArguments = Arguments{
 	EnableHTTP2:     true,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 //
 // Validate validates the arguments. Specifically, it checks that a BearerToken or
 // BearerTokenFile is specified, as the DigitalOcean API requires a Bearer Token for

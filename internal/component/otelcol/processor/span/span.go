@@ -47,7 +47,7 @@ var (
 	_ processor.Arguments = Arguments{}
 )
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args == nil {
 		return nil
@@ -180,7 +180,7 @@ var DefaultToAttributes = ToAttributes{
 	BreakAfterMatch: false,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *ToAttributes) SetToDefault() {
 	if args == nil {
 		return

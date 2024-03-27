@@ -263,7 +263,7 @@ func logsReceiversToExpr(r []loki.LogsReceiver) string {
 	return "[" + strings.Join(exprs, ", ") + "]"
 }
 
-func toRiverExpression(goValue interface{}) (string, error) {
+func toAlloyExpression(goValue interface{}) (string, error) {
 	e := builder.NewExpr()
 	e.SetValue(goValue)
 	var buff bytes.Buffer

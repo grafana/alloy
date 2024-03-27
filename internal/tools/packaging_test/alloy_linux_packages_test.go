@@ -81,7 +81,7 @@ func (env *AlloyEnvironment) TestInstall(t *testing.T) {
 
 	res = env.ExecScript(`[ -f /usr/bin/alloy ]`)
 	require.Equal(t, 0, res.ExitCode, "expected Alloy to be installed")
-	res = env.ExecScript(`[ -f /etc/alloy.river ]`)
+	res = env.ExecScript(`[ -f /etc/alloy.alloy ]`)
 	require.Equal(t, 0, res.ExitCode, "expected Alloy configuration file to exist")
 
 	res = env.Uninstall()
@@ -94,13 +94,13 @@ func (env *AlloyEnvironment) TestInstall(t *testing.T) {
 }
 
 func (env *AlloyEnvironment) TestConfigPersistence(t *testing.T) {
-	res := env.ExecScript(`echo -n "keepalive" > /etc/alloy.river`)
+	res := env.ExecScript(`echo -n "keepalive" > /etc/alloy.alloy`)
 	require.Equal(t, 0, res.ExitCode, "failed to write config file")
 
 	res = env.Install()
 	require.Equal(t, 0, res.ExitCode, "installation failed")
 
-	res = env.ExecScript(`cat /etc/alloy.river`)
+	res = env.ExecScript(`cat /etc/alloy.alloy`)
 	require.Equal(t, "keepalive", res.Stdout, "Expected existing file to not be overridden")
 }
 

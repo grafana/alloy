@@ -39,7 +39,7 @@ type CustomComponentNode struct {
 	getConfig getCustomComponentConfig // Retrieve the custom component config.
 
 	mut     sync.RWMutex
-	block   *ast.BlockStmt // Current River block to derive args from
+	block   *ast.BlockStmt // Current Alloy block to derive args from
 	eval    *vm.Evaluator
 	managed CustomComponent     // Inner managed custom component
 	args    component.Arguments // Evaluated arguments for the managed component
@@ -128,18 +128,18 @@ func NewCustomComponentNode(globals ComponentGlobals, b *ast.BlockStmt, getConfi
 	return cn
 }
 
-// ID returns the component ID of the managed component from its River block.
+// ID returns the component ID of the managed component from its Alloy block.
 func (cn *CustomComponentNode) ID() ComponentID { return cn.id }
 
 // Label returns the label for the block or "" if none was specified.
 func (cn *CustomComponentNode) Label() string { return cn.label }
 
 // NodeID implements dag.Node and returns the unique ID for this node. The
-// NodeID is the string representation of the component's ID from its River
+// NodeID is the string representation of the component's ID from its Alloy
 // block.
 func (cn *CustomComponentNode) NodeID() string { return cn.nodeID }
 
-// UpdateBlock updates the River block used to construct arguments for the
+// UpdateBlock updates the Alloy block used to construct arguments for the
 // managed component. The new block isn't used until the next time Evaluate is
 // invoked.
 //
@@ -147,7 +147,7 @@ func (cn *CustomComponentNode) NodeID() string { return cn.nodeID }
 // CustomComponentNode.
 func (cn *CustomComponentNode) UpdateBlock(b *ast.BlockStmt) {
 	if !BlockComponentID(b).Equals(cn.id) {
-		panic("UpdateBlock called with an River block with a different component ID")
+		panic("UpdateBlock called with an Alloy block with a different component ID")
 	}
 
 	cn.mut.Lock()
@@ -156,11 +156,11 @@ func (cn *CustomComponentNode) UpdateBlock(b *ast.BlockStmt) {
 	cn.eval = vm.New(b.Body)
 }
 
-// Evaluate implements BlockNode and updates the arguments by re-evaluating its River block with the provided scope and the custom component by
+// Evaluate implements BlockNode and updates the arguments by re-evaluating its Alloy block with the provided scope and the custom component by
 // retrieving the component definition from the corresponding import or declare node.
 // The managed custom component will be built the first time Evaluate is called.
 //
-// Evaluate will return an error if the River block cannot be evaluated, if
+// Evaluate will return an error if the Alloy block cannot be evaluated, if
 // decoding to arguments fails or if the custom component definition cannot be retrieved.
 func (cn *CustomComponentNode) Evaluate(evalScope *vm.Scope) error {
 	err := cn.evaluate(evalScope)

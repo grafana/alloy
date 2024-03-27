@@ -41,12 +41,12 @@ var DefaultArguments = Arguments{
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	parsedURL, err := url.Parse(args.URL)
 	if err != nil {

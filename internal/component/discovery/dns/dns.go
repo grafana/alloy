@@ -39,12 +39,12 @@ var DefaultArguments = Arguments{
 	Type:            "SRV",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	switch strings.ToUpper(args.Type) {
 	case "SRV":

@@ -13,15 +13,15 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverConfig := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyConfig := `
 	connection_string = "sqlserver://user:pass@localhost:1433"
 	max_idle_connections = 3
 	max_open_connections = 3
 	timeout = "10s"`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
@@ -34,8 +34,8 @@ func TestRiverUnmarshal(t *testing.T) {
 	require.Equal(t, expected, args)
 }
 
-func TestRiverUnmarshalWithInlineQueryConfig(t *testing.T) {
-	riverConfig := `
+func TestAlloyUnmarshalWithInlineQueryConfig(t *testing.T) {
+	alloyConfig := `
 	connection_string = "sqlserver://user:pass@localhost:1433"
 	max_idle_connections = 3
 	max_open_connections = 3
@@ -43,7 +43,7 @@ func TestRiverUnmarshalWithInlineQueryConfig(t *testing.T) {
 	query_config = "{ collector_name: mssql_standard, metrics: [ { metric_name: mssql_local_time_seconds, type: gauge, help: 'Local time in seconds since epoch (Unix time).', values: [ unix_time ], query: \"SELECT DATEDIFF(second, '19700101', GETUTCDATE()) AS unix_time\" } ] }"`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 	var collectorConfig config.CollectorConfig
 	err = yaml.UnmarshalStrict([]byte(args.QueryConfig.Value), &collectorConfig)
@@ -63,8 +63,8 @@ func TestRiverUnmarshalWithInlineQueryConfig(t *testing.T) {
 	require.Equal(t, "SELECT DATEDIFF(second, '19700101', GETUTCDATE()) AS unix_time", collectorConfig.Metrics[0].QueryLiteral)
 }
 
-func TestRiverUnmarshalWithInlineQueryConfigYaml(t *testing.T) {
-	riverConfig := `
+func TestAlloyUnmarshalWithInlineQueryConfigYaml(t *testing.T) {
+	alloyConfig := `
 	connection_string = "sqlserver://user:pass@localhost:1433"
 	max_idle_connections = 3
 	max_open_connections = 3
@@ -72,7 +72,7 @@ func TestRiverUnmarshalWithInlineQueryConfigYaml(t *testing.T) {
 	query_config = "collector_name: mssql_standard\nmetrics:\n- metric_name: mssql_local_time_seconds\n  type: gauge\n  help: 'Local time in seconds since epoch (Unix time).'\n  values: [unix_time]\n  query: \"SELECT DATEDIFF(second, '19700101', GETUTCDATE()) AS unix_time\""`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 	var collectorConfig config.CollectorConfig
 	err = yaml.UnmarshalStrict([]byte(args.QueryConfig.Value), &collectorConfig)
@@ -93,7 +93,7 @@ func TestRiverUnmarshalWithInlineQueryConfigYaml(t *testing.T) {
 }
 
 func TestUnmarshalInvalid(t *testing.T) {
-	invalidRiverConfig := `
+	invalidAlloyConfig := `
 	connection_string = "sqlserver://user:pass@localhost:1433"
 	max_idle_connections = 1
 	max_open_connections = 1
@@ -101,13 +101,13 @@ func TestUnmarshalInvalid(t *testing.T) {
 	`
 
 	var invalidArgs Arguments
-	err := syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err := syntax.Unmarshal([]byte(invalidAlloyConfig), &invalidArgs)
 	require.Error(t, err)
 	require.EqualError(t, err, "timeout must be positive")
 }
 
 func TestUnmarshalInvalidQueryConfigYaml(t *testing.T) {
-	invalidRiverConfig := `
+	invalidAlloyConfig := `
 	connection_string = "sqlserver://user:pass@localhost:1433"
 	max_idle_connections = 1
 	max_open_connections = 1
@@ -116,13 +116,13 @@ func TestUnmarshalInvalidQueryConfigYaml(t *testing.T) {
 	`
 
 	var invalidArgs Arguments
-	err := syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err := syntax.Unmarshal([]byte(invalidAlloyConfig), &invalidArgs)
 	require.Error(t, err)
 	require.EqualError(t, err, "invalid query_config: yaml: line 1: did not find expected ',' or ']'")
 }
 
 func TestUnmarshalInvalidProperty(t *testing.T) {
-	invalidRiverConfig := `
+	invalidAlloyConfig := `
 	connection_string = "sqlserver://user:pass@localhost:1433"
 	max_idle_connections = 1
 	max_open_connections = 1
@@ -131,7 +131,7 @@ func TestUnmarshalInvalidProperty(t *testing.T) {
 	`
 
 	var invalidArgs Arguments
-	err := syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err := syntax.Unmarshal([]byte(invalidAlloyConfig), &invalidArgs)
 	require.Error(t, err)
 	require.EqualError(t, err, "invalid query_config: unknown fields in collector: bad_param")
 }

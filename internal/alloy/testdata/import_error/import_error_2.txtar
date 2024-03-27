@@ -1,10 +1,10 @@
 Root tries to access declare in nested import.
 
--- main.river --
+-- main.alloy --
 import.string "testImport" {
-	content = `import.string "nestedImport" {
-		content = 'declare "cantAccessThis" {}'
-	}`
+  content = `import.string "nestedImport" {
+    content = 'declare "cantAccessThis" {}'
+  }`
 }
 
 testImport.cantAccessThis "cc" {}

@@ -1,13 +1,13 @@
 import { ObjectField, Value, ValueType } from './types';
 
 /**
- * Returns a native River config representation of the given Value.
+ * Returns a native Alloy config representation of the given Value.
  */
-export function riverStringify(v: Value): string {
-  return riverStringifyImpl(v, 0);
+export function alloyStringify(v: Value): string {
+  return alloyStringifyImpl(v, 0);
 }
 
-function riverStringifyImpl(v: Value, indent: number): string {
+function alloyStringifyImpl(v: Value, indent: number): string {
   switch (v.type) {
     case ValueType.NULL: {
       return 'null';
@@ -32,7 +32,7 @@ function riverStringifyImpl(v: Value, indent: number): string {
     case ValueType.ARRAY: {
       let result = '[';
       v.value.forEach((element, idx) => {
-        result += riverStringifyImpl(element, indent);
+        result += alloyStringifyImpl(element, indent);
         if (idx + 1 < v.value.length) {
           result += ', ';
         }
@@ -56,7 +56,7 @@ function riverStringifyImpl(v: Value, indent: number): string {
 
         return partition.forEach((element) => {
           result += indentLine(indent + 1);
-          result += `${partitionKey(element, keyLength)} = ${riverStringifyImpl(element.value, indent + 1)}`;
+          result += `${partitionKey(element, keyLength)} = ${alloyStringifyImpl(element.value, indent + 1)}`;
           result += ',\n';
         });
       });
@@ -81,7 +81,7 @@ function riverStringifyImpl(v: Value, indent: number): string {
 
 /**
  * escapeString escapes special characters in a string so they can be printed
- * inside a River string literal.
+ * inside an Alloy string literal.
  */
 function escapeString(input: string): string {
   // TODO(rfratto): this should also escape Unicode characters into \u and \U
@@ -151,12 +151,12 @@ function partitionFields(fields: ObjectField[]): ObjectField[][] {
 function multilinedValue(value: Value): boolean {
   switch (value.type) {
     case ValueType.OBJECT:
-      // River objects cross more than one line whenever there is at least one
+      // Alloy objects cross more than one line whenever there is at least one
       // element.
       return value.value.length > 0;
 
     case ValueType.ARRAY:
-      // River arrays cross more than one line if any of their elements cross
+      // Alloy arrays cross more than one line if any of their elements cross
       // more than one line.
       return value.value.some((v) => multilinedValue(v));
   }
@@ -200,7 +200,7 @@ function partitionKey(field: ObjectField, keyLength: number): string {
 }
 
 /**
- * validIdentifier reports whether the input is a valid River identifier.
+ * validIdentifier reports whether the input is a valid Alloy identifier.
  */
 function validIdentifier(input: string): boolean {
   return /^[_a-z][_a-z0-9]*$/i.test(input);

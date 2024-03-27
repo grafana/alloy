@@ -45,7 +45,7 @@ type PullTarget struct {
 	msgs chan *pubsub.Message
 }
 
-// TODO(@tpaschalis) Expose this as River configuration in the future.
+// TODO(@tpaschalis) Expose this as Alloy configuration in the future.
 var defaultBackoff = backoff.Config{
 	MinBackoff: 1 * time.Second,
 	MaxBackoff: 10 * time.Second,

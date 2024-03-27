@@ -36,12 +36,12 @@ var DefaultMultilineConfig = MultilineConfig{
 	MaxWaitTime: 3 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *MultilineConfig) SetToDefault() {
 	*args = DefaultMultilineConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *MultilineConfig) Validate() error {
 	if args.MaxWaitTime <= 0 {
 		return fmt.Errorf("max_wait_time must be greater than 0")

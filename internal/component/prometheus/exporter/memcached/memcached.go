@@ -46,12 +46,12 @@ type Arguments struct {
 	TLSConfig *config.TLSConfig `alloy:"tls_config,block,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a Arguments) Validate() error {
 	if a.TLSConfig == nil {
 		return nil

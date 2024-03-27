@@ -168,9 +168,9 @@ Alloy instances in the cluster.
 `alloy.configMap.content` holds the Grafana Alloy configuration to use.
 
 If `alloy.configMap.content` is not provided, a [default configuration file][default-config] is
-used. When provided, `alloy.configMap.content` must hold a valid River configuration file.
+used. When provided, `alloy.configMap.content` must hold a valid Alloy configuration file.
 
-[default-config]: ./config/example.river
+[default-config]: ./config/example.alloy
 
 ### alloy.securityContext
 

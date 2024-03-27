@@ -38,12 +38,12 @@ var DefaultArguments = Arguments{
 	Port:             80,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if a.DatacenterID == "" {
 		return fmt.Errorf("datacenter_id can't be empty")

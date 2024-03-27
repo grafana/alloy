@@ -62,12 +62,12 @@ type JaegerRemoteSamplerOptions struct {
 	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (opts *Options) SetToDefault() {
 	*opts = DefaultOptions
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (opts *JaegerRemoteSamplerOptions) SetToDefault() {
 	*opts = DefaultJaegerRemoteSamplerOptions
 }

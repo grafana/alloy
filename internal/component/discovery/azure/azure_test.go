@@ -12,8 +12,8 @@ import (
 	"gotest.tools/assert"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverCfg := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyCfg := `
 		environment = "AzureTestCloud"
 		port = 8080
 		subscription_id = "subid"
@@ -29,7 +29,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		proxy_url = "http://example:8080"`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 
 	assert.Equal(t, "AzureTestCloud", args.Environment)
@@ -45,8 +45,8 @@ func TestRiverUnmarshal(t *testing.T) {
 	assert.Equal(t, "http://example:8080", args.ProxyConfig.ProxyURL.String())
 }
 
-func TestRiverUnmarshal_OAuthRequiredFields(t *testing.T) {
-	riverCfg := `
+func TestAlloyUnmarshal_OAuthRequiredFields(t *testing.T) {
+	alloyCfg := `
 		environment = "AzureTestCloud"
 		port = 8080
 		subscription_id = "subid"
@@ -56,7 +56,7 @@ func TestRiverUnmarshal_OAuthRequiredFields(t *testing.T) {
 			client_id = "clientid"
 		}`
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.Error(t, err)
 }
 
@@ -110,7 +110,7 @@ func TestValidate(t *testing.T) {
 
 func TestConvert(t *testing.T) {
 	proxyUrl, _ := url.Parse("http://example:8080")
-	riverArgsOAuth := Arguments{
+	alloyArgsOAuth := Arguments{
 		Environment:     "AzureTestCloud",
 		Port:            8080,
 		SubscriptionID:  "subid",
@@ -130,7 +130,7 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	promArgs := riverArgsOAuth.Convert()
+	promArgs := alloyArgsOAuth.Convert()
 	assert.Equal(t, "AzureTestCloud", promArgs.Environment)
 	assert.Equal(t, 8080, promArgs.Port)
 	assert.Equal(t, "subid", promArgs.SubscriptionID)
@@ -143,7 +143,7 @@ func TestConvert(t *testing.T) {
 	assert.Equal(t, false, promArgs.HTTPClientConfig.EnableHTTP2)
 	assert.Equal(t, "http://example:8080", promArgs.HTTPClientConfig.ProxyURL.String())
 
-	riverArgsManagedIdentity := Arguments{
+	alloyArgsManagedIdentity := Arguments{
 		Environment:     "AzureTestCloud",
 		Port:            8080,
 		SubscriptionID:  "subid",
@@ -161,7 +161,7 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	promArgs = riverArgsManagedIdentity.Convert()
+	promArgs = alloyArgsManagedIdentity.Convert()
 	assert.Equal(t, "AzureTestCloud", promArgs.Environment)
 	assert.Equal(t, 8080, promArgs.Port)
 	assert.Equal(t, "subid", promArgs.SubscriptionID)

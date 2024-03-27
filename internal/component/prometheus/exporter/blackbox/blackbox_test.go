@@ -13,8 +13,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func TestUnmarshalRiver(t *testing.T) {
-	riverCfg := `
+func TestUnmarshalAlloy(t *testing.T) {
+	alloyCfg := `
 		config_file = "modules.yml"
 		target {
 			name = "target_a"
@@ -29,7 +29,7 @@ func TestUnmarshalRiver(t *testing.T) {
 		probe_timeout_offset = "0.5s"
 `
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "modules.yml", args.ConfigFile)
 	require.Equal(t, 2, len(args.Targets))
@@ -42,8 +42,8 @@ func TestUnmarshalRiver(t *testing.T) {
 	require.Contains(t, "http_2xx", args.Targets[1].Module)
 }
 
-func TestUnmarshalRiverWithInlineConfig(t *testing.T) {
-	riverCfg := `
+func TestUnmarshalAlloyWithInlineConfig(t *testing.T) {
+	alloyCfg := `
 		config = "{ modules: { http_2xx: { prober: http, timeout: 5s } } }"
 
 		target {
@@ -59,7 +59,7 @@ func TestUnmarshalRiverWithInlineConfig(t *testing.T) {
 		probe_timeout_offset = "0.5s"
 `
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "", args.ConfigFile)
 	var blackboxConfig blackbox_config.Config
@@ -77,8 +77,8 @@ func TestUnmarshalRiverWithInlineConfig(t *testing.T) {
 	require.Contains(t, "http_2xx", args.Targets[1].Module)
 }
 
-func TestUnmarshalRiverWithInlineConfigYaml(t *testing.T) {
-	riverCfg := `
+func TestUnmarshalAlloyWithInlineConfigYaml(t *testing.T) {
+	alloyCfg := `
 		config = "modules:\n  http_2xx:\n    prober: http\n    timeout: 5s\n"
 
 		target {
@@ -94,7 +94,7 @@ func TestUnmarshalRiverWithInlineConfigYaml(t *testing.T) {
 		probe_timeout_offset = "0.5s"
 `
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "", args.ConfigFile)
 	var blackboxConfig blackbox_config.Config
@@ -112,7 +112,7 @@ func TestUnmarshalRiverWithInlineConfigYaml(t *testing.T) {
 	require.Contains(t, "http_2xx", args.Targets[1].Module)
 }
 
-func TestUnmarshalRiverWithInvalidConfig(t *testing.T) {
+func TestUnmarshalAlloyWithInvalidConfig(t *testing.T) {
 	var tests = []struct {
 		testname      string
 		cfg           string

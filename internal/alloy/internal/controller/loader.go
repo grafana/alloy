@@ -25,7 +25,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// The Loader builds and evaluates ComponentNodes from River blocks.
+// The Loader builds and evaluates ComponentNodes from Alloy blocks.
 type Loader struct {
 	log        log.Logger
 	tracer     trace.TracerProvider
@@ -111,7 +111,7 @@ func NewLoader(opts LoaderOptions) *Loader {
 	return l
 }
 
-// ApplyOptions are options that can be provided when loading a new River config.
+// ApplyOptions are options that can be provided when loading a new Alloy config.
 type ApplyOptions struct {
 	Args map[string]any // input values of a module (nil for the root module)
 
@@ -127,12 +127,12 @@ type ApplyOptions struct {
 }
 
 // Apply loads a new set of components into the Loader. Apply will drop any
-// previously loaded component which is not described in the set of River
+// previously loaded component which is not described in the set of Alloy
 // blocks.
 //
 // Apply will reuse existing components if there is an existing component which
-// matches the component ID specified by any of the provided River blocks.
-// Reused components will be updated to point at the new River block.
+// matches the component ID specified by any of the provided Alloy blocks.
+// Reused components will be updated to point at the new Alloy block.
 //
 // Apply will perform an evaluation of all loaded components before returning.
 // The provided parentContext can be used to provide global variables and

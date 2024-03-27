@@ -37,7 +37,7 @@ type ImportConfigNode struct {
 	label         string
 	componentName string
 	globals       ComponentGlobals          // Need a copy of the globals to create other import nodes
-	block         *ast.BlockStmt            // Current River blocks to derive config from
+	block         *ast.BlockStmt            // Current Alloy blocks to derive config from
 	source        importsource.ImportSource // source retrieves the module content
 	registry      *prometheus.Registry
 
@@ -391,14 +391,14 @@ func (cn *ImportConfigNode) run(errChan chan error, updateTasks func() error) er
 	}
 }
 
-// UpdateBlock updates the River block used to construct arguments.
+// UpdateBlock updates the Alloy block used to construct arguments.
 // The new block isn't used until the next time Evaluate is invoked.
 //
 // UpdateBlock will panic if the block does not match the component ID of the
 // ImportConfigNode.
 func (cn *ImportConfigNode) UpdateBlock(b *ast.BlockStmt) {
 	if !BlockComponentID(b).Equals(strings.Split(cn.nodeID, ".")) {
-		panic("UpdateBlock called with an River block with a different ID")
+		panic("UpdateBlock called with an Alloy block with a different ID")
 	}
 
 	cn.mut.Lock()

@@ -23,10 +23,10 @@ type Definition struct {
 
 	// ConfigType is an optional config type to configure a
 	// service at runtime. The Name of the service is used
-	// as the River block name to configure the service.
+	// as the Alloy block name to configure the service.
 	// If nil, the service has no runtime configuration.
 	//
-	// When non-nil, ConfigType must be a struct type with River
+	// When non-nil, ConfigType must be a struct type with alloy
 	// tags for decoding as a config block.
 	ConfigType any
 

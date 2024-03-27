@@ -34,7 +34,7 @@ type Arguments struct {
 	Arguments map[string]any `alloy:"arguments,block,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	a.LocalFileArguments = file.DefaultArguments
 }

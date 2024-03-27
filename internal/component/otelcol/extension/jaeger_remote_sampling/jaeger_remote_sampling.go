@@ -80,7 +80,7 @@ func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.I
 	return nil
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if a.GRPC == nil && a.HTTP == nil {
 		return fmt.Errorf("http or grpc must be configured to serve the sampling document")
@@ -89,7 +89,7 @@ func (a *Arguments) Validate() error {
 	return nil
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *ArgumentsSource) Validate() error {
 	// remote config, local file and contents are all mutually exclusive
 	sourcesSet := 0
@@ -113,7 +113,7 @@ func (a *ArgumentsSource) Validate() error {
 	return nil
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GRPCServerArguments) SetToDefault() {
 	*args = GRPCServerArguments{
 		Endpoint:  "0.0.0.0:14250",
@@ -121,7 +121,7 @@ func (args *GRPCServerArguments) SetToDefault() {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *HTTPServerArguments) SetToDefault() {
 	*args = HTTPServerArguments{
 		Endpoint: "0.0.0.0:5778",
@@ -133,7 +133,7 @@ func (args *HTTPServerArguments) SetToDefault() {
 // component-specific defaults.
 type GRPCClientArguments otelcol.GRPCClientArguments
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GRPCClientArguments) SetToDefault() {
 	*args = GRPCClientArguments{
 		Headers:         map[string]string{},

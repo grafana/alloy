@@ -62,7 +62,7 @@ func getDefault() Arguments {
 	return Arguments{SyncPeriod: 10 * time.Second}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = getDefault()
 }

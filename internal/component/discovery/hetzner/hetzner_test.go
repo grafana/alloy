@@ -10,14 +10,14 @@ import (
 	"gotest.tools/assert"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverCfg := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyCfg := `
 		port = 8080
 		refresh_interval = "10m"
 		role = "robot"`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 
 	assert.Equal(t, 8080, args.Port)

@@ -38,7 +38,7 @@ func NewTargetServer(logger log.Logger, metricsNamespace string, reg prometheus.
 		config = DefaultServerConfig()
 	}
 
-	// convert from River into the dskit config
+	// convert from Alloy into the dskit config
 	serverCfg := config.convert()
 	// Set the config to the new combined config.
 	// Avoid logging entire received request on failures

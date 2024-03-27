@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/alloy/logging"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
@@ -22,7 +23,7 @@ import (
 )
 
 // use const to avoid lint error
-const mainFile = "main.river"
+const mainFile = "main.alloy"
 
 // The tests are using the .txtar files stored in the testdata folder.
 type testImportFile struct {
@@ -45,30 +46,30 @@ func buildTestImportFile(t *testing.T, filename string) testImportFile {
 	require.NoError(t, err)
 	var tc testImportFile
 	tc.description = string(archive.Comment)
-	for _, riverConfig := range archive.Files {
-		switch riverConfig.Name {
+	for _, alloyConfig := range archive.Files {
+		switch alloyConfig.Name {
 		case mainFile:
-			tc.main = string(riverConfig.Data)
-		case "module.river":
-			tc.module = string(riverConfig.Data)
-		case "nested_module.river":
-			tc.nestedModule = string(riverConfig.Data)
-		case "update/module.river":
+			tc.main = string(alloyConfig.Data)
+		case "module.alloy":
+			tc.module = string(alloyConfig.Data)
+		case "nested_module.alloy":
+			tc.nestedModule = string(alloyConfig.Data)
+		case "update/module.alloy":
 			require.Nil(t, tc.update)
 			tc.update = &updateFile{
-				name:         "module.river",
-				updateConfig: string(riverConfig.Data),
+				name:         "module.alloy",
+				updateConfig: string(alloyConfig.Data),
 			}
-		case "update/nested_module.river":
+		case "update/nested_module.alloy":
 			require.Nil(t, tc.update)
 			tc.update = &updateFile{
-				name:         "nested_module.river",
-				updateConfig: string(riverConfig.Data),
+				name:         "nested_module.alloy",
+				updateConfig: string(alloyConfig.Data),
 			}
-		case "reload_config.river":
-			tc.reloadConfig = string(riverConfig.Data)
-		case "other_nested_module.river":
-			tc.otherNestedModule = string(riverConfig.Data)
+		case "reload_config.alloy":
+			tc.reloadConfig = string(alloyConfig.Data)
+		case "other_nested_module.alloy":
+			tc.otherNestedModule = string(alloyConfig.Data)
 		}
 	}
 	return tc
@@ -79,15 +80,15 @@ func TestImportFile(t *testing.T) {
 	for _, file := range getTestFiles(directory, t) {
 		tc := buildTestImportFile(t, filepath.Join(directory, file.Name()))
 		t.Run(tc.description, func(t *testing.T) {
-			defer os.Remove("module.river")
-			require.NoError(t, os.WriteFile("module.river", []byte(tc.module), 0664))
+			defer os.Remove("module.alloy")
+			require.NoError(t, os.WriteFile("module.alloy", []byte(tc.module), 0664))
 			if tc.nestedModule != "" {
-				defer os.Remove("nested_module.river")
-				require.NoError(t, os.WriteFile("nested_module.river", []byte(tc.nestedModule), 0664))
+				defer os.Remove("nested_module.alloy")
+				require.NoError(t, os.WriteFile("nested_module.alloy", []byte(tc.nestedModule), 0664))
 			}
 			if tc.otherNestedModule != "" {
-				defer os.Remove("other_nested_module.river")
-				require.NoError(t, os.WriteFile("other_nested_module.river", []byte(tc.otherNestedModule), 0664))
+				defer os.Remove("other_nested_module.alloy")
+				require.NoError(t, os.WriteFile("other_nested_module.alloy", []byte(tc.otherNestedModule), 0664))
 			}
 
 			if tc.update != nil {
@@ -113,6 +114,12 @@ func TestImportString(t *testing.T) {
 }
 
 func TestImportGit(t *testing.T) {
+	// Extract repo.git.tar so tests can make use of it.
+	// Make repo.git.tar with:
+	//   tar -C repo.git -cvf repo.git.tar .
+	_ = os.RemoveAll("./testdata/repo.tar")
+	require.NoError(t, util.Untar("./testdata/repo.git.tar", "./testdata/repo.git"))
+
 	directory := "./testdata/import_git"
 	for _, file := range getTestFiles(directory, t) {
 		archive, err := txtar.ParseFile(filepath.Join(directory, file.Name()))
@@ -149,29 +156,29 @@ func buildTestImportFileFolder(t *testing.T, filename string) testImportFileFold
 	require.NoError(t, err)
 	var tc testImportFileFolder
 	tc.description = string(archive.Comment)
-	for _, riverConfig := range archive.Files {
-		switch riverConfig.Name {
+	for _, alloyConfig := range archive.Files {
+		switch alloyConfig.Name {
 		case mainFile:
-			tc.main = string(riverConfig.Data)
-		case "module1.river":
-			tc.module1 = string(riverConfig.Data)
-		case "module2.river":
-			tc.module2 = string(riverConfig.Data)
-		case "added.river":
-			tc.added = string(riverConfig.Data)
-		case "removed.river":
-			tc.removed = string(riverConfig.Data)
-		case "update/module1.river":
+			tc.main = string(alloyConfig.Data)
+		case "module1.alloy":
+			tc.module1 = string(alloyConfig.Data)
+		case "module2.alloy":
+			tc.module2 = string(alloyConfig.Data)
+		case "added.alloy":
+			tc.added = string(alloyConfig.Data)
+		case "removed.alloy":
+			tc.removed = string(alloyConfig.Data)
+		case "update/module1.alloy":
 			require.Nil(t, tc.update)
 			tc.update = &updateFile{
-				name:         "module1.river",
-				updateConfig: string(riverConfig.Data),
+				name:         "module1.alloy",
+				updateConfig: string(alloyConfig.Data),
 			}
-		case "update/module2.river":
+		case "update/module2.alloy":
 			require.Nil(t, tc.update)
 			tc.update = &updateFile{
-				name:         "module2.river",
-				updateConfig: string(riverConfig.Data),
+				name:         "module2.alloy",
+				updateConfig: string(alloyConfig.Data),
 			}
 		}
 	}
@@ -188,15 +195,15 @@ func TestImportFileFolder(t *testing.T) {
 			defer os.RemoveAll(dir)
 
 			if tc.module1 != "" {
-				require.NoError(t, os.WriteFile(filepath.Join(dir, "module1.river"), []byte(tc.module1), 0700))
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "module1.alloy"), []byte(tc.module1), 0700))
 			}
 
 			if tc.module2 != "" {
-				require.NoError(t, os.WriteFile(filepath.Join(dir, "module2.river"), []byte(tc.module2), 0700))
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "module2.alloy"), []byte(tc.module2), 0700))
 			}
 
 			if tc.removed != "" {
-				require.NoError(t, os.WriteFile(filepath.Join(dir, "removed.river"), []byte(tc.removed), 0700))
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "removed.alloy"), []byte(tc.removed), 0700))
 			}
 
 			// TODO: ideally we would like to check the health of the node but that's not yet possible for import nodes.
@@ -204,11 +211,11 @@ func TestImportFileFolder(t *testing.T) {
 			// healthy once it polls the content of the dir again.
 			testConfig(t, tc.main, "", func() {
 				if tc.removed != "" {
-					os.Remove(filepath.Join(dir, "removed.river"))
+					os.Remove(filepath.Join(dir, "removed.alloy"))
 				}
 
 				if tc.added != "" {
-					require.NoError(t, os.WriteFile(filepath.Join(dir, "added.river"), []byte(tc.added), 0700))
+					require.NoError(t, os.WriteFile(filepath.Join(dir, "added.alloy"), []byte(tc.added), 0700))
 				}
 				if tc.update != nil {
 					require.NoError(t, os.WriteFile(filepath.Join(dir, tc.update.name), []byte(tc.update.updateConfig), 0700))
@@ -229,12 +236,12 @@ func buildTestImportError(t *testing.T, filename string) testImportError {
 	require.NoError(t, err)
 	var tc testImportError
 	tc.description = string(archive.Comment)
-	for _, riverConfig := range archive.Files {
-		switch riverConfig.Name {
+	for _, alloyConfig := range archive.Files {
+		switch alloyConfig.Name {
 		case mainFile:
-			tc.main = string(riverConfig.Data)
+			tc.main = string(alloyConfig.Data)
 		case "error":
-			tc.expectedError = string(riverConfig.Data)
+			tc.expectedError = string(alloyConfig.Data)
 		}
 	}
 	return tc

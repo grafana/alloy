@@ -69,7 +69,7 @@ func (args *HTTPConfigArguments) Convert() *otlpreceiver.HTTPConfig {
 
 var _ receiver.Arguments = Arguments{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{}
 	args.DebugMetrics.SetToDefault()
@@ -106,7 +106,7 @@ type (
 	GRPCServerArguments otelcol.GRPCServerArguments
 )
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.HTTP != nil {
 		if err := validateURL(args.HTTP.TracesURLPath, "traces_url_path"); err != nil {
@@ -132,7 +132,7 @@ func validateURL(url string, urlName string) error {
 	return nil
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GRPCServerArguments) SetToDefault() {
 	*args = GRPCServerArguments{
 		Endpoint:  "0.0.0.0:4317",
@@ -143,7 +143,7 @@ func (args *GRPCServerArguments) SetToDefault() {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *HTTPConfigArguments) SetToDefault() {
 	*args = HTTPConfigArguments{
 		HTTPServerArguments: &otelcol.HTTPServerArguments{

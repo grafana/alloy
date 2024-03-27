@@ -16,7 +16,7 @@ import (
 )
 
 // Not all these are tested but are here to make sure the different types marshal without error
-var testDropRiver = `
+var testDropAlloy = `
 stage.json {
 		expressions = { "app" = "", "msg" = "" }
 }
@@ -432,7 +432,7 @@ func TestDropPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_drop_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testDropRiver), &plName, registry)
+	pl, err := NewPipeline(logger, loadConfig(testDropAlloy), &plName, registry)
 	require.NoError(t, err)
 	out := processEntries(pl,
 		newEntry(nil, nil, testMatchLogLineApp1, time.Now()),

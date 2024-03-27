@@ -53,7 +53,7 @@ type Arguments struct {
 	Endpoints      []*EndpointOptions `alloy:"endpoint,block,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (rc *Arguments) SetToDefault() {
 	*rc = DefaultArguments()
 }
@@ -83,12 +83,12 @@ func GetDefaultEndpointOptions() EndpointOptions {
 	return defaultEndpointOptions
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (r *EndpointOptions) SetToDefault() {
 	*r = GetDefaultEndpointOptions()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (r *EndpointOptions) Validate() error {
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	if r.HTTPClientConfig != nil {

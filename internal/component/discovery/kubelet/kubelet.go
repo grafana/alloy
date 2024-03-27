@@ -78,7 +78,7 @@ type Arguments struct {
 	Namespaces       []string                `alloy:"namespaces,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	cloneDefaultKubeletUrl := *defaultKubeletURL
 	*args = Arguments{
@@ -89,7 +89,7 @@ func (args *Arguments) SetToDefault() {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	return args.HTTPClientConfig.Validate()

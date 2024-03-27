@@ -43,7 +43,7 @@ type Arguments struct {
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	// These are default excludes from upstream opentelemetry-collector-contrib
 	// Source: https://github.com/open-telemetry/opentelemetry-collector-contrib/blame/main/processor/k8sattributesprocessor/factory.go#L21
@@ -55,7 +55,7 @@ func (args *Arguments) SetToDefault() {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	cfg, err := args.Convert()
 	if err != nil {

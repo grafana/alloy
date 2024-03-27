@@ -20,7 +20,7 @@ type barArgs struct {
 func TestValueCache(t *testing.T) {
 	vc := newValueCache()
 
-	// Emulate values from the following River file:
+	// Emulate values from the following Alloy file:
 	//
 	//     foo {
 	//       something = true
@@ -37,7 +37,7 @@ func TestValueCache(t *testing.T) {
 	//       number = 34
 	//     }
 	//
-	// and expects to generate the equivalent to the following River object:
+	// and expects to generate the equivalent to the following Alloy object:
 	//
 	//     {
 	//      	foo = {

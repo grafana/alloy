@@ -18,7 +18,7 @@ import (
 	util_log "github.com/grafana/loki/pkg/util/log"
 )
 
-var testTenantRiverExtractedData = `
+var testTenantAlloyExtractedData = `
 stage.json {
 		expressions = { "customer_id" = "" }
 }
@@ -39,7 +39,7 @@ func TestPipelineWithMissingKey_Tenant(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testTenantRiverExtractedData), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testTenantAlloyExtractedData), nil, prometheus.DefaultRegisterer)
 	if err != nil {
 		t.Fatal(err)
 	}

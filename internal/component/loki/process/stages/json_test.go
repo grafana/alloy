@@ -14,13 +14,13 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
-var testJSONRiverSingleStageWithoutSource = `
+var testJSONAlloySingleStageWithoutSource = `
 stage.json {
     expressions = {"out" = "message", "app" = "", "nested" = "", duration = "", unknown = "" }
 }
 `
 
-var testJSONRiverMultiStageWithSource = `
+var testJSONAlloyMultiStageWithSource = `
 stage.json {
     expressions = { "extra" = "" }
 }
@@ -53,7 +53,7 @@ func TestPipeline_JSON(t *testing.T) {
 		expectedExtract map[string]interface{}
 	}{
 		"successfully run a pipeline with 1 json stage without source": {
-			testJSONRiverSingleStageWithoutSource,
+			testJSONAlloySingleStageWithoutSource,
 			testJSONLogLine,
 			map[string]interface{}{
 				"out":      "this is a log line",
@@ -64,7 +64,7 @@ func TestPipeline_JSON(t *testing.T) {
 			},
 		},
 		"successfully run a pipeline with 2 json stages with source": {
-			testJSONRiverMultiStageWithSource,
+			testJSONAlloyMultiStageWithSource,
 			testJSONLogLine,
 			map[string]interface{}{
 				"extra": "{\"user\":\"marco\"}",
@@ -95,10 +95,10 @@ var jsonCfg = `
 `
 
 // nolint
-func TestRiver(t *testing.T) {
+func TestAlloy(t *testing.T) {
 	t.Parallel()
 
-	// testing that we can use river data into the config structure.
+	// testing that we can use Alloy data into the config structure.
 	var got JSONConfig
 	err := syntax.Unmarshal([]byte(jsonCfg), &got)
 	assert.NoError(t, err, "error while un-marshalling config: %s", err)

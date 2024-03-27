@@ -73,7 +73,7 @@ dirirectory or file path to use. If the configuration directory or file path
 wasn't specified, can't be loaded, or contains errors, run will exit
 immediately.
 
-If path is a directory, all *.river files in that directory will be combined
+If path is a directory, all *.alloy files in that directory will be combined
 into a single unit. Subdirectories are not recursively searched for further merging.
 
 run starts an HTTP server which can be used to debug Grafana Alloy or
@@ -415,8 +415,8 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 				}
 				return nil
 			}
-			// Ignore files not ending in .river extension
-			if !strings.HasSuffix(curPath, ".river") {
+			// Ignore files not ending in .alloy extension
+			if !strings.HasSuffix(curPath, ".alloy") {
 				return nil
 			}
 

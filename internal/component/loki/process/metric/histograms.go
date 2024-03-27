@@ -29,12 +29,12 @@ type HistogramConfig struct {
 	Buckets []float64 `alloy:"buckets,attr"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (h *HistogramConfig) SetToDefault() {
 	*h = DefaultHistogramConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (h *HistogramConfig) Validate() error {
 	if h.MaxIdle < 1*time.Second {
 		return fmt.Errorf("max_idle_duration must be greater or equal than 1s")

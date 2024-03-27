@@ -13,25 +13,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	bearer_token_file = "/path/to/file.token"
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestBadRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestBadAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	bearer_token = "token"
 	bearer_token_file = "/path/to/file.token"
 `
 
 	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 
 	// Make sure that URL defaults to https://localhost:10250

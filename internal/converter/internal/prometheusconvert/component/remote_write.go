@@ -108,7 +108,7 @@ func toMetadataOptions(metadataConfig *prom_config.MetadataConfig) *remotewrite.
 	}
 }
 
-// toSigV4 converts a Prometheus SigV4 config to a River SigV4 config.
+// toSigV4 converts a Prometheus SigV4 config to an Alloy SigV4 config.
 func toSigV4(sigv4Config *sigv4.SigV4Config) *remotewrite.SigV4Config {
 	if sigv4Config == nil {
 		return nil
@@ -123,7 +123,7 @@ func toSigV4(sigv4Config *sigv4.SigV4Config) *remotewrite.SigV4Config {
 	}
 }
 
-// toAzureAD converts a Prometheus AzureAD config to a River AzureAD config.
+// toAzureAD converts a Prometheus AzureAD config to an Alloy AzureAD config.
 func toAzureAD(azureADConfig *azuread.AzureADConfig) *remotewrite.AzureADConfig {
 	if azureADConfig == nil {
 		return nil

@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var testReplaceRiverSingleStageWithoutSource = `
+var testReplaceAlloySingleStageWithoutSource = `
 stage.replace {
 		expression = "11.11.11.11 - (\\S+) .*"
 		replace    = "dummy"
 }
 `
-var testReplaceRiverMultiStageWithSource = `
+var testReplaceAlloyMultiStageWithSource = `
 stage.json {
 		expressions = { "level" = "", "msg" = "" }
 }
@@ -29,28 +29,28 @@ stage.replace {
 }
 `
 
-var testReplaceRiverWithNamedCapturedGroupWithTemplate = `
+var testReplaceAlloyWithNamedCapturedGroupWithTemplate = `
 stage.replace {
 		expression = "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
 		replace    = "{{ if eq .Value \"200\" }}{{ Replace .Value \"200\" \"HttpStatusOk\" -1 }}{{ else }}{{ .Value | ToUpper }}{{ end }}"
 }
 `
 
-var testReplaceRiverWithNestedCapturedGroups = `
+var testReplaceAlloyWithNestedCapturedGroups = `
 stage.replace {
 		expression = "(?P<ip_user>^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+)) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action_path>(?P<action>\\S+)\\s?(?P<path>\\S+)?)\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
 		replace    = "{{ if eq .Value \"200\" }}{{ Replace .Value \"200\" \"HttpStatusOk\" -1 }}{{ else }}{{ .Value | ToUpper }}{{ end }}"
 }
 `
 
-var testReplaceRiverWithTemplate = `
+var testReplaceAlloyWithTemplate = `
 stage.replace {
 		expression = "^(\\S+) (\\S+) (\\S+) \\[([\\w:/]+\\s[+\\-]\\d{4})\\] \"(\\S+)\\s?(\\S+)?\\s?(\\S+)?\" (\\d{3}|-) (\\d+|-)\\s?\"?([^\"]*)\"?\\s?\"?([^\"]*)?\"?$"
 		replace    = "{{ if eq .Value \"200\" }}{{ Replace .Value \"200\" \"HttpStatusOk\" -1 }}{{ else }}{{ .Value | ToUpper }}{{ end }}"
 }
 `
 
-var testReplaceRiverWithEmptyReplace = `
+var testReplaceAlloyWithEmptyReplace = `
 stage.replace {
 		expression = "11.11.11.11 - (\\S+\\s)"
 		replace    = ""
@@ -79,13 +79,13 @@ func TestReplace(t *testing.T) {
 		expectedEntry string
 	}{
 		"successfully run a pipeline with 1 regex stage without source": {
-			testReplaceRiverSingleStageWithoutSource,
+			testReplaceAlloySingleStageWithoutSource,
 			testReplaceLogLine,
 			map[string]interface{}{},
 			`11.11.11.11 - dummy [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`,
 		},
 		"successfully run a pipeline with multi stage with": {
-			testReplaceRiverMultiStageWithSource,
+			testReplaceAlloyMultiStageWithSource,
 			testReplaceLogJSONLine,
 			map[string]interface{}{
 				"level": "info",
@@ -94,7 +94,7 @@ func TestReplace(t *testing.T) {
 			`{"time":"2019-01-01T01:00:00.000000001Z", "level": "info", "msg": "11.11.11.11 - \"POST /loki/api/push/ HTTP/1.1\" 200 932 \"-\" \"Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6\""}`,
 		},
 		"successfully run a pipeline with 1 regex stage with named captured group and with template and without source": {
-			testReplaceRiverWithNamedCapturedGroupWithTemplate,
+			testReplaceAlloyWithNamedCapturedGroupWithTemplate,
 			testReplaceLogLine,
 			map[string]interface{}{
 				"ip":        "11.11.11.11",
@@ -111,7 +111,7 @@ func TestReplace(t *testing.T) {
 			`11.11.11.11 - FRANK [25/JAN/2000:14:00:01 -0500] "GET /1986.JS HTTP/1.1" HttpStatusOk 932 "-" "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6"`,
 		},
 		"successfully run a pipeline with 1 regex stage with nested captured groups and with template and without source": {
-			testReplaceRiverWithNestedCapturedGroups,
+			testReplaceAlloyWithNestedCapturedGroups,
 			testReplaceLogLine,
 			map[string]interface{}{
 				"ip_user":     "11.11.11.11 - FRANK",
@@ -130,13 +130,13 @@ func TestReplace(t *testing.T) {
 			`11.11.11.11 - FRANK [25/JAN/2000:14:00:01 -0500] "GET /1986.JS HTTP/1.1" HttpStatusOk 932 "-" "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6"`,
 		},
 		"successfully run a pipeline with 1 regex stage with template and without source": {
-			testReplaceRiverWithTemplate,
+			testReplaceAlloyWithTemplate,
 			testReplaceLogLine,
 			map[string]interface{}{},
 			`11.11.11.11 - FRANK [25/JAN/2000:14:00:01 -0500] "GET /1986.JS HTTP/1.1" HttpStatusOk 932 "-" "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6"`,
 		},
 		"successfully run a pipeline with empty replace value": {
-			testReplaceRiverWithEmptyReplace,
+			testReplaceAlloyWithEmptyReplace,
 			testReplaceLogLine,
 			map[string]interface{}{},
 			`11.11.11.11 - [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`,

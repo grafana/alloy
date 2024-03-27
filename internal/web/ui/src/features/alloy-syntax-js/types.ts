@@ -38,7 +38,7 @@ export interface AttrStmt {
 }
 
 /**
- * Value represents a River value.
+ * Value represents an Alloy value.
  */
 export type Value =
   | NullValue
@@ -66,14 +66,14 @@ export enum ValueType {
 }
 
 /**
- * NullValue represents a River null.
+ * NullValue represents an Alloy null.
  */
 export interface NullValue {
   type: ValueType.NULL;
 }
 
 /**
- * NumberValue represents a River number.
+ * NumberValue represents an Alloy number.
  */
 export interface NumberValue {
   type: ValueType.NUMBER;
@@ -81,7 +81,7 @@ export interface NumberValue {
 }
 
 /**
- * StringValue represents a River string.
+ * StringValue represents an Alloy string.
  */
 export interface StringValue {
   type: ValueType.STRING;
@@ -89,7 +89,7 @@ export interface StringValue {
 }
 
 /**
- * BoolValue represents a River bool.
+ * BoolValue represents an Alloy bool.
  */
 export interface BoolValue {
   type: ValueType.BOOL;
@@ -97,7 +97,7 @@ export interface BoolValue {
 }
 
 /**
- * ArrayValue represents a River array. Elements are River Values of any type.
+ * ArrayValue represents an Alloy array. Elements are Alloy Values of any type.
  */
 export interface ArrayValue {
   type: ValueType.ARRAY;
@@ -105,7 +105,7 @@ export interface ArrayValue {
 }
 
 /**
- * ObjectValue represents a River object. Each field has a name and a value,
+ * ObjectValue represents an Alloy object. Each field has a name and a value,
  * similar to an attribute. It is invalid for an ObjectValue to define the same
  * field twice.
  */
@@ -115,7 +115,7 @@ export interface ObjectValue {
 }
 
 /**
- * ObjectField represents a field within a River object value. It is similar to
+ * ObjectField represents a field within an Alloy object value. It is similar to
  * an attribute, having a key and a value.
  */
 export interface ObjectField {
@@ -124,7 +124,7 @@ export interface ObjectField {
 }
 
 /**
- * FunctionValue represents a River function. The value field is literal text
+ * FunctionValue represents an Alloy function. The value field is literal text
  * to display which represents the function.
  */
 export interface FunctionValue {
@@ -133,7 +133,7 @@ export interface FunctionValue {
 }
 
 /**
- * CapsuleValue represents a River capsule. The value field is literal text to
+ * CapsuleValue represents an Alloy capsule. The value field is literal text to
  * display which represents the capsule.
  */
 export interface CapsuleValue {

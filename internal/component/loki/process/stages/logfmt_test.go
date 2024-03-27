@@ -11,12 +11,12 @@ import (
 	util_log "github.com/grafana/loki/pkg/util/log"
 )
 
-var testLogfmtRiverSingleStageWithoutSource = `
+var testLogfmtAlloySingleStageWithoutSource = `
 stage.logfmt {
 		mapping = { "out" = "message", "app" = "", "duration" = "", "unknown" = "" }
 }`
 
-var testLogfmtRiverMultiStageWithSource = `
+var testLogfmtAlloyMultiStageWithSource = `
 stage.logfmt {
 		mapping = { "extra" = "" }
 }
@@ -37,7 +37,7 @@ func TestLogfmt(t *testing.T) {
 		expectedExtract map[string]interface{}
 	}{
 		"successfully run a pipeline with 1 logfmt stage without source": {
-			testLogfmtRiverSingleStageWithoutSource,
+			testLogfmtAlloySingleStageWithoutSource,
 			testLogfmtLogLine,
 			map[string]interface{}{
 				"out":      "this is a log line",
@@ -46,7 +46,7 @@ func TestLogfmt(t *testing.T) {
 			},
 		},
 		"successfully run a pipeline with 2 logfmt stages with source": {
-			testLogfmtRiverMultiStageWithSource,
+			testLogfmtAlloyMultiStageWithSource,
 			testLogfmtLogLine,
 			map[string]interface{}{
 				"extra": "user=foo",

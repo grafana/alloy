@@ -59,12 +59,12 @@ var DefaultArguments = Arguments{
 	Client: kubernetes.DefaultClientArguments,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.JobName == "" {
 		return fmt.Errorf("job_name must not be an empty string")

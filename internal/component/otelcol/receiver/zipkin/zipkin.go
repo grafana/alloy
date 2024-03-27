@@ -39,7 +39,7 @@ type Arguments struct {
 
 var _ receiver.Arguments = Arguments{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		HTTPServer: otelcol.HTTPServerArguments{

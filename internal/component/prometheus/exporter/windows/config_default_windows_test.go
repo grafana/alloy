@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverUnmarshalWithDefaultConfig(t *testing.T) {
+func TestAlloyUnmarshalWithDefaultConfig(t *testing.T) {
 	var args Arguments
 	err := syntax.Unmarshal([]byte(""), &args)
 	require.NoError(t, err)

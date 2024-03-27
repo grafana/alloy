@@ -21,7 +21,7 @@ type ModuleController interface {
 
 // CustomComponent is a controller for running components within a CustomComponent.
 type CustomComponent interface {
-	// LoadBody loads a River AST body into the CustomComponent. LoadBody can be called
+	// LoadBody loads an Alloy AST body into the CustomComponent. LoadBody can be called
 	// multiple times, and called prior to [CustomComponent.Run].
 	// customComponentRegistry provides custom component definitions for the loaded config.
 	LoadBody(body ast.Body, args map[string]any, customComponentRegistry *CustomComponentRegistry) error

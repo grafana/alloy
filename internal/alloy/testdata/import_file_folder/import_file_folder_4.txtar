@@ -1,42 +1,42 @@
 Import folder with passthrough, on update replace the file by another one.
 
--- main.river --
+-- main.alloy --
 testcomponents.count "inc" {
-	frequency = "10ms"
-	max = 10
+  frequency = "10ms"
+  max = 10
 }
 
 import.file "testImport" {
-	filename = "tmpTest"
+  filename = "tmpTest"
 }
 
 testImport.a "cc" {
-	input = testcomponents.count.inc.count
+  input = testcomponents.count.inc.count
 }
 
 testcomponents.summation "sum" {
-	input = testImport.a.cc.output
+  input = testImport.a.cc.output
 }
 
--- removed.river --
+-- removed.alloy --
 declare "a" {
-	argument "input" {}
+  argument "input" {}
 
-	testcomponents.passthrough "pt" {
-		input = argument.input.value
-		lag = "1ms"
-	}
+  testcomponents.passthrough "pt" {
+    input = argument.input.value
+    lag = "1ms"
+  }
 
-	export "output" {
-		value = testcomponents.passthrough.pt.output
-	}
+  export "output" {
+    value = testcomponents.passthrough.pt.output
+  }
 }
 
--- added.river --
+-- added.alloy --
 declare "a" {
-	argument "input" {}
+  argument "input" {}
 
-	export "output" {
-		value = -argument.input.value
-	}
+  export "output" {
+    value = -argument.input.value
+  }
 }

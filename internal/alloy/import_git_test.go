@@ -36,7 +36,7 @@ func TestPullUpdating(t *testing.T) {
 	main := `
 import.git "testImport" {
 	repository = "` + testRepo + `"
-  	path = "math.river"
+  	path = "math.alloy"
     pull_frequency = "5s"
 }
 
@@ -48,7 +48,7 @@ testImport.add "cc" {
 	init := exec.Command("git", "init", testRepo)
 	err := init.Run()
 	require.NoError(t, err)
-	math := filepath.Join(testRepo, "math.river")
+	math := filepath.Join(testRepo, "math.alloy")
 	err = os.WriteFile(math, []byte(contents), 0666)
 	require.NoError(t, err)
 	add := exec.Command("git", "add", ".")

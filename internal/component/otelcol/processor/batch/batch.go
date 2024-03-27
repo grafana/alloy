@@ -51,12 +51,12 @@ var DefaultArguments = Arguments{
 	MetadataCardinalityLimit: 1000,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.SendBatchMaxSize > 0 && args.SendBatchMaxSize < args.SendBatchSize {
 		return fmt.Errorf("send_batch_max_size must be greater or equal to send_batch_size when not 0")

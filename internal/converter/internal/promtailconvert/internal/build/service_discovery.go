@@ -37,11 +37,11 @@ func (s *ScrapeConfigBuilder) AppendSDs() {
 
 	// write the target literals as a string if there are any
 	if len(targetLiterals) != 0 {
-		literalsStr, err := toRiverExpression(targetLiterals)
+		literalsStr, err := toAlloyExpression(targetLiterals)
 		if err != nil { // should not happen, unless we have a bug
 			s.diags.Add(
 				diag.SeverityLevelCritical,
-				"failed to write static SD targets as valid River expression: "+err.Error(),
+				"failed to write static SD targets as valid Alloy expression: "+err.Error(),
 			)
 		}
 		s.allTargetsExps = append(s.allTargetsExps, literalsStr)

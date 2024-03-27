@@ -54,12 +54,12 @@ var DefaultArguments = Arguments{
 	Availability:    "public",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	switch args.Availability {
 	case "public", "internal", "admin":

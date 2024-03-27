@@ -56,8 +56,8 @@ type Handler struct {
 
 var _ syntax.Capsule = Handler{}
 
-// RiverCapsule marks Handler as a capsule type.
-func (Handler) RiverCapsule() {}
+// AlloyCapsule marks Handler as a capsule type.
+func (Handler) AlloyCapsule() {}
 
 // Auth is an Alloy component shim which manages an OpenTelemetry Collector
 // authentication extension.

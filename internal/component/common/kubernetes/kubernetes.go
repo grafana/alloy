@@ -25,12 +25,12 @@ var DefaultClientArguments = ClientArguments{
 	HTTPClientConfig: commoncfg.DefaultHTTPClientConfig,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *ClientArguments) SetToDefault() {
 	*args = DefaultClientArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *ClientArguments) Validate() error {
 	if args.APIServer.URL != nil && args.KubeConfig != "" {
 		return fmt.Errorf("only one of api_server and kubeconfig_file can be set")

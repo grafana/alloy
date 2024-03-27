@@ -91,7 +91,7 @@ var DefaultAuthAppRole = AuthAppRole{
 	MountPath: "approle",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *AuthAppRole) SetToDefault() {
 	*a = DefaultAuthAppRole
 }
@@ -145,12 +145,12 @@ var DefaultAuthAWS = AuthAWS{
 	EC2SignatureType: "pkcs7",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *AuthAWS) SetToDefault() {
 	*a = DefaultAuthAWS
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *AuthAWS) Validate() error {
 	switch a.Type {
 	case "":
@@ -230,7 +230,7 @@ var DefaultAuthAzure = AuthAzure{
 	ResourceURL: "https://management.azure.com/",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *AuthAzure) SetToDefault() {
 	*a = DefaultAuthAzure
 }
@@ -277,12 +277,12 @@ var DefaultAuthGCP = AuthGCP{
 	Type:      authGCPTypeGCE,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *AuthGCP) SetToDefault() {
 	*a = DefaultAuthGCP
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *AuthGCP) Validate() error {
 	switch a.Type {
 	case authGCPTypeGCE:
@@ -341,7 +341,7 @@ var DefaultAuthKubernetes = AuthKubernetes{
 	ServiceAccountTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *AuthKubernetes) SetToDefault() {
 	*a = DefaultAuthKubernetes
 }
@@ -379,7 +379,7 @@ var DefaultAuthLDAP = AuthLDAP{
 	MountPath: "ldap",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *AuthLDAP) SetToDefault() {
 	*a = DefaultAuthLDAP
 }
@@ -416,7 +416,7 @@ var DefaultAuthUserPass = AuthUserPass{
 	MountPath: "userpass",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *AuthUserPass) SetToDefault() {
 	*a = DefaultAuthUserPass
 }

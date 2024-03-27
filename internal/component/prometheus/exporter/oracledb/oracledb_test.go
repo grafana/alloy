@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverConfig := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyConfig := `
 	connection_string  = "oracle://user:password@localhost:1521/orcl.localnet"
 	max_idle_conns     = 0
 	max_open_conns     = 10
@@ -20,7 +20,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
@@ -95,11 +95,11 @@ func TestArgumentsValidate(t *testing.T) {
 }
 
 func TestConvert(t *testing.T) {
-	riverConfig := `
+	alloyConfig := `
 	connection_string  = "oracle://user:password@localhost:1521/orcl.localnet"
 	`
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	res := args.Convert()

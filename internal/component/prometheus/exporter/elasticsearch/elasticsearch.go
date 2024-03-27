@@ -28,7 +28,7 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 }
 
 // DefaultArguments holds non-zero default options for Arguments when it is
-// unmarshaled from river.
+// unmarshaled from Alloy.
 var DefaultArguments = Arguments{
 	Address:                   "http://localhost:9200",
 	Timeout:                   5 * time.Second,
@@ -58,7 +58,7 @@ type Arguments struct {
 	BasicAuth                 *commonCfg.BasicAuth `alloy:"basic_auth,block,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

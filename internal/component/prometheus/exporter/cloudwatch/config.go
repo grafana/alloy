@@ -28,7 +28,7 @@ var defaults = Arguments{
 	},
 }
 
-// Arguments are the river based options to configure the embedded CloudWatch exporter.
+// Arguments are the Alloy based options to configure the embedded CloudWatch exporter.
 type Arguments struct {
 	STSRegion             string                `alloy:"sts_region,attr"`
 	FIPSDisabled          bool                  `alloy:"fips_disabled,attr,optional"`
@@ -103,7 +103,7 @@ func (a *Arguments) SetToDefault() {
 	*a = defaults
 }
 
-// ConvertToYACE converts the river config into YACE config model. Note that
+// ConvertToYACE converts the Alloy config into YACE config model. Note that
 // the conversion is not direct, some values have been opinionated to simplify
 // the config model Alloy exposes for this integration.
 func ConvertToYACE(a Arguments) (yaceConf.ScrapeConf, error) {
@@ -244,7 +244,7 @@ func toYACEDiscoveryJob(rj DiscoveryJob) *yaceConf.Job {
 	return job
 }
 
-// getHash calculates the MD5 hash of the river representation of the config.
+// getHash calculates the MD5 hash of the Alloy representation of the config.
 func getHash(a Arguments) string {
 	bytes, err := syntax.Marshal(a)
 	if err != nil {

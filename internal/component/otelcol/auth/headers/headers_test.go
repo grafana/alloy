@@ -80,7 +80,7 @@ func Test(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		cfg                  string
 		expectedKey          string

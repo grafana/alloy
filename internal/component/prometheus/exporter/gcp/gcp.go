@@ -45,12 +45,12 @@ var DefaultArguments = Arguments{
 	DropDelegatedProjects: false,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if err := a.Convert().Validate(); err != nil {
 		return err

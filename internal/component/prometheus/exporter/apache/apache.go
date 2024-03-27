@@ -38,7 +38,7 @@ type Arguments struct {
 	ApacheInsecure     bool   `alloy:"insecure,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfigUnmarshal(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigUnmarshal(t *testing.T) {
+	var exampleAlloyConfig = `
 	data_source_name = "root:secret_password@tcp(localhost:3306)/mydb"
 	enable_collectors = ["collector1"]
 	disable_collectors = ["collector2"]
@@ -55,7 +55,7 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	require.Equal(t, "root:secret_password@tcp(localhost:3306)/mydb", string(args.DataSourceName))
@@ -80,8 +80,8 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 	require.False(t, args.MySQLUser.Privileges)
 }
 
-func TestRiverConfigConvert(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigConvert(t *testing.T) {
+	var exampleAlloyConfig = `
 	data_source_name = "root:secret_password@tcp(localhost:3306)/mydb"
 	enable_collectors = ["collector1"]
 	disable_collectors = ["collector2"]
@@ -126,7 +126,7 @@ func TestRiverConfigConvert(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	c := args.Convert()

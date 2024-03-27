@@ -23,7 +23,7 @@ type ProfilingConfig struct {
 	CPU        bool          `alloy:"cpu,attr,optional"`
 }
 
-func (rc *Arguments) UnmarshalRiver(f func(interface{}) error) error {
+func (rc *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 	*rc = defaultArguments()
 	type config Arguments
 	return f((*config)(rc))

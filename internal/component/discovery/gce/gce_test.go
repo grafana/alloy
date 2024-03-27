@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUnmarshalRiver(t *testing.T) {
-	var riverConfig = `
+func TestUnmarshalAlloy(t *testing.T) {
+	var alloyConfig = `
 	project = "project"
 	zone = "zone"
 	filter = "filter"
@@ -19,12 +19,12 @@ func TestUnmarshalRiver(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestUnmarshalRiverInvalid(t *testing.T) {
-	var riverConfig = `
+func TestUnmarshalAlloyInvalid(t *testing.T) {
+	var alloyConfig = `
 	filter = "filter"
 	refresh_interval = "60s"
 	port = 80
@@ -32,7 +32,7 @@ func TestUnmarshalRiverInvalid(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 
 	// Validate that project and zone are required.
 	require.Error(t, err)

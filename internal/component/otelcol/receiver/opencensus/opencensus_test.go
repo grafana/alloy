@@ -43,7 +43,7 @@ func Test(t *testing.T) {
 	require.NoError(t, ctrl.WaitRunning(time.Second))
 }
 
-func TestDefaultArguments_UnmarshalRiver(t *testing.T) {
+func TestDefaultArguments_UnmarshalAlloy(t *testing.T) {
 	in := `output { /* no-op */ }`
 
 	var args opencensus.Arguments
@@ -62,7 +62,7 @@ func TestDefaultArguments_UnmarshalRiver(t *testing.T) {
 	require.Equal(t, int(defaultArgs.GRPC.ReadBufferSize), otelArgs.ReadBufferSize)
 }
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	httpAddr := getFreeAddr(t)
 	in := fmt.Sprintf(`
 		cors_allowed_origins = ["https://*.test.com", "https://test.com"]

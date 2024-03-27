@@ -9,7 +9,7 @@ import (
 )
 
 // valueCache caches component arguments and exports to expose as variables for
-// River expressions.
+// Alloy expressions.
 //
 // The current state of valueCache can then be built into a *vm.Scope for other
 // components to be evaluated.
@@ -169,7 +169,7 @@ func (vc *valueCache) BuildContext() *vm.Scope {
 		Variables: make(map[string]interface{}),
 	}
 
-	// First, partition components by River block name.
+	// First, partition components by Alloy block name.
 	var componentsByBlockName = make(map[string][]ComponentID)
 	for _, id := range vc.components {
 		blockName := id[0]

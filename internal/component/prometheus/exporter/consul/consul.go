@@ -53,7 +53,7 @@ type Arguments struct {
 	HealthSummary bool   `alloy:"generate_health_summary,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

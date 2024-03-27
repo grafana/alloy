@@ -1,11 +1,11 @@
 Use of an imported component with too low stability level propagates the error
 
--- main.river --
+-- main.alloy --
 
 import.string "testImport" {
-	content = ` declare "a" {
-		testcomponents.experimental "unstable" {}
-	}`
+  content = ` declare "a" {
+    testcomponents.experimental "unstable" {}
+  }`
 }
 
 testImport.a "cc" {}

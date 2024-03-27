@@ -11,7 +11,7 @@ metadata:
     app.kubernetes.io/version: "vX.Y.Z"
     app.kubernetes.io/managed-by: Helm
 data:
-  config.river: |-
+  config.alloy: |-
     logging {
       level  = "warn"
       format = "logfmt"

@@ -21,8 +21,8 @@ var _ storage.Appendable = (*ConvertAppendable)(nil)
 var _ builder.Tokenizer = ConvertAppendable{}
 var _ syntax.Capsule = ConvertAppendable{}
 
-func (f ConvertAppendable) RiverCapsule() {}
-func (f ConvertAppendable) RiverTokenize() []builder.Token {
+func (f ConvertAppendable) AlloyCapsule() {}
+func (f ConvertAppendable) AlloyTokenize() []builder.Token {
 	return []builder.Token{{
 		Tok: token.STRING,
 		Lit: f.Expr,

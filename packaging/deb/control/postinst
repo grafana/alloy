@@ -29,8 +29,8 @@ case "$1" in
         chown $ALLOY_USER:$ALLOY_GROUP /var/lib/alloy
         chmod 770 /var/lib/alloy
 
-        chmod 640 /etc/alloy.river
-        chown root:$ALLOY_GROUP /etc/alloy.river
+        chmod 640 /etc/alloy.alloy
+        chown root:$ALLOY_GROUP /etc/alloy.alloy
 
         if [ -z ${2+x} ] && [ "$RESTART_ON_UPGRADE" = "true" ]; then
             if command -v systemctl 2>/dev/null; then

@@ -69,7 +69,7 @@ var DefaultFileArguments = FileArguments{
 	PollFrequency: time.Minute,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *FileArguments) SetToDefault() {
 	*a = DefaultFileArguments
 }
@@ -236,8 +236,8 @@ func collectFilesFromDir(path string) ([]string, error) {
 			}
 			return nil
 		}
-		// ignore files not ending in .river extension
-		if !strings.HasSuffix(curPath, ".river") {
+		// ignore files not ending in .alloy extension
+		if !strings.HasSuffix(curPath, ".alloy") {
 			return nil
 		}
 
