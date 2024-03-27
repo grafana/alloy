@@ -14,10 +14,11 @@ import (
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 
-var goRiverDefaulter = reflect.TypeOf((*value.Defaulter)(nil)).Elem()
+var goAlloyDefaulter = reflect.TypeOf((*value.Defaulter)(nil)).Elem()
 
 // MarshalBody marshals the provided Go value to a JSON representation of
-// River. MarshalBody panics if not given a struct with River tags or a map[string]any.
+// Alloy. MarshalBody panics if not given a struct with alloy tags or a
+// map[string]any.
 func MarshalBody(val interface{}) ([]byte, error) {
 	rv := reflect.ValueOf(val)
 	return json.Marshal(encodeStructAsBody(rv))
@@ -41,7 +42,7 @@ func encodeStructAsBody(rv reflect.Value) jsonBody {
 	case reflect.Struct:
 		fields := syntaxtags.Get(rv.Type())
 		defaults := reflect.New(rv.Type()).Elem()
-		if defaults.CanAddr() && defaults.Addr().Type().Implements(goRiverDefaulter) {
+		if defaults.CanAddr() && defaults.Addr().Type().Implements(goAlloyDefaulter) {
 			defaults.Addr().Interface().(value.Defaulter).SetToDefault()
 		}
 
@@ -241,17 +242,17 @@ func encodeEnumElementToStatements(prefix []string, enumElement reflect.Value) [
 }
 
 // MarshalValue marshals the provided Go value to a JSON representation of
-// River.
+// Alloy.
 func MarshalValue(val interface{}) ([]byte, error) {
-	riverValue := value.Encode(val)
-	return json.Marshal(buildJSONValue(riverValue))
+	alloyValue := value.Encode(val)
+	return json.Marshal(buildJSONValue(alloyValue))
 }
 
 func buildJSONValue(v value.Value) jsonValue {
 	if tk, ok := v.Interface().(builder.Tokenizer); ok {
 		return jsonValue{
 			Type:  "capsule",
-			Value: tk.RiverTokenize()[0].Lit,
+			Value: tk.AlloyTokenize()[0].Lit,
 		}
 	}
 

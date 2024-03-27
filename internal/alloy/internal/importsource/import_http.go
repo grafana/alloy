@@ -55,7 +55,7 @@ var DefaultHTTPArguments = HTTPArguments{
 	Method:        http.MethodGet,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *HTTPArguments) SetToDefault() {
 	*args = DefaultHTTPArguments
 }

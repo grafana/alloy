@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testTimestampRiver = `
+var testTimestampAlloy = `
 stage.json {
     expressions = { ts = "time" }
 }
@@ -43,7 +43,7 @@ var testTimestampLogLineWithMissingKey = `
 
 func TestTimestampPipeline(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testTimestampRiver), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testTimestampAlloy), nil, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
 
 	out := processEntries(pl, newEntry(nil, nil, testTimestampLogLine, time.Now()))[0]
@@ -60,7 +60,7 @@ func TestPipelineWithMissingKey_Timestamp(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testTimestampRiver), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testTimestampAlloy), nil, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
 
 	_ = processEntries(pl, newEntry(nil, nil, testTimestampLogLineWithMissingKey, time.Now()))

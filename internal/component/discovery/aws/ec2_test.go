@@ -21,13 +21,13 @@ func TestConvert(t *testing.T) {
 	}
 
 	// example configuration
-	riverArgs := EC2Arguments{
+	alloyArgs := EC2Arguments{
 		Region:           "us-east-1",
 		HTTPClientConfig: httpClientConfig,
 	}
 
 	// ensure values are set
-	promArgs := riverArgs.Convert()
+	promArgs := alloyArgs.Convert()
 	assert.Equal(t, "us-east-1", promArgs.Region)
 	assert.Equal(t, "http://example:8080", promArgs.HTTPClientConfig.ProxyURL.String())
 }

@@ -1,6 +1,6 @@
 package value
 
-// RawFunction allows creating function implementations using raw River values.
+// RawFunction allows creating function implementations using raw Alloy values.
 // This is useful for functions which wish to operate over dynamic types while
 // avoiding decoding to interface{} for performance reasons.
 //

@@ -32,7 +32,7 @@ var DefaultArguments = Arguments{
 	RefreshInterval: 5 * time.Minute,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

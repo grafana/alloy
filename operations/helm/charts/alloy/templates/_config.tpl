@@ -20,6 +20,6 @@ ConfigMap.
 {{- if $values.configMap.key -}}
 {{- $values.configMap.key }}
 {{- else -}}
-config.river
+config.alloy
 {{- end }}
 {{- end }}

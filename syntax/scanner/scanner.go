@@ -1,4 +1,4 @@
-// Package scanner implements a lexical scanner for River source files.
+// Package scanner implements a lexical scanner for Alloy source files.
 package scanner
 
 import (
@@ -53,7 +53,7 @@ import (
 //   DOT     = "."
 //
 // The EBNF for escape_sequence is currently undocumented; see scanEscape for
-// details. The escape sequences supported by River are the same as the escape
+// details. The escape sequences supported by Alloy are the same as the escape
 // sequences supported by Go, except that it is always valid to use \' in
 // strings (which in Go, is only valid to use in character literals).
 

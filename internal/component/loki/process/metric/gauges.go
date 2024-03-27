@@ -40,12 +40,12 @@ type GaugeConfig struct {
 	Action string `alloy:"action,attr"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (g *GaugeConfig) SetToDefault() {
 	*g = DefaultGaugeConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (g *GaugeConfig) Validate() error {
 	if g.MaxIdle < 1*time.Second {
 		return fmt.Errorf("max_idle_duration must be greater or equal than 1s")

@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyUnmarshal(t *testing.T) {
+	var exampleAlloyConfig = `
     forward_to = []
     namespaces = ["my-app"]
     selector {
@@ -24,6 +24,6 @@ func TestRiverUnmarshal(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }

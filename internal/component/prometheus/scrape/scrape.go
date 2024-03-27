@@ -95,7 +95,7 @@ type Arguments struct {
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (arg *Arguments) SetToDefault() {
 	*arg = Arguments{
 		MetricsPath:              "/metrics",
@@ -109,7 +109,7 @@ func (arg *Arguments) SetToDefault() {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (arg *Arguments) Validate() error {
 	if arg.ScrapeTimeout > arg.ScrapeInterval {
 		return fmt.Errorf("scrape_timeout (%s) greater than scrape_interval (%s) for scrape config with job name %q", arg.ScrapeTimeout, arg.ScrapeInterval, arg.JobName)

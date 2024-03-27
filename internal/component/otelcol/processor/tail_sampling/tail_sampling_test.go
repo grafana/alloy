@@ -18,8 +18,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
-func TestBadRiverConfig(t *testing.T) {
-	exampleBadRiverConfig := `
+func TestBadAlloyConfig(t *testing.T) {
+	exampleBadAlloyConfig := `
     decision_wait               = "10s"
     num_traces                  = 0
     expected_new_traces_per_sec = 10
@@ -33,11 +33,11 @@ func TestBadRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	require.Error(t, syntax.Unmarshal([]byte(exampleBadRiverConfig), &args), "num_traces must be greater than zero")
+	require.Error(t, syntax.Unmarshal([]byte(exampleBadAlloyConfig), &args), "num_traces must be greater than zero")
 }
 
-func TestBadRiverConfigErrorMode(t *testing.T) {
-	exampleBadRiverConfig := `
+func TestBadAlloyConfigErrorMode(t *testing.T) {
+	exampleBadAlloyConfig := `
     decision_wait               = "10s"
     num_traces                  = 5
     expected_new_traces_per_sec = 10
@@ -62,7 +62,7 @@ func TestBadRiverConfigErrorMode(t *testing.T) {
 `
 
 	var args Arguments
-	require.ErrorContains(t, syntax.Unmarshal([]byte(exampleBadRiverConfig), &args), "\"\" unknown error mode")
+	require.ErrorContains(t, syntax.Unmarshal([]byte(exampleBadAlloyConfig), &args), "\"\" unknown error mode")
 }
 
 func TestBadOtelConfig(t *testing.T) {

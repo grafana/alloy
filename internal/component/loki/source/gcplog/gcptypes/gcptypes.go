@@ -25,14 +25,14 @@ type PushConfig struct {
 	UseFullLine          bool               `alloy:"use_full_line,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (p *PushConfig) SetToDefault() {
 	*p = PushConfig{
 		Server: fnet.DefaultServerConfig(),
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (p *PushConfig) Validate() error {
 	if p.PushTimeout < 0 {
 		return fmt.Errorf("push_timeout must be greater than zero")

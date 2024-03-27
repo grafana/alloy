@@ -41,7 +41,7 @@ type Arguments struct {
 	RelabelRules         alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
 		Server: fnet.DefaultServerConfig(),

@@ -10,18 +10,18 @@ import (
 
 func TestConvertConfig(t *testing.T) {
 	type testcase struct {
-		riverCfg               string
+		alloyCfg               string
 		expectedArgs           Arguments
 		expectedUnmarshalError string
 	}
 	for name, tc := range map[string]testcase{
 		"err no project ids": {
-			riverCfg:               ``,
+			alloyCfg:               ``,
 			expectedArgs:           DefaultArguments,
 			expectedUnmarshalError: "missing required attribute \"project_ids\"",
 		},
 		"err no metrics prefixes": {
-			riverCfg: `
+			alloyCfg: `
 				project_ids = [
 					"foo",
 					"bar",
@@ -38,7 +38,7 @@ func TestConvertConfig(t *testing.T) {
 			expectedUnmarshalError: "missing required attribute \"metrics_prefixes\"",
 		},
 		"healthy all defaults": {
-			riverCfg: `
+			alloyCfg: `
 				project_ids = [
 					"foo",
 					"bar",
@@ -65,7 +65,7 @@ func TestConvertConfig(t *testing.T) {
 			expectedUnmarshalError: "",
 		},
 		"healthy default override": {
-			riverCfg: `
+			alloyCfg: `
 				project_ids = [
 					"foo",
 					"bar",
@@ -110,7 +110,7 @@ func TestConvertConfig(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			var args Arguments
-			err := syntax.Unmarshal([]byte(tc.riverCfg), &args)
+			err := syntax.Unmarshal([]byte(tc.alloyCfg), &args)
 			if tc.expectedUnmarshalError != "" {
 				require.EqualError(t, err, tc.expectedUnmarshalError)
 			} else {

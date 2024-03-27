@@ -91,7 +91,7 @@ func LabelWithIndex(index int, parts ...interface{}) string {
 	return LabelForParts(append(parts, appendedIndex)...)
 }
 
-// PrettyPrint parses river config and returns it in a standardize format.
+// PrettyPrint parses Alloy config and returns it in a standardize format.
 // If PrettyPrint fails, the input is returned unmodified.
 func PrettyPrint(in []byte) ([]byte, diag.Diagnostics) {
 	var diags diag.Diagnostics

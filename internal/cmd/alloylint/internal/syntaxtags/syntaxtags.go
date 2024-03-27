@@ -44,7 +44,7 @@ var (
 // - Fields marked as blocks must be the appropriate type.
 // - Label tags must have an empty value for NAME.
 // - Non-empty values for NAME must be snake_case.
-// - Non-empty NAME values must be valid River identifiers.
+// - Non-empty NAME values must be valid Alloy identifiers.
 // - Attributes may not have a NAME with a `.` in it.
 
 func run(p *analysis.Pass) (interface{}, error) {

@@ -303,7 +303,7 @@ func convertDrop(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, 
 		}
 		longerThan, err = units.ParseBase2Bytes(fmt.Sprintf("%dB", pLongerThan.Val()))
 		if err != nil {
-			diags.Add(diag.SeverityLevelError, fmt.Sprintf("invalid pipeline_stages.drop.longer_than field: failed river type conversion: %v", err))
+			diags.Add(diag.SeverityLevelError, fmt.Sprintf("invalid pipeline_stages.drop.longer_than field: failed Alloy type conversion: %v", err))
 			return stages.StageConfig{}, false
 		}
 	}

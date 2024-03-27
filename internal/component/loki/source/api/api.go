@@ -36,7 +36,7 @@ type Arguments struct {
 	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
 		Server: fnet.DefaultServerConfig(),

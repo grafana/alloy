@@ -37,7 +37,7 @@ type Arguments struct {
 	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		Server: fnet.DefaultServerConfig(),

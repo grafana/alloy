@@ -19,8 +19,8 @@ import (
 	"gotest.tools/assert"
 )
 
-func TestRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	url = "https://www.example.com:12345/foo"
 	refresh_interval = "14s"
 	basic_auth {
@@ -29,7 +29,7 @@ func TestRiverConfig(t *testing.T) {
 	}
 `
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 	assert.Equal(t, args.HTTPClientConfig.BasicAuth.Username, "123")
 }

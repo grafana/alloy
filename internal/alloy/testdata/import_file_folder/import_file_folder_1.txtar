@@ -1,55 +1,55 @@
 Import folder with passthrough modules.
 
--- main.river --
+-- main.alloy --
 testcomponents.count "inc" {
-	frequency = "10ms"
-	max = 10
+  frequency = "10ms"
+  max = 10
 }
 
 import.file "testImport" {
-	filename = "tmpTest"
+  filename = "tmpTest"
 }
 
 testImport.a "cc" {
-	input = testcomponents.count.inc.count
+  input = testcomponents.count.inc.count
 }
 
 testcomponents.summation "sum" {
-	input = testImport.a.cc.output
+  input = testImport.a.cc.output
 }
 
--- module1.river --
+-- module1.alloy --
 declare "a" {
-	argument "input" {}
+  argument "input" {}
 
-	b "cc" {
-		input = argument.input.value
-	}
+  b "cc" {
+    input = argument.input.value
+  }
 
-	export "output" {
-		value = b.cc.output
-	}
+  export "output" {
+    value = b.cc.output
+  }
 }
 
--- module2.river --
+-- module2.alloy --
 declare "b" {
-	argument "input" {}
+  argument "input" {}
 
-	testcomponents.passthrough "pt" {
-		input = argument.input.value
-		lag = "1ms"
-	}
+  testcomponents.passthrough "pt" {
+    input = argument.input.value
+    lag = "1ms"
+  }
 
-	export "output" {
-		value = testcomponents.passthrough.pt.output
-	}
+  export "output" {
+    value = testcomponents.passthrough.pt.output
+  }
 }
 
--- update/module2.river --
+-- update/module2.alloy --
 declare "b" {
-	argument "input" {}
+  argument "input" {}
 
-	export "output" {
-		value = -argument.input.value
-	}
+  export "output" {
+    value = -argument.input.value
+  }
 }

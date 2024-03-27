@@ -13,22 +13,22 @@ import (
 	"gotest.tools/assert"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyUnmarshal(t *testing.T) {
+	var exampleAlloyConfig = `
 	refresh_interval = "5m"
 	port = 8181
 	bearer_token = "token"
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	assert.Equal(t, 5*time.Minute, args.RefreshInterval)
 	assert.Equal(t, 8181, args.Port)
 	assert.Equal(t, "token", string(args.BearerToken))
 
-	var fullerExampleRiverConfig = `
+	var fullerExampleAlloyConfig = `
 	refresh_interval = "3m"
 	port = 9119
 	proxy_url = "http://proxy:8080"
@@ -36,7 +36,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	enable_http2 = false
 	bearer_token = "token"
 	`
-	err = syntax.Unmarshal([]byte(fullerExampleRiverConfig), &args)
+	err = syntax.Unmarshal([]byte(fullerExampleAlloyConfig), &args)
 	require.NoError(t, err)
 	assert.Equal(t, 3*time.Minute, args.RefreshInterval)
 	assert.Equal(t, 9119, args.Port)
@@ -45,7 +45,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	assert.Equal(t, false, args.EnableHTTP2)
 }
 
-func TestBadRiverConfig(t *testing.T) {
+func TestBadAlloyConfig(t *testing.T) {
 	var badConfigTooManyBearerTokens = `
 	refresh_interval = "5m"
 	port = 8181

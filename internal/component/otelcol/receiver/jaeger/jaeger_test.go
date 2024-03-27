@@ -49,7 +49,7 @@ func Test(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	t.Run("grpc", func(t *testing.T) {
 		in := `
 			protocols { grpc {} }

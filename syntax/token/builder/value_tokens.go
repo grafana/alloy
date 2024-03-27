@@ -13,9 +13,9 @@ import (
 
 // Tokenizer is any value which can return a raw set of tokens.
 type Tokenizer interface {
-	// RiverTokenize returns the raw set of River tokens which are used when
-	// printing out the value with river/token/builder.
-	RiverTokenize() []Token
+	// AlloyTokenize returns the raw set of Alloy tokens which are used when
+	// printing out the value with syntax/token/builder.
+	AlloyTokenize() []Token
 }
 
 func tokenEncode(val interface{}) []Token {
@@ -27,7 +27,7 @@ func valueTokens(v value.Value) []Token {
 
 	// If v is a Tokenizer, allow it to override what tokens get generated.
 	if tk, ok := v.Interface().(Tokenizer); ok {
-		return tk.RiverTokenize()
+		return tk.AlloyTokenize()
 	}
 
 	switch v.Type() {
@@ -88,7 +88,7 @@ func valueTokens(v value.Value) []Token {
 		toks = append(toks, Token{token.LITERAL, v.Describe()})
 
 	default:
-		panic(fmt.Sprintf("river/token/builder: unrecognized value type %q", v.Type()))
+		panic(fmt.Sprintf("syntax/token/builder: unrecognized value type %q", v.Type()))
 	}
 
 	return toks

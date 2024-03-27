@@ -48,7 +48,7 @@ type Arguments struct {
 
 var _ exporter.Arguments = Arguments{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{}
 	args.Queue.SetToDefault()
@@ -84,7 +84,7 @@ func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
 	return args.DebugMetrics
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.Client.Endpoint == "" && args.TracesEndpoint == "" && args.MetricsEndpoint == "" && args.LogsEndpoint == "" {
 		return errors.New("at least one endpoint must be specified")
@@ -102,7 +102,7 @@ var (
 	DefaultIdleConnTimeout = 90 * time.Second
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *HTTPClientArguments) SetToDefault() {
 	maxIdleConns := DefaultMaxIdleConns
 	idleConnTimeout := DefaultIdleConnTimeout

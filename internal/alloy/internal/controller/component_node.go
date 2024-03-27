@@ -23,7 +23,7 @@ type ComponentNode interface {
 	// ComponentName returns the name of the component.
 	ComponentName() string
 
-	// ID returns the component ID of the managed component from its River block.
+	// ID returns the component ID of the managed component from its Alloy block.
 	ID() ComponentID
 
 	// ModuleIDs returns the current list of modules managed by the component.

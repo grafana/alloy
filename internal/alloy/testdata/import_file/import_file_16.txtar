@@ -1,36 +1,36 @@
 Imported declare and local declare have the same label.
 
--- main.river --
+-- main.alloy --
 testcomponents.count "inc" {
-	frequency = "10ms"
-	max = 10
+  frequency = "10ms"
+  max = 10
 }
 
 import.file "certmanager" {
-	filename = "module.river"
+  filename = "module.alloy"
 }
 
-certmanager.config "this" { 
-	input = testcomponents.count.inc.count
+certmanager.config "this" {
+  input = testcomponents.count.inc.count
 }
 
 declare "config" {
 }
 
 testcomponents.summation "sum" {
-	input = certmanager.config.this.output
+  input = certmanager.config.this.output
 }
 
--- module.river --
+-- module.alloy --
 declare "config" {
-	argument "input" {}
+  argument "input" {}
 
-	testcomponents.passthrough "pt" {
-		input = argument.input.value
-		lag = "1ms"
-	}
+  testcomponents.passthrough "pt" {
+    input = argument.input.value
+    lag = "1ms"
+  }
 
-	export "output" {
-		value = testcomponents.passthrough.pt.output
-	}
+  export "output" {
+    value = testcomponents.passthrough.pt.output
+  }
 }

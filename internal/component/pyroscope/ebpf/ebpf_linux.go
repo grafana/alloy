@@ -66,7 +66,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	return res, nil
 }
 
-func (rc *Arguments) UnmarshalRiver(f func(interface{}) error) error {
+func (rc *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 	*rc = defaultArguments()
 	type config Arguments
 	return f((*config)(rc))

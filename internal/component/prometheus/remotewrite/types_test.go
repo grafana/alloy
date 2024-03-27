@@ -63,7 +63,7 @@ func expectedCfg(transform func(c *config.Config)) *config.Config {
 	return res
 }
 
-func TestRiverConfig(t *testing.T) {
+func TestAlloyConfig(t *testing.T) {
 	tests := []struct {
 		testName    string
 		cfg         string

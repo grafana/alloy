@@ -56,7 +56,7 @@ var DefaultArguments = Arguments{
 	Client: commonk8s.DefaultClientArguments,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }

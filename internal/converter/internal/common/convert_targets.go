@@ -10,7 +10,7 @@ import (
 // NewDiscoveryExports will return a new [discovery.Exports] with a specific
 // key for converter component exports. The argument will be tokenized
 // as a component export string rather than the standard [discovery.Target]
-// RiverTokenize.
+// AlloyTokenize.
 func NewDiscoveryExports(expr string) discovery.Exports {
 	return discovery.Exports{
 		Targets: NewDiscoveryTargets(expr),
@@ -20,7 +20,7 @@ func NewDiscoveryExports(expr string) discovery.Exports {
 // NewDiscoveryTargets will return a new [[]discovery.Target] with a specific
 // key for converter component exports. The argument will be tokenized
 // as a component export string rather than the standard [discovery.Target]
-// RiverTokenize.
+// AlloyTokenize.
 func NewDiscoveryTargets(expr string) []discovery.Target {
 	return []discovery.Target{map[string]string{"__expr__": expr}}
 }
@@ -35,8 +35,8 @@ type ConvertTargets struct {
 var _ builder.Tokenizer = ConvertTargets{}
 var _ syntax.Capsule = ConvertTargets{}
 
-func (f ConvertTargets) RiverCapsule() {}
-func (f ConvertTargets) RiverTokenize() []builder.Token {
+func (f ConvertTargets) AlloyCapsule() {}
+func (f ConvertTargets) AlloyTokenize() []builder.Token {
 	expr := builder.NewExpr()
 	var toks []builder.Token
 

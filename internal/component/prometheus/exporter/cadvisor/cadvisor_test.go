@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUnmarshalRiver(t *testing.T) {
-	riverCfg := `
+func TestUnmarshalAlloy(t *testing.T) {
+	alloyCfg := `
 store_container_labels = true
 allowlisted_container_labels = ["label1", "label2"]
 env_metadata_allowlist = ["env1", "env2"]
@@ -29,7 +29,7 @@ docker_tls_key = "docker_tls_key"
 docker_tls_ca = "docker_tls_ca"
 `
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	expected := Arguments{
 		StoreContainerLabels:       true,

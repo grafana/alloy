@@ -110,19 +110,19 @@ Section "install"
 SectionEnd
 
 Function CreateConfig
-  IfFileExists "$INSTDIR\config.river" Noop CreateNewConfig
+  IfFileExists "$INSTDIR\config.alloy" Noop CreateNewConfig
   Noop:
     Return
   CreateNewConfig:
-    File "config.river"
+    File "config.alloy"
 
     # Set permissions on the config file
-    AccessControl::DisableFileInheritance "$INSTDIR\config.river"
-    AccessControl::SetFileOwner "$INSTDIR\config.river" "Administrators"
-    AccessControl::ClearOnFile  "$INSTDIR\config.river" "Administrators" "FullAccess"
-    AccessControl::SetOnFile    "$INSTDIR\config.river" "SYSTEM" "FullAccess"
-    AccessControl::GrantOnFile  "$INSTDIR\config.river" "Everyone" "ListDirectory"
-    AccessControl::GrantOnFile  "$INSTDIR\config.river" "Everyone" "ReadAttributes"
+    AccessControl::DisableFileInheritance "$INSTDIR\config.alloy"
+    AccessControl::SetFileOwner "$INSTDIR\config.alloy" "Administrators"
+    AccessControl::ClearOnFile  "$INSTDIR\config.alloy" "Administrators" "FullAccess"
+    AccessControl::SetOnFile    "$INSTDIR\config.alloy" "SYSTEM" "FullAccess"
+    AccessControl::GrantOnFile  "$INSTDIR\config.alloy" "Everyone" "ListDirectory"
+    AccessControl::GrantOnFile  "$INSTDIR\config.alloy" "Everyone" "ReadAttributes"
     Return
 FunctionEnd
 
@@ -142,7 +142,7 @@ Function InitializeRegistry
   ${If} $Config != ""
     StrCpy $ConfigFlag "$Config"
   ${Else}
-    StrCpy $ConfigFlag "$INSTDIR\config.river"
+    StrCpy $ConfigFlag "$INSTDIR\config.alloy"
   ${EndIf}
 
   ${If} $DisableReporting == "yes"

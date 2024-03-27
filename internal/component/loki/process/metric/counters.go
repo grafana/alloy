@@ -36,12 +36,12 @@ var DefaultCounterConfig = CounterConfig{
 	MaxIdle: 5 * time.Minute,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (c *CounterConfig) SetToDefault() {
 	*c = DefaultCounterConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (c *CounterConfig) Validate() error {
 	if c.MaxIdle < 1*time.Second {
 		return fmt.Errorf("max_idle_duration must be greater or equal than 1s")

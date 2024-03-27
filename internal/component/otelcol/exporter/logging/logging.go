@@ -38,7 +38,7 @@ type Arguments struct {
 
 var _ exporter.Arguments = Arguments{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		Verbosity:          configtelemetry.LevelNormal,

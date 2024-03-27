@@ -47,13 +47,13 @@ func (cn *DeclareNode) Block() *ast.BlockStmt {
 // NodeID implements dag.Node and returns the unique ID for the config node.
 func (cn *DeclareNode) NodeID() string { return cn.nodeID }
 
-// UpdateBlock updates the managed River block.
+// UpdateBlock updates the managed Alloy block.
 //
 // UpdateBlock will panic if the block does not match the component ID of the
 // DeclareNode.
 func (cn *DeclareNode) UpdateBlock(b *ast.BlockStmt) {
 	if !BlockComponentID(b).Equals(strings.Split(cn.nodeID, ".")) {
-		panic("UpdateBlock called with an River block with a different ID")
+		panic("UpdateBlock called with an Alloy block with a different ID")
 	}
 
 	cn.mut.Lock()

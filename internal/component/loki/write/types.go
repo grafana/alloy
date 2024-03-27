@@ -52,12 +52,12 @@ func GetDefaultEndpointOptions() EndpointOptions {
 	return defaultEndpointOptions
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (r *EndpointOptions) SetToDefault() {
 	*r = GetDefaultEndpointOptions()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (r *EndpointOptions) Validate() error {
 	if _, err := url.Parse(r.URL); err != nil {
 		return fmt.Errorf("failed to parse remote url %q: %w", r.URL, err)
@@ -78,7 +78,7 @@ type QueueConfig struct {
 	DrainTimeout time.Duration    `alloy:"drain_timeout,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (q *QueueConfig) SetToDefault() {
 	*q = QueueConfig{
 		Capacity:     10 * units.MiB, // considering the default BatchSize of 1MiB, this gives us a default buffered channel of size 10

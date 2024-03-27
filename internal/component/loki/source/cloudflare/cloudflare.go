@@ -72,12 +72,12 @@ var DefaultArguments = Arguments{
 	FieldsType: string(cft.FieldsTypeDefault),
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (c *Arguments) SetToDefault() {
 	*c = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (c *Arguments) Validate() error {
 	if c.PullRange < 0 {
 		return fmt.Errorf("pull_range must be a positive duration")

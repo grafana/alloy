@@ -11,7 +11,7 @@ import (
 )
 
 // Source: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/filterprocessor/README.md#filter-spans-from-traces
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string

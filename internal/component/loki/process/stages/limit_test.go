@@ -13,7 +13,7 @@ import (
 )
 
 // Not all these are tested but are here to make sure the different types marshal without error
-var testLimitWaitRiver = `
+var testLimitWaitAlloy = `
 stage.json {
 		expressions = { "app" = "", "msg" = "" }
 }
@@ -24,7 +24,7 @@ stage.limit {
 }`
 
 // Not all these are tested but are here to make sure the different types marshal without error
-var testLimitDropRiver = `
+var testLimitDropAlloy = `
 stage.json {
 		expressions = { "app" = "", "msg" = "" }
 }
@@ -34,7 +34,7 @@ stage.limit {
 		drop  = true
 }`
 
-var testLimitByLabelRiver = `
+var testLimitByLabelAlloy = `
 stage.json {
 		expressions = { "app" = "", "msg" = "" }
 }
@@ -58,7 +58,7 @@ var plName = "testPipeline"
 // TestLimitPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitWaitPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitWaitRiver), &plName, registry)
+	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitWaitAlloy), &plName, registry)
 	logs := make([]Entry, 0)
 	logCount := 5
 	for i := 0; i < logCount; i++ {
@@ -76,7 +76,7 @@ func TestLimitWaitPipeline(t *testing.T) {
 // TestLimitPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitDropPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitDropRiver), &plName, registry)
+	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitDropAlloy), &plName, registry)
 	logs := make([]Entry, 0)
 	logCount := 10
 	for i := 0; i < logCount; i++ {
@@ -94,7 +94,7 @@ func TestLimitDropPipeline(t *testing.T) {
 // TestLimitByLabelPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitByLabelPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitByLabelRiver), &plName, registry)
+	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitByLabelAlloy), &plName, registry)
 	logs := make([]Entry, 0)
 	logCount := 5
 	for i := 0; i < logCount; i++ {

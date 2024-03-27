@@ -77,12 +77,12 @@ var DefaultEC2SDConfig = EC2Arguments{
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *EC2Arguments) SetToDefault() {
 	*args = DefaultEC2SDConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *EC2Arguments) Validate() error {
 	if args.Region == "" {
 		cfgCtx := context.TODO()

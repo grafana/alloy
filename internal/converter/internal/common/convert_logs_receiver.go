@@ -19,8 +19,8 @@ var _ loki.LogsReceiver = (*ConvertLogsReceiver)(nil)
 var _ builder.Tokenizer = ConvertLogsReceiver{}
 var _ syntax.Capsule = ConvertLogsReceiver{}
 
-func (f ConvertLogsReceiver) RiverCapsule() {}
-func (f ConvertLogsReceiver) RiverTokenize() []builder.Token {
+func (f ConvertLogsReceiver) AlloyCapsule() {}
+func (f ConvertLogsReceiver) AlloyTokenize() []builder.Token {
 	return []builder.Token{{
 		Tok: token.STRING,
 		Lit: f.Expr,

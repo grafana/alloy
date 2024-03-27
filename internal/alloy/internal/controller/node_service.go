@@ -19,7 +19,7 @@ type ServiceNode struct {
 	def  service.Definition
 
 	mut   sync.RWMutex
-	block *ast.BlockStmt // Current River block to derive args from
+	block *ast.BlockStmt // Current Alloy block to derive args from
 	eval  *vm.Evaluator
 	args  component.Arguments // Evaluated arguments for the managed component
 }
@@ -54,7 +54,7 @@ func (sn *ServiceNode) Block() *ast.BlockStmt {
 	return sn.block
 }
 
-// UpdateBlock updates the River block used to construct arguments for the
+// UpdateBlock updates the Alloy block used to construct arguments for the
 // service. The new block isn't used until the next time Evaluate is called.
 //
 // UpdateBlock will panic if the block does not match the ID of the

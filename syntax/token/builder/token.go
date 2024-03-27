@@ -17,8 +17,8 @@ type Token struct {
 	Lit string
 }
 
-// printFileTokens prints out the tokens as River text and formats them, writing
-// the final result to w.
+// printFileTokens prints out the tokens as Alloy text and formats them,
+// writing the final result to w.
 func printFileTokens(w io.Writer, toks []Token) (int, error) {
 	var raw bytes.Buffer
 	for _, tok := range toks {
@@ -44,7 +44,7 @@ func printFileTokens(w io.Writer, toks []Token) (int, error) {
 	return wc.n, err
 }
 
-// printExprTokens prints out the tokens as River text and formats them,
+// printExprTokens prints out the tokens as Alloy text and formats them,
 // writing the final result to w.
 func printExprTokens(w io.Writer, toks []Token) (int, error) {
 	var raw bytes.Buffer

@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	exampleRiverConfig = `
+	exampleAlloyConfig = `
 		listen_udp = ":1010"
 		listen_tcp = ":1011"
 		listen_unixgram = "unix"
@@ -30,9 +30,9 @@ var (
 	duration1m, _ = time.ParseDuration("1m")
 )
 
-func TestRiverUnmarshal(t *testing.T) {
+func TestAlloyUnmarshal(t *testing.T) {
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	require.Equal(t, ":1010", args.ListenUDP)
@@ -56,7 +56,7 @@ func TestRiverUnmarshal(t *testing.T) {
 func TestConvert(t *testing.T) {
 	t.Run("with valid config", func(t *testing.T) {
 		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+		err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 		require.NoError(t, err)
 
 		configStatsd, err := args.Convert()

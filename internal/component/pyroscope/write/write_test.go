@@ -235,8 +235,8 @@ func Test_Unmarshal_Config(t *testing.T) {
 	require.Equal(t, 10, arg.Endpoints[1].MaxBackoffRetries)
 }
 
-func TestBadRiverConfig(t *testing.T) {
-	exampleRiverConfig := `
+func TestBadAlloyConfig(t *testing.T) {
+	exampleAlloyConfig := `
 	endpoint {
 		url = "http://localhost:4100"
 		remote_timeout = "10s"
@@ -250,6 +250,6 @@ func TestBadRiverConfig(t *testing.T) {
 
 	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 }

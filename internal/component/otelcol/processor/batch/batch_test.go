@@ -118,7 +118,7 @@ func createTestTraces() ptrace.Traces {
 	return data
 }
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		cfg               string
 		expectedArguments batch.Arguments

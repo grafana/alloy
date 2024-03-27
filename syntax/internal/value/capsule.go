@@ -5,21 +5,21 @@ import (
 )
 
 // Capsule is a marker interface for Go values which forces a type to be
-// represented as a River capsule. This is useful for types whose underlying
+// represented as an Alloy capsule. This is useful for types whose underlying
 // value is not a capsule, such as:
 //
-//	// Secret is a secret value. It would normally be a River string since the
+//	// Secret is a secret value. It would normally be an Alloy string since the
 //	// underlying Go type is string, but it's a capsule since it implements
 //	// the Capsule interface.
 //	type Secret string
 //
-//	func (s Secret) RiverCapsule() {}
+//	func (s Secret) AlloyCapsule() {}
 //
 // Extension interfaces are used to describe additional behaviors for Capsules.
 // ConvertibleCapsule allows defining custom conversion rules to convert
 // between other Go values.
 type Capsule interface {
-	RiverCapsule()
+	AlloyCapsule()
 }
 
 // ErrNoConversion is returned by implementations of ConvertibleCapsule to

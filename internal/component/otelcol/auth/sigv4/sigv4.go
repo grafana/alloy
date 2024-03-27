@@ -49,7 +49,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &res, nil
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args Arguments) Validate() error {
 	_, err := args.Convert()
 	return err

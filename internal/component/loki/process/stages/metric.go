@@ -33,7 +33,7 @@ var (
 )
 
 // MetricConfig is a single metrics configuration.
-// TODO(@tpaschalis) Rework once River squashing is implemented.
+// TODO(@tpaschalis) Rework once Alloy squashing is implemented.
 type MetricConfig struct {
 	Counter   *metric.CounterConfig   `alloy:"counter,block,optional"`
 	Gauge     *metric.GaugeConfig     `alloy:"gauge,block,optional"`

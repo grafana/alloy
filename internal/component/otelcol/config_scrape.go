@@ -28,7 +28,7 @@ var DefaultScraperControllerArguments = ScraperControllerArguments{
 	Timeout:            0 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *ScraperControllerArguments) SetToDefault() {
 	*args = DefaultScraperControllerArguments
 }

@@ -2,4 +2,4 @@ agent:
   configMap:
     create: false
     name: existing-config
-    key: my-config.river
+    key: my-config.alloy

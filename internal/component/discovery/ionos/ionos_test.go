@@ -13,8 +13,8 @@ import (
 	"gotest.tools/assert"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverCfg := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyCfg := `
 		datacenter_id = "datacenter_id"
 		refresh_interval = "20s"
 		port = 60
@@ -25,7 +25,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	assert.Equal(t, "datacenter_id", args.DatacenterID)
 	assert.Equal(t, 20*time.Second, args.RefreshInterval)
@@ -35,7 +35,7 @@ func TestRiverUnmarshal(t *testing.T) {
 }
 
 func TestConvert(t *testing.T) {
-	riverArgs := Arguments{
+	alloyArgs := Arguments{
 		DatacenterID:    "datacenter_id",
 		RefreshInterval: 20 * time.Second,
 		Port:            81,
@@ -46,7 +46,7 @@ func TestConvert(t *testing.T) {
 			},
 		},
 	}
-	promArgs := riverArgs.Convert()
+	promArgs := alloyArgs.Convert()
 	assert.Equal(t, "datacenter_id", promArgs.DatacenterID)
 	assert.Equal(t, model.Duration(20*time.Second), promArgs.RefreshInterval)
 	assert.Equal(t, 81, promArgs.Port)
@@ -55,20 +55,20 @@ func TestConvert(t *testing.T) {
 }
 
 func TestValidateNoDatacenterId(t *testing.T) {
-	riverArgs := Arguments{
+	alloyArgs := Arguments{
 		RefreshInterval: 20 * time.Second,
 		Port:            81,
 	}
-	err := riverArgs.Validate()
+	err := alloyArgs.Validate()
 	assert.Error(t, err, "datacenter_id can't be empty")
 }
 
 func TestValidateRefreshIntervalZero(t *testing.T) {
-	riverArgs := Arguments{
+	alloyArgs := Arguments{
 		DatacenterID:    "datacenter_id",
 		RefreshInterval: 0,
 		Port:            81,
 	}
-	err := riverArgs.Validate()
+	err := alloyArgs.Validate()
 	assert.Error(t, err, "refresh_interval must be greater than 0")
 }

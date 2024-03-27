@@ -7,7 +7,7 @@ import (
 	col "github.com/prometheus-community/windows_exporter/pkg/collector"
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
 		EnabledCollectors: strings.Split(windows_integration.DefaultConfig.EnabledCollectors, ","),

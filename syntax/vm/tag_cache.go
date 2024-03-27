@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/alloy/syntax/internal/syntaxtags"
 )
 
-// tagsCache caches the river tags for a struct type. This is never cleared,
+// tagsCache caches the alloy tags for a struct type. This is never cleared,
 // but since most structs will be statically created throughout the lifetime
 // of the process, this will consume a negligible amount of memory.
 var tagsCache sync.Map

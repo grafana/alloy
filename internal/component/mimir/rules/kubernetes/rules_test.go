@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	address = "GRAFANA_CLOUD_METRICS_URL"
 	basic_auth {
 		username = "GRAFANA_CLOUD_USER"
@@ -17,12 +17,12 @@ func TestRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestBadRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestBadAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	address = "GRAFANA_CLOUD_METRICS_URL"
 	bearer_token = "token"
 	bearer_token_file = "/path/to/file.token"
@@ -30,6 +30,6 @@ func TestBadRiverConfig(t *testing.T) {
 
 	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 }

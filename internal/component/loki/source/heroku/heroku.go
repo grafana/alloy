@@ -40,7 +40,7 @@ type Arguments struct {
 	RelabelRules         alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
 		Server: fnet.DefaultServerConfig(),
@@ -159,7 +159,7 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-// Convert is used to bridge between the River and Promtail types.
+// Convert is used to bridge between the Alloy and Promtail types.
 func (args *Arguments) Convert() *ht.HerokuDrainTargetConfig {
 	lbls := make(model.LabelSet, len(args.Labels))
 	for k, v := range args.Labels {

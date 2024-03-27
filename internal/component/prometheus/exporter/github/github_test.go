@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUnmarshalRiver(t *testing.T) {
-	riverCfg := `
+func TestUnmarshalAlloy(t *testing.T) {
+	alloyCfg := `
 		api_token_file = "/etc/github-api-token"
 		repositories = ["grafana/alloy"]
 		organizations = ["grafana", "prometheus"]
@@ -16,7 +16,7 @@ func TestUnmarshalRiver(t *testing.T) {
 		api_url = "https://some-other-api.github.com"
 `
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "/etc/github-api-token", args.APITokenFile)
 	require.Equal(t, []string{"grafana/alloy"}, args.Repositories)

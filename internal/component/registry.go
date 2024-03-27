@@ -35,14 +35,14 @@ type ModuleController interface {
 	// NewModule must provide unique values for id. The empty string is a valid unique
 	// value for id.
 	//
-	// If id is non-empty, it must be a valid River identifier, matching the
+	// If id is non-empty, it must be a valid Alloy identifier, matching the
 	// regex /[A-Za-z_][A-Za-z0-9_]/.
 	NewModule(id string, export ExportFunc) (Module, error)
 }
 
 // Module is a controller for running components within a Module.
 type Module interface {
-	// LoadConfig parses River config and loads it into the Module.
+	// LoadConfig parses Alloy config and loads it into the Module.
 	// LoadConfig can be called multiple times, and called prior to
 	// [Module.Run].
 	LoadConfig(config []byte, args map[string]any) error

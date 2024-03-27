@@ -37,12 +37,12 @@ var DefaultArguments = Arguments{
 	PollFrequency: 10 * time.Minute,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if a.PollFrequency <= minimumPollFrequency {
 		return fmt.Errorf("poll_frequency must be greater than 30s")

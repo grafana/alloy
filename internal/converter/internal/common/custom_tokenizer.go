@@ -11,7 +11,7 @@ type CustomTokenizer struct {
 
 var _ builder.Tokenizer = CustomTokenizer{}
 
-func (f CustomTokenizer) RiverTokenize() []builder.Token {
+func (f CustomTokenizer) AlloyTokenize() []builder.Token {
 	return []builder.Token{{
 		Tok: token.STRING,
 		Lit: f.Expr,

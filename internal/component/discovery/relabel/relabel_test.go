@@ -13,7 +13,7 @@ import (
 )
 
 func TestRelabelConfigApplication(t *testing.T) {
-	riverArguments := `
+	alloyArguments := `
 targets = [ 
 	{ "__meta_foo" = "foo", "__meta_bar" = "bar", "__address__" = "localhost", "instance" = "one",   "app" = "backend",  "__tmp_a" = "tmp" },
 	{ "__meta_foo" = "foo", "__meta_bar" = "bar", "__address__" = "localhost", "instance" = "two",   "app" = "db",       "__tmp_b" = "tmp" },
@@ -60,7 +60,7 @@ rule {
 	}
 
 	var args relabel.Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(riverArguments), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(alloyArguments), &args))
 
 	tc, err := componenttest.NewControllerFromID(nil, "discovery.relabel")
 	require.NoError(t, err)

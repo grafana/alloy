@@ -11,8 +11,8 @@ import (
 	"gotest.tools/assert"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyUnmarshal(t *testing.T) {
+	var exampleAlloyConfig = `
 	refresh_interval = "5m"
 	port = 54
 	names = ["foo.com"]
@@ -20,7 +20,7 @@ func TestRiverUnmarshal(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	assert.Equal(t, 5*time.Minute, args.RefreshInterval)
@@ -28,7 +28,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	assert.Equal(t, "foo.com", strings.Join(args.Names, ","))
 }
 
-func TestBadRiverConfig(t *testing.T) {
+func TestBadAlloyConfig(t *testing.T) {
 	var tests = []struct {
 		Desc   string
 		Config string

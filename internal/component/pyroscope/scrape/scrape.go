@@ -169,7 +169,7 @@ var DefaultProfilingConfig = ProfilingConfig{
 	},
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (cfg *ProfilingConfig) SetToDefault() {
 	*cfg = DefaultProfilingConfig
 }
@@ -200,12 +200,12 @@ func NewDefaultArguments() Arguments {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (arg *Arguments) SetToDefault() {
 	*arg = NewDefaultArguments()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (arg *Arguments) Validate() error {
 	if arg.ScrapeTimeout.Seconds() <= 0 {
 		return fmt.Errorf("scrape_timeout must be greater than 0")

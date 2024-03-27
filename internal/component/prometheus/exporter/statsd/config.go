@@ -92,7 +92,7 @@ func (c *Arguments) Convert() (*statsd_exporter.Config, error) {
 	}, nil
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultConfig
 }

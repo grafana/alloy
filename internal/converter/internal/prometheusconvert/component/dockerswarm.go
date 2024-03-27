@@ -39,11 +39,11 @@ func toDiscoveryDockerswarm(sdConfig *prom_moby.DockerSwarmSDConfig) *dockerswar
 }
 
 func convertFilters(mobyFilters []prom_moby.Filter) []dockerswarm.Filter {
-	riverFilters := make([]dockerswarm.Filter, len(mobyFilters))
+	alloyFilters := make([]dockerswarm.Filter, len(mobyFilters))
 	for i, mobyFilter := range mobyFilters {
-		riverFilters[i] = convertFilter(&mobyFilter)
+		alloyFilters[i] = convertFilter(&mobyFilter)
 	}
-	return riverFilters
+	return alloyFilters
 }
 
 func convertFilter(mobyFilter *prom_moby.Filter) dockerswarm.Filter {

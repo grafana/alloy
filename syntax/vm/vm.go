@@ -1,4 +1,4 @@
-// Package vm provides a River expression evaluator.
+// Package vm provides an Alloy syntax expression evaluator.
 package vm
 
 import (
@@ -14,8 +14,8 @@ import (
 	"github.com/grafana/alloy/syntax/internal/value"
 )
 
-// Evaluator evaluates River AST nodes into Go values. Each Evaluator is bound
-// to a single AST node. To evaluate the node, call Evaluate.
+// Evaluator evaluates Alloy syntax AST nodes into Go values. Each Evaluator is
+// bound to a single AST node. To evaluate the node, call Evaluate.
 type Evaluator struct {
 	// node for the AST.
 	//
@@ -31,8 +31,8 @@ func New(node ast.Node) *Evaluator {
 	return &Evaluator{node: node}
 }
 
-// Evaluate evaluates the Evaluator's node into a River value and decodes that
-// value into the Go value v.
+// Evaluate evaluates the Evaluator's node into a Alloy syntax value and
+// decodes that value into the Go value v.
 //
 // Each call to Evaluate may provide a different scope with new values for
 // available variables. If a variable used by the Evaluator's node isn't
@@ -82,7 +82,7 @@ func (vm *Evaluator) evaluateBlockOrBody(scope *Scope, assoc map[value.Value]ast
 		rv = rv.Addr()
 	}
 
-	if err, unmarshaled := vm.evaluateUnmarshalRiver(scope, assoc, node, rv); unmarshaled || err != nil {
+	if err, unmarshaled := vm.evaluateUnmarshalAlloy(scope, assoc, node, rv); unmarshaled || err != nil {
 		return err
 	}
 
@@ -103,9 +103,9 @@ func (vm *Evaluator) evaluateBlockOrBody(scope *Scope, assoc map[value.Value]ast
 	return nil
 }
 
-func (vm *Evaluator) evaluateUnmarshalRiver(scope *Scope, assoc map[value.Value]ast.Node, node ast.Node, rv reflect.Value) (error, bool) {
+func (vm *Evaluator) evaluateUnmarshalAlloy(scope *Scope, assoc map[value.Value]ast.Node, node ast.Node, rv reflect.Value) (error, bool) {
 	if ru, ok := rv.Interface().(value.Unmarshaler); ok {
-		return ru.UnmarshalRiver(func(v interface{}) error {
+		return ru.UnmarshalAlloy(func(v interface{}) error {
 			rv := reflect.ValueOf(v)
 			if rv.Kind() != reflect.Pointer {
 				panic(fmt.Sprintf("syntax/vm: expected pointer, got %s", rv.Kind()))

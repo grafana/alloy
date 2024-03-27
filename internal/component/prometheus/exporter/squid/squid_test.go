@@ -11,15 +11,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverConfig := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyConfig := `
 	address  = "some_address:port"
 	username = "some_user"
 	password = "some_password"
 	`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
@@ -32,13 +32,13 @@ func TestRiverUnmarshal(t *testing.T) {
 }
 
 func TestConvert(t *testing.T) {
-	riverConfig := `
+	alloyConfig := `
 	address  = "some_address:port"
 	username = "some_user"
 	password = "some_password"
 	`
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	res := args.Convert()

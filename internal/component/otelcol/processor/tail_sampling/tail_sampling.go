@@ -49,12 +49,12 @@ var DefaultArguments = Arguments{
 	ExpectedNewTracesPerSec: 0,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.DecisionWait.Milliseconds() <= 0 {
 		return fmt.Errorf("decision_wait must be greater than zero")

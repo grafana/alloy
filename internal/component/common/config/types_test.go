@@ -8,7 +8,7 @@ import (
 )
 
 func TestHTTPClientConfigBearerToken(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	bearer_token = "token"
 	proxy_url = "http://0.0.0.0:11111"
 	follow_redirects = true
@@ -25,12 +25,12 @@ func TestHTTPClientConfigBearerToken(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
 func TestHTTPClientConfigBearerTokenFile(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	bearer_token_file = "/path/to/file.token"
 	proxy_url = "http://0.0.0.0:11111"
 	follow_redirects = true
@@ -38,12 +38,12 @@ func TestHTTPClientConfigBearerTokenFile(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
 func TestHTTPClientConfigBasicAuthPassword(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	proxy_url = "http://0.0.0.0:11111"
 	follow_redirects = true
 	enable_http2 = true
@@ -55,12 +55,12 @@ func TestHTTPClientConfigBasicAuthPassword(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
 func TestHTTPClientConfigBasicAuthPasswordFile(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	proxy_url = "http://0.0.0.0:11111"
 	follow_redirects = true
 	enable_http2 = true
@@ -72,12 +72,12 @@ func TestHTTPClientConfigBasicAuthPasswordFile(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
 func TestHTTPClientConfigAuthorizationCredentials(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	proxy_url = "http://0.0.0.0:11111"
 	follow_redirects = true
 	enable_http2 = true
@@ -89,12 +89,12 @@ func TestHTTPClientConfigAuthorizationCredentials(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
 func TestHTTPClientConfigAuthorizationCredentialsFile(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	proxy_url = "http://0.0.0.0:11111"
 	follow_redirects = true
 	enable_http2 = true
@@ -106,12 +106,12 @@ func TestHTTPClientConfigAuthorizationCredentialsFile(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
 func TestHTTPClientConfigOath2ClientSecret(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	proxy_url = "http://0.0.0.0:11111"
 	follow_redirects = true
 	enable_http2 = true
@@ -135,12 +135,12 @@ func TestHTTPClientConfigOath2ClientSecret(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
 func TestHTTPClientConfigOath2ClientSecretFile(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	proxy_url = "http://0.0.0.0:11111"
 	follow_redirects = true
 	enable_http2 = true
@@ -156,12 +156,12 @@ func TestHTTPClientConfigOath2ClientSecretFile(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
 	require.NoError(t, err)
 }
 
 func TestOath2TLSConvert(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	oauth2 {
 		client_id = "client_id"
 		client_secret_file = "/path/to/file.oath2"
@@ -172,14 +172,14 @@ func TestOath2TLSConvert(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
 	require.NoError(t, err)
 	newCfg := httpClientConfig.Convert()
 	require.NotNil(t, newCfg)
 }
 
 func TestHTTPClientBadConfig(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	bearer_token = "token"
 	bearer_token_file = "/path/to/file.token"
 	proxy_url = "http://0.0.0.0:11111"
@@ -227,6 +227,6 @@ func TestHTTPClientBadConfig(t *testing.T) {
 `
 
 	var httpClientConfig HTTPClientConfig
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &httpClientConfig)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
 	require.ErrorContains(t, err, "at most one of basic_auth password & password_file must be configured")
 }

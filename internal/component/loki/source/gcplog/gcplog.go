@@ -40,12 +40,12 @@ type Arguments struct {
 	RelabelRules alloy_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if (a.PullTarget != nil) == (a.PushTarget != nil) {
 		return fmt.Errorf("exactly one of 'push' or 'pull' must be provided")

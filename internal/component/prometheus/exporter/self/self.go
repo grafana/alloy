@@ -30,7 +30,7 @@ type Arguments struct{}
 // Exports holds the values exported by the prometheus.exporter.self component.
 type Exports struct{}
 
-// SetToDefault implements river.Defaulter
+// SetToDefault implements syntax.Defaulter
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{}
 }

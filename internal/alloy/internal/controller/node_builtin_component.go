@@ -29,7 +29,7 @@ import (
 // "remote.http.example" is ComponentID{"remote", "http", "example"}.
 type ComponentID []string
 
-// BlockComponentID returns the ComponentID specified by an River block.
+// BlockComponentID returns the ComponentID specified by an Alloy block.
 func BlockComponentID(b *ast.BlockStmt) ComponentID {
 	id := make(ComponentID, 0, len(b.Name)+1) // add 1 for the optional label
 	id = append(id, b.Name...)
@@ -79,7 +79,7 @@ type ComponentGlobals struct {
 //
 // BuiltinComponentNode manages the underlying component and caches its current
 // arguments and exports. BuiltinComponentNode manages the arguments for the component
-// from a River block.
+// from an Alloy block.
 type BuiltinComponentNode struct {
 	id                ComponentID
 	globalID          string
@@ -94,7 +94,7 @@ type BuiltinComponentNode struct {
 	OnBlockNodeUpdate func(cn BlockNode) // Informs controller that we need to reevaluate
 
 	mut     sync.RWMutex
-	block   *ast.BlockStmt // Current River block to derive args from
+	block   *ast.BlockStmt // Current Alloy block to derive args from
 	eval    *vm.Evaluator
 	managed component.Component // Inner managed component
 	args    component.Arguments // Evaluated arguments for the managed component
@@ -202,7 +202,7 @@ func (cn *BuiltinComponentNode) Component() component.Component {
 	return cn.managed
 }
 
-// ID returns the component ID of the managed component from its River block.
+// ID returns the component ID of the managed component from its Alloy block.
 func (cn *BuiltinComponentNode) ID() ComponentID { return cn.id }
 
 // Label returns the label for the block or "" if none was specified.
@@ -212,11 +212,11 @@ func (cn *BuiltinComponentNode) Label() string { return cn.label }
 func (cn *BuiltinComponentNode) ComponentName() string { return cn.componentName }
 
 // NodeID implements dag.Node and returns the unique ID for this node. The
-// NodeID is the string representation of the component's ID from its River
+// NodeID is the string representation of the component's ID from its Alloy
 // block.
 func (cn *BuiltinComponentNode) NodeID() string { return cn.nodeID }
 
-// UpdateBlock updates the River block used to construct arguments for the
+// UpdateBlock updates the Alloy block used to construct arguments for the
 // managed component. The new block isn't used until the next time Evaluate is
 // invoked.
 //
@@ -234,10 +234,10 @@ func (cn *BuiltinComponentNode) UpdateBlock(b *ast.BlockStmt) {
 }
 
 // Evaluate implements BlockNode and updates the arguments for the managed component
-// by re-evaluating its River block with the provided scope. The managed component
+// by re-evaluating its Alloy block with the provided scope. The managed component
 // will be built the first time Evaluate is called.
 //
-// Evaluate will return an error if the River block cannot be evaluated or if
+// Evaluate will return an error if the Alloy block cannot be evaluated or if
 // decoding to arguments fails.
 func (cn *BuiltinComponentNode) Evaluate(scope *vm.Scope) error {
 	err := cn.evaluate(scope)

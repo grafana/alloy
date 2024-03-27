@@ -1,32 +1,32 @@
 Import passthrough module.
 
--- main.river --
+-- main.alloy --
 testcomponents.count "inc" {
-	frequency = "10ms"
-	max = 10
+  frequency = "10ms"
+  max = 10
 }
 
 import.string "testImport" {
-	content = `
-		declare "test" {
-			argument "input" {}
+  content = `
+    declare "test" {
+      argument "input" {}
 
-			testcomponents.passthrough "pt" {
-				input = argument.input.value
-				lag = "1ms"
-			}
+      testcomponents.passthrough "pt" {
+        input = argument.input.value
+        lag = "1ms"
+      }
 
-			export "testOutput" {
-				value = testcomponents.passthrough.pt.output
-			}
-		}
-	`
+      export "testOutput" {
+        value = testcomponents.passthrough.pt.output
+      }
+    }
+  `
 }
 
 testImport.test "myModule" {
-	input = testcomponents.count.inc.count
+  input = testcomponents.count.inc.count
 }
 
 testcomponents.summation "sum" {
-	input = testImport.test.myModule.testOutput
+  input = testImport.test.myModule.testOutput
 }

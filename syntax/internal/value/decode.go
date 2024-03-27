@@ -12,17 +12,17 @@ import (
 )
 
 // The Defaulter interface allows a type to implement default functionality
-// in River evaluation.
+// in Alloy configuration evaluation.
 //
-// Defaulter will be called only on block and body river types.
+// Defaulter will be called only on block and body Alloy types.
 //
 // When using nested blocks, the wrapping type must also implement
 // Defaulter to propagate the defaults of the wrapped type. Otherwise,
 // defaults used for the wrapped type become inconsistent:
 //
-//   - If the wrapped block is NOT defined in the River config, the wrapping
+//   - If the wrapped block is NOT defined in the Alloy config, the wrapping
 //     type's defaults are used.
-//   - If the wrapped block IS defined in the River config, the wrapped type's
+//   - If the wrapped block IS defined in the Alloy config, the wrapped type's
 //     defaults are used.
 type Defaulter interface {
 	// SetToDefault is called when evaluating a block or body to set the value
@@ -32,13 +32,13 @@ type Defaulter interface {
 
 // Unmarshaler is a custom type which can be used to hook into the decoder.
 type Unmarshaler interface {
-	// UnmarshalRiver is called when decoding a value. f should be invoked to
+	// UnmarshalAlloy is called when decoding a value. f should be invoked to
 	// continue decoding with a value to decode into.
-	UnmarshalRiver(f func(v interface{}) error) error
+	UnmarshalAlloy(f func(v interface{}) error) error
 }
 
 // The Validator interface allows a type to implement validation functionality
-// in River evaluation.
+// in Alloy evaluation.
 type Validator interface {
 	// Validate is called when evaluating a block or body to enforce the
 	// value is valid.
@@ -66,14 +66,14 @@ type Validator interface {
 // between values will be attempted by calling ConvertFrom and ConvertInto as
 // appropriate. If val cannot be converted, an error is returned.
 //
-// River null values will decode into a nil Go pointer or the zero value for
+// Alloy null values will decode into a nil Go pointer or the zero value for
 // the non-pointer type.
 //
 // Decode will panic if target is not a pointer.
 func Decode(val Value, target interface{}) error {
 	rt := reflect.ValueOf(target)
 	if rt.Kind() != reflect.Pointer {
-		panic("river/value: Decode called with non-pointer value")
+		panic("syntax/value: Decode called with non-pointer value")
 	}
 
 	var d decoder
@@ -87,7 +87,7 @@ func Decode(val Value, target interface{}) error {
 func DecodeCopy(val Value, target interface{}) error {
 	rt := reflect.ValueOf(target)
 	if rt.Kind() != reflect.Pointer {
-		panic("river/value: Decode called with non-pointer value")
+		panic("syntax/value: Decode called with non-pointer value")
 	}
 
 	d := decoder{makeCopy: true}
@@ -102,9 +102,9 @@ func (d *decoder) decode(val Value, into reflect.Value) (err error) {
 	// If everything has decoded successfully, run Validate if implemented.
 	defer func() {
 		if err == nil {
-			if into.CanAddr() && into.Addr().Type().Implements(goRiverValidator) {
+			if into.CanAddr() && into.Addr().Type().Implements(goAlloyValidator) {
 				err = into.Addr().Interface().(Validator).Validate()
-			} else if into.Type().Implements(goRiverValidator) {
+			} else if into.Type().Implements(goAlloyValidator) {
 				err = into.Interface().(Validator).Validate()
 			}
 		}
@@ -165,13 +165,13 @@ func (d *decoder) decode(val Value, into reflect.Value) (err error) {
 		return err
 	}
 
-	if into.CanAddr() && into.Addr().Type().Implements(goRiverDefaulter) {
+	if into.CanAddr() && into.Addr().Type().Implements(goAlloyDefaulter) {
 		into.Addr().Interface().(Defaulter).SetToDefault()
-	} else if into.Type().Implements(goRiverDefaulter) {
+	} else if into.Type().Implements(goAlloyDefaulter) {
 		into.Interface().(Defaulter).SetToDefault()
 	}
 
-	targetType := RiverType(into.Type())
+	targetType := AlloyType(into.Type())
 
 	// Track a value to use for decoding. This value will be updated if
 	// conversion is necessary.
@@ -258,7 +258,7 @@ func (d *decoder) decode(val Value, into reflect.Value) (err error) {
 			Inner: fmt.Errorf("expected capsule(%q), got %s", into.Type(), convVal.Describe()),
 		}
 	default:
-		panic("river/value: unexpected kind " + convVal.Type().String())
+		panic("syntax/value: unexpected kind " + convVal.Type().String())
 	}
 }
 
@@ -303,7 +303,7 @@ func containsAny(into reflect.Type) bool {
 		return false
 
 	default:
-		// Other kinds are not River types where the decodeAny check applies.
+		// Other kinds are not Alloy types where the decodeAny check applies.
 		return false
 	}
 }
@@ -329,8 +329,8 @@ func (d *decoder) decodeFromInterface(val Value, into reflect.Value) (ok bool, e
 		*into.Interface().(*time.Duration) = dur
 		return true, nil
 
-	case into.Type().Implements(goRiverDecoder):
-		err := into.Interface().(Unmarshaler).UnmarshalRiver(func(v interface{}) error {
+	case into.Type().Implements(goAlloyDecoder):
+		err := into.Interface().(Unmarshaler).UnmarshalAlloy(func(v interface{}) error {
 			return d.decode(val, reflect.ValueOf(v))
 		})
 		if err != nil {
@@ -407,7 +407,7 @@ func tryCapsuleConvert(from Value, into reflect.Value, intoType Type) (ok bool, 
 }
 
 // decodeAny is invoked by decode when into is an interface{}. We assign the
-// interface{} a known type based on the River value being decoded:
+// interface{} a known type based on the Alloy value being decoded:
 //
 //	Null values:   nil
 //	Number values: float64, int, int64, or uint64.
@@ -460,7 +460,7 @@ func (d *decoder) decodeAny(val Value, into reflect.Value) error {
 			}
 
 		default:
-			panic("river/value: unreachable")
+			panic("syntax/value: unreachable")
 		}
 
 	case TypeArray:
@@ -494,7 +494,7 @@ func (d *decoder) decodeAny(val Value, into reflect.Value) error {
 		return nil
 
 	default:
-		panic("river/value: unreachable")
+		panic("syntax/value: unreachable")
 	}
 
 	if err := d.decode(val, ptr); err != nil {
@@ -534,7 +534,7 @@ func (d *decoder) decodeArray(val Value, rt reflect.Value) error {
 		rt.Set(res)
 
 	default:
-		panic(fmt.Sprintf("river/value: unexpected array type %s", val.rv.Kind()))
+		panic(fmt.Sprintf("syntax/value: unexpected array type %s", val.rv.Kind()))
 	}
 
 	return nil
@@ -584,7 +584,7 @@ func (d *decoder) decodeObject(val Value, rt reflect.Value) error {
 		if rt.Type().Key() != goString {
 			// Maps with non-string types are treated as capsules and can't be
 			// decoded from maps.
-			return TypeError{Value: val, Expected: RiverType(rt.Type())}
+			return TypeError{Value: val, Expected: AlloyType(rt.Type())}
 		}
 
 		res := reflect.MakeMapWithSize(rt.Type(), val.Len())
@@ -614,7 +614,7 @@ func (d *decoder) decodeObject(val Value, rt reflect.Value) error {
 		rt.Set(res)
 
 	default:
-		panic(fmt.Sprintf("river/value: unexpected target type %s", rt.Kind()))
+		panic(fmt.Sprintf("syntax/value: unexpected target type %s", rt.Kind()))
 	}
 
 	return nil

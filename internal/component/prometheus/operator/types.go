@@ -56,12 +56,12 @@ var DefaultArguments = Arguments{
 	},
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if len(args.Namespaces) == 0 {
 		args.Namespaces = []string{apiv1.NamespaceAll}

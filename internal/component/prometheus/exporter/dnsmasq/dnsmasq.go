@@ -43,7 +43,7 @@ type Arguments struct {
 	ExposeLeases bool `alloy:"expose_leases,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

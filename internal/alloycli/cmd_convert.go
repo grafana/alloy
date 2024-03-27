@@ -125,7 +125,7 @@ func convert(r io.Reader, fc *alloyConvert) error {
 		return err
 	}
 
-	riverBytes, diags := converter.Convert(inputBytes, converter.Input(fc.sourceFormat), ea)
+	alloyBytes, diags := converter.Convert(inputBytes, converter.Input(fc.sourceFormat), ea)
 	err = generateConvertReport(diags, fc)
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func convert(r io.Reader, fc *alloyConvert) error {
 	}
 
 	var buf bytes.Buffer
-	buf.WriteString(string(riverBytes))
+	buf.WriteString(string(alloyBytes))
 
 	if fc.output == "" {
 		_, err := io.Copy(os.Stdout, &buf)

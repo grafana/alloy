@@ -36,12 +36,12 @@ var DefaultArguments = Arguments{
 	Timeout: 10 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.Timeout <= 0 {
 		return fmt.Errorf("timeout must be greater than 0")

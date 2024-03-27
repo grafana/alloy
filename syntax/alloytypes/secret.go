@@ -8,12 +8,13 @@ import (
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 
-// Secret is a River capsule holding a sensitive string. The contents of a
-// Secret are never displayed to the user when rendering River.
+// Secret is an Alloy syntax capsule holding a sensitive string. The contents
+// of a Secret are never displayed to the user when rendering Alloy
+// configuration.
 //
-// Secret allows itself to be converted from a string River value, but never
-// the inverse. This ensures that a user can't accidentally leak a sensitive
-// value.
+// Secret allows itself to be converted from a string Alloy syntax value, but
+// never the inverse. This ensures that a user can't accidentally leak a
+// sensitive value.
 type Secret string
 
 var (
@@ -24,12 +25,12 @@ var (
 	_ builder.Tokenizer = Secret("")
 )
 
-// RiverCapsule marks Secret as a RiverCapsule.
-func (s Secret) RiverCapsule() {}
+// AlloyCapsule marks Secret as a AlloyCapsule.
+func (s Secret) AlloyCapsule() {}
 
 // ConvertInto converts the Secret and stores it into the Go value pointed at
 // by dst. Secrets can be converted into *OptionalSecret. In other cases, this
-// method will return an explicit error or river.ErrNoConversion.
+// method will return an explicit error or syntax.ErrNoConversion.
 func (s Secret) ConvertInto(dst interface{}) error {
 	switch dst := dst.(type) {
 	case *OptionalSecret:
@@ -44,7 +45,7 @@ func (s Secret) ConvertInto(dst interface{}) error {
 
 // ConvertFrom converts the src value and stores it into the Secret s.
 // OptionalSecrets and strings can be converted into a Secret. In other cases,
-// this method will return river.ErrNoConversion.
+// this method will return syntax.ErrNoConversion.
 func (s *Secret) ConvertFrom(src interface{}) error {
 	switch src := src.(type) {
 	case OptionalSecret:
@@ -58,8 +59,8 @@ func (s *Secret) ConvertFrom(src interface{}) error {
 	return value.ErrNoConversion
 }
 
-// RiverTokenize returns a set of custom tokens to represent this value in
-// River text.
-func (s Secret) RiverTokenize() []builder.Token {
+// AlloyTokenize returns a set of custom tokens to represent this value in
+// Alloy syntax text.
+func (s Secret) AlloyTokenize() []builder.Token {
 	return []builder.Token{{Tok: token.LITERAL, Lit: "(secret)"}}
 }

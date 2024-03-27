@@ -246,7 +246,7 @@ func TestDecode_CustomTypes(t *testing.T) {
 	t.Run("object to Unmarshaler", func(t *testing.T) {
 		var actual customUnmarshaler
 		require.NoError(t, value.Decode(value.Object(nil), &actual))
-		require.True(t, actual.UnmarshalCalled, "UnmarshalRiver was not invoked")
+		require.True(t, actual.UnmarshalCalled, "UnmarshalAlloy was not invoked")
 		require.True(t, actual.DefaultCalled, "SetToDefault was not invoked")
 		require.True(t, actual.ValidateCalled, "Validate was not invoked")
 	})
@@ -293,7 +293,7 @@ type customUnmarshaler struct {
 	ValidateCalled  bool `alloy:"validate_called,attr,optional"`
 }
 
-func (cu *customUnmarshaler) UnmarshalRiver(f func(interface{}) error) error {
+func (cu *customUnmarshaler) UnmarshalAlloy(f func(interface{}) error) error {
 	cu.UnmarshalCalled = true
 	return f((*customUnmarshalerTarget)(cu))
 }
@@ -395,7 +395,7 @@ type boolish int
 var _ value.ConvertibleFromCapsule = (*boolish)(nil)
 var _ value.ConvertibleIntoCapsule = (boolish)(0)
 
-func (b boolish) RiverCapsule() {}
+func (b boolish) AlloyCapsule() {}
 
 func (b *boolish) ConvertFrom(src interface{}) error {
 	switch v := src.(type) {
@@ -657,7 +657,7 @@ func TestDecode_SquashedSlice_Pointer(t *testing.T) {
 	require.Equal(t, expect, out)
 }
 
-// TestDecode_KnownTypes_Any asserts that decoding River values into an
+// TestDecode_KnownTypes_Any asserts that decoding Alloy values into an
 // any/interface{} results in known types.
 func TestDecode_KnownTypes_Any(t *testing.T) {
 	tt := []struct {
@@ -758,4 +758,4 @@ func TestRetainCapsulePointer(t *testing.T) {
 
 type capsule struct{}
 
-func (*capsule) RiverCapsule() {}
+func (*capsule) AlloyCapsule() {}

@@ -30,12 +30,12 @@ var DefaultListenerConfig = ListenerConfig{
 	MaxMessageLength: st.DefaultMaxMessageLength,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (sc *ListenerConfig) SetToDefault() {
 	*sc = DefaultListenerConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (sc *ListenerConfig) Validate() error {
 	if sc.ListenProtocol != "tcp" && sc.ListenProtocol != "udp" {
 		return fmt.Errorf("syslog listener protocol should be either 'tcp' or 'udp', got %s", sc.ListenProtocol)
@@ -44,7 +44,7 @@ func (sc *ListenerConfig) Validate() error {
 	return nil
 }
 
-// Convert is used to bridge between the River and Promtail types.
+// Convert is used to bridge between the Alloy and Promtail types.
 func (sc ListenerConfig) Convert() *scrapeconfig.SyslogTargetConfig {
 	lbls := make(model.LabelSet, len(sc.Labels))
 	for k, v := range sc.Labels {

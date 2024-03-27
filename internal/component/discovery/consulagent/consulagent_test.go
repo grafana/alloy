@@ -12,7 +12,7 @@ import (
 )
 
 func TestConvert(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	server = "localhost:8500"
 	token = "token"
 	datacenter = "dc"
@@ -29,7 +29,7 @@ func TestConvert(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	converted := args.Convert()
@@ -49,8 +49,8 @@ func TestConvert(t *testing.T) {
 	assert.Equal(t, "/path/to/ca_file", converted.TLSConfig.CAFile)
 }
 
-func TestBadTLSRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestBadTLSAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	server = "localhost:8500"
 	token = "token"
 	datacenter = "dc"
@@ -69,12 +69,12 @@ func TestBadTLSRiverConfig(t *testing.T) {
 
 	// Make sure the TLSConfig Validate function is being utilized correctly.
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "at most one of ca_pem and ca_file must be configured")
 }
 
-func TestBadRefreshIntervalRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestBadRefreshIntervalAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	server = "localhost:8500"
 	token = "token"
 	datacenter = "dc"
@@ -92,6 +92,6 @@ func TestBadRefreshIntervalRiverConfig(t *testing.T) {
 
 	// Make sure the Refresh Interval is tested correctly.
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "refresh_interval must be greater than 0")
 }

@@ -1,57 +1,57 @@
 Import passthrough module; instantiate imported declare in a nested declare.
 
--- main.river --
+-- main.alloy --
 import.file "testImport" {
-	filename = "module.river"
+  filename = "module.alloy"
 }
 
 declare "b" {
-	declare "c" {
-		testcomponents.count "inc" {
-			frequency = "10ms"
-			max = 10
-		}
+  declare "c" {
+    testcomponents.count "inc" {
+      frequency = "10ms"
+      max = 10
+    }
 
-		testImport.a "cc" {
-			input = testcomponents.count.inc.count
-		}
+    testImport.a "cc" {
+      input = testcomponents.count.inc.count
+    }
 
-		export "output" {
-			value = testImport.a.cc.output
-		}
-	}
-	c "cc" {}
+    export "output" {
+      value = testImport.a.cc.output
+    }
+  }
+  c "cc" {}
 
-	export "output" {
-		value = c.cc.output
-	}
+  export "output" {
+    value = c.cc.output
+  }
 }
 
 b "cc" {}
 
 testcomponents.summation "sum" {
-	input = b.cc.output
+  input = b.cc.output
 }
 
--- module.river --
+-- module.alloy --
 declare "a" {
-	argument "input" {}
+  argument "input" {}
 
-	testcomponents.passthrough "pt" {
-		input = argument.input.value
-		lag = "1ms"
-	}
+  testcomponents.passthrough "pt" {
+    input = argument.input.value
+    lag = "1ms"
+  }
 
-	export "output" {
-		value = testcomponents.passthrough.pt.output
-	}
+  export "output" {
+    value = testcomponents.passthrough.pt.output
+  }
 }
 
--- update/module.river --
+-- update/module.alloy --
 declare "a" {
-	argument "input" {}
+  argument "input" {}
 
-	export "output" {
-		value = -argument.input.value
-	}
+  export "output" {
+    value = -argument.input.value
+  }
 }

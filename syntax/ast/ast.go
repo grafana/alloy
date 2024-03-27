@@ -1,4 +1,4 @@
-// Package ast exposes AST elements used by River.
+// Package ast exposes AST elements used by Alloy syntax.
 //
 // The various interfaces exposed by ast are all closed; only types within this
 // package can satisfy an AST interface.

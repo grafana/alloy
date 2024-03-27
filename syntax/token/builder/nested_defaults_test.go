@@ -20,17 +20,17 @@ const (
 var testCases = []struct {
 	name          string
 	input         interface{}
-	expectedRiver string
+	expectedAlloy string
 }{
 	{
 		name:          "struct propagating default - input matching default",
 		input:         StructPropagatingDefault{Inner: AttrWithDefault{Number: defaultNumber}},
-		expectedRiver: "",
+		expectedAlloy: "",
 	},
 	{
 		name:  "struct propagating default - input with zero-value struct",
 		input: StructPropagatingDefault{},
-		expectedRiver: `
+		expectedAlloy: `
 		inner {
 			number = 0
 		}	
@@ -39,7 +39,7 @@ var testCases = []struct {
 	{
 		name:  "struct propagating default - input with non-default value",
 		input: StructPropagatingDefault{Inner: AttrWithDefault{Number: 42}},
-		expectedRiver: `
+		expectedAlloy: `
 		inner {
 			number = 42
 		}	
@@ -48,12 +48,12 @@ var testCases = []struct {
 	{
 		name:          "pointer propagating default - input matching default",
 		input:         PtrPropagatingDefault{Inner: &AttrWithDefault{Number: defaultNumber}},
-		expectedRiver: "",
+		expectedAlloy: "",
 	},
 	{
 		name:  "pointer propagating default - input with zero value",
 		input: PtrPropagatingDefault{Inner: &AttrWithDefault{}},
-		expectedRiver: `
+		expectedAlloy: `
 		inner {
 			number = 0
 		}	
@@ -62,7 +62,7 @@ var testCases = []struct {
 	{
 		name:  "pointer propagating default - input with non-default value",
 		input: PtrPropagatingDefault{Inner: &AttrWithDefault{Number: 42}},
-		expectedRiver: `
+		expectedAlloy: `
 		inner {
 			number = 42
 		}	
@@ -71,12 +71,12 @@ var testCases = []struct {
 	{
 		name:          "zero default - input with zero value",
 		input:         ZeroDefault{Inner: &AttrWithDefault{}},
-		expectedRiver: "",
+		expectedAlloy: "",
 	},
 	{
 		name:  "zero default - input with non-default value",
 		input: ZeroDefault{Inner: &AttrWithDefault{Number: 42}},
-		expectedRiver: `
+		expectedAlloy: `
 		inner {
 			number = 42
 		}	
@@ -85,7 +85,7 @@ var testCases = []struct {
 	{
 		name:  "no default - input with zero value",
 		input: NoDefaultDefined{Inner: &AttrWithDefault{}},
-		expectedRiver: `
+		expectedAlloy: `
 		inner {
 			number = 0
 		}	
@@ -94,7 +94,7 @@ var testCases = []struct {
 	{
 		name:  "no default - input with non-default value",
 		input: NoDefaultDefined{Inner: &AttrWithDefault{Number: 42}},
-		expectedRiver: `
+		expectedAlloy: `
 		inner {
 			number = 42
 		}	
@@ -103,17 +103,17 @@ var testCases = []struct {
 	{
 		name:          "mismatching default - input matching outer default",
 		input:         MismatchingDefault{Inner: &AttrWithDefault{Number: otherDefaultNumber}},
-		expectedRiver: "",
+		expectedAlloy: "",
 	},
 	{
 		name:          "mismatching default - input matching inner default",
 		input:         MismatchingDefault{Inner: &AttrWithDefault{Number: defaultNumber}},
-		expectedRiver: "inner { }",
+		expectedAlloy: "inner { }",
 	},
 	{
 		name:  "mismatching default - input with non-default value",
 		input: MismatchingDefault{Inner: &AttrWithDefault{Number: 42}},
-		expectedRiver: `
+		expectedAlloy: `
 		inner {
 			number = 42
 		}	
@@ -126,14 +126,15 @@ func TestNestedDefaults(t *testing.T) {
 		t.Run(fmt.Sprintf("%T/%s", tc.input, tc.name), func(t *testing.T) {
 			f := builder.NewFile()
 			f.Body().AppendFrom(tc.input)
-			actualRiver := string(f.Bytes())
-			expected := format(t, tc.expectedRiver)
-			require.Equal(t, expected, actualRiver, "generated river didn't match expected")
+			actualAlloy := string(f.Bytes())
+			expected := format(t, tc.expectedAlloy)
+			require.Equal(t, expected, actualAlloy, "generated Alloy didn't match expected")
 
-			// Now decode the River produced above and make sure it's the same as the input.
-			eval := vm.New(parseBlock(t, actualRiver))
+			// Now decode the Alloy config produced above and make sure it's the same
+			// as the input.
+			eval := vm.New(parseBlock(t, actualAlloy))
 			vPtr := reflect.New(reflect.TypeOf(tc.input)).Interface()
-			require.NoError(t, eval.Evaluate(nil, vPtr), "river evaluation error")
+			require.NoError(t, eval.Evaluate(nil, vPtr), "alloy evaluation error")
 
 			actualOut := reflect.ValueOf(vPtr).Elem().Interface()
 			require.Equal(t, tc.input, actualOut, "Invariant violated: encoded and then decoded block didn't match the original value")
@@ -145,19 +146,19 @@ func TestPtrPropagatingDefaultWithNil(t *testing.T) {
 	// This is a special case - when defaults are correctly defined, the `Inner: nil` should mean to use defaults.
 	// Encoding will encode to empty string and decoding will produce the default value - `Inner: {Number: 123}`.
 	input := PtrPropagatingDefault{}
-	expectedEncodedRiver := ""
+	expectedEncodedAlloy := ""
 	expectedDecoded := PtrPropagatingDefault{Inner: &AttrWithDefault{Number: 123}}
 
 	f := builder.NewFile()
 	f.Body().AppendFrom(input)
-	actualRiver := string(f.Bytes())
-	expected := format(t, expectedEncodedRiver)
-	require.Equal(t, expected, actualRiver, "generated river didn't match expected")
+	actualAlloy := string(f.Bytes())
+	expected := format(t, expectedEncodedAlloy)
+	require.Equal(t, expected, actualAlloy, "generated Alloy didn't match expected")
 
-	// Now decode the River produced above and make sure it's the same as the input.
-	eval := vm.New(parseBlock(t, actualRiver))
+	// Now decode the Alloy produced above and make sure it's the same as the input.
+	eval := vm.New(parseBlock(t, actualAlloy))
 	vPtr := reflect.New(reflect.TypeOf(input)).Interface()
-	require.NoError(t, eval.Evaluate(nil, vPtr), "river evaluation error")
+	require.NoError(t, eval.Evaluate(nil, vPtr), "alloy evaluation error")
 
 	actualOut := reflect.ValueOf(vPtr).Elem().Interface()
 	require.Equal(t, expectedDecoded, actualOut)

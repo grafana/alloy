@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverConfig := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyConfig := `
 		redis_addr                   = "localhost:6379"
 		redis_user                   = "redis_user"
 		redis_password_file          = "/tmp/pass"
@@ -41,7 +41,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		is_cluster                   = true
 	`
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 
 	require.NoError(t, err)
 	expected := Arguments{
@@ -83,25 +83,25 @@ func TestRiverUnmarshal(t *testing.T) {
 }
 
 func TestUnmarshalInvalid(t *testing.T) {
-	validRiverConfig := `
+	validAlloyConfig := `
 	redis_addr  = "localhost:1234"
 	script_path = "/tmp/metrics.lua"`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(validRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(validAlloyConfig), &args)
 	require.NoError(t, err)
 
-	invalidRiverConfig := `
+	invalidAlloyConfig := `
 	redis_addr   = "localhost:1234
 	script_path  = "/tmp/metrics.lua"
 	script_paths = ["/tmp/more-metrics.lua", "/tmp/even-more-metrics.lua"]`
 
 	var invalidArgs Arguments
-	err = syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err = syntax.Unmarshal([]byte(invalidAlloyConfig), &invalidArgs)
 	require.Error(t, err)
 }
 
-func TestRiverConvert(t *testing.T) {
+func TestAlloyConvert(t *testing.T) {
 	orig := Arguments{
 		RedisAddr:         "localhost:6379",
 		RedisUser:         "redis_user",

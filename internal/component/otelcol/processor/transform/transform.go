@@ -81,12 +81,12 @@ var DefaultArguments = Arguments{
 	ErrorMode: ottl.PropagateError,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	otelArgs, err := args.convertImpl()
 	if err != nil {

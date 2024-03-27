@@ -1,5 +1,5 @@
 // Package config contains types from github.com/prometheus/common/config,
-// but modifies them to be serializable with River.
+// but modifies them to be serializable with Alloy.
 package config
 
 import (
@@ -26,7 +26,7 @@ type HTTPClientConfig struct {
 	EnableHTTP2     bool              `alloy:"enable_http2,attr,optional"`
 }
 
-// SetToDefault implements the river.Defaulter
+// SetToDefault implements the syntax.Defaulter
 func (h *HTTPClientConfig) SetToDefault() {
 	*h = DefaultHTTPClientConfig
 }

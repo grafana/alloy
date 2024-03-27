@@ -33,7 +33,7 @@ type Arguments struct {
 	Arguments map[string]any `alloy:"arguments,block,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	args.RemoteHTTPArguments.SetToDefault()
 }

@@ -126,7 +126,7 @@ var DefaultRelabelConfig = Config{
 	Replacement: "$1",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (c *Config) SetToDefault() {
 	*c = Config{
 		Action:      Replace,
@@ -138,7 +138,7 @@ func (c *Config) SetToDefault() {
 
 var relabelTarget = regexp.MustCompile(`^(?:(?:[a-zA-Z_]|\$(?:\{\w+\}|\w+))+\w*)+$`)
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (rc *Config) Validate() error {
 	if rc.Action == "" {
 		return fmt.Errorf("relabel action cannot be empty")
@@ -213,6 +213,6 @@ func ComponentToPromRelabelConfigs(rcs []*Config) []*relabel.Config {
 // Rules returns the relabel configs in use for a relabeling component.
 type Rules []*Config
 
-// RiverCapsule marks the alias defined above as a "capsule type" so that it
-// cannot be invoked by River code.
-func (r Rules) RiverCapsule() {}
+// AlloyCapsule marks the alias defined above as a "capsule type" so that it
+// cannot be invoked by Alloy code.
+func (r Rules) AlloyCapsule() {}

@@ -2,16 +2,16 @@ import { FC, Fragment, ReactElement } from 'react';
 
 import { ObjectField, Value, ValueType } from './types';
 
-import styles from './RiverValue.module.css';
+import styles from './AlloyValue.module.css';
 
-export interface RiverValueProps {
+export interface AlloyValueProps {
   value: Value;
 }
 
 /**
- * RiverValue emits a paragraph which represents a River value.
+ * AlloyValue emits a paragraph which represents an Alloy value.
  */
-export const RiverValue: FC<RiverValueProps> = (props) => {
+export const AlloyValue: FC<AlloyValueProps> = (props) => {
   return (
     <p className={styles.value}>
       <ValueRenderer value={props.value} indentLevel={0} />
@@ -19,7 +19,7 @@ export const RiverValue: FC<RiverValueProps> = (props) => {
   );
 };
 
-type valueRendererProps = RiverValueProps & {
+type valueRendererProps = AlloyValueProps & {
   indentLevel: number;
 };
 
@@ -138,12 +138,12 @@ function partitionFields(fields: ObjectField[]): ObjectField[][] {
 function multilinedValue(value: Value): boolean {
   switch (value.type) {
     case ValueType.OBJECT:
-      // River objects cross more than one line whenever there is at least one
+      // Alloy objects cross more than one line whenever there is at least one
       // element.
       return value.value.length > 0;
 
     case ValueType.ARRAY:
-      // River arrays cross more than one line if any of their elements cross
+      // Alloy arrays cross more than one line if any of their elements cross
       // more than one line.
       return value.value.some((v) => multilinedValue(v));
   }
@@ -194,7 +194,7 @@ function getLinePrefix(indentLevel: number): ReactElement | null {
 }
 
 /**
- * validIdentifier reports whether the input is a valid River identifier.
+ * validIdentifier reports whether the input is a valid Alloy identifier.
  */
 function validIdentifier(input: string): boolean {
   return /^[_a-z][_a-z0-9]*$/i.test(input);
@@ -202,7 +202,7 @@ function validIdentifier(input: string): boolean {
 
 /**
  * escapeString escapes special characters in a string so they can be printed
- * inside a River string literal.
+ * inside an Alloy string literal.
  */
 function escapeString(input: string): string {
   // TODO(rfratto): this should also escape Unicode characters into \u and \U

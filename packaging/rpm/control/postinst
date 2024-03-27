@@ -32,8 +32,8 @@ if [ "$1" -eq 1 ] ; then
     chown $ALLOY_USER:$ALLOY_GROUP /var/lib/alloy
     chmod 770 /var/lib/alloy
 
-    chmod 640 /etc/alloy.river
-    chown root:$ALLOY_GROUP /etc/alloy.river
+    chmod 640 /etc/alloy.alloy
+    chown root:$ALLOY_GROUP /etc/alloy.alloy
 
 elif [ "$1" -ge 2 ] ; then
     add_to_logging_groups

@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/alloy/syntax/token"
 )
 
-// parser implements the River parser.
+// parser implements the Alloy syntax parser.
 //
 // It is only safe for callers to use exported methods as entrypoints for
 // parsing.

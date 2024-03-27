@@ -7,29 +7,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	servers = ["1.2.3.4"]
 	paths   = ["/nerve/services/your_http_service/services", "/nerve/services/your_tcp_service/services"]
 	timeout = "15s"
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestBadRiverConfig(t *testing.T) {
+func TestBadAlloyConfig(t *testing.T) {
 	var (
 		args        Arguments
-		riverConfig string
+		alloyConfig string
 	)
 
-	riverConfig = `
+	alloyConfig = `
 	servers = ["1.2.3.4"]
 	paths   = ["/nerve/services/your_http_service/services", "/nerve/services/your_tcp_service/services"]
 	timeout = "0s"
 `
 
-	require.ErrorContains(t, syntax.Unmarshal([]byte(riverConfig), &args), "timeout must be greater than 0")
+	require.ErrorContains(t, syntax.Unmarshal([]byte(alloyConfig), &args), "timeout must be greater than 0")
 }

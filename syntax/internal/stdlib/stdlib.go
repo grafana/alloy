@@ -1,4 +1,4 @@
-// Package stdlib contains standard library functions exposed to River configs.
+// Package stdlib contains standard library functions exposed to Alloy configs.
 package stdlib
 
 import (
@@ -14,7 +14,7 @@ import (
 )
 
 // Identifiers holds a list of stdlib identifiers by name. All interface{}
-// values are River-compatible values.
+// values are Alloy-compatible values.
 //
 // Function identifiers are Go functions with exactly one non-error return
 // value, with an optionally supported error return value as the second return
@@ -58,8 +58,8 @@ var Identifiers = map[string]interface{}{
 		}
 
 		// Optimization: if there's only one array, we can just return it directly.
-		// This is done *after* the previous loop to ensure that args[0] is a River
-		// array.
+		// This is done *after* the previous loop to ensure that args[0] is an
+		// Alloy array.
 		if len(args) == 1 {
 			return args[0], nil
 		}
@@ -108,7 +108,7 @@ var Identifiers = map[string]interface{}{
 			}
 
 			if !arg.Reflect().IsZero() {
-				if argType := value.RiverType(arg.Reflect().Type()); (argType == value.TypeArray || argType == value.TypeObject) && arg.Len() == 0 {
+				if argType := value.AlloyType(arg.Reflect().Type()); (argType == value.TypeArray || argType == value.TypeObject) && arg.Len() == 0 {
 					continue
 				}
 

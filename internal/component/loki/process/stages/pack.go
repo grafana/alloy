@@ -110,7 +110,7 @@ var DefaultPackConfig = PackConfig{
 	IngestTimestamp: true,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (p *PackConfig) SetToDefault() {
 	*p = DefaultPackConfig
 }

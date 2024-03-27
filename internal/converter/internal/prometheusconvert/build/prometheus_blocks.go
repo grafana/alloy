@@ -8,8 +8,8 @@ import (
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 
-// PrometheusBlocks is a type for categorizing River Blocks before appending
-// them to a River File. This gives control over the order they are written
+// PrometheusBlocks is a type for categorizing Alloy blocks before appending
+// them to an Alloy file. This gives control over the order they are written
 // versus appending them in the order the Blocks are created.
 type PrometheusBlocks struct {
 	DiscoveryBlocks             []prometheusBlock

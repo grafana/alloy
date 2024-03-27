@@ -41,7 +41,7 @@ type Arguments struct {
 	Regions                  []string `alloy:"regions,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
 		Timespan:              "PT1M",
@@ -56,7 +56,7 @@ func (a *Arguments) SetToDefault() {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if err := a.Convert().Validate(); err != nil {
 		return err

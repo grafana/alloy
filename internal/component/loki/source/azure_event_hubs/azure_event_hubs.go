@@ -63,12 +63,12 @@ func getDefault() Arguments {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = getDefault()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	return a.validateAssignor()
 }
@@ -155,7 +155,7 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-// Convert is used to bridge between the River and Promtail types.
+// Convert is used to bridge between the Alloy and Promtail types.
 func (a *Arguments) Convert() (kt.Config, error) {
 	lbls := make(model.LabelSet, len(a.Labels))
 	for k, v := range a.Labels {

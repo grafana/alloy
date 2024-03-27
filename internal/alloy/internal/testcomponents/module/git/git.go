@@ -47,7 +47,7 @@ var DefaultArguments = Arguments{
 	PullFrequency: time.Minute,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }

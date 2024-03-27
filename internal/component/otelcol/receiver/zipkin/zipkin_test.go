@@ -41,7 +41,7 @@ func TestRun(t *testing.T) {
 	require.NoError(t, ctrl.WaitRunning(time.Second))
 }
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	t.Run("grpc", func(t *testing.T) {
 		httpAddr := getFreeAddr(t)
 		in := fmt.Sprintf(`

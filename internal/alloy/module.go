@@ -153,7 +153,7 @@ func newModule(o *moduleOptions) *module {
 	}
 }
 
-// LoadConfig parses River config and loads it.
+// LoadConfig parses Alloy config and loads it.
 func (c *module) LoadConfig(config []byte, args map[string]any) error {
 	ff, err := ParseSource(c.o.ID, config)
 	if err != nil {
@@ -162,7 +162,7 @@ func (c *module) LoadConfig(config []byte, args map[string]any) error {
 	return c.f.LoadSource(ff, args)
 }
 
-// LoadBody loads a pre-parsed River config.
+// LoadBody loads a pre-parsed Alloy config.
 func (c *module) LoadBody(body ast.Body, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
 	ff, err := sourceFromBody(body)
 	if err != nil {

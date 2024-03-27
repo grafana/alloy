@@ -15,7 +15,7 @@ import (
 // will be (field_a, field_b, field_c).
 type Traversal []*ast.Ident
 
-// Reference describes an River expression reference to a BlockNode.
+// Reference describes an Alloy expression reference to a BlockNode.
 type Reference struct {
 	Target BlockNode // BlockNode being referenced
 

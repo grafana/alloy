@@ -1,11 +1,11 @@
 Use of a nested declare component with too low stability level propagates the error
 
--- main.river --
+-- main.alloy --
 
 declare "a" {
 
   declare "b" {
-		testcomponents.experimental "unstable" {}
+    testcomponents.experimental "unstable" {}
   }
 
   b "cc" {}

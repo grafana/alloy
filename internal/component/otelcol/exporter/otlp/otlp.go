@@ -43,7 +43,7 @@ type Arguments struct {
 
 var _ exporter.Arguments = Arguments{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		Timeout: otelcol.DefaultTimeout,
@@ -86,7 +86,7 @@ func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
 // component-specific defaults.
 type GRPCClientArguments otelcol.GRPCClientArguments
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GRPCClientArguments) SetToDefault() {
 	*args = GRPCClientArguments{
 		Headers:         map[string]string{},

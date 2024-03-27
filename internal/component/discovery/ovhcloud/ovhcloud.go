@@ -42,12 +42,12 @@ var DefaultArguments = Arguments{
 	RefreshInterval: 60 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.Endpoint == "" {
 		return fmt.Errorf("endpoint cannot be empty")

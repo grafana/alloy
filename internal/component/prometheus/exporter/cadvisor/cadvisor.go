@@ -48,7 +48,7 @@ type Arguments struct {
 	DisableRootCgroupStats     bool          `alloy:"disable_root_cgroup_stats,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
 		StoreContainerLabels:       true,

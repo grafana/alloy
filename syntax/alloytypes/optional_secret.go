@@ -10,10 +10,10 @@ import (
 
 // OptionalSecret holds a potentially sensitive value. When IsSecret is true,
 // the OptionalSecret's Value will be treated as sensitive and will be hidden
-// from users when rendering River.
+// from users when rendering Alloy syntax.
 //
-// OptionalSecrets may be converted from river strings and the Secret type,
-// which will set IsSecret accordingly.
+// OptionalSecrets may be converted from Alloy syntax strings and the Secret
+// type, which will set IsSecret accordingly.
 //
 // Additionally, OptionalSecrets may be converted into the Secret type
 // regardless of the value of IsSecret. OptionalSecret can be converted into a
@@ -31,14 +31,14 @@ var (
 	_ builder.Tokenizer = OptionalSecret{}
 )
 
-// RiverCapsule marks OptionalSecret as a RiverCapsule.
-func (s OptionalSecret) RiverCapsule() {}
+// AlloyCapsule marks OptionalSecret as a AlloyCapsule.
+func (s OptionalSecret) AlloyCapsule() {}
 
 // ConvertInto converts the OptionalSecret and stores it into the Go value
 // pointed at by dst. OptionalSecrets can always be converted into *Secret.
 // OptionalSecrets can only be converted into *string if IsSecret is false. In
 // other cases, this method will return an explicit error or
-// river.ErrNoConversion.
+// syntax.ErrNoConversion.
 func (s OptionalSecret) ConvertInto(dst interface{}) error {
 	switch dst := dst.(type) {
 	case *Secret:
@@ -57,7 +57,7 @@ func (s OptionalSecret) ConvertInto(dst interface{}) error {
 
 // ConvertFrom converts the src value and stores it into the OptionalSecret s.
 // Secrets and strings can be converted into an OptionalSecret. In other
-// cases, this method will return river.ErrNoConversion.
+// cases, this method will return syntax.ErrNoConversion.
 func (s *OptionalSecret) ConvertFrom(src interface{}) error {
 	switch src := src.(type) {
 	case Secret:
@@ -71,9 +71,9 @@ func (s *OptionalSecret) ConvertFrom(src interface{}) error {
 	return value.ErrNoConversion
 }
 
-// RiverTokenize returns a set of custom tokens to represent this value in
-// River text.
-func (s OptionalSecret) RiverTokenize() []builder.Token {
+// AlloyTokenize returns a set of custom tokens to represent this value in
+// Alloy syntax text.
+func (s OptionalSecret) AlloyTokenize() []builder.Token {
 	if s.IsSecret {
 		return []builder.Token{{Tok: token.LITERAL, Lit: "(secret)"}}
 	}

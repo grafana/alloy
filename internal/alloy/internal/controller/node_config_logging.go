@@ -19,7 +19,7 @@ type LoggingConfigNode struct {
 	l             log.Logger
 
 	mut   sync.RWMutex
-	block *ast.BlockStmt // Current River blocks to derive config from
+	block *ast.BlockStmt // Current Alloy blocks to derive config from
 	eval  *vm.Evaluator
 }
 
@@ -50,10 +50,10 @@ func NewDefaultLoggingConfigNode(globals ComponentGlobals) *LoggingConfigNode {
 }
 
 // Evaluate implements BlockNode and updates the arguments for the managed config block
-// by re-evaluating its River block with the provided scope. The managed config block
+// by re-evaluating its Alloy block with the provided scope. The managed config block
 // will be built the first time Evaluate is called.
 //
-// Evaluate will return an error if the River block cannot be evaluated or if
+// Evaluate will return an error if the Alloy block cannot be evaluated or if
 // decoding to arguments fails.
 func (cn *LoggingConfigNode) Evaluate(scope *vm.Scope) error {
 	cn.mut.RLock()
@@ -82,14 +82,14 @@ func (cn *LoggingConfigNode) Block() *ast.BlockStmt {
 // NodeID implements dag.Node and returns the unique ID for the config node.
 func (cn *LoggingConfigNode) NodeID() string { return cn.nodeID }
 
-// UpdateBlock updates the River block used to construct arguments.
+// UpdateBlock updates the Alloy block used to construct arguments.
 // The new block isn't used until the next time Evaluate is invoked.
 //
 // UpdateBlock will panic if the block does not match the component ID of the
 // LoggingConfigNode.
 func (cn *LoggingConfigNode) UpdateBlock(b *ast.BlockStmt) {
 	if !BlockComponentID(b).Equals(strings.Split(cn.nodeID, ".")) {
-		panic("UpdateBlock called with an River block with a different ID")
+		panic("UpdateBlock called with an Alloy block with a different ID")
 	}
 
 	cn.mut.Lock()

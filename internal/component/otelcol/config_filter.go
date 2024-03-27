@@ -104,7 +104,7 @@ func (args *MatchProperties) Convert() (map[string]interface{}, error) {
 
 	if args.LogSeverity != nil {
 		// The Otel config's field is called "log_severity_number" because it uses a number.
-		// The River config's field is called just "log_severity" because it uses a a textual
+		// The Alloy config's field is called just "log_severity" because it uses a a textual
 		// representation of the log severity instead of a number.
 		logSevNum, err := args.LogSeverity.convert()
 		if err != nil {

@@ -1,4 +1,4 @@
-// Package http contains a River serializable definition of the dskit config in
+// Package http contains a Alloy-serializable definition of the dskit config in
 // https://github.com/grafana/dskit/blob/main/server/server.go#L72.
 package net
 
@@ -21,7 +21,7 @@ const (
 	size4MB          = 4 << 20
 )
 
-// ServerConfig is a River configuration that allows one to configure a dskit.Server. It
+// ServerConfig is an Alloy configuration that allows one to configure a dskit.Server. It
 // exposes a subset of the available configurations.
 type ServerConfig struct {
 	// HTTP configures the HTTP dskit. Note that despite the block being present or not,
@@ -82,7 +82,7 @@ func (g *GRPCConfig) Into(c *dskit.Config) {
 	c.GRPCServerMaxConcurrentStreams = g.ServerMaxConcurrentStreams
 }
 
-// Convert converts the River-based ServerConfig into a dskit.Config object.
+// Convert converts the Alloy-based ServerConfig into a dskit.Config object.
 func (c *ServerConfig) convert() dskit.Config {
 	cfg := newdskitDefaultConfig()
 	// use the configured http/grpc blocks, and if not, use a mixin of our defaults, and

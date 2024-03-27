@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	exampleRiverConfig = `
+	exampleAlloyConfig = `
 		enabled_collectors = ["textfile","cpu"]
 		
 		exchange {
@@ -65,9 +65,9 @@ var (
 		`
 )
 
-func TestRiverUnmarshal(t *testing.T) {
+func TestAlloyUnmarshal(t *testing.T) {
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	require.Equal(t, []string{"textfile", "cpu"}, args.EnabledCollectors)
@@ -94,7 +94,7 @@ func TestRiverUnmarshal(t *testing.T) {
 
 func TestConvert(t *testing.T) {
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	conf := args.Convert()

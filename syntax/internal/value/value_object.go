@@ -37,7 +37,7 @@ type structWrapper struct {
 
 func wrapStruct(val reflect.Value, keepLabel bool) structWrapper {
 	if val.Kind() != reflect.Struct {
-		panic("river/value: wrapStruct called on non-struct value")
+		panic("syntax/value: wrapStruct called on non-struct value")
 	}
 
 	fields := getCachedTags(val.Type())
@@ -115,5 +115,5 @@ func (sw structWrapper) Key(key string) (index Value, ok bool) {
 		return makeValue(val), true
 	}
 
-	panic("river/value: unreachable")
+	panic("syntax/value: unreachable")
 }

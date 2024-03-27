@@ -16,7 +16,7 @@ type QueueArguments struct {
 	// TODO(rfratto): queues can send to persistent storage through an extension.
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *QueueArguments) SetToDefault() {
 	*args = QueueArguments{
 		Enabled:      true,

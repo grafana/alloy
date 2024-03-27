@@ -31,7 +31,7 @@ func Test(t *testing.T) {
 		assumeRoleARN         string
 		assumeRoleSessionName string
 		assumeRoleStsRegion   string
-		riverConfig           string
+		alloyConfig           string
 	}
 
 	tests := []TestDefinition{
@@ -44,7 +44,7 @@ func Test(t *testing.T) {
 			assumeRoleARN:         "",
 			assumeRoleSessionName: "role_session_name",
 			assumeRoleStsRegion:   "",
-			riverConfig:           "",
+			alloyConfig:           "",
 		},
 		{
 			testName:              "Test2",
@@ -55,7 +55,7 @@ func Test(t *testing.T) {
 			assumeRoleARN:         "",
 			assumeRoleSessionName: "",
 			assumeRoleStsRegion:   "region",
-			riverConfig:           "",
+			alloyConfig:           "",
 		},
 		{
 			testName:              "Test3",
@@ -66,7 +66,7 @@ func Test(t *testing.T) {
 			assumeRoleARN:         "",
 			assumeRoleSessionName: "",
 			assumeRoleStsRegion:   "",
-			riverConfig:           "",
+			alloyConfig:           "",
 		},
 		{
 			testName:              "Test4",
@@ -77,13 +77,13 @@ func Test(t *testing.T) {
 			assumeRoleARN:         "",
 			assumeRoleSessionName: "",
 			assumeRoleStsRegion:   "",
-			riverConfig:           "",
+			alloyConfig:           "",
 		},
 	}
 
 	{
 		var tt = &tests[0]
-		tt.riverConfig = fmt.Sprintf(`
+		tt.alloyConfig = fmt.Sprintf(`
 			assume_role {
 				session_name = "%s"
 			}
@@ -93,7 +93,7 @@ func Test(t *testing.T) {
 	}
 	{
 		var tt = &tests[1]
-		tt.riverConfig = fmt.Sprintf(`
+		tt.alloyConfig = fmt.Sprintf(`
 			assume_role {
 				sts_region = "%s"
 			}
@@ -103,13 +103,13 @@ func Test(t *testing.T) {
 	}
 	{
 		var tt = &tests[2]
-		tt.riverConfig = fmt.Sprintf(`
+		tt.alloyConfig = fmt.Sprintf(`
 			region = "%s"
 		`, tt.region)
 	}
 	{
 		var tt = &tests[3]
-		tt.riverConfig = fmt.Sprintf(`
+		tt.alloyConfig = fmt.Sprintf(`
 		service = "%s"
 		`, tt.service)
 	}
@@ -157,8 +157,8 @@ func Test(t *testing.T) {
 		ctrl, err := componenttest.NewControllerFromID(l, "otelcol.auth.sigv4")
 		require.NoError(t, err)
 
-		cfg := tt.riverConfig
-		t.Logf("River configuration: %s", cfg)
+		cfg := tt.alloyConfig
+		t.Logf("Alloy configuration: %s", cfg)
 		var args sigv4.Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 

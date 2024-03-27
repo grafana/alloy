@@ -26,7 +26,7 @@ const (
 
 // ImportSource retrieves a module from a source.
 type ImportSource interface {
-	// Evaluate updates the arguments provided via the River block.
+	// Evaluate updates the arguments provided via the Alloy block.
 	Evaluate(scope *vm.Scope) error
 	// Run the underlying source to be updated when the content changes.
 	Run(ctx context.Context) error

@@ -31,7 +31,7 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 }
 
 // DefaultArguments holds non-zero default options for Arguments when it is
-// unmarshaled from river.
+// unmarshaled from Alloy.
 var DefaultArguments = Arguments{
 	IncludeExporterMetrics:  false,
 	Namespace:               "redis",
@@ -83,12 +83,12 @@ type Arguments struct {
 	SkipTLSVerification     bool              `alloy:"skip_tls_verification,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if a.ScriptPath != "" && len(a.ScriptPaths) > 0 {
 		return fmt.Errorf("only one of script_path and script_paths should be specified")

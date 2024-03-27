@@ -229,7 +229,7 @@ func (e *ErrorMode) Validate() error {
 	return ottlError.UnmarshalText([]byte(string(*e)))
 }
 
-// Convert the River type to the Otel type
+// Convert the Alloy type to the Otel type
 func (e *ErrorMode) Convert() ottl.ErrorMode {
 	if e == nil || *e == "" {
 		return ottl.ErrorMode("")

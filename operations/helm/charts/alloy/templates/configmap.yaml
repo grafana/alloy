@@ -8,8 +8,8 @@ metadata:
     {{- include "alloy.labels" . | nindent 4 }}
 data:
   {{- if $values.configMap.content }}
-  config.river: |- {{- (tpl  $values.configMap.content .) | nindent 4 }}
+  config.alloy: |- {{- (tpl  $values.configMap.content .) | nindent 4 }}
   {{- else }}
-  config.river: |- {{- .Files.Get "config/example.river" | trim | nindent 4 }}
+  config.alloy: |- {{- .Files.Get "config/example.alloy" | trim | nindent 4 }}
   {{- end }}
 {{- end }}

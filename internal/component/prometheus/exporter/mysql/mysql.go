@@ -125,12 +125,12 @@ type MySQLUser struct {
 	Privileges bool `alloy:"privileges,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	_, err := mysql.ParseDSN(string(a.DataSourceName))
 	if err != nil {

@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testMetricRiver = `
+var testMetricAlloy = `
 stage.json {
 		expressions = { "app" = "app", "payload" = "payload" }
 }
@@ -108,7 +108,7 @@ loki_process_custom_total_lines_count{test="app"} 2
 
 func TestMetricsPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testMetricRiver), nil, registry)
+	pl, err := NewPipeline(util_log.Logger, loadConfig(testMetricAlloy), nil, registry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func TestPipelineWithMissingKey_Metrics(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testMetricRiver), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testMetricAlloy), nil, prometheus.DefaultRegisterer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestPipelineWithMissingKey_Metrics(t *testing.T) {
 	}
 }
 
-var testMetricWithDropRiver = `
+var testMetricWithDropAlloy = `
 stage.json {
 		expressions = { "app" = "app", "drop" = "drop" }
 }
@@ -198,7 +198,7 @@ loki_process_custom_loki_count 1
 
 func TestMetricsWithDropInPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testMetricWithDropRiver), nil, registry)
+	pl, err := NewPipeline(util_log.Logger, loadConfig(testMetricWithDropAlloy), nil, registry)
 	if err != nil {
 		t.Fatal(err)
 	}

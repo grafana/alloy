@@ -59,7 +59,7 @@ type Arguments struct {
 	WALOptions     WALOptions         `alloy:"wal,block,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (rc *Arguments) SetToDefault() {
 	*rc = DefaultArguments
 }
@@ -81,7 +81,7 @@ type EndpointOptions struct {
 	AzureAD              *AzureADConfig          `alloy:"azuread,block,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (r *EndpointOptions) SetToDefault() {
 	*r = EndpointOptions{
 		RemoteTimeout:    30 * time.Second,
@@ -98,7 +98,7 @@ func isAuthSetInHttpClientConfig(cfg *types.HTTPClientConfig) bool {
 		len(cfg.BearerTokenFile) > 0
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (r *EndpointOptions) Validate() error {
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	if r.HTTPClientConfig != nil {
@@ -145,7 +145,7 @@ type QueueOptions struct {
 	SampleAgeLimit    time.Duration `alloy:"sample_age_limit,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (r *QueueOptions) SetToDefault() {
 	*r = DefaultQueueOptions
 }
@@ -178,7 +178,7 @@ type MetadataOptions struct {
 	MaxSamplesPerSend int           `alloy:"max_samples_per_send,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (o *MetadataOptions) SetToDefault() {
 	*o = DefaultMetadataOptions
 }
@@ -204,12 +204,12 @@ type WALOptions struct {
 	MaxKeepaliveTime  time.Duration `alloy:"max_keepalive_time,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (o *WALOptions) SetToDefault() {
 	*o = DefaultWALOptions
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (o *WALOptions) Validate() error {
 	switch {
 	case o.TruncateFrequency == 0:
@@ -301,7 +301,7 @@ func (a *AzureADConfig) Validate() error {
 	return nil
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *AzureADConfig) SetToDefault() {
 	*a = AzureADConfig{
 		Cloud: azuread.AzurePublic,

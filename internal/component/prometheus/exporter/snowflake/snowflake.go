@@ -40,7 +40,7 @@ type Arguments struct {
 	Warehouse   string            `alloy:"warehouse,attr"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

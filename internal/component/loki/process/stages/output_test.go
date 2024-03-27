@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testOutputRiver = `
+var testOutputAlloy = `
 stage.json {
     expressions = { "out" = "message" }
 }
@@ -44,7 +44,7 @@ var testOutputLogLineWithMissingKey = `
 
 func TestPipeline_Output(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testOutputRiver), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), nil, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
 
 	out := processEntries(pl, newEntry(nil, nil, testOutputLogLine, time.Now()))[0]
@@ -55,7 +55,7 @@ func TestPipelineWithMissingKey_Output(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testOutputRiver), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), nil, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
 
 	_ = processEntries(pl, newEntry(nil, nil, testOutputLogLineWithMissingKey, time.Now()))

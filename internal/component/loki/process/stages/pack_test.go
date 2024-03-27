@@ -16,7 +16,7 @@ import (
 )
 
 // Not all these are tested but are here to make sure the different types marshal without error
-var testPackRiver = `
+var testPackAlloy = `
 stage.match {
 		selector = "{container=\"foo\"}"
 		stage.pack {
@@ -32,13 +32,13 @@ stage.match {
 		}
 }`
 
-// TestDropPipeline is used to verify we properly parse the river config and
+// TestDropPipeline is used to verify we properly parse the Alloy config and
 // create a working pipeline.
 func TestPackPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_pack_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testPackRiver), &plName, registry)
+	pl, err := NewPipeline(logger, loadConfig(testPackAlloy), &plName, registry)
 	require.NoError(t, err)
 
 	l1Lbls := model.LabelSet{

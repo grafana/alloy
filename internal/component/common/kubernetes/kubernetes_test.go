@@ -7,20 +7,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUnmarshalRiver(t *testing.T) {
-	var exampleRiverConfig = `
+func TestUnmarshalAlloy(t *testing.T) {
+	var exampleAlloyConfig = `
 		api_server = "localhost:9091"
 		proxy_url = "http://0.0.0.0:11111"
 	`
 	var args ClientArguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
-	exampleRiverConfig = `
+	exampleAlloyConfig = `
 		kubeconfig_file = "/etc/k8s/kubeconfig.yaml"
 	`
 	var args1 ClientArguments
-	err = syntax.Unmarshal([]byte(exampleRiverConfig), &args1)
+	err = syntax.Unmarshal([]byte(exampleAlloyConfig), &args1)
 	require.NoError(t, err)
 }
 

@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverConfig := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyConfig := `
 		instance = "example"
 		kafka_uris = ["localhost:9092","localhost:19092"]
 		use_sasl_handshake = false
@@ -23,7 +23,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		groups_filter_regex = ".*"
 	`
 	var args Arguments
-	err := syntax.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 
 	require.NoError(t, err)
 	expected := Arguments{
@@ -42,7 +42,7 @@ func TestRiverUnmarshal(t *testing.T) {
 }
 
 func TestUnmarshalInvalid(t *testing.T) {
-	validRiverConfig := `
+	validAlloyConfig := `
 		instance = "example"
 		kafka_uris = ["localhost:9092","localhost:19092"]
 		use_sasl_handshake = false
@@ -56,19 +56,19 @@ func TestUnmarshalInvalid(t *testing.T) {
 `
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(validRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(validAlloyConfig), &args)
 	require.NoError(t, err)
 
-	invalidRiverConfig := `
+	invalidAlloyConfig := `
 		instance = "example"
 		kafka_uris = "localhost:9092"
 	`
 	var invalidArgs Arguments
-	err = syntax.Unmarshal([]byte(invalidRiverConfig), &invalidArgs)
+	err = syntax.Unmarshal([]byte(invalidAlloyConfig), &invalidArgs)
 	require.Error(t, err)
 }
 
-func TestRiverConvert(t *testing.T) {
+func TestAlloyConvert(t *testing.T) {
 	orig := Arguments{
 		Instance:                "example",
 		KafkaURIs:               []string{"localhost:9092", "localhost:19092"},
@@ -110,13 +110,13 @@ func TestCustomizeTarget(t *testing.T) {
 }
 
 func TestSASLPassword(t *testing.T) { // #6044
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 		kafka_uris    = ["broker1"]
 		use_sasl      = true 
 		sasl_password = "foobar"
 	`
 
 	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }

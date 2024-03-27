@@ -162,7 +162,7 @@ func (a *Arguments) Convert() *node_integration.Config {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

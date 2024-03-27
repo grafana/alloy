@@ -1,16 +1,16 @@
 Imported declare tries to access declare at the root.
 
--- main.river --
+-- main.alloy --
 declare "cantAccessThis" {
-	export "output" {
-		value = -1
-	}
+  export "output" {
+    value = -1
+  }
 }
 
 import.string "testImport" {
-	content = ` declare "a" {
-		cantAccessThis "default" {}
-	}`
+  content = ` declare "a" {
+    cantAccessThis "default" {}
+  }`
 }
 
 testImport.a "cc" {}

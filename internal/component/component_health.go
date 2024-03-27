@@ -10,7 +10,7 @@ import (
 // report health information.
 //
 // Health information is exposed to the end user for informational purposes and
-// cannot be referened in a River expression.
+// cannot be referened in an Alloy expression.
 type HealthComponent interface {
 	Component
 
@@ -23,7 +23,7 @@ type HealthComponent interface {
 }
 
 // Health is the reported health state of a component. It can be encoded to
-// River.
+// Alloy.
 type Health struct {
 	// The specific health value.
 	Health HealthType `alloy:"state,attr"`

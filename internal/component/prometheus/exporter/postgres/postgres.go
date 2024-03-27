@@ -95,7 +95,7 @@ type AutoDiscovery struct {
 	DatabaseDenylist  []string `alloy:"database_denylist,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

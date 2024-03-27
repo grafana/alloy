@@ -38,7 +38,7 @@ rules:
   new-lines:
     type: unix
   trailing-spaces:
-    # because river file has new lines and those are indented too. See https://github.com/helm/helm/issues/11955
+    # because Alloy file has new lines and those are indented too. See https://github.com/helm/helm/issues/11955
     ignore: |
       configmap.yaml
   truthy:

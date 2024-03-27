@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var testMatchRiver = `
+var testMatchAlloy = `
 stage.json {
 		expressions = { "app" = "" }
 }
@@ -65,7 +65,7 @@ func TestMatchStage(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_match_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testMatchRiver), &plName, registry)
+	pl, err := NewPipeline(logger, loadConfig(testMatchAlloy), &plName, registry)
 	if err != nil {
 		t.Fatal(err)
 	}

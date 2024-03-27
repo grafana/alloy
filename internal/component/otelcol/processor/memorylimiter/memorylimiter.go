@@ -54,12 +54,12 @@ var DefaultArguments = Arguments{
 	MemorySpikePercentage: 0,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.CheckInterval <= 0 {
 		return fmt.Errorf("check_interval must be greater than zero")
