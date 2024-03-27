@@ -8,7 +8,7 @@ labels:
 
 # discovery.process
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public-preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `discovery.process` discovers processes running on the local Linux OS.
 

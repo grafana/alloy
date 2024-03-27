@@ -8,7 +8,7 @@ title: pyroscope.write
 
 # pyroscope.write
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public-preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.write` receives performance profiles from other components and forwards them
 to a series of user-supplied endpoints using [Pyroscope' Push API](/oss/pyroscope/).

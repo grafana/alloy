@@ -8,7 +8,7 @@ title: prometheus.operator.podmonitors
 
 # prometheus.operator.podmonitors
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public-preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `prometheus.operator.podmonitors` discovers [PodMonitor](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitor) resources in your kubernetes cluster and scrapes the targets they reference. This component performs three main functions:
 

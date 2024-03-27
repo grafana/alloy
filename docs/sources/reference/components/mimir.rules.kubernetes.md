@@ -8,7 +8,7 @@ title: mimir.rules.kubernetes
 
 # mimir.rules.kubernetes
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public-preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `mimir.rules.kubernetes` discovers `PrometheusRule` Kubernetes resources and
 loads them into a Mimir instance.

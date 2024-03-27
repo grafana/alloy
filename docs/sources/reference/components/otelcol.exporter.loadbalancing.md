@@ -8,7 +8,7 @@ title: otelcol.exporter.loadbalancing
 
 # otelcol.exporter.loadbalancing
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public-preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 <!-- Include a picture of the LB architecture? -->
 

@@ -8,7 +8,7 @@ title: pyroscope.scrape
 
 # pyroscope.scrape
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public-preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.scrape` collects [pprof] performance profiles for a given set of HTTP `targets`. 
 

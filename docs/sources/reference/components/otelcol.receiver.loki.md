@@ -8,7 +8,7 @@ title: otelcol.receiver.loki
 
 # otelcol.receiver.loki
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public-preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.receiver.loki` receives Loki log entries, converts them to the
 OpenTelemetry logs format, and forwards them to other `otelcol.*` components.
