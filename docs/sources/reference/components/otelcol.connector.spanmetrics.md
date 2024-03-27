@@ -2,13 +2,11 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.spanmetrics/
 description: Learn about otelcol.connector.spanmetrics
 labels:
-  stage: experimental
+  stage: stable
 title: otelcol.connector.spanmetrics
 ---
 
 # otelcol.connector.spanmetrics
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.connector.spanmetrics` accepts span data from other `otelcol` components and
 aggregates Request, Error and Duration (R.E.D) OpenTelemetry metrics from the spans:

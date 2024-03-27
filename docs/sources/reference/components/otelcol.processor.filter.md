@@ -2,13 +2,11 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.filter/
 description: Learn about otelcol.processor.filter
 labels:
-  stage: experimental
+  stage: stable
 title: otelcol.processor.filter
 ---
 
 # otelcol.processor.filter
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.filter` accepts and filters telemetry data from other `otelcol`
 components using the [OpenTelemetry Transformation Language (OTTL)][OTTL].
@@ -48,10 +46,10 @@ You can specify multiple `otelcol.processor.filter` components by giving them di
 {{< admonition type="warning" >}}
 Exercise caution when using `otelcol.processor.filter`:
 
-- Make sure you understand schema/format of the incoming data and test the configuration thoroughly. 
+- Make sure you understand schema/format of the incoming data and test the configuration thoroughly.
   In general, use a configuration that is as specific as possible ensure you retain only the data you want to keep.
-- [Orphaned Telemetry][]: The processor allows dropping spans. Dropping a span may lead to 
-  orphaned spans if the dropped span is a parent. Dropping a span may lead to orphaned logs 
+- [Orphaned Telemetry][]: The processor allows dropping spans. Dropping a span may lead to
+  orphaned spans if the dropped span is a parent. Dropping a span may lead to orphaned logs
   if the log references the dropped span.
 
 [Orphaned Telemetry]: https://github.com/open-telemetry/opentelemetry-collector/blob/v0.85.0/docs/standard-warnings.md#orphaned-telemetry

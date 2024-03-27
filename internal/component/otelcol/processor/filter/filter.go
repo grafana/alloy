@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.filter",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityStable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
