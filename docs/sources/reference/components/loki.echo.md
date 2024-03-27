@@ -4,8 +4,7 @@ description: Learn about loki.echo
 title: loki.echo
 ---
 
-<span class="aliases:
-- ./reference/stdlib/trim/ docs-labels__stage docs-labels__item">Public preview</span>
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
 
 # loki.echo
 
