@@ -2,13 +2,11 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.servicegraph/
 description: Learn about otelcol.connector.servicegraph
 labels:
-  stage: experimental
+  stage: stable
 title: otelcol.connector.servicegraph
 ---
 
 # otelcol.connector.servicegraph
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.connector.servicegraph` accepts span data from other `otelcol` components and outputs metrics representing the relationship between various services in a system.
 A metric represents an edge in the service graph.

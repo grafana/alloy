@@ -2,13 +2,11 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.host_info/
 description: Learn about otelcol.connector.host_info
 labels:
-  stage: experimental
+  stage: stable
 title: otelcol.connector.host_info
 ---
 
 # otelcol.connector.host_info
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otel.connector.host_info` accepts span data from other `otelcol` components and generates usage metrics.
 
