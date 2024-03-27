@@ -13,6 +13,13 @@ import (
 type Stability int
 
 const (
+	// NOTE(rfratto): Grafana has a life cycle stage called "Private Preview"
+	// after experimental but before Public Preview. This stage doesn't make
+	// sense for Alloy, as it's not possible for a feature to be only available
+	// upon request.
+	//
+	// Based on this, we only use Experimental, Public preview, and Generally available.
+
 	// StabilityUndefined is the default value for Stability, which indicates an error and should never be used.
 	StabilityUndefined Stability = iota
 	// StabilityExperimental is used to designate features in the Experimental
