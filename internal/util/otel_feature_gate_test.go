@@ -28,7 +28,7 @@ func Test_FeatureGates(t *testing.T) {
 		// if it's already enabled in the Collector.
 		// This "require" check will fail if the Collector was upgraded and
 		// a feature gate was promoted from alpha to beta.
-		require.Falsef(t, g.IsEnabled(), "feature gate %s is enabled - should it be removed from the Agent?", g.ID())
+		require.Falsef(t, g.IsEnabled(), "feature gate %s is enabled - should it be removed from Alloy?", g.ID())
 	})
 
 	require.NoError(t, SetupOtelFeatureGates())
@@ -37,7 +37,7 @@ func Test_FeatureGates(t *testing.T) {
 		if _, ok := fgSet[g.ID()]; !ok {
 			return
 		}
-		// Make sure that the Agent enabled the gate.
+		// Make sure that Alloy enabled the gate.
 		require.True(t, g.IsEnabled())
 	})
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
-	agentprom "github.com/grafana/alloy/internal/component/prometheus"
+	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
@@ -47,7 +47,7 @@ func (args *Arguments) SetToDefault() {
 type Component struct {
 	opts               component.Options
 	handler            http.Handler
-	fanout             *agentprom.Fanout
+	fanout             *alloyprom.Fanout
 	uncheckedCollector *util.UncheckedCollector
 
 	updateMut sync.RWMutex
@@ -61,7 +61,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 	ls := service.(labelstore.LabelStore)
-	fanout := agentprom.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls)
+	fanout := alloyprom.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls)
 
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)

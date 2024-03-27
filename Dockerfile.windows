@@ -24,4 +24,5 @@ COPY --from=builder /src/alloy/build/alloy /bin/alloy
 COPY --from=builder /src/alloy/example-config.river /etc/alloy/config.river
 
 ENTRYPOINT ["/bin/alloy"]
+ENV ALLOY_DEPLOY_MODE=docker
 CMD ["run", "/etc/alloy/config.river", "--storage.path=/etc/alloy/data"]

@@ -175,7 +175,7 @@ func newTestEnvironment(t *testing.T) (*testEnvironment, error) {
 		ReloadFunc: func() (*alloy.Source, error) { return nil, nil },
 
 		HTTPListenAddr:   fmt.Sprintf("127.0.0.1:%d", port),
-		MemoryListenAddr: "agent.internal:12345",
+		MemoryListenAddr: "alloy.internal:12345",
 		EnablePProf:      true,
 	})
 

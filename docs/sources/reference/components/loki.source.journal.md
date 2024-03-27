@@ -66,8 +66,8 @@ The final internal label name would be `__journal__systemd_unit`, with _two_ und
 
 ## Debug Metrics
 
-* `agent_loki_source_journal_target_parsing_errors_total` (counter): Total number of parsing errors while reading journal messages.
-* `agent_loki_source_journal_target_lines_total` (counter): Total number of successful journal lines read.
+* `loki_source_journal_target_parsing_errors_total` (counter): Total number of parsing errors while reading journal messages.
+* `loki_source_journal_target_lines_total` (counter): Total number of successful journal lines read.
 
 ## Example
 

@@ -175,7 +175,7 @@ func (fw *lokiWriter) Write(p []byte) (int, error) {
 
 		select {
 		case receiver.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"component": "agent"},
+			Labels: model.LabelSet{"component": "alloy"},
 			Entry: logproto.Entry{
 				Timestamp: time.Now(),
 				Line:      string(p),

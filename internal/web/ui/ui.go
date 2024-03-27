@@ -22,7 +22,7 @@ import (
 // pathPrefix is specified, the UI will be served at root.
 //
 // By default, the UI is retrieved from the ./internal/web/ui/build directory
-// relative to working directory, assuming that the Agent is run from the repo
+// relative to working directory, assuming that Alloy is run from the repo
 // root. However, if the builtinassets Go tag is present, the built UI will be
 // embedded into the binary; run go generate -tags builtinassets for this
 // package to generate the assets to embed.

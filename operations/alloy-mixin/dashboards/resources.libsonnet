@@ -33,13 +33,13 @@ local stackedPanelMixin = {
     dashboard.withUID(std.md5(filename)) +
     dashboard.withTemplateVariablesMixin([
       dashboard.newTemplateVariable('cluster', |||
-        label_values(agent_component_controller_running_components, cluster)
+        label_values(alloy_component_controller_running_components, cluster)
       |||),
       dashboard.newTemplateVariable('namespace', |||
-        label_values(agent_component_controller_running_components{cluster="$cluster"}, namespace)
+        label_values(alloy_component_controller_running_components{cluster="$cluster"}, namespace)
       |||),
       dashboard.newMultiTemplateVariable('instance', |||
-        label_values(agent_component_controller_running_components{cluster="$cluster", namespace="$namespace"}, instance)
+        label_values(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace"}, instance)
       |||),
     ]) +
     // TODO(@tpaschalis) Make the annotation optional.
@@ -59,7 +59,7 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 0, y: 0, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='rate(agent_resources_process_cpu_seconds_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])',
+            expr='rate(alloy_resources_process_cpu_seconds_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])',
             legendFormat='{{instance}}'
           ),
         ])
@@ -75,7 +75,7 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 12, y: 0, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='agent_resources_process_resident_memory_bytes{cluster="$cluster",namespace="$namespace",instance=~"$instance"}',
+            expr='alloy_resources_process_resident_memory_bytes{cluster="$cluster",namespace="$namespace",instance=~"$instance"}',
             legendFormat='{{instance}}'
           ),
         ])
@@ -94,11 +94,11 @@ local stackedPanelMixin = {
           panel.newQuery(
             // Lots of programs export go_goroutines so we ignore anything that
             // doesn't also have an Alloy-specific metric (i.e.,
-            // agent_build_info).
+            // alloy_build_info).
             expr=|||
               rate(go_gc_duration_seconds_count{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[5m])
               and on(instance)
-              agent_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
+              alloy_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
             |||,
             legendFormat='{{instance}}'
           ),
@@ -118,11 +118,11 @@ local stackedPanelMixin = {
           panel.newQuery(
             // Lots of programs export go_goroutines so we ignore anything that
             // doesn't also have an Alloy-specific metric (i.e.,
-            // agent_build_info).
+            // alloy_build_info).
             expr=|||
               go_goroutines{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
               and on(instance)
-              agent_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
+              alloy_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
             |||,
             legendFormat='{{instance}}'
           ),
@@ -141,11 +141,11 @@ local stackedPanelMixin = {
           panel.newQuery(
             // Lots of programs export go_memstats_heap_inuse_bytes so we ignore
             // anything that doesn't also have an Alloy-specific metric
-            // (i.e., agent_build_info).
+            // (i.e., alloy_build_info).
             expr=|||
               go_memstats_heap_inuse_bytes{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
               and on(instance)
-              agent_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
+              alloy_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
             |||,
             legendFormat='{{instance}}'
           ),
@@ -168,7 +168,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr=|||
-              rate(agent_resources_machine_rx_bytes_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])
+              rate(alloy_resources_machine_rx_bytes_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])
             |||,
             legendFormat='{{instance}}'
           ),
@@ -191,7 +191,7 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr=|||
-              rate(agent_resources_machine_tx_bytes_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])
+              rate(alloy_resources_machine_tx_bytes_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])
             |||,
             legendFormat='{{instance}}'
           ),

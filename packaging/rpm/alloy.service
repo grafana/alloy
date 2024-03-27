@@ -8,7 +8,7 @@ After=network-online.target
 Restart=always
 User=alloy
 Environment=HOSTNAME=%H
-Environment=AGENT_DEPLOY_MODE=rpm
+Environment=ALLOY_DEPLOY_MODE=rpm
 EnvironmentFile=/etc/sysconfig/alloy
 WorkingDirectory=/var/lib/alloy
 ExecStart=/usr/bin/alloy run $CUSTOM_ARGS --storage.path=/var/lib/alloy $CONFIG_FILE

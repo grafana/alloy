@@ -85,7 +85,7 @@ func runSingleTest(testDir string, port int) {
 		}
 	}
 
-	err = os.RemoveAll(filepath.Join(testDir, "data-agent"))
+	err = os.RemoveAll(filepath.Join(testDir, "data-alloy"))
 	if err != nil {
 		panic(err)
 	}

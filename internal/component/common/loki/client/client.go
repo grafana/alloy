@@ -202,7 +202,7 @@ func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLin
 		return nil, err
 	}
 
-	c.client, err = config.NewClientFromConfig(cfg.Client, "GrafanaAgent", config.WithHTTP2Disabled())
+	c.client, err = config.NewClientFromConfig(cfg.Client, useragent.ProductName, config.WithHTTP2Disabled())
 	if err != nil {
 		return nil, err
 	}

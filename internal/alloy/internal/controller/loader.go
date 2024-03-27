@@ -743,7 +743,7 @@ func (l *Loader) EvaluateDependants(ctx context.Context, updatedNodes []*QueuedN
 			})
 			if err != nil {
 				level.Error(l.log).Log(
-					"msg", "failed to submit node for evaluation - the agent is likely overloaded "+
+					"msg", "failed to submit node for evaluation - Alloy is likely overloaded "+
 						"and cannot keep up with evaluating components - will retry",
 					"err", err,
 					"node_id", n.NodeID(),

@@ -13,6 +13,7 @@ import (
 
 	log "github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/loki/client/internal"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/user"
 	"github.com/prometheus/client_golang/prometheus"
@@ -60,7 +61,7 @@ func New(logger log.Logger, cfg Config, timingHistogram *prometheus.HistogramVec
 	if err != nil {
 		return nil, err
 	}
-	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, "GrafanaAgent", config.WithHTTP2Disabled())
+	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, useragent.ProductName, config.WithHTTP2Disabled())
 	if err != nil {
 		return nil, err
 	}

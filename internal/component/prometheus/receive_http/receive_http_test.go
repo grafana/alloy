@@ -11,7 +11,7 @@ import (
 	"github.com/golang/snappy"
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
-	agentprom "github.com/grafana/alloy/internal/component/prometheus"
+	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/phayes/freeport"
@@ -349,10 +349,10 @@ func testAppendable(actualSamples chan testSample) []storage.Appendable {
 	}
 
 	ls := labelstore.New(nil, prometheus.DefaultRegisterer)
-	return []storage.Appendable{agentprom.NewInterceptor(
+	return []storage.Appendable{alloyprom.NewInterceptor(
 		nil,
 		ls,
-		agentprom.WithAppendHook(
+		alloyprom.WithAppendHook(
 			hookFn))}
 }
 

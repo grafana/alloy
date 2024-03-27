@@ -135,12 +135,12 @@ func getFreeAddr(t *testing.T) string {
 func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
-		agentCfg string
+		alloyCfg string
 		expected otelcol.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
-			agentCfg: `
+			alloyCfg: `
 			protocols { thrift_compact {} }
 			output {}
 			`,
@@ -150,7 +150,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_false",
-			agentCfg: `
+			alloyCfg: `
 			protocols { thrift_compact {} }
 			debug_metrics {
 				disable_high_cardinality_metrics = false
@@ -163,7 +163,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_true",
-			agentCfg: `
+			alloyCfg: `
 			protocols { thrift_compact {} }
 			debug_metrics {
 				disable_high_cardinality_metrics = true
@@ -179,7 +179,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args jaeger.Arguments
-			require.NoError(t, syntax.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

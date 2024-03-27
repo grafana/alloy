@@ -17,7 +17,7 @@ services:
     volumes:
       - ./flow_configs:/etc/agent-config
     environment:
-      AGENT_MODE: "flow"
+      ALLOY_MODE: "flow"
     entrypoint:
       - /bin/grafana-agent
       - run

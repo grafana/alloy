@@ -23,7 +23,7 @@ import (
 	gopsutil "github.com/shirou/gopsutil/v3/process"
 )
 
-const spyName = "grafana-agent.java"
+const spyName = "alloy.java"
 
 type profilingLoop struct {
 	logger     log.Logger
@@ -92,7 +92,7 @@ func (p *profilingLoop) loop(ctx context.Context) {
 	for {
 		err := p.start()
 		if err != nil {
-			//  could happen when agent restarted - [ERROR] Profiler already started\n
+			//  could happen when Alloy restarted - [ERROR] Profiler already started\n
 			alive := p.onError(fmt.Errorf("failed to start: %w", err))
 			if !alive {
 				return

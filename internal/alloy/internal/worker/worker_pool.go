@@ -168,7 +168,7 @@ func (w *workQueue) emitNextTask() {
 
 	// Remove the task from waiting and add it to running set.
 	// NOTE: Even though we remove an element from the middle of a collection, we use a slice instead of a linked list.
-	// This code is NOT identified as a performance hot spot and given that in large agents we observe max number of
+	// This code is NOT identified as a performance hot spot and given that in large Alloy instances we observe max number of
 	// tasks queued to be ~10, the slice is actually faster because it does not allocate memory. See BenchmarkQueue.
 	w.waitingOrder = append(w.waitingOrder[:index], w.waitingOrder[index+1:]...)
 	task = w.waiting[key]

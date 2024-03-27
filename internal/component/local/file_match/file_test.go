@@ -21,7 +21,7 @@ import (
 )
 
 func TestFile(t *testing.T) {
-	dir := path.Join(os.TempDir(), "agent_testing", "t1")
+	dir := path.Join(os.TempDir(), "alloy_testing", "t1")
 	err := os.MkdirAll(dir, 0755)
 	require.NoError(t, err)
 	writeFile(t, dir, "t1.txt")
@@ -42,7 +42,7 @@ func TestFile(t *testing.T) {
 }
 
 func TestDirectoryFile(t *testing.T) {
-	dir := path.Join(os.TempDir(), "agent_testing", "t1")
+	dir := path.Join(os.TempDir(), "alloy_testing", "t1")
 	subdir := path.Join(dir, "subdir")
 	err := os.MkdirAll(subdir, 0755)
 	require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestDirectoryFile(t *testing.T) {
 }
 
 func TestAddingFile(t *testing.T) {
-	dir := path.Join(os.TempDir(), "agent_testing", "t2")
+	dir := path.Join(os.TempDir(), "alloy_testing", "t2")
 	err := os.MkdirAll(dir, 0755)
 	require.NoError(t, err)
 	writeFile(t, dir, "t1.txt")
@@ -88,7 +88,7 @@ func TestAddingFile(t *testing.T) {
 }
 
 func TestAddingFileInSubDir(t *testing.T) {
-	dir := path.Join(os.TempDir(), "agent_testing", "t3")
+	dir := path.Join(os.TempDir(), "alloy_testing", "t3")
 	os.MkdirAll(dir, 0755)
 	writeFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
@@ -117,7 +117,7 @@ func TestAddingFileInSubDir(t *testing.T) {
 }
 
 func TestAddingFileInAnExcludedSubDir(t *testing.T) {
-	dir := path.Join(os.TempDir(), "agent_testing", "t3")
+	dir := path.Join(os.TempDir(), "alloy_testing", "t3")
 	os.MkdirAll(dir, 0755)
 	writeFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
@@ -154,7 +154,7 @@ func TestAddingFileInAnExcludedSubDir(t *testing.T) {
 }
 
 func TestAddingRemovingFileInSubDir(t *testing.T) {
-	dir := path.Join(os.TempDir(), "agent_testing", "t3")
+	dir := path.Join(os.TempDir(), "alloy_testing", "t3")
 	os.MkdirAll(dir, 0755)
 	writeFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
@@ -191,7 +191,7 @@ func TestAddingRemovingFileInSubDir(t *testing.T) {
 }
 
 func TestExclude(t *testing.T) {
-	dir := path.Join(os.TempDir(), "agent_testing", "t3")
+	dir := path.Join(os.TempDir(), "alloy_testing", "t3")
 	os.MkdirAll(dir, 0755)
 	writeFile(t, dir, "t1.txt")
 	t.Cleanup(func() {
@@ -215,7 +215,7 @@ func TestExclude(t *testing.T) {
 }
 
 func TestMultiLabels(t *testing.T) {
-	dir := path.Join(os.TempDir(), "agent_testing", "t3")
+	dir := path.Join(os.TempDir(), "alloy_testing", "t3")
 	os.MkdirAll(dir, 0755)
 	writeFile(t, dir, "t1.txt")
 	t.Cleanup(func() {

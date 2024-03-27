@@ -55,5 +55,5 @@ RUN chown -R $USERNAME:$USERNAME /etc/alloy
 RUN chown -R $USERNAME:$USERNAME /bin/alloy
 
 ENTRYPOINT ["/bin/alloy"]
-ENV AGENT_DEPLOY_MODE=docker
+ENV ALLOY_DEPLOY_MODE=docker
 CMD ["run", "/etc/alloy/config.river", "--storage.path=/etc/alloy/data"]

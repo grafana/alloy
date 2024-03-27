@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	componentIDAttributeKey  = "grafana_agent.component_id"
-	controllerIDAttributeKey = "grafana_agent.controller_id"
+	componentIDAttributeKey  = "alloy.component_id"
+	controllerIDAttributeKey = "alloy.controller_id"
 )
 
 // WrapTracer returns a new trace.TracerProvider which will inject the provided

@@ -17,7 +17,7 @@ var (
 	reportInterval      = 4 * time.Hour
 )
 
-// Reporter holds the agent seed information and sends report of usage
+// Reporter holds the Alloy seed information and sends report of usage
 type Reporter struct {
 	logger log.Logger
 
@@ -55,7 +55,7 @@ func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]in
 			if !next.Equal(now) && now.Sub(rep.lastReport) < reportInterval {
 				continue
 			}
-			level.Info(rep.logger).Log("msg", "reporting agent stats", "date", time.Now())
+			level.Info(rep.logger).Log("msg", "reporting Alloy stats", "date", time.Now())
 			if err := rep.reportUsage(ctx, next, metricsFunc()); err != nil {
 				level.Info(rep.logger).Log("msg", "failed to report usage", "err", err)
 				continue
@@ -90,7 +90,7 @@ func (rep *Reporter) reportUsage(ctx context.Context, interval time.Time, metric
 }
 
 // nextReport compute the next report time based on the interval.
-// The interval is based off the creation of the agent seed to avoid all agents reporting at the same time.
+// The interval is based off the creation of the Alloy seed to avoid all agents reporting at the same time.
 func nextReport(interval time.Duration, createdAt, now time.Time) time.Time {
 	duration := math.Ceil(float64(now.Sub(createdAt)) / float64(interval))
 	return createdAt.Add(time.Duration(duration) * interval)

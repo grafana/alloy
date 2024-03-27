@@ -298,9 +298,9 @@ var severityNumbers = map[plog.SeverityNumber]SeverityLevel{
 
 // UnmarshalText implements encoding.TextUnmarshaler for SeverityLevel.
 func (sl *SeverityLevel) UnmarshalText(text []byte) error {
-	agentSevLevelStr := SeverityLevel(text)
-	if _, exists := severityLevels[agentSevLevelStr]; exists {
-		*sl = agentSevLevelStr
+	alloySevLevelStr := SeverityLevel(text)
+	if _, exists := severityLevels[alloySevLevelStr]; exists {
+		*sl = alloySevLevelStr
 		return nil
 	}
 	return fmt.Errorf("unrecognized severity level %q", string(text))

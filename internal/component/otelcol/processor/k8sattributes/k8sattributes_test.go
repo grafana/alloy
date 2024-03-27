@@ -336,7 +336,7 @@ func Test_Exclude(t *testing.T) {
 		cfg := `
 		exclude {
 			pod {
-				name = "grafana-agent"
+				name = "alloy"
 			}
 		}
 
@@ -353,6 +353,6 @@ func Test_Exclude(t *testing.T) {
 
 		exclude := &otelObj.Exclude
 		require.Len(t, exclude.Pods, 1)
-		require.Equal(t, "grafana-agent", exclude.Pods[0].Name)
+		require.Equal(t, "alloy", exclude.Pods[0].Name)
 	})
 }

@@ -74,8 +74,8 @@ type StaticJob struct {
 	NilToZero  *bool          `alloy:"nil_to_zero,attr,optional"`
 }
 
-// RegionAndRoles exposes for each supported job, the AWS regions and IAM roles in which the agent should perform the
-// scrape.
+// RegionAndRoles exposes for each supported job, the AWS regions and IAM roles
+// in which Alloy should perform the scrape.
 type RegionAndRoles struct {
 	Regions []string `alloy:"regions,attr"`
 	Roles   []Role   `alloy:"role,block,optional"`
@@ -103,9 +103,9 @@ func (a *Arguments) SetToDefault() {
 	*a = defaults
 }
 
-// ConvertToYACE converts the river config into YACE config model. Note that the conversion is
-// not direct, some values have been opinionated to simplify the config model the agent exposes
-// for this integration.
+// ConvertToYACE converts the river config into YACE config model. Note that
+// the conversion is not direct, some values have been opinionated to simplify
+// the config model Alloy exposes for this integration.
 func ConvertToYACE(a Arguments) (yaceConf.ScrapeConf, error) {
 	var discoveryJobs []*yaceConf.Job
 	for _, job := range a.Discovery {
@@ -175,7 +175,7 @@ func toYACEMetrics(ms []Metric, jobNilToZero *bool) []*yaceConf.Metric {
 
 			// Length dictates the size of the window for whom we request metrics, that is, endTime - startTime. Period
 			// dictates the size of the buckets in which we aggregate data, inside that window. Since data will be scraped
-			// by the agent every so often, dictated by the scrapedInterval, CloudWatch should return a single datapoint
+			// by Alloy every so often, dictated by the scrapedInterval, CloudWatch should return a single datapoint
 			// for each requested metric. That is if Period >= Length, but is Period > Length, we will be getting not enough
 			// data to fill the whole aggregation bucket. Therefore, Period == Length.
 			Period: periodSeconds,

@@ -12,12 +12,12 @@ type Config struct {
 	KubernetesAPIConfig otelcol.KubernetesAPIConfig `alloy:",squash"`
 	// NodeFromEnv can be used to extract the node name from an environment
 	// variable. The value must be the name of the environment variable.
-	// This is useful when the node where an Agent will run on cannot be
+	// This is useful when the node where Alloy will run on cannot be
 	// predicted. In such cases, the Kubernetes downward API can be used to
 	// add the node name to each pod as an environment variable. K8s tagger
 	// can then read this value and filter pods by it.
 	//
-	// For example, node name can be passed to each agent with the downward API as follows
+	// For example, node name can be passed to Alloy with the downward API as follows
 	//
 	// env:
 	//   - name: K8S_NODE_NAME
@@ -26,7 +26,7 @@ type Config struct {
 	//         fieldPath: spec.nodeName
 	//
 	// Then the NodeFromEnv field can be set to `K8S_NODE_NAME` to filter all pods by the node that
-	// the agent is running on.
+	// Alloy is running on.
 	//
 	// More on downward API here: https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/
 	NodeFromEnvVar     string                   `alloy:"node_from_env_var,attr,optional"`

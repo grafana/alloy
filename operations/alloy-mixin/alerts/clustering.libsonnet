@@ -57,7 +57,7 @@ alert.newGroup(
       'ClusterConfigurationDrift',
       |||
         count without (sha256) (
-            max by (cluster, namespace, sha256) (agent_config_hash and on(cluster, namespace) cluster_node_info)
+            max by (cluster, namespace, sha256) (alloy_config_hash and on(cluster, namespace) cluster_node_info)
         ) > 1
       |||,
       'Cluster nodes are not using the same configuration file.',

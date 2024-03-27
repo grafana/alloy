@@ -239,7 +239,7 @@ func (d *decompressor) readLines() {
 			if err != nil {
 				level.Debug(d.logger).Log("msg", "failed to convert encoding", "error", err)
 				d.metrics.encodingFailures.WithLabelValues(d.path).Inc()
-				finalText = fmt.Sprintf("the requested encoding conversion for this line failed in Grafana Agent: %s", err.Error())
+				finalText = fmt.Sprintf("the requested encoding conversion for this line failed in Grafana Alloy: %s", err.Error())
 			}
 		} else {
 			finalText = text

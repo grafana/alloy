@@ -9,7 +9,7 @@ function Navbar() {
     <nav className={styles.navbar}>
       <header>
         <NavLink to="/">
-          <img src={logo} alt="Grafana Agent Logo" title="Grafana Agent" />
+          <img src={logo} alt="Grafana Alloy Logo" title="Grafana Alloy" />
         </NavLink>
       </header>
       <ul>
@@ -24,7 +24,7 @@ function Navbar() {
           </NavLink>
         </li>
         <li>
-          <a href="https://grafana.com/docs/agent/latest">Help</a>
+          <a href="https://grafana.com/docs/alloy/latest">Help</a>
         </li>
       </ul>
     </nav>
