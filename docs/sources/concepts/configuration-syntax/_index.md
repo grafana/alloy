@@ -1,13 +1,14 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/config-language/
-description: Learn about the configuration language
-title: Configuration language
+canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/
+description: Learn about the Alloy configuration syntax
+title: Alloy configuration syntax
+menuTitle: Configuration syntax
 weight: 10
 ---
 
-# Configuration language
+# {{% param "PRODUCT_NAME" %}} configuration syntax
 
-{{< param "PRODUCT_NAME" >}} dynamically configures and connects components with the {{< param "PRODUCT_NAME" >}} configuration syntax.
+{{< param "FULL_PRODUCT_NAME" >}} dynamically configures and connects components with the {{< param "PRODUCT_NAME" >}} configuration syntax.
 
 The {{< param "PRODUCT_NAME" >}} syntax aims to reduce errors in configuration files by making configurations easier to read and write.
 {{< param "PRODUCT_NAME" >}} configurations use blocks that can be easily copied and pasted from the documentation to help you get started as quickly as possible.
