@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/
-description: Learn about the configuration language
+description: Learn about the Alloy configuration syntax
 title: Alloy configuration syntax
 menuTitle: Configuration syntax
 weight: 10
