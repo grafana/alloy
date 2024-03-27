@@ -49,7 +49,7 @@ Open the `relabel.alloy` file that was downloaded and change the name of the ser
 ![Updated dashboard showing api_server_v2](/media/docs/agent/screenshot-grafana-agent-filtering-metrics-transition.png)
 
 [Docker]: https://www.docker.com/products/docker-desktop
-[Grafana]: http://localhost:3000/explore?orgId=1&left=%5B%22now-1h%22,%22now%22,%22Mimir%22,%7B%22refId%22:%22A%22,%22instant%22:true,%22range%22:true,%22exemplar%22:true,%22expr%22:%22agent_build_info%7B%7D%22%7D%5D
+[Grafana]: http://localhost:3000/explore?orgId=1&left=%5B%22now-1h%22,%22now%22,%22Mimir%22,%7B%22refId%22:%22A%22,%22instant%22:true,%22range%22:true,%22exemplar%22:true,%22expr%22:%22alloy_build_info%7B%7D%22%7D%5D
 [relabel.alloy]: ../assets/flow_configs/relabel.alloy/
 [prometheus.relabel]: ../../reference/components/prometheus.relabel/
 [Collect Prometheus metrics]: ../collecting-prometheus-metrics

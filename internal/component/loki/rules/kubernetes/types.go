@@ -22,7 +22,7 @@ type Arguments struct {
 
 var DefaultArguments = Arguments{
 	SyncInterval:        30 * time.Second,
-	LokiNameSpacePrefix: "agent",
+	LokiNameSpacePrefix: "alloy",
 	HTTPClientConfig:    config.DefaultHTTPClientConfig,
 }
 

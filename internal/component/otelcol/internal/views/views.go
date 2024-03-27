@@ -40,7 +40,7 @@ func cardinalityFilter(kvs ...attribute.KeyValue) attribute.Filter {
 // https://github.com/open-telemetry/opentelemetry-go-contrib/issues/3765
 // The long-term solution for the Collector is to set view settings in the Collector config:
 // https://github.com/open-telemetry/opentelemetry-collector/issues/7517#issuecomment-1511168350
-// In the future, when Collector supports such config, we may want to support similar view settings in the Agent.
+// In the future, when Collector supports such config, we may want to support similar view settings in Alloy.
 func DropHighCardinalityServerAttributes() []metric.View {
 	var views []metric.View
 

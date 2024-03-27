@@ -15,7 +15,7 @@ func Run() {
 	var cmd = &cobra.Command{
 		Use:     fmt.Sprintf("%s [global options] <subcommand>", os.Args[0]),
 		Short:   "Grafana Alloy",
-		Version: build.Print("agent"),
+		Version: build.Print("alloy"),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Usage()

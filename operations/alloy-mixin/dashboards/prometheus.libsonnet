@@ -333,7 +333,7 @@ local remoteWritePanels(y_offset) = [
     panel.withQueries([
       panel.newQuery(
         expr=|||
-          sum(agent_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"})
+          sum(prometheus_remote_write_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"})
         |||,
         legendFormat='Series',
       ),
@@ -356,7 +356,7 @@ local remoteWritePanels(y_offset) = [
     panel.withQueries([
       panel.newQuery(
         expr=|||
-          agent_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id!="", component_id=~"$component", url=~"$url"}
+          prometheus_remote_write_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id!="", component_id=~"$component", url=~"$url"}
         |||,
         legendFormat='{{instance}} / {{component_id}}',
       ),
@@ -379,7 +379,7 @@ local remoteWritePanels(y_offset) = [
     panel.withQueries([
       panel.newQuery(
         expr=|||
-          sum by (component_id) (agent_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id!="", component_id=~"$component", url=~"$url"})
+          sum by (component_id) (prometheus_remote_write_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id!="", component_id=~"$component", url=~"$url"})
         |||,
         legendFormat='{{component_id}}',
       ),
@@ -398,16 +398,16 @@ local remoteWritePanels(y_offset) = [
     dashboard.withUID(std.md5(filename)) +
     dashboard.withTemplateVariablesMixin([
       dashboard.newTemplateVariable('cluster', |||
-        label_values(agent_component_controller_running_components, cluster)
+        label_values(alloy_component_controller_running_components, cluster)
       |||),
       dashboard.newTemplateVariable('namespace', |||
-        label_values(agent_component_controller_running_components{cluster="$cluster"}, namespace)
+        label_values(alloy_component_controller_running_components{cluster="$cluster"}, namespace)
       |||),
       dashboard.newMultiTemplateVariable('instance', |||
-        label_values(agent_component_controller_running_components{cluster="$cluster", namespace="$namespace"}, instance)
+        label_values(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace"}, instance)
       |||),
       dashboard.newMultiTemplateVariable('component', |||
-        label_values(agent_wal_samples_appended_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"prometheus\\.remote_write\\..*"}, component_id)
+        label_values(prometheus_remote_write_wal_samples_appended_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"prometheus\\.remote_write\\..*"}, component_id)
       |||),
       dashboard.newMultiTemplateVariable('url', |||
         label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component"}, url)

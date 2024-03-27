@@ -47,10 +47,10 @@ func New(l log.Logger, r prometheus.Registerer) *service {
 		mappings:            make(map[string]*remoteWriteMapping),
 		labelsHashToGlobal:  make(map[uint64]uint64),
 		staleGlobals:        make(map[uint64]*staleMarker),
-		totalIDs:            prometheus.NewDesc("agent_labelstore_global_ids_count", "Total number of global ids.", nil, nil),
-		idsInRemoteWrapping: prometheus.NewDesc("agent_labelstore_remote_store_ids_count", "Total number of ids per remote write", []string{"remote_name"}, nil),
+		totalIDs:            prometheus.NewDesc("alloy_labelstore_global_ids_count", "Total number of global ids.", nil, nil),
+		idsInRemoteWrapping: prometheus.NewDesc("alloy_labelstore_remote_store_ids_count", "Total number of ids per remote write", []string{"remote_name"}, nil),
 		lastStaleCheck: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "agent_labelstore_last_stale_check_timestamp",
+			Name: "alloy_labelstore_last_stale_check_timestamp",
 			Help: "Last time stale check was ran expressed in unix timestamp.",
 		}),
 	}

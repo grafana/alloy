@@ -168,7 +168,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	scraper := scrape.NewManager(scrapeOptions, o.Logger, alloyAppendable)
 
 	targetsGauge := client_prometheus.NewGauge(client_prometheus.GaugeOpts{
-		Name: "agent_prometheus_scrape_targets_gauge",
+		Name: "prometheus_scrape_targets_gauge",
 		Help: "Number of targets this component is configured to scrape"})
 	err = o.Registerer.Register(targetsGauge)
 	if err != nil {

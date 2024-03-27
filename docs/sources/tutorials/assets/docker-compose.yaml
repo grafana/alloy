@@ -16,8 +16,6 @@ services:
       - 12345:12345
     volumes:
       - ./flow_configs:/etc/agent-config
-    environment:
-      AGENT_MODE: "flow"
     entrypoint:
       - /bin/grafana-agent
       - run

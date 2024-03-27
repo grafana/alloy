@@ -58,7 +58,7 @@ func DefaultConfig() Config {
 	}
 }
 
-// Config contains underlying configurations for the agent
+// Config contains underlying configurations for Grafana Agent static mode.
 type Config struct {
 	Server          *server.Config        `yaml:"server,omitempty"`
 	Metrics         metrics.Config        `yaml:"metrics,omitempty"`

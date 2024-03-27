@@ -67,11 +67,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		health:     component.Health{},
 		updateChan: make(chan result),
 		s3Errors: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "agent_remote_s3_errors_total",
+			Name: "remote_s3_errors_total",
 			Help: "The number of errors while accessing s3",
 		}),
 		lastAccessed: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "agent_remote_s3_timestamp_last_accessed_unix_seconds",
+			Name: "remote_s3_timestamp_last_accessed_unix_seconds",
 			Help: "The last successful access in unix seconds",
 		}),
 	}

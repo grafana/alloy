@@ -14,10 +14,10 @@ local cluster_node_filename = 'alloy-cluster-node.json';
     dashboard.withUID(std.md5(filename)) +
     dashboard.withTemplateVariablesMixin([
       dashboard.newTemplateVariable('cluster', |||
-        label_values(agent_component_controller_running_components, cluster)
+        label_values(alloy_component_controller_running_components, cluster)
       |||),
       dashboard.newTemplateVariable('namespace', |||
-        label_values(agent_component_controller_running_components{cluster="$cluster"}, namespace)
+        label_values(alloy_component_controller_running_components{cluster="$cluster"}, namespace)
       |||),
     ]) +
     // TODO(@tpaschalis) Make the annotation optional.

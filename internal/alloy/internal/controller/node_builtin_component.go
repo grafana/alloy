@@ -69,7 +69,7 @@ type ComponentGlobals struct {
 	MinStability        featuregate.Stability                  // Minimum allowed stability level for features
 	OnBlockNodeUpdate   func(cn BlockNode)                     // Informs controller that we need to reevaluate
 	OnExportsChange     func(exports map[string]any)           // Invoked when the managed component updated its exports
-	Registerer          prometheus.Registerer                  // Registerer for serving agent and component metrics
+	Registerer          prometheus.Registerer                  // Registerer for serving Alloy and component metrics
 	ControllerID        string                                 // ID of controller.
 	NewModuleController func(id string) ModuleController       // Func to generate a module controller.
 	GetServiceData      func(name string) (interface{}, error) // Get data for a service.

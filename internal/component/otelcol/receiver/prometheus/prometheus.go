@@ -106,7 +106,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		useCreatedMetric = false
 
 		// Trimming the metric suffixes is used to remove the metric type and the unit and the end of the metric name.
-		// To trim the unit, the opentelemetry code uses the MetricMetadataStore which is currently not supported by the agent.
+		// To trim the unit, the opentelemetry code uses the MetricMetadataStore which is currently not supported by Alloy.
 		// When supported, this could be added as an arg.
 		trimMetricSuffixes = false
 
@@ -130,7 +130,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 		BuildInfo: otelcomponent.BuildInfo{
 			Command:     os.Args[0],
-			Description: "Grafana Agent",
+			Description: "Grafana Alloy",
 			Version:     build.Version,
 		},
 	}

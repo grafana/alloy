@@ -159,7 +159,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	r := mux.NewRouter()
 	r.Use(otelmux.Middleware(
-		"grafana-agent",
+		"alloy",
 		otelmux.WithTracerProvider(s.tracer),
 	))
 
@@ -177,10 +177,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.HandleFunc("/-/ready", func(w http.ResponseWriter, _ *http.Request) {
 			if s.opts.ReadyFunc() {
 				w.WriteHeader(http.StatusOK)
-				fmt.Fprintln(w, "Agent is ready.")
+				fmt.Fprintln(w, "Alloy is ready.")
 			} else {
 				w.WriteHeader(http.StatusServiceUnavailable)
-				fmt.Fprintln(w, "Agent is not ready.")
+				fmt.Fprintln(w, "Alloy is not ready.")
 			}
 		})
 	}

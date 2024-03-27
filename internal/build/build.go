@@ -8,10 +8,9 @@ import (
 	"github.com/prometheus/common/version"
 )
 
-// Version information passed to Prometheus version package.
-// Package path as used by linker changes based on vendoring being used or not,
-// so it's easier just to use stable Agent path, and pass it to
-// Prometheus in the code.
+// Version information passed to Prometheus version package. Package path as
+// used by linker changes based on vendoring being used or not, so it's easier
+// just to use stable Alloy path, and pass it to Prometheus in the code.
 var (
 	Version   string
 	Revision  string

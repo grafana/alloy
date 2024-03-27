@@ -80,7 +80,7 @@ func TestForwardingToAppendable(t *testing.T) {
 			case http_service.ServiceName:
 				return http_service.Data{
 					HTTPListenAddr:   "localhost:12345",
-					MemoryListenAddr: "agent.internal:1245",
+					MemoryListenAddr: "alloy.internal:1245",
 					BaseHTTPPath:     "/",
 					DialFunc:         (&net.Dialer{}).DialContext,
 				}, nil

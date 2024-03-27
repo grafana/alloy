@@ -39,7 +39,7 @@ spec:
             - --server.http.listen-addr=0.0.0.0:80
             - --server.http.ui-path-prefix=/
           env:
-            - name: AGENT_DEPLOY_MODE
+            - name: ALLOY_DEPLOY_MODE
               value: "helm"
             - name: HOSTNAME
               valueFrom:

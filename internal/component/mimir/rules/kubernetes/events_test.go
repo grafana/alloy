@@ -133,7 +133,7 @@ func TestEventLoop(t *testing.T) {
 		ruleLister:        ruleLister,
 		ruleSelector:      labels.Everything(),
 		mimirClient:       newFakeMimirClient(),
-		args:              Arguments{MimirNameSpacePrefix: "agent"},
+		args:              Arguments{MimirNameSpacePrefix: "alloy"},
 		metrics:           newMetrics(),
 	}
 	eventHandler := kubernetes.NewQueuedEventHandler(component.log, component.queue)
@@ -168,7 +168,7 @@ func TestEventLoop(t *testing.T) {
 	require.Eventually(t, func() bool {
 		allRules, err := component.mimirClient.ListRules(ctx, "")
 		require.NoError(t, err)
-		rules := allRules[mimirNamespaceForRuleCRD("agent", rule)][0].Rules
+		rules := allRules[mimirNamespaceForRuleCRD("alloy", rule)][0].Rules
 		return len(rules) == 2
 	}, time.Second, 10*time.Millisecond)
 	component.queue.AddRateLimited(kubernetes.Event{Typ: eventTypeSyncMimir})

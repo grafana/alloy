@@ -13,7 +13,7 @@ const (
 type KubernetesAPIConfig struct {
 	// How to authenticate to the K8s API server.  This can be one of `none`
 	// (for no auth), `serviceAccount` (to use the standard service account
-	// token provided to the agent pod), or `kubeConfig` to use credentials
+	// token provided to the Alloy pod), or `kubeConfig` to use credentials
 	// from `~/.kube/config`.
 	AuthType string `alloy:"auth_type,attr,optional"`
 

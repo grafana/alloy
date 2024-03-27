@@ -21,14 +21,12 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	m.reg = reg
 
 	m.gelfEntries = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "agent",
-		Name:      "loki_source_gelf_target_entries_total",
-		Help:      "Total number of successful entries sent to the gelf target",
+		Name: "loki_source_gelf_target_entries_total",
+		Help: "Total number of successful entries sent to the gelf target",
 	})
 	m.gelfErrors = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "agent",
-		Name:      "loki_source_gelf_target_parsing_errors_total",
-		Help:      "Total number of parsing errors while receiving gelf messages",
+		Name: "loki_source_gelf_target_parsing_errors_total",
+		Help: "Total number of parsing errors while receiving gelf messages",
 	})
 
 	if reg != nil {

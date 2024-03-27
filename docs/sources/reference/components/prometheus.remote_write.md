@@ -262,19 +262,19 @@ information.
 
 ## Debug metrics
 
-* `agent_wal_storage_active_series` (gauge): Current number of active series
+* `prometheus_remote_write_wal_storage_active_series` (gauge): Current number of active series
   being tracked by the WAL.
-* `agent_wal_storage_deleted_series` (gauge): Current number of series marked
+* `prometheus_remote_write_wal_storage_deleted_series` (gauge): Current number of series marked
   for deletion from memory.
-* `agent_wal_out_of_order_samples_total` (counter): Total number of out of
+* `prometheus_remote_write_wal_out_of_order_samples_total` (counter): Total number of out of
   order samples ingestion failed attempts.
-* `agent_wal_storage_created_series_total` (counter): Total number of created
+* `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created
   series appended to the WAL.
-* `agent_wal_storage_removed_series_total` (counter): Total number of series
+* `prometheus_remote_write_wal_storage_removed_series_total` (counter): Total number of series
   removed from the WAL.
-* `agent_wal_samples_appended_total` (counter): Total number of samples
+* `prometheus_remote_write_wal_samples_appended_total` (counter): Total number of samples
   appended to the WAL.
-* `agent_wal_exemplars_appended_total` (counter): Total number of exemplars
+* `prometheus_remote_write_wal_exemplars_appended_total` (counter): Total number of exemplars
   appended to the WAL.
 * `prometheus_remote_storage_samples_total` (counter): Total number of samples
   sent to remote storage.

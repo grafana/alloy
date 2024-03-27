@@ -1,4 +1,5 @@
-// Package logs implements logs support for the Grafana Agent.
+// Package logs holds types for the logging subsystem of Grafana Agent static
+// mode.
 package logs
 
 import (

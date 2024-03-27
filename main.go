@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	prometheus.MustRegister(build.NewCollector("agent"))
+	prometheus.MustRegister(build.NewCollector("alloy"))
 }
 
 func main() {

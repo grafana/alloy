@@ -15,7 +15,7 @@ func init() {
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 
-		Build: exporter.New(createExporter, "agent"),
+		Build: exporter.New(createExporter, "self"),
 	})
 }
 

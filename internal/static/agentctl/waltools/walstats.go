@@ -38,9 +38,9 @@ type WALStats struct {
 	// collision. A hash collision is any instance in which a hash of labels
 	// is defined by two ref IDs.
 	//
-	// For the Grafana Agent, a hash collision has no negative side effects
-	// on data sent to the remote_write endpoint but may have a noticeable impact
-	// on memory while the collision exists.
+	// For Grafana Alloy, a hash collision has no negative side effects on data
+	// sent to the remote_write endpoint but may have a noticeable impact on
+	// memory while the collision exists.
 	HashCollisions int
 
 	// Targets holds stats on specific scrape targets.

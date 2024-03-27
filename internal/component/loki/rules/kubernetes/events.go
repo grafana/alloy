@@ -195,13 +195,13 @@ func (c *Component) applyChanges(ctx context.Context, namespace string, diffs []
 
 // lokiNamespaceForRuleCRD returns the namespace that the rule CRD should be
 // stored in loki. This function, along with isManagedNamespace, is used to
-// determine if a rule CRD is managed by the agent.
+// determine if a rule CRD is managed by Alloy.
 func lokiNamespaceForRuleCRD(prefix string, pr *promv1.PrometheusRule) string {
 	// Set to - to separate, loki doesn't support prefixpath like mimir ruler does
 	return fmt.Sprintf("%s-%s-%s-%s", prefix, pr.Namespace, pr.Name, pr.UID)
 }
 
-// isManagedLokiNamespace returns true if the namespace is managed by the agent.
+// isManagedLokiNamespace returns true if the namespace is managed by Alloy.
 // Unmanaged namespaces are left as is by the operator.
 func isManagedLokiNamespace(prefix, namespace string) bool {
 	prefixPart := regexp.QuoteMeta(prefix)

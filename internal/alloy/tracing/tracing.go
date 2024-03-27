@@ -18,7 +18,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const serviceName = "grafana-agent"
+const serviceName = "alloy"
 
 // Defaults for all Options structs.
 var (

@@ -139,7 +139,7 @@
                ],
                "targets": [
                   {
-                     "expr": "count by (pod, container, version) (agent_build_info{cluster=~\"$cluster\", namespace=~\"$namespace\", container=~\"$container\"})",
+                     "expr": "count by (pod, container, version) (alloy_build_info{cluster=~\"$cluster\", namespace=~\"$namespace\", container=~\"$container\"})",
                      "format": "table",
                      "instant": true,
                      "intervalFactor": 2,
@@ -578,7 +578,7 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "sum by (job, instance_group_name) (rate(agent_wal_samples_appended_total{cluster=~\"$cluster\", namespace=~\"$namespace\", container=~\"$container\"}[5m]))",
+                     "expr": "sum by (job, instance_group_name) (rate(prometheus_remote_write_wal_samples_appended_total{cluster=~\"$cluster\", namespace=~\"$namespace\", container=~\"$container\"}[5m]))",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "{{job}} {{instance_group_name}}",
@@ -666,7 +666,7 @@
             "multi": true,
             "name": "cluster",
             "options": [ ],
-            "query": "label_values(agent_build_info, cluster)",
+            "query": "label_values(alloy_build_info, cluster)",
             "refresh": 1,
             "regex": "",
             "sort": 2,
@@ -690,7 +690,7 @@
             "multi": true,
             "name": "namespace",
             "options": [ ],
-            "query": "label_values(agent_build_info, namespace)",
+            "query": "label_values(alloy_build_info, namespace)",
             "refresh": 1,
             "regex": "",
             "sort": 2,
@@ -714,7 +714,7 @@
             "multi": true,
             "name": "container",
             "options": [ ],
-            "query": "label_values(agent_build_info, container)",
+            "query": "label_values(alloy_build_info, container)",
             "refresh": 1,
             "regex": "",
             "sort": 2,
@@ -738,7 +738,7 @@
             "multi": true,
             "name": "pod",
             "options": [ ],
-            "query": "label_values(agent_build_info{container=~\"$container\"}, pod)",
+            "query": "label_values(alloy_build_info{container=~\"$container\"}, pod)",
             "refresh": 1,
             "regex": "",
             "sort": 2,

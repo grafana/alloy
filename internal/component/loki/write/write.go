@@ -123,7 +123,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.walWriter.Stop()
 		}
 		if c.clientManger != nil {
-			// drain, since the component is shutting down. That means the agent is shutting down as well
+			// drain, since the component is shutting down. That means Alloy is shutting down as well
 			c.clientManger.StopWithDrain(true)
 		}
 	}()

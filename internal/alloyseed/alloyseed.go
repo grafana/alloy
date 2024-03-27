@@ -15,7 +15,7 @@ import (
 	"github.com/prometheus/common/version"
 )
 
-// Seed identifies a unique agent.
+// Seed identifies a unique Alloy instance.
 type Seed struct {
 	UID       string    `json:"UID"`
 	CreatedAt time.Time `json:"created_at"`
@@ -37,7 +37,7 @@ var savedSeed *Seed
 var once sync.Once
 
 // Init should be called by an app entrypoint as soon as it can to configure where the unique seed will be stored.
-// dir is the directory where we will read and store agent_seed.json
+// dir is the directory where we will read and store alloy_seed.json
 // If left empty it will default to $APPDATA or /tmp
 // A unique agent seed will be generated when this method is first called, and reused for the lifetime of this agent.
 func Init(dir string, l log.Logger) {

@@ -124,7 +124,7 @@ func (e *Extension) Update(args component.Arguments) error {
 
 		BuildInfo: otelcomponent.BuildInfo{
 			Command:     os.Args[0],
-			Description: "Grafana Agent",
+			Description: "Grafana Alloy",
 			Version:     build.Version,
 		},
 	}

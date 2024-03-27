@@ -14,7 +14,9 @@ import (
 )
 
 const (
-	deployModeEnv = "AGENT_DEPLOY_MODE"
+	ProductName = "Alloy"
+
+	deployModeEnv = "ALLOY_DEPLOY_MODE"
 )
 
 // settable by tests
@@ -31,10 +33,10 @@ func Get() string {
 	if len(metadata) > 0 {
 		parenthesis = fmt.Sprintf(" (%s)", strings.Join(metadata, "; "))
 	}
-	return fmt.Sprintf("Alloy/%s%s", build.Version, parenthesis)
+	return fmt.Sprintf("%s/%s%s", ProductName, build.Version, parenthesis)
 }
 
-// GetDeployMode returns our best-effort guess at the way Grafana Agent was deployed.
+// GetDeployMode returns our best-effort guess at the way Grafana Alloy was deployed.
 func GetDeployMode() string {
 	op := os.Getenv(deployModeEnv)
 	// only return known modes. Use "binary" as a default catch-all.

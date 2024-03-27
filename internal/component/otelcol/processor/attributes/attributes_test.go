@@ -35,7 +35,7 @@ func TestSeverityLevelMatchesOtel(t *testing.T) {
 	var tests []TestDefinition
 
 	for _, testInfo := range []struct {
-		agentSevStr string
+		alloySevStr string
 		otelSevStr  string
 	}{
 		{"TRACE", "Trace"},
@@ -72,8 +72,8 @@ func TestSeverityLevelMatchesOtel(t *testing.T) {
 		`
 
 		newTest := TestDefinition{
-			name:               testInfo.agentSevStr,
-			cfg:                fmt.Sprintf(cfgTemplate, testInfo.agentSevStr),
+			name:               testInfo.alloySevStr,
+			cfg:                fmt.Sprintf(cfgTemplate, testInfo.alloySevStr),
 			expectedOtelSevStr: testInfo.otelSevStr,
 		}
 		tests = append(tests, newTest)

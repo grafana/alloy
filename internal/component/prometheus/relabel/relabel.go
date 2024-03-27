@@ -109,27 +109,27 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		ls:    data.(labelstore.LabelStore),
 	}
 	c.metricsProcessed = prometheus_client.NewCounter(prometheus_client.CounterOpts{
-		Name: "agent_prometheus_relabel_metrics_processed",
+		Name: "alloy_prometheus_relabel_metrics_processed",
 		Help: "Total number of metrics processed",
 	})
 	c.metricsOutgoing = prometheus_client.NewCounter(prometheus_client.CounterOpts{
-		Name: "agent_prometheus_relabel_metrics_written",
+		Name: "alloy_prometheus_relabel_metrics_written",
 		Help: "Total number of metrics written",
 	})
 	c.cacheMisses = prometheus_client.NewCounter(prometheus_client.CounterOpts{
-		Name: "agent_prometheus_relabel_cache_misses",
+		Name: "alloy_prometheus_relabel_cache_misses",
 		Help: "Total number of cache misses",
 	})
 	c.cacheHits = prometheus_client.NewCounter(prometheus_client.CounterOpts{
-		Name: "agent_prometheus_relabel_cache_hits",
+		Name: "alloy_prometheus_relabel_cache_hits",
 		Help: "Total number of cache hits",
 	})
 	c.cacheSize = prometheus_client.NewGauge(prometheus_client.GaugeOpts{
-		Name: "agent_prometheus_relabel_cache_size",
+		Name: "alloy_prometheus_relabel_cache_size",
 		Help: "Total size of relabel cache",
 	})
 	c.cacheDeletes = prometheus_client.NewCounter(prometheus_client.CounterOpts{
-		Name: "agent_prometheus_relabel_cache_deletes",
+		Name: "alloy_prometheus_relabel_cache_deletes",
 		Help: "Total number of cache deletes",
 	})
 

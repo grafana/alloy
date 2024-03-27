@@ -63,8 +63,8 @@ type Arguments struct {
 	//TODO: Uncomment this later, and remove Timeout?
 	//      Can we just get away with a timeout, or do we need all the http client settings?
 	//      It seems that HTTP client settings are only used in the ec2 detection via ClientFromContext.
-	//      This seems like a very niche use case, so for now I won't implement it in the Agent.
-	//      If we do implement it in the Agent, I am not sure how to document the HTTP client settings.
+	//      This seems like a very niche use case, so for now I won't implement it in Alloy.
+	//      If we do implement it in Alloy, I am not sure how to document the HTTP client settings.
 	//      We'd have to mention that they're only for a very specific use case.
 
 	// Output configures where to send processed data. Required.

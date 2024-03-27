@@ -147,12 +147,12 @@ func createTestTraces() ptrace.Traces {
 func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
-		agentCfg string
+		alloyCfg string
 		expected otelcol.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
-			agentCfg: `
+			alloyCfg: `
 			client {
 				endpoint = "tempo-xxx.grafana.net/tempo:443"
 			}
@@ -163,7 +163,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_false",
-			agentCfg: `
+			alloyCfg: `
 			client {
 				endpoint = "tempo-xxx.grafana.net/tempo:443"
 			}
@@ -177,7 +177,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_true",
-			agentCfg: `
+			alloyCfg: `
 			client {
 				endpoint = "tempo-xxx.grafana.net/tempo:443"
 			}
@@ -194,7 +194,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args otlp.Arguments
-			require.NoError(t, syntax.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

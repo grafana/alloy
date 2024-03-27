@@ -60,7 +60,7 @@ The read error will be exposed as a log message and in the debug information for
 
 ## Debug metrics
 
-* `agent_local_file_timestamp_last_accessed_unix_seconds` (gauge): The timestamp, in Unix seconds, that the file was last successfully accessed.
+* `local_file_timestamp_last_accessed_unix_seconds` (gauge): The timestamp, in Unix seconds, that the file was last successfully accessed.
 
 ## Example
 

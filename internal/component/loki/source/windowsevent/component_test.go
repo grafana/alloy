@@ -18,7 +18,7 @@ import (
 )
 
 func TestEventLogger(t *testing.T) {
-	var loggerName = "agent_test"
+	var loggerName = "alloy_test"
 	//Setup Windows Event log with the log source name and logging levels
 	_ = eventlog.InstallAsEventCreate(loggerName, eventlog.Info|eventlog.Warning|eventlog.Error)
 	wlog, err := eventlog.Open(loggerName)

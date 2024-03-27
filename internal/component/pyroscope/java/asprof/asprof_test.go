@@ -24,7 +24,7 @@ import (
 func TestStickyDir(t *testing.T) {
 	dir := "/tmp"
 	p := NewProfiler(dir, EmbeddedArchive)
-	p.tmpDirMarker = fmt.Sprintf("grafana-agent-asprof-%s", uuid.NewString())
+	p.tmpDirMarker = fmt.Sprintf("alloy-asprof-%s", uuid.NewString())
 	t.Logf("tmpDirMarker: %s", p.tmpDirMarker)
 	err := p.ExtractDistributions()
 	assert.NoError(t, err)

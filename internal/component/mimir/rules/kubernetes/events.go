@@ -193,12 +193,12 @@ func (c *Component) applyChanges(ctx context.Context, namespace string, diffs []
 
 // mimirNamespaceForRuleCRD returns the namespace that the rule CRD should be
 // stored in mimir. This function, along with isManagedNamespace, is used to
-// determine if a rule CRD is managed by the agent.
+// determine if a rule CRD is managed by Alloy.
 func mimirNamespaceForRuleCRD(prefix string, pr *promv1.PrometheusRule) string {
 	return fmt.Sprintf("%s/%s/%s/%s", prefix, pr.Namespace, pr.Name, pr.UID)
 }
 
-// isManagedMimirNamespace returns true if the namespace is managed by the agent.
+// isManagedMimirNamespace returns true if the namespace is managed by Alloy.
 // Unmanaged namespaces are left as is by the operator.
 func isManagedMimirNamespace(prefix, namespace string) bool {
 	prefixPart := regexp.QuoteMeta(prefix)

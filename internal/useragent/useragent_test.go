@@ -59,7 +59,7 @@ func TestUserAgent(t *testing.T) {
 			Name:     "brew",
 			Expected: "Alloy/v1.2.3 (darwin; brew)",
 			GOOS:     "darwin",
-			Exe:      "/opt/homebrew/bin/agent",
+			Exe:      "/opt/homebrew/bin/alloy",
 		},
 	}
 	for _, tst := range tests {
@@ -67,7 +67,7 @@ func TestUserAgent(t *testing.T) {
 			if tst.Exe != "" {
 				executable = func() (string, error) { return tst.Exe, nil }
 			} else {
-				executable = func() (string, error) { return "/agent", nil }
+				executable = func() (string, error) { return "/alloy", nil }
 			}
 			goos = tst.GOOS
 			t.Setenv(deployModeEnv, tst.DeployMode)

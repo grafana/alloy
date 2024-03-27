@@ -67,8 +67,8 @@ The following are some of the metrics that are exposed when this component is us
 * `prometheus_receive_http_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
 * `prometheus_receive_http_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
 * `prometheus_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
-* `agent_prometheus_fanout_latency` (histogram): Write latency for sending metrics to other components.
-* `agent_prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
+* `prometheus_fanout_latency` (histogram): Write latency for sending metrics to other components.
+* `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
 
 ## Example
 
