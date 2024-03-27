@@ -8,4 +8,4 @@ headless: true
 > components are subject to frequent breaking changes, and may be removed with
 > no equivalent replacement.
 
-[experimental]: ../../../stability/#experimental
+[experimental]: https://grafana.com/docs/release-life-cycle/

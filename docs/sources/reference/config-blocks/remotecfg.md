@@ -1,5 +1,5 @@
 ---
-canonical: remotecfgs://grafana.com/docs/alloy/latest/reference/config-blocks/remotecfg/
+canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/remotecfg/
 description: Learn about the remotecfg configuration block
 menuTitle: remotecfg
 title: remotecfg block
