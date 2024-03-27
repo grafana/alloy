@@ -2,7 +2,7 @@
 
 <p>
   <a href="https://pkg.go.dev/github.com/grafana/alloy/syntax"><img src="https://pkg.go.dev/badge/github.com/grafana/alloy.svg" alt="API"></a>
-  <a href="https://grafana.com/docs/alloy/latest/concepts/config-syntax"><img src="https://img.shields.io/badge/Documentation-link-blue?logo=gitbook" alt="User documentation"></a>
+  <a href="https://grafana.com/docs/alloy/latest/concepts/configuration-syntax"><img src="https://img.shields.io/badge/Documentation-link-blue?logo=gitbook" alt="User documentation"></a>
 </p>
 
 The Alloy configuration syntax is a domain-specific language used by Grafana
