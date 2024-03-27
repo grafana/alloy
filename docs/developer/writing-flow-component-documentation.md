@@ -1,17 +1,17 @@
-# Writing documentation for Flow components
+# Writing documentation for Alloy components
 
-This guide outlines best practices for writing reference documentation for Flow
+This guide outlines best practices for writing reference documentation for Alloy
 components.
 
-Component reference documentation is stored in [docs/sources/flow/reference/components][docs source],
+Component reference documentation is stored in [docs/sources/alloy/reference/components][docs source],
 and published to [Grafana's documentation website][hosted docs].
 
 Documentation for a component should follow best practices as much as possible
 so that things are kept consistent. Exceptions can be made when needed; see the
 list of [Exceptions][] at the bottom of this page for examples.
 
-[docs source]: ../sources/flow/referencehttps://grafana.com/docs/agent/latest/flow/reference/components/components
-[hosted docs]: https://grafana.com/docs/agent/latest/flow/reference/components
+[docs source]: ../sources/alloy/reference/components
+[hosted docs]: https://grafana.com/docs/alloy/latest/reference/components
 [Exceptions]: #exceptions
 
 ## General guidelines
@@ -129,7 +129,7 @@ and blocks to configure a component.
 
 It starts with an `h2` header called Usage.
 
-The Usage section should be composed of a single {{< param "PRODUCT_NAME" >}} code block, with no
+The Usage section should be composed of a single Alloy code block, with no
 description. Use `YELLING_SNAKE_CASE` to refer to values the user must replace.
 For example:
 
@@ -188,7 +188,7 @@ Name             | Type       | Description                            | Default
 Values for the Name column should be the backticked argument name, such as ``
 `targets` ``.
 
-Values for the Type column should be the backticked {{< param "PRODUCT_NAME" >}} type (for example,
+Values for the Type column should be the backticked Alloy syntax type (for example,
 `string`, `bool`, `number`). Arrays should be represented as
 `list(INNER_TYPE)`, and dictionaries should be represented as
 `map(VALUE_TYPE)`.
@@ -205,7 +205,7 @@ the table. Use full sentences for argument descriptions, ending them in
 periods.
 
 Values for the Default column may be omitted if the default is the zero value
-for the given {{< param "PRODUCT_NAME" >}} type. The Default column must be empty for required
+for the given Alloy syntax type. The Default column must be empty for required
 attributes.
 
 Values for the Required column must be either "yes" (for required attributes)
@@ -378,13 +378,13 @@ with the following columns:
 | Column      | Description                       |
 | ----------- | --------------------------------- |
 | Name        | Name of exported value.           |
-| Type        | {{< param "PRODUCT_NAME" >}} type of exported value.     |
+| Type        | Alloy syntax type of exported value.     |
 | Description | Description of exported value.    |
 
 Values for the Name column should be the backticked exported field name, such
 as `` `targets` ``.
 
-Values for the Type column should be the backticked {{< param "PRODUCT_NAME" >}} type. These types
+Values for the Type column should be the backticked Alloy syntax type. These types
 should follow the same guidelines detailed in the Type column in the [Arguments
 block](#arguments).
 
@@ -462,7 +462,7 @@ should always prefix the metrics table.
 
 ### Examples
 
-The Examples section provides copy-and-paste {{< param "PRODUCT_NAME" >}} pipelines which use the
+The Examples section provides copy-and-paste Alloy pipelines which use the
 Flow component. The section starts with an `h2` header called Examples. If
 there is only one example, call the section Example instead.
 
@@ -515,7 +515,7 @@ written in all uppercase and underscore delimited, for example: `API_URL`.
 
 Examples of the new component should avoid using placeholders and instead use
 realistic example values. For example, if documenting a `prometheus.scrape` component, use:
-  
+
   ```river
   remote.http "targets" {
     url = "http://localhost:8080/targets"
@@ -563,10 +563,10 @@ documenting auxiliary artifacts which are related to a component.
 ### otelcol.processor.transform
 
 The [otelcol.processor.transform][] component documentation needed to add
-an extra section about OTTL Contexts because there is no appropriate OTEL docs page 
-that we could link to. Currently this information is housed on the [transformprocessor][] 
-doc page, but because it contains yaml config for the Collector, users might get confused 
-how this maps to {{< param "PRODUCT_NAME" >}} and it is better not to link to it. In the future we could try to
+an extra section about OTTL Contexts because there is no appropriate OTEL docs page
+that we could link to. Currently this information is housed on the [transformprocessor][]
+doc page, but because it contains yaml config for the Collector, users might get confused
+how this maps to Alloy and it is better not to link to it. In the future we could try to
 move this information from [transformprocessor][] to the [OTTL Context][ottl context] doc.
 
 [loki.source.podlogs]: ../sources/flow/reference/components/loki.source.podlogs.md

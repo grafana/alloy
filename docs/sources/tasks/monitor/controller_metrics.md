@@ -1,11 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/monitor/controller_metrics/
 description: Learn how to monitor controller metrics
-title: Monitor controller
+title: Monitor the Grafana Agent component controller
+menuTitle: Monitor the controller
 weight: 100
 ---
 
-# Monitor controller
+# Monitor the {{< param "FULL_PRODUCT_NAME" >}} component controller
 
 The {{< param "PRODUCT_NAME" >}} [component controller][] exposes Prometheus metrics which you can use to investigate the controller state.
 

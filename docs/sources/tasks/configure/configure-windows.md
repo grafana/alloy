@@ -55,7 +55,7 @@ To change the set of command-line arguments passed to the {{< param "PRODUCT_NAM
 
       1. Type `services.msc` and click **OK**.
 
-   1. Right click on the service called **{{< param "FULL_PRODUCT_NAME" >}}**.
+   1. Right click on the service called **{{< param "PRODUCT_NAME" >}}**.
 
    1. Click on **All Tasks > Restart**.
 

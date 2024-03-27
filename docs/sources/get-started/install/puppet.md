@@ -4,6 +4,9 @@ description: Learn how to install Grafana Alloy with Puppet
 menuTitle: Puppet
 title: Install Grafana Alloy with Puppet
 weight: 560
+_build:
+  list: false
+noindex: true
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} with Puppet
