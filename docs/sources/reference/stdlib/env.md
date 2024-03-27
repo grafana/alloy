@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/env/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/env/
 description: Learn about env
 title: env

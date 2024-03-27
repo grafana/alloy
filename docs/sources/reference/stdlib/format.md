@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/format/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/format/
 description: Learn about format
 title: format

@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/config-blocks/export/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/export/
 description: Learn about the export configuration block
 menuTitle: export

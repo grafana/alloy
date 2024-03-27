@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/config-blocks/import.string/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/import.string/
 description: Learn about the import.string configuration block
 title: import.string

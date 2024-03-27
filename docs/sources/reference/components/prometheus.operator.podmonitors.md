@@ -68,7 +68,7 @@ inside a `client` block.
 [match_expression]: #match_expression-block
 [rule]: #rule-block
 [scrape]: #scrape-block
-[clustering]: #clustering-beta
+[clustering]: #clustering-block
 
 ### client block
 
@@ -158,7 +158,7 @@ The `operator` argument must be one of the following strings:
 
 If there are multiple `match_expressions` blocks inside of a `selector` block, they are combined together with AND clauses.
 
-### clustering (beta)
+### clustering block
 
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------

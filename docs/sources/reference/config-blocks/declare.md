@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./flow/reference/config-blocks/declare/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/declare/
 description: Learn about the declare configuration block
 menuTitle: declare

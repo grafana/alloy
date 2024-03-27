@@ -160,7 +160,7 @@ The `operator` argument must be one of the following strings:
 
 If there are multiple `match_expressions` blocks inside of a `selector` block, they are combined together with AND clauses.
 
-### clustering (experimental)
+### clustering block
 
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
@@ -188,7 +188,7 @@ fully consistent like hashmod sharding is).
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op, and
 `prometheus.operator.probes` scrapes every target it receives in its arguments.
 
-[clustered mode]: ../../cli/run/#clustering-beta
+[clustered mode]: ../../cli/run/#clustering
 
 ## Exported fields
 

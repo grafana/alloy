@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/concat/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/concat/
 description: Learn about concat
 title: concat

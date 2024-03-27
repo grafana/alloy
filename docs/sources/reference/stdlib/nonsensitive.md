@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/nonsensitive/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/nonsensitive/
 description: Learn about nonsensitive
 title: nonsensitive

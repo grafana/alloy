@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/config-blocks/tracing/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/tracing/
 description: Learn about the tracing configuration block
 menuTitle: tracing

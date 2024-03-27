@@ -126,7 +126,9 @@ Each {{< param "PRODUCT_NAME" >}} then transitions to the terminating state when
 
 The current state of a clustered {{< param "PRODUCT_NAME" >}} is shown on the clustering page in the [UI][].
 
-## Configuration conversion (beta)
+## Configuration conversion
+
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 When you use the `--config.format` command-line argument with a value other than `alloy`, {{< param "PRODUCT_NAME" >}} converts the configuration file from the source format to {{< param "PRODUCT_NAME" >}} and immediately starts running with the new configuration.
 This conversion uses the converter API described in the [alloy convert][] docs.

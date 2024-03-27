@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/split/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/split/
 description: Learn about split
 title: split

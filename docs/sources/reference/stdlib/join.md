@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/join/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/join/
 description: Learn about join
 title: join

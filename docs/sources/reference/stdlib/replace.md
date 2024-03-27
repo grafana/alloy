@@ -1,6 +1,4 @@
 ---
-aliases:
-- .reference/stdlib/replace/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/replace/
 description: Learn about replace
 title: replace

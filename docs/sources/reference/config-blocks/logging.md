@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/config-blocks/logging/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/logging/
 description: Learn about the logging configuration block
 menuTitle: logging
