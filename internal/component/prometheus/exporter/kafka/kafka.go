@@ -53,7 +53,7 @@ type Arguments struct {
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.kafka",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 

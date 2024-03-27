@@ -19,7 +19,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.auth.headers",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   auth.Exports{},
 

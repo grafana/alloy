@@ -52,7 +52,7 @@ func runCommand() *cobra.Command {
 		inMemoryAddr:          "alloy.internal:12345",
 		httpListenAddr:        "127.0.0.1:12345",
 		storagePath:           "data-alloy/",
-		minStability:          featuregate.StabilityStable,
+		minStability:          featuregate.StabilityGenerallyAvailable,
 		uiPrefix:              "/",
 		disableReporting:      false,
 		enablePprof:           true,

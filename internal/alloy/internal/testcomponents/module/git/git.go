@@ -20,7 +20,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "module.git",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 		Exports:   module.Exports{},
 

@@ -63,7 +63,7 @@ func TestServices_Configurable(t *testing.T) {
 				return service.Definition{
 					Name:       "fake",
 					ConfigType: ServiceOptions{},
-					Stability:  featuregate.StabilityBeta,
+					Stability:  featuregate.StabilityPublicPreview,
 				}
 			},
 
@@ -118,7 +118,7 @@ func TestServices_Configurable_Optional(t *testing.T) {
 				return service.Definition{
 					Name:       "fake",
 					ConfigType: ServiceOptions{},
-					Stability:  featuregate.StabilityBeta,
+					Stability:  featuregate.StabilityPublicPreview,
 				}
 			},
 
@@ -212,11 +212,11 @@ func TestComponents_Using_Services(t *testing.T) {
 		}
 
 		registry = controller.NewRegistryMap(
-			featuregate.StabilityStable,
+			featuregate.StabilityGenerallyAvailable,
 			map[string]component.Registration{
 				"service_consumer": {
 					Name:      "service_consumer",
-					Stability: featuregate.StabilityStable,
+					Stability: featuregate.StabilityGenerallyAvailable,
 					Args:      struct{}{},
 					Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 						// Call Trigger in a defer so we can make some extra assertions before
@@ -274,12 +274,12 @@ func TestComponents_Using_Services_In_Modules(t *testing.T) {
 		}
 
 		registry = controller.NewRegistryMap(
-			featuregate.StabilityStable,
+			featuregate.StabilityGenerallyAvailable,
 			map[string]component.Registration{
 				"module_loader": {
 					Name:      "module_loader",
 					Args:      struct{}{},
-					Stability: featuregate.StabilityStable,
+					Stability: featuregate.StabilityGenerallyAvailable,
 					Build: func(opts component.Options, _ component.Arguments) (component.Component, error) {
 						mod, err := opts.ModuleController.NewModule("", nil)
 						require.NoError(t, err, "Failed to create module")
@@ -300,7 +300,7 @@ func TestComponents_Using_Services_In_Modules(t *testing.T) {
 				"service_consumer": {
 					Name:      "service_consumer",
 					Args:      struct{}{},
-					Stability: featuregate.StabilityStable,
+					Stability: featuregate.StabilityGenerallyAvailable,
 					Build: func(opts component.Options, _ component.Arguments) (component.Component, error) {
 						// Call Trigger in a defer so we can make some extra assertions before
 						// the test exits.

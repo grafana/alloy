@@ -16,7 +16,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "testcomponents.count",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      CountConfig{},
 		Exports:   CountExports{},
 

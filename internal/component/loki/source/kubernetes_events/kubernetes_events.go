@@ -29,7 +29,7 @@ const informerSyncTimeout = 10 * time.Second
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.kubernetes_events",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

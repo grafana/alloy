@@ -27,7 +27,7 @@ const waitReadPeriod time.Duration = 30 * time.Millisecond
 func init() {
 	component.Register(component.Registration{
 		Name:      "local.file",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 

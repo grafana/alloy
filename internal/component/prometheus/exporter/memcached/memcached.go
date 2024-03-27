@@ -14,7 +14,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.memcached",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 

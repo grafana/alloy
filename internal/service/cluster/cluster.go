@@ -163,7 +163,7 @@ func (s *Service) Definition() service.Definition {
 			// Cluster depends on the HTTP service to work properly.
 			http_service.ServiceName,
 		},
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 	}
 }
 

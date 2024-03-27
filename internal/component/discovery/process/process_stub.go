@@ -14,7 +14,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.process",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 

@@ -121,7 +121,7 @@ type Registration struct {
 	Name string
 
 	// Stability is the overall stability level of the component. This is used to make
-	// sure the user is not accidentally using a component that is not yet stable - users
+	// sure the user is not accidentally using a component that is not yet GA - users
 	// need to explicitly enable less-than-stable components via, for example, a command-line flag.
 	// If a component is not stable enough, an attempt to create it via the controller will fail.
 	// This field must be set to a non-zero value.

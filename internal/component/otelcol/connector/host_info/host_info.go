@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.connector.host_info",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 

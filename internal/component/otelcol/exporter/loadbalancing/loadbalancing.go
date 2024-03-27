@@ -25,7 +25,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.loadbalancing",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -69,7 +69,7 @@ func (args *Arguments) Validate() error {
 	//TODO(ptodev): Add support for "resource" and "metric" routing keys later.
 	// The reason we can't add them yet is that otelcol.exporter.loadbalancing
 	// is labeled as "beta", but those routing keys are experimental.
-	// We need a way to label otelcol.exporter.loadbalancing as "beta"
+	// We need a way to label otelcol.exporter.loadbalancing as "public-preview"
 	// for logs and traces, but "experimental" for metrics.
 	switch args.RoutingKey {
 	case "service", "traceID":

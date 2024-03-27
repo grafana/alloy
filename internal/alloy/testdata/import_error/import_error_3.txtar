@@ -11,4 +11,4 @@ import.string "testImport" {
 testImport.a "cc" {}
 
 -- error --
-component "testcomponents.experimental" is at stability level "experimental", which is below the minimum allowed stability level "beta"
+component "testcomponents.experimental" is at stability level "experimental", which is below the minimum allowed stability level "public-preview"

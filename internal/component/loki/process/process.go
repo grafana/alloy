@@ -22,7 +22,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.process",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

@@ -129,7 +129,7 @@ func (s *Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  nil, // http has no dependencies.
-		Stability:  featuregate.StabilityStable,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 

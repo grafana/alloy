@@ -87,7 +87,7 @@ func TestLoader(t *testing.T) {
 	}
 
 	newLoaderOptions := func() controller.LoaderOptions {
-		return newLoaderOptionsWithStability(featuregate.StabilityBeta)
+		return newLoaderOptionsWithStability(featuregate.StabilityPublicPreview)
 	}
 
 	t.Run("New Graph", func(t *testing.T) {
@@ -168,21 +168,21 @@ func TestLoader(t *testing.T) {
 	})
 
 	t.Run("Load with correct stability level", func(t *testing.T) {
-		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityBeta))
+		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityPublicPreview))
 		diags := applyFromContent(t, l, []byte(testFile), nil, nil)
 		require.NoError(t, diags.ErrorOrNil())
 	})
 
 	t.Run("Load with below minimum stability level", func(t *testing.T) {
-		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityStable))
+		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityGenerallyAvailable))
 		diags := applyFromContent(t, l, []byte(testFile), nil, nil)
-		require.ErrorContains(t, diags.ErrorOrNil(), "component \"testcomponents.tick\" is at stability level \"beta\", which is below the minimum allowed stability level \"stable\"")
+		require.ErrorContains(t, diags.ErrorOrNil(), "component \"testcomponents.tick\" is at stability level \"public-preview\", which is below the minimum allowed stability level \"generally-available\"")
 	})
 
 	t.Run("Load with undefined minimum stability level", func(t *testing.T) {
 		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityUndefined))
 		diags := applyFromContent(t, l, []byte(testFile), nil, nil)
-		require.ErrorContains(t, diags.ErrorOrNil(), "stability levels must be defined: got \"beta\" as stability of component \"testcomponents.tick\" and <invalid_stability_level> as the minimum stability level")
+		require.ErrorContains(t, diags.ErrorOrNil(), "stability levels must be defined: got \"public-preview\" as stability of component \"testcomponents.tick\" and <invalid_stability_level> as the minimum stability level")
 	})
 
 	t.Run("Partial load with invalid reference", func(t *testing.T) {
@@ -330,7 +330,7 @@ func TestLoader_Services(t *testing.T) {
 				ConfigType: struct {
 					Name string `alloy:"name,attr,optional"`
 				}{},
-				Stability: featuregate.StabilityBeta,
+				Stability: featuregate.StabilityPublicPreview,
 			}
 		},
 	}
@@ -354,21 +354,21 @@ func TestLoader_Services(t *testing.T) {
 	}
 
 	t.Run("Load with service at correct stability level", func(t *testing.T) {
-		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityBeta))
+		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityPublicPreview))
 		diags := applyFromContent(t, l, []byte(testFile), nil, nil)
 		require.NoError(t, diags.ErrorOrNil())
 	})
 
 	t.Run("Load with service below minimum stabilty level", func(t *testing.T) {
-		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityStable))
+		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityGenerallyAvailable))
 		diags := applyFromContent(t, l, []byte(testFile), nil, nil)
-		require.ErrorContains(t, diags.ErrorOrNil(), `block "testsvc" is at stability level "beta", which is below the minimum allowed stability level "stable"`)
+		require.ErrorContains(t, diags.ErrorOrNil(), `block "testsvc" is at stability level "public-preview", which is below the minimum allowed stability level "generally-available"`)
 	})
 
 	t.Run("Load with undefined minimum stability level", func(t *testing.T) {
 		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityUndefined))
 		diags := applyFromContent(t, l, []byte(testFile), nil, nil)
-		require.ErrorContains(t, diags.ErrorOrNil(), `stability levels must be defined: got "beta" as stability of block "testsvc" and <invalid_stability_level> as the minimum stability level`)
+		require.ErrorContains(t, diags.ErrorOrNil(), `stability levels must be defined: got "public-preview" as stability of block "testsvc" and <invalid_stability_level> as the minimum stability level`)
 	})
 }
 
@@ -399,7 +399,7 @@ func TestScopeWithFailingComponent(t *testing.T) {
 				Logger:            l,
 				TraceProvider:     noop.NewTracerProvider(),
 				DataPath:          t.TempDir(),
-				MinStability:      featuregate.StabilityBeta,
+				MinStability:      featuregate.StabilityPublicPreview,
 				OnBlockNodeUpdate: func(cn controller.BlockNode) { /* no-op */ },
 				Registerer:        prometheus.NewRegistry(),
 				NewModuleController: func(id string) controller.ModuleController {

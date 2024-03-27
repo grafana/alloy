@@ -12,7 +12,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "test.fail.module",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      TestFailArguments{},
 		Exports:   mod.Exports{},
 
