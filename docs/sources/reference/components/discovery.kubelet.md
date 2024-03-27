@@ -8,6 +8,8 @@ title: discovery.kubelet
 
 # discovery.kubelet
 
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 `discovery.kubelet` discovers Kubernetes pods running on the specified Kubelet and exposes them as scrape targets.
 
 ## Usage

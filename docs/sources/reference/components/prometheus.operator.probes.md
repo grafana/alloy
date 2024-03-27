@@ -1,7 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.operator.probes/
 description: Learn about prometheus.operator.probes
-
 title: prometheus.operator.probes
 ---
 

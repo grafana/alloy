@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/cli/convert/
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/convert/
 description: Learn about the convert command
 menuTitle: convert
@@ -11,6 +9,8 @@ weight: 100
 <span class="badge docs-labels__stage docs-labels__item">Public preview</span>
 
 # The convert command
+
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `convert` command converts a supported configuration format to the {{< param "PRODUCT_NAME" >}} configuration format.
 

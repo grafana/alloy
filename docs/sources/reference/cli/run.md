@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/cli/run/
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/run/
 description: Learn about the run command
 menuTitle: run

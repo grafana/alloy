@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/config-blocks/import.file/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/import.file/
 description: Learn about the import.file configuration block
 title: import.file
