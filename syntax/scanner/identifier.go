@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/alloy/syntax/token"
 )
 
-// IsValidIdentifier returns true if the given string is a valid river
+// IsValidIdentifier returns true if the given string is a valid Alloy
 // identifier.
 func IsValidIdentifier(in string) bool {
 	s := New(token.NewFile(""), []byte(in), nil, 0)
@@ -14,7 +14,7 @@ func IsValidIdentifier(in string) bool {
 	return tok == token.IDENT && lit == in
 }
 
-// SanitizeIdentifier will return the given string mutated into a valid river
+// SanitizeIdentifier will return the given string mutated into a valid Alloy
 // identifier. If the given string is already a valid identifier, it will be
 // returned unchanged.
 //
@@ -37,7 +37,7 @@ func SanitizeIdentifier(in string) (string, error) {
 	return newValue, nil
 }
 
-// generateNewIdentifier expects a valid river prefix and replacement
+// generateNewIdentifier expects a valid Alloy prefix and replacement
 // string and returns a new identifier based on the given input.
 func generateNewIdentifier(in string) string {
 	newValue := ""

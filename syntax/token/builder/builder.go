@@ -1,4 +1,4 @@
-// Package builder exposes an API to create a River configuration file by
+// Package builder exposes an API to create an Alloy configuration file by
 // constructing a set of tokens.
 package builder
 
@@ -15,9 +15,9 @@ import (
 	"github.com/grafana/alloy/syntax/token"
 )
 
-var goRiverDefaulter = reflect.TypeOf((*value.Defaulter)(nil)).Elem()
+var goAlloyDefaulter = reflect.TypeOf((*value.Defaulter)(nil)).Elem()
 
-// An Expr represents a single River expression.
+// An Expr represents a single Alloy expression.
 type Expr struct {
 	rawTokens []Token
 }
@@ -28,10 +28,10 @@ func NewExpr() *Expr { return &Expr{} }
 // Tokens returns the Expr as a set of Tokens.
 func (e *Expr) Tokens() []Token { return e.rawTokens }
 
-// SetValue sets the Expr to a River value converted from a Go value. The Go
-// value is encoded using the normal Go to River encoding rules. If any value
+// SetValue sets the Expr to an Alloy value converted from a Go value. The Go
+// value is encoded using the normal Go to Alloy encoding rules. If any value
 // reachable from goValue implements Tokenizer, the printed tokens will instead
-// be retrieved by calling the RiverTokenize method.
+// be retrieved by calling the AlloyTokenize method.
 func (e *Expr) SetValue(goValue interface{}) {
 	e.rawTokens = tokenEncode(goValue)
 }
@@ -49,7 +49,7 @@ func (e *Expr) Bytes() []byte {
 	return buf.Bytes()
 }
 
-// A File represents a River configuration file.
+// A File represents an Alloy configuration file.
 type File struct {
 	body *Body
 }
@@ -136,14 +136,14 @@ func (b *Body) AppendBlock(block *Block) {
 
 // AppendFrom sets attributes and appends blocks defined by goValue into the
 // Body. If any value reachable from goValue implements Tokenizer, the printed
-// tokens will instead be retrieved by calling the RiverTokenize method.
+// tokens will instead be retrieved by calling the AlloyTokenize method.
 //
 // Optional attributes and blocks set to default values are trimmed.
 // If goValue implements Defaulter, default values are retrieved by
 // calling SetToDefault against a copy. Otherwise, default values are
 // the zero value of the respective Go types.
 //
-// goValue must be a struct or a pointer to a struct that contains River struct
+// goValue must be a struct or a pointer to a struct that contains alloy struct
 // tags.
 func (b *Body) AppendFrom(goValue interface{}) {
 	if goValue == nil {
@@ -179,7 +179,7 @@ func (b *Body) encodeFields(rv reflect.Value) {
 
 	fields := syntaxtags.Get(rv.Type())
 	defaults := reflect.New(rv.Type()).Elem()
-	if defaults.CanAddr() && defaults.Addr().Type().Implements(goRiverDefaulter) {
+	if defaults.CanAddr() && defaults.Addr().Type().Implements(goAlloyDefaulter) {
 		defaults.Addr().Interface().(value.Defaulter).SetToDefault()
 	}
 
@@ -329,10 +329,10 @@ func (b *Body) getOrCreateAttribute(name string) *attribute {
 }
 
 // SetAttributeValue sets an attribute in the Body whose value is converted
-// from a Go value to a River value. The Go value is encoded using the normal
-// Go to River encoding rules. If any value reachable from goValue implements
+// from a Go value to an Alloy value. The Go value is encoded using the normal
+// Go to Alloy encoding rules. If any value reachable from goValue implements
 // Tokenizer, the printed tokens will instead be retrieved by calling the
-// RiverTokenize method.
+// AlloyTokenize method.
 //
 // If the attribute was previously set, its value tokens are updated.
 //
@@ -362,7 +362,7 @@ func (attr *attribute) Tokens() []Token {
 	return toks
 }
 
-// A Block encapsulates a body within a named and labeled River block. Blocks
+// A Block encapsulates a body within a named and labeled Alloy block. Blocks
 // must be created by calling NewBlock, but its public struct fields may be
 // safely modified by callers.
 type Block struct {

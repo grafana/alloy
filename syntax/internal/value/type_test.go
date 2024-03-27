@@ -12,7 +12,7 @@ type customCapsule bool
 
 var _ value.Capsule = (customCapsule)(false)
 
-func (customCapsule) RiverCapsule() {}
+func (customCapsule) AlloyCapsule() {}
 
 var typeTests = []struct {
 	input  interface{}
@@ -38,7 +38,7 @@ var typeTests = []struct {
 	{[...]int{0, 1, 2}, value.TypeArray},
 	{[]int{0, 1, 2}, value.TypeArray},
 
-	// Struct with no River tags is a capsule.
+	// Struct with no alloy tags is a capsule.
 	{struct{}{}, value.TypeCapsule},
 
 	// A slice of labeled blocks should be an object.
@@ -49,7 +49,7 @@ var typeTests = []struct {
 	{map[string]interface{}{}, value.TypeObject},
 
 	// Go functions must have one non-error return type and one optional error
-	// return type to be River functions. Everything else is a capsule.
+	// return type to be Alloy functions. Everything else is a capsule.
 	{(func() int)(nil), value.TypeFunction},
 	{(func() (int, error))(nil), value.TypeFunction},
 	{(func())(nil), value.TypeCapsule},                 // Must have non-error return type
@@ -68,12 +68,12 @@ var typeTests = []struct {
 	{(**customCapsule)(nil), value.TypeCapsule},
 }
 
-func Test_RiverType(t *testing.T) {
+func Test_AlloyType(t *testing.T) {
 	for _, tc := range typeTests {
 		rt := reflect.TypeOf(tc.input)
 
 		t.Run(rt.String(), func(t *testing.T) {
-			actual := value.RiverType(rt)
+			actual := value.AlloyType(rt)
 			require.Equal(t, tc.expect, actual, "Unexpected type for %#v", tc.input)
 		})
 	}

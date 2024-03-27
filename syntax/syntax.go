@@ -1,5 +1,5 @@
-// Package syntax implements a high-level API for decoding and encoding River
-// configuration files. The mapping between River and Go values is described in
+// Package syntax implements a high-level API for decoding and encoding Alloy
+// configuration files. The mapping between Alloy and Go values is described in
 // the documentation for the Unmarshal and Marshal functions.
 //
 // Lower-level APIs which give more control over configuration evaluation are
@@ -17,26 +17,26 @@ import (
 	"github.com/grafana/alloy/syntax/vm"
 )
 
-// Marshal returns the pretty-printed encoding of v as a River configuration
+// Marshal returns the pretty-printed encoding of v as a Alloy configuration
 // file. v must be a Go struct with alloy struct tags which determine the
 // structure of the resulting file.
 //
 // Marshal traverses the value v recursively, encoding each struct field as a
-// River block or River attribute, based on the flags provided to the alloy
-// struct tag.
+// Alloy block or attribute, based on the flags provided to the alloy struct
+// tag.
 //
-// When a struct field represents a River block, Marshal creates a new block
+// When a struct field represents an Alloy block, Marshal creates a new block
 // and recursively encodes the value as the body of the block. The name of the
 // created block is taken from the name specified by the alloy struct tag.
 //
-// Struct fields which represent River blocks must be either a Go struct or a
+// Struct fields which represent Alloy blocks must be either a Go struct or a
 // slice of Go structs. When the field is a Go struct, its value is encoded as
 // a single block. When the field is a slice of Go structs, a block is created
 // for each element in the slice.
 //
 // When encoding a block, if the inner Go struct has a struct field
-// representing a River block label, the value of that field is used as the
-// label name for the created block. Fields used for River block labels must be
+// representing a Alloy block label, the value of that field is used as the
+// label name for the created block. Fields used for Alloy block labels must be
 // the string type. When specified, there must not be more than one struct
 // field which represents a block label.
 //
@@ -101,10 +101,10 @@ import (
 //
 // Marshal will panic if it encounters a struct with invalid alloy tags.
 //
-// When a struct field represents a River attribute, Marshal encodes the struct
-// value as a River value. The attribute name will be taken from the name
-// specified by the alloy struct tag. See MarshalValue for the rules used to
-// convert a Go value into a River value.
+// When a struct field represents an Alloy attribute, Marshal encodes the
+// struct value as an Alloy value. The attribute name will be taken from the
+// name specified by the alloy struct tag. See MarshalValue for the rules used
+// to convert a Go value into an Alloy value.
 func Marshal(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := NewEncoder(&buf).Encode(v); err != nil {
@@ -113,39 +113,39 @@ func Marshal(v interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// MarshalValue returns the pretty-printed encoding of v as a River value.
+// MarshalValue returns the pretty-printed encoding of v as an Alloy value.
 //
 // MarshalValue traverses the value v recursively. If an encountered value
 // implements the encoding.TextMarshaler interface, MarshalValue calls its
-// MarshalText method and encodes the result as a River string. If a value
-// implements the Capsule interface, it always encodes as a River capsule
+// MarshalText method and encodes the result as an Alloy string. If a value
+// implements the Capsule interface, it always encodes as an Alloy capsule
 // value.
 //
 // Otherwise, MarshalValue uses the following type-dependent default encodings:
 //
-// Boolean values encode to River bools.
+// Boolean values encode to Alloy bools.
 //
-// Floating point, integer, and Number values encode to River numbers.
+// Floating point, integer, and Number values encode to Alloy numbers.
 //
-// String values encode to River strings.
+// String values encode to Alloy strings.
 //
-// Array and slice values encode to River arrays, except that []byte is
-// converted into a River string. Nil slices encode as an empty array and nil
+// Array and slice values encode to Alloy arrays, except that []byte is
+// converted into a Alloy string. Nil slices encode as an empty array and nil
 // []byte slices encode as an empty string.
 //
-// Structs encode to River objects, using Go struct field tags to determine the
-// resulting structure of the River object. Each exported struct field with a
-// river tag becomes an object field, using the tag name as the field name.
-// Other struct fields are ignored. If no struct field has a river tag, the
-// struct encodes to a River capsule instead.
+// Structs encode to Alloy objects, using Go struct field tags to determine the
+// resulting structure of the Alloy object. Each exported struct field with an
+// alloy tag becomes an object field, using the tag name as the field name.
+// Other struct fields are ignored. If no struct field has an alloy tag, the
+// struct encodes to an Alloy capsule instead.
 //
-// Function values encode to River functions, which appear in the resulting
+// Function values encode to Alloy functions, which appear in the resulting
 // text as strings formatted as "function(GO_TYPE)".
 //
-// All other Go values encode to River capsules, which appear in the resulting
+// All other Go values encode to Alloy capsules, which appear in the resulting
 // text as strings formatted as "capsule(GO_TYPE)".
 //
-// The river tag specifies the field name, possibly followed by a
+// The alloy tag specifies the field name, possibly followed by a
 // comma-separated list of options. The following provides examples for all
 // supported struct field tags with their meanings:
 //
@@ -167,7 +167,7 @@ func MarshalValue(v interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Encoder writes River configuration to an output stream. Call NewEncoder to
+// Encoder writes Alloy configuration to an output stream. Call NewEncoder to
 // create instances of Encoder.
 type Encoder struct {
 	w io.Writer
@@ -178,11 +178,11 @@ func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{w: w}
 }
 
-// Encode converts the value pointed to by v into a River configuration file
+// Encode converts the value pointed to by v into an Alloy configuration file
 // and writes the result to the Decoder's output stream.
 //
 // See the documentation for Marshal for details about the conversion of Go
-// values into River configuration.
+// values into Alloy configuration.
 func (enc *Encoder) Encode(v interface{}) error {
 	f := builder.NewFile()
 	f.Body().AppendFrom(v)
@@ -191,11 +191,11 @@ func (enc *Encoder) Encode(v interface{}) error {
 	return err
 }
 
-// EncodeValue converts the value pointed to by v into a River value and writes
-// the result to the Decoder's output stream.
+// EncodeValue converts the value pointed to by v into an Alloy value and
+// writes the result to the Decoder's output stream.
 //
 // See the documentation for MarshalValue for details about the conversion of
-// Go values into River values.
+// Go values into Alloy values.
 func (enc *Encoder) EncodeValue(v interface{}) error {
 	expr := builder.NewExpr()
 	expr.SetValue(v)
@@ -204,32 +204,32 @@ func (enc *Encoder) EncodeValue(v interface{}) error {
 	return err
 }
 
-// Unmarshal converts the River configuration file specified by in and stores
+// Unmarshal converts the Alloy configuration file specified by in and stores
 // it in the struct value pointed to by v. If v is nil or not a pointer,
 // Unmarshal panics. The configuration specified by in may use expressions to
-// compute values while unmarshaling. Refer to the River language documentation
+// compute values while unmarshaling. Refer to the Alloy syntax documentation
 // for the list of valid formatting and expression rules.
 //
 // Unmarshal uses the inverse of the encoding rules that Marshal uses,
 // allocating maps, slices, and pointers as necessary.
 //
-// To unmarshal a River body into a map[string]T, Unmarshal assigns each
+// To unmarshal an Alloy body into a map[string]T, Unmarshal assigns each
 // attribute to a key in the map, and decodes the attribute's value as the
 // value for the map entry. Only attribute statements are allowed when
 // unmarshaling into a map.
 //
-// To unmarshal a River body into a struct, Unmarshal matches incoming
+// To unmarshal an Alloy body into a struct, Unmarshal matches incoming
 // attributes and blocks to the alloy struct tags specified by v. Incoming
 // attribute and blocks which do not match to an alloy struct tag cause a
 // decoding error. Additionally, any attribute or block marked as required by
 // the alloy struct tag that are not present in the source text will generate a
 // decoding error.
 //
-// To unmarshal a list of River blocks into a slice, Unmarshal resets the slice
+// To unmarshal a list of Alloy blocks into a slice, Unmarshal resets the slice
 // length to zero and then appends each element to the slice.
 //
-// To unmarshal a list of River blocks into a Go array, Unmarshal decodes each
-// block into the corresponding Go array element. If the number of River blocks
+// To unmarshal a list of Alloy blocks into a Go array, Unmarshal decodes each
+// block into the corresponding Go array element. If the number of Alloy blocks
 // does not match the length of the Go array, a decoding error is returned.
 //
 // Unmarshal follows the rules specified by UnmarshalValue when unmarshaling
@@ -239,60 +239,59 @@ func Unmarshal(in []byte, v interface{}) error {
 	return dec.Decode(v)
 }
 
-// UnmarshalValue converts the River configuration file specified by in and
+// UnmarshalValue converts the Alloy configuration file specified by in and
 // stores it in the value pointed to by v. If v is nil or not a pointer,
 // UnmarshalValue panics. The configuration specified by in may use expressions
-// to compute values while unmarshaling. Refer to the River language
+// to compute values while unmarshaling. Refer to the Alloy syntax
 // documentation for the list of valid formatting and expression rules.
 //
 // Unmarshal uses the inverse of the encoding rules that MarshalValue uses,
 // allocating maps, slices, and pointers as necessary, with the following
 // additional rules:
 //
-// After converting a River value into its Go value counterpart, the Go value
+// After converting an Alloy value into its Go value counterpart, the Go value
 // may be converted into a capsule if the capsule type implements
 // ConvertibleIntoCapsule.
 //
-// To unmarshal a River object into a struct, UnmarshalValue matches incoming
+// To unmarshal an Alloy object into a struct, UnmarshalValue matches incoming
 // object fields to the alloy struct tags specified by v. Incoming object
 // fields which do not match to an alloy struct tag cause a decoding error.
 // Additionally, any object field marked as required by the alloy struct
 // tag that are not present in the source text will generate a decoding error.
 //
-// To unmarshal River into an interface value, Unmarshal stores one of the
+// To unmarshal Alloy into an interface value, Unmarshal stores one of the
 // following:
 //
-//   - bool, for River bools
-//   - float64, for floating point River numbers
+//   - bool, for Alloy bools
+//   - float64, for floating point Alloy numbers
 //     and integers which are too big to fit in either of int/int64/uint64
 //   - int/int64/uint64, in this order of preference, for signed and unsigned
-//     River integer numbers, depending on how big they are
-//   - string, for River strings
-//   - []interface{}, for River arrays
-//   - map[string]interface{}, for River objects
+//     Alloy integer numbers, depending on how big they are
+//   - string, for Alloy strings
+//   - []interface{}, for Alloy arrays
+//   - map[string]interface{}, for Alloy objects
 //
 // Capsule and function types will retain their original type when decoding
 // into an interface value.
 //
-// To unmarshal a River array into a slice, Unmarshal resets the slice length
+// To unmarshal an Alloy array into a slice, Unmarshal resets the slice length
 // to zero and then appends each element to the slice.
 //
-// To unmarshal a River array into a Go array, Unmarshal decodes River array
-// elements into the corresponding Go array element. If the number of River
-// elements does not match the length of the Go array, a decoding error is
-// returned.
+// To unmarshal an Alloy array into a Go array, Unmarshal decodes Alloy array
+// elements into the corresponding Go array element. If the number of elements
+// does not match the length of the Go array, a decoding error is returned.
 //
-// To unmarshal a River object into a Map, Unmarshal establishes a map to use.
+// To unmarshal an Alloy object into a Map, Unmarshal establishes a map to use.
 // If the map is nil, Unmarshal allocates a new map. Otherwise, Unmarshal
 // reuses the existing map, keeping existing entries. Unmarshal then stores
-// key-value pairs from the River object into the map. The map's key type must
+// key-value pairs from the Alloy object into the map. The map's key type must
 // be string.
 func UnmarshalValue(in []byte, v interface{}) error {
 	dec := NewDecoder(bytes.NewReader(in))
 	return dec.DecodeValue(v)
 }
 
-// Decoder reads River configuration from an input stream. Call NewDecoder to
+// Decoder reads Alloy configuration from an input stream. Call NewDecoder to
 // create instances of Decoder.
 type Decoder struct {
 	r io.Reader
@@ -303,12 +302,12 @@ func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{r: r}
 }
 
-// Decode reads the River-encoded file from the Decoder's input and stores it
+// Decode reads the Alloy-encoded file from the Decoder's input and stores it
 // in the value pointed to by v. Data will be read from the Decoder's input
 // until EOF is reached.
 //
-// See the documentation for Unmarshal for details about the conversion of River
-// configuration into Go values.
+// See the documentation for Unmarshal for details about the conversion of
+// Alloy configuration into Go values.
 func (dec *Decoder) Decode(v interface{}) error {
 	bb, err := io.ReadAll(dec.r)
 	if err != nil {
@@ -324,12 +323,12 @@ func (dec *Decoder) Decode(v interface{}) error {
 	return eval.Evaluate(nil, v)
 }
 
-// DecodeValue reads the River-encoded expression from the Decoder's input and
+// DecodeValue reads the Alloy-encoded expression from the Decoder's input and
 // stores it in the value pointed to by v. Data will be read from the Decoder's
 // input until EOF is reached.
 //
 // See the documentation for UnmarshalValue for details about the conversion of
-// River values into Go values.
+// Alloy values into Go values.
 func (dec *Decoder) DecodeValue(v interface{}) error {
 	bb, err := io.ReadAll(dec.r)
 	if err != nil {

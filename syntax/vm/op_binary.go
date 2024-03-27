@@ -222,7 +222,7 @@ func tryUnwrapOptionalSecret(val value.Value) value.Value {
 	return value.String(optSecret.Value)
 }
 
-// valuesEqual returns true if two River Values are equal.
+// valuesEqual returns true if two Values are equal.
 func valuesEqual(lhs value.Value, rhs value.Value) bool {
 	if lhs.Type() != rhs.Type() {
 		// Two values with different types are never equal.
@@ -286,7 +286,7 @@ func valuesEqual(lhs value.Value, rhs value.Value) bool {
 
 	case value.TypeFunction:
 		// Two functions are never equal. We can't compare functions in Go, so
-		// there's no way to compare them in River right now.
+		// there's no way to compare them in Alloy syntax right now.
 		return false
 
 	case value.TypeCapsule:

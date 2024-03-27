@@ -21,7 +21,7 @@ func ExampleUnmarshal() {
 		Location string `alloy:"location,attr,optional"`
 	}
 
-	// Book is our overall type where we decode the overall River file into.
+	// Book is our overall type where we decode the overall Alloy file into.
 	type Book struct {
 		// Title of the book (required attribute).
 		Title string `alloy:"title,attr"`

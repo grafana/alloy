@@ -308,7 +308,7 @@ type CustomTokenizer bool
 
 var _ builder.Tokenizer = (CustomTokenizer)(false)
 
-func (ct CustomTokenizer) RiverTokenize() []builder.Token {
+func (ct CustomTokenizer) AlloyTokenize() []builder.Token {
 	return []builder.Token{{Tok: token.LITERAL, Lit: "CUSTOM_TOKENS"}}
 }
 

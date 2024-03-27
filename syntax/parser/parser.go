@@ -1,4 +1,4 @@
-// Package parser implements utilities for parsing River configuration files.
+// Package parser implements utilities for parsing Alloy configuration files.
 package parser
 
 import (
@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/alloy/syntax/token"
 )
 
-// ParseFile parses an entire River configuration file. The data parameter
+// ParseFile parses an entire Alloy configuration file. The data parameter
 // should hold the file contents to parse, while the filename parameter is used
 // for reporting errors.
 //
@@ -22,7 +22,7 @@ func ParseFile(filename string, data []byte) (*ast.File, error) {
 	return f, nil
 }
 
-// ParseExpression parses a single River expression from expr.
+// ParseExpression parses a single Alloy expression from expr.
 //
 // If an error was encountered during parsing, the returned expression will be
 // nil and err will be an ErrorList with all the errors encountered during

@@ -12,7 +12,7 @@ import (
 )
 
 // makeDiagnostic tries to convert err into a diag.Diagnostic. err must be an
-// error from the river/internal/value package, otherwise err will be returned
+// error from the syntax/internal/value package, otherwise err will be returned
 // unmodified.
 func makeDiagnostic(err error, assoc map[value.Value]ast.Node) error {
 	var (

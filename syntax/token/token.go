@@ -1,8 +1,8 @@
-// Package token defines the lexical elements of a River config and utilities
+// Package token defines the lexical elements of an Alloy config and utilities
 // surrounding their position.
 package token
 
-// Token is an individual River lexical token.
+// Token is an individual Alloy lexical token.
 type Token int
 
 // List of all lexical tokens and examples that represent them.

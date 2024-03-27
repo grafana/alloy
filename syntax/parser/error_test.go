@@ -124,7 +124,7 @@ func TestErrors(t *testing.T) {
 
 	for _, d := range list {
 		name := d.Name()
-		if d.IsDir() || !strings.HasSuffix(name, ".river") {
+		if d.IsDir() || !strings.HasSuffix(name, ".alloy") {
 			continue
 		}
 

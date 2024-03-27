@@ -1,4 +1,4 @@
-// Package value holds the internal representation for River values. River
+// Package value holds the internal representation for Alloy values. Alloy
 // values act as a lightweight wrapper around reflect.Value.
 package value
 
@@ -25,11 +25,11 @@ var (
 	goCapsule         = reflect.TypeOf((*Capsule)(nil)).Elem()
 	goDuration        = reflect.TypeOf((time.Duration)(0))
 	goDurationPtr     = reflect.TypeOf((*time.Duration)(nil))
-	goRiverDefaulter  = reflect.TypeOf((*Defaulter)(nil)).Elem()
-	goRiverDecoder    = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
-	goRiverValidator  = reflect.TypeOf((*Validator)(nil)).Elem()
-	goRawRiverFunc    = reflect.TypeOf((RawFunction)(nil))
-	goRiverValue      = reflect.TypeOf(Null)
+	goAlloyDefaulter  = reflect.TypeOf((*Defaulter)(nil)).Elem()
+	goAlloyDecoder    = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
+	goAlloyValidator  = reflect.TypeOf((*Validator)(nil)).Elem()
+	goRawAlloyFunc    = reflect.TypeOf((RawFunction)(nil))
+	goAlloyValue      = reflect.TypeOf(Null)
 )
 
 // NOTE(rfratto): This package is extremely sensitive to performance, so
@@ -39,7 +39,7 @@ var (
 // This allows many values to avoid allocations, with the exception of creating
 // arrays and objects.
 
-// Value represents a River value.
+// Value represents an Alloy value.
 type Value struct {
 	rv reflect.Value
 	ty Type
@@ -81,22 +81,22 @@ func Array(vv ...Value) Value {
 	}
 }
 
-// Func makes a new function Value from f. Func panics if f does not map to a
-// River function.
+// Func makes a new function Value from f. Func panics if f does not map to an
+// Alloy function.
 func Func(f interface{}) Value {
 	rv := reflect.ValueOf(f)
-	if RiverType(rv.Type()) != TypeFunction {
-		panic("river/value: Func called with non-function type")
+	if AlloyType(rv.Type()) != TypeFunction {
+		panic("syntax/value: Func called with non-function type")
 	}
 	return Value{rv: rv, ty: TypeFunction}
 }
 
 // Encapsulate creates a new Capsule value from v. Encapsulate panics if v does
-// not map to a River capsule.
+// not map to an Alloy capsule.
 func Encapsulate(v interface{}) Value {
 	rv := reflect.ValueOf(v)
-	if RiverType(rv.Type()) != TypeCapsule {
-		panic("river/value: Capsule called with non-capsule type")
+	if AlloyType(rv.Type()) != TypeCapsule {
+		panic("syntax/value: Capsule called with non-capsule type")
 	}
 	return Value{rv: rv, ty: TypeCapsule}
 }
@@ -110,18 +110,18 @@ func Encode(v interface{}) Value {
 	return makeValue(reflect.ValueOf(v))
 }
 
-// FromRaw converts a reflect.Value into a River Value. It is useful to prevent
+// FromRaw converts a reflect.Value into an Alloy Value. It is useful to prevent
 // downcasting an interface into an any.
 func FromRaw(v reflect.Value) Value {
 	return makeValue(v)
 }
 
-// Type returns the River type for the value.
+// Type returns the Alloy type for the value.
 func (v Value) Type() Type { return v.ty }
 
 // Describe returns a descriptive type name for the value. For capsule values,
 // this prints the underlying Go type name. For other values, it prints the
-// normal River type.
+// normal Alloy type.
 func (v Value) Describe() string {
 	if v.ty != TypeCapsule {
 		return v.ty.String()
@@ -132,7 +132,7 @@ func (v Value) Describe() string {
 // Bool returns the boolean value for v. It panics if v is not a bool.
 func (v Value) Bool() bool {
 	if v.ty != TypeBool {
-		panic("river/value: Bool called on non-bool type")
+		panic("syntax/value: Bool called on non-bool type")
 	}
 	return v.rv.Bool()
 }
@@ -140,7 +140,7 @@ func (v Value) Bool() bool {
 // Number returns a Number value for v. It panics if v is not a Number.
 func (v Value) Number() Number {
 	if v.ty != TypeNumber {
-		panic("river/value: Number called on non-number type")
+		panic("syntax/value: Number called on non-number type")
 	}
 	return newNumberValue(v.rv)
 }
@@ -148,7 +148,7 @@ func (v Value) Number() Number {
 // Int returns an int value for v. It panics if v is not a number.
 func (v Value) Int() int64 {
 	if v.ty != TypeNumber {
-		panic("river/value: Int called on non-number type")
+		panic("syntax/value: Int called on non-number type")
 	}
 	switch makeNumberKind(v.rv.Kind()) {
 	case NumberKindInt:
@@ -158,13 +158,13 @@ func (v Value) Int() int64 {
 	case NumberKindFloat:
 		return int64(v.rv.Float())
 	}
-	panic("river/value: unreachable")
+	panic("syntax/value: unreachable")
 }
 
 // Uint returns an uint value for v. It panics if v is not a number.
 func (v Value) Uint() uint64 {
 	if v.ty != TypeNumber {
-		panic("river/value: Uint called on non-number type")
+		panic("syntax/value: Uint called on non-number type")
 	}
 	switch makeNumberKind(v.rv.Kind()) {
 	case NumberKindInt:
@@ -174,13 +174,13 @@ func (v Value) Uint() uint64 {
 	case NumberKindFloat:
 		return uint64(v.rv.Float())
 	}
-	panic("river/value: unreachable")
+	panic("syntax/value: unreachable")
 }
 
 // Float returns a float value for v. It panics if v is not a number.
 func (v Value) Float() float64 {
 	if v.ty != TypeNumber {
-		panic("river/value: Float called on non-number type")
+		panic("syntax/value: Float called on non-number type")
 	}
 	switch makeNumberKind(v.rv.Kind()) {
 	case NumberKindInt:
@@ -190,13 +190,13 @@ func (v Value) Float() float64 {
 	case NumberKindFloat:
 		return v.rv.Float()
 	}
-	panic("river/value: unreachable")
+	panic("syntax/value: unreachable")
 }
 
 // Text returns a string value of v. It panics if v is not a string.
 func (v Value) Text() string {
 	if v.ty != TypeString {
-		panic("river/value: Text called on non-string type")
+		panic("syntax/value: Text called on non-string type")
 	}
 
 	// Attempt to get an address to v.rv for interface checking.
@@ -238,14 +238,14 @@ func (v Value) Len() int {
 			return v.rv.Len()
 		}
 	}
-	panic("river/value: Len called on non-array and non-object value")
+	panic("syntax/value: Len called on non-array and non-object value")
 }
 
 // Index returns index i of the Value. Panics if the value is not an array or
 // if it is out of bounds of the array's size.
 func (v Value) Index(i int) Value {
 	if v.ty != TypeArray {
-		panic("river/value: Index called on non-array value")
+		panic("syntax/value: Index called on non-array value")
 	}
 	return makeValue(v.rv.Index(i))
 }
@@ -270,15 +270,14 @@ func makeValue(v reflect.Value) Value {
 		v = v.Elem()
 	}
 
-	// Special case: a reflect.Value may be a value.Value when it's coming from a
-	// River array or object. We can unwrap the inner value here before
-	// continuing.
-	if v.IsValid() && v.Type() == goRiverValue {
+	// Special case: a reflect.Value may be a value.Value when it's coming from
+	// an Alloy array or object. We can unwrap the inner value here before continuing.
+	if v.IsValid() && v.Type() == goAlloyValue {
 		// Unwrap the inner value.
 		v = v.Interface().(Value).rv
 	}
 
-	// Before we get the River type of the Value, we need to see if it's possible
+	// Before we get the Alloy type of the Value, we need to see if it's possible
 	// to get a pointer to v. This ensures that if v is a non-pointer field of an
 	// addressable struct, still detect the type of v as if it was a pointer.
 	if v.CanAddr() {
@@ -288,7 +287,7 @@ func makeValue(v reflect.Value) Value {
 	if !v.IsValid() {
 		return Null
 	}
-	riverType := RiverType(v.Type())
+	alloyType := AlloyType(v.Type())
 
 	// Finally, deference the pointer fully and use the type we detected.
 	for v.Kind() == reflect.Pointer {
@@ -297,18 +296,18 @@ func makeValue(v reflect.Value) Value {
 		}
 		v = v.Elem()
 	}
-	return Value{rv: v, ty: riverType}
+	return Value{rv: v, ty: alloyType}
 }
 
 // OrderedKeys reports if v represents an object with consistently ordered
 // keys. It panics if v is not an object.
 func (v Value) OrderedKeys() bool {
 	if v.ty != TypeObject {
-		panic("river/value: OrderedKeys called on non-object value")
+		panic("syntax/value: OrderedKeys called on non-object value")
 	}
 
-	// Maps are the only type of unordered River object, since their keys can't
-	// be iterated over in a deterministic order. Every other type of River
+	// Maps are the only type of unordered Alloy object, since their keys can't
+	// be iterated over in a deterministic order. Every other type of Alloy
 	// object comes from a struct or a slice where the order of keys stays the
 	// same.
 	return v.rv.Kind() != reflect.Map
@@ -318,7 +317,7 @@ func (v Value) OrderedKeys() bool {
 // object.
 func (v Value) Keys() []string {
 	if v.ty != TypeObject {
-		panic("river/value: Keys called on non-object value")
+		panic("syntax/value: Keys called on non-object value")
 	}
 
 	switch {
@@ -347,14 +346,14 @@ func (v Value) Keys() []string {
 		return res
 	}
 
-	panic("river/value: unreachable")
+	panic("syntax/value: unreachable")
 }
 
 // Key returns the value for a key in v. It panics if v is not an object. ok
 // will be false if the key did not exist in the object.
 func (v Value) Key(key string) (index Value, ok bool) {
 	if v.ty != TypeObject {
-		panic("river/value: Key called on non-object value")
+		panic("syntax/value: Key called on non-object value")
 	}
 
 	switch {
@@ -385,7 +384,7 @@ func (v Value) Key(key string) (index Value, ok bool) {
 			}
 		}
 	default:
-		panic("river/value: unreachable")
+		panic("syntax/value: unreachable")
 	}
 
 	return
@@ -400,10 +399,10 @@ func (v Value) Key(key string) (index Value, ok bool) {
 // arguments doesn't match.
 func (v Value) Call(args ...Value) (Value, error) {
 	if v.ty != TypeFunction {
-		panic("river/value: Call called on non-function type")
+		panic("syntax/value: Call called on non-function type")
 	}
 
-	if v.rv.Type() == goRawRiverFunc {
+	if v.rv.Type() == goRawAlloyFunc {
 		return v.rv.Interface().(RawFunction)(v, args...)
 	}
 
@@ -463,7 +462,7 @@ func (v Value) Call(args ...Value) (Value, error) {
 	default:
 		// It's not possible to reach here; we enforce that function values always
 		// have 1 or 2 return values.
-		panic("river/value: unreachable")
+		panic("syntax/value: unreachable")
 	}
 }
 

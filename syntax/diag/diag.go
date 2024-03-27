@@ -1,4 +1,4 @@
-// Package diag exposes error types used throughout River and a method to
+// Package diag exposes error types used throughout Alloy and a method to
 // pretty-print them to the screen.
 package diag
 

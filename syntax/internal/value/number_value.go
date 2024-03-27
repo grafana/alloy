@@ -23,7 +23,7 @@ const (
 	NumberKindFloat
 )
 
-// makeNumberKind converts a Go kind to a River kind.
+// makeNumberKind converts a Go kind to an Alloy kind.
 func makeNumberKind(k reflect.Kind) NumberKind {
 	switch k {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -33,7 +33,7 @@ func makeNumberKind(k reflect.Kind) NumberKind {
 	case reflect.Float32, reflect.Float64:
 		return NumberKindFloat
 	default:
-		panic("river/value: makeNumberKind called with unsupported Kind value")
+		panic("syntax/value: makeNumberKind called with unsupported Kind value")
 	}
 }
 
@@ -83,7 +83,7 @@ func newNumberValue(v reflect.Value) Number {
 	case reflect.Float64:
 		val, bits, nk = math.Float64bits(v.Float()), 64, NumberKindFloat
 	default:
-		panic("river/value: unrecognized Go number type " + v.Kind().String())
+		panic("syntax/value: unrecognized Go number type " + v.Kind().String())
 	}
 
 	return Number{val, uint8(bits), nk}
@@ -131,5 +131,5 @@ func (nv Number) ToString() string {
 	case NumberKindFloat:
 		return strconv.FormatFloat(math.Float64frombits(nv.value), 'f', -1, 64)
 	}
-	panic("river/value: unreachable")
+	panic("syntax/value: unreachable")
 }

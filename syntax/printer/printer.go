@@ -1,4 +1,4 @@
-// Package printer contains utilities for pretty-printing River ASTs.
+// Package printer contains utilities for pretty-printing Alloy ASTs.
 package printer
 
 import (
