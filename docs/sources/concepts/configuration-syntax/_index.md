@@ -6,7 +6,7 @@ menuTitle: Configuration syntax
 weight: 10
 ---
 
-# {{% param "PRODUCT_NAME" %>}} configuration syntax
+# {{% param "PRODUCT_NAME" %}} configuration syntax
 
 {{< param "FULL_PRODUCT_NAME" >}} dynamically configures and connects components with the {{< param "PRODUCT_NAME" >}} configuration syntax.
 
