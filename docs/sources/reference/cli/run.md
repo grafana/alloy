@@ -56,6 +56,7 @@ The following flags are supported:
 * `--config.format`: The format of the source file. Supported formats: `alloy`, `prometheus`, `promtail`, `static` (default `"alloy"`).
 * `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
+* `--stability.level`: The minimum permitted stability level of functionality to run. Supported values: `experimental`, `public-preview`, `generally-available` (default `"generally-available"`).
 
 ## Update the configuration file
 
@@ -68,6 +69,23 @@ When this happens, the [component controller][] synchronizes the set of running 
 Components that are no longer defined in the configuration file after reloading are shut down, and components that have been added to the configuration file since the previous reload are created.
 
 All components managed by the component controller are reevaluated after reloading.
+
+## Permitted stability levels
+
+By default, {{< param "PRODUCT_NAME" >}} only permits using functionality that
+is marked Generally Available.
+
+To use functionality at a lower stability, set the `--stability.level` flag to the minimum stability to use:
+
+* `--stability.level=experimental`: Permit using functionality marked as Experimental and above.
+* `--stability.level=public-preview`: Permit using functionality marked as Public Preview and above.
+* `--stability.level=generally-available`: Permit using functionality marked as Generally Available.
+
+{{< admonition type="caution" >}}
+Setting `--stability.level` to a lower value than `generally-available` can also enable non-stable functionality, such as experimental optimizations.
+{{< /admonition >}}
+
+Refer to [Release life cycle for Grafana Labs](https://grafana.com/docs/release-life-cycle/) for the definition of each stability level.
 
 ## Clustering
 
