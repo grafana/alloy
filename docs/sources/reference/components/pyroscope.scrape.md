@@ -1,14 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope.scrape/
 description: Learn about pyroscope.scrape
-labels:
-  stage: beta
 title: pyroscope.scrape
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # pyroscope.scrape
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.scrape` collects [pprof] performance profiles for a given set of HTTP `targets`. 
 

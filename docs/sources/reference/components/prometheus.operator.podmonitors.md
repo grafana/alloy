@@ -1,14 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.operator.podmonitors/
 description: Learn about prometheus.operator.podmonitors
-labels:
-  stage: beta
 title: prometheus.operator.podmonitors
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # prometheus.operator.podmonitors
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `prometheus.operator.podmonitors` discovers [PodMonitor](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitor) resources in your kubernetes cluster and scrapes the targets they reference. This component performs three main functions:
 
@@ -68,7 +68,7 @@ inside a `client` block.
 [match_expression]: #match_expression-block
 [rule]: #rule-block
 [scrape]: #scrape-block
-[clustering]: #clustering-beta
+[clustering]: #clustering-block
 
 ### client block
 
@@ -158,7 +158,7 @@ The `operator` argument must be one of the following strings:
 
 If there are multiple `match_expressions` blocks inside of a `selector` block, they are combined together with AND clauses.
 
-### clustering (beta)
+### clustering block
 
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------

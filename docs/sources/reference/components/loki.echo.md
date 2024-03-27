@@ -1,14 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.echo/
 description: Learn about loki.echo
-labels:
-  stage: beta
 title: loki.echo
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # loki.echo
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `loki.echo` receives log entries from other `loki` components and prints them to the process' standard output (stdout).
 

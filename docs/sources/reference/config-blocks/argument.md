@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/config-blocks/argument/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/argument/
 description: Learn about the argument configuration block
 menuTitle: argument

@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/trim/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/trim/
 description: Learn about trim
 title: trim

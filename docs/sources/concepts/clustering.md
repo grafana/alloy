@@ -58,10 +58,10 @@ Refer to component reference documentation to discover whether it supports clust
 You can use the {{< param "PRODUCT_NAME" >}} UI [clustering page][] to monitor your cluster status.
 Refer to [Debugging clustering issues][debugging] for additional troubleshooting information.
 
-[run]: ../../reference/cli/run/#clustering-beta
-[prometheus.scrape]: ../../reference/components/prometheus.scrape/#clustering-beta
-[pyroscope.scrape]: ../../reference/components/pyroscope.scrape/#clustering-beta
-[prometheus.operator.podmonitors]: ../../reference/components/prometheus.operator.podmonitors/#clustering-beta
-[prometheus.operator.servicemonitors]: ../../reference/components/prometheus.operator.servicemonitors/#clustering-beta
+[run]: ../../reference/cli/run/#clustering
+[prometheus.scrape]: ../../reference/components/prometheus.scrape/#clustering-block
+[pyroscope.scrape]: ../../reference/components/pyroscope.scrape/#clustering-block
+[prometheus.operator.podmonitors]: ../../reference/components/prometheus.operator.podmonitors/#clustering-block
+[prometheus.operator.servicemonitors]: ../../reference/components/prometheus.operator.servicemonitors/#clustering-block
 [clustering page]: ../../tasks/debug/#clustering-page
 [debugging]: ../../tasks/debug/#debugging-clustering-issues

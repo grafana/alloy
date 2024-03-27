@@ -2,13 +2,13 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.process/
 description: Learn about discovery.process
 title: discovery.process
-labels:
-  stage: beta
 ---
+
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
 
 # discovery.process
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `discovery.process` discovers processes running on the local Linux OS.
 

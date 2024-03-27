@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/constants/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/constants/
 description: Learn about constants
 title: constants

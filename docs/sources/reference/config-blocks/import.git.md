@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/config-blocks/import.git/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/import.git/
 description: Learn about the import.git configuration block
 title: import.git

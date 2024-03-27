@@ -1,14 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.operator.probes/
 description: Learn about prometheus.operator.probes
-labels:
-  stage: beta
 title: prometheus.operator.probes
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # prometheus.operator.probes
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `prometheus.operator.probes` discovers [Probe](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.Probe) resources in your Kubernetes cluster and scrapes the targets they reference.
  This component performs three main functions:
@@ -160,7 +160,7 @@ The `operator` argument must be one of the following strings:
 
 If there are multiple `match_expressions` blocks inside of a `selector` block, they are combined together with AND clauses.
 
-### clustering (experimental)
+### clustering block
 
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
@@ -188,7 +188,7 @@ fully consistent like hashmod sharding is).
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op, and
 `prometheus.operator.probes` scrapes every target it receives in its arguments.
 
-[clustered mode]: ../../cli/run/#clustering-beta
+[clustered mode]: ../../cli/run/#clustering
 
 ## Exported fields
 

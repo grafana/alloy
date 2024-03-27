@@ -1,5 +1,4 @@
 ---
-aliases:
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.discovery/
 description: Learn about otelcol.processor.discovery
 title: otelcol.processor.discovery

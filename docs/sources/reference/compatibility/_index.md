@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/compatibility/
 canonical: https://grafana.com/docs/alloy/latest/reference/compatibility/
 description: Learn about which components are compatible with each other in Grafana Alloy
 title: Compatible components

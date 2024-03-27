@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/trim_space/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/trim_space/
 description: Learn about trim_space
 title: trim_space

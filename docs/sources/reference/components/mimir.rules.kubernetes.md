@@ -1,14 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/mimir.rules.kubernetes/
 description: Learn about mimir.rules.kubernetes
-labels:
-  stage: beta
 title: mimir.rules.kubernetes
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # mimir.rules.kubernetes
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `mimir.rules.kubernetes` discovers `PrometheusRule` Kubernetes resources and
 loads them into a Mimir instance.

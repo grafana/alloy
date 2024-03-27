@@ -1,4 +1,5 @@
 ---
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.rules.kubernetes/
 title: loki.rules.kubernetes
 labels:
   stage: experimental

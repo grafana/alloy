@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/cli/fmt/
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/fmt/
 description: Learn about the fmt command
 menuTitle: fmt

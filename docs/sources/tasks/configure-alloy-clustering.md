@@ -49,6 +49,5 @@ To configure clustering:
    1. Ensure that all expected nodes appear in the resulting table.
 
 [clustering]: ../../concepts/clustering/
-[beta]: ../../stability/#beta
 [install-helm]: ../../get-started/install/kubernetes/
 [UI]: ../debug/#component-detail-page

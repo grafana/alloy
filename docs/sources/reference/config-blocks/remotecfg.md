@@ -1,21 +1,18 @@
 ---
-aliases:
-- ./reference/config-blocks/remotecfg/
-canonical: remotecfgs://grafana.com/docs/alloy/latest/reference/config-blocks/remotecfg/
+canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/remotecfg/
 description: Learn about the remotecfg configuration block
 menuTitle: remotecfg
 title: remotecfg block
 ---
 
-# remotecfg block (beta)
+# remotecfg block (public preview)
+
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `remotecfg` is an optional configuration block that enables {{< param "PRODUCT_NAME" >}} to fetch and load the configuration from a remote endpoint.
 `remotecfg` is specified without a label and can only be provided once per configuration file.
 
 The [API definition][] for managing and fetching configuration that the `remotecfg` block uses is available under the Apache 2.0 license.
-
-> **BETA**: The `remotecfg` enables [beta][] functionality.
-> Beta features are subject to breaking changes, and may be replaced with equivalent functionality that cover the same use case.
 
 ## Example
 
@@ -83,7 +80,6 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 [API definition]: https://github.com/grafana/alloy-remote-config
-[beta]: ../../../stability/#beta
 [basic_auth]: #basic_auth-block
 [authorization]: #authorization-block
 [oauth2]: #oauth2-block

@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/coalesce/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/coalesce/
 description: Learn about coalesce
 title: coalesce

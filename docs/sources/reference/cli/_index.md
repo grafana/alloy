@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/cli/
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/
 description: Learn about the Grafana Alloy command line interface
 menuTitle: Command-line interface

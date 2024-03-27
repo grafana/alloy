@@ -1,14 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.resourcedetection/
-labels:
-  stage: beta
 title: otelcol.processor.resourcedetection
 description: Learn about otelcol.processor.resourcedetection
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # otelcol.processor.resourcedetection
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<AGENT VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<AGENT VERSION>" >}}
 
 `otelcol.processor.resourcedetection` detects resource information from the host in a format that conforms to the [OpenTelemetry resource semantic conventions][], and appends or overrides the resource values in the telemetry data with this information.
 

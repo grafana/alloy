@@ -1,14 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.loadbalancing/
 description: Learn about otelcol.exporter.loadbalancing
-labels:
-  stage: beta
 title: otelcol.exporter.loadbalancing
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # otelcol.exporter.loadbalancing
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 <!-- Include a picture of the LB architecture? -->
 

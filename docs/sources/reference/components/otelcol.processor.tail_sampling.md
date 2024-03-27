@@ -1,14 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.tail_sampling/
 description: Learn about otelcol.processor.tail_sampling
-labels:
-  stage: beta
 title: otelcol.processor.tail_sampling
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # otelcol.processor.tail_sampling
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.tail_sampling` samples traces based on a set of defined
 policies. All spans for a given trace *must* be received by the same collector

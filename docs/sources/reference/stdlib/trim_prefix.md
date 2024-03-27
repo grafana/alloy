@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/trim_prefix/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/trim_prefix/
 description: Learn about trim_prefix
 title: trim_prefix

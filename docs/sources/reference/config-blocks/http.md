@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/config-blocks/http/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/http/
 description: Learn about the http configuration block
 menuTitle: http

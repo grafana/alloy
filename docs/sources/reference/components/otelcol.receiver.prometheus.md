@@ -1,14 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.prometheus/
 description: Learn about otelcol.receiver.prometheus
-labels:
-  stage: beta
 title: otelcol.receiver.prometheus
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # otelcol.receiver.prometheus
 
-{{< docs/shared lookup="stability/beta.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.receiver.prometheus` receives Prometheus metrics, converts them to the
 OpenTelemetry metrics format, and forwards them to other `otelcol.*`

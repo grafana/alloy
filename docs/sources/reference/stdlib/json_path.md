@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/json_path/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/json_path/
 description: Learn about json_path
 title: json_path

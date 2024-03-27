@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/config-blocks/import.http/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/import.http/
 description: Learn about the import.http configuration block
 title: import.http

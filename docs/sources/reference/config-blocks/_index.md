@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/config-blocks/
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/
 description: Learn about configuration blocks
 title: Configuration blocks

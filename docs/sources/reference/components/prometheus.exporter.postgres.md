@@ -1,10 +1,10 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.postgres/
 description: Learn about prometheus.exporter.postgres
-labels:
-  stage: beta
 title: prometheus.exporter.postgres
 ---
+
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
 
 # prometheus.exporter.postgres
 

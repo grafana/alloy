@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/to_lower/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/to_lower/
 description: Learn about to_lower
 title: to_lower

@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/stdlib/json_decode/
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/json_decode/
 description: Learn about json_decode
 title: json_decode

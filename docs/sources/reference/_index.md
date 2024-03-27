@@ -1,6 +1,4 @@
 ---
-aliases:
-- ./reference/
 canonical: https://grafana.com/docs/alloy/latest/reference/
 description: The reference-level documentaiton for Grafana Aloy
 menuTitle: Reference
