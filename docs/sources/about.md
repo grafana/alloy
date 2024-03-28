@@ -126,11 +126,9 @@ The following tables compare {{< param "PRODUCT_NAME" >}} with OpenTelemetry and
 [rules]: ./reference/components/mimir.rules.kubernetes/
 [vault]: ./reference/components/remote.vault/
 
-<!--
 ### BoringCrypto
 
 [BoringCrypto][] is an **EXPERIMENTAL** feature for building {{< param "PRODUCT_NAME" >}}
 binaries and images with BoringCrypto enabled. Builds and Docker images for Linux arm64/amd64 are made available.
 
 [BoringCrypto]: https://pkg.go.dev/crypto/internal/boring
--->
