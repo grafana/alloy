@@ -10,7 +10,7 @@ title: discovery.lightsail
 
 ## Usage
 
-```river
+```alloy
 discovery.lightsail "LABEL" {
 }
 ```
@@ -123,7 +123,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.lightsail "lightsail" {
   region = "us-east-1"
 }

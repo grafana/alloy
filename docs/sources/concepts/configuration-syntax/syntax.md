@@ -31,7 +31,7 @@ They can appear either as top-level elements or nested within blocks.
 
 The following example sets the `log_level` attribute to `"debug"`.
 
-```river
+```alloy
 log_level = "debug"
 ```
 
@@ -50,7 +50,7 @@ Some blocks can be defined more than once.
 
 You can use the following pattern to create an unlabeled block.
 
-```river
+```alloy
 BLOCK_NAME {
   // Block body can contain attributes and nested unlabeled blocks
   IDENTIFIER = EXPRESSION // Attribute
@@ -63,7 +63,7 @@ BLOCK_NAME {
 
 You can use the following pattern to create a labeled block
 
-```river
+```alloy
 // Pattern for creating a labeled block:
 BLOCK_NAME "BLOCK_LABEL" {
   // Block body can contain attributes and nested unlabeled blocks
@@ -84,7 +84,7 @@ In these cases, you use the label to disambiguate between multiple top-level blo
 The following snippet defines a block named `local.file` with its label set to "token".
 The block's body sets `filename` to the content of the `TOKEN_FILE_PATH` environment variable by using an expression, and the `is_secret` attribute is set to the boolean `true`, marking the file content as sensitive.
 
-```river
+```alloy
 local.file "token" {
   filename  = env("TOKEN_FILE_PATH") // Use an expression to read from an env var.
   is_secret = true

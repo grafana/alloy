@@ -79,7 +79,7 @@ For more information on the potential labels you can use, see the [prometheus.sc
 
 ## Usage
 
-```river
+```alloy
 discovery.http "LABEL" {
   url = URL
 }
@@ -179,7 +179,7 @@ In those cases, exported fields retain their last healthy values.
 
 This example will query a URL every 15 seconds and expose targets that it finds:
 
-```river
+```alloy
 discovery.http "dynamic_targets" {
   url = "https://example.com/scrape_targets"
   refresh_interval = "15s"

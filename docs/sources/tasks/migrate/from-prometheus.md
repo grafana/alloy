@@ -149,7 +149,7 @@ Replace the following:
 
 The new {{< param "PRODUCT_NAME" >}} configuration file looks like this:
 
-```river
+```alloy
 prometheus.scrape "prometheus" {
   targets = [{
     __address__ = "localhost:12345",

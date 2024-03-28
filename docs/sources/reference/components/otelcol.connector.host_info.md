@@ -12,7 +12,7 @@ title: otelcol.connector.host_info
 
 ## Usage
 
-```river
+```alloy
 otelcol.connector.host_info "LABEL" {
   output {
     metrics = [...]
@@ -59,7 +59,7 @@ The following fields are exported and can be referenced by other components:
 The example below accepts traces, adds the `host.id` resource attribute via the `otelcol.processor.resourcedetection` component,
 creates usage metrics from these traces, and writes the metrics to Mimir.
 
-```river
+```alloy
 otelcol.receiver.otlp "otlp" {
   http {}
   grpc {}

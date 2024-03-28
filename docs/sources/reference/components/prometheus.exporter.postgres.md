@@ -16,7 +16,7 @@ labels.
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.postgres "LABEL" {
     data_source_names = DATA_SOURCE_NAMES_LIST
 }
@@ -91,7 +91,7 @@ debug metrics.
 This example uses a `prometheus.exporter.postgres` component to collect metrics from a Postgres
 server running locally with all default settings:
 
-```river
+```alloy
 // Because no autodiscovery is defined, this will only scrape the 'database_name' database, as defined
 // in the DSN below.
 prometheus.exporter.postgres "example" {
@@ -126,7 +126,7 @@ Replace the following:
 This example uses a `prometheus.exporter.postgres` component to collect custom metrics from a set of
 specific databases, replacing default metrics with custom metrics derived from queries in `/etc/agent/custom-postgres-metrics.yaml`:
 
-```river
+```alloy
 prometheus.exporter.postgres "example" {
   data_source_names = ["postgresql://username:password@localhost:5432/database_name?sslmode=disable"]
 
@@ -170,7 +170,7 @@ Replace the following:
 This example uses a `prometheus.exporter.postgres` component to collect custom metrics from all databases except
 for the `secrets` database.
 
-```river
+```alloy
 prometheus.exporter.postgres "example" {
   data_source_names = ["postgresql://username:password@localhost:5432/database_name?sslmode=disable"]
 

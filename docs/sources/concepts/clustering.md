@@ -28,7 +28,7 @@ Target auto-distribution requires that all {{< param "PRODUCT_NAME" >}} in the s
 
 You must explicitly enable target auto-distribution on components by defining a `clustering` block.
 
-```river
+```alloy
 prometheus.scrape "default" {
     clustering {
         enabled = true

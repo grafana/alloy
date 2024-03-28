@@ -12,7 +12,7 @@ title: discovery.uyuni
 
 ## Usage
 
-```river
+```alloy
 discovery.uyuni "LABEL" {
     server   = SERVER
     username = USERNAME
@@ -94,7 +94,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.uyuni "example" {
   server    = "https://127.0.0.1/rpc/api"
   username  = UYUNI_USERNAME

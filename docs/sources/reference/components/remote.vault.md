@@ -17,7 +17,7 @@ labels.
 
 ## Usage
 
-```river
+```alloy
 remote.vault "LABEL" {
   server = "VAULT_SERVER"
   path   = "VAULT_PATH"
@@ -271,7 +271,7 @@ values will be ignored and omitted from the `data` field.
 If an individual key stored in `data` does not hold sensitive data, it can be
 converted into a string using [the `nonsensitive` function][nonsensitive]:
 
-```river
+```alloy
 nonsensitive(remote.vault.LABEL.data.KEY_NAME)
 ```
 
@@ -311,7 +311,7 @@ secret around:
 
 ## Example
 
-```river
+```alloy
 local.file "vault_token" {
   filename  = "/var/data/vault_token"
   is_secret = true

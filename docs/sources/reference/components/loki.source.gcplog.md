@@ -17,7 +17,7 @@ Multiple `loki.source.gcplog` components can be specified by giving them differe
 
 ## Usage
 
-```river
+```alloy
 loki.source.gcplog "LABEL" {
   pull {
     project_id   = "PROJECT_ID"
@@ -151,7 +151,7 @@ metrics:
 This example listens for GCP Pub/Sub PushRequests on `0.0.0.0:8080` and
 forwards them to a `loki.write` component.
 
-```river
+```alloy
 loki.source.gcplog "local" {
   push {}
 
@@ -168,7 +168,7 @@ loki.write "local" {
 On the other hand, if we need the server to listen on `0.0.0.0:4040`, and forwards them
 to a `loki.write` component.
 
-```river
+```alloy
 loki.source.gcplog "local" {
   push {
     http {

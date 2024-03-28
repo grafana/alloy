@@ -25,7 +25,7 @@ Your pipeline is going to look like this:
 
 Let's start by setting up the `loki.source.api` component:
 
-```river
+```alloy
 loki.source.api "listener" {
     http {
         listen_address = "127.0.0.1"
@@ -50,7 +50,7 @@ Next, you can configure the `loki.process` and `loki.write` components.
 - [loki.process#stage.json][]
 - [loki.process#stage.labels][]
 
-```river
+```alloy
 // Let's send and process more logs!
 
 loki.source.api "listener" {
@@ -153,7 +153,7 @@ Here is our example log line:
 
 ### Stage 1
 
-```river
+```alloy
 stage.json {
     expressions = {
         log = "",
@@ -200,7 +200,7 @@ Extracted map _after_ performing this stage:
 
 ### Stage 2
 
-```river
+```alloy
 stage.timestamp {
     source = "ts"
     format = "RFC3339"
@@ -214,7 +214,7 @@ This stage does not modify the extracted map.
 
 ### Stage 3
 
-```river
+```alloy
 stage.json {
     source = "log"
 
@@ -280,7 +280,7 @@ Extracted map _after_ performing this stage:
 
 ### Stage 4
 
-```river
+```alloy
 stage.drop {
     source = "is_secret"
     value  = "true"
@@ -294,7 +294,7 @@ Refer to the [loki.process#stage.drop][] documentation for more information.
 
 ### Stage 5
 
-```river
+```alloy
 stage.labels {
     values = {
         level = "",
@@ -308,7 +308,7 @@ This stage does not modify the extracted map.
 
 ### Stage 6
 
-```river
+```alloy
 stage.output {
     source = "log_line"
 }
@@ -362,7 +362,7 @@ The `discovery.relabel` component is very similar to the `prometheus.relabel` co
 
 {{< collapse title="Solution" >}}
 
-```river
+```alloy
 // Discover docker containers to collect logs from
 discovery.docker "docker_containers" {
     // Note that if you are using Docker Desktop Engine this may need to be changed to

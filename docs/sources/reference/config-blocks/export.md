@@ -14,7 +14,7 @@ The `export` block may only be specified inside the definition of [a `declare` b
 
 ## Example
 
-```river
+```alloy
 export "ARGUMENT_NAME" {
   value = ARGUMENT_VALUE
 }
@@ -39,7 +39,7 @@ The `export` block doesn't export any fields.
 
 This example creates a custom component where the output of discovering Kubernetes pods and nodes are exposed to the user:
 
-```river
+```alloy
 declare "pods_and_nodes" {
   discovery.kubernetes "pods" {
     role = "pod"

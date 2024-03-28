@@ -10,7 +10,7 @@ title: import.http
 
 ## Usage
 
-```river
+```alloy
 import.http "LABEL" {
   url = URL
 }
@@ -33,7 +33,7 @@ Name             | Type          | Description                             | Def
 This example imports custom components from an HTTP response and instantiates a custom component for adding two numbers:
 
 {{< collapse title="HTTP response" >}}
-```river
+```alloy
 declare "add" {
   argument "a" {}
   argument "b" {}
@@ -46,7 +46,7 @@ declare "add" {
 {{< /collapse >}}
 
 {{< collapse title="importer.alloy" >}}
-```river
+```alloy
 import.http "math" {
   url = SERVER_URL
 }

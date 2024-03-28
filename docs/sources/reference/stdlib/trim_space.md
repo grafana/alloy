@@ -10,7 +10,7 @@ title: trim_space
 
 ## Examples
 
-```river
+```alloy
 > trim_space("  hello\n\n")
 "hello"
 ```

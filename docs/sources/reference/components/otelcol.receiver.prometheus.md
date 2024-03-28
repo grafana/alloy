@@ -19,7 +19,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.receiver.prometheus "LABEL" {
   output {
     metrics = [...]
@@ -74,7 +74,7 @@ data to. The metrics are converted to the OTLP format before they are forwarded
 to the `otelcol.exporter.otlp` component to be sent to an OTLP-capable
 endpoint:
 
-```river
+```alloy
 prometheus.scrape "default" {
     // Collect metrics from the default HTTP listen address.
     targets = [{"__address__"   = "127.0.0.1:12345"}]

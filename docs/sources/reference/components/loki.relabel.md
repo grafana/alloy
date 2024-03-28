@@ -28,7 +28,7 @@ Multiple `loki.relabel` components can be specified by giving them different lab
 
 ## Usage
 
-```river
+```alloy
 loki.relabel "LABEL" {
   forward_to = RECEIVER_LIST
 
@@ -93,7 +93,7 @@ In those cases, exported fields are kept at their last healthy values.
 
 The following example creates a `loki.relabel` component that only forwards entries whose 'level' value is set to 'error'.
 
-```river
+```alloy
 loki.relabel "keep_error_only" {
   forward_to = [loki.write.onprem.receiver]
 

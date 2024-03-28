@@ -11,7 +11,7 @@ The `prometheus.exporter.oracledb` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.oracledb "LABEL" {
     connection_string = CONNECTION_STRING
 }
@@ -65,7 +65,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.oracledb`:
 
-```river
+```alloy
 prometheus.exporter.oracledb "example" {
   connection_string = "oracle://user:password@localhost:1521/orcl.localnet"
 }

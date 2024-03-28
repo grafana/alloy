@@ -27,7 +27,7 @@ Multiple `loki.source.kubernetes` components can be specified by giving them dif
 
 ## Usage
 
-```river
+```alloy
 loki.source.kubernetes "LABEL" {
   targets    = TARGET_LIST
   forward_to = RECEIVER_LIST
@@ -177,7 +177,7 @@ target:
 This example collects logs from all Kubernetes pods and forwards them to a
 `loki.write` component so they are written to Loki.
 
-```river
+```alloy
 discovery.kubernetes "pods" {
   role = "pod"
 }

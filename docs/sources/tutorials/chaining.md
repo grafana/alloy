@@ -38,7 +38,7 @@ There are two scrapes each sending metrics to one filter. Note the `job` label l
 
 ## Multiple outputs
 
-```river
+```alloy
 prometheus.scrape "agent" {
     targets    = [{"__address__" = "localhost:12345"}]
     forward_to = [prometheus.relabel.service.receiver]

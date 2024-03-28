@@ -20,7 +20,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.auth.basic "LABEL" {
   username = "USERNAME"
   password = "PASSWORD"
@@ -57,7 +57,7 @@ configuration.
 
 This example configures [otelcol.exporter.otlp][] to use basic authentication:
 
-```river
+```alloy
 otelcol.exporter.otlp "example" {
   client {
     endpoint = "my-otlp-grpc-server:4317"

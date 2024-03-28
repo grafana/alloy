@@ -113,7 +113,7 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
 
 1. Write your configuration to a file, for example, `config.alloy`.
 
-   ```river
+   ```alloy
    // Write your Agent config here:
    logging {
      level = "info"

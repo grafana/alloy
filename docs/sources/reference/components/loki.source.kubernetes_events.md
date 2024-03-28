@@ -13,7 +13,7 @@ Multiple `loki.source.kubernetes_events` components can be specified by giving t
 
 ## Usage
 
-```river
+```alloy
 loki.source.kubernetes_events "LABEL" {
   forward_to = RECEIVER_LIST
 }
@@ -166,7 +166,7 @@ In Flow mode, this argument is no longer necessary.
 
 This example collects watches events in the `kube-system` namespace and forwards them to a `loki.write` component so they are written to Loki.
 
-```river
+```alloy
 loki.source.kubernetes_events "example" {
   // Only watch for events in the kube-system namespace.
   namespaces = ["kube-system"]

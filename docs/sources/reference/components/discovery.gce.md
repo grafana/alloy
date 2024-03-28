@@ -22,7 +22,7 @@ If running outside of GCE make sure to create an appropriate service account and
 
 ## Usage
 
-```river
+```alloy
 discovery.gce "LABEL" {
   project = PROJECT_NAME
   zone    = ZONE_NAME
@@ -86,7 +86,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.gce "gce" {
   project = "agent"
   zone    = "us-east1-a"

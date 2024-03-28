@@ -31,7 +31,7 @@ giving them different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.tail_sampling "LABEL" {
   policy {
     ...
@@ -335,7 +335,7 @@ information.
 This example batches trace data from {{< param "PRODUCT_NAME" >}} before sending it to
 [otelcol.exporter.otlp][] for further processing. This example shows an impractical number of policies for the purpose of demonstrating how to set up each type.
 
-```river
+```alloy
 tracing {
   sampling_fraction = 1
   write_to          = [otelcol.processor.tail_sampling.default.input]

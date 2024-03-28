@@ -11,7 +11,7 @@ The `prometheus.exporter.redis` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.redis "LABEL" {
     redis_addr = REDIS_ADDRESS
 }
@@ -96,7 +96,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.redis`:
 
-```river
+```alloy
 prometheus.exporter.redis "example" {
   redis_addr = "localhost:6379"
 }

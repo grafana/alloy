@@ -12,7 +12,7 @@ title: local.file_match
 
 ## Usage
 
-```river
+```alloy
 local.file_match "LABEL" {
   path_targets = [{"__path__" = DOUBLESTAR_PATH}]
 }
@@ -65,7 +65,7 @@ In those cases, exported fields retain their last healthy values.
 This example discovers all files and folders under `/tmp/logs`.
 The absolute paths are used by `loki.source.file.files` targets.
 
-```river
+```alloy
 local.file_match "tmp" {
   path_targets = [{"__path__" = "/tmp/logs/**/*.log"}]
 }
@@ -94,7 +94,7 @@ Replace the following:
 
 This example finds all the logs on pods and monitors them.
 
-```river
+```alloy
 discovery.kubernetes "k8s" {
   role = "pod"
 }

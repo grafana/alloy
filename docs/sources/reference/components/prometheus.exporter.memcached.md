@@ -11,7 +11,7 @@ The `prometheus.exporter.memcached` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.memcached "LABEL" {
 }
 ```
@@ -64,7 +64,7 @@ debug metrics.
 This example uses a `prometheus.exporter.memcached` component to collect metrics from a Memcached
 server running locally, and scrapes the metrics using a [prometheus.scrape][scrape] component:
 
-```river
+```alloy
 prometheus.exporter.memcached "example" {
   address = "localhost:13321"
   timeout = "5s"

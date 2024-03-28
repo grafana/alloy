@@ -19,7 +19,7 @@ For OVHcloud's [public cloud][] instances you can use `discovery.openstack`.
 
 ## Usage
 
-```river
+```alloy
 discovery.ovhcloud "LABEL" {
     application_key    = APPLICATION_KEY
     application_secret = APPLICATION_SECRET
@@ -107,7 +107,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.ovhcloud "example" {
 	application_key    = APPLICATION_KEY
 	application_secret = APPLICATION_SECRET

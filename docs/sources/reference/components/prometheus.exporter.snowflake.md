@@ -11,7 +11,7 @@ The `prometheus.exporter.snowflake` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.snowflake "LABEL" {
     account_name = ACCOUNT_NAME
     username =     USERNAME
@@ -63,7 +63,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.snowflake`:
 
-```river
+```alloy
 prometheus.exporter.snowflake "example" {
   account_name = "XXXXXXX-YYYYYYY"
   username     = "grafana"

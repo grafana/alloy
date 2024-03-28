@@ -14,7 +14,7 @@ This service discovery uses the public IPv4 address by default, but that can be 
 
 ## Usage
 
-```river
+```alloy
 discovery.hetzner "LABEL" {
   role = HETZNER_ROLE
 }
@@ -150,7 +150,7 @@ values.
 
 This example discovers targets from Hetzner:
 
-```river
+```alloy
 discovery.hetzner "example" {
   role = HETZNER_ROLE
 }

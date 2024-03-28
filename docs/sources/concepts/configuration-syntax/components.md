@@ -34,10 +34,10 @@ The `filename` attribute is a _required_ argument.
 You can also define a number of _optional_ arguments, in this case, `detector`, `poll_frequency`, and `is_secret`,
 that configure how and how often the file should be polled and whether its contents are sensitive.
 
-```river
+```alloy
 local.file "targets" {
   // Required argument
-  filename = "/etc/agent/targets"
+  filename = "/etc/alloy/targets"
 
   // Optional arguments: Components may have some optional arguments that
   // do not need to be defined.
@@ -58,7 +58,7 @@ References can only appear in components.
 For example, here's a component that scrapes Prometheus metrics.
 The `targets` field is populated with two scrape targets, a constant target `localhost:9001` and an expression that ties the target to the value of `local.file.targets.content`.
 
-```river
+```alloy
 prometheus.scrape "default" {
   targets = [
     { "__address__" = local.file.targets.content }, // tada!

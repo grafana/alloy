@@ -11,7 +11,7 @@ If the string doesn't start with the prefix, the string is returned unchanged.
 
 ## Examples
 
-```river
+```alloy
 > trim_prefix("helloworld", "hello")
 "world"
 ```

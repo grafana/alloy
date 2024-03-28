@@ -88,7 +88,7 @@ To use all of the integration features, use the following AWS IAM Policy:
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.cloudwatch "queues" {
 	sts_region = "us-east-2"
 
@@ -159,7 +159,7 @@ under that service/namespace.
 {{< param "PRODUCT_NAME" >}} will find AWS resources in the specified service for which to scrape these metrics, label them appropriately,
 and export them to Prometheus. For example, if we wanted to scrape CPU utilization and network traffic metrics from all AWS EC2 instances:
 
-```river
+```alloy
 prometheus.exporter.cloudwatch "discover_instances" {
 	sts_region = "us-east-2"
 
@@ -208,7 +208,7 @@ qualified with the following specifications:
 
 For example, if you want to scrape the same metrics in the discovery example, but for a specific AWS EC2 instance:
 
-```river
+```alloy
 prometheus.exporter.cloudwatch "static_instances" {
 	sts_region = "us-east-2"
 
@@ -231,7 +231,7 @@ prometheus.exporter.cloudwatch "static_instances" {
 As shown above, `static` blocks must be specified with a label, which will translate to the `name` label in the exported
 metric.
 
-```river
+```alloy
 static "LABEL" {
     regions    = ["us-east-2"]
     namespace  = "AWS/EC2"

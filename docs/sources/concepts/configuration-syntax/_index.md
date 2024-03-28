@@ -17,7 +17,7 @@ An {{< param "PRODUCT_NAME" >}} configuration file tells {{< param "PRODUCT_NAME
 
 The {{< param "PRODUCT_NAME" >}} syntax uses blocks, attributes, and expressions.
 
-```river
+```alloy
 // Create a local.file component labeled my_file.
 // This can be referenced by other components as local.file.my_file.
 local.file "my_file" {
@@ -37,7 +37,7 @@ BLOCK_NAME {
 }
 ```
 
-[{{< param "PRODUCT_NAME" >}} is designed][RFC] with the following requirements in mind:
+{{< param "PRODUCT_NAME" >}} is designed with the following requirements in mind:
 
 * _Fast_: The configuration language must be fast so the component controller can quickly evaluate changes.
 * _Simple_: The configuration language must be easy to read and write to minimize the learning curve.
@@ -62,7 +62,7 @@ Attributes always take the form of `ATTRIBUTE_NAME = ATTRIBUTE_VALUE`.
 
 The following example shows how to set the `log_level` attribute to `"debug"`.
 
-```river
+```alloy
 log_level = "debug"
 ```
 
@@ -90,7 +90,7 @@ label (for example, `password_file`), and export name (for example, `content`), 
 You use _Blocks_ to configure components and groups of attributes.
 Each block can contain any number of attributes or nested blocks.
 
-```river
+```alloy
 prometheus.remote_write "default" {
   endpoint {
     url = "http://localhost:9009/api/prom/push"
@@ -113,7 +113,6 @@ You can use one or all of the following tools to help you write {{< param "PRODU
 * Editor support for:
   * [VSCode](https://github.com/grafana/vscode-alloy)
   * [Vim/Neovim](https://github.com/grafana/vim-alloy)
-* Code formatting using the [`agent fmt` command][fmt]
+* Code formatting using the [`alloy fmt` command][fmt]
 
-[RFC]: https://github.com/grafana/agent/blob/97a55d0d908b26dbb1126cc08b6dcc18f6e30087/docs/rfcs/0005-river.md
 [fmt]: ../../reference/cli/fmt/

@@ -21,7 +21,7 @@ You can specify multiple `otelcol.processor.probabilistic_sampler` components by
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.probabilistic_sampler "LABEL" {
   output {
     logs    = [...]
@@ -90,7 +90,7 @@ information.
 
 ### Basic usage
 
-```river
+```alloy
 otelcol.processor.probabilistic_sampler "default" {
   hash_seed           = 123
   sampling_percentage = 15.3
@@ -103,7 +103,7 @@ otelcol.processor.probabilistic_sampler "default" {
 
 ### Sample 15% of the logs
 
-```river
+```alloy
 otelcol.processor.probabilistic_sampler "default" {
   sampling_percentage = 15
 
@@ -115,7 +115,7 @@ otelcol.processor.probabilistic_sampler "default" {
 
 ### Sample logs according to their "logID" attribute
 
-```river
+```alloy
 otelcol.processor.probabilistic_sampler "default" {
   sampling_percentage = 15
   attribute_source    = "record"
@@ -129,7 +129,7 @@ otelcol.processor.probabilistic_sampler "default" {
 
 ### Sample logs according to a "priority" attribute
 
-```river
+```alloy
 otelcol.processor.probabilistic_sampler "default" {
   sampling_percentage = 15
   sampling_priority   = "priority"

@@ -20,7 +20,7 @@ security privileges necessary for monitoring your node, as per the [official doc
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.elasticsearch "LABEL" {
     address = "ELASTICSEARCH_ADDRESS"
 }
@@ -91,7 +91,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.elasticsearch`:
 
-```river
+```alloy
 prometheus.exporter.elasticsearch "example" {
   address = "http://localhost:9200"
   basic_auth {

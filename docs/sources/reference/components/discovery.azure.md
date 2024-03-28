@@ -12,7 +12,7 @@ title: discovery.azure
 
 ## Usage
 
-```river
+```alloy
 discovery.azure "LABEL" {
 }
 ```
@@ -114,7 +114,7 @@ values.
 
 ## Example
 
-```river
+```alloy
 discovery.azure "example" {
   port = 80
   subscription_id = AZURE_SUBSCRIPTION_ID

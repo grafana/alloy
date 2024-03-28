@@ -36,7 +36,7 @@ If an import namespace matches the name of a built-in component namespace, such 
 
 This example module defines a component to filter out debug-level and info-level log lines:
 
-```river
+```alloy
 declare "log_filter" {
   // argument.write_to is a required argument that specifies where filtered
   // log lines are sent.
@@ -71,7 +71,7 @@ declare "log_filter" {
 
 You can save this module to a file called `helpers.alloy` and import it:
 
-```river
+```alloy
 // Import our helpers.alloy module, exposing its custom components as
 // helpers.COMPONENT_NAME.
 import.file "helpers" {

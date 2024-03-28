@@ -32,7 +32,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 prometheus.relabel "LABEL" {
   forward_to = RECEIVER_LIST
 
@@ -101,7 +101,7 @@ values.
 Let's create an instance of a see `prometheus.relabel` component and see how
 it acts on the following metrics.
 
-```river
+```alloy
 prometheus.relabel "keep_backend_only" {
   forward_to = [prometheus.remote_write.onprem.receiver]
 

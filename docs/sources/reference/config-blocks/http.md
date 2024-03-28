@@ -12,7 +12,7 @@ title: http block
 
 ## Example
 
-```river
+```alloy
 http {
   tls {
     cert_file = env("TLS_CERT_FILE_PATH")

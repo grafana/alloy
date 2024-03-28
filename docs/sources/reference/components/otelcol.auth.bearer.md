@@ -20,7 +20,7 @@ Multiple `otelcol.auth.bearer` components can be specified by giving them differ
 
 ## Usage
 
-```river
+```alloy
 otelcol.auth.bearer "LABEL" {
   token = "TOKEN"
 }
@@ -63,7 +63,7 @@ The example below configures [otelcol.exporter.otlp][] to use a bearer token aut
 
 If we assume that the value of the `API_KEY` environment variable is `SECRET_API_KEY`, then the `Authorization` RPC metadata is set to `Bearer SECRET_API_KEY`.
 
-```river
+```alloy
 otelcol.exporter.otlp "example" {
   client {
     endpoint = "my-otlp-grpc-server:4317"
@@ -83,7 +83,7 @@ The example below configures [otelcol.exporter.otlphttp][] to use a bearer token
 If we assume that the value of the `API_KEY` environment variable is `SECRET_API_KEY`, then 
 the `Authorization` HTTP header is set to `MyScheme SECRET_API_KEY`.
 
-```river
+```alloy
 otelcol.exporter.otlphttp "example" {
   client {
     endpoint = "my-otlp-grpc-server:4317"

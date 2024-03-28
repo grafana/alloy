@@ -18,7 +18,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.receiver.zipkin "LABEL" {
   output {
     traces = [...]
@@ -117,7 +117,7 @@ information.
 This example forwards received traces through a batch processor before finally
 sending it to an OTLP-capable endpoint:
 
-```river
+```alloy
 otelcol.receiver.zipkin "default" {
   output {
     traces = [otelcol.processor.batch.default.input]

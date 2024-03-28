@@ -10,7 +10,7 @@ The `prometheus.exporter.self` component collects and exposes metrics about {{< 
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.self "agent" {
 }
 ```
@@ -43,7 +43,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.self`:
 
-```river
+```alloy
 prometheus.exporter.self "example" {}
 
 // Configure a prometheus.scrape component to collect agent metrics.

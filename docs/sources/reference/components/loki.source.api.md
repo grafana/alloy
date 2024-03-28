@@ -16,7 +16,7 @@ This means that other [`loki.write`][loki.write] components can be used as a cli
 
 ## Usage
 
-```river
+```alloy
 loki.source.api "LABEL" {
     http {
         listen_address = "LISTEN_ADDRESS"
@@ -88,7 +88,7 @@ The following are some of the metrics that are exposed when this component is us
 
 This example starts an HTTP server on `0.0.0.0` address and port `9999`. The server receives log entries and forwards them to a `loki.write` component while adding a `forwarded="true"` label. The `loki.write` component will send the logs to the specified loki instance using basic auth credentials provided.
 
-```river
+```alloy
 loki.write "local" {
     endpoint {
         url = "http://loki:3100/api/v1/push"

@@ -43,7 +43,7 @@ in front of Agent instances running `otelcol.connector.servicegraph`.
 
 ## Usage
 
-```river
+```alloy
 otelcol.connector.servicegraph "LABEL" {
   output {
     metrics = [...]
@@ -160,7 +160,7 @@ The traces are written to Tempo.
 
 `otelcol.connector.servicegraph` also adds a label to each metric with the value of the "http.method" span/resource attribute.
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   grpc {
     endpoint = "0.0.0.0:4320"

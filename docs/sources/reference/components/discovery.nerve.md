@@ -12,7 +12,7 @@ title: discovery.nerve
 
 ## Usage
 
-```river
+```alloy
 discovery.nerve "LABEL" {
 	servers = [SERVER_1, SERVER_2]
 	paths   = [PATH_1, PATH_2]
@@ -65,7 +65,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.nerve "example" {
 	servers = ["localhost"]
 	paths   = ["/monitoring"]

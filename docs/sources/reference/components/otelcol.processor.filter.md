@@ -57,7 +57,7 @@ Exercise caution when using `otelcol.processor.filter`:
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.filter "LABEL" {
   output {
     metrics = [...]
@@ -192,7 +192,7 @@ information.
 
 This example sets the attribute `test` to `pass` if the attribute `test` does not exist.
 
-```river
+```alloy
 otelcol.processor.filter "default" {
   error_mode = "ignore"
 
@@ -218,7 +218,7 @@ This example drops metrics which satisfy at least one of two OTTL statements:
 * The metric name is `my.metric` and there is a `my_label` resource attribute with a value of `abc123 `.
 * The metric is a histogram.
 
-```river
+```alloy
 otelcol.processor.filter "default" {
   error_mode = "ignore"
 
@@ -244,7 +244,7 @@ Some values in the {{< param "PRODUCT_NAME" >}} syntax string are [escaped][rive
 
 ### Drop non-HTTP spans and sensitive logs
 
-```river
+```alloy
 otelcol.processor.filter "default" {
   error_mode = "ignore"
 

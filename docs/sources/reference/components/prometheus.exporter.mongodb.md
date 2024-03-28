@@ -17,7 +17,7 @@ Refer to the [Percona documentation](https://github.com/percona/mongodb_exporter
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.mongodb "LABEL" {
     mongodb_uri = "MONGODB_URI"
 }
@@ -64,7 +64,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.mongodb`:
 
-```river
+```alloy
 prometheus.exporter.mongodb "example" {
   mongodb_uri = "mongodb://127.0.0.1:27017"
 }

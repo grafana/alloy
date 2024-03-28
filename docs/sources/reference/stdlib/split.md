@@ -8,13 +8,13 @@ title: split
 
 `split` produces a list by dividing a string at all occurrences of a separator.
 
-```river
+```alloy
 split(list, separator)
 ```
 
 ## Examples
 
-```river
+```alloy
 > split("foo,bar,baz", "," )
 ["foo", "bar", "baz"]
 

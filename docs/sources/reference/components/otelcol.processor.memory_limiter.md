@@ -28,7 +28,7 @@ giving them different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.memory_limiter "LABEL" {
   check_interval = "1s"
 

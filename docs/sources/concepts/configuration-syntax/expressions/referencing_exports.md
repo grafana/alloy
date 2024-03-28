@@ -22,7 +22,7 @@ Similarly, a `prometheus.remote_write` component instance labeled `onprem` expos
 
 The following example shows some references.
 
-```river
+```alloy
 local.file "target" {
   filename = "/etc/agent/target"
 }

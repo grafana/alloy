@@ -21,7 +21,7 @@ Multiple `loki.source.kafka` components can be specified by giving them differen
 
 ## Usage
 
-```river
+```alloy
 loki.source.kafka "LABEL" {
   brokers    = BROKER_LIST
   topics     = TOPIC_LIST
@@ -138,7 +138,7 @@ The `oauth_config` is required when the SASL mechanism is set to `OAUTHBEARER`.
 This example consumes Kafka events from the specified brokers and topics
 then forwards them to a `loki.write` component using the Kafka timestamp.
 
-```river
+```alloy
 loki.source.kafka "local" {
   brokers                = ["localhost:9092"]
   topics                 = ["quickstart-events"]

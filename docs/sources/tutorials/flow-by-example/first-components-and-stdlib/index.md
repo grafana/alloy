@@ -24,7 +24,7 @@ An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
 
    `key = value` pairs used to configure individual settings.
 
-    ```river
+    ```alloy
     url = "http://localhost:9090"
     ```
 
@@ -40,7 +40,7 @@ An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
    Blocks are used to configure components with groups of attributes or nested blocks.
    The following example block can be used to configure the logging output of {{< param "PRODUCT_NAME" >}}:
 
-    ```river
+    ```alloy
     logging {
         level  = "debug"
         format = "json"
@@ -72,7 +72,7 @@ Components are the building blocks of an {{< param "PRODUCT_NAME" >}} configurat
 
 Let's look at a simple example pipeline:
 
-```river
+```alloy
 local.file "example" {
     path = env("HOME") + "file.txt"
 }
@@ -126,7 +126,7 @@ This example pipeline still doesn't do anything, so let's add some more componen
 
 Make a simple pipeline with a `prometheus.exporter.unix` component, a `prometheus.scrape` component to scrape it, and a `prometheus.remote_write` component to send the scraped metrics to Prometheus.
 
-```river
+```alloy
 prometheus.exporter.unix "localhost" {
     // This component exposes a lot of metrics by default, so we will keep all of the default arguments.
 }
@@ -229,7 +229,7 @@ If you get stuck, you can always view a solution here:
 
 {{< collapse title="Solution" >}}
 
-```river
+```alloy
 // Configure your first components, learn about the standard library, and learn how to run Grafana Alloy
 
 // prometheus.exporter.redis collects information about Redis and exposes

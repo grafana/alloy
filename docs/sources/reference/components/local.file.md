@@ -15,7 +15,7 @@ Multiple `local.file` components can be specified by giving them different label
 
 ## Usage
 
-```river
+```alloy
 local.file "LABEL" {
   filename = FILE_NAME
 }
@@ -64,7 +64,7 @@ The read error will be exposed as a log message and in the debug information for
 
 ## Example
 
-```river
+```alloy
 local.file "secret_key" {
   filename  = "/var/secrets/password.txt"
   is_secret = true

@@ -12,7 +12,7 @@ title: discovery.docker
 
 ## Usage
 
-```river
+```alloy
 discovery.docker "LABEL" {
   host = DOCKER_ENGINE_HOST
 }
@@ -147,7 +147,7 @@ In those cases, exported fields retain their last healthy values.
 
 This example discovers Docker containers when the host machine is macOS or Linux:
 
-```river
+```alloy
 discovery.docker "containers" {
   host = "unix:///var/run/docker.sock"
 }
@@ -177,7 +177,7 @@ Replace the following:
 
 This example discovers Docker containers when the host machine is Windows:
 
-```river
+```alloy
 discovery.docker "containers" {
   host = "tcp://localhost:2375"
 }

@@ -18,7 +18,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.exporter.otlp "LABEL" {
   client {
     endpoint = "HOST:PORT"
@@ -181,7 +181,7 @@ The following examples show you how to create an exporter to send data to differ
 
 You can create an exporter that sends your data to a local Grafana Tempo instance without TLS:
 
-```river
+```alloy
 otelcol.exporter.otlp "tempo" {
     client {
         endpoint = "tempo:4317"
@@ -197,7 +197,7 @@ otelcol.exporter.otlp "tempo" {
 
 You can create an `otlp` exporter that sends your data to a managed service, for example, Grafana Cloud. The Tempo username and Grafana Cloud API Key are injected in this example through environment variables.
 
-```river
+```alloy
 otelcol.exporter.otlp "grafana_cloud_tempo" {
     client {
         endpoint = "tempo-xxx.grafana.net/tempo:443"

@@ -10,7 +10,7 @@ The `prometheus.exporter.cadvisor` component exposes container metrics using
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.cadvisor "LABEL" {
 }
 ```
@@ -89,7 +89,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.cadvisor`:
 
-```river
+```alloy
 prometheus.exporter.cadvisor "example" {
   docker_host = "unix:///var/run/docker.sock"
 

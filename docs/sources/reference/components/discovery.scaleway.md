@@ -13,7 +13,7 @@ title: discovery.scaleway
 
 ## Usage
 
-```river
+```alloy
 discovery.scaleway "LABEL" {
     project_id = "SCALEWAY_PROJECT_ID"
     role       = "SCALEWAY_PROJECT_ROLE"
@@ -137,7 +137,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.scaleway "example" {
     project_id = "SCALEWAY_PROJECT_ID"
     role       = "SCALEWAY_PROJECT_ROLE"

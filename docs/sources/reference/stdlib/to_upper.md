@@ -10,7 +10,7 @@ title: to_upper
 
 ## Examples
 
-```river
+```alloy
 > to_upper("hello")
 "HELLO"
 ```

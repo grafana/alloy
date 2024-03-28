@@ -18,7 +18,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.receiver.jaeger "LABEL" {
   protocols {
     grpc {}
@@ -243,7 +243,7 @@ information.
 This example creates a pipeline which accepts Jaeger-formatted traces and
 writes them to an OTLP server:
 
-```river
+```alloy
 otelcol.receiver.jaeger "default" {
   protocols {
     grpc {}

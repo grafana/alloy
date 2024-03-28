@@ -139,7 +139,7 @@ Replace the following:
 
 The new {{< param "PRODUCT_NAME" >}} configuration file looks like this:
 
-```river
+```alloy
 local.file_match "example" {
 	path_targets = [{
 		__address__ = "localhost",
