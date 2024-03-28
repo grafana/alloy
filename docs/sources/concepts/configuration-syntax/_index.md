@@ -37,7 +37,7 @@ BLOCK_NAME {
 }
 ```
 
-[{{< param "PRODUCT_NAME" >}} is designed][RFC] with the following requirements in mind:
+{{< param "PRODUCT_NAME" >}} is designed with the following requirements in mind:
 
 * _Fast_: The configuration language must be fast so the component controller can quickly evaluate changes.
 * _Simple_: The configuration language must be easy to read and write to minimize the learning curve.
@@ -113,7 +113,6 @@ You can use one or all of the following tools to help you write {{< param "PRODU
 * Editor support for:
   * [VSCode](https://github.com/grafana/vscode-alloy)
   * [Vim/Neovim](https://github.com/grafana/vim-alloy)
-* Code formatting using the [`agent fmt` command][fmt]
+* Code formatting using the [`alloy fmt` command][fmt]
 
-[RFC]: https://github.com/grafana/agent/blob/97a55d0d908b26dbb1126cc08b6dcc18f6e30087/docs/rfcs/0005-river.md
 [fmt]: ../../reference/cli/fmt/

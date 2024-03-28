@@ -37,7 +37,7 @@ that configure how and how often the file should be polled and whether its conte
 ```alloy
 local.file "targets" {
   // Required argument
-  filename = "/etc/agent/targets"
+  filename = "/etc/alloy/targets"
 
   // Optional arguments: Components may have some optional arguments that
   // do not need to be defined.

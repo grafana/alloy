@@ -118,11 +118,7 @@ The following tables compare {{< param "PRODUCT_NAME" >}} with OpenTelemetry and
 [sla]: https://grafana.com/legal/grafana-cloud-sla
 [observability]: https://grafana.com/docs/grafana-cloud/monitor-applications/application-observability/setup#send-telemetry
 
-[integrations]: https://grafana.com/docs/agent/static/configuration/integrations/
 [components]: ./reference/components
-[Static mode]: https://grafana.com/docs/agent/static/
-[Static mode Kubernetes operator]: https://grafana.com/docs/agent/operator/
-[Flow mode]: https://grafana.com/docs/agent/flow/
 [Prometheus]: ./tasks/collect-prometheus-metrics/
 [OTel]: ./tasks/collect-opentelemetry-data/
 [Loki]: ./tasks/migrate/from-promtail/
