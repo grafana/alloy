@@ -72,17 +72,16 @@ All components managed by the component controller are reevaluated after reloadi
 
 ## Permitted stability levels
 
-By default, {{< param "PRODUCT_NAME" >}} only permits using functionality that
-is marked Generally Available.
+By default, {{< param "PRODUCT_NAME" >}} only allows you to use functionality that is marked _Generally available_.
 
-To use functionality at a lower stability, set the `--stability.level` flag to the minimum stability to use:
+To use [Experimental][stability] or [Public preview][stability] functionality, set the `--stability.level` flag to the level you want to use:
 
-* `--stability.level=experimental`: Permit using functionality marked as Experimental and above.
-* `--stability.level=public-preview`: Permit using functionality marked as Public Preview and above.
-* `--stability.level=generally-available`: Permit using functionality marked as Generally Available.
+* `--stability.level=experimental`: Use functionality marked as _Experimental_ and above.
+* `--stability.level=public-preview`: Use functionality marked as _Public preview_ and above.
+* `--stability.level=generally-available`: Use functionality marked as _Generally available_.
 
+[stability]: https://grafana.com/docs/release-life-cycle/
 {{< admonition type="caution" >}}
-Setting `--stability.level` to a lower value than `generally-available` can also enable non-stable functionality, such as experimental optimizations.
 {{< /admonition >}}
 
 Refer to [Release life cycle for Grafana Labs](https://grafana.com/docs/release-life-cycle/) for the definition of each stability level.
