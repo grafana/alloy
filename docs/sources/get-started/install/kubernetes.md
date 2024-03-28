@@ -64,7 +64,6 @@ To deploy {{< param "PRODUCT_NAME" >}} on Kubernetes using Helm, run the followi
    - _`<NAMESPACE>`_: The namespace used in the previous step.
 
 You have successfully deployed {{< param "PRODUCT_NAME" >}} on Kubernetes, using default Helm settings.
-To configure {{< param "PRODUCT_NAME" >}}, see the [Configure {{< param "PRODUCT_NAME" >}} on Kubernetes][Configure] guide.
 
 ## Next steps
 
