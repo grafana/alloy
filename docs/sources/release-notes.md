@@ -4,9 +4,6 @@ description: Release notes for Grafana Alloy
 menuTitle: Release notes
 title: Release notes for Grafana Alloy
 weight: 999
-_build:
-  list: false
-noindex: true
 ---
 
 # Release notes for {{% param "FULL_PRODUCT_NAME" %}}

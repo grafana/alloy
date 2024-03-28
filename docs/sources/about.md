@@ -4,9 +4,6 @@ description: Alloy is a flexible, performant, vendor-neutral, telemetry collecto
 menuTitle: Introduction
 title: Introduction to Alloy
 weight: 10
-_build:
-  list: false
-noindex: true
 ---
 
 # Introduction to {{% param "PRODUCT_NAME" %}}
