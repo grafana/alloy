@@ -18,7 +18,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 pyroscope.write "LABEL" {
   endpoint {
     url = PYROSCOPE_URL
@@ -136,7 +136,7 @@ information.
 
 ## Example
 
-```river
+```alloy
 pyroscope.write "staging" {
   // Send metrics to a locally running Pyroscope instance.
   endpoint {

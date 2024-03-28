@@ -51,7 +51,7 @@ See [Examples](#example) for a full example configuration showing how to enrich 
 
 ## Usage
 
-```river
+```alloy
 loki.source.awsfirehose "LABEL" {
     http {
         listen_address = "LISTEN_ADDRESS"
@@ -129,7 +129,7 @@ This example starts an HTTP server on `0.0.0.0` address and port `9999`. The ser
 them to a `loki.write` component. The `loki.write` component will send the logs to the specified loki instance using
 basic auth credentials provided.
 
-```river
+```alloy
 loki.write "local" {
     endpoint {
         url = "http://loki:3100/api/v1/push"
@@ -155,7 +155,7 @@ As another example, if you are receiving records that originated from a CloudWat
 received entry by relabeling internal labels. The following configuration builds upon the one above but keeps the origin
 log stream and group as `log_stream` and `log_group`, respectively.
 
-```river
+```alloy
 loki.write "local" {
     endpoint {
         url = "http://loki:3100/api/v1/push"

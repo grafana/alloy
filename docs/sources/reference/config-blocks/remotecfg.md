@@ -16,7 +16,7 @@ The [API definition][] for managing and fetching configuration that the `remotec
 
 ## Example
 
-```river
+```alloy
 remotecfg {
 	url = "SERVICE_URL"
 	basic_auth {

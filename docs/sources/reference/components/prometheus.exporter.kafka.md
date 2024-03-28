@@ -11,7 +11,7 @@ The `prometheus.exporter.kafka` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.kafka "LABEL" {
     kafka_uris = KAFKA_URI_LIST
 }
@@ -72,7 +72,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.kafka`:
 
-```river
+```alloy
 prometheus.exporter.kafka "example" {
   kafka_uris = ["localhost:9200"]
 }

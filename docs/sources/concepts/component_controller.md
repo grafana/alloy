@@ -25,14 +25,14 @@ which informs the component controller which references are valid and in what or
 
 For a configuration file to be valid, components must not reference themselves or contain a cyclic reference.
 
-```river
+```alloy
 // INVALID: local.file.some_file can not reference itself:
 local.file "self_reference" {
   filename = local.file.self_reference.content
 }
 ```
 
-```river
+```alloy
 // INVALID: cyclic reference between local.file.a and local.file.b:
 local.file "a" {
   filename = local.file.b.content

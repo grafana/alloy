@@ -11,7 +11,7 @@ The `prometheus.exporter.apache` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.apache "LABEL" {
 }
 ```
@@ -52,7 +52,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.apache`:
 
-```river
+```alloy
 prometheus.exporter.apache "example" {
   scrape_uri = "http://web.example.com/server-status?auto"
 }

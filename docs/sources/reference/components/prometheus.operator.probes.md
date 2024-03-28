@@ -25,7 +25,7 @@ In these cases, the secrets are loaded and refreshed only when the Probe is upda
 
 ## Usage
 
-```river
+```alloy
 prometheus.operator.probes "LABEL" {
     forward_to = RECEIVER_LIST
 }
@@ -213,7 +213,7 @@ It also exposes some debug information for each Probe it has discovered, includi
 
 This example discovers all Probes in your cluster, and forwards collected metrics to a `prometheus.remote_write` component.
 
-```river
+```alloy
 prometheus.remote_write "staging" {
   // Send metrics to a locally running Mimir.
   endpoint {
@@ -233,7 +233,7 @@ prometheus.operator.probes "pods" {
 
 This example will limit discovered Probes to ones with the label `team=ops` in a specific namespace: `my-app`.
 
-```river
+```alloy
 prometheus.operator.probes "pods" {
     forward_to = [prometheus.remote_write.staging.receiver]
     namespaces = ["my-app"]
@@ -249,7 +249,7 @@ prometheus.operator.probes "pods" {
 
 This example will apply additional relabel rules to discovered targets to filter by hostname. This may be useful if running {{< param "PRODUCT_NAME" >}} as a DaemonSet.
 
-```river
+```alloy
 prometheus.operator.probes "probes" {
     forward_to = [prometheus.remote_write.staging.receiver]
     rule {

@@ -19,7 +19,7 @@ in the same directory.
 
 ## Usage
 
-```river
+```alloy
 import.file "NAMESPACE" {
   filename = PATH_NAME
 }
@@ -43,7 +43,7 @@ This example imports a module from a file and instantiates a custom component fr
 
 {{< collapse title="module.alloy" >}}
 
-```river
+```alloy
 declare "add" {
   argument "a" {}
   argument "b" {}
@@ -58,7 +58,7 @@ declare "add" {
 
 {{< collapse title="importer.alloy" >}}
 
-```river
+```alloy
 import.file "math" {
   filename = "module.alloy"
 }

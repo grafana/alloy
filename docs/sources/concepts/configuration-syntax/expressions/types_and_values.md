@@ -44,7 +44,7 @@ In addition to the preceding types, the [component reference][] documentation us
 
 The {{< param "PRODUCT_NAME" >}} syntax handles integers, unsigned integers, and floating-point values as a single 'number' type, simplifying writing and reading {{< param "PRODUCT_NAME" >}} configuration files.
 
-```river
+```alloy
 3    == 3.00     // true
 5.0  == (10 / 2) // true
 1e+2 == 100      // true
@@ -55,7 +55,7 @@ The {{< param "PRODUCT_NAME" >}} syntax handles integers, unsigned integers, and
 
 Strings are represented by sequences of Unicode characters surrounded by double quotes `""`.
 
-```river
+```alloy
 "Hello, world!"
 ```
 
@@ -84,7 +84,7 @@ The following table shows the supported escape sequences.
 Raw strings are represented by sequences of Unicode characters surrounded by backticks ``` `` ```.
 Raw strings don't support any escape sequences.
 
-```river
+```alloy
 `Hello, "world"!`
 ```
 
@@ -93,7 +93,7 @@ You can include a backtick by concatenating a double-quoted string that contains
 
 A multiline raw string is interpreted exactly as written.
 
-```river
+```alloy
 `Hello,
 "world"!`
 ```
@@ -113,14 +113,14 @@ Bools are represented by the symbols `true` and `false`.
 
 You construct arrays with a sequence of comma-separated values surrounded by square brackets `[]`.
 
-```river
+```alloy
 [0, 1, 2, 3]
 ```
 
 You can place values in array elements on separate lines for readability.
 A comma after the final value must be present if the closing bracket `]` is on a different line than the final value.
 
-```river
+```alloy
 [
   0,
   1,
@@ -132,7 +132,7 @@ A comma after the final value must be present if the closing bracket `]` is on a
 
 You construct objects with a sequence of comma-separated key-value pairs surrounded by curly braces `{}`.
 
-```river
+```alloy
 {
   first_name = "John",
   last_name  = "Doe",
@@ -141,13 +141,13 @@ You construct objects with a sequence of comma-separated key-value pairs surroun
 
 You can omit the comma after the final key-value pair if the closing curly brace `}` is on the same line as the final pair.
 
-```river
+```alloy
 { name = "John" }
 ```
 
 If the key isn't a valid identifier, you must wrap it in double quotes like a string.
 
-```river
+```alloy
 {
   "app.kubernetes.io/name"     = "mysql",
   "app.kubernetes.io/instance" = "mysql-abcxyz",
@@ -193,7 +193,7 @@ The specific type of capsule expected is explicitly documented for any component
 In the following example, the `prometheus.remote_write` component exports a `receiver`, which is a `capsule("prometheus.Receiver")` type.
 You can use this capsule in the `forward_to` attribute of `prometheus.scrape`, which expects an array of `capsule("prometheus.Receiver")`.
 
-```river
+```alloy
 prometheus.remote_write "default" {
   endpoint {
     url = "http://localhost:9090/api/v1/write"

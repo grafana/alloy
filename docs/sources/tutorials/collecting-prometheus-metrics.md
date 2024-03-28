@@ -49,7 +49,7 @@ Click the nodes to navigate to the associated component page. There, you can vie
 
 The [`prometheus.scrape`][prometheus.scrape] component is responsible for scraping the metrics of a particular endpoint and passing them on to another component.
 
-```river
+```alloy
 // prometheus.scrape is the name of the component and "default" is its label.
 prometheus.scrape "default" {
     // Tell the scraper to scrape at http://localhost:12345/metrics.
@@ -76,7 +76,7 @@ This is where the scraper will send the metrics for further processing.
 
 The [`prometheus.remote_write`][prometheus.remote_write] component is responsible for writing the metrics to a Prometheus-compatible endpoint (Mimir).
 
-```river
+```alloy
 prometheus.remote_write "prom" {
     endpoint {
         url = "http://mimir:9009/api/v1/push"

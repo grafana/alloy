@@ -33,7 +33,7 @@ To learn how to share custom components across multiple files, refer to [Modules
 
 This example creates a new custom component called `add`, which exports the sum of two arguments:
 
-```river
+```alloy
 declare "add" {
     argument "a" { }
     argument "b" { }

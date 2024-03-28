@@ -72,7 +72,7 @@ You can use these functions in {{< param "PRODUCT_NAME" >}} with the `prometheus
 
 The following {{< param "PRODUCT_NAME" >}} syntax sample is equivalent to the `MetricsInstance` from the [operator guide][].
 
-```river
+```alloy
 
 // read the credentials secret for remote_write authorization
 remote.kubernetes.secret "credentials" {
@@ -157,7 +157,7 @@ helm upgrade grafana-agent-logs grafana/grafana-agent -i -n monitoring -f values
 
 This simple configuration scrapes logs for every Pod on each node:
 
-```river
+```alloy
 // read the credentials secret for remote_write authorization
 remote.kubernetes.secret "credentials" {
   namespace = "monitoring"

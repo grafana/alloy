@@ -15,7 +15,7 @@ The `prometheus.exporter.snmp` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.snmp "LABEL" {
   config_file = SNMP_CONFIG_FILE_PATH
 
@@ -107,7 +107,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.snmp`:
 
-```river
+```alloy
 prometheus.exporter.snmp "example" {
     config_file = "snmp_modules.yml"
 
@@ -140,7 +140,7 @@ prometheus.scrape "demo" {
 
 This example is the same above with using an embedded configuration (with secrets):
 
-```river
+```alloy
 local.file "snmp_config" {
     path      = "snmp_modules.yml"
     is_secret = true

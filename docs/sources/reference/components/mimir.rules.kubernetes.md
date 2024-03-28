@@ -34,7 +34,7 @@ in Kubernetes in order for {{< param "PRODUCT_NAME" >}} to access it via the Kub
 
 ## Usage
 
-```river
+```alloy
 mimir.rules.kubernetes "LABEL" {
   address = MIMIR_RULER_URL
 }
@@ -209,7 +209,7 @@ This example creates a `mimir.rules.kubernetes` component that loads discovered
 rules to a local Mimir instance under the `team-a` tenant. Only namespaces and
 rules with the `alloy` label set to `yes` are included.
 
-```river
+```alloy
 mimir.rules.kubernetes "local" {
     address = "mimir:8080"
     tenant_id = "team-a"
@@ -231,7 +231,7 @@ mimir.rules.kubernetes "local" {
 This example creates a `mimir.rules.kubernetes` component that loads discovered
 rules to Grafana Cloud.
 
-```river
+```alloy
 mimir.rules.kubernetes "default" {
     address = "GRAFANA_CLOUD_METRICS_URL"
     basic_auth {

@@ -12,7 +12,7 @@ title: logging block
 
 ## Example
 
-```river
+```alloy
 logging {
   level  = "info"
   format = "logfmt"

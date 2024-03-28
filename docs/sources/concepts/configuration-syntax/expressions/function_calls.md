@@ -20,7 +20,7 @@ The {{< param "PRODUCT_NAME" >}} configuration syntax contains a [standard libra
 Some functions enable interaction with the host system, for example, reading from an environment variable.
 Some functions allow for more complex expressions, for example, concatenating arrays or decoding JSON strings into objects.
 
-```river
+```alloy
 env("HOME")
 json_decode(local.file.cfg.content)["namespace"]
 ```

@@ -14,7 +14,7 @@ This is suitable for very large Consul clusters for which using the Catalog API 
 
 ## Usage
 
-```river
+```alloy
 discovery.consulagent "LABEL" {
   server = CONSUL_SERVER
 }
@@ -95,7 +95,7 @@ values.
 <!-- TODO: Include a logging example -->
 This example discovers targets from a Consul Agent for the specified list of services:
 
-```river
+```alloy
 discovery.consulagent "example" {
   server = "localhost:8500"
   services = [

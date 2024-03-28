@@ -41,7 +41,7 @@ Multiple `pyroscope.scrape` components can be specified by giving them different
 
 ## Usage
 
-```river
+```alloy
 pyroscope.scrape "LABEL" {
   targets    = TARGET_LIST
   forward_to = RECEIVER_LIST
@@ -363,7 +363,7 @@ The following arguments are supported:
 The `profile.custom` block allows for collecting profiles from custom
 endpoints. Blocks must be specified with a label:
 
-```river
+```alloy
 profile.custom "PROFILE_TYPE" {
   enabled = true
   path    = "PROFILE_PATH"
@@ -449,7 +449,7 @@ The following example sets up a scrape job of a statically configured
 list of targets - {{< param "PRODUCT_NAME" >}} itself and Pyroscope.
 The scraped profiles are sent to `pyroscope.write` which remote writes them to a Pyroscope database.
 
-```river
+```alloy
 pyroscope.scrape "local" {
   targets = [
     {"__address__" = "localhost:4100", "service_name"="pyroscope"},
@@ -493,7 +493,7 @@ the `enabled` argument of the `profile.fgprof` block is `false` by default.
 
 ### Default endpoints of dynamic targets
 
-```river
+```alloy
 discovery.http "dynamic_targets" {
   url = "https://example.com/scrape_targets"
   refresh_interval = "15s"
@@ -516,7 +516,7 @@ pyroscope.write "local" {
 
 ### Default endpoints of static and dynamic targets
 
-```river
+```alloy
 discovery.http "dynamic_targets" {
   url = "https://example.com/scrape_targets"
   refresh_interval = "15s"
@@ -541,7 +541,7 @@ pyroscope.write "local" {
 
 ### Enabling and disabling profiles
 
-```river
+```alloy
 pyroscope.scrape "local" {
   targets = [
     {"__address__" = "localhost:12345", "service_name"="agent"},

@@ -31,13 +31,13 @@ In this task, you will use the [prometheus.exporter.self][] and [prometheus.scra
 
 1. Add the following `prometheus.exporter.self` component to your configuration. The component accepts no arguments.
 
-   ```river
+   ```alloy
    prometheus.exporter.self "<SELF_LABEL>" {
    }
    ```
 
 1. Add the following `prometheus.scrape` component to your configuration file.
-   ```river
+   ```alloy
    prometheus.scrape "<SCRAPE_LABEL>" {
      targets    = prometheus.exporter.<SELF_LABEL>.default.targets
      forward_to = [<METRICS_RECEIVER_LIST>]
@@ -54,7 +54,7 @@ In this task, you will use the [prometheus.exporter.self][] and [prometheus.scra
 
 The following example demonstrates configuring a possible sequence of components.
 
-```river
+```alloy
 prometheus.exporter.self "default" {
 }
 
@@ -79,7 +79,7 @@ The block is specified without a label and can only be provided once per configu
 
 1. Add the following `logging` configuration block to the top level of your configuration file.
 
-   ```river
+   ```alloy
    logging {
      level    = "<LOG_LEVEL>"
      format   = "<LOG_FORMAT>"
@@ -97,7 +97,7 @@ The block is specified without a label and can only be provided once per configu
 
 The following example demonstrates configuring the logging block and sending to a compatible component.
 
-```river
+```alloy
 logging {
   level    = "warn"
   format   = "json"
@@ -120,7 +120,7 @@ In this task you will use the [tracing][] block to forward {{< param "PRODUCT_NA
 
 1. Add the following `tracing` configuration block to the top level of your configuration file.
 
-   ```river
+   ```alloy
    tracing {
      sampling_fraction = <SAMPLING_FRACTION>
      write_to          = [<TRACES_RECEIVER_LIST>]
@@ -134,7 +134,7 @@ In this task you will use the [tracing][] block to forward {{< param "PRODUCT_NA
 
 The following example demonstrates configuring the tracing block and sending to a compatible component.
 
-```river
+```alloy
 tracing {
   sampling_fraction = 0.1
   write_to          = [otelcol.exporter.otlp.default.input]

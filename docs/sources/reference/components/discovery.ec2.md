@@ -12,7 +12,7 @@ The IAM credentials used must have the `ec2:DescribeInstances` permission to dis
 
 ## Usage
 
-```river
+```alloy
 discovery.ec2 "LABEL" {
 }
 ```
@@ -140,7 +140,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.ec2 "ec2" {
   region = "us-east-1"
 }

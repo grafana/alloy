@@ -18,7 +18,7 @@ Multiple `otelcol.auth.headers` components can be specified by giving them diffe
 
 ## Usage
 
-```river
+```alloy
 otelcol.auth.headers "LABEL" {
   header {
     key   = "HEADER_NAME"
@@ -93,7 +93,7 @@ configuration.
 
 This example configures [otelcol.exporter.otlp][] to use custom headers:
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   http {
     include_metadata = true

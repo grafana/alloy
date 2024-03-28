@@ -18,7 +18,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.exporter.otlphttp "LABEL" {
   client {
     endpoint = "HOST:PORT"
@@ -139,7 +139,7 @@ information.
 This example creates an exporter to send data to a locally running Grafana
 Tempo without TLS:
 
-```river
+```alloy
 otelcol.exporter.otlphttp "tempo" {
     client {
         endpoint = "http://tempo:4317"

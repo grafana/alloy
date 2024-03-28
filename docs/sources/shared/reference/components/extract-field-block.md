@@ -29,7 +29,7 @@ For example, assume your pod spec contains the following labels:
 
 If you'd like to add tags for all labels with the prefix `app.kubernetes.io/` and trim the prefix, then you can specify the following extraction rules:
 
-```river
+```alloy
 extract {
 	label {
 	    from = "pod"

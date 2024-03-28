@@ -18,7 +18,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.receiver.otlp "LABEL" {
   grpc { ... }
   http { ... }
@@ -213,7 +213,7 @@ information.
 This example forwards received telemetry data through a batch processor before
 finally sending it to an OTLP-capable endpoint:
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   http {}
   grpc {}

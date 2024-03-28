@@ -32,7 +32,7 @@ in Kubernetes for {{< param "PRODUCT_NAME" >}} to access it via the Kubernetes R
 
 ## Usage
 
-```river
+```alloy
 loki.rules.kubernetes "LABEL" {
   address = LOKI_RULER_URL
 }
@@ -191,7 +191,7 @@ This example creates a `loki.rules.kubernetes` component that loads discovered
 rules to a local Loki instance under the `team-a` tenant. Only namespaces and
 rules with the `alloy` label set to `yes` are included.
 
-```river
+```alloy
 loki.rules.kubernetes "local" {
     address = "loki:3100"
     tenant_id = "team-a"
@@ -213,7 +213,7 @@ loki.rules.kubernetes "local" {
 This example creates a `loki.rules.kubernetes` component that loads discovered
 rules to Grafana Cloud.
 
-```river
+```alloy
 loki.rules.kubernetes "default" {
     address = "GRAFANA_CLOUD_URL"
     basic_auth {

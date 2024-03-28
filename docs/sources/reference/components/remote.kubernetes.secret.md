@@ -12,7 +12,7 @@ A common use case for this is loading credentials or other information from secr
 
 ## Usage
 
-```river
+```alloy
 remote.kubernetes.secret "LABEL" {
   namespace = "NAMESPACE_OF_SECRET"
   name = "NAME_OF_SECRET"
@@ -121,7 +121,7 @@ The `data` field contains a mapping from field names to values.
 If an individual key stored in `data` does not hold sensitive data, it can be
 converted into a string using [the `nonsensitive` function][nonsensitive]:
 
-```river
+```alloy
 nonsensitive(remote.kubernetes.secret.LABEL.data.KEY_NAME)
 ```
 
@@ -146,7 +146,7 @@ Instances of `remote.kubernetes.secret` report as healthy if the most recent att
 
 This example reads a Secret and a ConfigMap from Kubernetes and uses them to supply remote-write credentials.
 
-```river
+```alloy
 remote.kubernetes.secret "credentials" {
   namespace = "monitoring"
   name = "metrics-secret"

@@ -19,7 +19,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 loki.source.cloudflare "LABEL" {
   zone_id   = "ZONE_ID"
   api_token = "API_TOKEN"
@@ -191,7 +191,7 @@ configuration.
 This example pulls logs from Cloudflare's API and forwards them to a
 `loki.write` component.
 
-```river
+```alloy
 loki.source.cloudflare "dev" {
   zone_id   = env("CF_ZONE_ID")
   api_token = local.file.api.content

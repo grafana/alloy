@@ -27,7 +27,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.auth.sigv4 "LABEL" {
 }
 ```
@@ -101,7 +101,7 @@ configuration.
 In this example the exporter endpoint starts with `aps-workspaces`. Hence `service` is inferred to be `aps`
 and `region` is inferred to be `us-east-1`.
 
-```river
+```alloy
 otelcol.exporter.otlp "example" {
   client {
     endpoint = "https://aps-workspaces.us-east-1.amazonaws.com/workspaces/ws-XXX/api/v1/remote_write"
@@ -118,7 +118,7 @@ otelcol.auth.sigv4 "creds" {
 In this example the exporter endpoint starts with `search-`. Hence `service` is inferred to be `es`
 and `region` is inferred to be `us-east-1`.
 
-```river
+```alloy
 otelcol.exporter.otlp "example" {
   client {
     endpoint = "https://search-my-domain.us-east-1.es.amazonaws.com/_search?q=house"
@@ -135,7 +135,7 @@ otelcol.auth.sigv4 "creds" {
 In this example the exporter endpoint does not begin with `search-` or with `aps-workspaces`.
 Hence, we need to specify `region` and `service` explicitly.
 
-```river
+```alloy
 otelcol.exporter.otlp "example" {
   client {
     endpoint = "my-otlp-grpc-server:4317"
@@ -153,7 +153,7 @@ otelcol.auth.sigv4 "creds" {
 
 In this example we have also specified configuration to assume a role. `sts_region` hasn't been provided, so it will default to the value of `region` which is `example_region`.
 
-```river
+```alloy
 otelcol.exporter.otlp "example" {
   client {
     endpoint = "my-otlp-grpc-server:4317"

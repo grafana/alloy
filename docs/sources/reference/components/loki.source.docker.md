@@ -12,7 +12,7 @@ Multiple `loki.source.docker` components can be specified by giving them differe
 
 ## Usage
 
-```river
+```alloy
 loki.source.docker "LABEL" {
   host       = HOST
   targets    = TARGET_LIST
@@ -129,7 +129,7 @@ component's debug info.
 This example collects log entries from the files specified in the `targets`
 argument and forwards them to a `loki.write` component to be written to Loki.
 
-```river
+```alloy
 discovery.docker "linux" {
   host = "unix:///var/run/docker.sock"
 }

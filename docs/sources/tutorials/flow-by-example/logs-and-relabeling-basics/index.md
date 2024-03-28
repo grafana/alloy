@@ -21,7 +21,7 @@ The `prometheus.relabel` component allows you to perform Prometheus relabeling o
 
 Let's add a `prometheus.relabel` component to a basic pipeline and see how to add labels.
 
-```river
+```alloy
 prometheus.exporter.unix "localhost" { }
 
 prometheus.scrape "default" {
@@ -100,7 +100,7 @@ echo "This is a log line" > /tmp/flow-logs/log.log
 
 Now that we have a log file, let's create a pipeline to scrape it.
 
-```river
+```alloy
 local.file_match "tmplogs" {
     path_targets = [{"__path__" = "/tmp/flow-logs/*.log"}]
 }
@@ -149,7 +149,7 @@ Let's start by adding an `os` label (just like the Prometheus example) to all of
 
 Modify the following snippet to add the label `os` with the value of the `os` constant.
 
-```river
+```alloy
 local.file_match "tmplogs" {
     path_targets = [{"__path__" = "/tmp/flow-logs/*.log"}]
 }
@@ -189,7 +189,7 @@ You should only see the lines you added in the previous step.
 
 {{< collapse title="Solution" >}}
 
-```river
+```alloy
 // Let's learn about relabeling and send logs to Loki!
 
 local.file_match "tmplogs" {
@@ -253,7 +253,7 @@ Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`. Try 
 
 {{< collapse title="Solution" >}}
 
-```river
+```alloy
 // Let's learn about relabeling and send logs to Loki!
 
 local.file_match "tmplogs" {

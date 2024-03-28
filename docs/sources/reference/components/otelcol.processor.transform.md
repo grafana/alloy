@@ -85,7 +85,7 @@ to a new metric data type or can be used to create new metrics.
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.transform "LABEL" {
   output {
     metrics = [...]
@@ -206,7 +206,7 @@ For practical purposes, this means that a context cannot make decisions on its t
 For example, __the following context statement is not possible__ because it attempts to use individual datapoint
 attributes in the condition of a statement associated to a `metric`:
 
-```river
+```alloy
 metric_statements {
   context = "metric"
   statements = [
@@ -223,7 +223,7 @@ Context __ALWAYS__ supply access to the items "higher" in the protobuf definitio
 
 For example, __the following context statement is possible__ because `datapoint` statements can access the datapoint's metric.
 
-```river
+```alloy
 metric_statements {
   context = "datapoint"
   statements = [
@@ -277,7 +277,7 @@ information.
 
 This example sets the attribute `test` to `pass` if the attribute `test` does not exist.
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -306,7 +306,7 @@ each `"` with a `\"` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >
 The are two ways to rename an attribute key.
 One way is to set a new attribute and delete the old one:
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -328,7 +328,7 @@ otelcol.processor.transform "default" {
 
 Another way is to update the key using regular expressions:
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -355,7 +355,7 @@ each `"` with a `\"`, and each `\` with a `\\` inside a [normal][river-strings] 
 
 This example sets the attribute `body` to the value of the log body:
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -382,7 +382,7 @@ each `"` with a `\"` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >
 
 This example sets the attribute `test` to the value of attributes `service.name` and `service.version` combined.
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -423,7 +423,7 @@ Given the following JSON body:
 
 You can add specific fields as attributes on the log:
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -463,7 +463,7 @@ each `"` with a `\"`, and each `\` with a `\\` inside a [normal][river-strings] 
 The example takes advantage of context efficiency by grouping transformations
 with the context which it intends to transform.
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   http {}
   grpc {}

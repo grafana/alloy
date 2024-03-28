@@ -8,13 +8,13 @@ title: replace
 
 `replace` searches a string for a substring, and replaces each occurrence of the substring with a replacement string.
 
-```river
+```alloy
 replace(string, substring, replacement)
 ```
 
 ## Examples
 
-```river
+```alloy
 > replace("1 + 2 + 3", "+", "-")
 "1 - 2 - 3"
 ```

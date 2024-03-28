@@ -21,7 +21,7 @@ For example, the `local.file` component is responsible for retrieving the conten
 You specify components in the configuration file by first providing the component's name with a user-specified label,
 and then by giving arguments to configure the component.
 
-```river
+```alloy
 discovery.kubernetes "pods" {
   role = "pod"
 }
@@ -41,7 +41,7 @@ Combining component names with a label means you can define multiple instances o
 
 Most arguments for a component in a configuration file are constant values, such as setting a `log_level` attribute to the quoted string `"debug"`.
 
-```river
+```alloy
 log_level = "debug"
 ```
 
@@ -66,7 +66,7 @@ An example pipeline may look like this:
 
 The following configuration file represents the pipeline.
 
-```river
+```alloy
 // Get our API key from disk.
 //
 // This component has an exported field called "content", holding the content

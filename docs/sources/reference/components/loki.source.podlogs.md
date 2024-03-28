@@ -31,7 +31,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 loki.source.podlogs "LABEL" {
   forward_to = RECEIVER_LIST
 }
@@ -268,7 +268,7 @@ configuration.
 This example discovers all `PodLogs` resources and forwards collected logs to a
 `loki.write` component so they are written to Loki.
 
-```river
+```alloy
 loki.source.podlogs "default" {
   forward_to = [loki.write.local.receiver]
 }

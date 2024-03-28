@@ -18,7 +18,7 @@ weight: 100
 * Install [Docker][] on your computer.
 * Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
 
-  ```river
+  ```alloy
   logging {
     level  = "info"
     format = "logfmt"

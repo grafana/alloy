@@ -17,7 +17,7 @@ An {{< param "PRODUCT_NAME" >}} configuration file tells {{< param "PRODUCT_NAME
 
 The {{< param "PRODUCT_NAME" >}} syntax uses blocks, attributes, and expressions.
 
-```river
+```alloy
 // Create a local.file component labeled my_file.
 // This can be referenced by other components as local.file.my_file.
 local.file "my_file" {
@@ -62,7 +62,7 @@ Attributes always take the form of `ATTRIBUTE_NAME = ATTRIBUTE_VALUE`.
 
 The following example shows how to set the `log_level` attribute to `"debug"`.
 
-```river
+```alloy
 log_level = "debug"
 ```
 
@@ -90,7 +90,7 @@ label (for example, `password_file`), and export name (for example, `content`), 
 You use _Blocks_ to configure components and groups of attributes.
 Each block can contain any number of attributes or nested blocks.
 
-```river
+```alloy
 prometheus.remote_write "default" {
   endpoint {
     url = "http://localhost:9009/api/prom/push"

@@ -18,7 +18,7 @@ If you are trying to discover files on the local filesystem rather than scrape t
 
 ## Usage
 
-```river
+```alloy
 discovery.file "LABEL" {
   files = [FILE_PATH_1, FILE_PATH_2, ...]
 }
@@ -96,7 +96,7 @@ In those cases, exported fields retain their last healthy values.
 
 This example discovers targets from a single file, scrapes them, and writes metrics to a Prometheus remote write endpoint.
 
-```river
+```alloy
 discovery.file "example" {
   files = ["/tmp/example.json"]
 }
@@ -129,7 +129,7 @@ This example discovers targets from a wildcard file path, scrapes them, and writ
 
 It also uses a relabeling rule to retain the file path as a label on each target.
 
-```river
+```alloy
 discovery.file "example" {
   files = ["/tmp/example_*.yaml"]
 }

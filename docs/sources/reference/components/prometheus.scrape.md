@@ -265,7 +265,7 @@ of the [blackbox exporter](https://github.com/prometheus/blackbox_exporter/).
 The exposed metrics are sent over to the provided list of receivers, as
 defined by other components.
 
-```river
+```alloy
 prometheus.scrape "blackbox_scraper" {
   targets = [
     {"__address__" = "blackbox-exporter:9115", "instance" = "one"},

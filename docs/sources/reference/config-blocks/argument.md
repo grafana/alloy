@@ -14,7 +14,7 @@ The `argument` block may only be specified inside the definition of [a `declare`
 
 ## Example
 
-```river
+```alloy
 argument "ARGUMENT_NAME" {}
 ```
 
@@ -52,7 +52,7 @@ Other expressions within a custom component may use `argument.ARGUMENT_NAME.valu
 
 This example creates a custom component that self-collects process metrics and forwards them to an argument specified by the user of the custom component:
 
-```river
+```alloy
 declare "self_collect" {
   argument "metrics_output" {
     optional = false

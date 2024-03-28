@@ -12,7 +12,7 @@ title: discovery.ionos
 
 ## Usage
 
-```river
+```alloy
 discovery.ionos "LABEL" {
     datacenter_id = DATACENTER_ID
 }
@@ -124,7 +124,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.ionos "example" {
     datacenter_id = "15f67991-0f51-4efc-a8ad-ef1fb31a480c"
 }

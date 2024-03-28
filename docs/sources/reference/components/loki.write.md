@@ -12,7 +12,7 @@ Multiple `loki.write` components can be specified by giving them different label
 
 ## Usage
 
-```river
+```alloy
 loki.write "LABEL" {
   endpoint {
     url = REMOTE_WRITE_URL
@@ -203,7 +203,7 @@ The following examples show you how to create `loki.write` components that send 
 
 You can create a `loki.write` component that sends your log entries to a local Loki instance:
 
-```river
+```alloy
 loki.write "local" {
     endpoint {
         url = "http://loki:3100/loki/api/v1/push"
@@ -215,7 +215,7 @@ loki.write "local" {
 
 You can create a `loki.write` component that sends your log entries to a managed service, for example, Grafana Cloud. The Loki username and Grafana Cloud API Key are injected in this example through environment variables.
 
-```river
+```alloy
 loki.write "default" {
     endpoint {
         url = "https://logs-xxx.grafana.net/loki/api/v1/push"

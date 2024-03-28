@@ -22,7 +22,7 @@ PodMonitors may reference secrets for authenticating to targets to scrape them. 
 
 ## Usage
 
-```river
+```alloy
 prometheus.operator.podmonitors "LABEL" {
     forward_to = RECEIVER_LIST
 }
@@ -211,7 +211,7 @@ It also exposes some debug information for each PodMonitor it has discovered, in
 
 This example discovers all PodMonitors in your cluster, and forwards collected metrics to a `prometheus.remote_write` component.
 
-```river
+```alloy
 prometheus.remote_write "staging" {
   // Send metrics to a locally running Mimir.
   endpoint {
@@ -231,7 +231,7 @@ prometheus.operator.podmonitors "pods" {
 
 This example will limit discovered PodMonitors to ones with the label `team=ops` in a specific namespace: `my-app`.
 
-```river
+```alloy
 prometheus.operator.podmonitors "pods" {
     forward_to = [prometheus.remote_write.staging.receiver]
     namespaces = ["my-app"]
@@ -247,7 +247,7 @@ prometheus.operator.podmonitors "pods" {
 
 This example will apply additional relabel rules to discovered targets to filter by hostname. This may be useful if running {{< param "PRODUCT_NAME" >}} as a DaemonSet.
 
-```river
+```alloy
 prometheus.operator.podmonitors "pods" {
     forward_to = [prometheus.remote_write.staging.receiver]
     rule {

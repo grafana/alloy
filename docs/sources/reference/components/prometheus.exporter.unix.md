@@ -19,7 +19,7 @@ Multiple `prometheus.exporter.unix` components can be specified by giving them d
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.unix "LABEL" {
 }
 ```
@@ -378,7 +378,7 @@ properly.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.unix`:
 
-```river
+```alloy
 prometheus.exporter.unix "demo" { }
 
 // Configure a prometheus.scrape component to collect unix metrics.

@@ -25,7 +25,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.resourcedetection "LABEL" {
   output {
     logs    = [...]
@@ -772,7 +772,7 @@ information.
 If you set up a `OTEL_RESOURCE_ATTRIBUTES` environment variable with value of `TestKey=TestValue`,
 then all logs, metrics, and traces have a resource attribute with a key `TestKey` and value of `TestValue`.
 
-```river
+```alloy
 otelcol.processor.resourcedetection "default" {
   detectors = ["env"]
 
@@ -789,7 +789,7 @@ otelcol.processor.resourcedetection "default" {
 There is no need to put in an `ec2 {}` block.
 The `ec2` defaults are applied automatically, as specified in [ec2][].
 
-```river
+```alloy
 otelcol.processor.resourcedetection "default" {
   detectors = ["env", "ec2"]
 
@@ -806,7 +806,7 @@ otelcol.processor.resourcedetection "default" {
 There is no need to put in a `ec2 {}` block.
 The `ec2` defaults are applied automatically, as specified in [ec2][].
 
-```river
+```alloy
 otelcol.processor.resourcedetection "default" {
   detectors = ["ec2"]
 
@@ -820,7 +820,7 @@ otelcol.processor.resourcedetection "default" {
 
 ### ec2 with explicit resource attributes
 
-```river
+```alloy
 otelcol.processor.resourcedetection "default" {
   detectors = ["ec2"]
   ec2 {
@@ -853,7 +853,7 @@ This example uses the default `node_from_env_var` option of `K8S_NODE_NAME`.
 There is no need to put in a `kubernetes_node {}` block.
 The `kubernetes_node` defaults are applied automatically, as specified in [kubernetes_node][].
 
-```river
+```alloy
 otelcol.processor.resourcedetection "default" {
   detectors = ["kubernetes_node"]
 
@@ -879,7 +879,7 @@ You need to add this to your workload:
 
 This example uses a custom `node_from_env_var` set to `my_custom_var`.
 
-```river
+```alloy
 otelcol.processor.resourcedetection "default" {
   detectors = ["kubernetes_node"]
   kubernetes_node {

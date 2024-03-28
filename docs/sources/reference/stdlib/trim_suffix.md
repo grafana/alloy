@@ -10,7 +10,7 @@ title: trim_suffix
 
 ## Examples
 
-```river
+```alloy
 > trim_suffix("helloworld", "world")
 "hello"
 ```

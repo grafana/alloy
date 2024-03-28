@@ -18,7 +18,7 @@ You can specify multiple `otelcol.processor.k8sattributes` components by giving 
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.k8sattributes "LABEL" {
   output {
     metrics = [...]
@@ -180,7 +180,7 @@ fully through child blocks.
 The `pod_association` block can be repeated multiple times, to configure additional rules.
 
 Example:
-```river
+```alloy
 pod_association {
     source {
         from = "resource_attribute"
@@ -271,7 +271,7 @@ In most cases, this is enough to get started. It'll add these resource attribute
 
 Example:
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   http {}
   grpc {}
@@ -300,7 +300,7 @@ otelcol.exporter.otlp "default" {
 
 ### Add additional metadata and labels
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   http {}
   grpc {}
@@ -355,7 +355,7 @@ To display the metadata as labels of Prometheus metrics, the OTLP attributes mus
 resource attributes to datapoint attributes. One way to do this is by using an `otelcol.processor.transform`
 component.
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   http {}
   grpc {}

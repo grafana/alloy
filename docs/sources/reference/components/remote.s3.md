@@ -21,7 +21,7 @@ labels. By default, [AWS environment variables](https://docs.aws.amazon.com/cli/
 
 ## Usage
 
-```river
+```alloy
 remote.s3 "LABEL" {
   path = S3_FILE_PATH
 }
@@ -89,7 +89,7 @@ the watched file was successful.
 
 ## Example
 
-```river
+```alloy
 remote.s3 "data" {
   path = "s3://test-bucket/file.txt"
 }

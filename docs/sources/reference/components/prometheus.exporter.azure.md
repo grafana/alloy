@@ -34,7 +34,7 @@ The account used by {{< param "PRODUCT_NAME" >}} needs:
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.azure LABEL {
         subscriptions = [
                 SUB_ID_1,
@@ -115,7 +115,7 @@ debug metrics.
 
 ## Examples
 
-```river
+```alloy
 prometheus.exporter.azure "example" {
 	subscriptions    = SUBSCRIPTIONS
 	resource_type    = "Microsoft.Storage/storageAccounts"

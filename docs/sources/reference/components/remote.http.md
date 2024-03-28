@@ -17,7 +17,7 @@ labels.
 
 ## Usage
 
-```river
+```alloy
 remote.http "LABEL" {
   url = "URL_TO_POLL"
 }
@@ -135,7 +135,7 @@ request of the specified URL succeeds.
 This example reads a JSON array of objects from an endpoint and uses them as a
 set of scrape targets:
 
-```river
+```alloy
 remote.http "targets" {
   url = env("MY_TARGETS_URL")
 }

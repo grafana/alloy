@@ -12,7 +12,7 @@ title: faro.receiver
 
 ## Usage
 
-```river
+```alloy
 faro.receiver "LABEL" {
     output {
         logs   = [LOKI_RECEIVERS]
@@ -186,7 +186,7 @@ start.
 
 ## Example
 
-```river
+```alloy
 faro.receiver "default" {
     server {
         listen_address = "NETWORK_ADDRESS"

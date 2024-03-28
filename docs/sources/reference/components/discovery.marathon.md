@@ -10,7 +10,7 @@ title: discovery.marathon
 
 ## Usage
 
-```river
+```alloy
 discovery.marathon "LABEL" {
   servers = [MARATHON_SERVER1, MARATHON_SERVER2...]
 }
@@ -120,7 +120,7 @@ In those cases, exported fields retain their last healthy values.
 
 This example discovers targets from a Marathon server:
 
-```river
+```alloy
 discovery.marathon "example" {
   servers = ["localhost:8500"]
 }

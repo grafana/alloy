@@ -15,7 +15,7 @@ The HTTP API exposed is compatible with [Prometheus `remote_write` API][promethe
 
 ## Usage
 
-```river
+```alloy
 prometheus.receive_http "LABEL" {
   http {
     listen_address = "LISTEN_ADDRESS"
@@ -76,7 +76,7 @@ The following are some of the metrics that are exposed when this component is us
 
 This example creates a `prometheus.receive_http` component which starts an HTTP server listening on `0.0.0.0` and port `9999`. The server receives metrics and forwards them to a `prometheus.remote_write` component which writes these metrics to the specified HTTP endpoint.
 
-```river
+```alloy
 // Receives metrics over HTTP
 prometheus.receive_http "api" {
   http {
@@ -103,7 +103,7 @@ prometheus.remote_write "local" {
 
 In order to send metrics to the `prometheus.receive_http` component defined in the previous example, another {{< param "PRODUCT_NAME" >}} can run with the following configuration:
 
-```river
+```alloy
 // Collects metrics of localhost:12345
 prometheus.scrape "agent_self" {
   targets = [

@@ -8,13 +8,13 @@ title: trim
 
 `trim` removes the specified set of characters from the start and end of a string.
 
-```river
+```alloy
 trim(string, str_character_set)
 ```
 
 ## Examples
 
-```river
+```alloy
 > trim("?!hello?!", "!?")
 "hello"
 

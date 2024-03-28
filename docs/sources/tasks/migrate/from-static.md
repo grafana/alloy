@@ -185,7 +185,7 @@ Replace the following:
 
 The new {{< param "PRODUCT_NAME" >}} configuration file looks like this:
 
-```river
+```alloy
 prometheus.scrape "metrics_test_local_agent" {
 	targets = [{
 		__address__ = "127.0.0.1:12345",

@@ -17,7 +17,7 @@ To use the  `pyroscope.java` component you must run {{< param "PRODUCT_NAME" >}}
 
 ## Usage
 
-```river
+```alloy
 pyroscope.java "LABEL" {
   targets    = TARGET_LIST
   forward_to = RECEIVER_LIST
@@ -125,7 +125,7 @@ values.
 
 ### Profile every java process on the current host
 
-```river
+```alloy
 pyroscope.write "staging" {
   endpoint {
     url = "http://localhost:4040"
