@@ -81,8 +81,6 @@ To use [Experimental][stability] or [Public preview][stability] functionality, s
 * `--stability.level=generally-available`: Use functionality marked as _Generally available_.
 
 [stability]: https://grafana.com/docs/release-life-cycle/
-{{< admonition type="caution" >}}
-{{< /admonition >}}
 
 Refer to [Release life cycle for Grafana Labs](https://grafana.com/docs/release-life-cycle/) for the definition of each stability level.
 
