@@ -30,10 +30,6 @@ Some sections of Grafana Alloy reference documentation are automatically generat
 
 The following is a list of community-led projects for working with Grafana Alloy. These projects aren't maintained or supported by Grafana Labs.
 
-#### Helm (Kubernetes Deployment)
-
-A publicly available release of a Grafana Alloy Helm chart is maintained [here](https://github.com/DandyDeveloper/charts/tree/master/charts/grafana-alloy). Contributions and improvements are welcomed. Full details on rolling out and supported options can be found in the [readme](https://github.com/DandyDeveloper/charts/blob/master/charts/grafana-alloy/README.md).
-
 <!--
 #### Juju (Charmed Operator)
 
