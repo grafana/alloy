@@ -80,6 +80,14 @@ To use [Experimental][stability] or [Public preview][stability] functionality, s
 * `--stability.level=public-preview`: Use functionality marked as _Public preview_ and above.
 * `--stability.level=generally-available`: Use functionality marked as _Generally available_.
 
+{{< admonition type="caution" >}}
+Setting `--stability.level` to `experimental` or `public-preview` may enable _Experimental_ or _Public preview_ behavior for items otherwise marked _Generally available_, such as:
+
+* The component controller
+* Components in the main configuration or in imported modules
+* Configuration blocks in the main configuration
+{{< /admonition >}}
+
 [stability]: https://grafana.com/docs/release-life-cycle/
 
 Refer to [Release life cycle for Grafana Labs](https://grafana.com/docs/release-life-cycle/) for the definition of each stability level.
