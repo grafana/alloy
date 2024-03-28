@@ -10,7 +10,7 @@ cascade:
   PRODUCT_NAME: Alloy
 ---
 
-# {{% param "PRODUCT_NAME" %}}
+# {{% param "FULL_PRODUCT_NAME" %}}
 
 {{< param "FULL_PRODUCT_NAME" >}} is a vendor-neutral distribution of the [OpenTelemetry][] (OTel) Collector.
 {{< param "PRODUCT_NAME" >}} uniquely combines the very best OSS observability signals in the community.
