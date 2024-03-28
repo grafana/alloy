@@ -6,25 +6,26 @@ title: Grafana Alloy data collection
 weight: 900
 ---
 
-# {{% param "FULL_PRODUCT_NAME" %}} Data collection
+# {{% param "FULL_PRODUCT_NAME" %}} data collection
 
 By default, {{< param "FULL_PRODUCT_NAME" >}} sends anonymous but uniquely identifiable usage information from your {{< param "PRODUCT_NAME" >}} instance to Grafana Labs.
 These statistics are sent to `stats.grafana.org`.
 
-Statistics help us better understand how {{< param "PRODUCT_NAME" >}} is used. This helps us prioritize features and documentation.
+Statistics help Grafana better understand how {{< param "PRODUCT_NAME" >}} is used. This helps us prioritize features and documentation.
 
 The usage information includes the following details:
 
-* A randomly generated, anonymous unique ID (UUID).
+* A randomly generated, anonymous, unique ID (UUID).
 * Timestamp of when the UID was first generated.
 * Timestamp of when the report was created (by default, every four hours).
-* Version of running {{< param "PRODUCT_NAME" >}}.
-* Operating system {{< param "PRODUCT_NAME" >}} is running on.
-* System architecture {{< param "PRODUCT_NAME" >}} is running on.
-* List of enabled [components][]
-* Method used to deploy {{< param "PRODUCT_NAME" >}}, for example Docker, Helm, RPM, or Operator.
+* The version of {{< param "PRODUCT_NAME" >}}.
+* The operating system {{< param "PRODUCT_NAME" >}} is running on.
+* The system architecture {{< param "PRODUCT_NAME" >}} is running on.
+* A list of enabled [components][]
+* The method used to deploy {{< param "PRODUCT_NAME" >}}, for example Docker, Helm, or a Linux package.
 
-This list may change over time. All newly reported data is documented in the CHANGELOG.
+This list may change over time.
+All newly reported data is documented in the CHANGELOG.
 
 ## Opt-out of data collection
 

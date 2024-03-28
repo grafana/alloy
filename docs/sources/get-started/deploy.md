@@ -1,8 +1,8 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/deploy-alloy/
+canonical: https://grafana.com/docs/alloy/latest/get-started/deploy/
 description: Learn about possible deployment topologies for Grafana Alloy
 menuTitle: Deploy
-title: Grafana Alloy deployment topologies
+title: Deploy Grafana Alloy
 weight: 900
 ---
 
@@ -10,17 +10,17 @@ weight: 900
 
 ## Processing different types of telemetry in different {{< param "PRODUCT_NAME" >}} instances
 
-If the load on {{< param "PRODUCT_NAME" >}} is small, it is recommended to process all necessary telemetry signals in the same {{< param "PRODUCT_NAME" >}} process.
-For example, a single {{< param "PRODUCT_NAME" >}} can process all of the incoming metrics, logs, traces, and profiles.
+If the load on {{< param "PRODUCT_NAME" >}} is small, you can process all necessary telemetry signals in the same {{< param "PRODUCT_NAME" >}} process.
+For example, a single {{< param "PRODUCT_NAME" >}} deployment can process all of the incoming metrics, logs, traces, and profiles.
 
-However, if the load on the {{< param "PRODUCT_NAME" >}}s is big, it may be beneficial to process different telemetry signals in different deployments of {{< param "PRODUCT_NAME" >}}s.
+However, if the load on {{< param "PRODUCT_NAME" >}} is big, it may be beneficial to process different telemetry signals in different deployments of {{< param "PRODUCT_NAME" >}}.
 
 This provides better stability due to the isolation between processes.
-For example, an overloaded {{< param "PRODUCT_NAME" >}} processing traces won't impact an {{< param "PRODUCT_NAME" >}} processing metrics.
+For example, an overloaded {{< param "PRODUCT_NAME" >}} instance processing traces won't impact an {{< param "PRODUCT_NAME" >}} instance processing metrics.
 Different types of signal collection require different methods for scaling:
 
 * "Pull" components such as `prometheus.scrape` and `pyroscope.scrape` are scaled using hashmod sharing or clustering.
-* "Push" components such as `otelcol.receiver.otlp` are scaled by placing a load balancer in front of them.
+* "Push" components such as `otelcol.receiver.otlp` are scaled by placing a load balancer in front of the components.
 
 ### Traces
 
@@ -39,9 +39,9 @@ To decide whether scaling is necessary, check metrics such as:
 #### Stateful and stateless components
 
 In the context of tracing, a "stateful component" is a component that needs to aggregate certain spans to work correctly.
-A "stateless {{< param "PRODUCT_NAME" >}}" is an {{< param "PRODUCT_NAME" >}} which does not contain stateful components.
+A "stateless {{< param "PRODUCT_NAME" >}}" is an {{< param "PRODUCT_NAME" >}} which doesn't contain stateful components.
 
-Scaling stateful {{< param "PRODUCT_NAME" >}}s is more difficult, because spans must be forwarded to a specific {{< param "PRODUCT_NAME" >}} according to a span property such as trace ID or a `service.name` attribute.
+Scaling stateful {{< param "PRODUCT_NAME" >}} instances is more difficult, because spans must be forwarded to a specific {{< param "PRODUCT_NAME" >}} instance according to a span property such as trace ID or a `service.name` attribute.
 You can forward spans with `otelcol.exporter.loadbalancing`.
 
 Examples of stateful components:
@@ -55,7 +55,7 @@ Examples of stateful components:
 A "stateless component" doesn't need to aggregate specific spans to work correctly.
 It can work correctly even if it only has some of the spans of a trace.
 
-A stateless {{< param "PRODUCT_NAME" >}} can be scaled without using `otelcol.exporter.loadbalancing`.
+A stateless {{< param "PRODUCT_NAME" >}} instance can be scaled without using `otelcol.exporter.loadbalancing`.
 For example, you could use an off-the-shelf load balancer to do a round-robin load balancing.
 
 Examples of stateless components:
