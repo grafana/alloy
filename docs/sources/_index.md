@@ -27,7 +27,7 @@ You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructu
 Some of these features include:
 
 * **Custom components:** You can use {{< param "PRODUCT_NAME" >}} to create and share custom components.
-  Custom components combine a pipeline of existing components into a single, easy-to-understand component that is just a few lines long.
+  Custom components combine a pipeline of existing components into a single, easy-to-understand component that's just a few lines long.
   You can use pre-built custom components from the community, ones packaged by Grafana, or create your own.
 * **GitOps compatibility:** {{< param "PRODUCT_NAME" >}} uses frameworks to pull configurations from Git, S3, HTTP endpoints, and just about any other source.
 * **Clustering support:** {{< param "PRODUCT_NAME" >}} has native clustering support.
