@@ -207,6 +207,6 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
 [run alloy]: ../../../get-started/run/
-[DebuggingUI]: ../../tasks/debug/
+[DebuggingUI]: ../../debug/
 [{{< param "PRODUCT_NAME" >}} configuration]: ../../../concepts/config-language/
 [UI]: ../../debug/#alloy-ui

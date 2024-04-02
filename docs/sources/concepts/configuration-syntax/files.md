@@ -7,7 +7,7 @@ weight: 100
 
 # Files
 
-{{< param "PRODUCT_NAME" >}} configuration files are plain text files with the `.alloy` file extension.
+{{< param "PRODUCT_NAME" >}} configuration files are plain text files with a `.alloy` file extension.
 You can refer to each {{< param "PRODUCT_NAME" >}} file as a "configuration file" or an "{{< param "PRODUCT_NAME" >}} configuration."
 
 {{< param "PRODUCT_NAME" >}} configuration files must be UTF-8 encoded and can contain Unicode characters.

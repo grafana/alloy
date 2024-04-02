@@ -102,7 +102,7 @@ Your configuration file must be a valid Grafana Agent Static configuration file.
 
 1. You can follow the convert CLI command [debugging][] instructions to generate a diagnostic report.
 
-1. Refer to the {{< param "PRODUCT_NAME" >}} [debugging UI][DebuggingUI] for more information about running {{< param "PRODUCT_NAME" >}}.
+1. Refer to the {{< param "PRODUCT_NAME" >}} [debugging UI][UI] for more information about running {{< param "PRODUCT_NAME" >}}.
 
 1. If your Grafana Agent Static configuration can't be converted and loaded directly into {{< param "PRODUCT_NAME" >}}, diagnostic information is sent to `stderr`.
    You can use the `--config.bypass-conversion-errors` flag with `--config.format=static` to bypass any non-critical issues and start {{< param "PRODUCT_NAME" >}}.
@@ -172,7 +172,7 @@ logs:
         - url: https://USER_ID:API_KEY@logs-prod3.grafana.net/loki/api/v1/push
 ```
 
-The convert command takes the YAML file as input and outputs a [{{< param "PRODUCT_NAME" >}} configuration][] file.
+The convert command takes the YAML file as input and outputs a [{{< param "PRODUCT_NAME" >}} configuration][configuration] file.
 
 ```shell
 alloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
@@ -316,7 +316,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [run]: ../../../reference/cli/run/
 [run alloy]: ../../../get-started/run/
 [DebuggingUI]: ../../debug/
-[{{< param "PRODUCT_NAME" >}} configuration]: ../../../concepts/config-language/
+[configuration]: ../../../concepts/configuration-syntax/
 
 <!--ToDo: Check path -->
 [Integrations next]: https://grafana.com/docs/agent/latest/static/configuration/integrations/integrations-next/
@@ -330,5 +330,4 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 <!--ToDo: Check path -->
 [Metrics]: https://grafana.com/docs/agent/latest/static/configuration/metrics-config/
 [Logs]: https://grafana.com/docs/agent/latest/static/configuration/logs-config/
-
-[UI]: ../../debug/#grafana-agent-flow-ui
+[UI]: ../../debug/#alloy-ui

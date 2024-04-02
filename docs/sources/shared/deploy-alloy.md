@@ -10,7 +10,7 @@ title: Deploy Grafana Alloy
 {{< param "PRODUCT_NAME" >}} is a flexible, vendor-neutral telemetry collector.
 This flexibility means that {{< param "PRODUCT_NAME" >}} doesn’t enforce a specific deployment topology but can work in multiple scenarios.
 
-This page lists common topologies used for deployments of {{% param "PRODUCT_NAME" %}}, when to consider using each topology, issues you may run into, and scaling considerations.
+This page lists common topologies used for {{% param "PRODUCT_NAME" %}} deployments, when to consider using each topology, issues you may run into, and scaling considerations.
 
 ## As a centralized collection service
 
@@ -20,7 +20,7 @@ This topology allows you to use a smaller number of collectors to coordinate ser
 ![centralized-collection](/media/docs/agent/agent-topologies/centralized-collection.png)
 
 Using this topology requires deploying {{< param "PRODUCT_NAME" >}} on separate infrastructure, and making sure that they can discover and reach these applications over the network.
-The main predictor for the size of {{< param "PRODUCT_NAME" >}} is the number of active metrics series it's scraping. A rule of thumb is approximately 10 KB of memory for each series.
+The main predictor for the size of an {{< param "PRODUCT_NAME" >}} deployment is the number of active metrics series it's scraping. A rule of thumb is approximately 10 KB of memory for each series.
 We recommend you start looking towards horizontal scaling around the 1 million active series mark.
 
 ### Using Kubernetes StatefulSets
@@ -50,11 +50,11 @@ You can also use a Kubernetes Deployment in cases where persistent storage isn't
 
 ## As a host daemon
 
-Deploying one {{< param "PRODUCT_NAME" >}} per machine is required for collecting machine-level metrics and logs, such as node_exporter hardware and network metrics or journald system logs.
+Deploying one {{< param "PRODUCT_NAME" >}} instance per machine is required for collecting machine-level metrics and logs, such as node_exporter hardware and network metrics or journald system logs.
 
 ![daemonset](/media/docs/agent/agent-topologies/daemonset.png)
 
-Each {{< param "PRODUCT_NAME" >}} requires you to open an outgoing connection for each remote endpoint it’s shipping data to.
+Each {{< param "PRODUCT_NAME" >}} instance requires you to open an outgoing connection for each remote endpoint it’s shipping data to.
 This can lead to NAT port exhaustion on the egress infrastructure.
 Each egress IP can support up to (65535 - 1024 = 64511) outgoing connections on different ports.
 So, if all {{< param "PRODUCT_NAME" >}}s are shipping metrics and log data, an egress IP can support up to 32,255 collectors.
@@ -104,7 +104,7 @@ The Pod’s controller, network configuration, enabled capabilities, and availab
 
 * Doesn’t scale separately
 * Makes resource consumption harder to monitor and predict
-* {{< param "PRODUCT_NAME" >}}s don't have a life cycle of their own, making it harder to reason about things like recovering from network outages
+* Each {{< param "PRODUCT_NAME" >}} instance doesn't have a life cycle of its own, making it harder to do things like recovering from network outages
 
 ### Use for
 
@@ -115,7 +115,7 @@ The Pod’s controller, network configuration, enabled capabilities, and availab
 ### Don’t use for
 
 * Long-lived applications
-* Scenarios where the {{< param "PRODUCT_NAME" >}} size grows so large it can become a noisy neighbor
+* Scenarios where the {{< param "PRODUCT_NAME" >}} deployment size grows so large it can become a noisy neighbor
 
 <!-- ToDo: Check URL path -->
 [hashmod sharding]: https://grafana.com/docs/agent/latest/static/operation-guide/

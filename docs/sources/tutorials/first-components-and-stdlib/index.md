@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/first-components-and-stdlib/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/first-components-and-stdlib/
 description: Learn about the basics of the {{< param "PRODUCT_NAME" >}} configuration syntax
 title: First components and introducing the standard library
 weight: 20
@@ -14,10 +14,9 @@ It introduces a basic pipeline that collects metrics from the host and sends the
 
 **Recommended reading**
 
-- [Configuration language][]
-- [Configuration language concepts][]
+- [{{< param "PRODUCT_NAME" >}} configuration syntax][Configuration syntax]
 
-The [{{< param "PRODUCT_NAME" >}} configuration syntax][] is an HCL-inspired configuration language used to configure {{< param "PRODUCT_NAME" >}}.
+The [{{< param "PRODUCT_NAME" >}} configuration syntax][Configuration syntax] is an HCL-inspired configuration language used to configure {{< param "PRODUCT_NAME" >}}.
 An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
 
 1. **Attributes**
@@ -93,7 +92,7 @@ prometheus.remote_write "local_prom" {
 A list of all available components can be found in the [Component reference][].
 Each component has a link to its documentation, which contains a description of what the component does, its arguments, its exports, and examples.
 
-[Component reference]: ../../../reference/components/
+[Component reference]: ../../reference/components/
 {{< /admonition >}}
 
 This pipeline has two components: `local.file` and `prometheus.remote_write`.
@@ -106,7 +105,7 @@ The `basic_auth` block contains the `username` and `password` attributes, which 
 The `content` export is referenced by using the syntax `local.file.example.content`, where `local.file.example` is the fully qualified name of the component (the component's type + its label) and `content` is the name of the export.
 
 <p align="center">
-<img src="/media/docs/agent/diagram-flow-by-example-basic-0.svg" alt="Flow of example pipeline with local.file and prometheus.remote_write components" width="200" />
+<img src="/media/docs/agent/diagram-flow-by-example-basic-0.svg" alt="Example pipeline with local.file and prometheus.remote_write components" width="200" />
 </p>
 
 {{< admonition type="note" >}}
@@ -159,7 +158,7 @@ After ~15-20 seconds, you should be able to see the metrics from the `prometheus
 Try querying for `node_memory_Active_bytes` to see the active memory of your host.
 
 <p align="center">
-<img src="/media/docs/agent/screenshot-flow-by-example-memory-usage.png" alt="Screenshot of node_memory_Active_bytes query in Grafana" />
+<img src="/media/docs/alloy/screenshot-memory-usage.png" alt="Screenshot of node_memory_Active_bytes query in Grafana" />
 </p>
 
 ## Visualizing the relationship between components
@@ -167,7 +166,7 @@ Try querying for `node_memory_Active_bytes` to see the active memory of your hos
 The following diagram is an example pipeline:
 
 <p align="center">
-<img src="/media/docs/agent/diagram-flow-by-example-full-0.svg" alt="Flow of example pipeline with a prometheus.scrape, prometheus.exporter.unix, and prometheus.remote_write components" width="400" />
+<img src="/media/docs/agent/diagram-flow-by-example-full-0.svg" alt="Example pipeline with a prometheus.scrape, prometheus.exporter.unix, and prometheus.remote_write components" width="400" />
 </p>
 
 The preceding configuration defines three components:
@@ -201,13 +200,13 @@ You can refer to the [prometheus.exporter.redis][] component documentation for m
 To give a visual hint, you want to create a pipeline that looks like this:
 
 <p align="center">
-<img src="/media/docs/agent/diagram-flow-by-example-exercise-0.svg" alt="Flow of exercise pipeline, with a scrape, unix_exporter, redis_exporter, and remote_write component" width="600" />
+<img src="/media/docs/agent/diagram-flow-by-example-exercise-0.svg" alt="Exercise pipeline, with a scrape, unix_exporter, redis_exporter, and remote_write component" width="600" />
 </p>
 
 {{< admonition type="note" >}}
 You may find the [concat][] standard library function useful.
 
-[concat]: ../../../reference/stdlib/concat/
+[concat]: ../../reference/stdlib/concat/
 {{< /admonition >}}
 
 You can run {{< param "PRODUCT_NAME" >}} with the new configuration file by running:
@@ -279,17 +278,15 @@ Generally, you can use a persistent directory for this, as some components may u
 In the next tutorial, you will look at how to configure {{< param "PRODUCT_NAME" >}} to collect logs from a file and send them to Loki.
 You will also look at using different components to process metrics and logs before sending them.
 
-[Configuration language]: ../../../concepts/config-language/
-[Configuration language concepts]: ../../../concepts/configuration_language/
-[Standard library documentation]: ../../../reference/stdlib/
+[Configuration syntax]: ../../concepts/configuration-syntax/
+[Standard library documentation]: ../../reference/stdlib/
 [node_exporter]: https://github.com/prometheus/node_exporter
-[{{< param "PRODUCT_NAME" >}} configuration syntax]: https://github.com/grafana/river
-[prometheus.exporter.redis]: ../../../reference/components/prometheus.exporter.redis/
+[prometheus.exporter.redis]: ../../reference/components/prometheus.exporter.redis/
 [http://localhost:3000/explore]: http://localhost:3000/explore
-[prometheus.exporter.unix]: ../../../reference/components/prometheus.exporter.unix/
-[prometheus.scrape]: ../../../reference/components/prometheus.scrape/
-[prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
-[Components]: ../../../concepts/components/
-[Component controller]: ../../../concepts/component_controller/
-[Components configuration language]: ../../../concepts/config-language/components/
-[env]: ../../../reference/stdlib/env/
+[prometheus.exporter.unix]: ../../reference/components/prometheus.exporter.unix/
+[prometheus.scrape]: ../../reference/components/prometheus.scrape/
+[prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
+[Components]: ../../concepts/components/
+[Component controller]: ../../concepts/component_controller/
+[Components configuration language]: ../../concepts/configuration-syntax/components/
+[env]: ../../reference/stdlib/env/
