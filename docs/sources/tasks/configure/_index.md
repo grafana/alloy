@@ -8,7 +8,7 @@ weight: 90
 
 # Configure {{% param "FULL_PRODUCT_NAME" %}}
 
-You can configure {{< param "PRODUCT_NAME" >}} after it is [installed][Install].
+You can configure {{< param "PRODUCT_NAME" >}} after it is [installed][].
 The default configuration file for {{< param "PRODUCT_NAME" >}} is located at:
 
 * Linux: `/etc/alloy/config.alloy`
@@ -19,4 +19,4 @@ This section includes information that helps you configure {{< param "PRODUCT_NA
 
 {{< section >}}
 
-[Install]: ../../get-started/install/
+[installed]: ../../get-started/install/
