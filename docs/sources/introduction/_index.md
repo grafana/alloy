@@ -30,6 +30,7 @@ Some of the key features of {{< param "PRODUCT_NAME" >}} include:
 * **Security:** {{< param "PRODUCT_NAME" >}} helps you manage authentication credentials and connect to HashiCorp Vaults or Kubernetes clusters to retrieve secrets.
 * **Debugging utilities:** {{< param "PRODUCT_NAME" >}} provides troubleshooting support and an embedded [user interface][UI] to help you identify and resolve configuration problems.
 
+<!--
 ### Compare {{% param "PRODUCT_NAME" %}} with OpenTelemetry and Prometheus
 
 The following tables compare some of the features of {{< param "PRODUCT_NAME" >}} with OpenTelemetry and Prometheus.
@@ -60,7 +61,7 @@ The following tables compare some of the features of {{< param "PRODUCT_NAME" >}
 | **Cloud integrations**        | Some                 | No                      | No               |
 | **Kubernetes monitoring**     | [Yes][helm chart]    | No                      | Yes, custom      |
 | **Application observability** | [Yes][observability] | Yes                     | No               |
-
+-->
 <!--
 ### BoringCrypto
 
@@ -78,6 +79,7 @@ binaries and images with BoringCrypto enabled. Builds and Docker images for Linu
 * Consult the [Tasks][] instructions to accomplish common objectives with {{< param "PRODUCT_NAME" >}}.
 * Check out the [Reference][] documentation to find specific information you might be looking for.
 
+[OpenTelemetry]: https://opentelemetry.io/ecosystem/distributions/
 [Install]: ../get-started/install/
 [Concepts]: ../concepts/
 [Tasks]: ../tasks/
