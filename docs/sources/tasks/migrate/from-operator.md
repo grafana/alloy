@@ -20,7 +20,7 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
 
 ## Deploy {{% param "PRODUCT_NAME" %}} with Helm
 
-1. Create a `values.yaml` file, which contains options for deploying your {{< param "PRODUCT_NAME" >}}.
+1. Create a `values.yaml` file, which contains options for deploying {{< param "PRODUCT_NAME" >}}.
    You can start with the [default values][] and customize as you see fit, or start with this snippet, which should be a good starting point for what the Operator does.
 
     ```yaml

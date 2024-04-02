@@ -15,7 +15,7 @@ cascade:
 {{< param "FULL_PRODUCT_NAME" >}} is a vendor-neutral distribution of the [OpenTelemetry][] (OTel) Collector.
 {{< param "PRODUCT_NAME" >}} uniquely combines the very best OSS observability signals in the community.
 It offers native pipelines for OTel, [Prometheus][], [Pyroscope][], [Loki][], and many other metrics, logs, traces, and profile tools.
-In additon, you can also use {{< param "PRODUCT_NAME" >}} pipelines to do other tasks such as configure alert rules in Loki and Mimir.
+In additon, you can use {{< param "PRODUCT_NAME" >}} pipelines to do other tasks such as configure alert rules in Loki and Mimir.
 {{< param "PRODUCT_NAME" >}} is fully compatible with the OTel Collector, Prometheus Agent, and Promtail.
 You can use {{< param "PRODUCT_NAME" >}} as an alternative to either of these solutions or combined into a hybrid system of multiple collectors and agents.
 You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructure and you can pair it with your Grafana LGTM stack, a telemetry backend from Grafana Cloud, or any other compatible backend from any other vendor.

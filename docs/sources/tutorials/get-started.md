@@ -1,6 +1,6 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/get-started/
-description: Getting started with Flow-by-Example Tutorials
+canonical: https://grafana.com/docs/alloy/latest/tutorials/get-started/
+description: Getting started with the tutorials
 title: Get started
 weight: 10
 ---

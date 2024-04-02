@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/logs-and-relabeling-basics/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/logs-and-relabeling-basics/
 description: Learn how to relabel metrics and collect logs
 title: Logs and relabeling basics
 weight: 30
@@ -91,14 +91,14 @@ If you would like to keep or act on these kinds of labels, use a [discovery.rela
 Now that you're comfortable creating components and chaining them together, let's collect some logs and send them to Loki.
 We will use the `local.file_match` component to perform file discovery, the `loki.source.file` to collect the logs, and the `loki.write` component to send the logs to Loki.
 
-Before doing this, we need to ensure we have a log file to scrape. We will use the `echo` command to create a file with some log content.
+Before doing this, make sure you have a log file to scrape. You can use the `echo` command to create a file with some log content.
 
 ```bash
 mkdir -p /tmp/flow-logs
 echo "This is a log line" > /tmp/flow-logs/log.log
 ```
 
-Now that we have a log file, let's create a pipeline to scrape it.
+Now that you have a log file, you can create a pipeline to scrape it.
 
 ```alloy
 local.file_match "tmplogs" {

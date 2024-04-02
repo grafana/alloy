@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/first-components-and-stdlib/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/first-components-and-stdlib/
 description: Learn about the basics of the {{< param "PRODUCT_NAME" >}} configuration syntax
 title: First components and introducing the standard library
 weight: 20
@@ -106,7 +106,7 @@ The `basic_auth` block contains the `username` and `password` attributes, which 
 The `content` export is referenced by using the syntax `local.file.example.content`, where `local.file.example` is the fully qualified name of the component (the component's type + its label) and `content` is the name of the export.
 
 <p align="center">
-<img src="/media/docs/agent/diagram-flow-by-example-basic-0.svg" alt="Flow of example pipeline with local.file and prometheus.remote_write components" width="200" />
+<img src="/media/docs/agent/diagram-flow-by-example-basic-0.svg" alt="Example pipeline with local.file and prometheus.remote_write components" width="200" />
 </p>
 
 {{< admonition type="note" >}}
@@ -167,7 +167,7 @@ Try querying for `node_memory_Active_bytes` to see the active memory of your hos
 The following diagram is an example pipeline:
 
 <p align="center">
-<img src="/media/docs/agent/diagram-flow-by-example-full-0.svg" alt="Flow of example pipeline with a prometheus.scrape, prometheus.exporter.unix, and prometheus.remote_write components" width="400" />
+<img src="/media/docs/agent/diagram-flow-by-example-full-0.svg" alt="Example pipeline with a prometheus.scrape, prometheus.exporter.unix, and prometheus.remote_write components" width="400" />
 </p>
 
 The preceding configuration defines three components:
@@ -201,7 +201,7 @@ You can refer to the [prometheus.exporter.redis][] component documentation for m
 To give a visual hint, you want to create a pipeline that looks like this:
 
 <p align="center">
-<img src="/media/docs/agent/diagram-flow-by-example-exercise-0.svg" alt="Flow of exercise pipeline, with a scrape, unix_exporter, redis_exporter, and remote_write component" width="600" />
+<img src="/media/docs/agent/diagram-flow-by-example-exercise-0.svg" alt="Exercise pipeline, with a scrape, unix_exporter, redis_exporter, and remote_write component" width="600" />
 </p>
 
 {{< admonition type="note" >}}
