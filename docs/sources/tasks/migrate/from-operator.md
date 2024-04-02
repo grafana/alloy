@@ -11,7 +11,7 @@ weight: 320
 You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 
 - The Monitor types (`PodMonitor`, `ServiceMonitor`, `Probe`, and `PodLogs`) are all supported natively by {{< param "PRODUCT_NAME" >}}.
-- The parts of the Operator that deploy the {{< param "PRODUCT_NAME" >}} itself (`GrafanaAgent`, `MetricsInstance`, and `LogsInstance` CRDs) are deprecated.
+- The parts of the Grafana Agent Operator that deploy the Grafana Agent itself (`GrafanaAgent`, `MetricsInstance`, and `LogsInstance` CRDs) are deprecated.
 
 ## Deploy {{% param "PRODUCT_NAME" %}} with Helm
 
@@ -50,7 +50,7 @@ You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 1. Create a Helm release. You can name the release anything you like. The following command installs a release called `alloy-metrics` in the `monitoring` namespace.
 
     ```shell
-    helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=alloy.alloy
+    helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=config.alloy
     ```
 
     This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular {{< param "PRODUCT_NAME" >}} configuration file.
@@ -59,7 +59,7 @@ You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 
 A `MetricsInstance` resource primarily defines:
 
-- The remote endpoints {{< param "PRODUCT_NAME" >}} should send metrics to.
+- The remote endpoints Grafana Agent should send metrics to.
 - The `PodMonitor`, `ServiceMonitor`, and `Probe` resources this {{< param "PRODUCT_NAME" >}} should discover.
 
 You can use these functions in {{< param "PRODUCT_NAME" >}} with the `prometheus.remote_write`, `prometheus.operator.podmonitors`, `prometheus.operator.servicemonitors`, and `prometheus.operator.probes` components respectively.
@@ -127,7 +127,7 @@ Our current recommendation is to create an additional DaemonSet deployment of {{
 > still considered experimental, but if you would like to try them, see the documentation for [loki.source.kubernetes][] and
 > [loki.source.podlogs][].
 
-These values are close to what the Operator currently deploys for logs:
+These values are close to what the Grafana Agent Operator deploys for logs:
 
 ```yaml
 alloy:
@@ -268,7 +268,7 @@ The logging subsystem is very powerful and has many options for processing logs.
 ## Integrations
 
 The `Integration` CRD isn't supported with {{< param "PRODUCT_NAME" >}}.
-However, all static mode integrations have an equivalent component in the [`prometheus.exporter`][prometheus.exporter] namespace.
+However, all Grafana Agent Static integrations have an equivalent component in the [`prometheus.exporter`][prometheus.exporter] namespace.
 The [reference documentation][component documentation] should help convert those integrations to their {{< param "PRODUCT_NAME" >}} equivalent.
 
 <!-- ToDo: Validate path -->
