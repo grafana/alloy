@@ -159,7 +159,7 @@ After ~15-20 seconds, you should be able to see the metrics from the `prometheus
 Try querying for `node_memory_Active_bytes` to see the active memory of your host.
 
 <p align="center">
-<img src="/media/docs/agent/screenshot-flow-by-example-memory-usage.png" alt="Screenshot of node_memory_Active_bytes query in Grafana" />
+<img src="/media/docs/alloy/screenshot-memory-usage.png" alt="Screenshot of node_memory_Active_bytes query in Grafana" />
 </p>
 
 ## Visualizing the relationship between components

@@ -69,7 +69,7 @@ You have successfully deployed {{< param "PRODUCT_NAME" >}} on Kubernetes, using
 
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
-- Refer to the [{{< param "PRODUCT_NAME" >}} Helm chart documentation on Artifact Hub][Artifact Hub] for more information about the Helm chart.
+<!-- - Refer to the [{{< param "PRODUCT_NAME" >}} Helm chart documentation on Artifact Hub][Artifact Hub] for more information about the Helm chart. -->
 
 [Helm]: https://helm.sh
 [Artifact Hub]: https://artifacthub.io/packages/helm/grafana/alloy

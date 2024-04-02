@@ -6,7 +6,7 @@ title: Grafana Alloy Reference
 weight: 600
 ---
 
-# {{% param "PRODUCT_NAME" %}} Reference
+# {{% param "FULL_PRODUCT_NAME" %}} Reference
 
 This section provides reference-level documentation for the various parts of {{< param "PRODUCT_NAME" >}}:
 

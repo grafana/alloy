@@ -347,7 +347,7 @@ Try querying for `{source="demo-api"}` and see if you can find the logs you sent
 Try playing around with the values of `"level"`, `"message"`, `"timestamp"`, and `"is_secret"` and see how the logs change.
 You can also try adding more stages to the `loki.process` component to extract more values from the logs, or add more labels.
 
-![Example Loki Logs](/media/docs/agent/screenshot-flow-by-example-processed-log-lines.png)
+![Example Loki Logs](/media/docs/alloy/screenshot-processed-log-lines.png)
 
 ## Exercise
 

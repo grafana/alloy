@@ -37,10 +37,10 @@ Some of these features include:
 * **Debugging utilities:** {{< param "PRODUCT_NAME" >}} provides troubleshooting support and an embedded [user interface][UI] to help you identify and resolve configuration problems.
 
 [OpenTelemetry]: https://opentelemetry.io/ecosystem/distributions/
-[Prometheus]: https://prometheus.io
-[Loki]: https://github.com/grafana/loki
-[Grafana]: https://github.com/grafana/grafana
-[Tempo]: https://github.com/grafana/tempo
-[Mimir]: https://github.com/grafana/mimir
-[Pyroscope]: https://github.com/grafana/pyroscope
+[Prometheus]: https://prometheus.io/
+[Loki]: https://grafana.com/docs/loki/
+[Grafana]: https://grafana.com/docs/grafana/
+[Tempo]: https://grafana.com/docs/tempo/
+[Mimir]: https://grafana.com/docs/mimir/
+[Pyroscope]: https://grafana.com/docs/pyroscope/
 [UI]: ./tasks/debug/#alloy-ui
