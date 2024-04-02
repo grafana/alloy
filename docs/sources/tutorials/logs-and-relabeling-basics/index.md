@@ -77,7 +77,7 @@ There is an issue commonly faced when relabeling and using labels that start wit
 These labels are considered internal and are dropped before relabeling rules from a `prometheus.relabel` component are applied.
 If you would like to keep or act on these kinds of labels, use a [discovery.relabel][] component.
 
-[discovery.relabel]: ../../../reference/components/discovery.relabel/
+[discovery.relabel]: ../../reference/components/discovery.relabel/
 {{< /admonition >}}
 
 ## Send logs to Loki
@@ -169,8 +169,8 @@ loki.write "local_loki" {
 {{< admonition type="note" >}}
 You can use the [loki.relabel][] component to relabel and add labels, just like you can with the [prometheus.relabel][] component.
 
-[loki.relabel]: ../../../reference/components/loki.relabel
-[prometheus.relabel]: ../../../reference/components/prometheus.relabel
+[loki.relabel]: ../../reference/components/loki.relabel
+[prometheus.relabel]: ../../reference/components/prometheus.relabel
 {{< /admonition >}}
 
 Once you have your completed configuration, run {{< param "PRODUCT_NAME" >}} and execute the following:
@@ -311,12 +311,12 @@ You have learned the concepts of components, attributes, and expressions. You ha
 In the next tutorial, you will learn more about how to use the `loki.process` component to extract values from logs and use them.
 
 [First components and introducing the standard library]: ../first-components-and-stdlib/
-[prometheus.relabel]: ../../../reference/components/prometheus.relabel/
-[constants]: ../../../reference/stdlib/constants/
+[prometheus.relabel]: ../../reference/components/prometheus.relabel/
+[constants]: ../../reference/stdlib/constants/
 [localhost:3000/explore]: http://localhost:3000/explore
-[prometheus.relabel rule-block]: ../../../reference/components/prometheus.relabel/#rule-block
-[local.file_match]: ../../../reference/components/local.file_match/
-[loki.source.file]: ../../../reference/components/loki.source.file/
-[loki.write]: ../../../reference/components/loki.write/
-[loki.relabel]: ../../../reference/components/loki.relabel/
-[loki.process]: ../../../reference/components/loki.process/
+[prometheus.relabel rule-block]: ../../reference/components/prometheus.relabel/#rule-block
+[local.file_match]: ../../reference/components/local.file_match/
+[loki.source.file]: ../../reference/components/loki.source.file/
+[loki.write]: ../../reference/components/loki.write/
+[loki.relabel]: ../../reference/components/loki.relabel/
+[loki.process]: ../../reference/components/loki.process/
