@@ -8,7 +8,7 @@ weight: 350
 
 # Migrate from Grafana Agent Flow to {{% param "FULL_PRODUCT_NAME" %}}
 
-This topic describes how to perform a live migration from Grafana Agent Flow to {{% param "FULL_PRODUCT_NAME" %}} with minimal downtime.
+This topic describes how to perform a live migration from Grafana Agent Flow to {{< param "FULL_PRODUCT_NAME" >}} with minimal downtime.
 
 ## Before you begin
 
@@ -30,9 +30,9 @@ This topic describes how to perform a live migration from Grafana Agent Flow to 
 
 ## Steps
 
-### Prepare Flow configuration
+### Prepare the Grafana Agent Flow configuration
 
-{{% param "PRODUCT_NAME" %}} uses the same configuration format as Grafana Agent Flow, but some functionality has been removed.
+{{< param "PRODUCT_NAME" >}} uses the same configuration format as Grafana Agent Flow, but some functionality has been removed.
 
 Before migrating, modify your Grafana Agent Flow configuration to remove or replace any unsupported components:
 
@@ -49,15 +49,15 @@ Before migrating, modify your Grafana Agent Flow configuration to remove or repl
 [import.string]: ../../../reference/config-blocks/import.string/
 [otelcol.receiver.vcenter]: ../../../reference/components/otelcol.receiver.vcenter/
 
-### Deploy {{% param "PRODUCT_NAME" %}} with default configuration
+### Deploy {{% param "PRODUCT_NAME" %}} with a default configuration
 
-Follow the [installation instructions][install] for {{% param "PRODUCT_NAME" %}}, using the default configuration file. The configuration file will be customized in the following steps.
+Follow the [installation instructions][install] for {{< param "PRODUCT_NAME" >}}, using the default configuration file. The configuration file will be customized in the following steps.
 
-When deploying {{% param "PRODUCT_NAME" %}}, be aware of the following settings:
+When deploying {{< param "PRODUCT_NAME" >}}, be aware of the following settings:
 
-- {{% param "PRODUCT_NAME" %}} should be deployed with identical topology as Grafana Agent Flow: CPU, and storage limits should match.
-- Custom command-line flags configured in Grafana Agent Flow should be reflected in your {{% param "PRODUCT_NAME" %}} installation.
-- {{% param "PRODUCT_NAME" %}} may need to be deployed with the `--stability.level` flag in [run] to enable non-stable components:
+- {{< param "PRODUCT_NAME" >}} should be deployed with identical topology as Grafana Agent Flow: CPU, and storage limits should match.
+- Custom command-line flags configured in Grafana Agent Flow should be reflected in your {{< param "PRODUCT_NAME" >}} installation.
+- {{< param "PRODUCT_NAME" >}} may need to be deployed with the `--stability.level` flag in [run] to enable non-stable components:
     - Set `--stability.level` to `public-preview` if you are using any of these components:
         - [discovery.process]
         - [pyroscope.ebpf]
@@ -68,7 +68,7 @@ When deploying {{% param "PRODUCT_NAME" %}}, be aware of the following settings:
         - [otelcol.receiver.vcenter]
     - Otherwise, `--stability.level` may be omitted or set to the default value (`generally-available`).
 - When installing on Kubernetes, update your `values.yaml` file to rename the `agent` key to `alloy`.
-- If deploying {{% param "PRODUCT_NAME" %}} as a cluster:
+- If deploying {{< param "PRODUCT_NAME" >}} as a cluster:
     - Set the number of instances to match the number of instances in your Grafana Agent Flow cluster.
     - Do not enable auto-scaling until the migration is complete.
 
@@ -81,9 +81,9 @@ When deploying {{% param "PRODUCT_NAME" %}}, be aware of the following settings:
 [pyroscope.write]: ../../../reference/components/pyroscope.write/
 [otelcol.receiver.vcenter]: ../../../reference/components/otelcol.receiver.vcenter/
 
-### Migrate Flow data to {{% param "PRODUCT_NAME" %}}
+### Migrate Grafana Agent Flow data to {{% param "PRODUCT_NAME" %}}
 
-Migrate your Grafana Agent Flow data to {{% param "PRODUCT_NAME" %}} by copying the contents of the Grafana Agent Flow data directory to the {{% param "PRODUCT_NAME" %}} data directory.
+Migrate your Grafana Agent Flow data to {{< param "PRODUCT_NAME" >}} by copying the contents of the Grafana Agent Flow data directory to the {{< param "PRODUCT_NAME" >}} data directory.
 
 * Linux installations: copy the _contents_ of `/var/lib/grafana-agent-flow` to `/var/lib/alloy/data`.
 * macOS installations: copy the _contents_ of `$(brew --prefix)/etc/grafana-agent-flow/data` to `$(brew --prefix)/etc/alloy/data`.
@@ -94,29 +94,30 @@ Migrate your Grafana Agent Flow data to {{% param "PRODUCT_NAME" %}} by copying 
 
 ### Migrate pipelines that receive data over the network
 
-Telemetry pipelines which receive data over the network (for example, pipelines using `otelcol.receiver.otlp` or `prometheus.receive_http`) should be configured in {{% param "PRODUCT_NAME" %}} first:
+Telemetry pipelines which receive data over the network (for example, pipelines using `otelcol.receiver.otlp` or `prometheus.receive_http`) should be configured in {{< param "PRODUCT_NAME" >}} first:
 
-1. Configure {{% param "PRODUCT_NAME" %}} with all pipelines where telemetry data is received over the network.
-1. Reconfigure applications to send telemetry data to {{% param "PRODUCT_NAME" %}} instead of Grafana Agent Flow.
+1. Configure {{< param "PRODUCT_NAME" >}} with all pipelines where telemetry data is received over the network.
+1. Reconfigure applications to send telemetry data to {{< param "PRODUCT_NAME" >}} instead of Grafana Agent Flow.
 
-### Migrate remaining pipelines
+### Migrate the remaining pipelines
 
 Migrate remaining pipelines from Grafana Agent Flow to {{% param "PRODUCT_NAME" %}}:
 
-1. Disable remaining pipelines in Grafana Agent Flow to prevent Flow and {{% param "PRODUCT_NAME" %}} from processing the same data.
-2. Configure {{% param "PRODUCT_NAME" %}} with the remaining pipelines.
+1. Disable remaining pipelines in Grafana Agent Flow to prevent Flow and {{< param "PRODUCT_NAME" >}} from processing the same data.
+2. Configure {{< param "PRODUCT_NAME" >}} with the remaining pipelines.
 
 {{< admonition type="note" >}}
-This process results in minimal downtime as remaining pipelines are moved from Grafana Agent Flow to {{% param "PRODUCT_NAME" %}}.
+This process results in minimal downtime as remaining pipelines are moved from Grafana Agent Flow to {{< param "PRODUCT_NAME" >}}.
 
-To completely eliminate downtime, configure remaining pipelines in {{% param "PRODUCT_NAME" %}} before disabling them in Grafana Agent Flow.
+To completely eliminate downtime, configure remaining pipelines in {{< param "PRODUCT_NAME" >}} before disabling them in Grafana Agent Flow.
 This alternative approach results in some duplicate data being sent to backends during the migration period.
 {{< /admonition >}}
 
 ### Uninstall Grafana Agent Flow
 
-After following the sections above, Grafana Agent Flow may be safely uninstalled.
+After following the sections above, you can uninstall Grafana Agent Flow.
 
 ### Cleanup temporary changes
 
-Auto-scaling may be re-enabled in your {{% param "PRODUCT_NAME" %}} deployment if it was disabled during the migration process.
+Auto-scaling may be re-enabled in your {{< param "PRODUCT_NAME" >}} deployment if it was disabled during the migration process.
+
