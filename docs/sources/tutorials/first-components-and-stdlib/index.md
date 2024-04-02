@@ -14,10 +14,9 @@ It introduces a basic pipeline that collects metrics from the host and sends the
 
 **Recommended reading**
 
-- [Configuration language][]
-- [Configuration language concepts][]
+- [{{< param "PRODUCT_NAME" >}} configuration syntax][Configuration syntax]
 
-The [{{< param "PRODUCT_NAME" >}} configuration syntax][] is an HCL-inspired configuration language used to configure {{< param "PRODUCT_NAME" >}}.
+The [{{< param "PRODUCT_NAME" >}} configuration syntax][Configuration syntax] is an HCL-inspired configuration language used to configure {{< param "PRODUCT_NAME" >}}.
 An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
 
 1. **Attributes**
@@ -93,7 +92,7 @@ prometheus.remote_write "local_prom" {
 A list of all available components can be found in the [Component reference][].
 Each component has a link to its documentation, which contains a description of what the component does, its arguments, its exports, and examples.
 
-[Component reference]: ../../../reference/components/
+[Component reference]: ../../reference/components/
 {{< /admonition >}}
 
 This pipeline has two components: `local.file` and `prometheus.remote_write`.
@@ -207,7 +206,7 @@ To give a visual hint, you want to create a pipeline that looks like this:
 {{< admonition type="note" >}}
 You may find the [concat][] standard library function useful.
 
-[concat]: ../../../reference/stdlib/concat/
+[concat]: ../../reference/stdlib/concat/
 {{< /admonition >}}
 
 You can run {{< param "PRODUCT_NAME" >}} with the new configuration file by running:
@@ -279,17 +278,15 @@ Generally, you can use a persistent directory for this, as some components may u
 In the next tutorial, you will look at how to configure {{< param "PRODUCT_NAME" >}} to collect logs from a file and send them to Loki.
 You will also look at using different components to process metrics and logs before sending them.
 
-[Configuration language]: ../../../concepts/config-language/
-[Configuration language concepts]: ../../../concepts/configuration_language/
-[Standard library documentation]: ../../../reference/stdlib/
+[Configuration syntax]: ../../concepts/configuration-syntax/
+[Standard library documentation]: ../../reference/stdlib/
 [node_exporter]: https://github.com/prometheus/node_exporter
-[{{< param "PRODUCT_NAME" >}} configuration syntax]: https://github.com/grafana/river
-[prometheus.exporter.redis]: ../../../reference/components/prometheus.exporter.redis/
+[prometheus.exporter.redis]: ../../reference/components/prometheus.exporter.redis/
 [http://localhost:3000/explore]: http://localhost:3000/explore
-[prometheus.exporter.unix]: ../../../reference/components/prometheus.exporter.unix/
-[prometheus.scrape]: ../../../reference/components/prometheus.scrape/
-[prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
-[Components]: ../../../concepts/components/
-[Component controller]: ../../../concepts/component_controller/
-[Components configuration language]: ../../../concepts/config-language/components/
-[env]: ../../../reference/stdlib/env/
+[prometheus.exporter.unix]: ../../reference/components/prometheus.exporter.unix/
+[prometheus.scrape]: ../../reference/components/prometheus.scrape/
+[prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
+[Components]: ../../concepts/components/
+[Component controller]: ../../concepts/component_controller/
+[Components configuration language]: ../../concepts/configuration-syntax/components/
+[env]: ../../reference/stdlib/env/
