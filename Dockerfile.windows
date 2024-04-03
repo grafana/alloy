@@ -20,9 +20,9 @@ RUN ""C:\Program Files\git\bin\bash.exe" -c "go clean -cache -modcache""
 # Use the smallest container possible for the final image
 FROM mcr.microsoft.com/windows/nanoserver:1809
 
-COPY --from=builder /src/alloy/build/alloy /bin/alloy
-COPY --from=builder /src/alloy/example-config.alloy /etc/alloy/config.alloy
+COPY --from=builder ["/src/alloy/build/alloy", "C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
+COPY --from=builder ["/src/alloy/example-config.alloy", "C:/Program Files/GrafanaLabs/Alloy/config.alloy"]
 
-ENTRYPOINT ["/bin/alloy"]
+ENTRYPOINT ["C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
 ENV ALLOY_DEPLOY_MODE=docker
-CMD ["run", "/etc/alloy/config.alloy", "--storage.path=/etc/alloy/data"]
+CMD ["run", "C:/Program Files/GrafanaLabs/Alloy/config.alloy", "--storage.path=C:/ProgramData/GrafanaLabs/Alloy/data"]
