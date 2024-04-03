@@ -135,10 +135,10 @@ loki.write "local_loki" {
 }
 ```
 
-{{< collapse title="How the components work" >}}
+{{< collapse title="How the stages work" >}}
 
 Many of the `stage.*` blocks in `loki.process` act on reading or writing a shared map of values extracted from the logs.
-You can think of this extracted map as a hashmap or table that each stage has access to, and it is referred to as the "extracted map" from here on.
+You can think of this extracted map as a hashmap or table that each stage has access to, and it's referred to as the "extracted map" from here on.
 In subsequent stages, you can use the extracted map to filter logs, add or remove labels, or even modify the log line.
 
 {{< admonition type="note" >}}
@@ -146,7 +146,7 @@ In subsequent stages, you can use the extracted map to filter logs, add or remov
 {{< /admonition >}}
 
 Let's use an example log line to illustrate this, then go stage by stage, showing the contents of the extracted map.
-Here is our example log line:
+Here is the example log line:
 
 ```json
 {
@@ -173,7 +173,7 @@ stage.json {
 This stage parses the log line as JSON, extracts two values from it, `log` and `timestamp`, and puts them into the extracted map with keys `log` and `ts`, respectively.
 
 {{< admonition type="note" >}}
-Supplying an empty string is shorthand for using the same key as in the input log line (so `log = ""` is the same as `log = "log"`).
+Supplying an empty string is shorthand for using the same key as in the input log line, so `log = ""` is the same as `log = "log"`.
 The _keys_ of the `expressions` object end up as the keys in the extracted map, and the _values_ are used as keys to look up in the parsed log line.
 {{< /admonition >}}
 
@@ -310,9 +310,9 @@ stage.labels {
 }
 ```
 
-This stage adds a label to the log using the same shorthand as above (so this is equivalent to using `values = { level = "level" }`).
-This stage adds a label with key `level` and the value of `level` in the extracted map to the log (`"info"` from our example log line).
-This stage does not modify the extracted map.
+This stage adds a label to the log using the same shorthand as before, so this is equivalent to using `values = { level = "level" }`.
+This stage adds a label with key `level` and the value of `level` in the extracted map to the log (`"info"` from the example log line).
+This stage doesn't modify the extracted map.
 
 #### Stage 6
 
@@ -322,7 +322,7 @@ stage.output {
 }
 ```
 
-This stage uses the `log_line` value in the extracted map to set the actual log line that is forwarded to Loki.
+This stage uses the `log_line` value in the extracted map to set the actual log line that's forwarded to Loki.
 Rather than sending the entire JSON blob to Loki, you are only sending `original_log_line["log"]["message"]`, along with some labels that you attached.
 
 This stage doesn't modify the extracted map.
