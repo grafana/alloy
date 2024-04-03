@@ -24,7 +24,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.exporter.logging "LABEL" { }
 ```
 
@@ -83,7 +83,7 @@ information.
 
 This example scrapes prometheus unix metrics and writes them to the console:
 
-```river
+```alloy
 prometheus.exporter.unix "default" { }
 
 prometheus.scrape "default" {

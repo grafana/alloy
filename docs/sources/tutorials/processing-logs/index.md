@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/processing-logs/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/processing-logs/
 description: Learn how to process logs
 title: Processing Logs
 weight: 40
@@ -25,7 +25,7 @@ Your pipeline is going to look like this:
 
 Let's start by setting up the `loki.source.api` component:
 
-```river
+```alloy
 loki.source.api "listener" {
     http {
         listen_address = "127.0.0.1"
@@ -50,7 +50,7 @@ Next, you can configure the `loki.process` and `loki.write` components.
 - [loki.process#stage.json][]
 - [loki.process#stage.labels][]
 
-```river
+```alloy
 // Let's send and process more logs!
 
 loki.source.api "listener" {
@@ -127,7 +127,7 @@ loki.write "local_loki" {
 ```
 
 You can skip to the next section if you successfully completed the previous section's exercises.
-If not, or if you were unsure how things worked, let's break down what is happening in the `loki.process` component.
+If not, or if you were unsure how things worked, let's break down what's happening in the `loki.process` component.
 
 Many of the `stage.*` blocks in `loki.process` act on reading or writing a shared map of values extracted from the logs.
 You can think of this extracted map as a hashmap or table that each stage has access to, and it is referred to as the "extracted map" from here on.
@@ -153,7 +153,7 @@ Here is our example log line:
 
 ### Stage 1
 
-```river
+```alloy
 stage.json {
     expressions = {
         log = "",
@@ -200,7 +200,7 @@ Extracted map _after_ performing this stage:
 
 ### Stage 2
 
-```river
+```alloy
 stage.timestamp {
     source = "ts"
     format = "RFC3339"
@@ -210,11 +210,11 @@ stage.timestamp {
 This stage acts on the `ts` value in the map you extracted in the previous stage.
 The value of `ts` is parsed in the format of `RFC3339` and added as the timestamp to be ingested by Loki.
 This is useful if you want to use the timestamp present in the log itself, rather than the time the log is ingested.
-This stage does not modify the extracted map.
+This stage doesn't modify the extracted map.
 
 ### Stage 3
 
-```river
+```alloy
 stage.json {
     source = "log"
 
@@ -280,7 +280,7 @@ Extracted map _after_ performing this stage:
 
 ### Stage 4
 
-```river
+```alloy
 stage.drop {
     source = "is_secret"
     value  = "true"
@@ -288,13 +288,13 @@ stage.drop {
 ```
 
 This stage acts on the `is_secret` value in the extracted map, which is a value that you extracted in the previous stage.
-This stage drops the log line if the value of `is_secret` is `"true"` and does not modify the extracted map.
+This stage drops the log line if the value of `is_secret` is `"true"` and doesn't modify the extracted map.
 There are many other ways to filter logs, but this is a simple example.
 Refer to the [loki.process#stage.drop][] documentation for more information.
 
 ### Stage 5
 
-```river
+```alloy
 stage.labels {
     values = {
         level = "",
@@ -308,7 +308,7 @@ This stage does not modify the extracted map.
 
 ### Stage 6
 
-```river
+```alloy
 stage.output {
     source = "log_line"
 }
@@ -322,11 +322,15 @@ This stage doesn't modify the extracted map.
 ## Putting it all together
 
 Now that you have all of the pieces, let's run {{< param "PRODUCT_NAME" >}} and send some logs to it.
-Modify `config.alloy` with the config from the previous example and start {{< param "PRODUCT_NAME" >}} with:
+Modify `config.alloy` with the configuration from the previous example and start {{< param "PRODUCT_NAME" >}} with:
 
 ```bash
-/path/to/alloy run config.alloy
+<BINARY_FILE_PATH> run config.alloy
 ```
+
+Replace the following:
+
+* _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
 To get the current time in `RFC3339` format, you can run:
 
@@ -347,7 +351,7 @@ Try querying for `{source="demo-api"}` and see if you can find the logs you sent
 Try playing around with the values of `"level"`, `"message"`, `"timestamp"`, and `"is_secret"` and see how the logs change.
 You can also try adding more stages to the `loki.process` component to extract more values from the logs, or add more labels.
 
-![Example Loki Logs](/media/docs/agent/screenshot-flow-by-example-processed-log-lines.png)
+![Example Loki Logs](/media/docs/alloy/screenshot-processed-log-lines.png)
 
 ## Exercise
 
@@ -362,7 +366,7 @@ The `discovery.relabel` component is very similar to the `prometheus.relabel` co
 
 {{< collapse title="Solution" >}}
 
-```river
+```alloy
 // Discover docker containers to collect logs from
 discovery.docker "docker_containers" {
     // Note that if you are using Docker Desktop Engine this may need to be changed to
@@ -403,11 +407,11 @@ loki.write "local_loki" {
 
 {{< /collapse >}}
 
-[loki.source.api]: ../../../reference/components/loki.source.api/
-[loki.process#stage.drop]: ../../../reference/components/loki.process/#stagedrop-block
-[loki.process#stage.json]: ../../../reference/components/loki.process/#stagejson-block
-[loki.process#stage.labels]: ../../../reference/components/loki.process/#stagelabels-block
+[loki.source.api]: ../../reference/components/loki.source.api/
+[loki.process#stage.drop]: ../../reference/components/loki.process/#stagedrop-block
+[loki.process#stage.json]: ../../reference/components/loki.process/#stagejson-block
+[loki.process#stage.labels]: ../../reference/components/loki.process/#stagelabels-block
 [localhost:3000/explore]: http://localhost:3000/explore
-[discovery.docker]: ../../../reference/components/discovery.docker/
-[loki.source.docker]: ../../../reference/components/loki.source.docker/
-[discovery.relabel]: ../../../reference/components/discovery.relabel/
+[discovery.docker]: ../../reference/components/discovery.docker/
+[loki.source.docker]: ../../reference/components/loki.source.docker/
+[discovery.relabel]: ../../reference/components/discovery.relabel/

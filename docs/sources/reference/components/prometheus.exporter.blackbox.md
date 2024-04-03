@@ -11,7 +11,7 @@ The `prometheus.exporter.blackbox` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.blackbox "LABEL" {
   target {
     name    = "example"
@@ -96,7 +96,7 @@ from `prometheus.exporter.blackbox`. It adds an extra label, `env="dev"`, to the
 
 The `config_file` argument is used to define which `blackbox_exporter` modules to use. You can use the [blackbox example config file](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml).
 
-```river
+```alloy
 prometheus.exporter.blackbox "example" {
   config_file = "blackbox_modules.yml"
 
@@ -144,7 +144,7 @@ Replace the following:
 
 This example is the same above with using an embedded configuration:
 
-```river
+```alloy
 prometheus.exporter.blackbox "example" {
   config = "{ modules: { http_2xx: { prober: http, timeout: 5s } } }"
 

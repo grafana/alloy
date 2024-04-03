@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/first-components-and-stdlib/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/first-components-and-stdlib/
 description: Learn about the basics of the {{< param "PRODUCT_NAME" >}} configuration syntax
 title: First components and introducing the standard library
 weight: 20
@@ -14,17 +14,15 @@ It introduces a basic pipeline that collects metrics from the host and sends the
 
 **Recommended reading**
 
-- [Configuration language][]
-- [Configuration language concepts][]
+- [{{< param "PRODUCT_NAME" >}} configuration syntax][Configuration syntax]
 
-The [{{< param "PRODUCT_NAME" >}} configuration syntax][] is an HCL-inspired configuration language used to configure {{< param "PRODUCT_NAME" >}}.
 An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
 
 1. **Attributes**
 
    `key = value` pairs used to configure individual settings.
 
-    ```river
+    ```alloy
     url = "http://localhost:9090"
     ```
 
@@ -40,7 +38,7 @@ An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
    Blocks are used to configure components with groups of attributes or nested blocks.
    The following example block can be used to configure the logging output of {{< param "PRODUCT_NAME" >}}:
 
-    ```river
+    ```alloy
     logging {
         level  = "debug"
         format = "json"
@@ -51,7 +49,7 @@ An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
 The default log level is `info` and the default log format is `logfmt`.
     {{< /admonition >}}
 
-    Try pasting this into `config.alloy` and running `/path/to/alloy run config.alloy` to see what happens.
+    Try pasting this into `config.alloy` and running `<BINARY_FILE_PATH> run config.alloy` to see what happens. Replace _`<BINARY_FILE_PATH>`_ with the path to the {{< param "PRODUCT_NAME" >}} binary.
 
     Congratulations, you've just written your first {{< param "PRODUCT_NAME" >}} configuration file.
     This configuration won't do anything, so let's add some components to it.
@@ -72,7 +70,7 @@ Components are the building blocks of an {{< param "PRODUCT_NAME" >}} configurat
 
 Let's look at a simple example pipeline:
 
-```river
+```alloy
 local.file "example" {
     path = env("HOME") + "file.txt"
 }
@@ -93,7 +91,7 @@ prometheus.remote_write "local_prom" {
 A list of all available components can be found in the [Component reference][].
 Each component has a link to its documentation, which contains a description of what the component does, its arguments, its exports, and examples.
 
-[Component reference]: ../../../reference/components/
+[Component reference]: ../../reference/components/
 {{< /admonition >}}
 
 This pipeline has two components: `local.file` and `prometheus.remote_write`.
@@ -106,7 +104,7 @@ The `basic_auth` block contains the `username` and `password` attributes, which 
 The `content` export is referenced by using the syntax `local.file.example.content`, where `local.file.example` is the fully qualified name of the component (the component's type + its label) and `content` is the name of the export.
 
 <p align="center">
-<img src="/media/docs/agent/diagram-flow-by-example-basic-0.svg" alt="Flow of example pipeline with local.file and prometheus.remote_write components" width="200" />
+<img src="/media/docs/agent/diagram-flow-by-example-basic-0.svg" alt="Example pipeline with local.file and prometheus.remote_write components" width="200" />
 </p>
 
 {{< admonition type="note" >}}
@@ -126,7 +124,7 @@ This example pipeline still doesn't do anything, so let's add some more componen
 
 Make a simple pipeline with a `prometheus.exporter.unix` component, a `prometheus.scrape` component to scrape it, and a `prometheus.remote_write` component to send the scraped metrics to Prometheus.
 
-```river
+```alloy
 prometheus.exporter.unix "localhost" {
     // This component exposes a lot of metrics by default, so we will keep all of the default arguments.
 }
@@ -151,15 +149,19 @@ prometheus.remote_write "local_prom" {
 Run {{< param "PRODUCT_NAME" >}} with:
 
 ```bash
-/path/to/alloy run config.alloy
+<BINARY_FILE_PATH> run config.alloy
 ```
+
+Replace the following:
+
+* _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
 Navigate to [http://localhost:3000/explore][] in your browser.
 After ~15-20 seconds, you should be able to see the metrics from the `prometheus.exporter.unix` component.
 Try querying for `node_memory_Active_bytes` to see the active memory of your host.
 
 <p align="center">
-<img src="/media/docs/agent/screenshot-flow-by-example-memory-usage.png" alt="Screenshot of node_memory_Active_bytes query in Grafana" />
+<img src="/media/docs/alloy/screenshot-memory-usage.png" alt="Screenshot of node_memory_Active_bytes query in Grafana" />
 </p>
 
 ## Visualizing the relationship between components
@@ -167,7 +169,7 @@ Try querying for `node_memory_Active_bytes` to see the active memory of your hos
 The following diagram is an example pipeline:
 
 <p align="center">
-<img src="/media/docs/agent/diagram-flow-by-example-full-0.svg" alt="Flow of example pipeline with a prometheus.scrape, prometheus.exporter.unix, and prometheus.remote_write components" width="400" />
+<img src="/media/docs/agent/diagram-flow-by-example-full-0.svg" alt="Example pipeline with a prometheus.scrape, prometheus.exporter.unix, and prometheus.remote_write components" width="400" />
 </p>
 
 The preceding configuration defines three components:
@@ -192,7 +194,7 @@ This is to prevent infinite loops from forming in the pipeline.
 Let's start a container running Redis and configure {{< param "PRODUCT_NAME" >}} to scrape metrics from it.
 
 ```bash
-docker container run -d --name flow-redis -p 6379:6379 --rm redis
+docker container run -d --name alloy-redis -p 6379:6379 --rm redis
 ```
 
 Try modifying the pipeline to scrape metrics from the Redis exporter.
@@ -201,20 +203,24 @@ You can refer to the [prometheus.exporter.redis][] component documentation for m
 To give a visual hint, you want to create a pipeline that looks like this:
 
 <p align="center">
-<img src="/media/docs/agent/diagram-flow-by-example-exercise-0.svg" alt="Flow of exercise pipeline, with a scrape, unix_exporter, redis_exporter, and remote_write component" width="600" />
+<img src="/media/docs/agent/diagram-flow-by-example-exercise-0.svg" alt="Exercise pipeline, with a scrape, unix_exporter, redis_exporter, and remote_write component" width="600" />
 </p>
 
 {{< admonition type="note" >}}
 You may find the [concat][] standard library function useful.
 
-[concat]: ../../../reference/stdlib/concat/
+[concat]: ../../reference/stdlib/concat/
 {{< /admonition >}}
 
 You can run {{< param "PRODUCT_NAME" >}} with the new configuration file by running:
 
 ```bash
-/path/to/alloy run config.alloy
+<BINARY_FILE_PATH> run config.alloy
 ```
+
+Replace the following:
+
+* _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
 Navigate to [http://localhost:3000/explore][] in your browser.
 After the first scrape, you should be able to query for `redis` metrics as well as `node` metrics.
@@ -222,14 +228,14 @@ After the first scrape, you should be able to query for `redis` metrics as well 
 To shut down the Redis container, run:
 
 ```bash
-docker container stop flow-redis
+docker container stop alloy-redis
 ```
 
 If you get stuck, you can always view a solution here:
 
 {{< collapse title="Solution" >}}
 
-```river
+```alloy
 // Configure your first components, learn about the standard library, and learn how to run Grafana Alloy
 
 // prometheus.exporter.redis collects information about Redis and exposes
@@ -273,23 +279,21 @@ You might have noticed that running {{< param "PRODUCT_NAME" >}} with the config
 This directory is where components can store data, such as the `prometheus.exporter.unix` component storing its WAL (Write Ahead Log).
 If you look in the directory, do you notice anything interesting? The directory for each component is the fully qualified name.
 
-If you'd like to store the data elsewhere, you can specify a different directory by supplying the `--storage.path` flag to {{< param "PRODUCT_NAME" >}}'s run command, for example, `/path/to/alloy run config.alloy --storage.path /etc/alloy`.
+If you'd like to store the data elsewhere, you can specify a different directory by supplying the `--storage.path` flag to {{< param "PRODUCT_NAME" >}}'s run command, for example, `<BINARY_FILE_PATH> run config.alloy --storage.path /etc/alloy`. Replace _`<BINARY_FILE_PATH>`_ with the path to the {{< param "PRODUCT_NAME" >}} binary.
 Generally, you can use a persistent directory for this, as some components may use the data stored in this directory to perform their function.
 
 In the next tutorial, you will look at how to configure {{< param "PRODUCT_NAME" >}} to collect logs from a file and send them to Loki.
 You will also look at using different components to process metrics and logs before sending them.
 
-[Configuration language]: ../../../concepts/config-language/
-[Configuration language concepts]: ../../../concepts/configuration_language/
-[Standard library documentation]: ../../../reference/stdlib/
+[Configuration syntax]: ../../concepts/configuration-syntax/
+[Standard library documentation]: ../../reference/stdlib/
 [node_exporter]: https://github.com/prometheus/node_exporter
-[{{< param "PRODUCT_NAME" >}} configuration syntax]: https://github.com/grafana/river
-[prometheus.exporter.redis]: ../../../reference/components/prometheus.exporter.redis/
+[prometheus.exporter.redis]: ../../reference/components/prometheus.exporter.redis/
 [http://localhost:3000/explore]: http://localhost:3000/explore
-[prometheus.exporter.unix]: ../../../reference/components/prometheus.exporter.unix/
-[prometheus.scrape]: ../../../reference/components/prometheus.scrape/
-[prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
-[Components]: ../../../concepts/components/
-[Component controller]: ../../../concepts/component_controller/
-[Components configuration language]: ../../../concepts/config-language/components/
-[env]: ../../../reference/stdlib/env/
+[prometheus.exporter.unix]: ../../reference/components/prometheus.exporter.unix/
+[prometheus.scrape]: ../../reference/components/prometheus.scrape/
+[prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
+[Components]: ../../concepts/components/
+[Component controller]: ../../concepts/component_controller/
+[Components configuration language]: ../../concepts/configuration-syntax/components/
+[env]: ../../reference/stdlib/env/

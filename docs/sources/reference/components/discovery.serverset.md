@@ -15,7 +15,7 @@ Serversets are commonly used by [Finagle][] and [Aurora][].
 
 ## Usage
 
-```river
+```alloy
 discovery.serverset "LABEL" {
 	servers = SERVERS_LIST
 	paths   = ZOOKEEPER_PATHS_LIST
@@ -70,7 +70,7 @@ In those cases, exported fields retain their last healthy values.
 The configuration below will connect to one of the Zookeeper servers (either `zk1`, `zk2`, or `zk3`) and discover JSON Serversets at paths `/path/to/znode1` and `/path/to/znode2`.
 The discovered targets are scraped by the `prometheus.scrape.default` component and forwarded to the `prometheus.remote_write.default` component, which will send the samples to specified remote_write URL.
 
-```river
+```alloy
 discovery.serverset "zookeeper" {
 	servers = ["zk1", "zk2", "zk3"]
 	paths   = ["/path/to/znode1", "/path/to/znode2"]

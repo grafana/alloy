@@ -45,7 +45,7 @@ To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry da
 
 1. Add the following `otelcol.exporter.otlp` component to your configuration file:
 
-   ```river
+   ```alloy
    otelcol.exporter.otlp "<EXPORTER_LABEL>" {
      client {
        url = "<HOST>:<PORT>"
@@ -64,7 +64,7 @@ To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry da
 
     1. Add the following `otelcol.auth.basic` component to your configuration file:
 
-       ```river
+       ```alloy
        otelcol.auth.basic "<BASIC_AUTH_LABEL>" {
          username = "<USERNAME>"
          password = "<PASSWORD>"
@@ -80,7 +80,7 @@ To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry da
 
     1. Add the following line inside of the `client` block of your `otelcol.exporter.otlp` component:
 
-       ```river
+       ```alloy
        auth = otelcol.auth.basic.<BASIC_AUTH_LABEL>.handler
        ```
 
@@ -92,11 +92,11 @@ To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry da
 
 > `otelcol.exporter.otlp` sends data using OTLP over gRPC (HTTP/2).
 > To send to a server using HTTP/1.1, follow the preceding steps,
-> but use the [otelcol.exporter.otlphttp component][otelcol.exporter.otlphttp] instead.
+> but use the [otelcol.exporter.otlphttp][otelcol.exporter.otlphttp] component instead.
 
 The following example demonstrates configuring `otelcol.exporter.otlp` with authentication and a component that forwards data to it:
 
-```river
+```alloy
 otelcol.exporter.otlp "default" {
   client {
     endpoint = "my-otlp-grpc-server:4317"
@@ -150,7 +150,7 @@ To configure an `otelcol.processor.batch` component, complete the following step
 
 1. Add the following `otelcol.processor.batch` component into your configuration file:
 
-   ```river
+   ```alloy
    otelcol.processor.batch "<PROCESSOR_LABEL>" {
      output {
        metrics = [otelcol.exporter.otlp.<EXPORTER_LABEL>.input]
@@ -172,7 +172,7 @@ To configure an `otelcol.processor.batch` component, complete the following step
 
 The following example demonstrates configuring a sequence of `otelcol.processor` components before being exported.
 
-```river
+```alloy
 otelcol.processor.memory_limiter "default" {
   check_interval = "1s"
   limit          = "1GiB"
@@ -221,7 +221,7 @@ To configure an `otelcol.receiver.otlp` component for receiving OTLP data, compl
 
 1. Add the following `otelcol.receiver.otlp` component to your configuration file.
 
-   ```river
+   ```alloy
    otelcol.receiver.otlp "<LABEL>" {
      output {
        metrics = [<COMPONENT_INPUT_LIST>]
@@ -241,7 +241,7 @@ To configure an `otelcol.receiver.otlp` component for receiving OTLP data, compl
 
    1. To allow applications to send OTLP data over gRPC on port `4317`, add the following to your `otelcol.receiver.otlp` component.
 
-      ```river
+      ```alloy
       grpc {
         endpoint = "<HOST>:4317"
       }
@@ -254,7 +254,7 @@ To configure an `otelcol.receiver.otlp` component for receiving OTLP data, compl
 
    1. To allow applications to send OTLP data over HTTP/1.1 on port `4318`, add the following to your `otelcol.receiver.otlp` component.
 
-      ```river
+      ```alloy
       http {
         endpoint = "<HOST>:4318"
       }
@@ -269,7 +269,7 @@ To configure an `otelcol.receiver.otlp` component for receiving OTLP data, compl
 
 The following example demonstrates configuring `otelcol.receiver.otlp` and sending it to an exporter:
 
-```river
+```alloy
 otelcol.receiver.otlp "example" {
   grpc {
     endpoint = "127.0.0.1:4317"

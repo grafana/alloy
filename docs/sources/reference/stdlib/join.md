@@ -8,13 +8,13 @@ title: join
 
 `join` all items in an array into a string, using a character as separator.
 
-```river
+```alloy
 join(list, separator)
 ```
 
 ## Examples
 
-```river
+```alloy
 > join(["foo", "bar", "baz"], "-")
 "foo-bar-baz"
 > join(["foo", "bar", "baz"], ", ")

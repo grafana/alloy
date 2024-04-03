@@ -24,7 +24,7 @@ In these cases, the secrets are loaded and refreshed only when the ServiceMonito
 
 ## Usage
 
-```river
+```alloy
 prometheus.operator.servicemonitors "LABEL" {
     forward_to = RECEIVER_LIST
 }
@@ -213,7 +213,7 @@ It also exposes some debug information for each ServiceMonitor it has discovered
 This example discovers all ServiceMonitors in your cluster, and forwards collected metrics to a
 `prometheus.remote_write` component.
 
-```river
+```alloy
 prometheus.remote_write "staging" {
   // Send metrics to a locally running Mimir.
   endpoint {
@@ -233,7 +233,7 @@ prometheus.operator.servicemonitors "services" {
 
 This example will limit discovered ServiceMonitors to ones with the label `team=ops` in a specific namespace: `my-app`.
 
-```river
+```alloy
 prometheus.operator.servicemonitors "services" {
     forward_to = [prometheus.remote_write.staging.receiver]
     namespaces = ["my-app"]
@@ -249,7 +249,7 @@ prometheus.operator.servicemonitors "services" {
 
 This example will apply additional relabel rules to discovered targets to filter by hostname. This may be useful if running {{< param "PRODUCT_NAME" >}} as a DaemonSet.
 
-```river
+```alloy
 prometheus.operator.servicemonitors "services" {
     forward_to = [prometheus.remote_write.staging.receiver]
     rule {

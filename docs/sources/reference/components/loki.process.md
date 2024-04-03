@@ -16,7 +16,7 @@ Multiple `loki.process` components can be specified by giving them different lab
 
 ## Usage
 
-```river
+```alloy
 loki.process "LABEL" {
   forward_to = RECEIVER_LIST
 
@@ -110,7 +110,7 @@ The following arguments are supported:
 
 `max_partial_line_size` is only taken into account if `max_partial_line_size_truncate` is set to `true`.
 
-```river
+```alloy
 stage.cri {}
 ```
 
@@ -137,7 +137,7 @@ The `stage.decolorize` strips ANSI color codes from the log lines, thus making i
 
 The `stage.decolorize` block does not support any arguments or inner blocks, so it is always empty.
 
-```river
+```alloy
 stage.decolorize {}
 ```
 
@@ -159,7 +159,7 @@ The `stage.docker` inner block enables a predefined pipeline which reads log lin
 
 The `stage.docker` block does not support any arguments or inner blocks, so it is always empty.
 
-```river
+```alloy
 stage.docker {}
 ```
 
@@ -210,7 +210,7 @@ Whenever an entry is dropped, the metric `loki_process_dropped_lines_total` is i
 
 The following stage drops log entries that contain the word `debug` _and_ are longer than 1KB.
 
-```river
+```alloy
 stage.drop {
     expression  = ".*debug.*"
     longer_than = "1KB"
@@ -219,7 +219,7 @@ stage.drop {
 
 On the following example, we define multiple `drop` blocks so `loki.process` drops entries that are either 24h or older, are longer than 8KB, _or_ the extracted value of 'app' is equal to foo.
 
-```river
+```alloy
 stage.drop {
     older_than          = "24h"
     drop_counter_reason = "too old"
@@ -256,7 +256,7 @@ If set to `false`, the stage will automatically convert them into valid labels r
 
 #### Example combined with `stage.json`
 
-```river
+```alloy
 stage.json {
     expressions = {
         message = "",
@@ -308,7 +308,7 @@ The map key defines the name with which the data is extracted, while the map val
 
 Here's a given log line and two JSON stages to run.
 
-```river
+```alloy
 {"log":"log message\n","extra":"{\"user\":\"alloy\"}"}
 
 loki.process "username" {
@@ -357,7 +357,7 @@ The following arguments are supported:
 | -------- | -------------- | ------------------------------------------- | ------- | -------- |
 | `values` | `list(string)` | Configures a `label_drop` processing stage. | `{}`    | no       |
 
-```river
+```alloy
 stage.label_drop {
     values = [ "kubernetes_node_name", "kubernetes_namespace" ]
 }
@@ -374,7 +374,7 @@ The following arguments are supported:
 | `values` | `list(string)` | Configures a `label_keep` processing stage. | `{}`    | no       |
 
 
-```river
+```alloy
 stage.label_keep {
     values = [ "kubernetes_pod_name", "kubernetes_pod_container_name" ]
 }
@@ -393,7 +393,7 @@ The following arguments are supported:
 In a labels stage, the map's keys define the label to set and the values are how to look them up.
 If the value is empty, it is inferred to be the same as the key.
 
-```river
+```alloy
 stage.labels {
     values = {
       env  = "",         // Sets up an 'env' label, based on the 'env' extracted value.
@@ -415,7 +415,7 @@ The following arguments are supported:
 In a structured_metadata stage, the map's keys define the label to set and the values are how to look them up.
 If the value is empty, it is inferred to be the same as the key.
 
-```river
+```alloy
 stage.structured_metadata {
     values = {
       env  = "",         // Sets up an 'env' property to structured metadata, based on the 'env' extracted value.
@@ -441,7 +441,7 @@ The following arguments are supported:
 The rate limiting is implemented as a "token bucket" of size `burst`, initially full and refilled at `rate` tokens per second.
 Each received log entry consumes one token from the bucket. When `drop` is set to true, incoming entries that exceed the rate-limit are dropped, otherwise they are queued until more tokens are available.
 
-```river
+```alloy
 stage.limit {
     rate  = 5
     burst = 10
@@ -455,7 +455,7 @@ The following example rate-limits entries from each unique `namespace` value ind
 Any entries without the `namespace` label are not rate-limited.
 The stage keeps track of up to `max_distinct_labels` unique values, defaulting at 10000.
 
-```river
+```alloy
 stage.limit {
     rate  = 10
     burst = 10
@@ -688,7 +688,7 @@ The pipeline creates a second counter which adds the byte size of these log line
 These two metrics disappear after 24 hours if no new entries are received, to avoid building up metrics which no longer serve any use.
 These two metrics are a good starting point to track the volume of log streams in both the number of entries and their byte size, to identify sources of high-volume or high-cardinality data.
 
-```river
+```alloy
 stage.metrics {
     metric.counter {
         name        = "log_lines_total"
@@ -717,7 +717,7 @@ stage.metrics {
 Here, the first stage uses a regex to extract text in the format `order_status=<string>` in the log line.
 The second stage, defines a counter which increments the `successful_orders_total` and `failed_orders_total` based on the previously extracted values.
 
-```river
+```alloy
 stage.regex {
     expression = "^.* order_status=(?P<order_status>.*?) .*$"
 }
@@ -744,7 +744,7 @@ stage.metrics {
 In this example, the first stage extracts text in the format of `retries=<value>`, from the log line.
 The second stage creates a gauge whose current metric value is increased by the number extracted from the retries field.
 
-```river
+```alloy
 stage.regex {
     expression = "^.* retries=(?P<retries>\\d+) .*$"
 }
@@ -760,7 +760,7 @@ stage.metrics {
 
 The following example shows a histogram that reads `response_time` from the extracted map and places it into a bucket, both increasing the count of the bucket and the sum for that particular bucket:
 
-```river
+```alloy
 stage.metrics {
     metric.histogram {
         name        = "http_response_time_seconds"
@@ -888,7 +888,7 @@ labels:   { "level" = "error", "env" = "dev", "user_id" = "f8fas0r" }
 ```
 
 and this processing stage:
-```river
+```alloy
 stage.pack {
     labels = ["env", "user_id"]
 }
@@ -1103,7 +1103,7 @@ The following arguments are supported:
 For example, the configuration below will sample 25% of the logs and drop the remaining 75%.
 When logs are dropped, the `loki_process_dropped_lines_total` metric is incremented with an additional `reason=logs_sampling` label.
 
-```river
+```alloy
 stage.sampling {
     rate = 0.25
     drop_counter_reason = "logs_sampling"
@@ -1121,7 +1121,7 @@ The following arguments are supported:
 | `values` | `map(string)` | Configures a `static_labels` processing stage. | `{}`    | no       |
 
 
-```river
+```alloy
 stage.static_labels {
     values = {
       foo = "fooval",
@@ -1162,7 +1162,7 @@ More details on each of these functions can be found in the [supported functions
 
 Assuming no data is present on the extracted map, the following stage simply adds the `new_key: "hello_world"` key-value pair to the shared map.
 
-```river
+```alloy
 stage.template {
     source   = "new_key"
     template = "hello_world"
@@ -1172,7 +1172,7 @@ stage.template {
 If the `source` value exists in the extract fields, its value can be referred to as `.Value` in the template.
 The next stage takes the current value of `app` from the extracted map, converts it to lowercase, and adds a suffix to its value:
 
-```river
+```alloy
 stage.template {
     source   = "app"
     template = "{{ ToLower .Value }}_some_suffix"
@@ -1182,7 +1182,7 @@ stage.template {
 Any previously extracted keys are available for `template` to expand and use.
 The next stage takes the current values for `level`, `app` and `module` and creates a new key named `output_message`:
 
-```river
+```alloy
 stage.template {
     source   = "output_msg"
     template = "{{ .level }} for app {{ ToUpper .app }} in module {{.module}}"
@@ -1191,7 +1191,7 @@ stage.template {
 
 A special key named `Entry` can be used to reference the current line; this can be useful when you need to append/prepend something to the log line, like this snippet:
 
-```river
+```alloy
 stage.template {
     source   = "message"
     template = "{{.app }}: {{ .Entry }}"
@@ -1210,7 +1210,7 @@ In addition to supporting all functions from the [sprig package](http://mastermi
 uppercase, respectively.
 
 Examples:
-```river
+```alloy
 stage.template {
     source   = "out"
     template = "{{ ToLower .app }}"
@@ -1232,7 +1232,7 @@ there is no limit on the number of replacement. Finally, if `<old>` is empty,
 it matches before and after every UTF-8 character in the string.
 
 This example replaces the first two instances of the `loki` word by `Loki`:
-```river
+```alloy
 stage.template {
     source   = "output"
     template = "{{ Replace .Value "loki" "Loki" 2 }}"
@@ -1251,7 +1251,7 @@ white space removed, as defined by Unicode.
 
 Examples:
 
-```river
+```alloy
 stage.template {
     source   = "output"
     template = "{{ Trim .Value ",. " }}"
@@ -1277,7 +1277,7 @@ submatch.
 of the Regexp with the replacement string. The replacement string is
 substituted directly, without using Expand.
 
-```river
+```alloy
 stage.template {
     source   = "output"
     template = "{{ regexReplaceAll "(a*)bc" .Value "${1}a" }}"
@@ -1295,7 +1295,7 @@ It requires a (fixed) salt value, to add complexity to low input domains (e.g., 
 `Sha2Hash` returns a `Sha2_256` of the string which is faster and less CPU-intensive than `Hash`, however it is less secure.
 
 Examples:
-```river
+```alloy
 stage.template {
     source   = "output"
     template = "{{ Hash .Value "salt" }}"
@@ -1324,7 +1324,7 @@ The following arguments are supported:
 The block expects only one of `label`, `source` or `value` to be provided.
 
 The following stage assigns the fixed value `team-a` as the tenant ID:
-```river
+```alloy
 stage.tenant {
     value = "team-a"
 }
@@ -1333,7 +1333,7 @@ stage.tenant {
 This stage extracts the tenant ID from the `customer_id` field after
 parsing the log entry as JSON in the shared extracted map:
 
-```river
+```alloy
 stage.json {
     expressions = { "customer_id" = "" }
 }
@@ -1344,7 +1344,7 @@ stage.tenant {
 
 The final example extracts the tenant ID from a label set by a previous stage:
 
-```river
+```alloy
 stage.labels {
     "namespace" = "k8s_namespace"
 }
@@ -1452,7 +1452,7 @@ The supported actions are:
 The following stage fetches the `time` value from the shared values map, parses
 it as a RFC3339 format, and sets it as the log entry's timestamp.
 
-```river
+```alloy
 stage.timestamp {
     source = "time"
     format = "RFC3339"
@@ -1651,7 +1651,7 @@ The following fields are exported and can be referenced by other components:
 This example creates a `loki.process` component that extracts the `environment`
 value from a JSON log line and sets it as a label named 'env'.
 
-```river
+```alloy
 loki.process "local" {
   forward_to = [loki.write.onprem.receiver]
 

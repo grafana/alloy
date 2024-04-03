@@ -14,7 +14,7 @@ A kubeconfig file or manual connection settings can be used to override the defa
 
 ## Usage
 
-```river
+```alloy
 discovery.kubernetes "LABEL" {
   role = DISCOVERY_ROLE
 }
@@ -303,7 +303,7 @@ In those cases, exported fields retain their last healthy values.
 
 This example uses in-cluster authentication to discover all pods:
 
-```river
+```alloy
 discovery.kubernetes "k8s_pods" {
   role = "pod"
 }
@@ -333,7 +333,7 @@ Replace the following:
 
 This example uses a Kubeconfig file to authenticate to the Kubernetes API:
 
-```river
+```alloy
 discovery.kubernetes "k8s_pods" {
   role = "pod"
   kubeconfig_file = "/etc/k8s/kubeconfig.yaml"
@@ -364,7 +364,7 @@ Replace the following:
 
 This example limits the searched namespaces and only selects pods with a specific label value attached to them:
 
-```river
+```alloy
 discovery.kubernetes "k8s_pods" {
   role = "pod"
 
@@ -409,7 +409,7 @@ This example assumes you have used Helm chart to deploy {{< param "PRODUCT_NAME"
 If you have a custom Kubernetes Deployment, you must adapt this example to your configuration.
 {{< /admonition >}}
 
-```river
+```alloy
 discovery.kubernetes "k8s_pods" {
   role = "pod"
   selectors {

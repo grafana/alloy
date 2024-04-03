@@ -11,7 +11,7 @@ The `prometheus.exporter.mysql` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.mysql "LABEL" {
     data_source_name = DATA_SOURCE_NAME
 }
@@ -176,7 +176,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.mysql`:
 
-```river
+```alloy
 prometheus.exporter.mysql "example" {
   data_source_name  = "root@(server-a:3306)/"
   enable_collectors = ["heartbeat", "mysql.user"]

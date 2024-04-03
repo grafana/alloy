@@ -1,6 +1,6 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/get-started/
-description: Getting started with Flow-by-Example Tutorials
+canonical: https://grafana.com/docs/alloy/latest/tutorials/get-started/
+description: Getting started with the tutorials
 title: Get started
 weight: 10
 ---
@@ -11,7 +11,7 @@ This set of tutorials contains a collection of examples that build on each other
 
 ## What is {{% param "PRODUCT_NAME" %}}?
 
-{{< param "PRODUCT_NAME" >}} uses a declarative configuration language that allows you to define a pipeline of telemetry collection, processing, and output. It is built on top of the [{{< param "PRODUCT_NAME" >}}][river] configuration language, which is designed to be fast, simple, and debuggable.
+{{< param "PRODUCT_NAME" >}} uses a [configuration syntax][configuration] that allows you to define a pipeline of telemetry collection, processing, and output.
 
 ## What do I need to get started?
 
@@ -82,5 +82,5 @@ The tutorials are designed to be followed in order and generally build on each o
 The Recommended Reading sections in each tutorial provide a list of documentation topics. To help you understand the concepts used in the example, read the recommended topics in the order given.
 
 [alloy]: https://grafana.com/docs/alloy/latest/
-[river]: https://github.com/grafana/river
-[install]: ../../../get-started/install/binary/#install-alloy-as-a-standalone-binary
+[configuration]: ../../concepts/configuration-syntax/
+[install]: ../../get-started/install/binary/#install-alloy-as-a-standalone-binary

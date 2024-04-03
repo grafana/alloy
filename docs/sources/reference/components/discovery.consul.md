@@ -12,7 +12,7 @@ title: discovery.consul
 
 ## Usage
 
-```river
+```alloy
 discovery.consul "LABEL" {
   server = CONSUL_SERVER
 }
@@ -137,7 +137,7 @@ In those cases, exported fields retain their last healthy values.
 
 This example discovers targets from Consul for the specified list of services:
 
-```river
+```alloy
 discovery.consul "example" {
   server = "localhost:8500"
   services = [

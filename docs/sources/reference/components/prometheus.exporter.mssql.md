@@ -12,7 +12,7 @@ Prometheus metrics.
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.mssql "LABEL" {
     connection_string = CONNECTION_STRING
 }
@@ -93,7 +93,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.mssql`:
 
-```river
+```alloy
 prometheus.exporter.mssql "example" {
   connection_string = "sqlserver://user:pass@localhost:1433"
 }

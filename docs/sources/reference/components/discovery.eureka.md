@@ -12,7 +12,7 @@ title: discovery.eureka
 
 ## Usage
 
-```river
+```alloy
 discovery.eureka "LABEL" {
     server = SERVER
 }
@@ -127,7 +127,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.eureka "example" {
     server = "https://eureka.example.com/eureka/v1"
 }

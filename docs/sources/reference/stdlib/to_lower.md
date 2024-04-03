@@ -10,7 +10,7 @@ title: to_lower
 
 ## Examples
 
-```river
+```alloy
 > to_lower("HELLO")
 "hello"
 ```

@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/config-language/expressions/operators/
+canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/expressions/operators/
 description: Learn about operators
 title: Operators
 weight: 300
@@ -82,7 +82,7 @@ Brackets | Description
 
 The following example uses curly braces and square brackets to define an object and an array.
 
-```river
+```alloy
 obj = { app = "agent", namespace = "dev" }
 arr = [1, true, 7 * (1+1), 3]
 ```
@@ -98,7 +98,7 @@ You can access arbitrarily nested values with {{< param "PRODUCT_NAME" >}}'s acc
 You can use square brackets to access zero-indexed array indices and object fields by enclosing the field name in double quotes.
 You can use the dot operator to access object fields without double quotes and component exports.
 
-```river
+```alloy
 obj["app"]
 arr[1]
 

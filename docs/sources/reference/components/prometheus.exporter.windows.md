@@ -19,7 +19,7 @@ The include and exclude configuration options are preferred going forward.
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.windows "LABEL" {
 }
 ```
@@ -291,7 +291,7 @@ These include but aren't limited to mscluster_*, vmware, nps, dns, msmq, teradic
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.windows`:
 
-```river
+```alloy
 prometheus.exporter.windows "default" { }
 
 // Configure a prometheus.scrape component to collect windows metrics.

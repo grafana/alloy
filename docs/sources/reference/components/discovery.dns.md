@@ -10,7 +10,7 @@ title: discovery.dns
 
 ## Usage
 
-```river
+```alloy
 discovery.dns "LABEL" {
   names = [NAME_1, NAME_2, ...]
 }
@@ -60,7 +60,7 @@ In those cases, exported fields retain their last healthy values.
 
 This example discovers targets from an A record.
 
-```river
+```alloy
 discovery.dns "dns_lookup" {
   names = ["myservice.example.com", "myotherservice.example.com"]
   type = "A"

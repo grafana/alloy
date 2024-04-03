@@ -18,7 +18,7 @@ To use the `discovery.process` component you must run {{< param "PRODUCT_NAME" >
 
 ## Usage
 
-```river
+```alloy
 discovery.process "LABEL" {
 
 }
@@ -150,7 +150,7 @@ In those cases, exported fields retain their last healthy values.
 
 ### Example discovering processes on the local host
 
-```river
+```alloy
 discovery.process "all" {
   refresh_interval = "60s"
   discover_config {
@@ -167,7 +167,7 @@ discovery.process "all" {
 
 ### Example discovering processes on the local host and joining with `discovery.kubernetes`
 
-```river
+```alloy
 discovery.kubernetes "pyroscope_kubernetes" {
   selectors {
     field = "spec.nodeName=" + env("HOSTNAME")

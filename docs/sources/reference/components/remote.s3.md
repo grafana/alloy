@@ -21,7 +21,7 @@ labels. By default, [AWS environment variables](https://docs.aws.amazon.com/cli/
 
 ## Usage
 
-```river
+```alloy
 remote.s3 "LABEL" {
   path = S3_FILE_PATH
 }
@@ -31,15 +31,15 @@ remote.s3 "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`path` | `string` | Path in the format of `"s3://bucket/file"`. | | yes
+Name             | Type       | Description                                                              | Default | Required
+-----------------|------------|--------------------------------------------------------------------------|---------|---------
+`path`           | `string`   | Path in the format of `"s3://bucket/file"`.                              |         | yes
 `poll_frequency` | `duration` | How often to poll the file for changes. Must be greater than 30 seconds. | `"10m"` | no
-`is_secret` | `bool` | Marks the file as containing a [secret][]. | `false` | no
+`is_secret`      | `bool`     | Marks the file as containing a [secret][].                               | `false` | no
 
 > **NOTE**: `path` must include a full path to a file. This does not support reading of directories.
 
-[secret]: ../../../concepts/config-language/expressions/types_and_values/#secrets
+[secret]: ../../../concepts/configuration-syntax/expressions/types_and_values/#secrets
 
 ## Blocks
 
@@ -53,15 +53,15 @@ client | [client][] | Additional options for configuring the S3 client. | no
 
 The `client` block customizes options to connect to the S3 server.
 
-Name | Type | Description                                                                             | Default | Required
----- | ---- |-----------------------------------------------------------------------------------------| ------- | --------
-`key` | `string` | Used to override default access key.                                                    | | no
-`secret` | `secret` | Used to override default secret value.                                                  | | no
-`endpoint` | `string` | Specifies a custom url to access, used generally for S3-compatible systems.             | | no
-`disable_ssl` | `bool` | Used to disable SSL, generally used for testing.                                        | | no
+Name             | Type     | Description                                                                             | Default | Required
+-----------------|----------|-----------------------------------------------------------------------------------------|---------|---------
+`key`            | `string` | Used to override default access key.                                                    |         | no
+`secret`         | `secret` | Used to override default secret value.                                                  |         | no
+`endpoint`       | `string` | Specifies a custom url to access, used generally for S3-compatible systems.             |         | no
+`disable_ssl`    | `bool`   | Used to disable SSL, generally used for testing.                                        |         | no
 `use_path_style` | `string` | Path style is a deprecated setting that is generally enabled for S3 compatible systems. | `false` | no
-`region` | `string` | Used to override default region.                                                        | | no
-`signing_region` | `string` | Used to override the signing region when using a custom endpoint.                       | | no
+`region`         | `string` | Used to override default region.                                                        |         | no
+`signing_region` | `string` | Used to override the signing region when using a custom endpoint.                       |         | no
 
 
 ## Exported fields
@@ -89,7 +89,7 @@ the watched file was successful.
 
 ## Example
 
-```river
+```alloy
 remote.s3 "data" {
   path = "s3://test-bucket/file.txt"
 }

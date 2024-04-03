@@ -24,7 +24,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.batch "LABEL" {
   output {
     metrics = [...]
@@ -140,7 +140,7 @@ information.
 This example batches telemetry data before sending it to
 [otelcol.exporter.otlp][] for further processing:
 
-```river
+```alloy
 otelcol.processor.batch "default" {
   output {
     metrics = [otelcol.exporter.otlp.production.input]
@@ -161,7 +161,7 @@ otelcol.exporter.otlp "production" {
 This example will buffer up to 10,000 spans, metric data points, or log records for up to 10 seconds.
 Because `send_batch_max_size` is not set, the batch size may exceed 10,000.
 
-```river
+```alloy
 otelcol.processor.batch "default" {
   timeout = "10s"
   send_batch_size = 10000
@@ -185,7 +185,7 @@ otelcol.exporter.otlp "production" {
 Batching by metadata enables support for multi-tenant OpenTelemetry pipelines 
 with batching over groups of data having the same authorization metadata.
 
-```river
+```alloy
 otelcol.receiver.jaeger "default" {
   protocols {
     grpc {

@@ -38,7 +38,7 @@ A “Read Only” user assigned to a vSphere with permissions to the vCenter ser
 
 ## Usage
 
-```river
+```alloy
 otelcol.receiver.vcenter "LABEL" {
   endpoint = "VCENTER_ENDPOINT"
   username = "VCENTER_USERNAME"
@@ -193,7 +193,7 @@ information.
 This example forwards received telemetry data through a batch processor before
 finally sending it to an OTLP-capable endpoint:
 
-```river
+```alloy
 otelcol.receiver.vcenter "default" {
   endpoint = "http://localhost:15672"
   username = "otelu"

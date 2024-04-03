@@ -15,7 +15,7 @@ Multiple `local.file` components can be specified by giving them different label
 
 ## Usage
 
-```river
+```alloy
 local.file "LABEL" {
   filename = FILE_NAME
 }
@@ -32,7 +32,7 @@ Name             | Type       | Description                                     
 `poll_frequency` | `duration` | How often to poll for file changes                 | `"1m"`       | no
 `is_secret`      | `bool`     | Marks the file as containing a [secret][]          | `false`      | no
 
-[secret]: ../../../concepts/config-language/expressions/types_and_values/#secrets
+[secret]: ../../../concepts/configuration-syntax/expressions/types_and_values/#secrets
 
 {{< docs/shared lookup="reference/components/local-file-arguments-text.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -64,7 +64,7 @@ The read error will be exposed as a log message and in the debug information for
 
 ## Example
 
-```river
+```alloy
 local.file "secret_key" {
   filename  = "/var/secrets/password.txt"
   is_secret = true

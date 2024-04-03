@@ -19,7 +19,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.receiver.kafka "LABEL" {
   brokers          = ["BROKER_ADDR"]
   protocol_version = "PROTOCOL_VERSION"
@@ -299,7 +299,7 @@ information.
 This example forwards read telemetry data through a batch processor before
 finally sending it to an OTLP-capable endpoint:
 
-```river
+```alloy
 otelcol.receiver.kafka "default" {
   brokers          = ["localhost:9092"]
   protocol_version = "2.0.0"

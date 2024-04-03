@@ -18,7 +18,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 prometheus.remote_write "LABEL" {
   endpoint {
     url = REMOTE_WRITE_URL
@@ -343,7 +343,7 @@ The following examples show you how to create `prometheus.remote_write` componen
 
 You can create a `prometheus.remote_write` component that sends your metrics to a local Mimir instance:
 
-```river
+```alloy
 prometheus.remote_write "staging" {
   // Send metrics to a locally running Mimir.
   endpoint {
@@ -373,7 +373,7 @@ prometheus.scrape "demo" {
 You can create a `prometheus.remote_write` component that sends your metrics to a specific tenant within the Mimir instance.
 This is useful when your Mimir instance is using more than one tenant:
 
-```river
+```alloy
 prometheus.remote_write "staging" {
   // Send metrics to a Mimir instance
   endpoint {
@@ -391,7 +391,7 @@ prometheus.remote_write "staging" {
 You can create a `prometheus.remote_write` component that sends your metrics to a managed service, for example, Grafana Cloud.
 The Prometheus username and the Grafana Cloud API Key are injected in this example through environment variables.
 
-```river
+```alloy
 prometheus.remote_write "default" {
   endpoint {
     url = "https://prometheus-xxx.grafana.net/api/prom/push"

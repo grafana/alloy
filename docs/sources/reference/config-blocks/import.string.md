@@ -11,7 +11,7 @@ The `import.string` block imports custom components from a string and exposes th
 
 ## Usage
 
-```river
+```alloy
 import.string "NAMESPACE" {
   content = CONTENT
 }
@@ -36,7 +36,7 @@ Name      | Type                 | Description                                  
 
 This example imports a module from the content of a file stored in an S3 bucket and instantiates a custom component from the import that adds two numbers:
 
-```river
+```alloy
 remote.s3 "module" {
   path = "s3://test-bucket/module.alloy"
 }

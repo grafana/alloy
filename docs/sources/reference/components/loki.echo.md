@@ -16,7 +16,7 @@ Multiple `loki.echo` components can be specified by giving them different labels
 
 ## Usage
 
-```river
+```alloy
 loki.echo "LABEL" {}
 ```
 
@@ -44,7 +44,7 @@ Name       | Type           | Description
 
 This example creates a pipeline that reads log files from `/var/log` and prints log lines to echo:
 
-```river
+```alloy
 local.file_match "varlog" {
   path_targets = [{
     __path__ = "/var/log/*log",

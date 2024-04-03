@@ -8,6 +8,6 @@ weight: 50
 
 # Get started with {{% param "FULL_PRODUCT_NAME" %}}
 
-This section covers topics that help you get started with {{< param "PRODUCT_NAME" >}}, including installation, running {{< param "PRODUCT_NAME" >}}, overview of deployment topologies, and more.
+This section helps you install, deploy, and run {{< param "PRODUCT_NAME" >}}.
 
 {{< section >}}

@@ -20,7 +20,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.receiver.opencensus "LABEL" {
   output {
     metrics = [...]
@@ -151,7 +151,7 @@ information.
 This example forwards received telemetry data through a batch processor before
 finally sending it to an OTLP-capable endpoint:
 
-```river
+```alloy
 otelcol.receiver.opencensus "default" {
     cors_allowed_origins = ["https://*.test.com", "https://test.com"]
 

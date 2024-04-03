@@ -37,9 +37,9 @@ there is also a set of metrics-only functions:
 
 {{< admonition type="note" >}}
 There are two ways of inputting strings in {{< param "PRODUCT_NAME" >}} configuration files:
-* Using quotation marks ([normal {{< param "PRODUCT_NAME" >}} syntax strings][river-strings]). Characters such as `\` and
+* Using quotation marks ([normal {{< param "PRODUCT_NAME" >}} syntax strings][strings]). Characters such as `\` and
   `"` must be escaped by preceding them with a `\` character.
-* Using backticks ([raw {{< param "PRODUCT_NAME" >}} syntax strings][river-raw-strings]). No characters must be escaped.
+* Using backticks ([raw {{< param "PRODUCT_NAME" >}} syntax strings][raw-strings]). No characters must be escaped.
   However, it's not possible to have backticks inside the string.
 
 For example, the OTTL statement `set(description, "Sum") where type == "Sum"` can be written as:
@@ -48,8 +48,8 @@ For example, the OTTL statement `set(description, "Sum") where type == "Sum"` ca
 
 Raw strings are generally more convenient for writing OTTL statements.
 
-[river-strings]: ../../../concepts/config-language/expressions/types_and_values/#strings
-[river-raw-strings]: ../../../concepts/config-language/expressions/types_and_values/#raw-strings
+[strings]: ../../../concepts/configuration-syntax/expressions/types_and_values/#strings
+[raw-strings]: ../../../concepts/configuration-syntax/expressions/types_and_values/#raw-strings
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -85,7 +85,7 @@ to a new metric data type or can be used to create new metrics.
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.transform "LABEL" {
   output {
     metrics = [...]
@@ -206,7 +206,7 @@ For practical purposes, this means that a context cannot make decisions on its t
 For example, __the following context statement is not possible__ because it attempts to use individual datapoint
 attributes in the condition of a statement associated to a `metric`:
 
-```river
+```alloy
 metric_statements {
   context = "metric"
   statements = [
@@ -223,7 +223,7 @@ Context __ALWAYS__ supply access to the items "higher" in the protobuf definitio
 
 For example, __the following context statement is possible__ because `datapoint` statements can access the datapoint's metric.
 
-```river
+```alloy
 metric_statements {
   context = "datapoint"
   statements = [
@@ -277,7 +277,7 @@ information.
 
 This example sets the attribute `test` to `pass` if the attribute `test` does not exist.
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -298,15 +298,15 @@ otelcol.processor.transform "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Rename a resource attribute
 
 The are two ways to rename an attribute key.
 One way is to set a new attribute and delete the old one:
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -328,7 +328,7 @@ otelcol.processor.transform "default" {
 
 Another way is to update the key using regular expressions:
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -348,14 +348,14 @@ otelcol.processor.transform "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Create an attribute from the contents of a log body
 
 This example sets the attribute `body` to the value of the log body:
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -375,14 +375,14 @@ otelcol.processor.transform "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Combine two attributes
 
 This example sets the attribute `test` to the value of attributes `service.name` and `service.version` combined.
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -403,8 +403,8 @@ otelcol.processor.transform "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Parsing JSON logs
 
@@ -423,7 +423,7 @@ Given the following JSON body:
 
 You can add specific fields as attributes on the log:
 
-```river
+```alloy
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
@@ -455,15 +455,15 @@ otelcol.processor.transform "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Various transformations of attributes and status codes
 
 The example takes advantage of context efficiency by grouping transformations
 with the context which it intends to transform.
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   http {}
   grpc {}
@@ -556,11 +556,11 @@ otelcol.exporter.otlp "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
-[river-strings]: ../../../concepts/config-language/expressions/types_and_values/#strings
-[river-raw-strings]: ../../../concepts/config-language/expressions/types_and_values/#raw-strings
+[strings]: ../../../concepts/configuration-syntax/expressions/types_and_values/#strings
+[raw-strings]: ../../../concepts/configuration-syntax/expressions/types_and_values/#raw-strings
 
 [traces protobuf]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/trace/v1/trace.proto
 [metrics protobuf]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/metrics/v1/metrics.proto

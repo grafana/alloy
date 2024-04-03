@@ -21,7 +21,7 @@ You can specify multiple `otelcol.connector.spanlogs` components by giving them 
 
 ## Usage
 
-```river
+```alloy
 otelcol.connector.spanlogs "LABEL" {
   output {
     logs    = [...]
@@ -105,7 +105,7 @@ The following configuration sends logs derived from spans to Loki.
 Additionally, `otelcol.processor.attributes` is configured with a "hint" so that
 `otelcol.exporter.loki` promotes the span's "attribute1" attribute to a Loki label.
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   grpc {}
 

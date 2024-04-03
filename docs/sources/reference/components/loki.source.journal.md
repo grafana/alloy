@@ -12,7 +12,7 @@ Multiple `loki.source.journal` components can be specified by giving them differ
 
 ## Usage
 
-```river
+```alloy
 loki.source.journal "LABEL" {
   forward_to    = RECEIVER_LIST
 }
@@ -71,7 +71,7 @@ The final internal label name would be `__journal__systemd_unit`, with _two_ und
 
 ## Example
 
-```river
+```alloy
 loki.relabel "journal" {
   forward_to = []
 

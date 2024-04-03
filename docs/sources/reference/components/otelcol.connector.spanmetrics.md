@@ -44,7 +44,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.connector.spanmetrics "LABEL" {
   histogram {
     ...
@@ -555,7 +555,7 @@ In the example below, `http.status_code` and `http.method` are additional dimens
 - `span.kind`
 - `status.code`
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   http {}
   grpc {}
@@ -621,7 +621,7 @@ This problem can be solved by doing **either** of the following:
 - **Recommended approach:** Prior to `otelcol.connector.spanmetrics`, remove all resource attributes from the incoming spans which are not needed by `otelcol.connector.spanmetrics`.
 
   {{< collapse title="Example configuration to remove unnecessary resource attributes." >}}
-  ```river
+  ```alloy
   otelcol.receiver.otlp "default" {
     http {}
     grpc {}
@@ -689,7 +689,7 @@ However, the {{< term "cardinality" >}}cardinality{{< /term >}} of the metrics m
 The example below uses the [merge_maps][] OTTL function.
 
   {{< collapse title="Example configuration to add all resource attributes as metric datapoint attributes." >}}
-  ```river
+  ```alloy
   otelcol.receiver.otlp "default" {
     http {}
     grpc {}

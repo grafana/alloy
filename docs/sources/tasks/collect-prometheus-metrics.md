@@ -39,7 +39,7 @@ To configure a `prometheus.remote_write` component for metrics delivery, complet
 
 1. Add the following `prometheus.remote_write` component to your configuration file.
 
-   ```river
+   ```alloy
    prometheus.remote_write "<LABEL>" {
      endpoint {
        url = "<PROMETHEUS_URL>"
@@ -55,7 +55,7 @@ To configure a `prometheus.remote_write` component for metrics delivery, complet
 
 1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
-   ```river
+   ```alloy
    basic_auth {
      username = "<USERNAME>"
      password = "<PASSWORD>"
@@ -71,7 +71,7 @@ To configure a `prometheus.remote_write` component for metrics delivery, complet
 
 The following example demonstrates configuring `prometheus.remote_write` with multiple endpoints and mixed usage of basic authentication, and a `prometheus.scrape` component which forwards metrics to it.
 
-```river
+```alloy
 prometheus.remote_write "default" {
   endpoint {
     url = "http://localhost:9090/api/prom/push"
@@ -115,7 +115,7 @@ To collect metrics from Kubernetes Pods, complete the following steps:
 
     1. Add the following `discovery.kubernetes` component to your configuration file to discover every Pod in the cluster across all Namespaces.
 
-       ```river
+       ```alloy
        discovery.kubernetes "<DISCOVERY_LABEL>" {
          role = "pod"
        }
@@ -130,7 +130,7 @@ To collect metrics from Kubernetes Pods, complete the following steps:
 
     1. To limit the Namespaces that Pods are discovered in, add the following block inside the `discovery.kubernetes` component.
 
-       ```river
+       ```alloy
        namespaces {
          own_namespace = true
          names         = [<NAMESPACE_NAMES>]
@@ -146,7 +146,7 @@ To collect metrics from Kubernetes Pods, complete the following steps:
 
     1. To use a field selector to limit the number of discovered Pods, add the following block inside the `discovery.kubernetes` component.
 
-       ```river
+       ```alloy
        selectors {
          role  = "pod"
          field = "<FIELD_SELECTOR>"
@@ -162,7 +162,7 @@ To collect metrics from Kubernetes Pods, complete the following steps:
 
     1. To use a label selector to limit the number of discovered Pods, add the following block inside the `discovery.kubernetes` component.
 
-       ```river
+       ```alloy
        selectors {
          role  = "pod"
          label = "LABEL_SELECTOR"
@@ -180,7 +180,7 @@ To collect metrics from Kubernetes Pods, complete the following steps:
 
     1. Add the following `prometheus.scrape` component to your configuration file.
 
-       ```river
+       ```alloy
        prometheus.scrape "<SCRAPE_LABEL>" {
          targets    = discovery.kubernetes.<DISCOVERY_LABEL>.targets
          forward_to = [prometheus.remote_write.<REMOTE_WRITE_LABEL>.receiver]
@@ -196,7 +196,7 @@ To collect metrics from Kubernetes Pods, complete the following steps:
 
 The following example demonstrates configuring {{< param "PRODUCT_NAME" >}} to collect metrics from running production Kubernetes Pods in the `default` Namespace.
 
-```river
+```alloy
 discovery.kubernetes "pods" {
   role = "pod"
 
@@ -241,7 +241,7 @@ To collect metrics from Kubernetes Services, complete the following steps.
 
     1. Add the following `discovery.kubernetes` component to your configuration file to discover every Services in the cluster across all Namespaces.
 
-       ```river
+       ```alloy
        discovery.kubernetes "<DISCOVERY_LABEL>" {
          role = "service"
        }
@@ -256,7 +256,7 @@ To collect metrics from Kubernetes Services, complete the following steps.
 
     1. To limit the Namespaces that Services are discovered in, add the following block inside the `discovery.kubernetes` component.
 
-       ```river
+       ```alloy
        namespaces {
          own_namespace = true
          names         = [<NAMESPACE_NAMES>]
@@ -272,7 +272,7 @@ To collect metrics from Kubernetes Services, complete the following steps.
 
     1. To use a field selector to limit the number of discovered Services, add the following block inside the `discovery.kubernetes` component.
 
-       ```river
+       ```alloy
        selectors {
          role  = "service"
          field = "<FIELD_SELECTOR>"
@@ -288,7 +288,7 @@ To collect metrics from Kubernetes Services, complete the following steps.
 
     1. To use a label selector to limit the number of discovered Services, add the following block inside the `discovery.kubernetes` component.
 
-       ```river
+       ```alloy
        selectors {
          role  = "service"
          label = "<LABEL_SELECTOR>"
@@ -306,7 +306,7 @@ To collect metrics from Kubernetes Services, complete the following steps.
 
     1. Add the following `prometheus.scrape` component to your configuration file.
 
-       ```river
+       ```alloy
        prometheus.scrape "<SCRAPE_LABEL>" {
          targets    = discovery.kubernetes.<DISCOVERY_LABEL>.targets
          forward_to = [prometheus.remote_write.<REMOTE_WRITE_LABEL>.receiver]
@@ -322,7 +322,7 @@ To collect metrics from Kubernetes Services, complete the following steps.
 
 The following example demonstrates configuring {{< param "PRODUCT_NAME" >}} to collect metrics from running production Kubernetes Services in the `default` Namespace.
 
-```river
+```alloy
 discovery.kubernetes "services" {
   role = "service"
 
@@ -362,7 +362,7 @@ To collect metrics from a custom set of targets, complete the following steps.
 
 1. Add the following `prometheus.scrape` component to your configuration file:
 
-   ```river
+   ```alloy
    prometheus.scrape "<SCRAPE_LABEL>" {
      targets    = [<TARGET_LIST>]
      forward_to = [prometheus.remote_write.<REMOTE_WRITE_LABEL>.receiver]
@@ -388,7 +388,7 @@ To collect metrics from a custom set of targets, complete the following steps.
 
 The following example demonstrates configuring `prometheus.scrape` to collect metrics from a custom set of endpoints.
 
-```river
+```alloy
 prometheus.scrape "custom_targets" {
   targets = [
     {
@@ -429,4 +429,4 @@ prometheus.remote_write "default" {
 [prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
 [prometheus.scrape]: ../../reference/components/prometheus.scrape/
 [Components]: ../../concepts/components/
-[Objects]: ../../concepts/config-language/expressions/types_and_values/#objects
+[Objects]: ../../concepts/configuration-syntax/expressions/types_and_values/#objects

@@ -30,7 +30,7 @@ Multiple `otelcol.exporter.loki` components can be specified by giving them diff
 
 ## Usage
 
-```river
+```alloy
 otelcol.exporter.loki "LABEL" {
   forward_to = [...]
 }
@@ -74,7 +74,7 @@ information.
 This example accepts OTLP logs over gRPC, transforms them and forwards
 the converted log entries to `loki.write`:
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   grpc {}
 
@@ -113,7 +113,7 @@ Labels will be translated to a [Prometheus format][]. For example:
 | `_name`                 | `key_name`                                            |
 | `_name`                 | `_name` (if `PermissiveLabelSanitization` is enabled) |
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   grpc {}
 

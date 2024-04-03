@@ -18,7 +18,7 @@ Refer to the [File Globbing](#file-globbing) example for more information.
 
 ## Usage
 
-```river
+```alloy
 loki.source.file "LABEL" {
   targets    = TARGET_LIST
   forward_to = RECEIVER_LIST
@@ -156,7 +156,7 @@ beginning.
 This example collects log entries from the files specified in the targets
 argument and forwards them to a `loki.write` component to be written to Loki.
 
-```river
+```alloy
 loki.source.file "tmpfiles" {
   targets    = [
     {__path__ = "/tmp/foo.txt", "color" = "pink"},
@@ -179,7 +179,7 @@ This example collects log entries from the files matching `*.log` pattern
 using `local.file_match` component. When files appear or disappear, the list of
 targets will be updated accordingly.
 
-```river
+```alloy
 
 local.file_match "logs" {
   path_targets = [
@@ -205,7 +205,7 @@ This example collects log entries from the compressed files matching `*.gz`
 pattern using `local.file_match` component and the decompression configuration
 on the `loki.source.file` component.
 
-```river
+```alloy
 
 local.file_match "logs" {
   path_targets = [

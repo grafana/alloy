@@ -10,7 +10,7 @@ title: discovery.dockerswarm
 
 ## Usage
 
-```river
+```alloy
 discovery.dockerswarm "LABEL" {
   host = "DOCKER_DAEMON_HOST"
   role = "SWARM_ROLE"
@@ -215,7 +215,7 @@ In those cases, exported fields retain their last healthy values.
 
 This example discovers targets from Docker Swarm tasks:
 
-```river
+```alloy
 discovery.dockerswarm "example" {
   host = "unix:///var/run/docker.sock"
   role = "tasks"

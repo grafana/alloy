@@ -12,7 +12,7 @@ title: discovery.digitalocean
 
 ## Usage
 
-```river
+```alloy
 discovery.digitalocean "LABEL" {
     // Use one of:
     // bearer_token      = BEARER_TOKEN
@@ -92,7 +92,7 @@ values.
 ## Example
 
 This would result in targets with `__address__` labels like: `192.0.2.1:8080`:
-```river
+```alloy
 discovery.digitalocean "example" {
   port             = 8080
   refresh_interval = "5m"

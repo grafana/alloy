@@ -18,7 +18,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.receiver.jaeger "LABEL" {
   protocols {
     grpc {}
@@ -45,21 +45,21 @@ through inner blocks.
 The following blocks are supported inside the definition of
 `otelcol.receiver.jaeger`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-protocols | [protocols][] | Configures the protocols the component can accept traffic over. | yes
-protocols > grpc | [grpc][] | Configures a Jaeger gRPC server to receive traces. | no
-protocols > grpc > tls | [tls][] | Configures TLS for the gRPC server. | no
-protocols > grpc > keepalive | [keepalive][] | Configures keepalive settings for the configured server. | no
-protocols > grpc > keepalive > server_parameters | [server_parameters][] | Server parameters used to configure keepalive settings. | no
-protocols > grpc > keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings. | no
-protocols > thrift_http | [thrift_http][] | Configures a Thrift HTTP server to receive traces. | no
-protocols > thrift_http > tls | [tls][] | Configures TLS for the Thrift HTTP server. | no
-protocols > thrift_http > cors | [cors][] | Configures CORS for the Thrift HTTP server. | no
-protocols > thrift_binary | [thrift_binary][] | Configures a Thrift binary UDP server to receive traces. | no
-protocols > thrift_compact | [thrift_compact][] | Configures a Thrift compact UDP server to receive traces. | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
-output | [output][] | Configures where to send received telemetry data. | yes
+Hierarchy                                         | Block                  | Description                                                                | Required
+--------------------------------------------------|------------------------|----------------------------------------------------------------------------|---------
+protocols                                         | [protocols][]          | Configures the protocols the component can accept traffic over.            | yes
+protocols > grpc                                  | [grpc][]               | Configures a Jaeger gRPC server to receive traces.                         | no
+protocols > grpc > tls                            | [tls][]                | Configures TLS for the gRPC server.                                        | no
+protocols > grpc > keepalive                      | [keepalive][]          | Configures keepalive settings for the configured server.                   | no
+protocols > grpc > keepalive > server_parameters  | [server_parameters][]  | Server parameters used to configure keepalive settings.                    | no
+protocols > grpc > keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings.                                 | no
+protocols > thrift_http                           | [thrift_http][]        | Configures a Thrift HTTP server to receive traces.                         | no
+protocols > thrift_http > tls                     | [tls][]                | Configures TLS for the Thrift HTTP server.                                 | no
+protocols > thrift_http > cors                    | [cors][]               | Configures CORS for the Thrift HTTP server.                                | no
+protocols > thrift_binary                         | [thrift_binary][]      | Configures a Thrift binary UDP server to receive traces.                   | no
+protocols > thrift_compact                        | [thrift_compact][]     | Configures a Thrift compact UDP server to receive traces.                  | no
+debug_metrics                                     | [debug_metrics][]      | Configures the metrics that this component generates to monitor its state. | no
+output                                            | [output][]             | Configures where to send received telemetry data.                          | yes
 
 The `>` symbol indicates deeper levels of nesting. For example, `protocols >
 grpc` refers to a `grpc` block defined inside a `protocols` block.
@@ -243,7 +243,7 @@ information.
 This example creates a pipeline which accepts Jaeger-formatted traces and
 writes them to an OTLP server:
 
-```river
+```alloy
 otelcol.receiver.jaeger "default" {
   protocols {
     grpc {}

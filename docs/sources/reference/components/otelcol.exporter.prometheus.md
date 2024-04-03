@@ -23,7 +23,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.exporter.prometheus "LABEL" {
   forward_to = [...]
 }
@@ -95,7 +95,7 @@ The following are dropped during the conversion process:
 This example accepts metrics over OTLP and forwards it using
 `prometheus.remote_write`:
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   grpc {}
 
@@ -125,7 +125,7 @@ This example uses `otelcol.processor.transform` to add extra `key1` and `key2` O
 This avoids the need to set `resource_to_telemetry_conversion` to `true`,
 which could have created too many unnecessary metric labels.
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   grpc {}
 

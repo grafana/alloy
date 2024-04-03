@@ -64,13 +64,12 @@ To deploy {{< param "PRODUCT_NAME" >}} on Kubernetes using Helm, run the followi
    - _`<NAMESPACE>`_: The namespace used in the previous step.
 
 You have successfully deployed {{< param "PRODUCT_NAME" >}} on Kubernetes, using default Helm settings.
-To configure {{< param "PRODUCT_NAME" >}}, see the [Configure {{< param "PRODUCT_NAME" >}} on Kubernetes][Configure] guide.
 
 ## Next steps
 
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
-- Refer to the [{{< param "PRODUCT_NAME" >}} Helm chart documentation on Artifact Hub][Artifact Hub] for more information about the Helm chart.
+<!-- - Refer to the [{{< param "PRODUCT_NAME" >}} Helm chart documentation on Artifact Hub][Artifact Hub] for more information about the Helm chart. -->
 
 [Helm]: https://helm.sh
 [Artifact Hub]: https://artifacthub.io/packages/helm/grafana/alloy

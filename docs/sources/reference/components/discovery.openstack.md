@@ -12,7 +12,7 @@ title: discovery.openstack
 
 ## Usage
 
-```river
+```alloy
 discovery.openstack "LABEL" {
   role   = "hypervisor"
   region = "us-east-1"
@@ -125,7 +125,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.openstack "example" {
   role   = OPENSTACK_ROLE
   region = OPENSTACK_REGION

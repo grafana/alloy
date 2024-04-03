@@ -39,7 +39,7 @@ This topic describes how to:
 
 You can start with the {{< param "PRODUCT_NAME" >}} configuration you created in the [Collect open telemetry data][] task.
 
-```river
+```alloy
 otelcol.receiver.otlp "example" {
   grpc {
     endpoint = "127.0.0.1:4317"
@@ -89,7 +89,7 @@ Traces: OTel → batch processor → OTel exporter
 [Grafana Loki][] is a horizontally scalable, highly available, multi-tenant log aggregation system inspired by Prometheus.
 Similar to Prometheus, to send from OTLP to Loki, you can do a passthrough from the [otelcol.exporter.loki][] component to [loki.write][] component.
 
-```river
+```alloy
 otelcol.exporter.loki "default" {
 	forward_to = [loki.write.default.receiver]
 }
@@ -105,7 +105,7 @@ You can get the Loki configuration from the Loki **Details** page in the [Grafan
 
 ![](/media/docs/agent/loki-config.png)
 
-```river
+```alloy
 otelcol.exporter.loki "grafana_cloud_loki" {
 	forward_to = [loki.write.grafana_cloud_loki.receiver]
 }
@@ -127,7 +127,7 @@ loki.write "grafana_cloud_loki" {
 [Grafana Tempo][] is an open source, easy-to-use, scalable distributed tracing backend.
 Tempo can ingest OTLP directly, and you can use the OTLP exporter to send the traces to Tempo.
 
-```river
+```alloy
 otelcol.exporter.otlp "default" {
   client {
     endpoint = "tempo-server:4317"
@@ -140,7 +140,7 @@ You can get the Tempo configuration from the Tempo **Details** page in the [Graf
 
 ![](/media/docs/agent/tempo-config.png)
 
-```river
+```alloy
 otelcol.exporter.otlp "grafana_cloud_tempo" {
 	client {
 		endpoint = "tempo-us-central1.grafana.net:443"
@@ -160,7 +160,7 @@ otelcol.auth.basic "grafana_cloud_tempo" {
 To send from OTLP to Prometheus, you can do a passthrough from the [otelcol.exporter.prometheus][] to the [prometheus.remote_write][] component.
 The Prometheus remote write component in {{< param "PRODUCT_NAME" >}} is a robust protocol implementation, including a Write Ahead Log (WAL) for resiliency.
 
-```river
+```alloy
 otelcol.exporter.prometheus "default" {
 	forward_to = [prometheus.remote_write.default.receiver]
 }
@@ -177,7 +177,7 @@ You can get the Prometheus configuration from the Prometheus **Details** page in
 
 ![](/media/docs/agent/prometheus-config.png)
 
-```river
+```alloy
 otelcol.exporter.prometheus "grafana_cloud_prometheus" {
         forward_to = [prometheus.remote_write.grafana_cloud_prometheus.receiver]
     }
@@ -199,7 +199,7 @@ prometheus.remote_write "grafana_cloud_prometheus" {
 Instead of referencing `otelcol.exporter.otlp.default.input` in the output of `otelcol.processor.batch`, you need to reference the three exporters you set up.
 The final configuration becomes:
 
-```river
+```alloy
 otelcol.receiver.otlp "example" {
   grpc {
     endpoint = "127.0.0.1:4317"

@@ -12,7 +12,7 @@ Multiple `loki.source.windowsevent` components can be specified by giving them d
 
 ## Usage
 
-```river
+```alloy
 loki.source.windowsevent "LABEL" {
   eventlog_name = EVENTLOG_NAME
   forward_to    = RECEIVER_LIST
@@ -55,7 +55,7 @@ If using short form, you must define `eventlog_name`.
 This example collects log entries from the Event Log specified in `eventlog_name` and
 forwards them to a `loki.write` component so they are written to Loki.
 
-```river
+```alloy
 loki.source.windowsevent "application"  {
     eventlog_name = "Application"
     forward_to = [loki.write.endpoint.receiver]

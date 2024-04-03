@@ -12,7 +12,7 @@ This can be useful anytime {{< param "PRODUCT_NAME" >}} needs data from a Config
 
 ## Usage
 
-```river
+```alloy
 remote.kubernetes.configmap "LABEL" {
   namespace = "NAMESPACE_OF_CONFIGMAP"
   name = "NAME_OF_CONFIGMAP"
@@ -135,7 +135,7 @@ Instances of `remote.kubernetes.configmap` report as healthy if the most recent 
 
 This example reads a Secret and a ConfigMap from Kubernetes and uses them to supply remote-write credentials.
 
-```river
+```alloy
 remote.kubernetes.secret "credentials" {
   namespace = "monitoring"
   name = "metrics-secret"

@@ -34,7 +34,7 @@ Since the exporter gathers all of its data from [GCP monitoring APIs](https://cl
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.gcp "pubsub" {
         project_ids = [
                 "foo",
@@ -96,7 +96,7 @@ debug metrics.
 
 ## Examples
 
-```river
+```alloy
 prometheus.exporter.gcp "pubsub_full_config" {
         project_ids = [
                 "foo",
@@ -138,7 +138,7 @@ prometheus.exporter.gcp "pubsub_full_config" {
 }
 ```
 
-```river
+```alloy
 prometheus.exporter.gcp "lb_with_filter" {
         project_ids = [
                 "foo",
@@ -153,7 +153,7 @@ prometheus.exporter.gcp "lb_with_filter" {
 }
 ```
 
-```river
+```alloy
 prometheus.exporter.gcp "lb_subset_with_filter" {
         project_ids = [
                 "foo",

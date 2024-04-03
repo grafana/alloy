@@ -12,7 +12,7 @@ title: tracing block
 
 ## Example
 
-```river
+```alloy
 tracing {
   sampling_fraction = 0.1
 

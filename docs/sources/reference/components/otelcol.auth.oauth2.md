@@ -22,7 +22,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.auth.oauth2 "LABEL" {
     client_id     = "CLIENT_ID"
     client_secret = "CLIENT_SECRET"
@@ -90,7 +90,7 @@ configuration.
 
 This example configures [otelcol.exporter.otlp][] to use OAuth 2.0 for authentication:
 
-```river
+```alloy
 otelcol.exporter.otlp "example" {
   client {
     endpoint = "my-otlp-grpc-server:4317"
@@ -106,7 +106,7 @@ otelcol.auth.oauth2 "creds" {
 ```
 
 Here is another example with some optional attributes specified:
-```river
+```alloy
 otelcol.exporter.otlp "example" {
   client {
     endpoint = "my-otlp-grpc-server:4317"

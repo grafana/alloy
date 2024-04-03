@@ -11,7 +11,7 @@ The `prometheus.exporter.statsd` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.statsd "LABEL" {
 }
 ```
@@ -77,7 +77,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.statsd`:
 
-```river
+```alloy
 prometheus.exporter.statsd "example" {
   listen_udp            = ""
   listen_tcp            = ":9125"

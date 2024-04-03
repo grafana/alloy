@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/flow-by-example/logs-and-relabeling-basics/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/logs-and-relabeling-basics/
 description: Learn how to relabel metrics and collect logs
 title: Logs and relabeling basics
 weight: 30
@@ -21,7 +21,7 @@ The `prometheus.relabel` component allows you to perform Prometheus relabeling o
 
 Let's add a `prometheus.relabel` component to a basic pipeline and see how to add labels.
 
-```river
+```alloy
 prometheus.exporter.unix "localhost" { }
 
 prometheus.scrape "default" {
@@ -77,7 +77,7 @@ There is an issue commonly faced when relabeling and using labels that start wit
 These labels are considered internal and are dropped before relabeling rules from a `prometheus.relabel` component are applied.
 If you would like to keep or act on these kinds of labels, use a [discovery.relabel][] component.
 
-[discovery.relabel]: ../../../reference/components/discovery.relabel/
+[discovery.relabel]: ../../reference/components/discovery.relabel/
 {{< /admonition >}}
 
 ## Send logs to Loki
@@ -91,18 +91,18 @@ If you would like to keep or act on these kinds of labels, use a [discovery.rela
 Now that you're comfortable creating components and chaining them together, let's collect some logs and send them to Loki.
 We will use the `local.file_match` component to perform file discovery, the `loki.source.file` to collect the logs, and the `loki.write` component to send the logs to Loki.
 
-Before doing this, we need to ensure we have a log file to scrape. We will use the `echo` command to create a file with some log content.
+Before doing this, make sure you have a log file to scrape. You can use the `echo` command to create a file with some log content.
 
 ```bash
-mkdir -p /tmp/flow-logs
-echo "This is a log line" > /tmp/flow-logs/log.log
+mkdir -p /tmp/alloy-logs
+echo "This is a log line" > /tmp/alloy-logs/log.log
 ```
 
-Now that we have a log file, let's create a pipeline to scrape it.
+Now that you have a log file, you can create a pipeline to scrape it.
 
-```river
+```alloy
 local.file_match "tmplogs" {
-    path_targets = [{"__path__" = "/tmp/flow-logs/*.log"}]
+    path_targets = [{"__path__" = "/tmp/alloy-logs/*.log"}]
 }
 
 loki.source.file "local_files" {
@@ -119,20 +119,20 @@ loki.write "local_loki" {
 
 The rough flow of this pipeline is:
 
-![Diagram of pipeline that collects logs from /tmp/flow-logs and writes them to a local Loki instance](/media/docs/agent/diagram-flow-by-example-logs-0.svg)
+![Diagram of pipeline that collects logs from /tmp/alloy-logs and writes them to a local Loki instance](/media/docs/agent/diagram-flow-by-example-logs-0.svg)
 
-If you navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`, you can query for `{filename="/tmp/flow-logs/log.log"}` and see the log line we created earlier.
+If you navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`, you can query for `{filename="/tmp/alloy-logs/log.log"}` and see the log line we created earlier.
 Try running the following command to add more logs to the file.
 
 ```bash
-echo "This is another log line!" >> /tmp/flow-logs/log.log
+echo "This is another log line!" >> /tmp/alloy-logs/log.log
 ```
 
 If you re-execute the query, you can see the new log lines.
 
 ![Grafana Explore view of example log lines](/media/docs/agent/screenshot-flow-by-example-log-lines.png)
 
-If you are curious how {{< param "PRODUCT_NAME" >}} keeps track of where it's in a log file, you can look at `data-agent/loki.source.file.local_files/positions.yml`.
+If you are curious how {{< param "PRODUCT_NAME" >}} keeps track of where it's in a log file, you can look at `data-alloy/loki.source.file.local_files/positions.yml`.
 If you delete this file, {{< param "PRODUCT_NAME" >}} starts reading from the beginning of the file again, which is why keeping the {{< param "PRODUCT_NAME" >}}'s data directory in a persistent location is desirable.
 
 ## Exercise
@@ -149,9 +149,9 @@ Let's start by adding an `os` label (just like the Prometheus example) to all of
 
 Modify the following snippet to add the label `os` with the value of the `os` constant.
 
-```river
+```alloy
 local.file_match "tmplogs" {
-    path_targets = [{"__path__" = "/tmp/flow-logs/*.log"}]
+    path_targets = [{"__path__" = "/tmp/alloy-logs/*.log"}]
 }
 
 loki.source.file "local_files" {
@@ -169,31 +169,31 @@ loki.write "local_loki" {
 {{< admonition type="note" >}}
 You can use the [loki.relabel][] component to relabel and add labels, just like you can with the [prometheus.relabel][] component.
 
-[loki.relabel]: ../../../reference/components/loki.relabel
-[prometheus.relabel]: ../../../reference/components/prometheus.relabel
+[loki.relabel]: ../../reference/components/loki.relabel
+[prometheus.relabel]: ../../reference/components/prometheus.relabel
 {{< /admonition >}}
 
 Once you have your completed configuration, run {{< param "PRODUCT_NAME" >}} and execute the following:
 
 ```bash
-echo 'level=info msg="INFO: This is an info level log!"' >> /tmp/flow-logs/log.log
-echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/flow-logs/log.log
-echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/flow-logs/log.log
+echo 'level=info msg="INFO: This is an info level log!"' >> /tmp/alloy-logs/log.log
+echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/alloy-logs/log.log
+echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/log.log
 ```
 
 Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`.
-Try querying for `{filename="/tmp/flow-logs/log.log"}` and see if you can find the new label!
+Try querying for `{filename="/tmp/alloy-logs/log.log"}` and see if you can find the new label!
 
 Now that we have added new labels, we can also filter on them. Try querying for `{os!=""}`.
 You should only see the lines you added in the previous step.
 
 {{< collapse title="Solution" >}}
 
-```river
+```alloy
 // Let's learn about relabeling and send logs to Loki!
 
 local.file_match "tmplogs" {
-    path_targets = [{"__path__" = "/tmp/flow-logs/*.log"}]
+    path_targets = [{"__path__" = "/tmp/alloy-logs/*.log"}]
 }
 
 loki.source.file "local_files" {
@@ -242,9 +242,9 @@ The `stage.logfmt` and `stage.labels` blocks for `loki.process` may be helpful.
 Once you have your completed configuration, run {{< param "PRODUCT_NAME" >}} and execute the following:
 
 ```bash
-echo 'level=info msg="INFO: This is an info level log!"' >> /tmp/flow-logs/log.log
-echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/flow-logs/log.log
-echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/flow-logs/log.log
+echo 'level=info msg="INFO: This is an info level log!"' >> /tmp/alloy-logs/log.log
+echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/alloy-logs/log.log
+echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/log.log
 ```
 
 Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`. Try querying for `{level!=""}` to see the new labels in action.
@@ -253,11 +253,11 @@ Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`. Try 
 
 {{< collapse title="Solution" >}}
 
-```river
+```alloy
 // Let's learn about relabeling and send logs to Loki!
 
 local.file_match "tmplogs" {
-    path_targets = [{"__path__" = "/tmp/flow-logs/*.log"}]
+    path_targets = [{"__path__" = "/tmp/alloy-logs/*.log"}]
 }
 
 loki.source.file "local_files" {
@@ -311,12 +311,12 @@ You have learned the concepts of components, attributes, and expressions. You ha
 In the next tutorial, you will learn more about how to use the `loki.process` component to extract values from logs and use them.
 
 [First components and introducing the standard library]: ../first-components-and-stdlib/
-[prometheus.relabel]: ../../../reference/components/prometheus.relabel/
-[constants]: ../../../reference/stdlib/constants/
+[prometheus.relabel]: ../../reference/components/prometheus.relabel/
+[constants]: ../../reference/stdlib/constants/
 [localhost:3000/explore]: http://localhost:3000/explore
-[prometheus.relabel rule-block]: ../../../reference/components/prometheus.relabel/#rule-block
-[local.file_match]: ../../../reference/components/local.file_match/
-[loki.source.file]: ../../../reference/components/loki.source.file/
-[loki.write]: ../../../reference/components/loki.write/
-[loki.relabel]: ../../../reference/components/loki.relabel/
-[loki.process]: ../../../reference/components/loki.process/
+[prometheus.relabel rule-block]: ../../reference/components/prometheus.relabel/#rule-block
+[local.file_match]: ../../reference/components/local.file_match/
+[loki.source.file]: ../../reference/components/loki.source.file/
+[loki.write]: ../../reference/components/loki.write/
+[loki.relabel]: ../../reference/components/loki.relabel/
+[loki.process]: ../../reference/components/loki.process/

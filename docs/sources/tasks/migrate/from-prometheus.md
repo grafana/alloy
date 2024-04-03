@@ -136,7 +136,7 @@ remote_write:
       password: <PASSWORD>
 ```
 
-The convert command takes the YAML file as input and outputs a [{{< param "PRODUCT_NAME" >}} configuration][] file.
+The convert command takes the YAML file as input and outputs a [{{< param "PRODUCT_NAME" >}} configuration][configuration]] file.
 
 ```shell
 alloy convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
@@ -149,7 +149,7 @@ Replace the following:
 
 The new {{< param "PRODUCT_NAME" >}} configuration file looks like this:
 
-```river
+```alloy
 prometheus.scrape "prometheus" {
   targets = [{
     __address__ = "localhost:12345",
@@ -207,6 +207,6 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
 [run alloy]: ../../../get-started/run/
-[DebuggingUI]: ../../tasks/debug/
-[{{< param "PRODUCT_NAME" >}} configuration]: ../../../concepts/config-language/
+[DebuggingUI]: ../../debug/
+[configuration]: ../../../concepts/configuration-syntax/
 [UI]: ../../debug/#alloy-ui

@@ -25,14 +25,14 @@ which informs the component controller which references are valid and in what or
 
 For a configuration file to be valid, components must not reference themselves or contain a cyclic reference.
 
-```river
+```alloy
 // INVALID: local.file.some_file can not reference itself:
 local.file "self_reference" {
   filename = local.file.self_reference.content
 }
 ```
 
-```river
+```alloy
 // INVALID: cyclic reference between local.file.a and local.file.b:
 local.file "a" {
   filename = local.file.b.content
@@ -94,7 +94,7 @@ If your `local.file` component, which watches API keys, suddenly stops working, 
 Components that expose HTTP endpoints, such as [prometheus.exporter.unix][], can expose an internal address that completely bypasses the network and communicate in-memory.
 Components within the same process can communicate with one another without needing to be aware of any network-level protections such as authentication or mutual TLS.
 
-The internal address defaults to `agent.internal:12345`.
+The internal address defaults to `alloy.internal:12345`.
 If this address collides with a real target on your network, change it to something unique using the `--server.http.memory-addr` flag in the [run][] command.
 
 Components must opt-in to using in-memory traffic.

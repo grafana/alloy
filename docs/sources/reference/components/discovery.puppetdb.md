@@ -16,7 +16,7 @@ The queries for this component are expected to be valid [PQL (Puppet Query Langu
 
 ## Usage
 
-```river
+```alloy
 discovery.puppetdb "LABEL" {
   url = PUPPET_SERVER
 }
@@ -128,7 +128,7 @@ In those cases, exported fields retain their last healthy values.
 
 This example discovers targets from puppetdb for all the servers that have a specific package defined:
 
-```river
+```alloy
 discovery.puppetdb "example" {
 	url   = "http://puppetdb.local:8080"
 	query = "resources { type = \"Package\" and title = \"node_exporter\" }"

@@ -14,7 +14,7 @@ title: discovery.kubelet
 
 ## Usage
 
-```river
+```alloy
 discovery.kubelet "LABEL" {
 }
 ```
@@ -155,7 +155,7 @@ In those cases, exported fields retain their last healthy values.
 
 This example uses a bearer token file to authenticate to the Kubelet API:
 
-```river
+```alloy
 discovery.kubelet "k8s_pods" {
   bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 }
@@ -185,7 +185,7 @@ Replace the following:
 
 This example limits the namespaces where pods are discovered using the `namespaces` argument:
 
-```river
+```alloy
 discovery.kubelet "k8s_pods" {
   bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
   namespaces = ["default", "kube-system"]

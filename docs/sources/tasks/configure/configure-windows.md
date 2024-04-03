@@ -10,7 +10,7 @@ weight: 500
 
 To configure {{< param "PRODUCT_NAME" >}} on Windows, perform the following steps:
 
-1. Edit the default configuration file at `C:\Program Files\Grafana Alloy\config.alloy`.
+1. Edit the default configuration file at `%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy`.
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
 
@@ -30,8 +30,8 @@ By default, the {{< param "PRODUCT_NAME" >}} service will launch and pass the
 following arguments to the {{< param "PRODUCT_NAME" >}} binary:
 
 * `run`
-* `C:\Program Files\Grafana Alloy\config.alloy`
-* `--storage.path=C:\ProgramData\Grafana Alloy\data`
+* `%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy`
+* `--storage.path=%PROGRAMDATA%\GrafanaLabs\Alloy\data`
 
 To change the set of command-line arguments passed to the {{< param "PRODUCT_NAME" >}} binary, perform the following steps:
 
@@ -41,7 +41,7 @@ To change the set of command-line arguments passed to the {{< param "PRODUCT_NAM
 
    1. Type `regedit` and click **OK**.
 
-1. Navigate to the key at the path `HKEY_LOCAL_MACHINE\SOFTWARE\Grafana\Grafana Alloy`.
+1. Navigate to the key at the path `HKEY_LOCAL_MACHINE\SOFTWARE\GrafanaLabs\Alloy`.
 
 1. Double-click on the value called **Arguments***.
 

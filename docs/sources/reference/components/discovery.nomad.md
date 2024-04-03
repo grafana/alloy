@@ -10,7 +10,7 @@ title: discovery.nomad
 
 ## Usage
 
-```river
+```alloy
 discovery.nomad "LABEL" {
 }
 ```
@@ -121,7 +121,7 @@ In those cases, exported fields retain their last healthy values.
 
 This example discovers targets from a Nomad server:
 
-```river
+```alloy
 discovery.nomad "example" {
 }
 

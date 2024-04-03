@@ -25,7 +25,7 @@ Multiple `discovery.relabel` components can be specified by giving them differen
 
 ## Usage
 
-```river
+```alloy
 discovery.relabel "LABEL" {
   targets = TARGET_LIST
 
@@ -84,7 +84,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.relabel "keep_backend_only" {
   targets = [
     { "__meta_foo" = "foo", "__address__" = "localhost", "instance" = "one",   "app" = "backend"  },

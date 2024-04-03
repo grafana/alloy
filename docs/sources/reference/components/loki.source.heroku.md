@@ -24,7 +24,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 loki.source.heroku "LABEL" {
     http {
         listen_address = "LISTEN_ADDRESS"
@@ -107,7 +107,7 @@ configuration.
 
 This example listens for Heroku messages over TCP in the specified port and forwards them to a `loki.write` component using the Heroku timestamp.
 
-```river
+```alloy
 loki.source.heroku "local" {
     http {
         listen_address = "0.0.0.0"
@@ -127,7 +127,7 @@ loki.write "local" {
 
 When using the default `http` block settings, the server listen for new connection on port `8080`.
 
-```river
+```alloy
 loki.source.heroku "local" {
     use_incoming_timestamp = true
     labels                 = {component = "loki.source.heroku"}

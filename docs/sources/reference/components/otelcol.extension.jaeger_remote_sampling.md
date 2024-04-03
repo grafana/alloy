@@ -21,7 +21,7 @@ Multiple `otelcol.extension.jaeger_remote_sampling` components can be specified 
 
 ## Usage
 
-```river
+```alloy
 otelcol.extension.jaeger_remote_sampling "LABEL" {
   source {
   }
@@ -269,7 +269,7 @@ This example configures the Jaeger remote sampling extension to load a local jso
 serve it over the default http port of 5778. Currently this config style exists for consistency
 with upstream Opentelemetry Collector components and may be removed.
 
-```river
+```alloy
 otelcol.extension.jaeger_remote_sampling "example" {
   http {
   }
@@ -286,7 +286,7 @@ otelcol.extension.jaeger_remote_sampling "example" {
 This example uses the output of a component to determine what sampling
 rules to serve: 
 
-```river
+```alloy
 local.file "sampling" {
   filename  = "/path/to/jaeger-sampling.json"
 }

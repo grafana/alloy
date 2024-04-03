@@ -11,7 +11,7 @@ The `prometheus.exporter.dnsmasq` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.dnsmasq "LABEL" {
 }
 ```
@@ -52,7 +52,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.dnsmasq`:
 
-```river
+```alloy
 prometheus.exporter.dnsmasq "example" {
   address = "localhost:53"
 }

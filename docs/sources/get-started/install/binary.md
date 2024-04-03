@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/install/binary/
-description: Learn how to install Alloy as a standalone binary
+description: Learn how to install Grafana Alloy as a standalone binary
 menuTitle: Standalone
-title: Install Alloy as a standalone binary
+title: Install Grafana Alloy as a standalone binary
 weight: 600
 ---
 

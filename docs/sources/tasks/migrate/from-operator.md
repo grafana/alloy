@@ -8,24 +8,18 @@ weight: 320
 
 # Migrate from Grafana Agent Operator to {{% param "FULL_PRODUCT_NAME" %}}
 
-With the release of {{< param "PRODUCT_NAME" >}}, Grafana Agent Operator is no longer the recommended way to deploy {{< param "PRODUCT_NAME" >}} in Kubernetes.
-Some of the Operator functionality has moved into {{< param "PRODUCT_NAME" >}} itself, and the Helm Chart has replaced the remaining functionality.
+You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 
 - The Monitor types (`PodMonitor`, `ServiceMonitor`, `Probe`, and `PodLogs`) are all supported natively by {{< param "PRODUCT_NAME" >}}.
-  You are no longer required to use the Operator to consume those CRDs for dynamic monitoring in your cluster.
-- The parts of the Operator that deploy the {{< param "PRODUCT_NAME" >}} itself (`GrafanaAgent`, `MetricsInstance`, and `LogsInstance` CRDs) are deprecated.
-  Operator users should use the {{< param "PRODUCT_NAME" >}} [Helm Chart][] to deploy {{< param "PRODUCT_NAME" >}} directly to your clusters.
-
-This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} for users coming from Grafana Agent Operator.
+- The parts of Grafana Agent Operator that deploy the Grafana Agent itself (`GrafanaAgent`, `MetricsInstance`, and `LogsInstance` CRDs) are deprecated.
 
 ## Deploy {{% param "PRODUCT_NAME" %}} with Helm
 
-1. Create a `values.yaml` file, which contains options for deploying your {{< param "PRODUCT_NAME" >}}.
-   You can start with the [default values][] and customize as you see fit, or start with this snippet, which should be a good starting point for what the Operator does.
+1. Create a `values.yaml` file, which contains options for deploying {{< param "PRODUCT_NAME" >}}.
+   You can start with the [default values][] and customize as you see fit, or start with this snippet, which should be a good starting point for what Grafana Agent Operator does.
 
     ```yaml
-    agent:
-      mode: 'flow'
+    alloy:
       configMap:
         create: true
       clustering:
@@ -42,7 +36,7 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
     This is one of many deployment possible modes. For example, you may want to use a `DaemonSet` to collect host-level logs or metrics.
     See the {{< param "PRODUCT_NAME" >}} [deployment guide][] for more details about different topologies.
 
-1. Create an {{< param "PRODUCT_NAME" >}} configuration file, `alloy.alloy`.
+1. Create an {{< param "PRODUCT_NAME" >}} configuration file, `config.alloy`.
 
     In the next step, you add to this configuration as you convert `MetricsInstances`. You can add any additional configuration to this file as you need.
 
@@ -56,7 +50,7 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
 1. Create a Helm release. You can name the release anything you like. The following command installs a release called `alloy-metrics` in the `monitoring` namespace.
 
     ```shell
-    helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=alloy.alloy
+    helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=config.alloy
     ```
 
     This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular {{< param "PRODUCT_NAME" >}} configuration file.
@@ -65,14 +59,14 @@ This guide provides some steps to get started with {{< param "PRODUCT_NAME" >}} 
 
 A `MetricsInstance` resource primarily defines:
 
-- The remote endpoints {{< param "PRODUCT_NAME" >}} should send metrics to.
+- The remote endpoints Grafana Agent should send metrics to.
 - The `PodMonitor`, `ServiceMonitor`, and `Probe` resources this {{< param "PRODUCT_NAME" >}} should discover.
 
 You can use these functions in {{< param "PRODUCT_NAME" >}} with the `prometheus.remote_write`, `prometheus.operator.podmonitors`, `prometheus.operator.servicemonitors`, and `prometheus.operator.probes` components respectively.
 
 The following {{< param "PRODUCT_NAME" >}} syntax sample is equivalent to the `MetricsInstance` from the [operator guide][].
 
-```river
+```alloy
 
 // read the credentials secret for remote_write authorization
 remote.kubernetes.secret "credentials" {
@@ -133,11 +127,10 @@ Our current recommendation is to create an additional DaemonSet deployment of {{
 > still considered experimental, but if you would like to try them, see the documentation for [loki.source.kubernetes][] and
 > [loki.source.podlogs][].
 
-These values are close to what the Operator currently deploys for logs:
+These values are close to what Grafana Agent Operator deploys for logs:
 
 ```yaml
-agent:
-  mode: 'flow'
+alloy:
   configMap:
     create: true
   clustering:
@@ -157,7 +150,7 @@ helm upgrade grafana-agent-logs grafana/grafana-agent -i -n monitoring -f values
 
 This simple configuration scrapes logs for every Pod on each node:
 
-```river
+```alloy
 // read the credentials secret for remote_write authorization
 remote.kubernetes.secret "credentials" {
   namespace = "monitoring"
@@ -275,13 +268,13 @@ The logging subsystem is very powerful and has many options for processing logs.
 ## Integrations
 
 The `Integration` CRD isn't supported with {{< param "PRODUCT_NAME" >}}.
-However, all static mode integrations have an equivalent component in the [`prometheus.exporter`][prometheus.exporter] namespace.
+However, all Grafana Agent Static integrations have an equivalent component in the [`prometheus.exporter`][prometheus.exporter] namespace.
 The [reference documentation][component documentation] should help convert those integrations to their {{< param "PRODUCT_NAME" >}} equivalent.
 
 <!-- ToDo: Validate path -->
 [default values]: https://github.com/grafana/alloy/blob/main/operations/helm/charts/alloy/values.yaml
 [clustering]: ../../../concepts/clustering/
-[deployment guide]: ../../../get-started/deploy-alloy
+[deployment guide]: ../../../get-started/deploy/
 <!-- ToDo: check link syntax -->
 [operator guide]: https://grafana.com/docs/agent/latest/operator/deploy-agent-operator-resources/#deploy-a-metricsinstance-resource
 

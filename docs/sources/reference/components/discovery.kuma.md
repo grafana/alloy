@@ -12,7 +12,7 @@ title: discovery.kuma
 
 ## Usage
 
-```river
+```alloy
 discovery.kuma "LABEL" {
     server = SERVER
 }
@@ -110,7 +110,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.kuma "example" {
     server     = "http://kuma-control-plane.kuma-system.svc:5676"
 }

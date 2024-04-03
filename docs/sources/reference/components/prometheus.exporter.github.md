@@ -11,7 +11,7 @@ The `prometheus.exporter.github` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.github "LABEL" {
 }
 ```
@@ -59,7 +59,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.github`:
 
-```river
+```alloy
 prometheus.exporter.github "example" {
   api_token_file = "/etc/github-api-token"
   repositories   = ["grafana/alloy"]

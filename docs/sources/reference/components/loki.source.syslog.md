@@ -17,7 +17,7 @@ Multiple `loki.source.syslog` components can be specified by giving them differe
 
 ## Usage
 
-```river
+```alloy
 loki.source.syslog "LABEL" {
   listener {
     address = "LISTEN_ADDRESS"
@@ -120,7 +120,7 @@ configuration.
 This example listens for Syslog messages in valid RFC5424 format over TCP and
 UDP in the specified ports and forwards them to a `loki.write` component.
 
-```river
+```alloy
 loki.source.syslog "local" {
   listener {
     address  = "127.0.0.1:51893"

@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/config-language/expressions/referencing_exports/
+canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/expressions/referencing_exports/
 description: Learn about referencing component exports
 title: Referencing component exports
 weight: 200
@@ -22,7 +22,7 @@ Similarly, a `prometheus.remote_write` component instance labeled `onprem` expos
 
 The following example shows some references.
 
-```river
+```alloy
 local.file "target" {
   filename = "/etc/agent/target"
 }

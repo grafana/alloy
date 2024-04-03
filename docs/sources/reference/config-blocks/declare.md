@@ -12,7 +12,7 @@ title: declare block
 
 ## Example
 
-```river
+```alloy
 declare "COMPONENT_NAME" {
     COMPONENT_DEFINITION
 }
@@ -41,7 +41,7 @@ The fields exported by the `declare` block are determined by the [export blocks]
 
 This example creates and uses a custom component that self-collects process metrics and forwards them to an argument specified by the user of the custom component:
 
-```river
+```alloy
 declare "self_collect" {
   argument "metrics_output" {
     optional = false

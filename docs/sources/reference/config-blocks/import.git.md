@@ -11,7 +11,7 @@ The `import.git` block imports custom components from a Git repository and expos
 
 ## Usage
 
-```river
+```alloy
 import.git "NAMESPACE" {
   repository = "GIT_REPOSTORY"
   path       = "PATH_TO_MODULE"
@@ -73,7 +73,7 @@ Name         | Type     | Description                       | Default | Required
 
 This example imports custom components from a Git repository and uses a custom component to add two numbers:
 
-```river
+```alloy
 import.git "math" {
   repository = "https://github.com/wildum/module.git"
   revision   = "master"
@@ -88,7 +88,7 @@ math.add "default" {
 
 This example imports custom components from a directory in a Git repository and uses a custom component to add two numbers:
 
-```river
+```alloy
 import.git "math" {
   repository = "https://github.com/wildum/module.git"
   revision   = "master"

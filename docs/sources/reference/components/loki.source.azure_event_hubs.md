@@ -22,7 +22,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 loki.source.azure_event_hubs "LABEL" {
 	fully_qualified_namespace = "HOST:PORT"
 	event_hubs                = EVENT_HUB_LIST
@@ -114,7 +114,7 @@ configuration.
 
 This example consumes messages from Azure Event Hub and uses OAuth to authenticate itself.
 
-```river
+```alloy
 loki.source.azure_event_hubs "example" {
 	fully_qualified_namespace = "my-ns.servicebus.windows.net:9093"
 	event_hubs                = ["gw-logs"]

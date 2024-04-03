@@ -11,7 +11,7 @@ The `prometheus.exporter.consul` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.consul "LABEL" {
 }
 ```
@@ -62,7 +62,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.consul`:
 
-```river
+```alloy
 prometheus.exporter.consul "example" {
   server = "https://consul.example.com:8500"
 }

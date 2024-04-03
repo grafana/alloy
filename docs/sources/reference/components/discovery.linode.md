@@ -13,7 +13,7 @@ This service discovery uses the public IPv4 address by default, but that can be 
 
 ## Usage
 
-```river
+```alloy
 discovery.linode "LABEL" {
 	bearer_token = LINODE_API_TOKEN
 }
@@ -132,7 +132,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.linode "example" {
     bearer_token = env("LINODE_TOKEN")
     port = 8876

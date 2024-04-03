@@ -14,7 +14,7 @@ different labels and ports.
 
 ## Usage
 
-```river
+```alloy
 loki.source.gelf "LABEL" {
   forward_to    = RECEIVER_LIST
 }
@@ -65,7 +65,7 @@ configuration.
 
 ## Example
 
-```river
+```alloy
 loki.relabel "gelf" {
   rule {
     source_labels = ["__gelf_message_host"]

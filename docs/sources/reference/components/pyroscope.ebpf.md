@@ -22,7 +22,7 @@ it can lead to additional memory and CPU usage.
 
 ## Usage
 
-```river
+```alloy
 pyroscope.ebpf "LABEL" {
   targets    = TARGET_LIST
   forward_to = RECEIVER_LIST
@@ -195,7 +195,7 @@ In the following example, performance profiles are collected from pods on the sa
 used as an {{< param "PRODUCT_NAME" >}} Helm chart. The `service_name` label is set
 to `{__meta_kubernetes_namespace}/{__meta_kubernetes_pod_container_name}` from Kubernetes meta labels.
 
-```river
+```alloy
 discovery.kubernetes "all_pods" {
   role = "pod"
   selectors {
@@ -262,7 +262,7 @@ The following example collects performance profiles from containers discovered b
 other profiles collected from outside any docker container. The `service_name` label is set to the
 `__meta_docker_container_name` label.
 
-```river
+```alloy
 discovery.docker "linux" {
   host = "unix:///var/run/docker.sock"
 }

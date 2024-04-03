@@ -18,7 +18,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.receiver.loki "LABEL" {
   output {
     logs = [...]
@@ -73,7 +73,7 @@ to. The logs are converted to the OTLP format before they are forwarded
 to the `otelcol.exporter.otlp` component to be sent to an OTLP-capable
 endpoint:
 
-```river
+```alloy
 loki.source.file "default" {
   targets = [
     {__path__ = "/tmp/foo.txt", "loki.format" = "logfmt"},

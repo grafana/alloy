@@ -18,13 +18,13 @@ To do a standard graphical install of {{< param "PRODUCT_NAME" >}} on Windows, p
 
 1. Scroll down to the **Assets** section.
 
-1. Download the file called `alloy-installer.exe.zip`.
+1. Download the file called `alloy-installer-windows-amd64.exe.zip`.
 
 1. Unzip the downloaded file.
 
-1. Double-click on `alloy-installer.exe` to install {{< param "PRODUCT_NAME" >}}.
+1. Double-click on `alloy-installer-windows-amd64.exe` to install {{< param "PRODUCT_NAME" >}}.
 
-{{< param "PRODUCT_NAME" >}} is installed into the default directory `C:\Program Files\Grafana\Alloy`.
+{{< param "PRODUCT_NAME" >}} is installed into the default directory `%PROGRAMFILES64%\GrafanaLabs\Alloy`.
 
 ## Silent install
 
@@ -34,7 +34,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 1. Scroll down to the **Assets** section.
 
-1. Download the file called `alloy-installer.exe.zip`.
+1. Download the file called `alloy-installer-windows-amd64.exe.zip`.
 
 1. Unzip the downloaded file.
 
@@ -57,14 +57,14 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 ## Service Configuration
 
-{{< param "PRODUCT_NAME" >}} uses the Windows Registry `HKLM\Software\Grafana\Grafana Alloy` for service configuration.
+{{< param "PRODUCT_NAME" >}} uses the Windows Registry `HKLM\Software\GrafanaLabs\Alloy` for service configuration.
 
 * `Arguments` (Type `REG_MULTI_SZ`) Each value represents a binary argument for alloy binary.
 * `Environment` (Type `REG_MULTI_SZ`) Each value represents a environment value `KEY=VALUE` for alloy binary.
 
 ## Uninstall
 
-You can uninstall {{< param "PRODUCT_NAME" >}} with Windows Remove Programs or `C:\Program Files\Grafana\Alloy\uninstaller.exe`.
+You can uninstall {{< param "PRODUCT_NAME" >}} with Windows Remove Programs or `%PROGRAMFILES64%\GrafanaLabs\Alloy\uninstaller.exe`.
 Uninstalling {{< param "PRODUCT_NAME" >}} stops the service and removes it from disk.
 This includes any configuration files in the installation directory.
 

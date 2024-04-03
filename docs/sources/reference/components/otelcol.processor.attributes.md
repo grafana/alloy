@@ -19,7 +19,7 @@ You can specify multiple `otelcol.processor.attributes` components by giving the
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.attributes "LABEL" {
   output {
     metrics = [...]
@@ -229,7 +229,7 @@ information.
 
 ### Various uses of the "action" block
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
   http {}
   grpc {}
@@ -343,7 +343,7 @@ The following spans do not match the properties and the processor actions are ap
 Note that due to the presence of the `services` attribute, this configuration works only for
 trace signals. This is why only traces are configured in the `output` block.
 
-```river
+```alloy
 otelcol.processor.attributes "default" {
     exclude {
         match_type = "strict"
@@ -377,7 +377,7 @@ A "strict" `match_type` means that we must strictly match the `resource` key/val
 Note that the `resource` attribute is not used for metrics, which is why metrics are not configured
 in the component output.
 
-```river
+```alloy
 otelcol.processor.attributes "default" {
     exclude {
         match_type = "strict"
@@ -408,7 +408,7 @@ A "strict" `match_type` means that we must strictly match the `library` key/valu
 Note that the `library` attribute is not used for metrics, which is why metrics are not configured
 in the component output.
 
-```river
+```alloy
 otelcol.processor.attributes "default" {
     exclude {
         match_type = "strict"
@@ -440,7 +440,7 @@ in spans where the service name matches `"auth.*"` and where the span name does 
 Note that due to the presence of the `services` and `span_names` attributes, this configuration 
 works only for trace signals. This is why only traces are configured in the `output` block.
 
-```river
+```alloy
 otelcol.processor.attributes "default" {
     // Specifies the span properties that must exist for the processor to be applied.
     include {
@@ -480,7 +480,7 @@ The following demonstrates how to process spans with attributes that match a reg
 This processor will obfuscate the "db.statement" attribute in spans where the "db.statement" attribute
 matches a regex pattern.
 
-```river
+```alloy
 otelcol.processor.attributes "default" {
     include {
         // "match_type" of "regexp" defines that the "value" attributes 
@@ -517,7 +517,7 @@ attribute in spans where the log body matches "AUTH.*".
 Note that due to the presence of the `log_bodies` attribute, this configuration works only for
 log signals. This is why only logs are configured in the `output` block.
 
-```river
+```alloy
 otelcol.processor.attributes "default" {
     include {
         match_type = "regexp"
@@ -548,7 +548,7 @@ obfuscate the "password" attribute in logs where the severity is at least "INFO"
 Note that due to the presence of the `log_severity` attribute, this configuration works only for
 log signals. This is why only logs are configured in the `output` block.
 
-```river
+```alloy
 otelcol.processor.attributes "default" {
     include {
         match_type = "regexp"
@@ -582,7 +582,7 @@ attribute in logs where severity matches "info".
 Note that due to the presence of the `log_severity_texts` attribute, this configuration works only for
 log signals. This is why only logs are configured in the `output` block.
 
-```river
+```alloy
 otelcol.processor.attributes "default" {
     include {
         match_type = "regexp"
@@ -613,7 +613,7 @@ If the label already exists, its value will be updated.
 Note that due to the presence of the `metric_names` attribute, this configuration works only for
 metric signals. This is why only metrics are configured in the `output` block.
 
-```river
+```alloy
 otelcol.processor.attributes "default" {
 	include {
 		match_type = "regexp"

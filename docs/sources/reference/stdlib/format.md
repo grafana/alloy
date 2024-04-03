@@ -9,13 +9,13 @@ title: format
 The `format` function produces a string by formatting a number of other values according to a specification string.
 It's similar to the `printf` function in C, and other similar functions in other programming languages.
 
-```river
+```alloy
 format(spec, values...)
 ```
 
 ## Examples
 
-```river
+```alloy
 > format("Hello, %s!", "Ander")
 "Hello, Ander!"
 > format("There are %d lights", 4)

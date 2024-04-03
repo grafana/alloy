@@ -11,7 +11,7 @@ The `prometheus.exporter.squid` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.squid "LABEL" {
     address = SQUID_ADDRESS
 }
@@ -58,7 +58,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.squid`:
 
-```river
+```alloy
 prometheus.exporter.squid "example" {
   address = "localhost:3128"
 }

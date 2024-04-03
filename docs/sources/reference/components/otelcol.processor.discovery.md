@@ -44,7 +44,7 @@ from Static mode's `prom_sd_operation_type`/`prom_sd_pod_associations` [configur
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.discovery "LABEL" {
   targets = [...]
   output {
@@ -125,7 +125,7 @@ information.
 ## Examples
 
 ### Basic usage
-```river
+```alloy
 discovery.http "dynamic_targets" {
     url              = "https://example.com/scrape_targets"
     refresh_interval = "15s"
@@ -144,7 +144,7 @@ otelcol.processor.discovery "default" {
 
 Outputs from more than one discovery process can be combined via the `concat` function.
 
-```river
+```alloy
 discovery.http "dynamic_targets" {
     url              = "https://example.com/scrape_targets"
     refresh_interval = "15s"
@@ -171,7 +171,7 @@ a `test.label.with.dots` resource attributes will be added to a span if its IP a
 "1.2.2.2". The `__internal_label__` will be not be added to the span, because it begins with 
 a double underscore (`__`).
 
-```river
+```alloy
 otelcol.processor.discovery "default" {
     targets = [{
         "__address__"          = "1.2.2.2",

@@ -111,5 +111,5 @@ Some issues that appear to be clustering issues may be symptoms of other issues,
 
 [logging]: ../../reference/config-blocks/logging/
 [clustering]: ../../concepts/clustering/
-[secret]: ../../concepts/config-language/expressions/types_and_values/#secrets
+[secret]: ../../concepts/configuration-syntax/expressions/types_and_values/#secrets
 

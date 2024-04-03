@@ -11,7 +11,7 @@ The `prometheus.exporter.process` component embeds
 
 ## Usage
 
-```river
+```alloy
 prometheus.exporter.process "LABEL" {
 }
 ```
@@ -94,7 +94,7 @@ debug metrics.
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.process`:
 
-```river
+```alloy
 prometheus.exporter.process "example" {
   track_children = false
 

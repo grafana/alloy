@@ -12,7 +12,7 @@ title: discovery.triton
 
 ## Usage
 
-```river
+```alloy
 discovery.triton "LABEL" {
 	account    = ACCOUNT
 	dns_suffix = DNS_SUFFIX
@@ -93,7 +93,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-```river
+```alloy
 discovery.triton "example" {
 	account    = TRITON_ACCOUNT
 	dns_suffix = TRITON_DNS_SUFFIX

@@ -42,7 +42,7 @@ This should be stable enough for most cases, and the larger the number of backen
 
 ## Usage
 
-```river
+```alloy
 otelcol.exporter.loadbalancing "LABEL" {
   resolver {
     ...
@@ -357,7 +357,7 @@ information.
 This example accepts OTLP logs and traces over gRPC.
 It then sends them in a load-balanced way to "localhost:55690" or "localhost:55700".
 
-```river
+```alloy
 otelcol.receiver.otlp "default" {
     grpc {}
     output {
@@ -385,7 +385,7 @@ otelcol.exporter.loadbalancing "default" {
 When configured with a `dns` resolver, `otelcol.exporter.loadbalancing` will do a DNS lookup
 on regular intervals. Spans are exported to the addresses the DNS lookup returned.
 
-```river
+```alloy
 otelcol.exporter.loadbalancing "default" {
     resolver {
         dns {
@@ -648,7 +648,7 @@ k3d cluster delete alloy-lb-test
 When you configure `otelcol.exporter.loadbalancing`  with a `kubernetes` resolver, the Kubernetes API notifies {{< param "PRODUCT_NAME" >}} whenever a new pod is added or removed from the service.
 Spans are exported to the addresses from the Kubernetes API, combined with all the possible `ports`.
 
-```river
+```alloy
 otelcol.exporter.loadbalancing "default" {
     resolver {
         kubernetes {
