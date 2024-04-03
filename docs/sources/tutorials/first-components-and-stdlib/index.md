@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/first-components-and-stdlib/
 description: Learn about the basics of the {{< param "PRODUCT_NAME" >}} configuration syntax
-title: First components and introducing the standard library
+title: First components and the standard library
 weight: 20
 ---
 
@@ -10,11 +10,15 @@ weight: 20
 This tutorial covers the basics of the {{< param "PRODUCT_NAME" >}} configuration syntax and the standard library.
 It introduces a basic pipeline that collects metrics from the host and sends them to Prometheus.
 
-## {{< param "PRODUCT_NAME" >}} configuration syntax basics
+## Prerequisites
 
-**Recommended reading**
+Set up a local Grafana instance as described in [Get started with {{< param "FULL_PRODUCT_NAME" >}}][get started]
+
+### Recommended reading
 
 - [{{< param "PRODUCT_NAME" >}} configuration syntax][Configuration syntax]
+
+## {{< param "PRODUCT_NAME" >}} configuration syntax basics
 
 An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
 
@@ -60,15 +64,17 @@ Comments in {{< param "PRODUCT_NAME" >}} syntax are prefixed with `//` and are s
 
 ## Components
 
-**Recommended reading**
+Components are the building blocks of an {{< param "PRODUCT_NAME" >}} configuration. They are configured and linked to create pipelines that collect, process, and output your telemetry data. Components are configured with `Arguments` and have `Exports` that may be referenced by other components.
+
+### Recommended reading
 
 - [Components][]
 - [Components configuration language][]
 - [Component controller][]
 
-Components are the building blocks of an {{< param "PRODUCT_NAME" >}} configuration. They are configured and linked to create pipelines that collect, process, and output your telemetry data. Components are configured with `Arguments` and have `Exports` that may be referenced by other components.
+### An example pipeline
 
-Let's look at a simple example pipeline:
+Look at the following simple pipeline:
 
 ```alloy
 local.file "example" {
@@ -112,15 +118,19 @@ The `local.file` component's label is set to `"example"`, so the fully qualified
 The `prometheus.remote_write` component's label is set to `"local_prom"`, so the fully qualified name of the component is `prometheus.remote_write.local_prom`.
 {{< /admonition >}}
 
-This example pipeline still doesn't do anything, so let's add some more components to it.
+This example pipeline still doesn't do anything, so its time to add some more components to it.
 
 ## Shipping your first metrics
 
-**Recommended reading**
+Now that you have a simple pipeline, you can ship your first metrics.
+
+### Recommended reading
 
 - Optional: [prometheus.exporter.unix][]
 - Optional: [prometheus.scrape][]
 - Optional: [prometheus.remote_write][]
+
+### Modify your pipeline and scrape the metrics
 
 Make a simple pipeline with a `prometheus.exporter.unix` component, a `prometheus.scrape` component to scrape it, and a `prometheus.remote_write` component to send the scraped metrics to Prometheus.
 
@@ -146,7 +156,7 @@ prometheus.remote_write "local_prom" {
 }
 ```
 
-Run {{< param "PRODUCT_NAME" >}} with:
+Run {{< param "PRODUCT_NAME" >}} with the following command:
 
 ```bash
 <BINARY_FILE_PATH> run config.alloy
@@ -164,7 +174,7 @@ Try querying for `node_memory_Active_bytes` to see the active memory of your hos
 <img src="/media/docs/alloy/screenshot-memory-usage.png" alt="Screenshot of node_memory_Active_bytes query in Grafana" />
 </p>
 
-## Visualizing the relationship between components
+## Visualize the relationship between components
 
 The following diagram is an example pipeline:
 
@@ -172,26 +182,28 @@ The following diagram is an example pipeline:
 <img src="/media/docs/agent/diagram-flow-by-example-full-0.svg" alt="Example pipeline with a prometheus.scrape, prometheus.exporter.unix, and prometheus.remote_write components" width="400" />
 </p>
 
-The preceding configuration defines three components:
+Your pipeline configuration defines three components:
 
 - `prometheus.scrape` - A component that scrapes metrics from components that export targets.
 - `prometheus.exporter.unix` - A component that exports metrics from the host, built around [node_exporter][].
 - `prometheus.remote_write` - A component that sends metrics to a Prometheus remote-write compatible endpoint.
 
 The `prometheus.scrape` component references the `prometheus.exporter.unix` component's targets export, which is a list of scrape targets.
-The `prometheus.scrape` component then forwards the scraped metrics to the `prometheus.remote_write` component.
+The `prometheus.scrape` component forwards the scraped metrics to the `prometheus.remote_write` component.
 
 One rule is that components can't form a cycle.
 This means that a component can't reference itself directly or indirectly.
 This is to prevent infinite loops from forming in the pipeline.
 
-## Exercise for the reader
+## Exercise
 
-**Recommended Reading**
+The following exercise guides you through modifying your pipeline to scrape metrics from Redis.
+
+### Recommended Reading
 
 - Optional: [prometheus.exporter.redis][]
 
-Let's start a container running Redis and configure {{< param "PRODUCT_NAME" >}} to scrape metrics from it.
+Start a container running Redis and configure {{< param "PRODUCT_NAME" >}} to scrape the metrics.
 
 ```bash
 docker container run -d --name alloy-redis -p 6379:6379 --rm redis
@@ -206,13 +218,13 @@ To give a visual hint, you want to create a pipeline that looks like this:
 <img src="/media/docs/agent/diagram-flow-by-example-exercise-0.svg" alt="Exercise pipeline, with a scrape, unix_exporter, redis_exporter, and remote_write component" width="600" />
 </p>
 
-{{< admonition type="note" >}}
-You may find the [concat][] standard library function useful.
+{{< admonition type="tip" >}}
+Refer to the [concat][] standard library function for information about combining lists of values into a single list.
 
 [concat]: ../../reference/stdlib/concat/
 {{< /admonition >}}
 
-You can run {{< param "PRODUCT_NAME" >}} with the new configuration file by running:
+You can run {{< param "PRODUCT_NAME" >}} with the new configuration file with the following command:
 
 ```bash
 <BINARY_FILE_PATH> run config.alloy
@@ -282,9 +294,10 @@ If you look in the directory, do you notice anything interesting? The directory 
 If you'd like to store the data elsewhere, you can specify a different directory by supplying the `--storage.path` flag to {{< param "PRODUCT_NAME" >}}'s run command, for example, `<BINARY_FILE_PATH> run config.alloy --storage.path /etc/alloy`. Replace _`<BINARY_FILE_PATH>`_ with the path to the {{< param "PRODUCT_NAME" >}} binary.
 Generally, you can use a persistent directory for this, as some components may use the data stored in this directory to perform their function.
 
-In the next tutorial, you will look at how to configure {{< param "PRODUCT_NAME" >}} to collect logs from a file and send them to Loki.
-You will also look at using different components to process metrics and logs before sending them.
+In the next tutorial, you learn how to configure {{< param "PRODUCT_NAME" >}} to collect logs from a file and send them to Loki.
+You also learn how to use different components to process metrics and logs.
 
+[get started]: ../get-started/#set-up-a-local-grafana-instance
 [Configuration syntax]: ../../concepts/configuration-syntax/
 [Standard library documentation]: ../../reference/stdlib/
 [node_exporter]: https://github.com/prometheus/node_exporter

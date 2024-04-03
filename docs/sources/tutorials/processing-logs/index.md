@@ -10,20 +10,26 @@ weight: 40
 This tutorial assumes you are familiar with setting up and connecting components.
 It covers using `loki.source.api` to receive logs over HTTP, processing and filtering them, and sending them to Loki.
 
+## Prerequisites
+
+Complete the [Logs and relabeling basics][logs] tutorial.
+
 ## Receive logs over HTTP and Process
-
-**Recommended reading**
-
-- Optional: [loki.source.api][]
 
 The `loki.source.api` component can receive logs over HTTP.
 It can be useful for receiving logs from other {{< param "PRODUCT_NAME" >}}s or collectors, or directly from applications that can send logs over HTTP, and then processing them centrally.
+
+### Recommended reading
+
+- Optional: [loki.source.api][]
+
+### Set up the `loki.source.api` component
 
 Your pipeline is going to look like this:
 
 ![Loki Source API Pipeline](/media/docs/agent/diagram-flow-by-example-logs-pipeline.svg)
 
-Let's start by setting up the `loki.source.api` component:
+Start by setting up the `loki.source.api` component:
 
 ```alloy
 loki.source.api "listener" {
@@ -40,15 +46,18 @@ loki.source.api "listener" {
 
 This is a simple configuration.
 You are configuring the `loki.source.api` component to listen on `127.0.0.1:9999` and attach a `source="api"` label to the received log entries, which are then forwarded to the `loki.process.process_logs` component's exported receiver.
-Next, you can configure the `loki.process` and `loki.write` components.
 
 ## Process and Write Logs
 
-**Recommended reading**
+### Recommended reading
 
 - [loki.process#stage.drop][]
 - [loki.process#stage.json][]
 - [loki.process#stage.labels][]
+
+### Configure the `loki.process` and `loki.write` components
+
+Now that you have set up the `loki.source.api` component, you can configure the `loki.process` and `loki.write` components.
 
 ```alloy
 // Let's send and process more logs!
@@ -126,8 +135,7 @@ loki.write "local_loki" {
 }
 ```
 
-You can skip to the next section if you successfully completed the previous section's exercises.
-If not, or if you were unsure how things worked, let's break down what's happening in the `loki.process` component.
+{{< collapse title="How the components work" >}}
 
 Many of the `stage.*` blocks in `loki.process` act on reading or writing a shared map of values extracted from the logs.
 You can think of this extracted map as a hashmap or table that each stage has access to, and it is referred to as the "extracted map" from here on.
@@ -151,7 +159,7 @@ Here is our example log line:
 }
 ```
 
-### Stage 1
+#### Stage 1
 
 ```alloy
 stage.json {
@@ -198,7 +206,7 @@ Extracted map _after_ performing this stage:
 }
 ```
 
-### Stage 2
+#### Stage 2
 
 ```alloy
 stage.timestamp {
@@ -212,7 +220,7 @@ The value of `ts` is parsed in the format of `RFC3339` and added as the timestam
 This is useful if you want to use the timestamp present in the log itself, rather than the time the log is ingested.
 This stage doesn't modify the extracted map.
 
-### Stage 3
+#### Stage 3
 
 ```alloy
 stage.json {
@@ -278,7 +286,7 @@ Extracted map _after_ performing this stage:
 }
 ```
 
-### Stage 4
+#### Stage 4
 
 ```alloy
 stage.drop {
@@ -292,7 +300,7 @@ This stage drops the log line if the value of `is_secret` is `"true"` and doesn'
 There are many other ways to filter logs, but this is a simple example.
 Refer to the [loki.process#stage.drop][] documentation for more information.
 
-### Stage 5
+#### Stage 5
 
 ```alloy
 stage.labels {
@@ -306,7 +314,7 @@ This stage adds a label to the log using the same shorthand as above (so this is
 This stage adds a label with key `level` and the value of `level` in the extracted map to the log (`"info"` from our example log line).
 This stage does not modify the extracted map.
 
-### Stage 6
+#### Stage 6
 
 ```alloy
 stage.output {
@@ -319,9 +327,11 @@ Rather than sending the entire JSON blob to Loki, you are only sending `original
 
 This stage doesn't modify the extracted map.
 
-## Putting it all together
+{{< /collapse >}}
 
-Now that you have all of the pieces, let's run {{< param "PRODUCT_NAME" >}} and send some logs to it.
+## Put it all together
+
+Now that you have all of the pieces, you can run {{< param "PRODUCT_NAME" >}} and send some logs to it.
 Modify `config.alloy` with the configuration from the previous example and start {{< param "PRODUCT_NAME" >}} with:
 
 ```bash
@@ -344,7 +354,7 @@ Try executing the following, replacing the `"timestamp"` value:
 curl localhost:9999/loki/api/v1/raw -XPOST -H "Content-Type: application/json" -d '{"log": {"is_secret": "false", "level": "debug", "message": "This is a debug message!"}, "timestamp": <YOUR TIMESTAMP HERE>}'
 ```
 
-Now that you have sent some logs, let's see how they look in Grafana.
+Now that you have sent some logs, its time to see how they look in Grafana.
 Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`.
 Try querying for `{source="demo-api"}` and see if you can find the logs you sent.
 
@@ -355,8 +365,8 @@ You can also try adding more stages to the `loki.process` component to extract m
 
 ## Exercise
 
-Since you are already using Docker and Docker exports logs, let's get those logs into Loki.
-You can refer to the [discovery.docker][] and [loki.source.docker][] documentation for more information.
+Since you are already using Docker and Docker exports logs, you can send those logs to Loki.
+Refer to the [discovery.docker][] and [loki.source.docker][] documentation for more information.
 
 To ensure proper timestamps and other labels, make sure you use a `loki.process` component to process the logs before sending them to Loki.
 
@@ -407,6 +417,7 @@ loki.write "local_loki" {
 
 {{< /collapse >}}
 
+[logs]: ../logs-and-relabeling-basics/
 [loki.source.api]: ../../reference/components/loki.source.api/
 [loki.process#stage.drop]: ../../reference/components/loki.process/#stagedrop-block
 [loki.process#stage.json]: ../../reference/components/loki.process/#stagejson-block
