@@ -6,7 +6,7 @@ title: Migrate to Grafana Alloy
 weight: 100
 ---
 
-# HMigrate to {{% param "FULL_PRODUCT_NAME" %}}
+# Migrate to {{% param "FULL_PRODUCT_NAME" %}}
 
 This section details how to migrate to {{< param "PRODUCT_NAME" >}} from other common solutions.
 
