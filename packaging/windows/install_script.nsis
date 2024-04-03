@@ -12,7 +12,7 @@ Unicode true
 !include FileFunc.nsh
 !include .\macros.nsis
 
-!define APPNAME     "Grafana Alloy"
+!define APPNAME     "Alloy"
 !define HELPURL     "https://grafana.com/docs/alloy/latest"
 !define UPDATEURL   "https://github.com/grafana/alloy/releases"
 !define ABOUTURL    "https://github.com/grafana/alloy"
@@ -23,8 +23,8 @@ RequestExecutionLevel admin
 
 Name        "${APPNAME} ${VERSION}" # Shown in title bar for installer/uninstaller
 Icon        "logo.ico"
-InstallDir  "$PROGRAMFILES64\${APPNAME}"
-LicenseData ..\..\..\LICENSE
+InstallDir  "$PROGRAMFILES64\GrafanaLabs\${APPNAME}"
+LicenseData ..\..\LICENSE
 OutFile     "${OUT}"
 
 # Everything must be global Vars
@@ -70,8 +70,8 @@ Section "install"
   Exists:
     SetOutPath "$INSTDIR"
 
-  File "..\..\..\dist\alloy-windows-amd64.exe"
-  File "..\..\..\dist.temp\alloy-service-windows-amd64.exe"
+  File "..\..\dist\alloy-windows-amd64.exe"
+  File "..\..\dist.temp\alloy-service-windows-amd64.exe"
   File "logo.ico"
 
   # Create an uninstaller at the same pathFunctionEnd
@@ -94,6 +94,7 @@ Section "install"
   WriteRegDWORD HKLM "${UNINSTALLKEY}" "NoRepair" 1
 
   Call CreateConfig
+  Call CreateDataDirectory
   Call InitializeRegistry
 
   # Create the service.
@@ -126,10 +127,30 @@ Function CreateConfig
     Return
 FunctionEnd
 
+Function CreateDataDirectory
+  # IfFileExists checks for directories by adding \*.* to the path; this handles
+  # empty directories as well as directories with files.
+  IfFileExists "$APPDATA\GrafanaLabs\${APPNAME}\data\*.*" Noop CreateDataDirectory
+  Noop:
+    Return
+  CreateDataDirectory:
+    CreateDirectory "$APPDATA\GrafanaLabs\${APPNAME}\data"
+
+    # Set permissions on the data directory
+    AccessControl::DisableFileInheritance "$APPDATA\GrafanaLabs\${APPNAME}\data"
+    AccessControl::SetFileOwner "$APPDATA\GrafanaLabs\${APPNAME}\data" "Administrators"
+    AccessControl::ClearOnFile  "$APPDATA\GrafanaLabs\${APPNAME}\data" "Administrators" "FullAccess"
+    AccessControl::SetOnFile    "$APPDATA\GrafanaLabs\${APPNAME}\data" "SYSTEM" "FullAccess"
+    AccessControl::GrantOnFile  "$APPDATA\GrafanaLabs\${APPNAME}\data" "Everyone" "ListDirectory"
+    AccessControl::GrantOnFile  "$APPDATA\GrafanaLabs\${APPNAME}\data" "Everyone" "ReadAttributes"
+    Return
+FunctionEnd
+
+
 # InitializeRegistry initializes the keys in the registry that the service
 # runner uses. If the registry values already exist, they are not overwritten.
 Function InitializeRegistry
-  !define REGKEY "HKLM\Software\Grafana\Alloy"
+  !define REGKEY "HKLM\Software\GrafanaLabs\Alloy"
 
   # Define the default key, which points to the service.
   nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /ve'
@@ -162,7 +183,7 @@ Function InitializeRegistry
   nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /v Arguments'
   Pop $0
   ${If} $0 == 1
-    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Arguments /t REG_MULTI_SZ /d "run"\0"$ConfigFlag"\0"--storage.path=$APPDATA\${APPNAME}\data"\0"$DisableReportingFlag$DisableProfilingFlag"'
+    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Arguments /t REG_MULTI_SZ /d "run"\0"$ConfigFlag"\0"--storage.path=$APPDATA\GrafanaLabs\${APPNAME}\data"\0"$DisableReportingFlag$DisableProfilingFlag"'
     Pop $0 # Ignore return result
   ${EndIf}
 
@@ -219,7 +240,7 @@ Section "uninstall"
   RMDir /r "$APPDATA\${APPNAME}"     # Application data.
 
   # Remove service and uninstaller information from the registry.
-  nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\Grafana\Alloy"  /reg:64 /f'
+  nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\GrafanaLabs\Alloy"  /reg:64 /f'
   Pop $0
   nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"  /reg:64 /f'
   Pop $0

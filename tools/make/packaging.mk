@@ -3,7 +3,7 @@
 PARENT_MAKEFILE := $(firstword $(MAKEFILE_LIST))
 
 .PHONY: dist clean-dist
-dist: dist-alloy-binaries dist-alloy-packages dist-alloy-installer
+dist: dist-alloy-binaries dist-alloy-packages dist-alloy-installer-windows
 
 clean-dist:
 	rm -rf ./dist/* ./dist.temp/*
@@ -184,12 +184,12 @@ endif
 # Windows installer
 #
 
-.PHONY: dist-alloy-installer
-dist-alloy-installer: dist/alloy-windows-amd64.exe dist.temp/alloy-service-windows-amd64.exe
+.PHONY: dist-alloy-installer-windows
+dist-alloy-installer-windows: dist/alloy-windows-amd64.exe dist.temp/alloy-service-windows-amd64.exe
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	# quotes around mkdir are mandatory. ref: https://github.com/grafana/agent/pull/5664#discussion_r1378796371
 	"mkdir" -p dist
-	makensis -V4 -DVERSION=$(VERSION) -DOUT="../../../dist/alloy-installer.exe" ./alloy/windows/install_script.nsis
+	makensis -V4 -DVERSION=$(VERSION) -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
 endif
