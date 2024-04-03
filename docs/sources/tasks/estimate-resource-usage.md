@@ -27,7 +27,7 @@ As a rule of thumb, **per each 1 million active series** and with the default sc
 * 1.5 MiB/s of total network bandwidth, send and receive
 
 These recommendations are based on deployments that use [clustering][], but they will broadly apply to other deployment modes.
-Refer to [Deploy {{< param "PRODUCT_NAME" >}}][deploy] for more information on how to deploy {{< param "PRODUCT_NAME" >}}.
+Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information on how to deploy {{< param "PRODUCT_NAME" >}}.
 
 ## Loki logs
 
@@ -54,5 +54,5 @@ As a rule of thumb, **per each 100 profiles/second**, you can expect to use appr
 
 Factors such as size of each profile and frequency of fetching them also play a role in the overall resource usage.
 
-[deploy]: ../../get-started/deploy-alloy/
+[deploy]: ../../get-started/deploy/
 [clustering]: ../../concepts/clustering/

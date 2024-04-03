@@ -46,7 +46,7 @@ This conversion will enable you to take full advantage of the many additional fe
    Replace the following:
 
     * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
-    * _`<OUTPUT_CONFIG_PATH>_`: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+    * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 1. [Run][run alloy] {{< param "PRODUCT_NAME" >}} using the new {{< param "PRODUCT_NAME" >}} configuration from _`<OUTPUT_CONFIG_PATH>`_:
 

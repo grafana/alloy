@@ -21,10 +21,15 @@ Utilities in this command have no backward compatibility guarantees and may chan
 Usage:
 
 ```shell
-alloy tools prometheus.remote_write sample-stats [FLAG ...] WAL_DIRECTORY
+alloy tools prometheus.remote_write sample-stats [<FLAG> ...] <WAL_DIRECTORY>
 ```
 
-The `sample-stats` command reads the Write-Ahead Log (WAL) specified by `WAL_DIRECTORY` and collects information on metric samples within it.
+ Replace the following:
+
+   * _`<FLAG>`_: One or more flags that define the input and output of the command.
+   * _`<WAL_DIRECTORY>`_: The WAL directory.
+
+The `sample-stats` command reads the Write-Ahead Log (WAL) specified by _`<WAL_DIRECTORY>`+ and collects information on metric samples within it.
 
 For each metric discovered, `sample-stats` emits:
 
@@ -63,10 +68,14 @@ The `--job` and `--instance` labels are required.
 Usage:
 
 ```shell
-alloy tools prometheus.remote_write wal-stats WAL_DIRECTORY
+alloy tools prometheus.remote_write wal-stats <WAL_DIRECTORY>
 ```
 
-The `wal-stats` command reads the Write-Ahead Log (WAL) specified by `WAL_DIRECTORY` and collects general information about it.
+ Replace the following:
+
+      * _`<WAL_DIRECTORY>`_: The WAL directory.
+
+The `wal-stats` command reads the Write-Ahead Log (WAL) specified by _`<WAL_DIRECTORY>`_ and collects general information about it.
 
 The following information is reported:
 

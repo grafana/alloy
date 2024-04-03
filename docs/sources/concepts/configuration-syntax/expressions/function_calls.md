@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/config-language/expressions/function_calls/
+canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/expressions/function_calls/
 description: Learn about function calls
 title: Function calls
 weight: 400

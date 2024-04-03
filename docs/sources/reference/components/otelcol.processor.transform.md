@@ -37,9 +37,9 @@ there is also a set of metrics-only functions:
 
 {{< admonition type="note" >}}
 There are two ways of inputting strings in {{< param "PRODUCT_NAME" >}} configuration files:
-* Using quotation marks ([normal {{< param "PRODUCT_NAME" >}} syntax strings][river-strings]). Characters such as `\` and
+* Using quotation marks ([normal {{< param "PRODUCT_NAME" >}} syntax strings][strings]). Characters such as `\` and
   `"` must be escaped by preceding them with a `\` character.
-* Using backticks ([raw {{< param "PRODUCT_NAME" >}} syntax strings][river-raw-strings]). No characters must be escaped.
+* Using backticks ([raw {{< param "PRODUCT_NAME" >}} syntax strings][raw-strings]). No characters must be escaped.
   However, it's not possible to have backticks inside the string.
 
 For example, the OTTL statement `set(description, "Sum") where type == "Sum"` can be written as:
@@ -48,8 +48,8 @@ For example, the OTTL statement `set(description, "Sum") where type == "Sum"` ca
 
 Raw strings are generally more convenient for writing OTTL statements.
 
-[river-strings]: ../../../concepts/config-language/expressions/types_and_values/#strings
-[river-raw-strings]: ../../../concepts/config-language/expressions/types_and_values/#raw-strings
+[strings]: ../../../concepts/configuration-syntax/expressions/types_and_values/#strings
+[raw-strings]: ../../../concepts/configuration-syntax/expressions/types_and_values/#raw-strings
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -298,8 +298,8 @@ otelcol.processor.transform "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Rename a resource attribute
 
@@ -348,8 +348,8 @@ otelcol.processor.transform "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Create an attribute from the contents of a log body
 
@@ -375,8 +375,8 @@ otelcol.processor.transform "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Combine two attributes
 
@@ -403,8 +403,8 @@ otelcol.processor.transform "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Parsing JSON logs
 
@@ -455,8 +455,8 @@ otelcol.processor.transform "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Various transformations of attributes and status codes
 
@@ -556,11 +556,11 @@ otelcol.exporter.otlp "default" {
 ```
 
 Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][river-raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][river-strings] {{< param "PRODUCT_NAME" >}} syntax string.
+This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
+each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
-[river-strings]: ../../../concepts/config-language/expressions/types_and_values/#strings
-[river-raw-strings]: ../../../concepts/config-language/expressions/types_and_values/#raw-strings
+[strings]: ../../../concepts/configuration-syntax/expressions/types_and_values/#strings
+[raw-strings]: ../../../concepts/configuration-syntax/expressions/types_and_values/#raw-strings
 
 [traces protobuf]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/trace/v1/trace.proto
 [metrics protobuf]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/metrics/v1/metrics.proto

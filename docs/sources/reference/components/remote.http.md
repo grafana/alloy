@@ -49,7 +49,7 @@ The poll is successful if the URL returns a `200 OK` response code. All other
 response codes are treated as errors and mark the component as unhealthy. After
 a successful poll, the response body from the URL is exported.
 
-[secret]: ../../../concepts/config-language/expressions/types_and_values/#secrets
+[secret]: ../../../concepts/configuration-syntax/expressions/types_and_values/#secrets
 
 ## Blocks
 
@@ -111,9 +111,9 @@ The `tls_config` block configures TLS settings for connecting to HTTPS servers.
 
 The following field is exported and can be referenced by other components:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`content` | `string` or `secret` | The contents of the file. | | no
+Name      | Type                 | Description               | Default | Required
+----------|----------------------|---------------------------|---------|---------
+`content` | `string` or `secret` | The contents of the file. |         | no
 
 If the `is_secret` argument was `true`, `content` is a secret type.
 

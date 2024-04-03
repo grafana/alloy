@@ -429,4 +429,4 @@ prometheus.remote_write "default" {
 [prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
 [prometheus.scrape]: ../../reference/components/prometheus.scrape/
 [Components]: ../../concepts/components/
-[Objects]: ../../concepts/config-language/expressions/types_and_values/#objects
+[Objects]: ../../concepts/configuration-syntax/expressions/types_and_values/#objects

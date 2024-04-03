@@ -92,7 +92,7 @@ To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry da
 
 > `otelcol.exporter.otlp` sends data using OTLP over gRPC (HTTP/2).
 > To send to a server using HTTP/1.1, follow the preceding steps,
-> but use the [otelcol.exporter.otlphttp component][otelcol.exporter.otlphttp] instead.
+> but use the [otelcol.exporter.otlphttp][otelcol.exporter.otlphttp] component instead.
 
 The following example demonstrates configuring `otelcol.exporter.otlp` with authentication and a component that forwards data to it:
 

@@ -325,8 +325,12 @@ Now that you have all of the pieces, let's run {{< param "PRODUCT_NAME" >}} and 
 Modify `config.alloy` with the configuration from the previous example and start {{< param "PRODUCT_NAME" >}} with:
 
 ```bash
-/path/to/alloy run config.alloy
+<BINARY_FILE_PATH> run config.alloy
 ```
+
+Replace the following:
+
+* _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
 To get the current time in `RFC3339` format, you can run:
 

@@ -94,15 +94,15 @@ We will use the `local.file_match` component to perform file discovery, the `lok
 Before doing this, make sure you have a log file to scrape. You can use the `echo` command to create a file with some log content.
 
 ```bash
-mkdir -p /tmp/flow-logs
-echo "This is a log line" > /tmp/flow-logs/log.log
+mkdir -p /tmp/alloy-logs
+echo "This is a log line" > /tmp/alloy-logs/log.log
 ```
 
 Now that you have a log file, you can create a pipeline to scrape it.
 
 ```alloy
 local.file_match "tmplogs" {
-    path_targets = [{"__path__" = "/tmp/flow-logs/*.log"}]
+    path_targets = [{"__path__" = "/tmp/alloy-logs/*.log"}]
 }
 
 loki.source.file "local_files" {
@@ -119,20 +119,20 @@ loki.write "local_loki" {
 
 The rough flow of this pipeline is:
 
-![Diagram of pipeline that collects logs from /tmp/flow-logs and writes them to a local Loki instance](/media/docs/agent/diagram-flow-by-example-logs-0.svg)
+![Diagram of pipeline that collects logs from /tmp/alloy-logs and writes them to a local Loki instance](/media/docs/agent/diagram-flow-by-example-logs-0.svg)
 
-If you navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`, you can query for `{filename="/tmp/flow-logs/log.log"}` and see the log line we created earlier.
+If you navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`, you can query for `{filename="/tmp/alloy-logs/log.log"}` and see the log line we created earlier.
 Try running the following command to add more logs to the file.
 
 ```bash
-echo "This is another log line!" >> /tmp/flow-logs/log.log
+echo "This is another log line!" >> /tmp/alloy-logs/log.log
 ```
 
 If you re-execute the query, you can see the new log lines.
 
 ![Grafana Explore view of example log lines](/media/docs/agent/screenshot-flow-by-example-log-lines.png)
 
-If you are curious how {{< param "PRODUCT_NAME" >}} keeps track of where it's in a log file, you can look at `data-agent/loki.source.file.local_files/positions.yml`.
+If you are curious how {{< param "PRODUCT_NAME" >}} keeps track of where it's in a log file, you can look at `data-alloy/loki.source.file.local_files/positions.yml`.
 If you delete this file, {{< param "PRODUCT_NAME" >}} starts reading from the beginning of the file again, which is why keeping the {{< param "PRODUCT_NAME" >}}'s data directory in a persistent location is desirable.
 
 ## Exercise
@@ -151,7 +151,7 @@ Modify the following snippet to add the label `os` with the value of the `os` co
 
 ```alloy
 local.file_match "tmplogs" {
-    path_targets = [{"__path__" = "/tmp/flow-logs/*.log"}]
+    path_targets = [{"__path__" = "/tmp/alloy-logs/*.log"}]
 }
 
 loki.source.file "local_files" {
@@ -176,13 +176,13 @@ You can use the [loki.relabel][] component to relabel and add labels, just like 
 Once you have your completed configuration, run {{< param "PRODUCT_NAME" >}} and execute the following:
 
 ```bash
-echo 'level=info msg="INFO: This is an info level log!"' >> /tmp/flow-logs/log.log
-echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/flow-logs/log.log
-echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/flow-logs/log.log
+echo 'level=info msg="INFO: This is an info level log!"' >> /tmp/alloy-logs/log.log
+echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/alloy-logs/log.log
+echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/log.log
 ```
 
 Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`.
-Try querying for `{filename="/tmp/flow-logs/log.log"}` and see if you can find the new label!
+Try querying for `{filename="/tmp/alloy-logs/log.log"}` and see if you can find the new label!
 
 Now that we have added new labels, we can also filter on them. Try querying for `{os!=""}`.
 You should only see the lines you added in the previous step.
@@ -193,7 +193,7 @@ You should only see the lines you added in the previous step.
 // Let's learn about relabeling and send logs to Loki!
 
 local.file_match "tmplogs" {
-    path_targets = [{"__path__" = "/tmp/flow-logs/*.log"}]
+    path_targets = [{"__path__" = "/tmp/alloy-logs/*.log"}]
 }
 
 loki.source.file "local_files" {
@@ -242,9 +242,9 @@ The `stage.logfmt` and `stage.labels` blocks for `loki.process` may be helpful.
 Once you have your completed configuration, run {{< param "PRODUCT_NAME" >}} and execute the following:
 
 ```bash
-echo 'level=info msg="INFO: This is an info level log!"' >> /tmp/flow-logs/log.log
-echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/flow-logs/log.log
-echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/flow-logs/log.log
+echo 'level=info msg="INFO: This is an info level log!"' >> /tmp/alloy-logs/log.log
+echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/alloy-logs/log.log
+echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/log.log
 ```
 
 Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`. Try querying for `{level!=""}` to see the new labels in action.
@@ -257,7 +257,7 @@ Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`. Try 
 // Let's learn about relabeling and send logs to Loki!
 
 local.file_match "tmplogs" {
-    path_targets = [{"__path__" = "/tmp/flow-logs/*.log"}]
+    path_targets = [{"__path__" = "/tmp/alloy-logs/*.log"}]
 }
 
 loki.source.file "local_files" {
