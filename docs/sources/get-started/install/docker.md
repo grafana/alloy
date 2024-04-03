@@ -34,7 +34,8 @@ docker run \
   -v <CONFIG_FILE_PATH>:/etc/alloy/config.alloy \
   -p 12345:12345 \
   grafana/alloy:latest \
-    run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data \
+    /etc/alloy/config.alloy
 ```
 
 Replace the following:
@@ -55,10 +56,11 @@ To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the follo
 
 ```shell
 docker run \
-  -v <CONFIG_FILE_PATH>:C:\etc\alloy\config.alloy \
+  -v "<CONFIG_FILE_PATH>:C:\Program Files\GrafanaLabs\Alloy\config.alloy" \
   -p 12345:12345 \
   grafana/alloy:latest-windows \
-    run --server.http.listen-addr=0.0.0.0:12345 C:\etc\alloy\config.alloy
+    run --server.http.listen-addr=0.0.0.0:12345 "--storage.path=C:\ProgramData\GrafanaLabs\Alloy\data" \
+    "C:\Program Files\GrafanaLabs\Alloy\config.alloy"
 ```
 
 Replace the following:
