@@ -240,7 +240,7 @@ Section "uninstall"
   RMDir /r "$APPDATA\${APPNAME}"     # Application data.
 
   # Remove service and uninstaller information from the registry.
-  nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\Grafana\Alloy"  /reg:64 /f'
+  nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\GrafanaLabs\Alloy"  /reg:64 /f'
   Pop $0
   nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"  /reg:64 /f'
   Pop $0
