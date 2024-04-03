@@ -142,7 +142,7 @@ alloy:
     varlog: true
 ```
 
-This command installs a release named `grafana-agent-logs` in the `monitoring` namespace:
+This command installs a release named `alloy-logs` in the `monitoring` namespace:
 
 ```
 helm upgrade alloy-logs grafana/alloy -i -n monitoring -f values-logs.yaml --set-file alloy.configMap.content=config-logs.alloy
