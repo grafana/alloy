@@ -210,7 +210,7 @@ otelcol.processor.filter "default" {
 }
 ```
 
-Each `"` is [escaped][river-strings] with `\"` inside the {{< param "PRODUCT_NAME" >}} syntax string.
+Each `"` is [escaped][] with `\"` inside the {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Drop metrics based on either of two criteria
 
@@ -238,7 +238,7 @@ otelcol.processor.filter "default" {
 ```
 
 
-Some values in the {{< param "PRODUCT_NAME" >}} syntax string are [escaped][river-strings]:
+Some values in the {{< param "PRODUCT_NAME" >}} syntax string are [escaped][]:
 * `\` is escaped with `\\`
 * `"` is escaped with `\"`
 
@@ -269,14 +269,14 @@ otelcol.processor.filter "default" {
 }
 ```
 
-Each `"` is [escaped][river-strings] with `\"` inside the {{< param "PRODUCT_NAME" >}} syntax string.
+Each `"` is [escaped][] with `\"` inside the {{< param "PRODUCT_NAME" >}} syntax string.
 
 
-Some values in the {{< param "PRODUCT_NAME" >}} syntax strings are [escaped][river-strings]:
+Some values in the {{< param "PRODUCT_NAME" >}} syntax strings are [escaped][]:
 * `\` is escaped with `\\`
 * `"` is escaped with `\"`
 
-[river-strings]: ../../../concepts/config-language/expressions/types_and_values/#strings
+[escaped]: ../../../concepts/configuration-syntax/expressions/types_and_values/#strings
 
 
 [OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.85.0/pkg/ottl/README.md

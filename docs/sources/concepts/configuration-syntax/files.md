@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/config-language/files/
+canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/files/
 description: Learn about {{< param "PRODUCT_NAME" >}} configuration files
 title: Files
 weight: 100

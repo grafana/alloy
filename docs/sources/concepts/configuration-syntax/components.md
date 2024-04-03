@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/config-language/components/
+canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/components/
 description: Learn about the components configuration language
 title: Components configuration language
 weight: 300
