@@ -27,7 +27,7 @@ alloy convert [<FLAG> ...] <FILE_NAME>
    * _`<FLAG>`_: One or more flags that define the input and output of the command.
    * _`<FILE_NAME>`_: The {{< param "PRODUCT_NAME" >}} configuration file.
 
-If the `FILE_NAME` argument isn't provided or if the `FILE_NAME` argument is equal to `-`, `convert` converts the contents of standard input.
+If the _`<FILE_NAME>`_ argument isn't provided or if the _`<FILE_NAME>`_ argument is equal to `-`, `convert` converts the contents of standard input.
 Otherwise, `convert` reads and converts the file from disk specified by the argument.
 
 There are several different flags available for the `convert` command. You can use the `--output` flag to write the contents of the converted configuration to a specified path.
