@@ -31,7 +31,7 @@ You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
       create: false
     ```
 
-    This configuration deploys {{< param "PRODUCT_NAME" >}} as a `StatefulSet` using the built-in [clustering][] functionality to allow distributing scrapes across all {{< param "PRODUCT_NAME" >}} Pods.
+    This configuration deploys {{< param "PRODUCT_NAME" >}} as a `StatefulSet` using the built-in [clustering][] functionality to allow distributing scrapes across all {{< param "PRODUCT_NAME" >}} pods.
 
     This is one of many deployment possible modes. For example, you may want to use a `DaemonSet` to collect host-level logs or metrics.
     See the {{< param "PRODUCT_NAME" >}} [deployment guide][] for more details about different topologies.
@@ -142,10 +142,10 @@ alloy:
     varlog: true
 ```
 
-This command installs a release named `grafana-agent-logs` in the `monitoring` namespace:
+This command installs a release named `alloy-logs` in the `monitoring` namespace:
 
 ```
-helm upgrade grafana-agent-logs grafana/grafana-agent -i -n monitoring -f values-logs.yaml --set-file agent.configMap.content=agent-logs.alloy
+helm upgrade alloy-logs grafana/alloy -i -n monitoring -f values-logs.yaml --set-file alloy.configMap.content=config-logs.alloy
 ```
 
 This simple configuration scrapes logs for every Pod on each node:
@@ -268,7 +268,7 @@ The logging subsystem is very powerful and has many options for processing logs.
 ## Integrations
 
 The `Integration` CRD isn't supported with {{< param "PRODUCT_NAME" >}}.
-However, all Grafana Agent Static integrations have an equivalent component in the [`prometheus.exporter`][prometheus.exporter] namespace.
+However, all Grafana Agent Static mode integrations have an equivalent component in the [`prometheus.exporter`][prometheus.exporter] namespace.
 The [reference documentation][component documentation] should help convert those integrations to their {{< param "PRODUCT_NAME" >}} equivalent.
 
 <!-- ToDo: Validate path -->

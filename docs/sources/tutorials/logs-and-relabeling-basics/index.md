@@ -7,19 +7,25 @@ weight: 30
 
 # Logs and relabeling basics
 
-This tutorial assumes you have completed the [First components and introducing the standard library][] tutorial, or are at least familiar with the concepts of components, attributes, and expressions and how to use them.
-You will cover some basic metric relabeling, followed by how to send logs to Loki.
+This tutorial covers some basic metric relabeling, and shows you how to send logs to Loki.
+
+## Prerequisites
+
+Complete the [First components and the standard library][first] tutorial.
 
 ## Relabel metrics
 
-**Recommended reading**
+Now that you have built a basic pipeline and scraped some metrics, you can use the `prometheus.relabel` component to relabel metrics.
+
+### Recommended reading
 
 - Optional: [prometheus.relabel][]
 
-Before moving on to logs, let's look at how we can use the `prometheus.relabel` component to relabel metrics.
+### Add a `prometheus.relabel` component to your pipeline
+
 The `prometheus.relabel` component allows you to perform Prometheus relabeling on metrics and is similar to the `relabel_configs` section of a Prometheus scrape configuration.
 
-Let's add a `prometheus.relabel` component to a basic pipeline and see how to add labels.
+Add a `prometheus.relabel` component to a basic pipeline and add labels.
 
 ```alloy
 prometheus.exporter.unix "localhost" { }
@@ -52,7 +58,7 @@ prometheus.remote_write "local_prom" {
 }
 ```
 
-We have now created the following pipeline:
+You have created the following pipeline:
 
 ![Diagram of pipeline that scrapes prometheus.exporter.unix, relabels the metrics, and remote_writes them](/media/docs/agent/diagram-flow-by-example-relabel-0.svg)
 
@@ -82,16 +88,20 @@ If you would like to keep or act on these kinds of labels, use a [discovery.rela
 
 ## Send logs to Loki
 
-**Recommended reading**
+Now that you've created components and chained them together, you can collect some logs and send them to Loki.
+
+### Recommended reading
 
 - Optional: [local.file_match][]
 - Optional: [loki.source.file][]
 - Optional: [loki.write][]
 
-Now that you're comfortable creating components and chaining them together, let's collect some logs and send them to Loki.
-We will use the `local.file_match` component to perform file discovery, the `loki.source.file` to collect the logs, and the `loki.write` component to send the logs to Loki.
+### Find and collect the logs
 
-Before doing this, make sure you have a log file to scrape. You can use the `echo` command to create a file with some log content.
+You can use the `local.file_match` component to perform file discovery, the `loki.source.file` to collect the logs, and the `loki.write` component to send the logs to Loki.
+
+Before doing this, make sure you have a log file to scrape.
+You can use the `echo` command to create a file with some log content.
 
 ```bash
 mkdir -p /tmp/alloy-logs
@@ -137,15 +147,17 @@ If you delete this file, {{< param "PRODUCT_NAME" >}} starts reading from the be
 
 ## Exercise
 
-**Recommended reading**
+The following exercise guides you through adding a label to the logs, and filtering the results.
+
+### Recommended reading
 
 - [loki.relabel][]
 - [loki.process][]
 
 ### Add a Label to Logs
 
-This exercise will have two parts, building on the previous example.
-Let's start by adding an `os` label (just like the Prometheus example) to all of the logs we collect.
+This exercise has two parts, and builds on the previous example.
+Start by adding an `os` label (just like the Prometheus example) to all of the logs we collect.
 
 Modify the following snippet to add the label `os` with the value of the `os` constant.
 
@@ -166,14 +178,14 @@ loki.write "local_loki" {
 }
 ```
 
-{{< admonition type="note" >}}
+{{< admonition type="tip" >}}
 You can use the [loki.relabel][] component to relabel and add labels, just like you can with the [prometheus.relabel][] component.
 
 [loki.relabel]: ../../reference/components/loki.relabel
 [prometheus.relabel]: ../../reference/components/prometheus.relabel
 {{< /admonition >}}
 
-Once you have your completed configuration, run {{< param "PRODUCT_NAME" >}} and execute the following:
+Run {{< param "PRODUCT_NAME" >}} and execute the following:
 
 ```bash
 echo 'level=info msg="INFO: This is an info level log!"' >> /tmp/alloy-logs/log.log
@@ -182,9 +194,9 @@ echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/lo
 ```
 
 Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`.
-Try querying for `{filename="/tmp/alloy-logs/log.log"}` and see if you can find the new label!
+Try querying for `{filename="/tmp/alloy-logs/log.log"}` and see if you can find the new label.
 
-Now that we have added new labels, we can also filter on them. Try querying for `{os!=""}`.
+Now that you have added new labels, you can also filter on them. Try querying for `{os!=""}`.
 You should only see the lines you added in the previous step.
 
 {{< collapse title="Solution" >}}
@@ -223,23 +235,23 @@ loki.write "local_loki" {
 
 {{< admonition type="note" >}}
 This exercise is more challenging than the previous one.
-If you are having trouble, skip it and move to the next section, which will cover some of the concepts used here.
+If you are having trouble, skip it and move to the next section, which covers some of the concepts used here.
 You can always come back to this exercise later.
 {{< /admonition >}}
 
-This exercise will build on the previous one, though it's more involved.
+This exercise builds on the previous one, though it's more involved.
 
-Let's say we want to extract the `level` from the logs and add it as a label. As a starting point, look at [loki.process][].
+Assume you want to extract the `level` from the logs and add it as a label. As a starting point, look at [loki.process][].
 This component allows you to perform processing on logs, including extracting values from log contents.
 
 Try modifying your configuration from the previous section to extract the `level` from the logs and add it as a label.
 If needed, you can find a solution to the previous exercise at the end of the [previous section](#add-a-label-to-logs).
 
-{{< admonition type="note" >}}
+{{< admonition type="tip" >}}
 The `stage.logfmt` and `stage.labels` blocks for `loki.process` may be helpful.
 {{< /admonition >}}
 
-Once you have your completed configuration, run {{< param "PRODUCT_NAME" >}} and execute the following:
+Run {{< param "PRODUCT_NAME" >}} and execute the following:
 
 ```bash
 echo 'level=info msg="INFO: This is an info level log!"' >> /tmp/alloy-logs/log.log
@@ -247,7 +259,8 @@ echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/alloy-logs/log.l
 echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/log.log
 ```
 
-Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`. Try querying for `{level!=""}` to see the new labels in action.
+Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`.
+Try querying for `{level!=""}` to see the new labels in action.
 
 ![Grafana Explore view of example log lines, now with the extracted 'level' label](/media/docs/agent/screenshot-flow-by-example-log-line-levels.png)
 
@@ -307,10 +320,11 @@ loki.write "local_loki" {
 
 ## Finishing up and next steps
 
-You have learned the concepts of components, attributes, and expressions. You have also seen how to use some standard library components to collect metrics and logs.
-In the next tutorial, you will learn more about how to use the `loki.process` component to extract values from logs and use them.
+You have learned the concepts of components, attributes, and expressions.
+You have also seen how to use some standard library components to collect metrics and logs.
+In the next tutorial, you learn more about how to use the `loki.process` component to extract values from logs and use them.
 
-[First components and introducing the standard library]: ../first-components-and-stdlib/
+[first]: ../first-components-and-stdlib/
 [prometheus.relabel]: ../../reference/components/prometheus.relabel/
 [constants]: ../../reference/stdlib/constants/
 [localhost:3000/explore]: http://localhost:3000/explore

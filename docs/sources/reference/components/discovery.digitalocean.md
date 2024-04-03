@@ -46,7 +46,7 @@ Exactly one of the [`bearer_token`](#arguments) and [`bearer_token_file`](#argum
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
-The `discovery.digitalocean` component does not support any blocks, and is configured fully through arguments.
+The `discovery.digitalocean` component doesn't support any blocks, and is configured fully through arguments.
 
 
 ## Exported fields
@@ -83,11 +83,11 @@ values.
 
 ## Debug information
 
-`discovery.digitalocean` does not expose any component-specific debug information.
+`discovery.digitalocean` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`discovery.digitalocean` does not expose any component-specific debug metrics.
+`discovery.digitalocean` doesn't expose any component-specific debug metrics.
 
 ## Example
 
@@ -106,19 +106,19 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = <PROMETHEUS_REMOTE_WRITE_URL>
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = <USERNAME>
+      password = <PASSWORD>
     }
   }
 }
 ```
 Replace the following:
-  - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-  - `USERNAME`: The username to use for authentication to the remote_write API.
-  - `PASSWORD`: The password to use for authentication to the remote_write API.
+  - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+  - _`<USERNAME>`_: The username to use for authentication to the remote_write API.
+  - _`<PASSWORD>`_: The password to use for authentication to the remote_write API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
