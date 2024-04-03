@@ -191,7 +191,7 @@ This is to prevent infinite loops from forming in the pipeline.
 Let's start a container running Redis and configure {{< param "PRODUCT_NAME" >}} to scrape metrics from it.
 
 ```bash
-docker container run -d --name flow-redis -p 6379:6379 --rm redis
+docker container run -d --name alloy-redis -p 6379:6379 --rm redis
 ```
 
 Try modifying the pipeline to scrape metrics from the Redis exporter.
@@ -221,7 +221,7 @@ After the first scrape, you should be able to query for `redis` metrics as well 
 To shut down the Redis container, run:
 
 ```bash
-docker container stop flow-redis
+docker container stop alloy-redis
 ```
 
 If you get stuck, you can always view a solution here:

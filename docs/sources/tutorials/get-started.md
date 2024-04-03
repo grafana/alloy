@@ -11,7 +11,7 @@ This set of tutorials contains a collection of examples that build on each other
 
 ## What is {{% param "PRODUCT_NAME" %}}?
 
-{{< param "PRODUCT_NAME" >}} uses a declarative configuration language that allows you to define a pipeline of telemetry collection, processing, and output. It is built on top of the [{{< param "PRODUCT_NAME" >}} configuration syntax][configuration], which is designed to be fast, simple, and easy to debug.
+{{< param "PRODUCT_NAME" >}} uses a [configuration syntax][configuration] that allows you to define a pipeline of telemetry collection, processing, and output.
 
 ## What do I need to get started?
 
