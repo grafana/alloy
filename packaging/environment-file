@@ -7,7 +7,7 @@
 # Command line options for Alloy.
 #
 # The configuration file holding the Alloy config.
-CONFIG_FILE="/etc/alloy.alloy"
+CONFIG_FILE="/etc/alloy/config.alloy"
 
 # User-defined arguments to pass to the run command.
 CUSTOM_ARGS=""

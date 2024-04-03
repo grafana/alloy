@@ -124,12 +124,12 @@ define generate_alloy_fpm =
 		-t $(1) \
 		--after-install packaging/$(1)/control/postinst \
 		--before-remove packaging/$(1)/control/prerm \
-		--config-files /etc/alloy.alloy \
+		--config-files /etc/alloy/config.alloy \
 		--config-files $(ALLOY_ENVIRONMENT_FILE_$(1)) \
 		--rpm-rpmbuild-define "_build_id_links none" \
 		--package $(4) \
 			dist/alloy-linux-$(3)=/usr/bin/alloy \
-			packaging/alloy.alloy=/etc/alloy.alloy \
+			packaging/config.alloy=/etc/alloy/config.alloy \
 			packaging/environment-file=$(ALLOY_ENVIRONMENT_FILE_$(1)) \
 			packaging/$(1)/alloy.service=/usr/lib/systemd/system/alloy.service
 endef

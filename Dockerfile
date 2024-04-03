@@ -54,6 +54,10 @@ RUN useradd -m -u $UID -g $UID $USERNAME
 RUN chown -R $USERNAME:$USERNAME /etc/alloy
 RUN chown -R $USERNAME:$USERNAME /bin/alloy
 
+RUN mkdir -p /var/lib/alloy/data
+RUN chown -R $USERNAME:$USERNAME /var/lib/alloy
+RUN chmod -R 770 /var/lib/alloy
+
 ENTRYPOINT ["/bin/alloy"]
 ENV ALLOY_DEPLOY_MODE=docker
-CMD ["run", "/etc/alloy/config.alloy", "--storage.path=/etc/alloy/data"]
+CMD ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data"]

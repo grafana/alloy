@@ -140,8 +140,12 @@ test:
 	$(GO_ENV) find . -name go.mod -not -path "./go.mod" -execdir go test -race ./... \;
 
 test-packages:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
 	docker pull $(BUILD_IMAGE)
 	go test -tags=packaging  ./internal/tools/packaging_test
+endif
 
 .PHONY: integration-test
 integration-test:
