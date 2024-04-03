@@ -11,7 +11,7 @@ Environment=HOSTNAME=%H
 Environment=ALLOY_DEPLOY_MODE=rpm
 EnvironmentFile=/etc/sysconfig/alloy
 WorkingDirectory=/var/lib/alloy
-ExecStart=/usr/bin/alloy run $CUSTOM_ARGS --storage.path=/var/lib/alloy $CONFIG_FILE
+ExecStart=/usr/bin/alloy run $CUSTOM_ARGS --storage.path=/var/lib/alloy/data $CONFIG_FILE
 ExecReload=/usr/bin/env kill -HUP $MAINPID
 TimeoutStopSec=20s
 SendSIGKILL=no
