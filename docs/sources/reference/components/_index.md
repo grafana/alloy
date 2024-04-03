@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/
-description: Learn about the components in Grafana Agent Flow
+description: Learn about the components in Grafana Alloy
 title: Components reference
 weight: 300
 ---
