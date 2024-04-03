@@ -11,7 +11,7 @@ weight: 350
 This topic describes how to perform a live migration from Grafana Agent Flow to {{< param "FULL_PRODUCT_NAME" >}} with minimal downtime.
 
 {{< admonition type="note" >}}
-This procedure is only required for live migrations with minimal downtime and transferring an existing iGrafana Agent Flow install to {{< param "PRODUCT_NAME" >}}.
+This procedure is only required for live migrations with minimal downtime and transferring an existing Grafana Agent Flow install to {{< param "PRODUCT_NAME" >}}.
 
 If you want a fresh start with {{< param "PRODUCT_NAME" >}}, you can [uninstall Grafana Agent Flow][uninstall] and [install {{< param "PRODUCT_NAME" >}}][install].
 
