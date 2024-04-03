@@ -50,7 +50,7 @@ An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
 The default log level is `info` and the default log format is `logfmt`.
     {{< /admonition >}}
 
-    Try pasting this into `config.alloy` and running `/path/to/alloy run config.alloy` to see what happens.
+    Try pasting this into `config.alloy` and running `<BINARY_FILE_PATH> run config.alloy` to see what happens. Replace _`<BINARY_FILE_PATH>`_ with the path to the {{< param "PRODUCT_NAME" >}} binary.
 
     Congratulations, you've just written your first {{< param "PRODUCT_NAME" >}} configuration file.
     This configuration won't do anything, so let's add some components to it.
@@ -150,8 +150,12 @@ prometheus.remote_write "local_prom" {
 Run {{< param "PRODUCT_NAME" >}} with:
 
 ```bash
-/path/to/alloy run config.alloy
+<BINARY_FILE_PATH> run config.alloy
 ```
+
+Replace the following:
+
+* _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
 Navigate to [http://localhost:3000/explore][] in your browser.
 After ~15-20 seconds, you should be able to see the metrics from the `prometheus.exporter.unix` component.
@@ -212,8 +216,12 @@ You may find the [concat][] standard library function useful.
 You can run {{< param "PRODUCT_NAME" >}} with the new configuration file by running:
 
 ```bash
-/path/to/alloy run config.alloy
+<BINARY_FILE_PATH> run config.alloy
 ```
+
+Replace the following:
+
+* _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
 Navigate to [http://localhost:3000/explore][] in your browser.
 After the first scrape, you should be able to query for `redis` metrics as well as `node` metrics.
@@ -272,7 +280,7 @@ You might have noticed that running {{< param "PRODUCT_NAME" >}} with the config
 This directory is where components can store data, such as the `prometheus.exporter.unix` component storing its WAL (Write Ahead Log).
 If you look in the directory, do you notice anything interesting? The directory for each component is the fully qualified name.
 
-If you'd like to store the data elsewhere, you can specify a different directory by supplying the `--storage.path` flag to {{< param "PRODUCT_NAME" >}}'s run command, for example, `/path/to/alloy run config.alloy --storage.path /etc/alloy`.
+If you'd like to store the data elsewhere, you can specify a different directory by supplying the `--storage.path` flag to {{< param "PRODUCT_NAME" >}}'s run command, for example, `<BINARY_FILE_PATH> run config.alloy --storage.path /etc/alloy`. Replace _`<BINARY_FILE_PATH>`_ with the path to the {{< param "PRODUCT_NAME" >}} binary.
 Generally, you can use a persistent directory for this, as some components may use the data stored in this directory to perform their function.
 
 In the next tutorial, you will look at how to configure {{< param "PRODUCT_NAME" >}} to collect logs from a file and send them to Loki.
