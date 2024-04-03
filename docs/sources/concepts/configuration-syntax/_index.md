@@ -43,8 +43,7 @@ BLOCK_NAME {
 * _Simple_: The configuration language must be easy to read and write to minimize the learning curve.
 * _Debuggable_: The configuration language must give detailed information when there's a mistake in the configuration file.
 
-The {{< param "PRODUCT_NAME" >}} configuration syntax is similar to HCL, the language Terraform and other Hashicorp projects use.
-It's a distinct language with custom syntax and features, such as first-class functions.
+The {{< param "PRODUCT_NAME" >}} configuration syntax is a distinct language with custom syntax and features, such as first-class functions.
 
 * Blocks are a group of related settings and usually represent creating a component.
   Blocks have a name that consists of zero or more identifiers separated by `.`, an optional user label, and a body containing attributes and nested blocks.

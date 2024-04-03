@@ -16,7 +16,6 @@ It introduces a basic pipeline that collects metrics from the host and sends the
 
 - [{{< param "PRODUCT_NAME" >}} configuration syntax][Configuration syntax]
 
-The [{{< param "PRODUCT_NAME" >}} configuration syntax][Configuration syntax] is an HCL-inspired configuration language used to configure {{< param "PRODUCT_NAME" >}}.
 An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
 
 1. **Attributes**
