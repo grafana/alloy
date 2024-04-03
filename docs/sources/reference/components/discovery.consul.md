@@ -153,19 +153,19 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = <PROMETHEUS_REMOTE_WRITE_URL>
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = <USERNAME>
+      password = <PASSWORD>
     }
   }
 }
 ```
 Replace the following:
-  - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-  - `USERNAME`: The username to use for authentication to the remote_write API.
-  - `PASSWORD`: The password to use for authentication to the remote_write API.
+  - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+  - _`<USERNAME>`_: The username to use for authentication to the remote_write API.
+  - _`<PASSWORD>`_: The password to use for authentication to the remote_write API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
