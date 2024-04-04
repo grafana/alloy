@@ -101,9 +101,7 @@ loki.write "default" {
 ```
 
 To use Loki with basic-auth, which is required with Grafana Cloud Loki, you must configure the [loki.write][] component.
-You can get the Loki configuration from the Loki **Details** page in the [Grafana Cloud Portal][]:
-
-![](/media/docs/agent/loki-config.png)
+You can get the Loki configuration from the Loki **Details** page in the [Grafana Cloud Portal][].
 
 ```alloy
 otelcol.exporter.loki "grafana_cloud_loki" {
@@ -136,9 +134,7 @@ otelcol.exporter.otlp "default" {
 ```
 
 To use Tempo with basic-auth, which is required with Grafana Cloud Tempo, you must use the [otelcol.auth.basic][] component.
-You can get the Tempo configuration from the Tempo **Details** page in the [Grafana Cloud Portal][]:
-
-![](/media/docs/agent/tempo-config.png)
+You can get the Tempo configuration from the Tempo **Details** page in the [Grafana Cloud Portal][].
 
 ```alloy
 otelcol.exporter.otlp "grafana_cloud_tempo" {
@@ -173,9 +169,7 @@ prometheus.remote_write "default" {
 ```
 
 To use Prometheus with basic-auth, which is required with Grafana Cloud Prometheus, you must configure the [prometheus.remote_write][] component.
-You can get the Prometheus configuration from the Prometheus **Details** page in the [Grafana Cloud Portal][]:
-
-![](/media/docs/agent/prometheus-config.png)
+You can get the Prometheus configuration from the Prometheus **Details** page in the [Grafana Cloud Portal][].
 
 ```alloy
 otelcol.exporter.prometheus "grafana_cloud_prometheus" {
@@ -301,7 +295,7 @@ ts=2023-05-09T09:37:15.304234Z component=otelcol.receiver.otlp.default level=inf
 
 You can check the pipeline graphically by visiting [http://localhost:12345/graph][]
 
-![](/media/docs/agent/otlp-lgtm-graph.png)
+{{< figure src="/media/docs/alloy/otlp-lgtm-graph.png" alt="Graphical representation of a healthy pipeline" >}}
 
 [OpenTelemetry]: https://opentelemetry.io
 [Grafana Loki]: https://grafana.com/oss/loki/

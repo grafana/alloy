@@ -27,7 +27,7 @@ It can be useful for receiving logs from other {{< param "PRODUCT_NAME" >}}s or 
 
 Your pipeline is going to look like this:
 
-![Loki Source API Pipeline](/media/docs/agent/diagram-flow-by-example-logs-pipeline.svg)
+{{< figure src="/media/docs/alloy/example-logs-pipeline-alloy.png" alt="An example logs pipeline" >}}
 
 Start by setting up the `loki.source.api` component:
 

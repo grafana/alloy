@@ -62,7 +62,7 @@ An example pipeline may look like this:
 1. A `discovery.kubernetes` component discovers and exports Kubernetes Pods where metrics can be collected.
 1. A `prometheus.scrape` component references the exports of the previous component, and sends collected metrics to the `prometheus.remote_write` component.
 
-![Flow of example pipeline](/media/docs/agent/concepts_example_pipeline.svg)
+{{< figure src="/media/docs/alloy/diagram-concepts-example-pipeline.png" width="600" alt="Example of a pipeline" >}}
 
 The following configuration file represents the pipeline.
 
