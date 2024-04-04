@@ -124,9 +124,9 @@ func (oc OtlpConfig) Convert() otlpexporter.Config {
 		TimeoutSettings: exporterhelper.TimeoutSettings{
 			Timeout: oc.Timeout,
 		},
-		QueueSettings:      *oc.Queue.Convert(),
-		RetrySettings:      *oc.Retry.Convert(),
-		GRPCClientSettings: *oc.Client.Convert(),
+		QueueConfig:  *oc.Queue.Convert(),
+		RetryConfig:  *oc.Retry.Convert(),
+		ClientConfig: *oc.Client.Convert(),
 	}
 }
 
@@ -260,7 +260,7 @@ type GRPCClientArguments struct {
 var _ syntax.Defaulter = &GRPCClientArguments{}
 
 // Convert converts args into the upstream type.
-func (args *GRPCClientArguments) Convert() *otelconfiggrpc.GRPCClientSettings {
+func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 	if args == nil {
 		return nil
 	}
@@ -281,7 +281,7 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.GRPCClientSettings {
 		balancerName = otelcol.DefaultBalancerName
 	}
 
-	return &otelconfiggrpc.GRPCClientSettings{
+	return &otelconfiggrpc.ClientConfig{
 		Compression: args.Compression.Convert(),
 
 		TLSSetting: *args.TLS.Convert(),

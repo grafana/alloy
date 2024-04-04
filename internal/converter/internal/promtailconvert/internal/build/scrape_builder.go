@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
 	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/grafana/alloy/syntax/token/builder"
+	"github.com/grafana/loki/clients/pkg/promtail/positions"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/clients/pkg/promtail/targets/file"
 	"github.com/prometheus/common/model"
@@ -42,7 +43,6 @@ func NewScrapeConfigBuilder(
 	diags *diag.Diagnostics,
 	cfg *scrapeconfig.Config,
 	globalCtx *GlobalContext,
-
 ) *ScrapeConfigBuilder {
 
 	return &ScrapeConfigBuilder{
@@ -61,7 +61,7 @@ func (s *ScrapeConfigBuilder) Sanitize() {
 	}
 }
 
-func (s *ScrapeConfigBuilder) AppendLokiSourceFile(watchConfig *file.WatchConfig) {
+func (s *ScrapeConfigBuilder) AppendLokiSourceFile(watchConfig *file.WatchConfig, positionsCfg *positions.Config) {
 	// If there were no targets expressions collected, that means
 	// we didn't have any components that produced SD targets, so
 	// we can skip this component.
@@ -76,6 +76,7 @@ func (s *ScrapeConfigBuilder) AppendLokiSourceFile(watchConfig *file.WatchConfig
 		Encoding:            s.cfg.Encoding,
 		DecompressionConfig: convertDecompressionConfig(s.cfg.DecompressionCfg),
 		FileWatch:           convertFileWatchConfig(watchConfig),
+		LegacyPositionsFile: positionsCfg.PositionsFile,
 	}
 	overrideHook := func(val interface{}) interface{} {
 		if _, ok := val.([]discovery.Target); ok {

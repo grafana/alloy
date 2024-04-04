@@ -22,7 +22,7 @@ type Arguments struct {
 }
 
 var DefaultArguments = Arguments{
-	SyncInterval:         30 * time.Second,
+	SyncInterval:         5 * time.Minute,
 	MimirNameSpacePrefix: "alloy",
 	HTTPClientConfig:     config.DefaultHTTPClientConfig,
 	PrometheusHTTPPrefix: "/prometheus",

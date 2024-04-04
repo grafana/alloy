@@ -39,6 +39,7 @@ otelcol.exporter.otlp "default_withauth" {
 
 otelcol.exporter.otlphttp "default_noauth" {
 	client {
-		endpoint = "database:4318"
+		endpoint           = "database:4318"
+		http2_ping_timeout = "0s"
 	}
 }

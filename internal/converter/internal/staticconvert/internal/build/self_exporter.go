@@ -8,19 +8,19 @@ import (
 )
 
 func (b *ConfigBuilder) appendAgentExporter(config *agent_exporter.Config) discovery.Exports {
-	args := toAgentExporter(config)
+	args := toAgentExporter()
 	return b.appendExporterBlock(args, config.Name(), nil, "self")
 }
 
-func toAgentExporter(config *agent_exporter.Config) *self.Arguments {
+func toAgentExporter() *self.Arguments {
 	return &self.Arguments{}
 }
 
 func (b *ConfigBuilder) appendAgentExporterV2(config *agent_exporter_v2.Config) discovery.Exports {
-	args := toAgentExporterV2(config)
+	args := toAgentExporterV2()
 	return b.appendExporterBlock(args, config.Name(), config.Common.InstanceKey, "self")
 }
 
-func toAgentExporterV2(config *agent_exporter_v2.Config) *self.Arguments {
+func toAgentExporterV2() *self.Arguments {
 	return &self.Arguments{}
 }

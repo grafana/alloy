@@ -79,6 +79,7 @@ loki.source.file "example" {
 		initial_delay = "30s"
 		format        = "z"
 	}
+	legacy_positions_file = "/var/log/positions.yaml"
 }
 
 loki.write "default" {

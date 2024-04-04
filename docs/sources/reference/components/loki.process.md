@@ -53,6 +53,7 @@ The following blocks are supported inside the definition of `loki.process`:
 | stage.labels              | [stage.labels][]              | Configures a `labels` processing stage.                        | no       |
 | stage.limit               | [stage.limit][]               | Configures a `limit` processing stage.                         | no       |
 | stage.logfmt              | [stage.logfmt][]              | Configures a `logfmt` processing stage.                        | no       |
+| stage.luhn                | [stage.luhn][]                | Configures a `luhn` processing stage.                          | no       |
 | stage.match               | [stage.match][]               | Configures a `match` processing stage.                         | no       |
 | stage.metrics             | [stage.metrics][]             | Configures a `metrics` stage.                                  | no       |
 | stage.multiline           | [stage.multiline][]           | Configures a `multiline` processing stage.                     | no       |
@@ -81,6 +82,7 @@ A user can provide any number of these stage blocks nested inside `loki.process`
 [stage.labels]: #stagelabels-block
 [stage.limit]: #stagelimit-block
 [stage.logfmt]: #stagelogfmt-block
+[stage.luhn]: #stageluhn-block
 [stage.match]: #stagematch-block
 [stage.metrics]: #stagemetrics-block
 [stage.multiline]: #stagemultiline-block
@@ -342,8 +344,8 @@ If you don't use quotes to wrap a string that contains a hyphen, you will get er
 
 You can use one of two options to circumvent this issue:
 
-1. An escaped double quote. For example: `http_user_alloy = "\"request_User-Alloy\""`
-1. A backtick quote. For example: ``http_user_alloy = `"request_User-Alloy"` ``
+1. An escaped double quote. For example: `http_user_agent = "\"request_User-Agent\""`
+1. A backtick quote. For example: ``http_user_agent = `"request_User-Agent"` ``
 {{< /admonition >}}
 
 ### stage.label_drop block
@@ -502,6 +504,47 @@ stage.logfmt {
 The first stage parses the log line itself and inserts the `extra` key in the set of extracted data, with the value of `user=foo`.
 
 The second stage parses the contents of `extra` and appends the `username: foo` key-value pair to the set of extracted data.
+
+### stage.luhn block
+
+The `stage.luhn` inner block configures a processing stage that reads incoming
+log lines and redacts strings that match a Luhn algorithm.
+
+The [Luhn algorithm][] is a simple checksum formula used to validate various
+identification numbers, such as credit card numbers, IMEI numbers, National
+Provider Identifier numbers in the US, and Canadian Social Insurance Numbers.
+Many Payment Card Industry environments require these numbers to be redacted.
+
+[Luhn algorithm]: https://en.wikipedia.org/wiki/Luhn_algorithm
+
+The following arguments are supported:
+
+| Name          | Type          | Description                                    | Default          | Required |
+| ------------- | ------------- | ---------------------------------------------- | ---------------- | -------- |
+| `replacement` | `string`      | String to substitute the matched patterns with | `"**REDACTED**"` | no      |
+| `source`      | `string`      | Source of the data to parse.                   | `""`             | no       |
+| `minLength`   | `int`         | Minimum length of digits to consider           | `13`             | no       |
+
+
+The `source` field defines the source of data to search. When `source` is
+missing or empty, the stage parses the log line itself, but it can also be used
+to parse a previously extracted value.
+
+The following example log line contains an approved credit card number.
+
+```
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4032032513548443" extra="user=foo"
+
+stage.luhn {
+    replacement = "**DELETED**"
+}
+```
+
+The stage parses the log line, redacts the credit card number, and produces the following updated log line:
+
+```
+time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit card approved **DELETED**" extra="user=foo"
+```
 
 ### stage.match block
 
@@ -1479,35 +1522,35 @@ The following arguments are supported:
 {"log":"log message","client_ip":"34.120.177.193"}
 
 loki.process "example" {
-	stage.json {
-		expressions = {ip = "client_ip"}
-	}
+    stage.json {
+        expressions = {ip = "client_ip"}
+    }
 
-	stage.geoip {
-		source  = "ip"
-		db      = "/path/to/db/GeoLite2-City.mmdb"
-		db_type = "city"
-	}
+    stage.geoip {
+        source  = "ip"
+        db      = "/path/to/db/GeoLite2-City.mmdb"
+        db_type = "city"
+    }
 
-	stage.labels {
-		values = {
-			geoip_city_name          = "",
-			geoip_country_name       = "",
-			geoip_country_code       = "",
-			geoip_continent_name     = "",
-			geoip_continent_code     = "",
-			geoip_location_latitude  = "",
-			geoip_location_longitude = "",
-			geoip_postal_code        = "",
-			geoip_timezone           = "",
-			geoip_subdivision_name   = "",
-			geoip_subdivision_code   = "",
-		}
-	}
+    stage.labels {
+        values = {
+            geoip_city_name          = "",
+            geoip_country_name       = "",
+            geoip_country_code       = "",
+            geoip_continent_name     = "",
+            geoip_continent_code     = "",
+            geoip_location_latitude  = "",
+            geoip_location_longitude = "",
+            geoip_postal_code        = "",
+            geoip_timezone           = "",
+            geoip_subdivision_name   = "",
+            geoip_subdivision_code   = "",
+        }
+    }
 }
 ```
 
-The `json` stage extracts the IP address from the `client_ip` key in the log line. 
+The `json` stage extracts the IP address from the `client_ip` key in the log line.
 Then the extracted `ip` value is given as source to geoip stage. The geoip stage performs a lookup on the IP and populates the following fields in the shared map which are added as labels using the `labels` stage.
 
 The extracted data from the IP used in this example:
@@ -1528,26 +1571,26 @@ The extracted data from the IP used in this example:
 
 ```
 loki.process "example" {
-	stage.json {
-		expressions = {ip = "client_ip"}
-	}
+    stage.json {
+        expressions = {ip = "client_ip"}
+    }
 
-	stage.geoip {
-		source  = "ip"
-		db      = "/path/to/db/GeoIP2-ASN.mmdb"
-		db_type = "asn"
-	}
+    stage.geoip {
+        source  = "ip"
+        db      = "/path/to/db/GeoIP2-ASN.mmdb"
+        db_type = "asn"
+    }
 
-	stage.labels {
-		values = {
-			geoip_autonomous_system_number       = "",
-			geoip_autonomous_system_organization = "",
-		}
-	}
+    stage.labels {
+        values = {
+            geoip_autonomous_system_number       = "",
+            geoip_autonomous_system_organization = "",
+        }
+    }
 }
 ```
 
-The `json` stage extracts the IP address from the `client_ip` key in the log line. 
+The `json` stage extracts the IP address from the `client_ip` key in the log line.
 Then the extracted `ip` value is given as source to geoip stage. The geoip stage performs a lookup on the IP and populates the shared map.
 
 The extracted data from the IP used in this example:
@@ -1561,28 +1604,28 @@ The extracted data from the IP used in this example:
 {"log":"log message","client_ip":"34.120.177.193"}
 
 loki.process "example" {
-	stage.json {
-		expressions = {ip = "client_ip"}
-	}
+    stage.json {
+        expressions = {ip = "client_ip"}
+    }
 
-	stage.geoip {
-		source  = "ip"
-		db      = "/path/to/db/GeoLite2-Country.mmdb"
-		db_type = "country"
-	}
+    stage.geoip {
+        source  = "ip"
+        db      = "/path/to/db/GeoLite2-Country.mmdb"
+        db_type = "country"
+    }
 
-	stage.labels {
-		values = {
-			geoip_country_name       = "",
-			geoip_country_code       = "",
-			geoip_continent_name     = "",
-			geoip_continent_code     = "",
-		}
-	}
+    stage.labels {
+        values = {
+            geoip_country_name       = "",
+            geoip_country_code       = "",
+            geoip_continent_name     = "",
+            geoip_continent_code     = "",
+        }
+    }
 }
 ```
 
-The `json` stage extracts the IP address from the `client_ip` key in the log line. 
+The `json` stage extracts the IP address from the `client_ip` key in the log line.
 Then the extracted `ip` value is given as source to geoip stage. The geoip stage performs a lookup on the IP and populates the following fields in the shared map which are added as labels using the `labels` stage.
 
 The extracted data from the IP used in this example:
@@ -1598,28 +1641,28 @@ If the MMDB file used is enriched with custom data, for example, private IP addr
 
 ```
 loki.process "example" {
-	stage.json {
-		expressions = {ip = "client_ip"}
-	}
+    stage.json {
+        expressions = {ip = "client_ip"}
+    }
 
-	stage.geoip {
-		source         = "ip"
-		db             = "/path/to/db/GeoIP2-Enriched.mmdb"
-		db_type        = "city"
-		custom_lookups = {
-			"department"  = "MyCompany.DeptName",
-			"parent_vnet" = "MyCompany.ParentVNet",
-			"subnet"      = "MyCompany.Subnet",
-		}
-	}
+    stage.geoip {
+        source         = "ip"
+        db             = "/path/to/db/GeoIP2-Enriched.mmdb"
+        db_type        = "city"
+        custom_lookups = {
+            "department"  = "MyCompany.DeptName",
+            "parent_vnet" = "MyCompany.ParentVNet",
+            "subnet"      = "MyCompany.Subnet",
+        }
+    }
 
-	stage.labels {
-		values = {
-			department  = "",
-			parent_vnet = "",
-			subnet      = "",
-		}
-	}
+    stage.labels {
+        values = {
+            department  = "",
+            parent_vnet = "",
+            subnet      = "",
+        }
+    }
 }
 ```
 The `json` stage extracts the IP address from the `client_ip` key in the log line.
@@ -1644,7 +1687,7 @@ The following fields are exported and can be referenced by other components:
 ## Debug metrics
 
 * `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
-* `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][]. 
+* `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
 
 ## Example
 

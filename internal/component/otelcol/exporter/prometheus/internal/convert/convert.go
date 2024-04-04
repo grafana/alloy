@@ -425,6 +425,7 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 	case m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityCumulative && !m.Sum().IsMonotonic():
 		convType = textparse.MetricTypeGauge
 	case m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityDelta && m.Sum().IsMonotonic():
+		level.Debug(conv.log).Log("msg", "dropped unsupported delta sum")
 		// Drop non-cumulative summaries for now, which is permitted by the spec.
 		//
 		// TODO(rfratto): implement delta-to-cumulative for sums.

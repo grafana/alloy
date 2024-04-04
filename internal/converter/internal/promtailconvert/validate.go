@@ -8,15 +8,6 @@ import (
 // validateTopLevelConfig validates the top-level config for any unsupported features. There may still be some
 // other unsupported features in scope of each config block, which are raised by their respective conversion code.
 func validateTopLevelConfig(cfg *promtailcfg.Config, diags *diag.Diagnostics) {
-	// The positions global config is not supported in Alloy.
-	if cfg.PositionsConfig != DefaultPositionsConfig() {
-		diags.Add(
-			diag.SeverityLevelInfo,
-			"global positions configuration is not supported in Alloy - each loki.source.file component "+
-				"has its own positions file in the component's data directory",
-		)
-	}
-
 	// WAL support is still work in progress and not documented. Enabling it won't work, so it's an error.
 	if cfg.WAL.Enabled {
 		diags.Add(

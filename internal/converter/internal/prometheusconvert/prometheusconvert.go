@@ -111,7 +111,7 @@ func AppendAllNested(f *builder.File, promConfig *prom_config.Config, jobNameToC
 	diags := validate(promConfig)
 	diags.AddAll(pb.GetScrapeInfo())
 
-	pb.AppendToFile(f)
+	pb.AppendToBody(f.Body())
 
 	return diags
 }

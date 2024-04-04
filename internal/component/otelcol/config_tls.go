@@ -54,15 +54,17 @@ func (args *TLSClientArguments) Convert() *otelconfigtls.TLSClientSetting {
 }
 
 type TLSSetting struct {
-	CA             string            `alloy:"ca_pem,attr,optional"`
-	CAFile         string            `alloy:"ca_file,attr,optional"`
-	Cert           string            `alloy:"cert_pem,attr,optional"`
-	CertFile       string            `alloy:"cert_file,attr,optional"`
-	Key            alloytypes.Secret `alloy:"key_pem,attr,optional"`
-	KeyFile        string            `alloy:"key_file,attr,optional"`
-	MinVersion     string            `alloy:"min_version,attr,optional"`
-	MaxVersion     string            `alloy:"max_version,attr,optional"`
-	ReloadInterval time.Duration     `alloy:"reload_interval,attr,optional"`
+	CA                       string            `alloy:"ca_pem,attr,optional"`
+	CAFile                   string            `alloy:"ca_file,attr,optional"`
+	Cert                     string            `alloy:"cert_pem,attr,optional"`
+	CertFile                 string            `alloy:"cert_file,attr,optional"`
+	Key                      alloytypes.Secret `alloy:"key_pem,attr,optional"`
+	KeyFile                  string            `alloy:"key_file,attr,optional"`
+	MinVersion               string            `alloy:"min_version,attr,optional"`
+	MaxVersion               string            `alloy:"max_version,attr,optional"`
+	ReloadInterval           time.Duration     `alloy:"reload_interval,attr,optional"`
+	CipherSuites             []string          `alloy:"cipher_suites,attr,optional"`
+	IncludeSystemCACertsPool bool              `alloy:"include_system_ca_certs_pool,attr,optional"`
 }
 
 func (args *TLSSetting) Convert() *otelconfigtls.TLSSetting {
@@ -71,15 +73,17 @@ func (args *TLSSetting) Convert() *otelconfigtls.TLSSetting {
 	}
 
 	return &otelconfigtls.TLSSetting{
-		CAPem:          configopaque.String(args.CA),
-		CAFile:         args.CAFile,
-		CertPem:        configopaque.String(args.Cert),
-		CertFile:       args.CertFile,
-		KeyPem:         configopaque.String(string(args.Key)),
-		KeyFile:        args.KeyFile,
-		MinVersion:     args.MinVersion,
-		MaxVersion:     args.MaxVersion,
-		ReloadInterval: args.ReloadInterval,
+		CAPem:                    configopaque.String(args.CA),
+		CAFile:                   args.CAFile,
+		CertPem:                  configopaque.String(args.Cert),
+		CertFile:                 args.CertFile,
+		KeyPem:                   configopaque.String(string(args.Key)),
+		KeyFile:                  args.KeyFile,
+		MinVersion:               args.MinVersion,
+		MaxVersion:               args.MaxVersion,
+		ReloadInterval:           args.ReloadInterval,
+		CipherSuites:             args.CipherSuites,
+		IncludeSystemCACertsPool: args.IncludeSystemCACertsPool,
 	}
 }
 

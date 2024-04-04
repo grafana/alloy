@@ -45,6 +45,7 @@ type Arguments struct {
 	DecompressionConfig DecompressionConfig `alloy:"decompression,block,optional"`
 	FileWatch           FileWatch           `alloy:"file_watch,block,optional"`
 	TailFromEnd         bool                `alloy:"tail_from_end,attr,optional"`
+	LegacyPositionsFile string              `alloy:"legacy_positions_file,attr,optional"`
 }
 
 type FileWatch struct {
@@ -70,9 +71,7 @@ type DecompressionConfig struct {
 	Format       CompressionFormat `alloy:"format,attr"`
 }
 
-var (
-	_ component.Component = (*Component)(nil)
-)
+var _ component.Component = (*Component)(nil)
 
 // Component implements the loki.source.file component.
 type Component struct {
@@ -95,9 +94,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
+	newPositionsPath := filepath.Join(o.DataPath, "positions.yml")
+	// Check to see if we can convert the legacy positions file to the new format.
+	if args.LegacyPositionsFile != "" {
+		positions.ConvertLegacyPositionsFile(args.LegacyPositionsFile, newPositionsPath, o.Logger)
+	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:        10 * time.Second,
-		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
+		PositionsFile:     newPositionsPath,
 		IgnoreInvalidYaml: false,
 		ReadOnly:          false,
 	})
@@ -197,7 +201,7 @@ func (c *Component) Update(args component.Arguments) error {
 	for _, target := range newArgs.Targets {
 		path := target[pathLabel]
 
-		var labels = make(model.LabelSet)
+		labels := make(model.LabelSet)
 		for k, v := range target {
 			if strings.HasPrefix(k, model.ReservedLabelPrefix) {
 				continue

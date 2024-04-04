@@ -37,18 +37,18 @@ func (ct *CompressionType) UnmarshalText(in []byte) error {
 	}
 }
 
-var compressionMappings = map[CompressionType]configcompression.CompressionType{
-	CompressionTypeGzip:    configcompression.Gzip,
-	CompressionTypeZlib:    configcompression.Zlib,
-	CompressionTypeDeflate: configcompression.Deflate,
-	CompressionTypeSnappy:  configcompression.Snappy,
-	CompressionTypeZstd:    configcompression.Zstd,
-	CompressionTypeNone:    configcompression.CompressionType("none"),
-	CompressionTypeEmpty:   configcompression.CompressionType(""),
+var compressionMappings = map[CompressionType]configcompression.Type{
+	CompressionTypeGzip:    configcompression.TypeGzip,
+	CompressionTypeZlib:    configcompression.TypeZlib,
+	CompressionTypeDeflate: configcompression.TypeDeflate,
+	CompressionTypeSnappy:  configcompression.TypeSnappy,
+	CompressionTypeZstd:    configcompression.TypeZstd,
+	CompressionTypeNone:    configcompression.Type("none"),
+	CompressionTypeEmpty:   configcompression.Type(""),
 }
 
 // Convert converts ct into the upstream type.
-func (ct CompressionType) Convert() configcompression.CompressionType {
+func (ct CompressionType) Convert() configcompression.Type {
 	upstream, ok := compressionMappings[ct]
 	if !ok {
 		// This line should never hit unless compressionMappings wasn't updated

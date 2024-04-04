@@ -25,7 +25,7 @@ func (transformProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.transform"
 }
 
-func (transformProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (transformProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -35,14 +35,14 @@ func (transformProcessorConverter) ConvertAndAppend(state *state, id component.I
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
 	return diags
 }
 
-func toTransformProcessor(state *state, id component.InstanceID, cfg *transformprocessor.Config) *transform.Arguments {
+func toTransformProcessor(state *State, id component.InstanceID, cfg *transformprocessor.Config) *transform.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)
@@ -55,9 +55,9 @@ func toTransformProcessor(state *state, id component.InstanceID, cfg *transformp
 		MetricStatements: toContextStatements(encodeMapslice(cfg.MetricStatements)),
 		LogStatements:    toContextStatements(encodeMapslice(cfg.LogStatements)),
 		Output: &otelcol.ConsumerArguments{
-			Metrics: toTokenizedConsumers(nextMetrics),
-			Logs:    toTokenizedConsumers(nextLogs),
-			Traces:  toTokenizedConsumers(nextTraces),
+			Metrics: ToTokenizedConsumers(nextMetrics),
+			Logs:    ToTokenizedConsumers(nextLogs),
+			Traces:  ToTokenizedConsumers(nextTraces),
 		},
 	}
 }

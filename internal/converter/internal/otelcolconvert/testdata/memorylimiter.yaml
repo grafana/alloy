@@ -10,6 +10,7 @@ exporters:
 
 processors:
   memory_limiter:
+    limit_percentage: 90
     check_interval: 1s
 
 

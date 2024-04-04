@@ -31,18 +31,28 @@ The component starts a new reader for each of the given `targets` and fans out l
 
 `loki.source.file` supports the following arguments:
 
-| Name            | Type                 | Description                                                                         | Default | Required |
-| --------------- | -------------------- | ----------------------------------------------------------------------------------- | ------- | -------- |
-| `targets`       | `list(map(string))`  | List of files to read from.                                                         |         | yes      |
-| `forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to.                                           |         | yes      |
-| `encoding`      | `string`             | The encoding to convert from when reading files.                                    | `""`    | no       |
-| `tail_from_end` | `bool`               | Whether a log file should be tailed from the end if a stored position is not found. | `false` | no       |
+| Name                    | Type                 | Description                                                                         | Default | Required |
+| ------------------------| -------------------- | ----------------------------------------------------------------------------------- | ------- | -------- |
+| `targets`               | `list(map(string))`  | List of files to read from.                                                         |         | yes      |
+| `forward_to`            | `list(LogsReceiver)` | List of receivers to send log entries to.                                           |         | yes      |
+| `encoding`              | `string`             | The encoding to convert from when reading files.                                    | `""`    | no       |
+| `tail_from_end`         | `bool`               | Whether a log file should be tailed from the end if a stored position is not found. | `false` | no       |
+| `legacy_positions_file` | `string`      | Allows conversion from legacy positions file.                                      | `""`    | no       |
 
 The `encoding` argument must be a valid [IANA encoding][] name. If not set, it
 defaults to UTF-8.
 
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
 When set to true, only new logs will be read, ignoring the existing ones.
+
+
+{{< admonition type="note" >}}
+The `legacy_positions_file` argument is used when you are transitioning from legacy. The legacy positions file will be rewritten into the new format.
+This operation will only occur if the new positions file does not exist and the `legacy_positions_file` is valid.
+Once converted successfully, the `legacy_positions_file` will be deleted.
+If you add any labels before `loki.source.file`, then the positions file will conversion will not work.
+The legacy positions file did not have a concept of labels in the positions file, so the conversion assumes no labels.
+{{< /admonition >}}
 
 ## Blocks
 

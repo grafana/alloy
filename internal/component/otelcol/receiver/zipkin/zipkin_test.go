@@ -69,10 +69,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		require.True(t, ok)
 
 		// Check the arguments
-		require.Equal(t, otelArgs.HTTPServerSettings.Endpoint, httpAddr)
-		require.Equal(t, len(otelArgs.HTTPServerSettings.CORS.AllowedOrigins), 2)
-		require.Equal(t, otelArgs.HTTPServerSettings.CORS.AllowedOrigins[0], "https://*.test.com")
-		require.Equal(t, otelArgs.HTTPServerSettings.CORS.AllowedOrigins[1], "https://test.com")
+		require.Equal(t, otelArgs.ServerConfig.Endpoint, httpAddr)
+		require.Equal(t, len(otelArgs.ServerConfig.CORS.AllowedOrigins), 2)
+		require.Equal(t, otelArgs.ServerConfig.CORS.AllowedOrigins[0], "https://*.test.com")
+		require.Equal(t, otelArgs.ServerConfig.CORS.AllowedOrigins[1], "https://test.com")
 		require.Equal(t, otelArgs.ParseStringTags, true)
 	})
 }

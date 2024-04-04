@@ -147,13 +147,12 @@ func newServer(addr string, callback func(ptrace.Traces)) (*server, error) {
 	}
 
 	svc, err := service.New(context.Background(), service.Settings{
-		Receivers:                receiver.NewBuilder(otelCfg.Receivers, factories.Receivers),
-		Processors:               processor.NewBuilder(otelCfg.Processors, factories.Processors),
-		Exporters:                otelexporter.NewBuilder(otelCfg.Exporters, factories.Exporters),
-		Connectors:               connector.NewBuilder(otelCfg.Connectors, factories.Connectors),
-		Extensions:               extension.NewBuilder(otelCfg.Extensions, factories.Extensions),
-		UseExternalMetricsServer: false,
-		TracerProvider:           noop.NewTracerProvider(),
+		Receivers:      receiver.NewBuilder(otelCfg.Receivers, factories.Receivers),
+		Processors:     processor.NewBuilder(otelCfg.Processors, factories.Processors),
+		Exporters:      otelexporter.NewBuilder(otelCfg.Exporters, factories.Exporters),
+		Connectors:     connector.NewBuilder(otelCfg.Connectors, factories.Connectors),
+		Extensions:     extension.NewBuilder(otelCfg.Extensions, factories.Extensions),
+		TracerProvider: noop.NewTracerProvider(),
 	}, otelCfg.Service)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Otel service: %w", err)

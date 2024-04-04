@@ -6,7 +6,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/otelcol/connector/servicegraph"
 	"github.com/grafana/alloy/syntax"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/servicegraphprocessor"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,7 +14,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string
-		expected servicegraphprocessor.Config
+		expected servicegraphconnector.Config
 		errorMsg string
 	}{
 		{
@@ -22,7 +22,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 				output {}
 			`,
-			expected: servicegraphprocessor.Config{
+			expected: servicegraphconnector.Config{
 				LatencyHistogramBuckets: []time.Duration{
 					2 * time.Millisecond,
 					4 * time.Millisecond,
@@ -42,7 +42,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					15 * time.Second,
 				},
 				Dimensions: []string{},
-				Store: servicegraphprocessor.StoreConfig{
+				Store: servicegraphconnector.StoreConfig{
 					MaxItems: 1000,
 					TTL:      2 * time.Second,
 				},
@@ -76,14 +76,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 					output {}
 				`,
-			expected: servicegraphprocessor.Config{
+			expected: servicegraphconnector.Config{
 				LatencyHistogramBuckets: []time.Duration{
 					2 * time.Millisecond,
 					4 * time.Second,
 					6 * time.Hour,
 				},
 				Dimensions: []string{"foo", "bar"},
-				Store: servicegraphprocessor.StoreConfig{
+				Store: servicegraphconnector.StoreConfig{
 					MaxItems: 333,
 					TTL:      12 * time.Hour,
 				},
@@ -148,7 +148,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			actualPtr, err := args.Convert()
 			require.NoError(t, err)
 
-			actual := actualPtr.(*servicegraphprocessor.Config)
+			actual := actualPtr.(*servicegraphconnector.Config)
 
 			require.Equal(t, tc.expected, *actual)
 		})

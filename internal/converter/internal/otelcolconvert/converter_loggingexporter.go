@@ -25,7 +25,7 @@ func (loggingExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.logging"
 }
 
-func (loggingExporterConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (loggingExporterConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -34,7 +34,7 @@ func (loggingExporterConverter) ConvertAndAppend(state *state, id component.Inst
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	diags.AddAll(common.ValidateSupported(common.NotEquals,

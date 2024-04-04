@@ -24,7 +24,7 @@ func (jaegerRemoteSamplingExtensionConverter) InputComponentName() string {
 	return "otelcol.extension.jaeger_remote_sampling"
 }
 
-func (jaegerRemoteSamplingExtensionConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (jaegerRemoteSamplingExtensionConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -34,7 +34,7 @@ func (jaegerRemoteSamplingExtensionConverter) ConvertAndAppend(state *state, id 
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
@@ -47,12 +47,12 @@ func toJaegerRemoteSamplingExtension(cfg *jaegerremotesampling.Config) *jaeger_r
 	}
 
 	var grpc *jaeger_remote_sampling.GRPCServerArguments
-	if cfg.GRPCServerSettings != nil {
-		grpc = (*jaeger_remote_sampling.GRPCServerArguments)(toGRPCServerArguments(cfg.GRPCServerSettings))
+	if cfg.GRPCServerConfig != nil {
+		grpc = (*jaeger_remote_sampling.GRPCServerArguments)(toGRPCServerArguments(cfg.GRPCServerConfig))
 	}
 	var http *jaeger_remote_sampling.HTTPServerArguments
-	if cfg.HTTPServerSettings != nil {
-		http = (*jaeger_remote_sampling.HTTPServerArguments)(toHTTPServerArguments(cfg.HTTPServerSettings))
+	if cfg.HTTPServerConfig != nil {
+		http = (*jaeger_remote_sampling.HTTPServerArguments)(toHTTPServerArguments(cfg.HTTPServerConfig))
 	}
 	var remote *jaeger_remote_sampling.GRPCClientArguments
 	if cfg.Source.Remote != nil {

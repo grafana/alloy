@@ -150,9 +150,7 @@ func (p *Connector) Update(args component.Arguments) error {
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
 
-			ReportComponentStatus: func(*otelcomponent.StatusEvent) error {
-				return nil
-			},
+			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{

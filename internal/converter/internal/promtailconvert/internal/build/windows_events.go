@@ -15,7 +15,7 @@ func (s *ScrapeConfigBuilder) AppendWindowsEventsConfig() {
 		Locale:               int(winCfg.Locale),
 		EventLogName:         winCfg.EventlogName,
 		XPathQuery:           winCfg.Query,
-		BookmarkPath:         winCfg.BookmarkPath,
+		LegacyBookmarkPath:   winCfg.BookmarkPath,
 		PollInterval:         winCfg.PollInterval,
 		ExcludeEventData:     winCfg.ExcludeEventData,
 		ExcludeUserdata:      winCfg.ExcludeUserData,

@@ -102,7 +102,7 @@ authorization       | [authorization][] | Configure generic authorization to tar
 oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to targets.                          | no
 oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to targets via OAuth2.             | no
 tls_config          | [tls_config][]    | Configure TLS settings for connecting to targets.                        | no
-clustering          | [clustering][]    | Configure the component for when the Agent is running in clustered mode. | no
+clustering          | [clustering][]    | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode.     | no
 
 The `>` symbol indicates deeper levels of nesting. For example,
 `oauth2 > tls_config` refers to a `tls_config` block defined inside

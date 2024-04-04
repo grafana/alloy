@@ -140,9 +140,7 @@ func (a *Auth) Update(args component.Arguments) error {
 			TracerProvider: a.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
 
-			ReportComponentStatus: func(*otelcomponent.StatusEvent) error {
-				return nil
-			},
+			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{

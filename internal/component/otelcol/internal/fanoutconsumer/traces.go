@@ -28,6 +28,9 @@ func Traces(in []otelcol.Consumer) otelconsumer.Traces {
 	// Iterate through all the consumers besides the last.
 	for i := 0; i < len(in)-1; i++ {
 		consumer := in[i]
+		if consumer == nil {
+			continue
+		}
 
 		if consumer.Capabilities().MutatesData {
 			clone = append(clone, consumer)

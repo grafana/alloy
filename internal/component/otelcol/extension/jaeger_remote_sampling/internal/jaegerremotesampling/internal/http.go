@@ -1,18 +1,7 @@
 // Copyright The OpenTelemetry Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//       http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
 
-package internal
+package internal // import "github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling/internal"
 
 import (
 	"context"
@@ -36,7 +25,7 @@ var _ component.Component = (*SamplingHTTPServer)(nil)
 
 type SamplingHTTPServer struct {
 	telemetry     component.TelemetrySettings
-	settings      confighttp.HTTPServerSettings
+	settings      confighttp.ServerConfig
 	strategyStore strategystore.StrategyStore
 
 	mux        *http.ServeMux
@@ -44,7 +33,7 @@ type SamplingHTTPServer struct {
 	shutdownWG *sync.WaitGroup
 }
 
-func NewHTTP(telemetry component.TelemetrySettings, settings confighttp.HTTPServerSettings, strategyStore strategystore.StrategyStore) (*SamplingHTTPServer, error) {
+func NewHTTP(telemetry component.TelemetrySettings, settings confighttp.ServerConfig, strategyStore strategystore.StrategyStore) (*SamplingHTTPServer, error) {
 	if strategyStore == nil {
 		return nil, errMissingStrategyStore
 	}
@@ -58,11 +47,8 @@ func NewHTTP(telemetry component.TelemetrySettings, settings confighttp.HTTPServ
 	}
 
 	srv.mux = http.NewServeMux()
-	// the legacy endpoint
-	srv.mux.Handle("/", http.HandlerFunc(srv.samplingStrategyHandler))
 
-	// the new endpoint -- not strictly necessary, as the previous one would match it
-	// already, but good to have it explicit here
+	// SEE: https://www.jaegertracing.io/docs/1.41/apis/#remote-sampling-configuration-stable
 	srv.mux.Handle("/sampling", http.HandlerFunc(srv.samplingStrategyHandler))
 
 	return srv, nil
@@ -86,7 +72,7 @@ func (h *SamplingHTTPServer) Start(_ context.Context, host component.Host) error
 		defer h.shutdownWG.Done()
 
 		if err := h.srv.Serve(hln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			host.ReportFatalError(err)
+			h.telemetry.ReportStatus(component.NewFatalErrorEvent(err))
 		}
 	}()
 

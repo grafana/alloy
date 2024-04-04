@@ -4,20 +4,15 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/collector/featuregate"
-	_ "go.opentelemetry.io/collector/obsreport"
+
+	// Register the feature gates.
+	// The "service" package uses DisableHighCardinalityMetricsfeatureGate, so import "service".
+	// We cannot import DisableHighCardinalityMetricsfeatureGate directly because it's not exported.
+	_ "go.opentelemetry.io/collector/service"
 )
 
 var (
-	// Enable the "telemetry.useOtelForInternalMetrics" Collector feature gate.
-	// Currently, Collector components uses OpenCensus metrics by default.
-	// Those metrics cannot be integrated with Alloy, so we need to always use
-	// OpenTelemetry metrics.
-	//
-	// TODO: Remove "telemetry.useOtelForInternalMetrics" when Collector components
-	//       use OpenTelemetry metrics by default.
-	otelFeatureGates = []string{
-		"telemetry.useOtelForInternalMetrics",
-	}
+	otelFeatureGates = []string{}
 )
 
 // Enables a set of feature gates which should always be enabled in Alloy.

@@ -26,7 +26,7 @@ func (otlpReceiverConverter) Factory() component.Factory { return otlpreceiver.N
 
 func (otlpReceiverConverter) InputComponentName() string { return "" }
 
-func (otlpReceiverConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (otlpReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -36,14 +36,14 @@ func (otlpReceiverConverter) ConvertAndAppend(state *state, id component.Instanc
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
 	return diags
 }
 
-func toOtelcolReceiverOTLP(state *state, id component.InstanceID, cfg *otlpreceiver.Config) *otlp.Arguments {
+func toOtelcolReceiverOTLP(state *State, id component.InstanceID, cfg *otlpreceiver.Config) *otlp.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)
@@ -57,14 +57,14 @@ func toOtelcolReceiverOTLP(state *state, id component.InstanceID, cfg *otlprecei
 		DebugMetrics: common.DefaultValue[otlp.Arguments]().DebugMetrics,
 
 		Output: &otelcol.ConsumerArguments{
-			Metrics: toTokenizedConsumers(nextMetrics),
-			Logs:    toTokenizedConsumers(nextLogs),
-			Traces:  toTokenizedConsumers(nextTraces),
+			Metrics: ToTokenizedConsumers(nextMetrics),
+			Logs:    ToTokenizedConsumers(nextLogs),
+			Traces:  ToTokenizedConsumers(nextTraces),
 		},
 	}
 }
 
-func toGRPCServerArguments(cfg *configgrpc.GRPCServerSettings) *otelcol.GRPCServerArguments {
+func toGRPCServerArguments(cfg *configgrpc.ServerConfig) *otelcol.GRPCServerArguments {
 	if cfg == nil {
 		return nil
 	}
@@ -100,15 +100,18 @@ func toTLSServerArguments(cfg *configtls.TLSServerSetting) *otelcol.TLSServerArg
 
 func toTLSSetting(cfg configtls.TLSSetting) otelcol.TLSSetting {
 	return otelcol.TLSSetting{
-		CA:             string(cfg.CAPem),
-		CAFile:         cfg.CAFile,
-		Cert:           string(cfg.CertPem),
-		CertFile:       cfg.CertFile,
-		Key:            alloytypes.Secret(cfg.KeyPem),
-		KeyFile:        cfg.KeyFile,
-		MinVersion:     cfg.MinVersion,
-		MaxVersion:     cfg.MaxVersion,
-		ReloadInterval: cfg.ReloadInterval,
+		CA:                       string(cfg.CAPem),
+		CAFile:                   cfg.CAFile,
+		Cert:                     string(cfg.CertPem),
+		CertFile:                 cfg.CertFile,
+		Key:                      alloytypes.Secret(cfg.KeyPem),
+		KeyFile:                  cfg.KeyFile,
+		MinVersion:               cfg.MinVersion,
+		MaxVersion:               cfg.MaxVersion,
+		ReloadInterval:           cfg.ReloadInterval,
+		IncludeSystemCACertsPool: cfg.IncludeSystemCACertsPool,
+		//TODO(ptodev): Do we need to copy this slice?
+		CipherSuites: cfg.CipherSuites,
 	}
 }
 
@@ -154,7 +157,7 @@ func toHTTPConfigArguments(cfg *otlpreceiver.HTTPConfig) *otlp.HTTPConfigArgumen
 	}
 
 	return &otlp.HTTPConfigArguments{
-		HTTPServerArguments: toHTTPServerArguments(cfg.HTTPServerSettings),
+		HTTPServerArguments: toHTTPServerArguments(cfg.ServerConfig),
 
 		TracesURLPath:  cfg.TracesURLPath,
 		MetricsURLPath: cfg.MetricsURLPath,
@@ -162,7 +165,7 @@ func toHTTPConfigArguments(cfg *otlpreceiver.HTTPConfig) *otlp.HTTPConfigArgumen
 	}
 }
 
-func toHTTPServerArguments(cfg *confighttp.HTTPServerSettings) *otelcol.HTTPServerArguments {
+func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArguments {
 	if cfg == nil {
 		return nil
 	}
@@ -179,7 +182,7 @@ func toHTTPServerArguments(cfg *confighttp.HTTPServerSettings) *otelcol.HTTPServ
 	}
 }
 
-func toCORSArguments(cfg *confighttp.CORSSettings) *otelcol.CORSArguments {
+func toCORSArguments(cfg *confighttp.CORSConfig) *otelcol.CORSArguments {
 	if cfg == nil {
 		return nil
 	}

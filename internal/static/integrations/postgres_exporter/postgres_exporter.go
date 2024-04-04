@@ -6,14 +6,14 @@ import (
 	"os"
 	"strings"
 
-	config_util "github.com/prometheus/common/config"
-
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/lib/pq"
-	"github.com/prometheus-community/postgres_exporter/exporter"
+	"github.com/prometheus-community/postgres_exporter/cmd/postgres_exporter"
+	"github.com/prometheus-community/postgres_exporter/collector"
+	config_util "github.com/prometheus/common/config"
 )
 
 // Config controls the postgres_exporter integration.
@@ -27,6 +27,16 @@ type Config struct {
 	IncludeDatabases       []string `yaml:"include_databases,omitempty"`
 	DisableDefaultMetrics  bool     `yaml:"disable_default_metrics,omitempty"`
 	QueryPath              string   `yaml:"query_path,omitempty"`
+
+	//-- The fields below were not available in Grafana Agent Static. --
+
+	// Instance is used by Alloy to specify the instance name manually. This is
+	// only used when there are multiple DSNs provided.
+	Instance string
+	// EnabledCollectors is a list of additional collectors to enable. NOTE: Due to limitations of the postgres_exporter,
+	// this is only used for the first DSN provided and only some collectors can be enabled/disabled this way. See the
+	// user-facing docs for more information.
+	EnabledCollectors []string
 }
 
 // Name returns the name of the integration this config is for.
@@ -47,6 +57,10 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 		return "", err
 	}
 	if len(dsn) != 1 {
+		if c.Instance != "" {
+			return c.Instance, nil
+		}
+		// This should not be possible in Alloy, because `c.Instance` is always set.
 		return "", fmt.Errorf("can't automatically determine a value for `instance` with %d DSN. either use 1 DSN or manually assign a value for `instance` in the integration config", len(dsn))
 	}
 
@@ -128,23 +142,37 @@ func init() {
 
 // New creates a new postgres_exporter integration. The integration scrapes
 // metrics from a postgres process.
-func New(log log.Logger, c *Config) (integrations.Integration, error) {
-	dsn, err := c.getDataSourceNames()
+func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
+	dsns, err := cfg.getDataSourceNames()
 	if err != nil {
 		return nil, err
 	}
 
-	e := exporter.NewExporter(
-		dsn,
-		log,
-		exporter.DisableDefaultMetrics(c.DisableDefaultMetrics),
-		exporter.WithUserQueriesPath(c.QueryPath),
-		exporter.DisableSettingsMetrics(c.DisableSettingsMetrics),
-		exporter.AutoDiscoverDatabases(c.AutodiscoverDatabases),
-		exporter.ExcludeDatabases(strings.Join(c.ExcludeDatabases, ",")),
-		exporter.IncludeDatabases(strings.Join(c.IncludeDatabases, ",")),
-		exporter.MetricPrefix("pg"),
+	e := postgres_exporter.NewExporter(
+		dsns,
+		postgres_exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
+		postgres_exporter.WithUserQueriesPath(cfg.QueryPath),
+		postgres_exporter.DisableSettingsMetrics(cfg.DisableSettingsMetrics),
+		postgres_exporter.AutoDiscoverDatabases(cfg.AutodiscoverDatabases),
+		postgres_exporter.ExcludeDatabases(cfg.ExcludeDatabases),
+		postgres_exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
+		postgres_exporter.WithLogger(log),
+		postgres_exporter.WithMetricPrefix("pg"),
 	)
 
-	return integrations.NewCollectorIntegration(c.Name(), integrations.WithCollectors(e)), nil
+	if cfg.DisableDefaultMetrics {
+		// Don't include the collector metrics if the default metrics are disabled.
+		return integrations.NewCollectorIntegration(cfg.Name(), integrations.WithCollectors(e)), nil
+	}
+
+	// On top of the exporter's metrics, the postgres exporter also has metrics exposed via collector package.
+	// However, these can only work for the first DSN provided. This matches the current implementation of the exporter.
+	// TODO: Once https://github.com/prometheus-community/postgres_exporter/issues/999 is addressed, update the exporter
+	// and change this.
+	c, err := collector.NewPostgresCollector(log, cfg.ExcludeDatabases, dsns[0], cfg.EnabledCollectors)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create postgres_exporter collector: %w", err)
+	}
+
+	return integrations.NewCollectorIntegration(cfg.Name(), integrations.WithCollectors(e, c)), nil
 }

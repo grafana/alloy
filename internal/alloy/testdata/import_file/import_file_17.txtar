@@ -1,0 +1,65 @@
+This is a simple test with several levels of nesting.
+This test would often panic when re-evaluation could run concurrently with a config reload.
+Now that it is protected with mutex, this test should always pass.
+
+-- main.alloy --
+import.file "a_namespace" {
+  filename = "module.alloy"
+}
+
+a_namespace.a "default" {
+  a_argument = 47
+}
+
+testcomponents.summation "sum" {
+  input = 10
+}
+
+-- module.alloy --
+declare "a" {
+  import.file "b_namespace" {
+    filename = "nested_module.alloy"
+  }
+
+  argument "a_argument" {
+    comment = "Where to send collected metrics."
+  }
+
+  b_namespace.b "default" {
+    b_argument = 147
+  }
+
+  export "a_export" {
+    value = argument.a_argument.value + b_namespace.b.default.b_export + 1
+  }
+}
+
+-- nested_module.alloy --
+declare "b" {
+  import.file "c_namespace" {
+    filename = "other_nested_module.alloy"
+  }
+
+  argument "b_argument" {
+    optional = false
+  }
+
+  c_namespace.c "default" {
+    c_argument = 101
+  }
+
+  export "b_export" {
+    value = argument.b_argument.value + c_namespace.c.default.c_export + 1
+  }
+}
+
+-- other_nested_module.alloy --
+declare "c" {
+  argument "c_argument" {
+    optional = false
+  }
+
+  export "c_export" {
+    value = argument.c_argument.value + 1
+  }
+}

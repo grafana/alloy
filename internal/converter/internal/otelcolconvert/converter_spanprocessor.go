@@ -22,7 +22,7 @@ func (spanProcessorConverter) Factory() component.Factory { return spanprocessor
 
 func (spanProcessorConverter) InputComponentName() string { return "otelcol.processor.span" }
 
-func (spanProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (spanProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -32,14 +32,14 @@ func (spanProcessorConverter) ConvertAndAppend(state *state, id component.Instan
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
 	return diags
 }
 
-func toSpanProcessor(state *state, id component.InstanceID, cfg *spanprocessor.Config) *span.Arguments {
+func toSpanProcessor(state *State, id component.InstanceID, cfg *spanprocessor.Config) *span.Arguments {
 	var (
 		nextTraces = state.Next(id, component.DataTypeTraces)
 	)
@@ -72,7 +72,7 @@ func toSpanProcessor(state *state, id component.InstanceID, cfg *spanprocessor.C
 		},
 		SetStatus: setStatus,
 		Output: &otelcol.ConsumerArguments{
-			Traces: toTokenizedConsumers(nextTraces),
+			Traces: ToTokenizedConsumers(nextTraces),
 		},
 	}
 }

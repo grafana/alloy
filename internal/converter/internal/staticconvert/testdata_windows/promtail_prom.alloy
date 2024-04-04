@@ -1,0 +1,132 @@
+discovery.consul "metrics_name_jobName" {
+	services = ["myapp"]
+}
+
+prometheus.scrape "metrics_name_jobName" {
+	targets = concat(
+		discovery.consul.metrics_name_jobName.targets,
+		[{
+			__address__ = "localhost:9099",
+		}],
+		[{
+			__address__ = "localhost:9101",
+		}],
+	)
+	forward_to = [prometheus.remote_write.metrics_name.receiver]
+	job_name   = "jobName"
+}
+
+prometheus.remote_write "metrics_name" {
+	endpoint {
+		name = "name-149bbd"
+		url  = "http://localhost:9009/api/prom/push"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}
+
+discovery.consul "logs_name_jobName" {
+	datacenter    = "bigdata"
+	tag_separator = ";"
+	scheme        = "sketchy"
+	username      = "toby"
+	password      = "this_password_is_safe_innit?"
+	allow_stale   = false
+	services      = ["myapp"]
+	tags          = ["better", "faster", "stronger"]
+	node_meta     = {
+		what  = "this",
+		where = "here",
+	}
+	refresh_interval = "10m0s"
+
+	basic_auth {
+		username = "toby"
+		password = "this_password_is_safe_innit?"
+	}
+}
+
+discovery.relabel "logs_name_jobName" {
+	targets = discovery.consul.logs_name_jobName.targets
+
+	rule {
+		source_labels = ["host"]
+		target_label  = "hostname"
+	}
+}
+
+local.file_match "logs_name_jobName" {
+	path_targets = discovery.relabel.logs_name_jobName.output
+}
+
+loki.source.file "logs_name_jobName" {
+	targets    = local.file_match.logs_name_jobName.targets
+	forward_to = [loki.write.logs_name.receiver]
+
+	file_watch {
+		min_poll_frequency = "1s"
+		max_poll_frequency = "5s"
+	}
+	legacy_positions_file = "\\path\\name.yml"
+}
+
+loki.write "logs_name" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}
+
+discovery.consul "logs_name2_jobName" {
+	datacenter    = "bigdata"
+	tag_separator = ";"
+	scheme        = "sketchy"
+	username      = "toby"
+	password      = "this_password_is_safe_innit?"
+	allow_stale   = false
+	services      = ["myapp"]
+	tags          = ["better", "faster", "stronger"]
+	node_meta     = {
+		what  = "this",
+		where = "here",
+	}
+	refresh_interval = "10m0s"
+
+	basic_auth {
+		username = "toby"
+		password = "this_password_is_safe_innit?"
+	}
+}
+
+discovery.relabel "logs_name2_jobName" {
+	targets = discovery.consul.logs_name2_jobName.targets
+
+	rule {
+		source_labels = ["host"]
+		target_label  = "hostname"
+	}
+}
+
+local.file_match "logs_name2_jobName" {
+	path_targets = discovery.relabel.logs_name2_jobName.output
+}
+
+loki.source.file "logs_name2_jobName" {
+	targets    = local.file_match.logs_name2_jobName.targets
+	forward_to = [loki.write.logs_name2.receiver]
+
+	file_watch {
+		min_poll_frequency = "1s"
+		max_poll_frequency = "5s"
+	}
+	legacy_positions_file = "\\path\\name2.yml"
+}
+
+loki.write "logs_name2" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

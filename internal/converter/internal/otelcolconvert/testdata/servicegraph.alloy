@@ -1,0 +1,37 @@
+otelcol.receiver.otlp "default" {
+	grpc { }
+
+	http { }
+
+	output {
+		metrics = []
+		logs    = []
+		traces  = [otelcol.connector.servicegraph.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	sending_queue {
+		queue_size = 5000
+	}
+
+	client {
+		endpoint = "database:4317"
+	}
+}
+
+otelcol.connector.servicegraph "default" {
+	latency_histogram_buckets = ["100ms", "250ms", "1s", "5s", "10s"]
+	dimensions                = ["dimension-1", "dimension-2"]
+
+	store {
+		max_items = 10
+		ttl       = "1s"
+	}
+	cache_loop            = "2m0s"
+	store_expiration_loop = "5s"
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+	}
+}

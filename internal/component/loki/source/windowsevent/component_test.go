@@ -4,6 +4,8 @@ package windowsevent
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -68,4 +70,46 @@ func TestEventLogger(t *testing.T) {
 	}
 	cancelFunc()
 	require.True(t, found)
+}
+
+func TestLegacyBookmarkConversion(t *testing.T) {
+
+	bookmarkText := `<BookmarkList>
+  <Bookmark Channel='Application' RecordId='415060' IsCurrent='true'/>
+</BookmarkList>`
+	var loggerName = "agent_test"
+	//Setup Windows Event log with the log source name and logging levels
+	_ = eventlog.InstallAsEventCreate(loggerName, eventlog.Info|eventlog.Warning|eventlog.Error)
+	dataPath := t.TempDir()
+	legacyPath := filepath.Join(t.TempDir(), "legacy.xml")
+	err := os.WriteFile(legacyPath, []byte(bookmarkText), 644)
+	require.NoError(t, err)
+	rec := loki.NewLogsReceiver()
+	c, err := New(component.Options{
+		ID:       "loki.source.windowsevent.test",
+		Logger:   util.TestFlowLogger(t),
+		DataPath: dataPath,
+		OnStateChange: func(e component.Exports) {
+
+		},
+		Registerer: prometheus.DefaultRegisterer,
+		Tracer:     nil,
+	}, Arguments{
+		Locale:               0,
+		EventLogName:         "Application",
+		XPathQuery:           "*",
+		BookmarkPath:         "",
+		PollInterval:         10 * time.Millisecond,
+		ExcludeEventData:     false,
+		ExcludeUserdata:      false,
+		ExcludeEventMessage:  false,
+		UseIncomingTimestamp: false,
+		ForwardTo:            []loki.LogsReceiver{rec},
+		Labels:               map[string]string{"job": "windows"},
+		LegacyBookmarkPath:   legacyPath,
+	})
+	require.NoError(t, err)
+	dd, _ := os.ReadFile(c.args.BookmarkPath)
+	// The New function will convert via calling update.
+	require.True(t, string(dd) == bookmarkText)
 }

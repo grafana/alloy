@@ -110,18 +110,9 @@ func (c *Component) Update(args component.Arguments) error {
 		newArgs.BookmarkPath = path.Join(c.opts.DataPath, "bookmark.xml")
 	}
 
-	// Create the bookmark file and parent folders if they don't exist.
-	_, err := os.Stat(newArgs.BookmarkPath)
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(path.Dir(newArgs.BookmarkPath), 644)
-		if err != nil {
-			return err
-		}
-		f, err := os.Create(newArgs.BookmarkPath)
-		if err != nil {
-			return err
-		}
-		_ = f.Close()
+	err := createBookmark(newArgs)
+	if err != nil {
+		return err
 	}
 
 	winTarget, err := NewTarget(c.opts.Logger, c.handle, nil, convertConfig(newArgs))
@@ -139,6 +130,35 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = newArgs
 	c.receivers = newArgs.ForwardTo
+	return nil
+}
+
+// createBookmark will create bookmark for saving the positions file.
+// If LegacyBookMark is specified and the BookmarkPath doesnt exist it will copy over the legacy bookmark to the new path.
+func createBookmark(args Arguments) error {
+	_, err := os.Stat(args.BookmarkPath)
+	// If the bookmark path does not exist then we should check to see if
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(path.Dir(args.BookmarkPath), 644)
+		if err != nil {
+			return err
+		}
+		// Check to see if we need to convert the legacy bookmark to a new one.
+		// This will only trigger if the new bookmark path does not exist and legacy does.
+		_, legacyErr := os.Stat(args.LegacyBookmarkPath)
+		if legacyErr == nil {
+			bb, readErr := os.ReadFile(args.LegacyBookmarkPath)
+			if readErr == nil {
+				_ = os.WriteFile(args.BookmarkPath, bb, 644)
+			}
+		} else {
+			f, err := os.Create(args.BookmarkPath)
+			if err != nil {
+				return err
+			}
+			_ = f.Close()
+		}
+	}
 	return nil
 }
 

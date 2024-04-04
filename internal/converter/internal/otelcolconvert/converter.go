@@ -11,9 +11,9 @@ import (
 	"go.opentelemetry.io/collector/otelcol"
 )
 
-// componentConverter represents a converter which converts an OpenTelemetry
+// ComponentConverter represents a converter which converts an OpenTelemetry
 // Collector component into an Alloy component.
-type componentConverter interface {
+type ComponentConverter interface {
 	// Factory should return the factory for the OpenTelemetry Collector
 	// component.
 	Factory() component.Factory
@@ -39,25 +39,25 @@ type componentConverter interface {
 	// ConvertAndAppend may be called more than once with the same component used
 	// in different pipelines. Use [state.AlloyComponentLabel] to get a guaranteed
 	// unique Alloy component label for the current state.
-	ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics
+	ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics
 }
 
 // List of component converters. This slice is appended to by init functions in
 // other files.
-var converters []componentConverter
+var converters []ComponentConverter
 
-// state represents the state of the conversion. The state tracks:
+// State represents the State of the conversion. The State tracks:
 //
 //   - The OpenTelemetry Collector config being converted.
 //   - The current OpenTelemetry Collector pipelines being converted.
 //   - The current OpenTelemetry Collector component being converted.
-type state struct {
+type State struct {
 	cfg   *otelcol.Config // Input config.
 	file  *builder.File   // Output file.
 	group *pipelineGroup  // Current pipeline group being converted.
 
 	// converterLookup maps a converter key to the associated converter instance.
-	converterLookup map[converterKey]componentConverter
+	converterLookup map[converterKey]ComponentConverter
 
 	// extensionLookup maps OTel extensions to Alloy component IDs.
 	extensionLookup map[component.ID]componentID
@@ -74,18 +74,18 @@ type converterKey struct {
 
 // Body returns the body of the file being generated. Implementations of
 // [componentConverter] should use this to append components.
-func (state *state) Body() *builder.Body { return state.file.Body() }
+func (state *State) Body() *builder.Body { return state.file.Body() }
 
 // AlloyComponentLabel returns the unique Alloy label for the OpenTelemetry
 // Component component being converted. It is safe to use this label to create
 // multiple Alloy components in a chain.
-func (state *state) AlloyComponentLabel() string {
+func (state *State) AlloyComponentLabel() string {
 	return state.alloyLabelForComponent(state.componentID)
 }
 
 // alloyLabelForComponent returns the unique Alloy label for the given
 // OpenTelemetry Collector component.
-func (state *state) alloyLabelForComponent(c component.InstanceID) string {
+func (state *State) alloyLabelForComponent(c component.InstanceID) string {
 	const defaultLabel = "default"
 
 	// We need to prove that it's possible to statelessly compute the label for a
@@ -144,7 +144,7 @@ func (state *state) alloyLabelForComponent(c component.InstanceID) string {
 
 // Next returns the set of Alloy component IDs for a given data type that the
 // current component being converted should forward data to.
-func (state *state) Next(c component.InstanceID, dataType component.DataType) []componentID {
+func (state *State) Next(c component.InstanceID, dataType component.DataType) []componentID {
 	instances := state.nextInstances(c, dataType)
 
 	var ids []componentID
@@ -177,7 +177,7 @@ func (state *state) Next(c component.InstanceID, dataType component.DataType) []
 	return ids
 }
 
-func (state *state) nextInstances(c component.InstanceID, dataType component.DataType) []component.InstanceID {
+func (state *State) nextInstances(c component.InstanceID, dataType component.DataType) []component.InstanceID {
 	switch dataType {
 	case component.DataTypeMetrics:
 		return state.group.NextMetrics(c)
@@ -191,7 +191,7 @@ func (state *state) nextInstances(c component.InstanceID, dataType component.Dat
 	}
 }
 
-func (state *state) LookupExtension(id component.ID) componentID {
+func (state *State) LookupExtension(id component.ID) componentID {
 	cid, ok := state.extensionLookup[id]
 	if !ok {
 		panic(fmt.Sprintf("no component name found for extension %q", id.Name()))

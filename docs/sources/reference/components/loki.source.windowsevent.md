@@ -46,6 +46,10 @@ When using the XML form you can specify `event_log` in the `xpath_query`.
 If using short form, you must define `eventlog_name`.
 {{< /admonition >}}
 
+{{< admonition type="note" >}}
+`legacy_bookmark_path` is used to convert the Grafana Agent Static to a {{< param "PRODUCT_NAME" >}} bookmark, if `bookmark_path` does not exist.
+{{< /admonition >}}
+
 ## Component health
 
 `loki.source.windowsevent` is only reported as unhealthy if given an invalid configuration.

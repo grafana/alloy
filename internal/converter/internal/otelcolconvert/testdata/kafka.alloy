@@ -1,6 +1,7 @@
 otelcol.receiver.kafka "default" {
 	brokers          = ["broker:9092"]
 	protocol_version = "2.0.0"
+	topic            = ""
 
 	authentication {
 		plaintext {

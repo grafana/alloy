@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/cors"
+	"go.opentelemetry.io/collector/client"
 	"golang.org/x/time/rate"
 )
 
@@ -79,6 +80,13 @@ func (h *handler) Update(args ServerArguments) {
 func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	h.argsMut.RLock()
 	defer h.argsMut.RUnlock()
+
+	// Propagate request headers as metadata
+	if h.args.IncludeMetadata {
+		cl := client.FromContext(req.Context())
+		cl.Metadata = client.NewMetadata(req.Header.Clone())
+		req = req.WithContext(client.NewContext(req.Context(), cl))
+	}
 
 	if h.cors != nil {
 		h.cors.ServeHTTP(rw, req, h.handleRequest)

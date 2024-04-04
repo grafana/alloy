@@ -83,9 +83,7 @@ func TestConsumeMetrics(t *testing.T) {
 				TelemetrySettings: component.TelemetrySettings{
 					MeterProvider: getTestMeterProvider(t, reg),
 
-					ReportComponentStatus: func(*otelcomponent.StatusEvent) error {
-						return nil
-					},
+					ReportStatus: func(*otelcomponent.StatusEvent) {},
 				},
 				BuildInfo: component.BuildInfo{},
 			}

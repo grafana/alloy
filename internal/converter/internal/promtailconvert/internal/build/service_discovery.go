@@ -22,7 +22,7 @@ func (s *ScrapeConfigBuilder) AppendSDs() {
 
 	pb := build.NewPrometheusBlocks()
 	targets := prometheusconvert.AppendServiceDiscoveryConfigs(pb, sdConfigs, common.LabelForParts(s.globalCtx.LabelPrefix, s.cfg.JobName))
-	pb.AppendToFile(s.f)
+	pb.AppendToBody(s.f.Body())
 
 	targetLiterals := make([]discovery.Target, 0)
 	for _, target := range targets {

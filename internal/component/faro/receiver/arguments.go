@@ -36,7 +36,8 @@ type ServerArguments struct {
 	APIKey                alloytypes.Secret `alloy:"api_key,attr,optional"`
 	MaxAllowedPayloadSize units.Base2Bytes  `alloy:"max_allowed_payload_size,attr,optional"`
 
-	RateLimiting RateLimitingArguments `alloy:"rate_limiting,block,optional"`
+	RateLimiting    RateLimitingArguments `alloy:"rate_limiting,block,optional"`
+	IncludeMetadata bool                  `alloy:"include_metadata,attr,optional"`
 }
 
 func (s *ServerArguments) SetToDefault() {

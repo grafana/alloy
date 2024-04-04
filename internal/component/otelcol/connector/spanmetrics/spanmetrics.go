@@ -45,6 +45,19 @@ type Arguments struct {
 	// indefinitely over the lifetime of the collector.
 	DimensionsCacheSize int `alloy:"dimensions_cache_size,attr,optional"`
 
+	// ResourceMetricsCacheSize defines the size of the cache holding metrics for a service. This is mostly relevant for
+	// cumulative temporality to avoid memory leaks and correct metric timestamp resets.
+	ResourceMetricsCacheSize int `alloy:"resource_metrics_cache_size,attr,optional"`
+
+	// ResourceMetricsKeyAttributes filters the resource attributes used to create the resource metrics key hash.
+	// This can be used to avoid situations where resource attributes may change across service restarts, causing
+	// metric counters to break (and duplicate). A resource does not need to have all of the attributes. The list
+	// must include enough attributes to properly identify unique resources or risk aggregating data from more
+	// than one service and span.
+	// e.g. ["service.name", "telemetry.sdk.language", "telemetry.sdk.name"]
+	// See https://opentelemetry.io/docs/specs/semconv/resource/ for possible attributes.
+	ResourceMetricsKeyAttributes []string `alloy:"resource_metrics_key_attributes,attr,optional"`
+
 	AggregationTemporality string `alloy:"aggregation_temporality,attr,optional"`
 
 	Histogram HistogramConfig `alloy:"histogram,block"`
@@ -57,6 +70,9 @@ type Arguments struct {
 
 	// Exemplars defines the configuration for exemplars.
 	Exemplars ExemplarsConfig `alloy:"exemplars,block,optional"`
+
+	// Events defines the configuration for events section of spans.
+	Events EventsConfig `alloy:"events,block,optional"`
 
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -75,9 +91,10 @@ const (
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
-	DimensionsCacheSize:    1000,
-	AggregationTemporality: AggregationTemporalityCumulative,
-	MetricsFlushInterval:   15 * time.Second,
+	DimensionsCacheSize:      1000,
+	AggregationTemporality:   AggregationTemporalityCumulative,
+	MetricsFlushInterval:     15 * time.Second,
+	ResourceMetricsCacheSize: 1000,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -149,14 +166,17 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	excludeDimensions := append([]string(nil), args.ExcludeDimensions...)
 
 	return &spanmetricsconnector.Config{
-		Dimensions:             dimensions,
-		ExcludeDimensions:      excludeDimensions,
-		DimensionsCacheSize:    args.DimensionsCacheSize,
-		AggregationTemporality: aggregationTemporality,
-		Histogram:              *histogram,
-		MetricsFlushInterval:   args.MetricsFlushInterval,
-		Namespace:              args.Namespace,
-		Exemplars:              *args.Exemplars.Convert(),
+		Dimensions:                   dimensions,
+		ExcludeDimensions:            excludeDimensions,
+		DimensionsCacheSize:          args.DimensionsCacheSize,
+		ResourceMetricsCacheSize:     args.ResourceMetricsCacheSize,
+		ResourceMetricsKeyAttributes: args.ResourceMetricsKeyAttributes,
+		AggregationTemporality:       aggregationTemporality,
+		Histogram:                    *histogram,
+		MetricsFlushInterval:         args.MetricsFlushInterval,
+		Namespace:                    args.Namespace,
+		Exemplars:                    *args.Exemplars.Convert(),
+		Events:                       args.Events.Convert(),
 	}, nil
 }
 

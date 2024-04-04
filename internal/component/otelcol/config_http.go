@@ -34,12 +34,12 @@ type HTTPServerArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *HTTPServerArguments) Convert() *otelconfighttp.HTTPServerSettings {
+func (args *HTTPServerArguments) Convert() *otelconfighttp.ServerConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &otelconfighttp.HTTPServerSettings{
+	return &otelconfighttp.ServerConfig{
 		Endpoint:           args.Endpoint,
 		TLSSetting:         args.TLS.Convert(),
 		CORS:               args.CORS.Convert(),
@@ -58,12 +58,12 @@ type CORSArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *CORSArguments) Convert() *otelconfighttp.CORSSettings {
+func (args *CORSArguments) Convert() *otelconfighttp.CORSConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &otelconfighttp.CORSSettings{
+	return &otelconfighttp.CORSConfig{
 		AllowedOrigins: args.AllowedOrigins,
 		AllowedHeaders: args.AllowedHeaders,
 
@@ -85,11 +85,13 @@ type HTTPClientArguments struct {
 	Timeout         time.Duration     `alloy:"timeout,attr,optional"`
 	Headers         map[string]string `alloy:"headers,attr,optional"`
 	// CustomRoundTripper  func(next http.RoundTripper) (http.RoundTripper, error) TODO (@tpaschalis)
-	MaxIdleConns        *int           `alloy:"max_idle_conns,attr,optional"`
-	MaxIdleConnsPerHost *int           `alloy:"max_idle_conns_per_host,attr,optional"`
-	MaxConnsPerHost     *int           `alloy:"max_conns_per_host,attr,optional"`
-	IdleConnTimeout     *time.Duration `alloy:"idle_conn_timeout,attr,optional"`
-	DisableKeepAlives   bool           `alloy:"disable_keep_alives,attr,optional"`
+	MaxIdleConns         *int           `alloy:"max_idle_conns,attr,optional"`
+	MaxIdleConnsPerHost  *int           `alloy:"max_idle_conns_per_host,attr,optional"`
+	MaxConnsPerHost      *int           `alloy:"max_conns_per_host,attr,optional"`
+	IdleConnTimeout      *time.Duration `alloy:"idle_conn_timeout,attr,optional"`
+	DisableKeepAlives    bool           `alloy:"disable_keep_alives,attr,optional"`
+	HTTP2ReadIdleTimeout time.Duration  `alloy:"http2_read_idle_timeout,attr,optional"`
+	HTTP2PingTimeout     time.Duration  `alloy:"http2_ping_timeout,attr,optional"`
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
@@ -97,7 +99,7 @@ type HTTPClientArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *HTTPClientArguments) Convert() *otelconfighttp.HTTPClientSettings {
+func (args *HTTPClientArguments) Convert() *otelconfighttp.ClientConfig {
 	if args == nil {
 		return nil
 	}
@@ -113,7 +115,7 @@ func (args *HTTPClientArguments) Convert() *otelconfighttp.HTTPClientSettings {
 		opaqueHeaders[headerName] = configopaque.String(headerVal)
 	}
 
-	return &otelconfighttp.HTTPClientSettings{
+	return &otelconfighttp.ClientConfig{
 		Endpoint: args.Endpoint,
 
 		Compression: args.Compression.Convert(),
@@ -125,10 +127,13 @@ func (args *HTTPClientArguments) Convert() *otelconfighttp.HTTPClientSettings {
 		Timeout:         args.Timeout,
 		Headers:         opaqueHeaders,
 		// CustomRoundTripper: func(http.RoundTripper) (http.RoundTripper, error) { panic("not implemented") }, TODO (@tpaschalis)
-		MaxIdleConns:        args.MaxIdleConns,
-		MaxIdleConnsPerHost: args.MaxIdleConnsPerHost,
-		MaxConnsPerHost:     args.MaxConnsPerHost,
-		IdleConnTimeout:     args.IdleConnTimeout,
+		MaxIdleConns:         args.MaxIdleConns,
+		MaxIdleConnsPerHost:  args.MaxIdleConnsPerHost,
+		MaxConnsPerHost:      args.MaxConnsPerHost,
+		IdleConnTimeout:      args.IdleConnTimeout,
+		DisableKeepAlives:    args.DisableKeepAlives,
+		HTTP2ReadIdleTimeout: args.HTTP2ReadIdleTimeout,
+		HTTP2PingTimeout:     args.HTTP2PingTimeout,
 
 		Auth: auth,
 	}

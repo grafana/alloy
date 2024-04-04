@@ -251,22 +251,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 			detectors = ["ecs"]
 			ecs {
-				resource_attributes {
-					aws.ecs.cluster.arn  { enabled = true }
-					aws.ecs.launchtype  { enabled = true }
-					aws.ecs.task.arn  { enabled = true }
-					aws.ecs.task.family  { enabled = true }
-					aws.ecs.task.revision  { enabled = true }
-					aws.log.group.arns  { enabled = true }
-					aws.log.group.names  { enabled = false }
-					// aws.log.stream.arns  { enabled = true }
-					// aws.log.stream.names  { enabled = true }
-					// cloud.account.id  { enabled = true }
-					// cloud.availability_zone  { enabled = true }
-					// cloud.platform  { enabled = true }
-					// cloud.provider  { enabled = true }
-					// cloud.region  { enabled = true }
-				}
+				resource_attributes {}
 			}
 			output {}
 			`,
@@ -281,9 +266,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"aws.ecs.launchtype":      map[string]interface{}{"enabled": true},
 						"aws.ecs.task.arn":        map[string]interface{}{"enabled": true},
 						"aws.ecs.task.family":     map[string]interface{}{"enabled": true},
+						"aws.ecs.task.id":         map[string]interface{}{"enabled": true},
 						"aws.ecs.task.revision":   map[string]interface{}{"enabled": true},
 						"aws.log.group.arns":      map[string]interface{}{"enabled": true},
-						"aws.log.group.names":     map[string]interface{}{"enabled": false},
+						"aws.log.group.names":     map[string]interface{}{"enabled": true},
 						"aws.log.stream.arns":     map[string]interface{}{"enabled": true},
 						"aws.log.stream.names":    map[string]interface{}{"enabled": true},
 						"cloud.account.id":        map[string]interface{}{"enabled": true},
@@ -318,6 +304,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					aws.ecs.launchtype  { enabled = true }
 					aws.ecs.task.arn  { enabled = true }
 					aws.ecs.task.family  { enabled = true }
+					aws.ecs.task.id  { enabled = true }
 					aws.ecs.task.revision  { enabled = true }
 					aws.log.group.arns  { enabled = true }
 					aws.log.group.names  { enabled = false }
@@ -343,6 +330,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"aws.ecs.launchtype":      map[string]interface{}{"enabled": true},
 						"aws.ecs.task.arn":        map[string]interface{}{"enabled": true},
 						"aws.ecs.task.family":     map[string]interface{}{"enabled": true},
+						"aws.ecs.task.id":         map[string]interface{}{"enabled": true},
 						"aws.ecs.task.revision":   map[string]interface{}{"enabled": true},
 						"aws.log.group.arns":      map[string]interface{}{"enabled": true},
 						"aws.log.group.names":     map[string]interface{}{"enabled": false},

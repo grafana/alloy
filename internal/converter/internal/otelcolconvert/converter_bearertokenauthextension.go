@@ -26,7 +26,7 @@ func (bearerTokenAuthExtensionConverter) Factory() component.Factory {
 
 func (bearerTokenAuthExtensionConverter) InputComponentName() string { return "otelcol.auth.bearer" }
 
-func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -52,7 +52,7 @@ func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *state, id compo
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
@@ -65,7 +65,8 @@ func toBearerTokenAuthExtension(cfg *bearertokenauthextension.Config) *bearer.Ar
 		Token:  alloytypes.Secret(string(cfg.BearerToken)),
 	}
 }
-func toBearerTokenAuthExtensionWithFilename(state *state, cfg *bearertokenauthextension.Config) (*bearer.Arguments, string) {
+
+func toBearerTokenAuthExtensionWithFilename(state *State, cfg *bearertokenauthextension.Config) (*bearer.Arguments, string) {
 	label := state.AlloyComponentLabel()
 	args := &file.Arguments{
 		Filename:      cfg.Filename,
@@ -78,5 +79,5 @@ func toBearerTokenAuthExtensionWithFilename(state *state, cfg *bearertokenauthex
 
 	return &bearer.Arguments{
 		Scheme: cfg.Scheme,
-	}, fmt.Sprintf("%s.content", stringifyBlock(block))
+	}, fmt.Sprintf("%s.content", StringifyBlock(block))
 }

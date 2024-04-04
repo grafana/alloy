@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
@@ -30,7 +31,7 @@ func (otlpExporterConverter) Factory() component.Factory {
 
 func (otlpExporterConverter) InputComponentName() string { return "otelcol.exporter.otlp" }
 
-func (otlpExporterConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (otlpExporterConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -48,7 +49,7 @@ func (otlpExporterConverter) ConvertAndAppend(state *state, id component.Instanc
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
@@ -59,12 +60,12 @@ func toOtelcolExporterOTLP(cfg *otlpexporter.Config) *otlp.Arguments {
 	return &otlp.Arguments{
 		Timeout: cfg.Timeout,
 
-		Queue: toQueueArguments(cfg.QueueSettings),
-		Retry: toRetryArguments(cfg.RetrySettings),
+		Queue: toQueueArguments(cfg.QueueConfig),
+		Retry: toRetryArguments(cfg.RetryConfig),
 
 		DebugMetrics: common.DefaultValue[otlp.Arguments]().DebugMetrics,
 
-		Client: otlp.GRPCClientArguments(toGRPCClientArguments(cfg.GRPCClientSettings)),
+		Client: otlp.GRPCClientArguments(toGRPCClientArguments(cfg.ClientConfig)),
 	}
 }
 
@@ -76,7 +77,7 @@ func toQueueArguments(cfg exporterhelper.QueueSettings) otelcol.QueueArguments {
 	}
 }
 
-func toRetryArguments(cfg exporterhelper.RetrySettings) otelcol.RetryArguments {
+func toRetryArguments(cfg configretry.BackOffConfig) otelcol.RetryArguments {
 	return otelcol.RetryArguments{
 		Enabled:             cfg.Enabled,
 		InitialInterval:     cfg.InitialInterval,
@@ -87,7 +88,7 @@ func toRetryArguments(cfg exporterhelper.RetrySettings) otelcol.RetryArguments {
 	}
 }
 
-func toGRPCClientArguments(cfg configgrpc.GRPCClientSettings) otelcol.GRPCClientArguments {
+func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArguments {
 	var a *auth.Handler
 	if cfg.Auth != nil {
 		a = &auth.Handler{}

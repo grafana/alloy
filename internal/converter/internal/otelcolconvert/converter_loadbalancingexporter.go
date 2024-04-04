@@ -28,7 +28,7 @@ func (loadbalancingExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.loadbalancing"
 }
 
-func (loadbalancingExporterConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (loadbalancingExporterConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -46,7 +46,7 @@ func (loadbalancingExporterConverter) ConvertAndAppend(state *state, id componen
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
@@ -54,10 +54,14 @@ func (loadbalancingExporterConverter) ConvertAndAppend(state *state, id componen
 }
 
 func toLoadbalancingExporter(cfg *loadbalancingexporter.Config) *loadbalancing.Arguments {
+	routingKey := "traceID"
+	if cfg.RoutingKey != "" {
+		routingKey = cfg.RoutingKey
+	}
 	return &loadbalancing.Arguments{
 		Protocol:   toProtocol(cfg.Protocol),
 		Resolver:   toResolver(cfg.Resolver),
-		RoutingKey: cfg.RoutingKey,
+		RoutingKey: routingKey,
 
 		DebugMetrics: common.DefaultValue[loadbalancing.Arguments]().DebugMetrics,
 	}
@@ -81,8 +85,8 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 		// remove unwanted fields.
 		OTLP: loadbalancing.OtlpConfig{
 			Timeout: cfg.OTLP.Timeout,
-			Queue:   toQueueArguments(cfg.OTLP.QueueSettings),
-			Retry:   toRetryArguments(cfg.OTLP.RetrySettings),
+			Queue:   toQueueArguments(cfg.OTLP.QueueConfig),
+			Retry:   toRetryArguments(cfg.OTLP.RetryConfig),
 			Client: loadbalancing.GRPCClientArguments{
 				Compression: otelcol.CompressionType(cfg.OTLP.Compression),
 

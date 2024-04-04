@@ -25,7 +25,7 @@ func (probabilisticSamplerProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.probabilistic_sampler"
 }
 
-func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -35,14 +35,14 @@ func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *state, id 
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
 	return diags
 }
 
-func toProbabilisticSamplerProcessor(state *state, id component.InstanceID, cfg *probabilisticsamplerprocessor.Config) *probabilistic_sampler.Arguments {
+func toProbabilisticSamplerProcessor(state *State, id component.InstanceID, cfg *probabilisticsamplerprocessor.Config) *probabilistic_sampler.Arguments {
 	var (
 		nextTraces = state.Next(id, component.DataTypeTraces)
 		nextLogs   = state.Next(id, component.DataTypeLogs)
@@ -55,8 +55,8 @@ func toProbabilisticSamplerProcessor(state *state, id component.InstanceID, cfg 
 		FromAttribute:      cfg.FromAttribute,
 		SamplingPriority:   cfg.SamplingPriority,
 		Output: &otelcol.ConsumerArguments{
-			Logs:   toTokenizedConsumers(nextLogs),
-			Traces: toTokenizedConsumers(nextTraces),
+			Logs:   ToTokenizedConsumers(nextLogs),
+			Traces: ToTokenizedConsumers(nextTraces),
 		},
 	}
 }

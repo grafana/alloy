@@ -23,7 +23,7 @@ func (opencensusReceiverConverter) Factory() component.Factory {
 
 func (opencensusReceiverConverter) InputComponentName() string { return "" }
 
-func (opencensusReceiverConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (opencensusReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -33,14 +33,14 @@ func (opencensusReceiverConverter) ConvertAndAppend(state *state, id component.I
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
 	return diags
 }
 
-func toOpencensusReceiver(state *state, id component.InstanceID, cfg *opencensusreceiver.Config) *opencensus.Arguments {
+func toOpencensusReceiver(state *State, id component.InstanceID, cfg *opencensusreceiver.Config) *opencensus.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextTraces  = state.Next(id, component.DataTypeTraces)
@@ -48,13 +48,13 @@ func toOpencensusReceiver(state *state, id component.InstanceID, cfg *opencensus
 
 	return &opencensus.Arguments{
 		CorsAllowedOrigins: cfg.CorsOrigins,
-		GRPC:               *toGRPCServerArguments(&cfg.GRPCServerSettings),
+		GRPC:               *toGRPCServerArguments(&cfg.ServerConfig),
 
 		DebugMetrics: common.DefaultValue[opencensus.Arguments]().DebugMetrics,
 
 		Output: &otelcol.ConsumerArguments{
-			Metrics: toTokenizedConsumers(nextMetrics),
-			Traces:  toTokenizedConsumers(nextTraces),
+			Metrics: ToTokenizedConsumers(nextMetrics),
+			Traces:  ToTokenizedConsumers(nextTraces),
 		},
 	}
 }

@@ -12,6 +12,7 @@ otelcol.receiver.otlp "default" {
 
 otelcol.exporter.otlphttp "default" {
 	client {
-		endpoint = "database:4318"
+		endpoint           = "database:4318"
+		http2_ping_timeout = "0s"
 	}
 }

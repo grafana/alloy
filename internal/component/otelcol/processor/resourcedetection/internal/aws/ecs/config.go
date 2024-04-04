@@ -18,6 +18,7 @@ var DefaultArguments = Config{
 		AwsEcsLaunchtype:      rac.ResourceAttributeConfig{Enabled: true},
 		AwsEcsTaskArn:         rac.ResourceAttributeConfig{Enabled: true},
 		AwsEcsTaskFamily:      rac.ResourceAttributeConfig{Enabled: true},
+		AwsEcsTaskID:          rac.ResourceAttributeConfig{Enabled: true},
 		AwsEcsTaskRevision:    rac.ResourceAttributeConfig{Enabled: true},
 		AwsLogGroupArns:       rac.ResourceAttributeConfig{Enabled: true},
 		AwsLogGroupNames:      rac.ResourceAttributeConfig{Enabled: true},
@@ -54,6 +55,7 @@ type ResourceAttributesConfig struct {
 	AwsEcsLaunchtype      rac.ResourceAttributeConfig `alloy:"aws.ecs.launchtype,block,optional"`
 	AwsEcsTaskArn         rac.ResourceAttributeConfig `alloy:"aws.ecs.task.arn,block,optional"`
 	AwsEcsTaskFamily      rac.ResourceAttributeConfig `alloy:"aws.ecs.task.family,block,optional"`
+	AwsEcsTaskID          rac.ResourceAttributeConfig `alloy:"aws.ecs.task.id,block,optional"`
 	AwsEcsTaskRevision    rac.ResourceAttributeConfig `alloy:"aws.ecs.task.revision,block,optional"`
 	AwsLogGroupArns       rac.ResourceAttributeConfig `alloy:"aws.log.group.arns,block,optional"`
 	AwsLogGroupNames      rac.ResourceAttributeConfig `alloy:"aws.log.group.names,block,optional"`
@@ -72,6 +74,7 @@ func (r ResourceAttributesConfig) Convert() map[string]interface{} {
 		"aws.ecs.launchtype":      r.AwsEcsLaunchtype.Convert(),
 		"aws.ecs.task.arn":        r.AwsEcsTaskArn.Convert(),
 		"aws.ecs.task.family":     r.AwsEcsTaskFamily.Convert(),
+		"aws.ecs.task.id":         r.AwsEcsTaskID.Convert(),
 		"aws.ecs.task.revision":   r.AwsEcsTaskRevision.Convert(),
 		"aws.log.group.arns":      r.AwsLogGroupArns.Convert(),
 		"aws.log.group.names":     r.AwsLogGroupNames.Convert(),

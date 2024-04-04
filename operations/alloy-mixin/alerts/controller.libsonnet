@@ -6,7 +6,7 @@ alert.newGroup(
     // Component evaluations are taking too long, which can lead to e.g. stale targets.
     alert.newRule(
       'SlowComponentEvaluations',
-      'sum by (cluster, namespace, component_id) (rate(alloy_component_evaluation_slow_seconds[10m])) > 0',
+      'sum by (cluster, namespace, component_path, component_id) (rate(alloy_component_evaluation_slow_seconds[10m])) > 0',
       'Component evaluations are taking too long.',
       '15m',
     ),

@@ -11,11 +11,11 @@ The `prometheus.exporter.elasticsearch` component embeds
 the collection of metrics from ElasticSearch servers.
 
 {{< admonition type="note" >}}
-Currently, an Agent can only collect metrics from a single ElasticSearch server.
+Currently, {{< param "PRODUCT_NAME" >}} can only collect metrics from a single ElasticSearch server.
 However, the exporter can collect the metrics from all nodes through that server configured.
 {{< /admonition >}}
 
-We strongly recommend that you configure a separate user for the Agent, and give it only the strictly mandatory
+We strongly recommend that you configure a separate user for {{< param "PRODUCT_NAME" >}}, and give it only the strictly mandatory
 security privileges necessary for monitoring your node, as per the [official documentation](https://github.com/prometheus-community/elasticsearch_exporter#elasticsearch-7x-security-privileges).
 
 ## Usage
@@ -64,7 +64,7 @@ The following blocks are supported inside the definition of
 
 ### basic_auth block
 
-{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<AGENT VERSION>" >}}
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

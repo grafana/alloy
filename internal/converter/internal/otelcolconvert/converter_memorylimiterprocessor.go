@@ -25,7 +25,7 @@ func (memoryLimiterProcessorConverter) Factory() component.Factory {
 func (memoryLimiterProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.memory_limiter"
 }
-func (memoryLimiterProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (memoryLimiterProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -35,7 +35,7 @@ func (memoryLimiterProcessorConverter) ConvertAndAppend(state *state, id compone
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
@@ -43,7 +43,7 @@ func (memoryLimiterProcessorConverter) ConvertAndAppend(state *state, id compone
 	return diags
 }
 
-func toMemoryLimiterProcessor(state *state, id component.InstanceID, cfg *memorylimiterprocessor.Config) *memorylimiter.Arguments {
+func toMemoryLimiterProcessor(state *State, id component.InstanceID, cfg *memorylimiterprocessor.Config) *memorylimiter.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)
@@ -57,9 +57,9 @@ func toMemoryLimiterProcessor(state *state, id component.InstanceID, cfg *memory
 		MemoryLimitPercentage: cfg.MemoryLimitPercentage,
 		MemorySpikePercentage: cfg.MemorySpikePercentage,
 		Output: &otelcol.ConsumerArguments{
-			Metrics: toTokenizedConsumers(nextMetrics),
-			Logs:    toTokenizedConsumers(nextLogs),
-			Traces:  toTokenizedConsumers(nextTraces),
+			Metrics: ToTokenizedConsumers(nextMetrics),
+			Logs:    ToTokenizedConsumers(nextLogs),
+			Traces:  ToTokenizedConsumers(nextTraces),
 		},
 	}
 }

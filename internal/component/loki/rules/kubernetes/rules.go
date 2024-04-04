@@ -212,7 +212,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 // startup launches the informers and starts the event loop.
 func (c *Component) startup(ctx context.Context) error {
-	c.queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "loki.rules.kubernetes")
+	cfg := workqueue.RateLimitingQueueConfig{Name: "loki.rules.kubernetes"}
+	c.queue = workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), cfg)
 	c.informerStopChan = make(chan struct{})
 
 	if err := c.startNamespaceInformer(); err != nil {

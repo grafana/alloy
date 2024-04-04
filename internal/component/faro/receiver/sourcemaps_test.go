@@ -349,6 +349,88 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {
 	require.Equal(t, expect, actual)
 }
 
+func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *testing.T) {
+	var (
+		logger = util.TestLogger(t)
+
+		httpClient = &mockHTTPClient{
+			responses: []struct {
+				*http.Response
+				error
+			}{
+				{newResponseFromTestData(t, "foo.js"), nil},
+				{newResponseFromTestData(t, "foo.js.map"), nil},
+			},
+		}
+
+		fileService = &mockFileService{
+			files: map[string][]byte{
+				filepath.FromSlash("/var/build/latest/foo.js.map"): loadTestData(t, "foo.js.map"),
+			},
+		}
+
+		store = newSourceMapsStore(
+			logger,
+			SourceMapsArguments{
+				Download:            false,
+				DownloadFromOrigins: []string{"*"},
+				Locations: []LocationArguments{
+					{
+						MinifiedPathPrefix: "http://foo.com/",
+						Path:               filepath.FromSlash("/var/build/latest/"),
+					},
+				},
+			},
+			newSourceMapMetrics(prometheus.NewRegistry()),
+			httpClient,
+			fileService,
+		)
+	)
+
+	expect := &payload.Exception{
+		Stacktrace: &payload.Stacktrace{
+			Frames: []payload.Frame{
+				{
+					Colno:    37,
+					Filename: "/__parcel_source_root/demo/src/actions.ts",
+					Function: "?",
+					Lineno:   6,
+				},
+				{
+					Colno:    5,
+					Filename: "http://bar.com/foo.js",
+					Function: "callUndefined",
+					Lineno:   6,
+				},
+			},
+		},
+	}
+
+	actual := transformException(logger, store, &payload.Exception{
+		Stacktrace: &payload.Stacktrace{
+			Frames: []payload.Frame{
+				{
+					Colno:    6,
+					Filename: "http://foo.com/foo.js",
+					Function: "eval",
+					Lineno:   5,
+				},
+				{
+					Colno:    5,
+					Filename: "http://bar.com/foo.js",
+					Function: "callUndefined",
+					Lineno:   6,
+				},
+			},
+		},
+	}, "123")
+
+	require.Equal(t, []string{filepath.FromSlash("/var/build/latest/foo.js.map")}, fileService.stats)
+	require.Equal(t, []string{filepath.FromSlash("/var/build/latest/foo.js.map")}, fileService.reads)
+	require.Nil(t, httpClient.requests)
+	require.Equal(t, expect, actual)
+}
+
 func Test_sourceMapsStoreImpl_FilepathSanitized(t *testing.T) {
 	var (
 		logger = util.TestLogger(t)

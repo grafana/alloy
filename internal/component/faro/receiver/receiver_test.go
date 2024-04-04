@@ -40,8 +40,9 @@ func Test(t *testing.T) {
 			},
 
 			Server: ServerArguments{
-				Host: "127.0.0.1",
-				Port: freePort,
+				Host:            "127.0.0.1",
+				Port:            freePort,
+				IncludeMetadata: true,
 			},
 
 			Output: OutputArguments{
@@ -62,9 +63,9 @@ func Test(t *testing.T) {
 	})
 
 	// Send a sample payload to the server.
-	resp, err := http.Post(
+	req, err := http.NewRequest(
+		"POST",
 		fmt.Sprintf("http://localhost:%d/collect", freePort),
-		"application/json",
 		strings.NewReader(`{
 			"traces": {
 				"resourceSpans": []
@@ -84,6 +85,13 @@ func Test(t *testing.T) {
 			"meta": {}
 		}`),
 	)
+	require.NoError(t, err)
+
+	req.Header.Add("Tenant-Id", "TENANTID")
+	req.Header.Add("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -124,7 +132,6 @@ func newFakeLogsReceiver(t *testing.T) *fakeLogsReceiver {
 		case <-ctx.Done():
 			return
 		case ent := <-lr.Chan():
-
 			lr.entriesMut.Lock()
 			lr.entries = append(lr.entries, loki.Entry{
 				Labels: ent.Labels,

@@ -60,10 +60,10 @@ func (args *HTTPConfigArguments) Convert() *otlpreceiver.HTTPConfig {
 	}
 
 	return &otlpreceiver.HTTPConfig{
-		HTTPServerSettings: args.HTTPServerArguments.Convert(),
-		TracesURLPath:      args.TracesURLPath,
-		MetricsURLPath:     args.MetricsURLPath,
-		LogsURLPath:        args.LogsURLPath,
+		ServerConfig:   args.HTTPServerArguments.Convert(),
+		TracesURLPath:  args.TracesURLPath,
+		MetricsURLPath: args.MetricsURLPath,
+		LogsURLPath:    args.LogsURLPath,
 	}
 }
 

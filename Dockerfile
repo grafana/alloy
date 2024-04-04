@@ -41,7 +41,7 @@ LABEL org.opencontainers.image.source="https://github.com/grafana/alloy"
 # Install dependencies needed at runtime.
 RUN <<EOF
   apt-get update
-  apt-get install -qy libsystemd-dev tzdata ca-certificates
+  apt-get install -qy libsystemd-dev tzdata ca-certificates libcap2-bin
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 EOF
 
@@ -53,6 +53,7 @@ RUN groupadd --gid $UID $USERNAME
 RUN useradd -m -u $UID -g $UID $USERNAME
 RUN chown -R $USERNAME:$USERNAME /etc/alloy
 RUN chown -R $USERNAME:$USERNAME /bin/alloy
+RUN setcap 'cap_net_bind_service=+ep' /bin/alloy
 
 RUN mkdir -p /var/lib/alloy/data
 RUN chown -R $USERNAME:$USERNAME /var/lib/alloy

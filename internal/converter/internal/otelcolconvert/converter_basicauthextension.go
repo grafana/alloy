@@ -23,7 +23,7 @@ func (basicAuthConverterConverter) Factory() component.Factory {
 
 func (basicAuthConverterConverter) InputComponentName() string { return "otelcol.auth.basic" }
 
-func (basicAuthConverterConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (basicAuthConverterConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -33,7 +33,7 @@ func (basicAuthConverterConverter) ConvertAndAppend(state *state, id component.I
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)

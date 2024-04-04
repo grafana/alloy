@@ -112,7 +112,7 @@ func (args *GRPC) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *GRPC) Convert() *otelconfiggrpc.GRPCServerSettings {
+func (args *GRPC) Convert() *otelconfiggrpc.ServerConfig {
 	if args == nil {
 		return nil
 	}
@@ -134,7 +134,7 @@ func (args *ThriftHTTP) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *ThriftHTTP) Convert() *otelconfighttp.HTTPServerSettings {
+func (args *ThriftHTTP) Convert() *otelconfighttp.ServerConfig {
 	if args == nil {
 		return nil
 	}

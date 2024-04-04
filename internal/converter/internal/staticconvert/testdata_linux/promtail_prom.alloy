@@ -69,6 +69,7 @@ loki.source.file "logs_name_jobName" {
 		min_poll_frequency = "1s"
 		max_poll_frequency = "5s"
 	}
+	legacy_positions_file = "/path/name.yml"
 }
 
 loki.write "logs_name" {
@@ -120,6 +121,7 @@ loki.source.file "logs_name2_jobName" {
 		min_poll_frequency = "1s"
 		max_poll_frequency = "5s"
 	}
+	legacy_positions_file = "/path/name2.yml"
 }
 
 loki.write "logs_name2" {

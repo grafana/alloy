@@ -187,76 +187,76 @@ The new {{< param "PRODUCT_NAME" >}} configuration file looks like this:
 
 ```alloy
 prometheus.scrape "metrics_test_local_agent" {
-	targets = [{
-		__address__ = "127.0.0.1:12345",
-		cluster     = "localhost",
-	}]
-	forward_to      = [prometheus.remote_write.metrics_test.receiver]
-	job_name        = "local-agent"
-	scrape_interval = "15s"
+    targets = [{
+        __address__ = "127.0.0.1:12345",
+        cluster     = "localhost",
+    }]
+    forward_to      = [prometheus.remote_write.metrics_test.receiver]
+    job_name        = "local-agent"
+    scrape_interval = "15s"
 }
 
 prometheus.remote_write "metrics_test" {
-	endpoint {
-		name = "test-3a2a1b"
-		url  = "https://prometheus-us-central1.grafana.net/api/prom/push"
+    endpoint {
+        name = "test-3a2a1b"
+        url  = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
-		basic_auth {
-			username = "<USERNAME>"
-			password = "<PASSWORD>"
-		}
+        basic_auth {
+            username = "<USERNAME>"
+            password = "<PASSWORD>"
+        }
 
-		queue_config { }
+        queue_config { }
 
-		metadata_config { }
-	}
+        metadata_config { }
+    }
 }
 
 local.file_match "logs_varlogs_varlogs" {
-	path_targets = [{
-		__address__ = "localhost",
-		__path__    = "/var/log/*.log",
-		host        = "mylocalhost",
-		job         = "varlogs",
-	}]
+    path_targets = [{
+        __address__ = "localhost",
+        __path__    = "/var/log/*.log",
+        host        = "mylocalhost",
+        job         = "varlogs",
+    }]
 }
 
 loki.process "logs_varlogs_varlogs" {
-	forward_to = [loki.write.logs_varlogs.receiver]
+    forward_to = [loki.write.logs_varlogs.receiver]
 
-	stage.match {
-		selector = "{filename=\"/var/log/*.log\"}"
+    stage.match {
+        selector = "{filename=\"/var/log/*.log\"}"
 
-		stage.drop {
-			expression = "^[^0-9]{4}"
-		}
+        stage.drop {
+            expression = "^[^0-9]{4}"
+        }
 
-		stage.regex {
-			expression = "^(?P<timestamp>\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(?P<level>[[:alpha:]]+)\\] (?:\\d+)\\#(?:\\d+): \\*(?:\\d+) (?P<message>.+)$"
-		}
+        stage.regex {
+            expression = "^(?P<timestamp>\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(?P<level>[[:alpha:]]+)\\] (?:\\d+)\\#(?:\\d+): \\*(?:\\d+) (?P<message>.+)$"
+        }
 
-		stage.pack {
-			labels           = ["level"]
-			ingest_timestamp = false
-		}
-	}
+        stage.pack {
+            labels           = ["level"]
+            ingest_timestamp = false
+        }
+    }
 }
 
 loki.source.file "logs_varlogs_varlogs" {
-	targets    = local.file_match.logs_varlogs_varlogs.targets
-	forward_to = [loki.process.logs_varlogs_varlogs.receiver]
+    targets    = local.file_match.logs_varlogs_varlogs.targets
+    forward_to = [loki.process.logs_varlogs_varlogs.receiver]
 
-	file_watch {
-		min_poll_frequency = "1s"
-		max_poll_frequency = "5s"
-	}
+    file_watch {
+        min_poll_frequency = "1s"
+        max_poll_frequency = "5s"
+    }
 }
 
 loki.write "logs_varlogs" {
-	endpoint {
-		url = "https://USER_ID:API_KEY@logs-prod3.grafana.net/loki/api/v1/push"
-	}
-	external_labels = {}
+    endpoint {
+        url = "https://USER_ID:API_KEY@logs-prod3.grafana.net/loki/api/v1/push"
+    }
+    external_labels = {}
 }
 ```
 
@@ -288,7 +288,7 @@ After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} co
 
 The following list is specific to the convert command and not {{< param "PRODUCT_NAME" >}}:
 
-* The  [Traces][] and [Agent Management][] configuration options can't be automatically converted to {{< param "PRODUCT_NAME" >}}. However, traces are fully supported in {{< param "PRODUCT_NAME" >}} and you can build your configuration manually.
+* The [Agent Management][] configuration options can't be automatically converted to {{< param "PRODUCT_NAME" >}}.
   Any additional unsupported features are returned as errors during conversion.
 * There is no gRPC server to configure for {{< param "PRODUCT_NAME" >}}, as any non-default configuration will show as unsupported during the conversion.
 * Check if you are using any extra command line arguments with Static that aren't present in your configuration file. For example, `-server.http.address`.
@@ -320,7 +320,6 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 
 <!--ToDo: Check path -->
 [Integrations next]: https://grafana.com/docs/agent/latest/static/configuration/integrations/integrations-next/
-[Traces]: https://grafana.com/docs/agent/latest/static/configuration/traces-config/
 [Agent Management]: https://grafana.com/docs/agent/latest/static/configuration/agent-management/
 
 [env]: ../../../reference/stdlib/env/
