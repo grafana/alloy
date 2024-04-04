@@ -30,46 +30,28 @@ Some of the key features of {{< param "PRODUCT_NAME" >}} include:
 * **Security:** {{< param "PRODUCT_NAME" >}} helps you manage authentication credentials and connect to HashiCorp Vaults or Kubernetes clusters to retrieve secrets.
 * **Debugging utilities:** {{< param "PRODUCT_NAME" >}} provides troubleshooting support and an embedded [user interface][UI] to help you identify and resolve configuration problems.
 
-<!--
-### Compare {{% param "PRODUCT_NAME" %}} with OpenTelemetry and Prometheus
+## How does {{% param "PRODUCT_NAME" %}} work as an OpenTelemetry collector?
 
-The following tables compare some of the features of {{< param "PRODUCT_NAME" >}} with OpenTelemetry and Prometheus.
+{{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
 
-#### Core telemetry
+### Collect
 
-|              | Grafana Alloy            | OpenTelemetry Collector | Prometheus Agent |
-|--------------|--------------------------|-------------------------|------------------|
-| **Metrics**  | [Prometheus][], [OTel][] | OTel                    | Prometheus       |
-| **Logs**     | [Loki][], [OTel][]       | OTel                    | No               |
-| **Traces**   | [OTel][]                 | OTel                    | No               |
-| **Profiles** | [Pyroscope][]            | Planned                 | No               |
+{{< param "PRODUCT_NAME" >}} uses more than 120 components to collect telemetry data from applications, databases, and OpenTelemetry collectors.
+{{< param "PRODUCT_NAME" >}} supports collection using multiple ecosystems, including OpenTelemetry and Prometheus.
 
-#### **OSS features**
+Telemetry data can be either pushed to {{< param "PRODUCT_NAME" >}}, or {{< param "PRODUCT_NAME" >}} can pull it from your data sources.
 
-|                          | Grafana Alloy     | OpenTelemetry Collector | Prometheus Agent |
-|--------------------------|-------------------|-------------------------|------------------|
-| **Kubernetes native**    | [Yes][helm chart] | Yes                     | No               |
-| **Clustering**           | [Yes][clustering] | No                      | No               |
-| **Prometheus rules**     | [Yes][rules]      | No                      | No               |
-| **Native Vault support** | [Yes][vault]      | No                      | No               |
+### Transform
 
-#### Grafana Cloud solutions
+{{< param "PRODUCT_NAME" >}} processes data and transforms it for sending.
 
-|                               | Grafana Alloy        | OpenTelemetry Collector | Prometheus Agent |
-|-------------------------------|----------------------|-------------------------|------------------|
-| **Official vendor support**   | [Yes][sla]           | No                      | No               |
-| **Cloud integrations**        | Some                 | No                      | No               |
-| **Kubernetes monitoring**     | [Yes][helm chart]    | No                      | Yes, custom      |
-| **Application observability** | [Yes][observability] | Yes                     | No               |
-<!--
-<!--
-### BoringCrypto
+You can use transformations to inject extra metadata into telemetry or filter out unwanted data.
 
-[BoringCrypto][] is an **EXPERIMENTAL** feature for building {{< param "PRODUCT_NAME" >}}
-binaries and images with BoringCrypto enabled. Builds and Docker images for Linux arm64/amd64 are made available.
+### Write
 
-[BoringCrypto]: https://pkg.go.dev/crypto/internal/boring
--->
+{{< param "PRODUCT_NAME" >}} sends data to OpenTelemetry-compatible databases or collectors, the Grafana LGTM stack, or Grafana Cloud.
+
+{{< param "PRODUCT_NAME" >}} can also write alerting rules in compatible databases.
 
 ## Next steps
 
