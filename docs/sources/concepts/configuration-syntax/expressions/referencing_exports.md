@@ -41,7 +41,7 @@ prometheus.remote_write "onprem" {
 
 In the preceding example, you wired together a very simple pipeline by writing a few {{< param "PRODUCT_NAME" >}} expressions.
 
-![Flow of example pipeline](/media/docs/agent/flow_referencing_exports_diagram.svg)
+{{< figure src="/media/docs/alloy/diagram-referencing-exports.png" alt="Example of a pipeline" >}}
 
 After the value is resolved, it must match the [type][] of the attribute it is assigned to.
 While you can only configure attributes using the basic {{< param "PRODUCT_NAME" >}} types,

@@ -14,7 +14,7 @@ Metric names follow the template `stackdriver_<monitored_resource>_<metric_type_
 
 The following example shows a load balancing metric:
 
-![gcp-exporter-config-metric-example](https://grafana.com/media/docs/agent/gcp-exporter-config-metric-example.png)
+{{< figure src="/media/docs/alloy/gcp-exporter-config-metric-example.png" alt="Example GCP exporter configuration metric" >}}
 
 The following list shows its attributes: \
 monitored_resource = `https_lb_rule`\
