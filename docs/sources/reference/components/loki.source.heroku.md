@@ -12,7 +12,7 @@ and forwards them to other `loki.*` components.
 The component starts a new heroku listener for the given `listener`
 block and fans out incoming entries to the list of receivers in `forward_to`.
 
-Before using `loki.source.heroku`, Heroku should be configured with the URL where the Agent will be listening.
+Before using `loki.source.heroku`, Heroku should be configured with the URL where {{< param "PRODUCT_NAME" >}} will be listening.
 Follow the steps in [Heroku HTTPS Drain docs](https://devcenter.heroku.com/articles/log-drains#https-drains) for using the Heroku CLI with a command like the following:
 
 ```shell

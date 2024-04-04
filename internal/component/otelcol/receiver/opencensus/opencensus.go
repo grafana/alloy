@@ -57,8 +57,8 @@ func (args *Arguments) SetToDefault() {
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &opencensusreceiver.Config{
-		CorsOrigins:        args.CorsAllowedOrigins,
-		GRPCServerSettings: *args.GRPC.Convert(),
+		CorsOrigins:  args.CorsAllowedOrigins,
+		ServerConfig: *args.GRPC.Convert(),
 	}, nil
 }
 

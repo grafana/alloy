@@ -108,7 +108,6 @@ The set of cipher suites specified may be from the following:
 | `TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256`   |
 | `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` |
 
-
 The `curve_preferences` argument determines the set of elliptic curves to prefer during a handshake in preference order.
 If not provided, a default list is used.
 The set of elliptic curves specified may be from the following:

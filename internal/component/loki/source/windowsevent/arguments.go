@@ -24,6 +24,7 @@ type Arguments struct {
 	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
 	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
 	Labels               map[string]string   `alloy:"labels,attr,optional"`
+	LegacyBookmarkPath   string              `alloy:"legacy_bookmark_path,attr,optional"`
 }
 
 func defaultArgs() Arguments {

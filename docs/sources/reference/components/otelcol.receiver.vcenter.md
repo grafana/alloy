@@ -30,7 +30,7 @@ The full list of metrics that can be collected can be found in [vcenter receiver
 
 This receiver has been built to support ESXi and vCenter versions:
 
-- 7.5
+- 8
 - 7.0
 - 6.7
 

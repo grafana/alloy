@@ -1,0 +1,35 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+connectors:
+  servicegraph:
+    latency_histogram_buckets: [100ms, 250ms, 1s, 5s, 10s]
+    dimensions:
+      - dimension-1
+      - dimension-2
+    store:
+      ttl: 1s
+      max_items: 10
+    cache_loop: 2m
+    store_expiration_loop: 5s
+
+exporters:
+  otlp:
+    # Our defaults have drifted from upstream, so we explicitly set our
+    # defaults below (balancer_name and queue_size).
+    endpoint: database:4317
+    balancer_name: pick_first
+    sending_queue:
+      queue_size: 5000
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [servicegraph]
+    metrics:
+      receivers: [servicegraph]
+      exporters: [otlp]

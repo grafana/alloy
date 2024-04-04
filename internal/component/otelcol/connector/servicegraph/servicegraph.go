@@ -10,7 +10,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/servicegraphprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 )
@@ -53,6 +52,10 @@ type Arguments struct {
 	//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 	// the "processor.servicegraph.virtualNode" feature gate.
 	// VirtualNodePeerAttributes []string `alloy:"virtual_node_peer_attributes,attr,optional"`
+
+	// MetricsFlushInterval is the interval at which metrics are flushed to the exporter.
+	// If set to 0, metrics are flushed on every received batch of traces.
+	MetricsFlushInterval time.Duration `alloy:"metrics_flush_interval,attr,optional"`
 
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -140,19 +143,20 @@ func (args *Arguments) Validate() error {
 
 // Convert implements connector.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return &servicegraphprocessor.Config{
+	return &servicegraphconnector.Config{
 		// Never set a metric exporter.
 		// The consumer of metrics will be set via Otel's Connector API.
 		//
 		// MetricsExporter:         "",
 		LatencyHistogramBuckets: args.LatencyHistogramBuckets,
 		Dimensions:              args.Dimensions,
-		Store: servicegraphprocessor.StoreConfig{
+		Store: servicegraphconnector.StoreConfig{
 			MaxItems: args.Store.MaxItems,
 			TTL:      args.Store.TTL,
 		},
-		CacheLoop:           args.CacheLoop,
-		StoreExpirationLoop: args.StoreExpirationLoop,
+		CacheLoop:            args.CacheLoop,
+		StoreExpirationLoop:  args.StoreExpirationLoop,
+		MetricsFlushInterval: args.MetricsFlushInterval,
 		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 		// the "processor.servicegraph.virtualNode" feature gate.
 		// VirtualNodePeerAttributes: args.VirtualNodePeerAttributes,

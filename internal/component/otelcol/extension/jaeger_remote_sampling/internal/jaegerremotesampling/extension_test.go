@@ -1,16 +1,5 @@
 // Copyright The OpenTelemetry Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//       http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
 
 package jaegerremotesampling
 
@@ -105,12 +94,13 @@ func TestRemote(t *testing.T) {
 				err = server.Serve(lis)
 				require.NoError(t, err)
 			}()
+			defer func() { server.Stop() }()
 
 			// create the config, pointing to the mock server
 			cfg := testConfig()
-			cfg.GRPCServerSettings.NetAddr.Endpoint = "127.0.0.1:0"
+			cfg.GRPCServerConfig.NetAddr.Endpoint = "127.0.0.1:0"
 			cfg.Source.ReloadInterval = tc.reloadInterval
-			cfg.Source.Remote = &configgrpc.GRPCClientSettings{
+			cfg.Source.Remote = &configgrpc.ClientConfig{
 				Endpoint: fmt.Sprintf("127.0.0.1:%d", lis.Addr().(*net.TCPAddr).Port),
 				TLSSetting: configtls.TLSClientSetting{
 					Insecure: true, // test only
@@ -131,6 +121,7 @@ func TestRemote(t *testing.T) {
 				resp, err := http.Get("http://127.0.0.1:5778/sampling?service=foo")
 				assert.NoError(t, err)
 				assert.Equal(t, 200, resp.StatusCode)
+				assert.NoError(t, resp.Body.Close())
 			}
 
 			// shut down the server
@@ -174,7 +165,7 @@ func (s *samplingServer) GetSamplingStrategy(ctx context.Context, params *api_v2
 
 func testConfig() *Config {
 	cfg := createDefaultConfig().(*Config)
-	cfg.HTTPServerSettings.Endpoint = "127.0.0.1:5778"
-	cfg.GRPCServerSettings.NetAddr.Endpoint = "127.0.0.1:14250"
+	cfg.HTTPServerConfig.Endpoint = "127.0.0.1:5778"
+	cfg.GRPCServerConfig.NetAddr.Endpoint = "127.0.0.1:14250"
 	return cfg
 }

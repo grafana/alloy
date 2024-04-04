@@ -23,7 +23,7 @@ github_repos:
   - github.com/google/dnsmasq_exporter v0.2.0
   - github.com/ncabatoff/process-exporter v0.7.5
   - github.com/prometheus/mysqld_exporter v0.13.0
-  - github.com/prometheus-community/postgres_exporter v0.10.0
+  - github.com/prometheus-community/postgres_exporter v0.15.0
   - github.com/prometheus-community/windows_exporter v0.16.0
   - github.com/percona/mongodb_exporter v0.20.7
   - project: github.com/prometheus/prometheus

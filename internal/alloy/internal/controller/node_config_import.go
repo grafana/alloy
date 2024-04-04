@@ -90,11 +90,13 @@ func NewImportConfigNode(block *ast.BlockStmt, globals ComponentGlobals, sourceT
 
 func getImportManagedOptions(globals ComponentGlobals, cn *ImportConfigNode) component.Options {
 	cn.registry = prometheus.NewRegistry()
+	parent, id := splitPath(cn.globalID)
 	return component.Options{
 		ID:     cn.globalID,
-		Logger: log.With(globals.Logger, "config", cn.globalID),
+		Logger: log.With(globals.Logger, "config_path", parent, "config_id", id),
 		Registerer: prometheus.WrapRegistererWith(prometheus.Labels{
-			"config_id": cn.globalID,
+			"config_path": parent,
+			"config_id":   id,
 		}, cn.registry),
 		Tracer:   tracing.WrapTracer(globals.TraceProvider, cn.globalID),
 		DataPath: filepath.Join(globals.DataPath, cn.globalID),

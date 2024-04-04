@@ -46,8 +46,9 @@ func TestAlloyConfigConvert(t *testing.T) {
 	var exampleAlloyConfig = `
 	data_source_names = ["postgresql://username:password@localhost:5432/database?sslmode=disable"]
 	disable_settings_metrics = true
-	disable_default_metrics = true
+	disable_default_metrics = false
 	custom_queries_config_path = "/tmp/queries.yaml"
+	enabled_collectors = ["collector1", "collector2"]
 	
 	autodiscovery {
 		enabled = false
@@ -59,7 +60,7 @@ func TestAlloyConfigConvert(t *testing.T) {
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
-	c := args.Convert()
+	c := args.convert("test-instance")
 
 	expected := postgres_exporter.Config{
 		DataSourceNames:        []config_util.Secret{config_util.Secret("postgresql://username:password@localhost:5432/database?sslmode=disable")},
@@ -67,10 +68,52 @@ func TestAlloyConfigConvert(t *testing.T) {
 		AutodiscoverDatabases:  false,
 		ExcludeDatabases:       []string{"exclude1", "exclude2"},
 		IncludeDatabases:       []string{"include1"},
-		DisableDefaultMetrics:  true,
+		DisableDefaultMetrics:  false,
 		QueryPath:              "/tmp/queries.yaml",
+		Instance:               "test-instance",
+		EnabledCollectors:      []string{"collector1", "collector2"},
 	}
 	require.Equal(t, expected, *c)
+}
+
+func TestRiverConfigValidate(t *testing.T) {
+	var tc = []struct {
+		name        string
+		args        Arguments
+		expectedErr string
+	}{
+		{
+			name: "no errors on default config",
+			args: Arguments{},
+		},
+		{
+			name: "missing custom queries file path",
+			args: Arguments{
+				DisableDefaultMetrics: true,
+			},
+			expectedErr: "custom_queries_config_path must be set when disable_default_metrics is true",
+		},
+		{
+			name: "disabled default metrics with enabled collectors",
+			args: Arguments{
+				DisableDefaultMetrics:   true,
+				CustomQueriesConfigPath: "/tmp/queries.yaml",
+				EnabledCollectors:       []string{"collector1"},
+			},
+			expectedErr: "enabled_collectors cannot be set when disable_default_metrics is true",
+		},
+	}
+
+	for _, tt := range tc {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.expectedErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.expectedErr)
+			}
+		})
+	}
 }
 
 func TestParsePostgresURL(t *testing.T) {

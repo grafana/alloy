@@ -6,12 +6,14 @@ package positions
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 
 	util_log "github.com/grafana/loki/pkg/util/log"
 )
@@ -35,6 +37,81 @@ func tempFilename(t *testing.T) string {
 	}
 
 	return name
+}
+
+func writeLegacy(t *testing.T, tmpDir string) string {
+	legacy := filepath.Join(tmpDir, "legacy")
+	legacyPositions := LegacyFile{
+		Positions: make(map[string]string),
+	}
+	// Filename and byte offset
+	legacyPositions.Positions["/tmp/random.log"] = "17623"
+	buf, err := yaml.Marshal(legacyPositions)
+	require.NoError(t, err)
+	err = os.WriteFile(legacy, buf, 0644)
+	require.NoError(t, err)
+	return legacy
+}
+
+func TestLegacyConversion(t *testing.T) {
+	tmpDir := t.TempDir()
+	legacy := writeLegacy(t, tmpDir)
+	positionsPath := filepath.Join(tmpDir, "positions")
+	ConvertLegacyPositionsFile(legacy, positionsPath, log.NewNopLogger())
+	ps, err := readPositionsFile(Config{
+		PositionsFile: positionsPath,
+	}, log.NewNopLogger())
+	require.NoError(t, err)
+	require.Len(t, ps, 1)
+	for k, v := range ps {
+		require.True(t, k.Path == "/tmp/random.log")
+		require.True(t, v == "17623")
+	}
+}
+
+func TestLegacyConversionWithNewFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	legacy := writeLegacy(t, tmpDir)
+	// Write a new file.
+	positionsPath := filepath.Join(tmpDir, "positions")
+	err := writePositionFile(positionsPath, map[Entry]string{
+		{Path: "/tmp/newrandom.log", Labels: ""}: "100",
+	})
+	require.NoError(t, err)
+
+	// In this state nothing should be overwritten.
+	ConvertLegacyPositionsFile(legacy, positionsPath, log.NewNopLogger())
+	ps, err := readPositionsFile(Config{
+		PositionsFile: positionsPath,
+	}, log.NewNopLogger())
+	require.NoError(t, err)
+	require.Len(t, ps, 1)
+	for k, v := range ps {
+		require.True(t, k.Path == "/tmp/newrandom.log")
+		require.True(t, v == "100")
+	}
+}
+
+func TestLegacyConversionWithNoLegacyFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	legacy := filepath.Join(tmpDir, "legacy")
+	positionsPath := filepath.Join(tmpDir, "positions")
+	// Write a new file.
+	err := writePositionFile(positionsPath, map[Entry]string{
+		{Path: "/tmp/newrandom.log", Labels: ""}: "100",
+	})
+	require.NoError(t, err)
+
+	ConvertLegacyPositionsFile(legacy, positionsPath, log.NewNopLogger())
+	ps, err := readPositionsFile(Config{
+		PositionsFile: positionsPath,
+	}, log.NewNopLogger())
+	require.NoError(t, err)
+	require.Len(t, ps, 1)
+	for k, v := range ps {
+		require.True(t, k.Path == "/tmp/newrandom.log")
+		require.True(t, v == "100")
+	}
 }
 
 func TestReadPositionsOK(t *testing.T) {

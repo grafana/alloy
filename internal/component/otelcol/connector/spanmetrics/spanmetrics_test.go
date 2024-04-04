@@ -36,10 +36,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: spanmetricsconnector.Config{
-				Dimensions:             []spanmetricsconnector.Dimension{},
-				ExcludeDimensions:      nil,
-				DimensionsCacheSize:    1000,
-				AggregationTemporality: "AGGREGATION_TEMPORALITY_CUMULATIVE",
+				Dimensions:               []spanmetricsconnector.Dimension{},
+				ExcludeDimensions:        nil,
+				DimensionsCacheSize:      1000,
+				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
+				ResourceMetricsCacheSize: 1000,
 				Histogram: spanmetricsconnector.HistogramConfig{
 					Disable:     false,
 					Unit:        0,
@@ -70,6 +71,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Exemplars: spanmetricsconnector.ExemplarsConfig{
 					Enabled: false,
 				},
+				Events: spanmetricsconnector.EventsConfig{
+					Enabled:    false,
+					Dimensions: []spanmetricsconnector.Dimension{},
+				},
 			},
 		},
 		{
@@ -82,10 +87,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: spanmetricsconnector.Config{
-				Dimensions:             []spanmetricsconnector.Dimension{},
-				DimensionsCacheSize:    1000,
-				ExcludeDimensions:      nil,
-				AggregationTemporality: "AGGREGATION_TEMPORALITY_CUMULATIVE",
+				Dimensions:               []spanmetricsconnector.Dimension{},
+				DimensionsCacheSize:      1000,
+				ExcludeDimensions:        nil,
+				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
+				ResourceMetricsCacheSize: 1000,
 				Histogram: spanmetricsconnector.HistogramConfig{
 					Disable:     false,
 					Unit:        0,
@@ -94,6 +100,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 				MetricsFlushInterval: 15 * time.Second,
 				Namespace:            "",
+				Events: spanmetricsconnector.EventsConfig{
+					Enabled:    false,
+					Dimensions: []spanmetricsconnector.Dimension{},
+				},
 			},
 		},
 		{
@@ -109,6 +119,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			exclude_dimensions = ["test_exclude_dim1", "test_exclude_dim2"]
 			dimensions_cache_size = 333
 			aggregation_temporality = "DELTA"
+			resource_metrics_cache_size = 12345
 			histogram {
 				disable = true
 				unit = "s"
@@ -121,7 +132,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			exemplars {
 				enabled = true
 			}
-
+			events {
+				enabled = true
+				dimension {
+					name = "exception1"
+				}
+			}
 			output {}
 			`,
 			expected: spanmetricsconnector.Config{
@@ -129,9 +145,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					{Name: "http.status_code", Default: nil},
 					{Name: "http.method", Default: getStringPtr("GET")},
 				},
-				ExcludeDimensions:      []string{"test_exclude_dim1", "test_exclude_dim2"},
-				DimensionsCacheSize:    333,
-				AggregationTemporality: "AGGREGATION_TEMPORALITY_DELTA",
+				ExcludeDimensions:        []string{"test_exclude_dim1", "test_exclude_dim2"},
+				DimensionsCacheSize:      333,
+				AggregationTemporality:   "AGGREGATION_TEMPORALITY_DELTA",
+				ResourceMetricsCacheSize: 12345,
 				Histogram: spanmetricsconnector.HistogramConfig{
 					Disable:     true,
 					Unit:        1,
@@ -149,6 +166,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Exemplars: spanmetricsconnector.ExemplarsConfig{
 					Enabled: true,
 				},
+				Events: spanmetricsconnector.EventsConfig{
+					Enabled: true,
+					Dimensions: []spanmetricsconnector.Dimension{
+						{Name: "exception1", Default: nil},
+					},
+				},
 			},
 		},
 		{
@@ -164,9 +187,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: spanmetricsconnector.Config{
-				Dimensions:             []spanmetricsconnector.Dimension{},
-				DimensionsCacheSize:    1000,
-				AggregationTemporality: "AGGREGATION_TEMPORALITY_CUMULATIVE",
+				Dimensions:               []spanmetricsconnector.Dimension{},
+				DimensionsCacheSize:      1000,
+				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
+				ResourceMetricsCacheSize: 1000,
 				Histogram: spanmetricsconnector.HistogramConfig{
 					Unit:        0,
 					Exponential: &spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 123},
@@ -174,6 +198,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 				MetricsFlushInterval: 15 * time.Second,
 				Namespace:            "",
+				Events: spanmetricsconnector.EventsConfig{
+					Enabled:    false,
+					Dimensions: []spanmetricsconnector.Dimension{},
+				},
 			},
 		},
 		{

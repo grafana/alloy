@@ -25,7 +25,7 @@ func (batchProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.batch"
 }
 
-func (batchProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (batchProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -35,14 +35,14 @@ func (batchProcessorConverter) ConvertAndAppend(state *state, id component.Insta
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
 	return diags
 }
 
-func toBatchProcessor(state *state, id component.InstanceID, cfg *batchprocessor.Config) *batch.Arguments {
+func toBatchProcessor(state *State, id component.InstanceID, cfg *batchprocessor.Config) *batch.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)
@@ -56,9 +56,9 @@ func toBatchProcessor(state *state, id component.InstanceID, cfg *batchprocessor
 		MetadataKeys:             cfg.MetadataKeys,
 		MetadataCardinalityLimit: cfg.MetadataCardinalityLimit,
 		Output: &otelcol.ConsumerArguments{
-			Metrics: toTokenizedConsumers(nextMetrics),
-			Logs:    toTokenizedConsumers(nextLogs),
-			Traces:  toTokenizedConsumers(nextTraces),
+			Metrics: ToTokenizedConsumers(nextMetrics),
+			Logs:    ToTokenizedConsumers(nextLogs),
+			Traces:  ToTokenizedConsumers(nextTraces),
 		},
 	}
 }

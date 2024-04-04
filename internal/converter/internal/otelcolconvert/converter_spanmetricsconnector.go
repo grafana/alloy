@@ -26,7 +26,7 @@ func (spanmetricsConnectorConverter) InputComponentName() string {
 	return "otelcol.connector.spanmetrics"
 }
 
-func (spanmetricsConnectorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (spanmetricsConnectorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -36,14 +36,14 @@ func (spanmetricsConnectorConverter) ConvertAndAppend(state *state, id component
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
 	return diags
 }
 
-func toSpanmetricsConnector(state *state, id component.InstanceID, cfg *spanmetricsconnector.Config) *spanmetrics.Arguments {
+func toSpanmetricsConnector(state *State, id component.InstanceID, cfg *spanmetricsconnector.Config) *spanmetrics.Arguments {
 	if cfg == nil {
 		return nil
 	}
@@ -79,6 +79,14 @@ func toSpanmetricsConnector(state *state, id component.InstanceID, cfg *spanmetr
 		})
 	}
 
+	var eventDimensions []spanmetrics.Dimension
+	for _, d := range cfg.Dimensions {
+		eventDimensions = append(eventDimensions, spanmetrics.Dimension{
+			Name:    d.Name,
+			Default: d.Default,
+		})
+	}
+
 	return &spanmetrics.Arguments{
 		Dimensions:             dimensions,
 		ExcludeDimensions:      cfg.ExcludeDimensions,
@@ -90,14 +98,21 @@ func toSpanmetricsConnector(state *state, id component.InstanceID, cfg *spanmetr
 			Exponential: exponential,
 			Explicit:    explicit,
 		},
-		MetricsFlushInterval: cfg.MetricsFlushInterval,
-		Namespace:            cfg.Namespace,
+		MetricsFlushInterval:         cfg.MetricsFlushInterval,
+		Namespace:                    cfg.Namespace,
+		ResourceMetricsCacheSize:     cfg.ResourceMetricsCacheSize,
+		ResourceMetricsKeyAttributes: cfg.ResourceMetricsKeyAttributes,
 		Exemplars: spanmetrics.ExemplarsConfig{
-			Enabled: cfg.Exemplars.Enabled,
+			Enabled:         cfg.Exemplars.Enabled,
+			MaxPerDataPoint: cfg.Exemplars.MaxPerDataPoint,
+		},
+		Events: spanmetrics.EventsConfig{
+			Enabled:    cfg.Events.Enabled,
+			Dimensions: eventDimensions,
 		},
 
 		Output: &otelcol.ConsumerArguments{
-			Metrics: toTokenizedConsumers(nextMetrics),
+			Metrics: ToTokenizedConsumers(nextMetrics),
 		},
 	}
 }

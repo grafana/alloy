@@ -59,8 +59,8 @@ var (
 // Convert implements extension.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &jaegerremotesampling.Config{
-		HTTPServerSettings: (*otelcol.HTTPServerArguments)(args.HTTP).Convert(),
-		GRPCServerSettings: (*otelcol.GRPCServerArguments)(args.GRPC).Convert(),
+		HTTPServerConfig: (*otelcol.HTTPServerArguments)(args.HTTP).Convert(),
+		GRPCServerConfig: (*otelcol.GRPCServerArguments)(args.GRPC).Convert(),
 		Source: jaegerremotesampling.Source{
 			Remote:         (*otelcol.GRPCClientArguments)(args.Source.Remote).Convert(),
 			File:           args.Source.File,

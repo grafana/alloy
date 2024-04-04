@@ -56,7 +56,7 @@ rule | [rule][] | Relabeling rules to apply to discovered targets. | no
 scrape | [scrape][] | Default scrape configuration to apply to discovered targets. | no
 selector | [selector][] | Label selector for which Probes to discover. | no
 selector > match_expression | [match_expression][] | Label selector expression for which Probes to discover. | no
-clustering | [clustering][] | Configure the component for when the Agent is running in clustered mode. | no
+clustering | [clustering][] | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `client >
 basic_auth` refers to a `basic_auth` block defined

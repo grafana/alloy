@@ -76,8 +76,9 @@ Name         | Type     | Description                                           
 `error_mode` | `string` | How to react to errors if they occur while processing a statement. | `"propagate"` | no
 
 The supported values for `error_mode` are:
-* `ignore`: Ignore errors returned by statements and continue on to the next statement. This is the recommended mode.
-* `propagate`: Return the error up the pipeline. This will result in the payload being dropped from the Agent.
+* `ignore`: Ignore errors returned by conditions, log them, and continue on to the next condition. This is the recommended mode.
+* `silent`: Ignore errors returned by conditions, do not log them, and continue on to the next condition.
+* `propagate`: Return the error up the pipeline. This will result in the payload being dropped from {{< param "PRODUCT_NAME" >}}.
 
 ## Blocks
 

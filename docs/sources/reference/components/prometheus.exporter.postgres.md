@@ -27,17 +27,34 @@ prometheus.exporter.postgres "LABEL" {
 The following arguments are supported:
 
 | Name                         | Type           | Description                                                                   | Default | Required |
-| ---------------------------- | -------------- | ----------------------------------------------------------------------------- | ------- | -------- |
+|------------------------------|----------------|-------------------------------------------------------------------------------|---------|----------|
 | `data_source_names`          | `list(secret)` | Specifies the Postgres server(s) to connect to.                               |         | yes      |
 | `disable_settings_metrics`   | `bool`         | Disables collection of metrics from pg_settings.                              | `false` | no       |
 | `disable_default_metrics`    | `bool`         | When `true`, only exposes metrics supplied from `custom_queries_config_path`. | `false` | no       |
 | `custom_queries_config_path` | `string`       | Path to YAML file containing custom queries to expose as metrics.             | ""      | no       |
+| `enabled_collectors`         | `list(string)` | List of collectors to enable. See below for more detail.                      | []      | no       |
 
 The format for connection strings in `data_source_names` can be found in the [official postgresql documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING).
 
 See examples for the `custom_queries_config_path` file in the [postgres_exporter repository](https://github.com/prometheus-community/postgres_exporter/blob/master/queries.yaml).
 
 **NOTE**: There are a number of environment variables that are not recommended for use, as they will affect _all_ `prometheus.exporter.postgres` components. A full list can be found in the [postgres_exporter repository](https://github.com/prometheus-community/postgres_exporter#environment-variables).
+
+By default, the same set of metrics is enabled as in the upstream [postgres_exporter](https://github.com/prometheus-community/postgres_exporter/). If `custom_queries_config_path` is set, additional metrics defined in the given config file will be exposed.
+If `disable_default_metrics` is set to `true`, only the metrics defined in the `custom_queries_config_path` file will be exposed.
+
+A subset of metrics collectors can be controlled by setting the `enabled_collectors` argument. The following collectors are available for selection:
+`database`, `database_wraparound`, `locks`, `long_running_transactions`, `postmaster`, `process_idle`,
+`replication`, `replication_slot`, `stat_activity_autovacuum`, `stat_bgwriter`, `stat_database`,
+`stat_statements`, `stat_user_tables`, `stat_wal_receiver`, `statio_user_indexes`, `statio_user_tables`,
+`wal`, `xlog_location`.
+
+By default, the following collectors are enabled: `database`, `locks`, `replication`, `replication_slot`, `stat_bgwriter`, `stat_database`,
+`stat_user_tables`, `statio_user_tables`, `wal`.
+
+{{< admonition type="note" >}}
+Due to a limitation of the upstream exporter, when multiple `data_source_names` are used, the collectors that are controlled via the `enabled_collectors` argument will only be applied to the first data source in the list.
+{{< /admonition >}}
 
 ## Blocks
 

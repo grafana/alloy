@@ -369,8 +369,8 @@ When running {{< param "PRODUCT_NAME" >}} in a Docker container, you need to
 bind mount the filesystem, procfs, and sysfs from the host machine, as well as
 set the corresponding arguments for the component to work.
 
-You may also need to add capabilities such as `SYS_TIME` and make sure that the
-Agent is running with elevated privileges for some of the collectors to work
+You may also need to add capabilities such as `SYS_TIME` and make sure that
+{{< param "PRODUCT_NAME" >}} is running with elevated privileges for some of the collectors to work
 properly.
 
 ## Example

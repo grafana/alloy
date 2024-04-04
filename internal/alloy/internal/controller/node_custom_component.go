@@ -104,6 +104,7 @@ func NewCustomComponentNode(globals ComponentGlobals, b *ast.BlockStmt, getConfi
 
 	componentName := b.GetBlockName()
 	importNamespace, customComponentName := ExtractImportAndDeclare(componentName)
+	parent, node := splitPath(globalID)
 
 	cn := &CustomComponentNode{
 		id:                  id,
@@ -115,7 +116,7 @@ func NewCustomComponentNode(globals ComponentGlobals, b *ast.BlockStmt, getConfi
 		customComponentName: customComponentName,
 		moduleController:    globals.NewModuleController(globalID),
 		OnBlockNodeUpdate:   globals.OnBlockNodeUpdate,
-		logger:              log.With(globals.Logger, "component", globalID),
+		logger:              log.With(globals.Logger, "component_path", parent, "component_id", node),
 		getConfig:           getConfig,
 
 		block: b,

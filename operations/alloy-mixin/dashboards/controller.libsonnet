@@ -264,10 +264,10 @@ local filename = 'alloy-controller.json';
         panel.withQueries([
           panel.newQuery(
             expr=|||
-              sum by (component_id) (rate(alloy_component_evaluation_slow_seconds{cluster="$cluster", namespace="$namespace"}[$__rate_interval]))
+              sum by (component_path, component_id) (rate(alloy_component_evaluation_slow_seconds{cluster="$cluster", namespace="$namespace"}[$__rate_interval]))
               / scalar(sum(rate(alloy_component_evaluation_seconds_sum{cluster="$cluster", namespace="$namespace"}[$__rate_interval])))
             |||,
-            legendFormat='{{component_id}}',
+            legendFormat='{{component path}} {{component_id}}',
           ),
         ])
       ),

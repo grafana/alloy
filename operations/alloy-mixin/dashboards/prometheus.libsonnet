@@ -105,13 +105,13 @@ local remoteWritePanels(y_offset) = [
     panel.withQueries([
       panel.newQuery(
         expr=|||
-          sum by (instance, component_id) (
-            prometheus_remote_storage_highest_timestamp_in_seconds{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component"}
+          sum by (instance, component_path, component_id) (
+            prometheus_remote_storage_highest_timestamp_in_seconds{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_path=~"$component_path", component_id=~"$component"}
             - ignoring(url, remote_name) group_right(instance)
-            prometheus_remote_storage_queue_highest_sent_timestamp_seconds{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"}
+            prometheus_remote_storage_queue_highest_sent_timestamp_seconds{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"}
           )
         |||,
-        legendFormat='{{instance}} / {{component_id}}',
+        legendFormat='{{instance}} / {{component_path}} {{component_id}}',
       ),
     ])
   ),
@@ -130,11 +130,11 @@ local remoteWritePanels(y_offset) = [
       panel.newQuery(
         expr=|||
           sum without (remote_name, url) (
-              rate(prometheus_remote_storage_bytes_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"}[$__rate_interval]) +
-              rate(prometheus_remote_storage_metadata_bytes_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"}[$__rate_interval])
+              rate(prometheus_remote_storage_bytes_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval]) +
+              rate(prometheus_remote_storage_metadata_bytes_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
           )
         |||,
-        legendFormat='{{instance}} / {{component_id}}',
+        legendFormat='{{instance}} / {{component_path}} {{component_id}}',
       ),
     ])
   ),
@@ -152,7 +152,7 @@ local remoteWritePanels(y_offset) = [
       panel.newQuery(
         expr=|||
           histogram_quantile(0.99, sum by (le) (
-            rate(prometheus_remote_storage_sent_batch_duration_seconds_bucket{cluster="$cluster",namespace="$namespace",instance=~"$instance", component_id=~"$component", url=~"$url"}[$__rate_interval])
+            rate(prometheus_remote_storage_sent_batch_duration_seconds_bucket{cluster="$cluster",namespace="$namespace",instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
           ))
         |||,
         legendFormat='99th percentile',
@@ -160,15 +160,15 @@ local remoteWritePanels(y_offset) = [
       panel.newQuery(
         expr=|||
           histogram_quantile(0.50, sum by (le) (
-            rate(prometheus_remote_storage_sent_batch_duration_seconds_bucket{cluster="$cluster",namespace="$namespace",instance=~"$instance", component_id=~"$component", url=~"$url"}[$__rate_interval])
+            rate(prometheus_remote_storage_sent_batch_duration_seconds_bucket{cluster="$cluster",namespace="$namespace",instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
           ))
         |||,
         legendFormat='50th percentile',
       ),
       panel.newQuery(
         expr=|||
-          sum(rate(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster="$cluster",namespace="$namespace",instance=~"$instance", component_id=~"$component"}[$__rate_interval])) /
-          sum(rate(prometheus_remote_storage_sent_batch_duration_seconds_count{cluster="$cluster",namespace="$namespace",instance=~"$instance", component_id=~"$component"}[$__rate_interval]))
+          sum(rate(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster="$cluster",namespace="$namespace",instance=~"$instance", component_path=~"$component_path", component_id=~"$component"}[$__rate_interval])) /
+          sum(rate(prometheus_remote_storage_sent_batch_duration_seconds_count{cluster="$cluster",namespace="$namespace",instance=~"$instance", component_path=~"$component_path", component_id=~"$component"}[$__rate_interval]))
         |||,
         legendFormat='Average',
       ),
@@ -223,15 +223,15 @@ local remoteWritePanels(y_offset) = [
       panel.newQuery(
         expr=|||
           sum without (remote_name, url) (
-              prometheus_remote_storage_shards{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"}
+              prometheus_remote_storage_shards{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"}
           )
         |||,
-        legendFormat='{{instance}} / {{component_id}}',
+        legendFormat='{{instance}} / {{component_path}} {{component_id}}',
       ),
       panel.newQuery(
         expr=|||
           min (
-              prometheus_remote_storage_shards_min{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"}
+              prometheus_remote_storage_shards_min{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"}
           )
         |||,
         legendFormat='Minimum',
@@ -239,7 +239,7 @@ local remoteWritePanels(y_offset) = [
       panel.newQuery(
         expr=|||
           max (
-              prometheus_remote_storage_shards_max{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"}
+              prometheus_remote_storage_shards_max{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"}
           )
         |||,
         legendFormat='Maximum',
@@ -260,10 +260,10 @@ local remoteWritePanels(y_offset) = [
       panel.newQuery(
         expr=|||
           sum without (url, remote_name) (
-            rate(prometheus_remote_storage_samples_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"}[$__rate_interval])
+            rate(prometheus_remote_storage_samples_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
           )
         |||,
-        legendFormat='{{instance}} / {{component_id}}',
+        legendFormat='{{instance}} / {{component_path}} {{component_id}}',
       ),
     ])
   ),
@@ -282,10 +282,10 @@ local remoteWritePanels(y_offset) = [
       panel.newQuery(
         expr=|||
           sum without (url,remote_name) (
-            rate(prometheus_remote_storage_samples_failed_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"}[$__rate_interval])
+            rate(prometheus_remote_storage_samples_failed_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
           )
         |||,
-        legendFormat='{{instance}} / {{component_id}}',
+        legendFormat='{{instance}} / {{component_path}} {{component_id}}',
       ),
     ])
   ),
@@ -304,10 +304,10 @@ local remoteWritePanels(y_offset) = [
       panel.newQuery(
         expr=|||
           sum without (url,remote_name) (
-            rate(prometheus_remote_storage_samples_retried_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"}[$__rate_interval])
+            rate(prometheus_remote_storage_samples_retried_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
           )
         |||,
-        legendFormat='{{instance}} / {{component_id}}',
+        legendFormat='{{instance}} / {{component_path}} {{component_id}}',
       ),
     ])
   ),
@@ -333,7 +333,7 @@ local remoteWritePanels(y_offset) = [
     panel.withQueries([
       panel.newQuery(
         expr=|||
-          sum(prometheus_remote_write_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"$component", url=~"$url"})
+          sum(prometheus_remote_write_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_path=~"$component_path", component_id=~"$component", url=~"$url"})
         |||,
         legendFormat='Series',
       ),
@@ -356,9 +356,9 @@ local remoteWritePanels(y_offset) = [
     panel.withQueries([
       panel.newQuery(
         expr=|||
-          prometheus_remote_write_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id!="", component_id=~"$component", url=~"$url"}
+          prometheus_remote_write_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id!="", component_path=~"$component_path", component_id=~"$component", url=~"$url"}
         |||,
-        legendFormat='{{instance}} / {{component_id}}',
+        legendFormat='{{instance}} / {{component_path}} {{component_id}}',
       ),
     ])
   ),
@@ -379,9 +379,9 @@ local remoteWritePanels(y_offset) = [
     panel.withQueries([
       panel.newQuery(
         expr=|||
-          sum by (component_id) (prometheus_remote_write_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id!="", component_id=~"$component", url=~"$url"})
+          sum by (component_path, component_id) (prometheus_remote_write_wal_storage_active_series{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id!="", component_path=~"$component_path", component_id=~"$component", url=~"$url"})
         |||,
-        legendFormat='{{component_id}}',
+        legendFormat='{{component_path}} {{component_id}}',
       ),
     ])
   ),
@@ -405,6 +405,9 @@ local remoteWritePanels(y_offset) = [
       |||),
       dashboard.newMultiTemplateVariable('instance', |||
         label_values(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace"}, instance)
+      |||),
+      dashboard.newMultiTemplateVariable('component_path', |||
+        label_values(agent_wal_samples_appended_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"prometheus\\.remote_write\\..*", component_path=~".*"}, component_path)
       |||),
       dashboard.newMultiTemplateVariable('component', |||
         label_values(prometheus_remote_write_wal_samples_appended_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"prometheus\\.remote_write\\..*"}, component_id)

@@ -11,7 +11,8 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.processor.memory_limiter "default" {
-	check_interval = "1s"
+	check_interval   = "1s"
+	limit_percentage = 90
 
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]

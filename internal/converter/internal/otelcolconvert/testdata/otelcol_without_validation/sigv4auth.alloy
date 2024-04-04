@@ -1,0 +1,28 @@
+otelcol.auth.sigv4 "default" {
+	region  = "ap-southeast-1"
+	service = "s3"
+
+	assume_role {
+		arn        = "arn:aws:iam::123456789012:role/aws-service-role/access"
+		sts_region = "us-east-1"
+	}
+}
+
+otelcol.receiver.otlp "default" {
+	grpc { }
+
+	http { }
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+		logs    = [otelcol.exporter.otlp.default.input]
+		traces  = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+		auth     = otelcol.auth.sigv4.default.handler
+	}
+}

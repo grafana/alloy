@@ -86,28 +86,18 @@ func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*
 			}
 	}
 
-	// Finally, hard reset to our requested revision.
-	hash, err := findRevision(opts.Revision, repo)
-	if err != nil {
-		return nil, InvalidRevisionError{Revision: opts.Revision}
-	}
-
-	workTree, err := repo.Worktree()
-	if err != nil {
-		return nil, err
-	}
-	err = workTree.Reset(&git.ResetOptions{
-		Commit: hash,
-		Mode:   git.HardReset,
-	})
-	if err != nil {
-		return nil, err
+	checkoutErr := checkout(opts.Revision, repo)
+	if checkoutErr != nil {
+		return nil, UpdateFailedError{
+			Repository: opts.Repository,
+			Inner:      checkoutErr,
+		}
 	}
 
 	return &GitRepo{
 		opts:     opts,
 		repo:     repo,
-		workTree: workTree,
+		workTree: wt,
 	}, err
 }
 
@@ -119,7 +109,6 @@ func isRepoCloned(dir string) bool {
 // Update updates the repository by pulling new content and re-checking out to
 // latest version of Revision.
 func (repo *GitRepo) Update(ctx context.Context) error {
-	var err error
 	pullRepoErr := repo.workTree.PullContext(ctx, &git.PullOptions{
 		RemoteName: "origin",
 		Force:      true,
@@ -132,17 +121,12 @@ func (repo *GitRepo) Update(ctx context.Context) error {
 		}
 	}
 
-	// Find the latest revision being requested and hard-reset to it.
-	hash, err := findRevision(repo.opts.Revision, repo.repo)
-	if err != nil {
-		return InvalidRevisionError{Revision: repo.opts.Revision}
-	}
-	err = repo.workTree.Reset(&git.ResetOptions{
-		Commit: hash,
-		Mode:   git.HardReset,
-	})
-	if err != nil {
-		return err
+	checkoutErr := checkout(repo.opts.Revision, repo.repo)
+	if checkoutErr != nil {
+		return UpdateFailedError{
+			Repository: repo.opts.Repository,
+			Inner:      checkoutErr,
+		}
 	}
 
 	return nil
@@ -186,24 +170,41 @@ func (repo *GitRepo) CurrentRevision() (string, error) {
 	return ref.Hash().String(), nil
 }
 
-func findRevision(rev string, repo *git.Repository) (plumbing.Hash, error) {
+// Depending on the type of revision we need to handle checkout differently.
+// Tags are checked out as branches
+// Branches as branches
+// Commits are commits
+func checkout(rev string, repo *git.Repository) error {
 	// Try looking for the revision in the following order:
 	//
 	// 1. Search by tag name.
 	// 2. Search by remote ref name.
 	// 3. Try to resolve the revision directly.
+	wt, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
 
 	if tagRef, err := repo.Tag(rev); err == nil {
-		return tagRef.Hash(), nil
+		return wt.Checkout(&git.CheckoutOptions{
+			Branch: tagRef.Name(),
+			Force:  true,
+		})
 	}
 
 	if remoteRef, err := repo.Reference(plumbing.NewRemoteReferenceName("origin", rev), true); err == nil {
-		return remoteRef.Hash(), nil
+		return wt.Checkout(&git.CheckoutOptions{
+			Branch: remoteRef.Name(),
+			Force:  true,
+		})
 	}
 
 	if hash, err := repo.ResolveRevision(plumbing.Revision(rev)); err == nil {
-		return *hash, nil
+		return wt.Checkout(&git.CheckoutOptions{
+			Hash:  *hash,
+			Force: true,
+		})
 	}
 
-	return plumbing.ZeroHash, plumbing.ErrReferenceNotFound
+	return plumbing.ErrReferenceNotFound
 }

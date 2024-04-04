@@ -27,7 +27,7 @@ func init() {
 
 func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
 	a := args.(Arguments)
-	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
+	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.convert(opts.ID), defaultInstanceKey)
 }
 
 func parsePostgresURL(url string) (map[string]string, error) {
@@ -80,15 +80,26 @@ type Arguments struct {
 	DataSourceNames []alloytypes.Secret `alloy:"data_source_names,attr,optional"`
 
 	// Attributes
-	DisableSettingsMetrics  bool   `alloy:"disable_settings_metrics,attr,optional"`
-	DisableDefaultMetrics   bool   `alloy:"disable_default_metrics,attr,optional"`
-	CustomQueriesConfigPath string `alloy:"custom_queries_config_path,attr,optional"`
+	DisableSettingsMetrics  bool     `alloy:"disable_settings_metrics,attr,optional"`
+	DisableDefaultMetrics   bool     `alloy:"disable_default_metrics,attr,optional"`
+	CustomQueriesConfigPath string   `alloy:"custom_queries_config_path,attr,optional"`
+	EnabledCollectors       []string `alloy:"enabled_collectors,attr,optional"`
 
 	// Blocks
 	AutoDiscovery AutoDiscovery `alloy:"autodiscovery,block,optional"`
 }
 
-// Autodiscovery controls discovery of databases outside any specified in DataSourceNames.
+func (a *Arguments) Validate() error {
+	if a.DisableDefaultMetrics && a.CustomQueriesConfigPath == "" {
+		return fmt.Errorf("custom_queries_config_path must be set when disable_default_metrics is true")
+	}
+	if a.DisableDefaultMetrics && len(a.EnabledCollectors) != 0 {
+		return fmt.Errorf("enabled_collectors cannot be set when disable_default_metrics is true")
+	}
+	return nil
+}
+
+// AutoDiscovery controls discovery of databases outside any specified in DataSourceNames.
 type AutoDiscovery struct {
 	Enabled           bool     `alloy:"enabled,attr,optional"`
 	DatabaseAllowlist []string `alloy:"database_allowlist,attr,optional"`
@@ -100,7 +111,7 @@ func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-func (a *Arguments) Convert() *postgres_exporter.Config {
+func (a *Arguments) convert(instanceName string) *postgres_exporter.Config {
 	return &postgres_exporter.Config{
 		DataSourceNames:        a.convertDataSourceNames(),
 		DisableSettingsMetrics: a.DisableSettingsMetrics,
@@ -109,6 +120,8 @@ func (a *Arguments) Convert() *postgres_exporter.Config {
 		IncludeDatabases:       a.AutoDiscovery.DatabaseAllowlist,
 		DisableDefaultMetrics:  a.DisableDefaultMetrics,
 		QueryPath:              a.CustomQueriesConfigPath,
+		Instance:               instanceName,
+		EnabledCollectors:      a.EnabledCollectors,
 	}
 }
 

@@ -60,15 +60,17 @@ otelcol.connector.spanmetrics "LABEL" {
 
 `otelcol.connector.spanmetrics` supports the following arguments:
 
-| Name                      | Type           | Description                                                           | Default        | Required |
-| ------------------------- | -------------- | --------------------------------------------------------------------- | -------------- | -------- |
-| `dimensions_cache_size`   | `number`       | How many dimensions to cache.                                         | `1000`         | no       |
-| `aggregation_temporality` | `string`       | Configures whether to reset the metrics after flushing.               | `"CUMULATIVE"` | no       |
-| `metrics_flush_interval`  | `duration`     | How often to flush generated metrics.                                 | `"15s"`        | no       |
-| `namespace`               | `string`       | Metric namespace.                                                     | `""`           | no       |
-| `exclude_dimensions`      | `list(string)` | List of dimensions to be excluded from the default set of dimensions. | `false`        | no       |
+| Name                              | Type           | Description                                                                                | Default        | Required |
+| --------------------------------- | -------------- | ------------------------------------------------------------------------------------------ | -------------- | -------- |
+| `aggregation_temporality`         | `string`       | Configures whether to reset the metrics after flushing.                                    | `"CUMULATIVE"` | no       |
+| `dimensions_cache_size`           | `number`       | How many dimensions to cache.                                                              | `1000`         | no       |
+| `exclude_dimensions`              | `list(string)` | List of dimensions to be excluded from the default set of dimensions.                      | `[]`           | no       |
+| `metrics_flush_interval`          | `duration`     | How often to flush generated metrics.                                                      | `"15s"`        | no       |
+| `namespace`                       | `string`       | Metric namespace.                                                                          | `""`           | no       |
+| `resource_metrics_cache_size`     | `number`       | The size of the cache holding metrics for a service.                                       | `1000`         | no       |
+| `resource_metrics_key_attributes` | `list(string)` | Limits the resource attributes used to create the metrics.                                 | `[]`           | no       |
 
-Adjusting `dimensions_cache_size` can improve the Agent process' memory usage.
+Adjusting `dimensions_cache_size` can improve the {{< param "PRODUCT_NAME" >}} process' memory usage.
 
 The supported values for `aggregation_temporality` are:
 
@@ -77,19 +79,28 @@ The supported values for `aggregation_temporality` are:
 
 If `namespace` is set, the generated metric name will be added a `namespace.` prefix.
 
+`resource_metrics_cache_size` is mostly relevant for cumulative temporality. It helps avoid issues with increasing memory and with incorrect metric timestamp resets.
+
+`resource_metrics_key_attributes` can be used to avoid situations where resource attributes may change across service restarts,
+causing metric counters to break (and duplicate). A resource does not need to have all of the attributes.
+The list must include enough attributes to properly identify unique resources or risk aggregating data from more than one service and span.
+For example, `["service.name", "telemetry.sdk.language", "telemetry.sdk.name"]`.
+
 ## Blocks
 
 The following blocks are supported inside the definition of
 `otelcol.connector.spanmetrics`:
 
-| Hierarchy               | Block           | Description                                             | Required |
-| ----------------------- | --------------- | ------------------------------------------------------- | -------- |
-| dimension               | [dimension][]   | Dimensions to be added in addition to the default ones. | no       |
-| histogram               | [histogram][]   | Configures the histogram derived from spans durations.  | yes      |
-| histogram > exponential | [exponential][] | Configuration for a histogram with exponential buckets. | no       |
-| histogram > explicit    | [explicit][]    | Configuration for a histogram with explicit buckets.    | no       |
-| exemplars               | [exemplars][]   | Configures how to attach exemplars to histograms.       | no       |
-| output                  | [output][]      | Configures where to send telemetry data.                | yes      |
+| Hierarchy               | Block           | Description                                                                                                                                                | Required |
+| ----------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| dimension               | [dimension][]   | Dimensions to be added in addition to the default ones.                                                                                                    | no       |
+| events                  | [events][]      | Configures the events metric.                                                                                                                              | no       |
+| events > dimension      | [dimension][]   | Span event attributes to add as dimensions to the events metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block. | no       |
+| exemplars               | [exemplars][]   | Configures how to attach exemplars to histograms.                                                                                                          | no       |
+| histogram               | [histogram][]   | Configures the histogram derived from spans durations.                                                                                                     | yes      |
+| histogram > explicit    | [explicit][]    | Configuration for a histogram with explicit buckets.                                                                                                       | no       |
+| histogram > exponential | [exponential][] | Configuration for a histogram with exponential buckets.                                                                                                    | no       |
+| output                  | [output][]      | Configures where to send telemetry data.                                                                                                                   | yes      |
 
 It is necessary to specify either a "[exponential][]" or an "[explicit][]" block:
 
@@ -101,6 +112,7 @@ It is necessary to specify either a "[exponential][]" or an "[explicit][]" block
 [exponential]: #exponential-block
 [explicit]: #explicit-block
 [exemplars]: #exemplars-block
+[events]: #events-block
 [output]: #output-block
 
 ### dimension block
@@ -121,8 +133,8 @@ The following attributes are supported:
 
 | Name      | Type     | Description                                      | Default | Required |
 | --------- | -------- | ------------------------------------------------ | ------- | -------- |
-| `name`    | `string` | Span attribute or resource attribute to look up. |         | yes      |
 | `default` | `string` | Value to use if the attribute is missing.        | null    | no       |
+| `name`    | `string` | Span attribute or resource attribute to look up. |         | yes      |
 
 `otelcol.connector.spanmetrics` will look for the `name` attribute in the span's
 collection of attributes. If it is not found, the resource attributes will be checked.
@@ -132,6 +144,20 @@ If the attribute is missing in both the span and resource attributes:
 - If `default` is not set, the dimension will be omitted.
 - If `default` is set, the dimension will be added and its value will be set to the value of `default`.
 
+### events block
+
+The `events` block configures the `events` metric, which tracks [span events][span-events].
+
+The following attributes are supported:
+
+| Name      | Type   | Description                | Default | Required |
+| --------- | ------ | -------------------------- | ------- | -------- |
+| `enabled` | `bool` | Enables all events metric. | `false` | no       |
+
+At least one `dimension` block is required if `enabled` is set to `true`.
+
+[span-events]: https://opentelemetry.io/docs/concepts/signals/traces/#span-events
+
 ### histogram block
 
 The `histogram` block configures the histogram derived from spans' durations.
@@ -140,8 +166,8 @@ The following attributes are supported:
 
 | Name      | Type     | Description                     | Default | Required |
 | --------- | -------- | ------------------------------- | ------- | -------- |
-| `unit`    | `string` | Configures the histogram units. | `"ms"`  | no       |
 | `disable` | `bool`   | Disable all histogram metrics.  | `false` | no       |
+| `unit`    | `string` | Configures the histogram units. | `"ms"`  | no       |
 
 The supported values for `unit` are:
 
@@ -174,9 +200,12 @@ The `exemplars` block configures how to attach exemplars to histograms.
 
 The following attributes are supported:
 
-| Name      | Type   | Description                                        | Default | Required |
-| --------- | ------ | -------------------------------------------------- | ------- | -------- |
-| `enabled` | `bool` | Configures whether to add exemplars to histograms. | `false` | no       |
+| Name                 | Type     | Description                                                                 | Default | Required |
+| -------------------- | -------- | --------------------------------------------------------------------------- | ------- | -------- |
+| `enabled`            | `bool`   | Configures whether to add exemplars to histograms.                          | `false` | no       |
+| `max_per_data_point` | `number` | Limits the number of exemplars that can be added to a unique dimension set. | `null`  | no       |
+
+`max_per_data_point` can help with reducing memory consumption.
 
 ### output block
 

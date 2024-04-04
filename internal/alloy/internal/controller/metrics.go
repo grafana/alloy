@@ -18,7 +18,7 @@ type controllerMetrics struct {
 }
 
 // newControllerMetrics inits the metrics for the components controller
-func newControllerMetrics(id string) *controllerMetrics {
+func newControllerMetrics(parent, id string) *controllerMetrics {
 	cm := &controllerMetrics{
 		slowComponentThreshold: 1 * time.Minute,
 	}
@@ -31,14 +31,14 @@ func newControllerMetrics(id string) *controllerMetrics {
 	cm.controllerEvaluation = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name:        "alloy_component_controller_evaluating",
 		Help:        "Tracks if the controller is currently in the middle of a graph evaluation",
-		ConstLabels: map[string]string{"controller_id": id},
+		ConstLabels: map[string]string{"controller_path": parent, "controller_id": id},
 	})
 
 	cm.componentEvaluationTime = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:                            "alloy_component_evaluation_seconds",
 			Help:                            "Time spent performing component evaluation",
-			ConstLabels:                     map[string]string{"controller_id": id},
+			ConstLabels:                     map[string]string{"controller_path": parent, "controller_id": id},
 			Buckets:                         evaluationTimesBuckets,
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  100,
@@ -49,7 +49,7 @@ func newControllerMetrics(id string) *controllerMetrics {
 		prometheus.HistogramOpts{
 			Name:                            "alloy_component_dependencies_wait_seconds",
 			Help:                            "Time spent by components waiting to be evaluated after their dependency is updated.",
-			ConstLabels:                     map[string]string{"controller_id": id},
+			ConstLabels:                     map[string]string{"controller_path": parent, "controller_id": id},
 			Buckets:                         evaluationTimesBuckets,
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  100,
@@ -60,13 +60,13 @@ func newControllerMetrics(id string) *controllerMetrics {
 	cm.evaluationQueueSize = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name:        "alloy_component_evaluation_queue_size",
 		Help:        "Tracks the number of components waiting to be evaluated in the worker pool",
-		ConstLabels: map[string]string{"controller_id": id},
+		ConstLabels: map[string]string{"controller_path": parent, "controller_id": id},
 	})
 
 	cm.slowComponentEvaluationTime = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:        "alloy_component_evaluation_slow_seconds",
 		Help:        fmt.Sprintf("Number of seconds spent evaluating components that take longer than %v to evaluate", cm.slowComponentThreshold),
-		ConstLabels: map[string]string{"controller_id": id},
+		ConstLabels: map[string]string{"controller_path": parent, "controller_id": id},
 	}, []string{"component_id"})
 
 	return cm
@@ -100,14 +100,14 @@ type controllerCollector struct {
 	runningComponentsTotal *prometheus.Desc
 }
 
-func newControllerCollector(l *Loader, id string) *controllerCollector {
+func newControllerCollector(l *Loader, parent, id string) *controllerCollector {
 	return &controllerCollector{
 		l: l,
 		runningComponentsTotal: prometheus.NewDesc(
 			"alloy_component_controller_running_components",
 			"Total number of running components.",
 			[]string{"health_type"},
-			map[string]string{"controller_id": id},
+			map[string]string{"controller_path": parent, "controller_id": id},
 		),
 	}
 }

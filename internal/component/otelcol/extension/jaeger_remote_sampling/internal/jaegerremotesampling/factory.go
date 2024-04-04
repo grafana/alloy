@@ -1,27 +1,19 @@
 // Copyright The OpenTelemetry Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//       http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
 
-package jaegerremotesampling
+package jaegerremotesampling // import "github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
 
 import (
 	"context"
+	"sync"
 
+	"go.opentelemetry.io/collector/component"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/extension"
+	"go.uber.org/zap"
 )
 
 const (
@@ -29,9 +21,9 @@ const (
 	typeStr = "jaegerremotesampling"
 )
 
-// NewFactory creates a factory for the OIDC Authenticator extension.
-func NewFactory() otelextension.Factory {
-	return otelextension.NewFactory(
+// NewFactory creates a factory for the jaeger remote sampling extension.
+func NewFactory() extension.Factory {
+	return extension.NewFactory(
 		typeStr,
 		createDefaultConfig,
 		createExtension,
@@ -39,13 +31,13 @@ func NewFactory() otelextension.Factory {
 	)
 }
 
-func createDefaultConfig() otelcomponent.Config {
+func createDefaultConfig() component.Config {
 	return &Config{
-		HTTPServerSettings: &confighttp.HTTPServerSettings{
+		HTTPServerConfig: &confighttp.ServerConfig{
 			Endpoint: ":5778",
 		},
-		GRPCServerSettings: &configgrpc.GRPCServerSettings{
-			NetAddr: confignet.NetAddr{
+		GRPCServerConfig: &configgrpc.ServerConfig{
+			NetAddr: confignet.AddrConfig{
 				Endpoint:  ":14250",
 				Transport: "tcp",
 			},
@@ -54,6 +46,25 @@ func createDefaultConfig() otelcomponent.Config {
 	}
 }
 
-func createExtension(_ context.Context, set otelextension.CreateSettings, cfg otelcomponent.Config) (otelcomponent.Component, error) {
+var once sync.Once
+
+func logDeprecation(logger *zap.Logger) {
+	once.Do(func() {
+		logger.Warn("jaegerremotesampling extension will deprecate Thrift-gen and replace it with Proto-gen to be compatible with jaeger 1.42.0 and higher. See https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/18485 for more details.")
+	})
+}
+
+// nolint
+// var protoGate = featuregate.GlobalRegistry().MustRegister(
+// 	"extension.jaegerremotesampling.replaceThriftWithProto",
+// 	featuregate.StageStable,
+// 	featuregate.WithRegisterDescription(
+// 		"When enabled, the jaegerremotesampling will use Proto-gen over Thrift-gen.",
+// 	),
+// 	featuregate.WithRegisterToVersion("0.92.0"),
+// )
+
+func createExtension(_ context.Context, set extension.CreateSettings, cfg component.Config) (extension.Extension, error) {
+	logDeprecation(set.Logger)
 	return newExtension(cfg.(*Config), set.TelemetrySettings), nil
 }

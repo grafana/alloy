@@ -93,8 +93,8 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 func AppendAll(f *builder.File, cfg *promtailcfg.Config, labelPrefix string, diags diag.Diagnostics) diag.Diagnostics {
 	validateTopLevelConfig(cfg, &diags)
 
-	var writeReceivers = make([]loki.LogsReceiver, len(cfg.ClientConfigs))
-	var writeBlocks = make([]*builder.Block, len(cfg.ClientConfigs))
+	writeReceivers := make([]loki.LogsReceiver, len(cfg.ClientConfigs))
+	writeBlocks := make([]*builder.Block, len(cfg.ClientConfigs))
 	// Each client config needs to be a separate remote_write,
 	// because they may have different ExternalLabels fields.
 	for i, cc := range cfg.ClientConfigs {
@@ -108,7 +108,7 @@ func AppendAll(f *builder.File, cfg *promtailcfg.Config, labelPrefix string, dia
 	}
 
 	for _, sc := range cfg.ScrapeConfig {
-		appendScrapeConfig(f, &sc, &diags, gc, &cfg.Global.FileWatch)
+		appendScrapeConfig(f, &sc, &diags, gc, &cfg.Global.FileWatch, &cfg.PositionsConfig)
 	}
 
 	for _, write := range writeBlocks {
@@ -137,6 +137,7 @@ func appendScrapeConfig(
 	diags *diag.Diagnostics,
 	gctx *build.GlobalContext,
 	watchConfig *file.WatchConfig,
+	positionsCfg *positions.Config,
 ) {
 
 	b := build.NewScrapeConfigBuilder(f, diags, cfg, gctx)
@@ -151,7 +152,7 @@ func appendScrapeConfig(
 	// If any relabelling is required, it will be done via a discovery.relabel component.
 	// The files will be watched and the globs in file paths will be expanded using discovery.file component.
 	// The log entries are sent to loki.process if processing is needed, or directly to loki.write components.
-	b.AppendLokiSourceFile(watchConfig)
+	b.AppendLokiSourceFile(watchConfig, positionsCfg)
 
 	// Append all the components that produce logs directly.
 	// If any relabelling is required, it will be done via a loki.relabel component.

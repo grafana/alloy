@@ -88,7 +88,7 @@ Use this method if you prefer to embed your {{< param "PRODUCT_NAME" >}} configu
    alloy:
      configMap:
        content: |-
-         // Write your Agent config here:
+         // Write your Alloy config here:
          logging {
            level = "info"
            format = "logfmt"
@@ -114,7 +114,7 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
 1. Write your configuration to a file, for example, `config.alloy`.
 
    ```alloy
-   // Write your Agent config here:
+   // Write your Alloy config here:
    logging {
      level = "info"
      format = "logfmt"

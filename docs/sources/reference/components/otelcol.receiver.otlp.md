@@ -89,17 +89,7 @@ Name | Type | Description | Default | Required
 The `tls` block configures TLS settings used for a server. If the `tls` block
 isn't provided, TLS won't be used for connections to the server.
 
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`ca_file` | `string` | Path to the CA file. | | no
-`cert_file` | `string` | Path to the TLS certificate. | | no
-`key_file` | `string` | Path to the TLS certificate key. | | no
-`min_version` | `string` | Minimum acceptable TLS version for connections. | `"TLS 1.2"` | no
-`max_version` | `string` | Maximum acceptable TLS version for connections. | `"TLS 1.3"` | no
-`reload_interval` | `duration` | Frequency to reload the certificates. | | no
-`client_ca_file` | `string` | Path to the CA file used to authenticate client certificates. | | no
+{{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### keepalive block
 
@@ -207,6 +197,10 @@ information.
 * `receiver_accepted_spans_ratio_total` (counter): Number of spans successfully pushed into the pipeline.
 * `receiver_refused_spans_ratio_total` (counter): Number of spans that could not be pushed into the pipeline.
 * `rpc_server_duration_milliseconds` (histogram): Duration of RPC requests from a gRPC server.
+* `rpc_server_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
+* `rpc_server_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+* `rpc_server_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
+* `rpc_server_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
 
 ## Example
 

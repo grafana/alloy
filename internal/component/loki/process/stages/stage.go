@@ -28,6 +28,7 @@ const (
 	StageTypeLabelDrop          = "labeldrop"
 	StageTypeLimit              = "limit"
 	StageTypeLogfmt             = "logfmt"
+	StageTypeLuhn               = "luhn"
 	StageTypeMatch              = "match"
 	StageTypeMetric             = "metrics"
 	StageTypeMultiline          = "multiline"
@@ -133,6 +134,11 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		}
 	case cfg.LogfmtConfig != nil:
 		s, err = newLogfmtStage(logger, *cfg.LogfmtConfig)
+		if err != nil {
+			return nil, err
+		}
+	case cfg.LuhnFilterConfig != nil:
+		s, err = newLuhnFilterStage(*cfg.LuhnFilterConfig)
 		if err != nil {
 			return nil, err
 		}

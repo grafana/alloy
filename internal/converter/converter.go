@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/otelcolconvert"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
 	"github.com/grafana/alloy/internal/converter/internal/promtailconvert"
 	"github.com/grafana/alloy/internal/converter/internal/staticconvert"
@@ -15,6 +16,8 @@ import (
 type Input string
 
 const (
+	// InputOtelCol indicates that the input file is an OpenTelemetry Collector YAML file.
+	InputOtelCol Input = "otelcol"
 	// InputPrometheus indicates that the input file is a prometheus YAML file.
 	InputPrometheus Input = "prometheus"
 	// InputPromtail indicates that the input file is a promtail YAML file.
@@ -24,6 +27,7 @@ const (
 )
 
 var SupportedFormats = []string{
+	string(InputOtelCol),
 	string(InputPrometheus),
 	string(InputPromtail),
 	string(InputStatic),
@@ -46,6 +50,8 @@ var SupportedFormats = []string{
 // returned alongside the resulting config.
 func Convert(in []byte, kind Input, extraArgs []string) ([]byte, diag.Diagnostics) {
 	switch kind {
+	case InputOtelCol:
+		return otelcolconvert.Convert(in, extraArgs)
 	case InputPrometheus:
 		return prometheusconvert.Convert(in, extraArgs)
 	case InputPromtail:

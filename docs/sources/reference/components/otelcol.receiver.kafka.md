@@ -45,6 +45,7 @@ Name | Type | Description | Default | Required
 `group_id` | `string` | Consumer group to consume messages from. | `"otel-collector"` | no
 `client_id` | `string` | Consumer client ID to use. | `"otel-collector"` | no
 `initial_offset` | `string` | Initial offset to use if no offset was previously committed. | `"latest"` | no
+`resolve_canonical_bootstrap_servers_only` | `bool` | Whether to resolve then reverse-lookup broker IPs during startup. | `"false"` | no
 
 The `encoding` argument determines how to decode messages read from Kafka.
 `encoding` must be one of the following strings:
@@ -59,7 +60,7 @@ The `encoding` argument determines how to decode messages read from Kafka.
 * `"text"`: Decode the log message as text and insert it into the body of a log record.
   By default, UTF-8 is used to decode. A different encoding can be chosen by using `text_<ENCODING>`. For example, `text_utf-8` or `text_shift_jis`.
 * `"json"`: Decode the JSON payload and insert it into the body of a log record.
-
+* `"azure_resource_logs"`: The payload is converted from Azure Resource Logs format to an OTLP log.
 
 `"otlp_proto"` must be used to read all telemetry types from Kafka; other
 encodings are signal-specific.

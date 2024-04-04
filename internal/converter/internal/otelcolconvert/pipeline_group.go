@@ -175,6 +175,11 @@ func (group pipelineGroup) NextTraces(fromID component.InstanceID) []component.I
 func nextInPipeline(pipeline *pipelines.PipelineConfig, fromID component.InstanceID) []component.InstanceID {
 	switch fromID.Kind {
 	case component.KindReceiver, component.KindConnector:
+		// Validate this receiver is part of the pipeline.
+		if !findInComponentIds(fromID, pipeline.Receivers) {
+			return nil
+		}
+
 		// Receivers and connectors should either send to the first processor
 		// if one exists or to every exporter otherwise.
 		if len(pipeline.Processors) > 0 {
@@ -183,6 +188,11 @@ func nextInPipeline(pipeline *pipelines.PipelineConfig, fromID component.Instanc
 		return toComponentInstanceIDs(component.KindExporter, pipeline.Exporters)
 
 	case component.KindProcessor:
+		// Validate this processor is part of the pipeline.
+		if !findInComponentIds(fromID, pipeline.Processors) {
+			return nil
+		}
+
 		// Processors should send to the next processor if one exists or to every
 		// exporter otherwise.
 		processorIndex := slices.Index(pipeline.Processors, fromID.ID)
@@ -216,4 +226,13 @@ func toComponentInstanceIDs(kind component.Kind, ids []component.ID) []component
 	}
 
 	return res
+}
+
+func findInComponentIds(fromID component.InstanceID, componentIDs []component.ID) bool {
+	for _, id := range componentIDs {
+		if fromID.ID == id {
+			return true
+		}
+	}
+	return false
 }

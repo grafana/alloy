@@ -65,11 +65,14 @@ type SharedPolicyConfig struct {
 type LatencyConfig struct {
 	// ThresholdMs in milliseconds.
 	ThresholdMs int64 `alloy:"threshold_ms,attr"`
+	// Upper bound in milliseconds.
+	UpperThresholdmsMs int64 `alloy:"upper_threshold_ms,attr,optional"`
 }
 
 func (latencyConfig LatencyConfig) Convert() tsp.LatencyCfg {
 	return tsp.LatencyCfg{
-		ThresholdMs: latencyConfig.ThresholdMs,
+		ThresholdMs:        latencyConfig.ThresholdMs,
+		UpperThresholdmsMs: latencyConfig.UpperThresholdmsMs,
 	}
 }
 
@@ -208,9 +211,11 @@ func (booleanAttributeConfig BooleanAttributeConfig) Convert() tsp.BooleanAttrib
 type ErrorMode string
 
 const (
-	// "ignore" causes evaluation to continue to the next statement.
+	// "ignore" ignores errors returned by conditions, logs them, and continues on to the next condition.
 	ErrorModeIgnore ErrorMode = "ignore"
-	// "propagate" causes the evaluation to be false and an error is returned.
+	// "silent" ignores errors returned by conditions, does not log them, and continues on to the next condition.
+	ErrorModeSilent ErrorMode = "silent"
+	// "propagate" causes the evaluation to be false and an error is returned. The data is dropped.
 	ErrorModePropagate ErrorMode = "propagate"
 )
 
@@ -253,7 +258,7 @@ func (e *ErrorMode) UnmarshalText(text []byte) error {
 
 	str := ErrorMode(strings.ToLower(string(text)))
 	switch str {
-	case ErrorModeIgnore, ErrorModePropagate:
+	case ErrorModeIgnore, ErrorModePropagate, ErrorModeSilent:
 		*e = str
 		return nil
 	default:

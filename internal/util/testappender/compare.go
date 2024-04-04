@@ -44,9 +44,11 @@ func (c Comparer) Compare(families []*dto.MetricFamily, expect string) error {
 		buf bytes.Buffer
 	)
 	if c.OpenMetrics {
-		enc = expfmt.NewEncoder(&buf, expfmt.FmtOpenMetrics_1_0_0)
+		expFormat := expfmt.NewFormat(expfmt.TypeOpenMetrics)
+		enc = expfmt.NewEncoder(&buf, expFormat)
 	} else {
-		enc = expfmt.NewEncoder(&buf, expfmt.FmtText)
+		expFormat := expfmt.NewFormat(expfmt.TypeTextPlain)
+		enc = expfmt.NewEncoder(&buf, expFormat)
 	}
 	for _, f := range families {
 		if err := enc.Encode(f); err != nil {

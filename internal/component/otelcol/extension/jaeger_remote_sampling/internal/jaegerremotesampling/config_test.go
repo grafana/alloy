@@ -1,16 +1,5 @@
 // Copyright The OpenTelemetry Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//       http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
 
 package jaegerremotesampling
 
@@ -21,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
@@ -32,29 +21,29 @@ func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		id       otelcomponent.ID
-		expected otelcomponent.Config
+		id       component.ID
+		expected component.Config
 	}{
 		{
-			id: otelcomponent.NewID(typeStr),
+			id: component.NewID(typeStr),
 			expected: &Config{
-				HTTPServerSettings: &confighttp.HTTPServerSettings{Endpoint: ":5778"},
-				GRPCServerSettings: &configgrpc.GRPCServerSettings{NetAddr: confignet.NetAddr{
+				HTTPServerConfig: &confighttp.ServerConfig{Endpoint: ":5778"},
+				GRPCServerConfig: &configgrpc.ServerConfig{NetAddr: confignet.AddrConfig{
 					Endpoint:  ":14250",
 					Transport: "tcp",
 				}},
 				Source: Source{
-					Remote: &configgrpc.GRPCClientSettings{
+					Remote: &configgrpc.ClientConfig{
 						Endpoint: "jaeger-collector:14250",
 					},
 				},
 			},
 		},
 		{
-			id: otelcomponent.NewIDWithName(typeStr, "1"),
+			id: component.NewIDWithName(typeStr, "1"),
 			expected: &Config{
-				HTTPServerSettings: &confighttp.HTTPServerSettings{Endpoint: ":5778"},
-				GRPCServerSettings: &configgrpc.GRPCServerSettings{NetAddr: confignet.NetAddr{
+				HTTPServerConfig: &confighttp.ServerConfig{Endpoint: ":5778"},
+				GRPCServerConfig: &configgrpc.ServerConfig{NetAddr: confignet.AddrConfig{
 					Endpoint:  ":14250",
 					Transport: "tcp",
 				}},
@@ -73,8 +62,8 @@ func TestLoadConfig(t *testing.T) {
 			cfg := factory.CreateDefaultConfig()
 			sub, err := cm.Sub(tt.id.String())
 			require.NoError(t, err)
-			require.NoError(t, otelcomponent.UnmarshalConfig(sub, cfg))
-			assert.NoError(t, otelcomponent.ValidateConfig(cfg))
+			require.NoError(t, component.UnmarshalConfig(sub, cfg))
+			assert.NoError(t, component.ValidateConfig(cfg))
 			assert.Equal(t, tt.expected, cfg)
 		})
 	}
@@ -94,16 +83,16 @@ func TestValidate(t *testing.T) {
 		{
 			desc: "no sources",
 			cfg: Config{
-				GRPCServerSettings: &configgrpc.GRPCServerSettings{},
+				GRPCServerConfig: &configgrpc.ServerConfig{},
 			},
 			expected: errNoSources,
 		},
 		{
 			desc: "too many sources",
 			cfg: Config{
-				GRPCServerSettings: &configgrpc.GRPCServerSettings{},
+				GRPCServerConfig: &configgrpc.ServerConfig{},
 				Source: Source{
-					Remote: &configgrpc.GRPCClientSettings{},
+					Remote: &configgrpc.ClientConfig{},
 					File:   "/tmp/some-file",
 				},
 			},

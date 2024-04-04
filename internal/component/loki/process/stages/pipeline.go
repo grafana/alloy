@@ -28,6 +28,7 @@ type StageConfig struct {
 	LabelsConfig          *LabelsConfig          `alloy:"labels,block,optional"`
 	LimitConfig           *LimitConfig           `alloy:"limit,block,optional"`
 	LogfmtConfig          *LogfmtConfig          `alloy:"logfmt,block,optional"`
+	LuhnFilterConfig      *LuhnFilterConfig      `alloy:"luhn,block,optional"`
 	MatchConfig           *MatchConfig           `alloy:"match,block,optional"`
 	MetricsConfig         *MetricsConfig         `alloy:"metrics,block,optional"`
 	MultilineConfig       *MultilineConfig       `alloy:"multiline,block,optional"`

@@ -1,0 +1,24 @@
+receivers:
+  vcenter:
+    endpoint: http://localhost:15672
+    username: otelu
+    password: "abc"
+    collection_interval: 1m
+    initial_delay: 1s
+    metrics:
+      vcenter.host.cpu.utilization:
+        enabled: false
+    resource_attributes:
+      vcenter.cluster.name:
+        enabled: false
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    traces:
+      receivers: [vcenter]
+      processors: []
+      exporters: [otlp]

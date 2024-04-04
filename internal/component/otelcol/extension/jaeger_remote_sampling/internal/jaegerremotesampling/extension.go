@@ -1,18 +1,7 @@
 // Copyright The OpenTelemetry Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//       http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
 
-package jaegerremotesampling
+package jaegerremotesampling // import "github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
 
 import (
 	"context"
@@ -21,14 +10,14 @@ import (
 	"github.com/jaegertracing/jaeger/cmd/collector/app/sampling/strategystore"
 	"github.com/jaegertracing/jaeger/plugin/sampling/strategystore/static"
 	"go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/extension"
 	"go.uber.org/zap"
 
 	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling/internal/jaegerremotesampling/internal"
 	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling/internal/strategy_store"
 )
 
-var _ otelextension.Extension = (*jrsExtension)(nil)
+var _ extension.Extension = (*jrsExtension)(nil)
 
 type jrsExtension struct {
 	cfg       *Config
@@ -54,7 +43,6 @@ func (jrse *jrsExtension) Start(ctx context.Context, host component.Host) error 
 	// source of the sampling config:
 	// - remote (gRPC)
 	// - local file
-	// - contents (string)
 	// we can then use a simplified logic here to assign the appropriate store
 	if jrse.cfg.Source.File != "" {
 		opts := static.Options{
@@ -94,8 +82,8 @@ func (jrse *jrsExtension) Start(ctx context.Context, host component.Host) error 
 		jrse.samplingStore = ss
 	}
 
-	if jrse.cfg.HTTPServerSettings != nil {
-		httpServer, err := internal.NewHTTP(jrse.telemetry, *jrse.cfg.HTTPServerSettings, jrse.samplingStore)
+	if jrse.cfg.HTTPServerConfig != nil {
+		httpServer, err := internal.NewHTTP(jrse.telemetry, *jrse.cfg.HTTPServerConfig, jrse.samplingStore)
 		if err != nil {
 			return fmt.Errorf("error while creating the HTTP server: %w", err)
 		}
@@ -106,8 +94,8 @@ func (jrse *jrsExtension) Start(ctx context.Context, host component.Host) error 
 		}
 	}
 
-	if jrse.cfg.GRPCServerSettings != nil {
-		grpcServer, err := internal.NewGRPC(jrse.telemetry, *jrse.cfg.GRPCServerSettings, jrse.samplingStore)
+	if jrse.cfg.GRPCServerConfig != nil {
+		grpcServer, err := internal.NewGRPC(jrse.telemetry, *jrse.cfg.GRPCServerConfig, jrse.samplingStore)
 		if err != nil {
 			return fmt.Errorf("error while creating the gRPC server: %w", err)
 		}

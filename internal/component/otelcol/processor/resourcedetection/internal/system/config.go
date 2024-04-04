@@ -34,6 +34,8 @@ func (c *Config) SetToDefault() {
 			HostCPUStepping:    rac.ResourceAttributeConfig{Enabled: false},
 			HostCPUVendorID:    rac.ResourceAttributeConfig{Enabled: false},
 			HostID:             rac.ResourceAttributeConfig{Enabled: false},
+			HostIP:             rac.ResourceAttributeConfig{Enabled: false},
+			HostMac:            rac.ResourceAttributeConfig{Enabled: false},
 			HostName:           rac.ResourceAttributeConfig{Enabled: true},
 			OsDescription:      rac.ResourceAttributeConfig{Enabled: false},
 			OsType:             rac.ResourceAttributeConfig{Enabled: true},
@@ -71,6 +73,8 @@ type ResourceAttributesConfig struct {
 	HostCPUStepping    rac.ResourceAttributeConfig `alloy:"host.cpu.stepping,block,optional"`
 	HostCPUVendorID    rac.ResourceAttributeConfig `alloy:"host.cpu.vendor.id,block,optional"`
 	HostID             rac.ResourceAttributeConfig `alloy:"host.id,block,optional"`
+	HostIP             rac.ResourceAttributeConfig `alloy:"host.ip,block,optional"`
+	HostMac            rac.ResourceAttributeConfig `alloy:"host.mac,block,optional"`
 	HostName           rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
 	OsDescription      rac.ResourceAttributeConfig `alloy:"os.description,block,optional"`
 	OsType             rac.ResourceAttributeConfig `alloy:"os.type,block,optional"`
@@ -86,6 +90,8 @@ func (r ResourceAttributesConfig) Convert() map[string]interface{} {
 		"host.cpu.stepping":      r.HostCPUStepping.Convert(),
 		"host.cpu.vendor.id":     r.HostCPUVendorID.Convert(),
 		"host.id":                r.HostID.Convert(),
+		"host.ip":                r.HostIP.Convert(),
+		"host.mac":               r.HostMac.Convert(),
 		"host.name":              r.HostName.Convert(),
 		"os.description":         r.OsDescription.Convert(),
 		"os.type":                r.OsType.Convert(),

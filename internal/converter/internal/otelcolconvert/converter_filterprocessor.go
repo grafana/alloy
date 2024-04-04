@@ -25,7 +25,7 @@ func (filterProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.filter"
 }
 
-func (filterProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (filterProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -35,14 +35,14 @@ func (filterProcessorConverter) ConvertAndAppend(state *state, id component.Inst
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
 	return diags
 }
 
-func toFilterProcessor(state *state, id component.InstanceID, cfg *filterprocessor.Config) *filter.Arguments {
+func toFilterProcessor(state *State, id component.InstanceID, cfg *filterprocessor.Config) *filter.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)
@@ -63,9 +63,9 @@ func toFilterProcessor(state *state, id component.InstanceID, cfg *filterprocess
 			LogRecord: cfg.Logs.LogConditions,
 		},
 		Output: &otelcol.ConsumerArguments{
-			Metrics: toTokenizedConsumers(nextMetrics),
-			Logs:    toTokenizedConsumers(nextLogs),
-			Traces:  toTokenizedConsumers(nextTraces),
+			Metrics: ToTokenizedConsumers(nextMetrics),
+			Logs:    ToTokenizedConsumers(nextLogs),
+			Traces:  ToTokenizedConsumers(nextTraces),
 		},
 	}
 }

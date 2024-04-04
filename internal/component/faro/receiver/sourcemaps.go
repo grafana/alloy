@@ -172,10 +172,8 @@ func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, release 
 		}
 	}
 
-	// Attempt to download the sourcemap.
-	//
-	// TODO(rfratto): check if downloading is enabled.
-	if strings.HasPrefix(sourceURL, "http") && urlMatchesOrigins(sourceURL, store.args.DownloadFromOrigins) {
+	// Attempt to download the sourcemap if enabled.
+	if strings.HasPrefix(sourceURL, "http") && urlMatchesOrigins(sourceURL, store.args.DownloadFromOrigins) && store.args.Download {
 		return store.downloadSourceMapContent(sourceURL)
 	}
 	return nil, "", nil

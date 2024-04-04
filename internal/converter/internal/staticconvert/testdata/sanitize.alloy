@@ -42,13 +42,13 @@ loki.relabel "logs_integrations_integrations_windows_exporter_application" {
 loki.source.windowsevent "logs_integrations_integrations_windows_exporter_application" {
 	eventlog_name          = "Application"
 	xpath_query            = ""
-	bookmark_path          = "C:\\grafana_test\\Grafana Agent\\bookmarks.xml"
 	poll_interval          = "0s"
 	use_incoming_timestamp = true
 	forward_to             = [loki.relabel.logs_integrations_integrations_windows_exporter_application.receiver]
 	labels                 = {
 		job = "integrations/windows_exporter",
 	}
+	legacy_bookmark_path = "C:\\grafana_test\\Grafana Agent\\bookmarks.xml"
 }
 
 loki.process "logs_integrations_integrations_windows_exporter_system" {
@@ -79,13 +79,13 @@ loki.relabel "logs_integrations_integrations_windows_exporter_system" {
 loki.source.windowsevent "logs_integrations_integrations_windows_exporter_system" {
 	eventlog_name          = "System"
 	xpath_query            = ""
-	bookmark_path          = "C:\\grafana_test\\Grafana Agent\\bookmarks.xml"
 	poll_interval          = "0s"
 	use_incoming_timestamp = true
 	forward_to             = [loki.relabel.logs_integrations_integrations_windows_exporter_system.receiver]
 	labels                 = {
 		job = "integrations/windows_exporter",
 	}
+	legacy_bookmark_path = "C:\\grafana_test\\Grafana Agent\\bookmarks.xml"
 }
 
 loki.write "logs_integrations" {

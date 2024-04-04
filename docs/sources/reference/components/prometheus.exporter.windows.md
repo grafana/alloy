@@ -218,7 +218,7 @@ debug metrics.
 ## Collectors list
 The following table lists the available collectors that `windows_exporter` brings
 bundled in. Some collectors only work on specific operating systems; enabling a
-collector that is not supported by the host OS where Alloy is running
+collector that is not supported by the host OS where {{< param "PRODUCT_NAME" >}} is running
 is a no-op.
 
 Users can choose to enable a subset of collectors to limit the amount of

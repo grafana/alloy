@@ -25,7 +25,7 @@ func (k8sAttributesProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.k8sattributes"
 }
 
-func (k8sAttributesProcessorConverter) ConvertAndAppend(state *state, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (k8sAttributesProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -35,14 +35,14 @@ func (k8sAttributesProcessorConverter) ConvertAndAppend(state *state, id compone
 
 	diags.Add(
 		diag.SeverityLevelInfo,
-		fmt.Sprintf("Converted %s into %s", stringifyInstanceID(id), stringifyBlock(block)),
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
 	)
 
 	state.Body().AppendBlock(block)
 	return diags
 }
 
-func toK8SAttributesProcessor(state *state, id component.InstanceID, cfg *k8sattributesprocessor.Config) *k8sattributes.Arguments {
+func toK8SAttributesProcessor(state *State, id component.InstanceID, cfg *k8sattributesprocessor.Config) *k8sattributes.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)
@@ -67,9 +67,9 @@ func toK8SAttributesProcessor(state *state, id component.InstanceID, cfg *k8satt
 		Exclude:         toExclude(cfg.Exclude),
 
 		Output: &otelcol.ConsumerArguments{
-			Metrics: toTokenizedConsumers(nextMetrics),
-			Logs:    toTokenizedConsumers(nextLogs),
-			Traces:  toTokenizedConsumers(nextTraces),
+			Metrics: ToTokenizedConsumers(nextMetrics),
+			Logs:    ToTokenizedConsumers(nextLogs),
+			Traces:  ToTokenizedConsumers(nextTraces),
 		},
 	}
 }

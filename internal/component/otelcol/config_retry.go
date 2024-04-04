@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/syntax"
-	otelexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
+	"go.opentelemetry.io/collector/config/configretry"
 )
 
 // RetryArguments holds shared settings for components which can retry
@@ -50,12 +50,12 @@ func (args *RetryArguments) Validate() error {
 }
 
 // Convert converts args into the upstream type.
-func (args *RetryArguments) Convert() *otelexporterhelper.RetrySettings {
+func (args *RetryArguments) Convert() *configretry.BackOffConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &otelexporterhelper.RetrySettings{
+	return &configretry.BackOffConfig{
 		Enabled:             args.Enabled,
 		InitialInterval:     args.InitialInterval,
 		RandomizationFactor: args.RandomizationFactor,

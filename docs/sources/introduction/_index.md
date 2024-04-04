@@ -77,7 +77,7 @@ binaries and images with BoringCrypto enabled. Builds and Docker images for Linu
 * Learn about the core [Concepts][] of {{< param "PRODUCT_NAME" >}}.
 * Follow the [Tutorials][] for hands-on learning about {{< param "PRODUCT_NAME" >}}.
 * Consult the [Tasks][] instructions to accomplish common objectives with {{< param "PRODUCT_NAME" >}}.
-* Check out the [Reference][] documentation to find information about the Alloy components, configuration blocks, and command line tools.
+* Check out the [Reference][] documentation to find information about the {{< param "PRODUCT_NAME" >}} components, configuration blocks, and command line tools.
 
 [OpenTelemetry]: https://opentelemetry.io/ecosystem/distributions/
 [Install]: ../get-started/install/

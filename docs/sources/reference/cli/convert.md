@@ -40,7 +40,7 @@ The following flags are supported:
 
 * `--output`, `-o`: The filepath and filename where the output is written.
 * `--report`, `-r`: The filepath and filename where the report is written.
-* `--source-format`, `-f`: Required. The format of the source file. Supported formats: [prometheus][], [promtail][], [static][].
+* `--source-format`, `-f`: Required. The format of the source file. Supported formats: [otelcol], [prometheus], [promtail], [static].
 * `--bypass-errors`, `-b`: Enable bypassing errors when converting.
 * `--extra-args`, `e`: Extra arguments from the original format used by the converter.
 
@@ -55,6 +55,17 @@ The following flags are supported:
 
 Errors are defined as non-critical issues identified during the conversion where an output can still be generated.
 These can be bypassed using the `--bypass-errors` flag.
+
+### OpenTelemetry Collector
+
+You can use the `--source-format=otelcol` to convert the source configuration from an [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/configuration/) to a {{< param "PRODUCT_NAME" >}} configuration.
+
+Many OpenTelemetry Collector components are supported.
+Review the `otelcol.*` component information in the [Component Reference][] for more information about `otelcol` components that you can convert.
+If a source configuration has unsupported features, you will receive [errors] when you convert it to an {{< param "PRODUCT_NAME" >}} configuration.
+The converter raises warnings for configuration options that may require your attention.
+
+Refer to [Migrate from OpenTelemetry Collector to {{< param "PRODUCT_NAME" >}}][migrate otelcol] for a detailed migration guide.
 
 ### Prometheus
 
@@ -90,6 +101,7 @@ The converter also raises warnings for configuration options that may require yo
 
 Refer to [Migrate from Grafana Agent Static to {{< param "PRODUCT_NAME" >}}][migrate static] for a detailed migration guide.
 
+[otelcol]: #opentelemetry-collector
 [prometheus]: #prometheus
 [promtail]: #promtail
 [static]: #static
@@ -98,6 +110,7 @@ Refer to [Migrate from Grafana Agent Static to {{< param "PRODUCT_NAME" >}}][mig
 [relabel_config]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#relabel_config
 [metric_relabel_configs]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#metric_relabel_configs
 [remote_write]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#remote_write
+[migrate otelcol]: ../../../tasks/migrate/from-otelcol/
 [migrate prometheus]: ../../../tasks/migrate/from-prometheus/
 [Promtail v2.8.x]: https://grafana.com/docs/loki/v2.8.x/clients/promtail/
 [Prometheus v2.45]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/

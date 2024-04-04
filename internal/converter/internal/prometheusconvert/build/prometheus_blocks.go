@@ -29,7 +29,7 @@ func NewPrometheusBlocks() *PrometheusBlocks {
 	}
 }
 
-// AppendToFile attaches prometheus blocks in a specific order.
+// AppendToBody attaches prometheus blocks in a specific order.
 //
 // Order of blocks:
 // 1. Discovery component(s)
@@ -37,25 +37,25 @@ func NewPrometheusBlocks() *PrometheusBlocks {
 // 3. Prometheus scrape component(s)
 // 4. Prometheus relabel component(s) (if any)
 // 5. Prometheus remote_write
-func (pb *PrometheusBlocks) AppendToFile(f *builder.File) {
+func (pb *PrometheusBlocks) AppendToBody(body *builder.Body) {
 	for _, promBlock := range pb.DiscoveryBlocks {
-		f.Body().AppendBlock(promBlock.block)
+		body.AppendBlock(promBlock.block)
 	}
 
 	for _, promBlock := range pb.DiscoveryRelabelBlocks {
-		f.Body().AppendBlock(promBlock.block)
+		body.AppendBlock(promBlock.block)
 	}
 
 	for _, promBlock := range pb.PrometheusScrapeBlocks {
-		f.Body().AppendBlock(promBlock.block)
+		body.AppendBlock(promBlock.block)
 	}
 
 	for _, promBlock := range pb.PrometheusRelabelBlocks {
-		f.Body().AppendBlock(promBlock.block)
+		body.AppendBlock(promBlock.block)
 	}
 
 	for _, promBlock := range pb.PrometheusRemoteWriteBlocks {
-		f.Body().AppendBlock(promBlock.block)
+		body.AppendBlock(promBlock.block)
 	}
 }
 

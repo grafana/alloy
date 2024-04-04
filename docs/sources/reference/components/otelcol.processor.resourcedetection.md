@@ -8,7 +8,7 @@ description: Learn about otelcol.processor.resourcedetection
 
 # otelcol.processor.resourcedetection
 
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<AGENT VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.resourcedetection` detects resource information from the host in a format that conforms to the [OpenTelemetry resource semantic conventions][], and appends or overrides the resource values in the telemetry data with this information.
 
@@ -122,7 +122,7 @@ kubernetes_node   | [kubernetes_node][]   |                                     
 
 ### output
 
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<AGENT VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### ec2
 
@@ -191,6 +191,7 @@ Block                                   | Description                           
 [aws.ecs.launchtype][res-attr-cfg]      | Toggles the `aws.ecs.launchtype` resource attribute. <br> Sets `enabled` to `true` by default.      | no
 [aws.ecs.task.arn][res-attr-cfg]        | Toggles the `aws.ecs.task.arn` resource attribute. <br> Sets `enabled` to `true` by default.        | no
 [aws.ecs.task.family][res-attr-cfg]     | Toggles the `aws.ecs.task.family` resource attribute. <br> Sets `enabled` to `true` by default.     | no
+[aws.ecs.task.id][res-attr-cfg]         | Toggles the `aws.ecs.task.id` resource attribute. <br> Sets `enabled` to `true` by default.         | no
 [aws.ecs.task.revision][res-attr-cfg]   | Toggles the `aws.ecs.task.revision` resource attribute. <br> Sets `enabled` to `true` by default.   | no
 [aws.log.group.arns][res-attr-cfg]      | Toggles the `aws.log.group.arns` resource attribute. <br> Sets `enabled` to `true` by default.      | no
 [aws.log.group.names][res-attr-cfg]     | Toggles the `aws.log.group.names` resource attribute. <br> Sets `enabled` to `true` by default.     | no
@@ -216,10 +217,11 @@ Block                                            | Description                  
 
 The `resource_attributes` block supports the following blocks:
 
-Block                           | Description                                                                                 | Required
-------------------------------- | ------------------------------------------------------------------------------------------- | --------
-[cloud.platform][res-attr-cfg]  | Toggles the `cloud.platform` resource attribute. <br> Sets `enabled` to `true` by default.  | no
-[cloud.provider][res-attr-cfg]  | Toggles the `cloud.provider` resource attribute. <br> Sets `enabled` to `true` by default.  | no
+Block                            | Description                                                                                    | Required
+-------------------------------- | ---------------------------------------------------------------------------------------------- | --------
+[cloud.platform][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. <br> Sets `enabled` to `true` by default.     | no
+[cloud.provider][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. <br> Sets `enabled` to `true` by default.     | no
+[k8s.cluster.name][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. <br> Sets `enabled` to `false` by default.  | no
 
 Example values:
 * `cloud.provider`: `"aws"`
@@ -348,14 +350,29 @@ Block                                            | Description                  
 
 The `resource_attributes` block supports the following blocks:
 
-Block                           | Description                                                                                 | Required
-------------------------------- | ------------------------------------------------------------------------------------------- | --------
-[cloud.platform][res-attr-cfg]  | Toggles the `cloud.platform` resource attribute. <br> Sets `enabled` to `true` by default.  | no
-[cloud.provider][res-attr-cfg]  | Toggles the `cloud.provider` resource attribute. <br> Sets `enabled` to `true` by default.  | no
+Block                            | Description                                                                                    | Required
+-------------------------------- | ---------------------------------------------------------------------------------------------- | --------
+[cloud.platform][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. <br> Sets `enabled` to `true` by default.     | no
+[cloud.provider][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. <br> Sets `enabled` to `true` by default.     | no
+[k8s.cluster.name][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. <br> Sets `enabled` to `false` by default.  | no
 
 Example values:
 * `cloud.provider`: `"azure"`
 * `cloud.platform`: `"azure_vm"`
+
+Azure AKS cluster name is derived from the Azure Instance Metadata Service's (IMDS) infrastructure resource group field.
+This field contains the resource group and name of the cluster, separated by underscores. For example: `MC_<resource group>_<cluster name>_<location>`.
+
+Example:
+  - Resource group: `my-resource-group`
+  - Cluster name: `my-cluster`
+  - Location: `eastus`
+  - Generated name: `MC_my-resource-group_my-cluster_eastus`
+
+The cluster name is detected if it does not contain underscores and if a custom infrastructure resource group name was not used.
+
+If accurate parsing cannot be performed, the infrastructure resource group value is returned.
+This value can be used to uniquely identify the cluster, because Azure will not allow users to create multiple clusters with the same infrastructure resource group name.
 
 ### consul
 
@@ -617,6 +634,8 @@ Block                                  | Description                            
 [host.cpu.stepping][res-attr-cfg]      | Toggles the `host.cpu.stepping` resource attribute. <br> Sets `enabled` to `false` by default.      | no
 [host.cpu.vendor.id][res-attr-cfg]     | Toggles the `host.cpu.vendor.id` resource attribute. <br> Sets `enabled` to `false` by default.     | no
 [host.id][res-attr-cfg]                | Toggles the `host.id` resource attribute. <br> Sets `enabled` to `false` by default.                | no
+[host.ip][res-attr-cfg]                | Toggles the `host.ip` resource attribute. <br> Sets `enabled` to `false` by default.                | no
+[host.mac][res-attr-cfg]               | Toggles the `host.mac` resource attribute. <br> Sets `enabled` to `false` by default.                | no
 [host.name][res-attr-cfg]              | Toggles the `host.name` resource attribute. <br> Sets `enabled` to `true` by default.               | no
 [os.description][res-attr-cfg]         | Toggles the `os.description` resource attribute. <br> Sets `enabled` to `false` by default.         | no
 [os.type][res-attr-cfg]                | Toggles the `os.type` resource attribute. <br> Sets `enabled` to `true` by default.                 | no
