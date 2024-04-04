@@ -262,11 +262,11 @@ Name    | Type               | Description
 
 ## Choose a load balancing strategy
 
-<!-- TODO: Mention gropubytrace processor when Flow supports it -->
+<!-- TODO: Mention gropubytrace processor when Alloy supports it -->
 <!-- TODO: Should we run more than 1 LB instance for better resiliency and spreading out the load? -->
 
 Different {{< param "PRODUCT_NAME" >}} components require different load-balancing strategies.
-The use of `otelcol.exporter.loadbalancing` is only necessary for [stateful Flow components][stateful-and-stateless-components].
+The use of `otelcol.exporter.loadbalancing` is only necessary for [stateful components][stateful-and-stateless-components].
 
 [stateful-and-stateless-components]: ../../../get-started/deploy-alloy/#stateful-and-stateless-components
 
@@ -314,7 +314,7 @@ You could differentiate the series by adding an attribute such as `"collector.id
 The series from different {{< param "PRODUCT_NAME" >}}s can be aggregated using PromQL queries on the backed metrics database.
 If the metrics are stored in Grafana Mimir, cardinality issues due to `"collector.id"` labels can be solved using [Adaptive Metrics][adaptive-metrics].
 
-A simpler, more scalable alternative to generating service graph metrics in {{< param "PRODUCT_NAME" >}} is to generate them entirely in the backend database. 
+A simpler, more scalable alternative to generating service graph metrics in {{< param "PRODUCT_NAME" >}} is to generate them entirely in the backend database.
 For example, service graphs can be [generated][tempo-servicegraphs] in Grafana Cloud by the Tempo traces database.
 
 [tempo-servicegraphs]: https://grafana.com/docs/tempo/latest/metrics-generator/service_graphs/
@@ -668,7 +668,7 @@ The following example shows a Kubernetes configuration that sets up two sets of 
 * A pool of load-balancer {{< param "PRODUCT_NAME" >}}s:
   * Spans are received from instrumented applications via `otelcol.receiver.otlp`
   * Spans are exported via `otelcol.exporter.loadbalancing`.
-  * The load-balancer {{< param "PRODUCT_NAME" >}}s will get notified by the Kubernetes API any time a pod 
+  * The load-balancer {{< param "PRODUCT_NAME" >}}s will get notified by the Kubernetes API any time a pod
     is added or removed from the pool of sampling {{< param "PRODUCT_NAME" >}}s.
 * A pool of sampling {{< param "PRODUCT_NAME" >}}s:
   * The sampling {{< param "PRODUCT_NAME" >}}s do not need to run behind a headless service.

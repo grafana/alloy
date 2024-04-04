@@ -7,7 +7,7 @@ alert.newGroup(
     alert.newRule(
       'SlowComponentEvaluations',
       'sum by (cluster, namespace, component_id) (rate(alloy_component_evaluation_slow_seconds[10m])) > 0',
-      'Flow component evaluations are taking too long.',
+      'Component evaluations are taking too long.',
       '15m',
     ),
 
@@ -15,7 +15,7 @@ alert.newGroup(
     alert.newRule(
       'UnhealthyComponents',
       'sum by (cluster, namespace) (alloy_component_controller_running_components{health_type!="healthy"}) > 0',
-      'Unhealthy Flow components detected.',
+      'Unhealthy components detected.',
       '15m',
     ),
   ]

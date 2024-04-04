@@ -98,7 +98,7 @@ Use this method if you prefer to embed your {{< param "PRODUCT_NAME" >}} configu
 1. Run the following command in a terminal to upgrade your {{< param "PRODUCT_NAME" >}} installation:
 
    ```shell
-   helm upgrade --namespace <NAMESPACE> <RELEASE_NAME> grafana/grafana-agent -f <VALUES_PATH>
+   helm upgrade --namespace <NAMESPACE> <RELEASE_NAME> grafana/alloy -f <VALUES_PATH>
    ```
 
    Replace the following:
@@ -144,7 +144,7 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
 1. Run the following command in a terminal to upgrade your {{< param "PRODUCT_NAME" >}} installation:
 
    ```shell
-   helm upgrade --namespace <NAMESPACE> <RELEASE_NAME> grafana/grafana-agent -f <VALUES_PATH>
+   helm upgrade --namespace <NAMESPACE> <RELEASE_NAME> grafana/alloy -f <VALUES_PATH>
    ```
 
    Replace the following:

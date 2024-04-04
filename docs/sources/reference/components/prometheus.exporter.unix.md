@@ -281,8 +281,8 @@ debug metrics.
 
 The following table lists the available collectors that `node_exporter` brings
 bundled in. Some collectors only work on specific operating systems; enabling a
-collector that is not supported by the host OS where Flow is running
-is a no-op.
+collector that is not supported by the host OS where {{< param "PRODUCT_NAME" >}}
+is running is a no-op.
 
 Users can choose to enable a subset of collectors to limit the amount of
 metrics exposed by the `prometheus.exporter.unix` component,
@@ -365,9 +365,9 @@ or disable collectors that are expensive to run.
 
 ## Running on Docker/Kubernetes
 
-When running Flow in a Docker container, you need to bind mount the filesystem,
-procfs, and sysfs from the host machine, as well as set the corresponding
-arguments for the component to work.
+When running {{< param "PRODUCT_NAME" >}} in a Docker container, you need to
+bind mount the filesystem, procfs, and sysfs from the host machine, as well as
+set the corresponding arguments for the component to work.
 
 You may also need to add capabilities such as `SYS_TIME` and make sure that the
 Agent is running with elevated privileges for some of the collectors to work

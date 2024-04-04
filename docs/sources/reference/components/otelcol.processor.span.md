@@ -88,14 +88,14 @@ At least one of these 2 fields must be set.
 
 `from_attributes` represents the attribute keys to pull the values from to
 generate the new span name:
-* All attribute keys are required in the span to rename a span. 
+* All attribute keys are required in the span to rename a span.
 If any attribute is missing from the span, no rename will occur.
 * The new span name is constructed in order of the `from_attributes`
 specified in the configuration.
 
 `separator` is the string used to separate attributes values in the new
 span name. If no value is set, no separator is used between attribute
-values. `separator` is used with `from_attributes` only; 
+values. `separator` is used with `from_attributes` only;
 it is not used with [to-attributes][].
 
 ### to_attributes block
@@ -110,12 +110,12 @@ Name                | Type           | Description                              
 `break_after_match` | `bool`         | Configures if processing of rules should stop after the first match. | `false` | no
 
 Each rule in the `rules` list is a regex pattern string.
-1. The span name is checked against each regex in the list. 
-2. If it matches, then all named subexpressions of the regex are extracted as attributes and are added to the span. 
-3. Each subexpression name becomes an attribute name and the subexpression matched portion becomes the attribute value. 
-4. The matched portion in the span name is replaced by extracted attribute name. 
-5. If the attributes already exist in the span then they will be overwritten. 
-6. The process is repeated for all rules in the order they are specified. 
+1. The span name is checked against each regex in the list.
+2. If it matches, then all named subexpressions of the regex are extracted as attributes and are added to the span.
+3. Each subexpression name becomes an attribute name and the subexpression matched portion becomes the attribute value.
+4. The matched portion in the span name is replaced by extracted attribute name.
+5. If the attributes already exist in the span then they will be overwritten.
+6. The process is repeated for all rules in the order they are specified.
 7. Each subsequent rule works on the span name that is the output after processing the previous rule.
 
 `break_after_match` specifies if processing of rules should stop after the first
@@ -142,7 +142,7 @@ The supported values for `code` are:
 
 ### include block
 
-The `include` block provides an option to include data being fed into the 
+The `include` block provides an option to include data being fed into the
 [name][] and [status][] blocks based on the properties of a span.
 
 The following arguments are supported:
@@ -158,12 +158,12 @@ Name         | Type           | Description                                     
 
 A match occurs if at least one item in the lists matches.
 
-One of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified 
+One of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified
 with a non-empty value for a valid configuration.
 
 ### exclude block
 
-The `exclude` block provides an option to exclude data from being fed into the 
+The `exclude` block provides an option to exclude data from being fed into the
 [name][] and [status][] blocks based on the properties of a span.
 
 The following arguments are supported:
@@ -179,7 +179,7 @@ Name         | Type           | Description                                     
 
 A match occurs if at least one item in the lists matches.
 
-One of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified 
+One of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified
 with a non-empty value for a valid configuration.
 
 ### regexp block
@@ -210,7 +210,7 @@ Name    | Type               | Description
 --------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
-`input` accepts `otelcol.Consumer` OTLP-formatted data for traces telemetry signals. 
+`input` accepts `otelcol.Consumer` OTLP-formatted data for traces telemetry signals.
 Logs and metrics are not supported.
 
 ## Component health
@@ -228,7 +228,7 @@ information.
 ### Creating a new span name from attribute values
 
 This example creates a new span name from the values of attributes `db.svc`,
-`operation`, and `id`, in that order, separated by the value `::`. 
+`operation`, and `id`, in that order, separated by the value `::`.
 All attribute keys need to be specified in the span for the processor to rename it.
 
 ```alloy
@@ -245,21 +245,21 @@ otelcol.processor.span "default" {
 ```
 
 For a span with the following attributes key/value pairs, the above
-Flow configuration will change the span name to `"location::get::1234"`:
+configuration will change the span name to `"location::get::1234"`:
 ```json
-{ 
-  "db.svc": "location", 
-  "operation": "get", 
+{
+  "db.svc": "location",
+  "operation": "get",
   "id": "1234"
 }
 ```
 
-For a span with the following attributes key/value pairs, the above 
-Flow configuration will not change the span name. 
+For a span with the following attributes key/value pairs, the above
+configuration will not change the span name.
 This is because the attribute key `operation` isn't set:
 ```json
-{ 
-  "db.svc": "location", 
+{
+  "db.svc": "location",
   "id": "1234"
 }
 ```
@@ -279,18 +279,18 @@ otelcol.processor.span "default" {
 ```
 
 For a span with the following attributes key/value pairs, the above
-Flow configuration will change the span name to `"locationget1234"`:
+configuration will change the span name to `"locationget1234"`:
 ```json
-{ 
-  "db.svc": "location", 
-  "operation": "get", 
+{
+  "db.svc": "location",
+  "operation": "get",
   "id": "1234"
 }
 ```
 
 ### Renaming a span name and adding attributes
 
-Example input and output using the Flow configuration below:
+Example input and output using the configuration below:
 1. Let's assume input span name is `/api/v1/document/12345678/update`
 2. The span name will be changed to `/api/v1/document/{documentId}/update`
 3. A new attribute `"documentId"="12345678"` will be added to the span.
@@ -360,7 +360,7 @@ otelcol.processor.span "default" {
 
 ### Setting a status depending on an attribute value
 
-This example sets the status to success only when attribute `http.status_code` 
+This example sets the status to success only when attribute `http.status_code`
 is equal to `400`.
 
 ```alloy

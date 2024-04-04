@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/flow/get-started/run/binary/
+canonical: https://grafana.com/docs/alloy/latest/get-started/run/binary/
 description: Learn how to run Grafana Alloy as a standalone binary
 menuTitle: Standalone
 title: Run Grafana Alloy as a standalone binary

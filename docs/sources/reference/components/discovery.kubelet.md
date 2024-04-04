@@ -21,7 +21,7 @@ discovery.kubelet "LABEL" {
 
 ## Requirements
 
-* The Kubelet must be reachable from the `grafana-agent` pod network.
+* The Kubelet must be reachable from the `alloy` pod network.
 * Follow the [Kubelet authorization][] documentation to configure authentication to the Kubelet API.
 
 [Kubelet authorization]: https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/#kubelet-authorization
