@@ -31,7 +31,7 @@ If you are running a custom installation of {{< param "PRODUCT_NAME" >}}, refer 
 
 ### Home page
 
-![](/media/docs/agent/ui_home_page.png)
+{{< figure src="/media/docs/alloy/ui_home_page.png" alt="Alloy UI home page" >}}
 
 The home page shows a table of components defined in the configuration file and their health.
 
@@ -41,14 +41,14 @@ Click the {{< param "PRODUCT_NAME" >}} logo to navigate back to the home page.
 
 ### Graph page
 
-![](/media/docs/agent/ui_graph_page.png)
+{{< figure src="/media/docs/alloy/ui_graph_page.png" alt="Alloy UI graph page" >}}
 
 The **Graph** page shows a graph view of components defined in the configuration file and their health.
 Clicking a component in the graph navigates to the [Component detail page](#component-detail-page) for that component.
 
 ### Component detail page
 
-![](/media/docs/agent/ui_component_detail_page.png)
+{{< figure src="/media/docs/alloy/ui_component_detail_page.png" alt="Alloy UI component detail page" >}}
 
 The component detail page shows the following information for each component:
 
@@ -61,7 +61,7 @@ The component detail page shows the following information for each component:
 
 ### Clustering page
 
-![](/media/docs/agent/ui_clustering_page.png)
+{{< figure src="/media/docs/alloy/ui_clustering_page.png" alt="Alloy UI clustering page" >}}
 
 The clustering page shows the following information for each cluster node:
 
