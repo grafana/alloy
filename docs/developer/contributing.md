@@ -67,7 +67,7 @@ To compile Alloy, clone the repository and build using `make alloy`:
 
 ```bash
 $ git clone https://github.com/grafana/alloy.git
-& cd alloy
+$ cd alloy
 $ make alloy
 $ ./build/alloy run <CONFIG_FILE>
 ```
