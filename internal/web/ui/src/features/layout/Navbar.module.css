@@ -22,7 +22,7 @@
   display: flex;
   flex-direction: row;
   list-style-type: none;
-  padding-left: 1.5em;
+  padding-left: 1em;
   margin: 0px;
 }
 
@@ -35,5 +35,5 @@
   color: #25292e;
   font-family: 'Roboto', sans-serif;
   text-decoration: none;
-  line-height: 225%;
+  line-height: 200%;
 }

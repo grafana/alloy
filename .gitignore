@@ -6,7 +6,7 @@
 /.vscode
 /.eventcache
 vendor
-data-agent
+data-alloy/
 
 /cmd/agent/agent
 /cmd/agentctl/agentctl
