@@ -60,7 +60,7 @@ prometheus.remote_write "local_prom" {
 
 You have created the following pipeline:
 
-![Diagram of pipeline that scrapes prometheus.exporter.unix, relabels the metrics, and remote_writes them](/media/docs/agent/diagram-flow-by-example-relabel-0.svg)
+{{< figure src="/media/docs/alloy/diagram-example-relabel-alloy.png" alt="Diagram of pipeline that scrapes prometheus.exporter.unix, relabels the metrics, and remote_writes them" >}}
 
 This pipeline has a `prometheus.relabel` component that has a single rule.
 This rule has the `replace` action, which will replace the value of the `os` label with a special value: `constants.os`.
@@ -129,7 +129,7 @@ loki.write "local_loki" {
 
 The rough flow of this pipeline is:
 
-![Diagram of pipeline that collects logs from /tmp/alloy-logs and writes them to a local Loki instance](/media/docs/agent/diagram-flow-by-example-logs-0.svg)
+{{< figure src="/media/docs/alloy/diagram-example-logs-loki-alloy.png" width="500" alt="Diagram of pipeline that collects logs from /tmp/alloy-logs and writes them to a local Loki instance" >}}
 
 If you navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`, you can query for `{filename="/tmp/alloy-logs/log.log"}` and see the log line we created earlier.
 Try running the following command to add more logs to the file.
@@ -140,7 +140,7 @@ echo "This is another log line!" >> /tmp/alloy-logs/log.log
 
 If you re-execute the query, you can see the new log lines.
 
-![Grafana Explore view of example log lines](/media/docs/agent/screenshot-flow-by-example-log-lines.png)
+{{< figure src="/media/docs/alloy/screenshot-log-lines.png" alt="Grafana Explore view of example log lines" >}}
 
 If you are curious how {{< param "PRODUCT_NAME" >}} keeps track of where it's in a log file, you can look at `data-alloy/loki.source.file.local_files/positions.yml`.
 If you delete this file, {{< param "PRODUCT_NAME" >}} starts reading from the beginning of the file again, which is why keeping the {{< param "PRODUCT_NAME" >}}'s data directory in a persistent location is desirable.
@@ -262,7 +262,7 @@ echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/lo
 Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`.
 Try querying for `{level!=""}` to see the new labels in action.
 
-![Grafana Explore view of example log lines, now with the extracted 'level' label](/media/docs/agent/screenshot-flow-by-example-log-line-levels.png)
+{{< figure src="/media/docs/alloy/screenshot-log-line-levels.png" alt="Grafana Explore view of example log lines, now with the extracted 'level' label" >}}
 
 {{< collapse title="Solution" >}}
 
