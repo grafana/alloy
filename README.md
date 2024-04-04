@@ -12,7 +12,7 @@ Grafana Alloy is a vendor-agnostic OpenTelemetry Collector distribution with
 extra capabilities for writing, running, and debugging powerful pipelines.
 
 <p>
-<img src="https://grafana.com/media/docs/agent/grafana-agent-screenshot.png">
+<img src="docs/sources/assets/alloy_screenshot.png">
 </p>
 
 ## What can Alloy do?
