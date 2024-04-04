@@ -80,7 +80,8 @@ Run `make help` for a description of all available Make targets.
 
 Compiling Alloy on Linux requires extra dependencies:
 
-* [systemd headers](https://packages.debian.org/sid/libsystemd-dev) for Promtail
+* [systemd headers](https://packages.debian.org/sid/libsystemd-dev) for
+  Loki components.
 
    * Can be installed on Debian-based distributions with:
 
