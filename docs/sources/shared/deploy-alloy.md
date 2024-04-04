@@ -17,7 +17,7 @@ This page lists common topologies used for {{% param "PRODUCT_NAME" %}} deployme
 Deploying {{< param "PRODUCT_NAME" >}} as a centralized service is recommended for collecting application telemetry.
 This topology allows you to use a smaller number of collectors to coordinate service discovery, collection, and remote writing.
 
-![centralized-collection](/media/docs/agent/agent-topologies/centralized-collection.png)
+{{< figure src="/media/docs/alloy/collection-diagram-alloy.png" alt="Centralized collection with Alloy">}}
 
 Using this topology requires deploying {{< param "PRODUCT_NAME" >}} on separate infrastructure, and making sure that they can discover and reach these applications over the network.
 The main predictor for the size of an {{< param "PRODUCT_NAME" >}} deployment is the number of active metrics series it's scraping. A rule of thumb is approximately 10 KB of memory for each series.
@@ -52,7 +52,7 @@ You can also use a Kubernetes Deployment in cases where persistent storage isn't
 
 Deploying one {{< param "PRODUCT_NAME" >}} instance per machine is required for collecting machine-level metrics and logs, such as node_exporter hardware and network metrics or journald system logs.
 
-![daemonset](/media/docs/agent/agent-topologies/daemonset.png)
+{{< figure src="/media/docs/alloy/host-diagram-alloy.png" alt="Alloy as a host daemon">}}
 
 Each {{< param "PRODUCT_NAME" >}} instance requires you to open an outgoing connection for each remote endpoint it’s shipping data to.
 This can lead to NAT port exhaustion on the egress infrastructure.
@@ -88,7 +88,7 @@ The simplest use case of the host daemon topology is a Kubernetes DaemonSet, and
 
 Deploying {{< param "PRODUCT_NAME" >}} as a container sidecar is only recommended for short-lived applications or specialized {{< param "PRODUCT_NAME" >}} deployments.
 
-![daemonset](/media/docs/agent/agent-topologies/sidecar.png)
+{{< figure src="/media/docs/alloy/sidecar-diagram-alloy.png" alt="Alloy as a container sidecar">}}
 
 ### Using Kubernetes Pod sidecars
 
