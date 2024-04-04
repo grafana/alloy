@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/monitor/controller_metrics/
 description: Learn how to monitor controller metrics
-title: Monitor the Grafana Agent component controller
+title: Monitor the Grafana Alloy component controller
 menuTitle: Monitor the controller
 weight: 100
 ---

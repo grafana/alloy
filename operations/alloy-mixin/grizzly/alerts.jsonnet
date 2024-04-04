@@ -7,7 +7,7 @@ local mixin = import '../mixin.libsonnet';
         apiVersion: 'grizzly.grafana.com/v1alpha1',
         kind: 'PrometheusRuleGroup',
         metadata: {
-          namespace: 'agent-flow',
+          namespace: 'alloy',
           name: group.name,
         },
         spec: group,

@@ -1,4 +1,4 @@
-integrations:  
+integrations:
   prometheus_remote_write:
   - basic_auth:
       password: token

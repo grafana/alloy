@@ -1,13 +1,6 @@
-# Create Prometheus Exporter Flow Components
+# Create Prometheus Exporter Components
 
-This guide will walk you through the process of creating a new Prometheus exporter Flow component and best practices for implementing it.
-
-It is required that the exporter has an existing [Agent integration](../sources/static/configuration/integrations/_index.md) in order to wrap it as a Flow component. In the future, we will drop this requirement and Flow components will expose the logic of the exporter directly.
-
-Use the following exporters as a reference:
-- [process_exporter](../../component/prometheus/exporter/process/process.go) - [documentation](../sources/flow/reference/components/prometheus.exporter.process.md)
-- [blackbox_exporter](../../component/prometheus/exporter/blackbox/blackbox.go) - [documentation](../sources/flow/reference/components/prometheus.exporter.blackbox.md)
-- [node_exporter](../../component/prometheus/exporter/unix/unix.go) - [documentation](../sources/flow/reference/components/prometheus.exporter.unix.md)
+This guide will walk you through the process of creating a new Prometheus exporter component and best practices for implementing it.
 
 ## Arguments (Configuration)
 
@@ -19,11 +12,11 @@ Use the following exporters as a reference:
 
 The config would look like this using `matcher` block multiple times:
 
-```river
+```grafana-alloy
 prometheus.exporter.process "example" {
   track_children = false
   matcher {
-    comm = ["grafana-agent"]
+    comm = ["alloy"]
   }
   matcher {
     comm = ["firefox"]
@@ -35,7 +28,7 @@ prometheus.exporter.process "example" {
 
 The config would look like this:
 
-```river
+```grafana-alloy
 prometheus.exporter.blackbox "example" {
     config_file = "blackbox_modules.yml"
 
@@ -70,8 +63,8 @@ prometheus.exporter.blackbox "example" {
 
 ## Registering the component
 
-In order to make the component visible for Agent Flow, it needs to be added to [all.go](../../component/all/all.go) file.
+In order to make the component visible to Alloy configurations, it needs to be added to [all.go](../../component/all/all.go) file.
 
 ## Documentation
 
-Writing the documentation for the component is very important. Please, follow the [Writing documentation for Flow components](./writing-flow-component-documentation.md) and take a look at the existing documentation for other exporters.
+Writing the documentation for the component is very important. Please, follow the [Writing documentation for components](./writing-component-documentation.md) and take a look at the existing documentation for other exporters.

@@ -15,7 +15,7 @@ the Kubernetes API, tails logs from Kubernetes containers of Pods specified by
 the discovered them.
 
 `loki.source.podlogs` is similar to `loki.source.kubernetes`, but uses custom
-resources rather than being fed targets from another Flow component.
+resources rather than being fed targets from another component.
 
 {{< admonition type="note" >}}
 Unlike `loki.source.kubernetes`, it is not possible to distribute responsibility of collecting logs across multiple {{< param "PRODUCT_NAME" >}}s.

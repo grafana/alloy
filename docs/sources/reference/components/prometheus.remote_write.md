@@ -226,7 +226,7 @@ The WAL serves two primary purposes:
 
 The WAL is located inside a component-specific directory relative to the
 storage path {{< param "PRODUCT_NAME" >}} is configured to use. See the
-[`agent run` documentation][run] for how to change the storage path.
+[`run` documentation][run] for how to change the storage path.
 
 The `truncate_frequency` argument configures how often to clean up the WAL.
 Every time the `truncate_frequency` period elapses, the lower two-thirds of
@@ -476,13 +476,14 @@ before being pushed to the remote_write endpoint.
 
 ### WAL corruption
 
-WAL corruption can occur when Grafana Agent unexpectedly stops while the latest WAL segments
-are still being written to disk. For example, the host computer has a general disk failure
-and crashes before you can stop Grafana Agent and other running services. When you restart Grafana
-Agent, it verifies the WAL, removing any corrupt segments it finds. Sometimes, this repair
-is unsuccessful, and you must manually delete the corrupted WAL to continue.
-
-If the WAL becomes corrupted, Grafana Agent writes error messages such as
+WAL corruption can occur when {{< param "PRODUCT_NAME" >}} unexpectedly stops
+while the latest WAL segments are still being written to disk. For example, the
+host computer has a general disk failure and crashes before you can stop
+{{< param "PRODUCT_NAME" >}} and other running services. When you restart
+{{< param "PRODUCT_NAME" >}}, it verifies the WAL, removing any corrupt
+segments it finds. Sometimes, this repair is unsuccessful, and you must
+manually delete the corrupted WAL to continue. If the WAL becomes corrupted,
+{{< param "PRODUCT_NAME" >}} writes error messages such as
 `err="failed to find segment for index"` to the log file.
 
 {{< admonition type="note" >}}
@@ -491,7 +492,7 @@ Deleting a WAL segment or a WAL file permanently deletes the stored WAL data.
 
 To delete the corrupted WAL:
 
-1. [Stop][] Grafana Agent.
+1. [Stop][] {{< param "PRODUCT_NAME" >}}.
 1. Find and delete the contents of the `wal` directory.
 
    By default the `wal` directory is a subdirectory

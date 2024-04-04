@@ -156,8 +156,8 @@ to store read offsets, so that if a component or {{< param "PRODUCT_NAME" >}} re
 
 The data path is inside the directory configured by the `--storage.path` [command line argument][cmd-args].
 
-In the Static mode's [eventhandler integration][eventhandler-integration], a `cache_path` argument is used to configure a positions file.
-In Flow mode, this argument is no longer necessary.
+In Grafana Agent Static's [eventhandler integration][eventhandler-integration], a `cache_path` argument is used to configure a positions file.
+In {{< param "PRODUCT_NAME" >}}, this argument is no longer necessary.
 
 [cmd-args]: ../../cli/run/
 [eventhandler-integration]: https://grafana.com/docs/agent/latest/static/configuration/integrations/integrations-next/eventhandler-config/

@@ -44,7 +44,7 @@ func TestAlloyConfigConvert(t *testing.T) {
 	var exampleAlloyConfig = `
 	matcher {
 		name    = "static"
-		comm    = ["grafana-agent"]
+		comm    = ["alloy"]
 		cmdline = ["*config.file*"]
 	}
 	track_children    = true
@@ -65,7 +65,7 @@ func TestAlloyConfigConvert(t *testing.T) {
 	expected := []MatcherGroup{
 		{
 			Name:         "static",
-			CommRules:    []string{"grafana-agent"},
+			CommRules:    []string{"alloy"},
 			CmdlineRules: []string{"*config.file*"},
 		},
 	}
@@ -80,7 +80,7 @@ func TestAlloyConfigConvert(t *testing.T) {
 	e := config.MatcherRules{
 		{
 			Name:         "static",
-			CommRules:    []string{"grafana-agent"},
+			CommRules:    []string{"alloy"},
 			CmdlineRules: []string{"*config.file*"},
 		},
 	}

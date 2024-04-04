@@ -5,7 +5,7 @@ local mixin = import '../mixin.libsonnet';
     apiVersion: 'grizzly.grafana.com/v1alpha1',
     kind: 'DashboardFolder',
     metadata: {
-      name: 'grafana-agent-flow',
+      name: 'grafana-alloy',
     },
     spec: {
       title: mixin.grafanaDashboardFolder,

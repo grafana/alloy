@@ -186,7 +186,7 @@ more information on how to enable these capabilities.
 ### rbac.create
 
 `rbac.create` enables the creation of ClusterRole and ClusterRoleBindings for
-the Grafana Alloy containers to use. The default permission set allows Flow
+the Grafana Alloy containers to use. The default permission set allows
 components like [discovery.kubernetes][] to work properly.
 
 [discovery.kubernetes]: https://grafana.com/docs/alloy/latest/reference/components/discovery.kubernetes/
@@ -226,7 +226,7 @@ containers using the Kubernetes API. This component does not require mounting
 the hosts filesystem into the Agent, nor requires additional security contexts
 to work correctly.
 
-[loki.source.kubernetes]: https://grafana.com/docs/agent/latest/flow/reference/components/loki.source.kubernetes/
+[loki.source.kubernetes]: https://grafana.com/docs/alloy/latest/reference/components/loki.source.kubernetes/
 
 ### File-based collection
 

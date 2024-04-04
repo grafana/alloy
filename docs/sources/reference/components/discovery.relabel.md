@@ -6,7 +6,7 @@ title: discovery.relabel
 
 # discovery.relabel
 
-In Flow, targets are defined as sets of key-value pairs called _labels_.
+In {{< param "PRODUCT_NAME" >}}, targets are defined as sets of key-value pairs called _labels_.
 
 `discovery.relabel` rewrites the label set of the input targets by applying one or more relabeling rules.
 If no rules are defined, then the input targets are exported as-is.

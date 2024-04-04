@@ -188,9 +188,9 @@ For a server name to be included, it must match the regular expression specified
 
 ### text_file block
 
-Name                  | Type     | Description                                        | Default                                               | Required
-----------------------|----------|----------------------------------------------------|-------------------------------------------------------|---------
-`text_file_directory` | `string` | The directory containing the files to be ingested. | `C:\Program Files\Grafana Agent Flow\textfile_inputs` | no
+Name                  | Type     | Description                                        | Default                                              | Required
+----------------------|----------|----------------------------------------------------|------------------------------------------------------|---------
+`text_file_directory` | `string` | The directory containing the files to be ingested. | `C:\Program Files\GrafanaLabs\Alloy\textfile_inputs` | no
 
 When `text_file_directory` is set, only files with the extension `.prom` inside the specified directory are read. Each `.prom` file found must end with an empty line feed to work properly.
 
@@ -218,7 +218,7 @@ debug metrics.
 ## Collectors list
 The following table lists the available collectors that `windows_exporter` brings
 bundled in. Some collectors only work on specific operating systems; enabling a
-collector that is not supported by the host OS where Flow is running
+collector that is not supported by the host OS where Alloy is running
 is a no-op.
 
 Users can choose to enable a subset of collectors to limit the amount of

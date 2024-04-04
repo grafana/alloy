@@ -136,7 +136,7 @@ For example:
 ````markdown
 ## Usage
 
-```river
+```alloy
 pyroscope.scrape "LABEL" {
   targets    = TARGET_LIST
   forward_to = RECEIVER_LIST
@@ -228,8 +228,8 @@ relevant to the arguments. If there is component behavior relevant to a
 specific block, describe that component behavior in the documentation section
 for that block instead.
 
-It is acceptable to provide Flow configuration snippets for the arguments
-if it aids documentation.
+It is acceptable to provide configuration snippets for the arguments if it aids
+documentation.
 
 ### Blocks
 
@@ -357,8 +357,8 @@ not provided, their Go-inherited defaults will not display in the component UI
 page.
 ```
 
-It is acceptable for block sections to provide Flow configuration snippets for
-the block if it aids documentation.
+It is acceptable for block sections to provide configuration snippets for the
+block if it aids documentation.
 
 ### Exported fields
 
@@ -417,7 +417,7 @@ healthy.
 ### Debug information
 
 The Debug information section describes debug information exposed in the
-Grafana Agent Flow UI. The section starts with an `h2` header called Debug
+Grafana Alloy UI. The section starts with an `h2` header called Debug
 information.
 
 If the component does not expose any debug information, the content of the
@@ -463,8 +463,8 @@ should always prefix the metrics table.
 ### Examples
 
 The Examples section provides copy-and-paste Alloy pipelines which use the
-Flow component. The section starts with an `h2` header called Examples. If
-there is only one example, call the section Example instead.
+component. The section starts with an `h2` header called Examples. If there is
+only one example, call the section Example instead.
 
 If there is more than one example, each example should have an `h3` header
 containing a descriptive name. For example:
@@ -486,7 +486,7 @@ followed by the example in a code block. For example:
 This example reads a JSON array of objects from an endpoint and uses them for
 the set of scrape targets:
 
-```river
+```alloy
 remote.http "targets" {
   url = TARGETS_URL
 }
@@ -516,7 +516,7 @@ written in all uppercase and underscore delimited, for example: `API_URL`.
 Examples of the new component should avoid using placeholders and instead use
 realistic example values. For example, if documenting a `prometheus.scrape` component, use:
 
-  ```river
+  ```grafana-alloy
   remote.http "targets" {
     url = "http://localhost:8080/targets"
   }
@@ -543,7 +543,7 @@ source for the clarifying comment. Clarifying comments must only be used be
 supplementary information to reenforce knowledge, and not as the primary source
 of information.
 
-Examples should be formatted using the [grafana-agent fmt](https://grafana.com/docs/agent/latest/flow/reference/cli/fmt/) command.
+Examples should be formatted using the [alloy fmt](https://grafana.com/docs/alloy/latest/reference/cli/fmt/) command.
 
 ## Exceptions
 
@@ -569,6 +569,6 @@ doc page, but because it contains yaml config for the Collector, users might get
 how this maps to Alloy and it is better not to link to it. In the future we could try to
 move this information from [transformprocessor][] to the [OTTL Context][ottl context] doc.
 
-[loki.source.podlogs]: ../sources/flow/reference/components/loki.source.podlogs.md
-[otelcol.processor.transform]: ../sources/flow/reference/components/otelcol.processor.transform.md
+[loki.source.podlogs]: ../sources/reference/components/loki.source.podlogs.md
+[otelcol.processor.transform]: ../sources/reference/components/otelcol.processor.transform.md
 [ottl context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/pkg/ottl/contexts/README.md

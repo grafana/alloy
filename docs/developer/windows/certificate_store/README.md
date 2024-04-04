@@ -1,10 +1,10 @@
 # Guide to setting up a Windows Server for Certificate Testing
 
-This guide is used to set up a Windows Server for Windows Store Certificate Testing. This guide assumes you have downloaded a Windows 2022 Server ISO and have installed the Windows Server onto a virtual machine. Certificate Templates can only be installed on Windows Server and it must enabled as an Enterprise Certificate Authority. This guide is NOT meant to be a guide on how to set up a Windows Server for production use, and is meant only for setting up an environment to test the Grafana Agent and certificate store.
+This guide is used to set up a Windows Server for Windows Store Certificate Testing. This guide assumes you have downloaded a Windows 2022 Server ISO and have installed the Windows Server onto a virtual machine. Certificate Templates can only be installed on Windows Server and it must enabled as an Enterprise Certificate Authority. This guide is NOT meant to be a guide on how to set up a Windows Server for production use, and is meant only for setting up an environment to test the Grafana Alloy and certificate store.
 
 ## Prerequisites
 
-* The install should be fresh with no server roles defined or installed. 
+* The install should be fresh with no server roles defined or installed.
 * You should be logged in via an administrator account.
 
 ## Set up as domain controller
@@ -118,9 +118,9 @@ For this setup we are using a one-node Domain Controller set up as the Enterpris
 4. Under `Export File Format` ensure that `Include all certificates in the certificate path if possible`.
 5. Export it to a file.
 
-## Setup Grafana Agent
+## Setup Grafana Alloy
 
-1. Open the Agent configuration file.
+1. Open the Alloy configuration file.
 2. Open `Certificate Templates Console`, right-click `Certstore Template` and find the Object identifier.
 ![](./images/object_identifier.png)
 
@@ -132,7 +132,7 @@ For this setup we are using a one-node Domain Controller set up as the Enterpris
 6. Configuration should look like this.
 ![](./images/config.png)
 
-7. Start Agent.
+7. Start Alloy.
 
 ## Copy certificate to browser
 

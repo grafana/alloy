@@ -99,7 +99,7 @@ prometheus.exporter.process "example" {
   track_children = false
 
   matcher {
-    comm = ["grafana-agent"]
+    comm = ["alloy"]
   }
 }
 
