@@ -1,4 +1,7 @@
-<p align="center"><img src="docs/sources/assets/logo_and_name.png" alt="Grafana Alloy logo"></p>
+<p align="center">
+    <img src="docs/sources/assets/logo_alloy_light.svg#gh-dark-mode-only" alt="Grafana Alloy logo" height="100px">
+    <img src="docs/sources/assets/logo_alloy_dark.svg#gh-light-mode-only" alt="Grafana Alloy logo" height="100px">
+</p>
 
 <p>
   <a href="https://github.com/grafana/alloy/releases"><img src="https://img.shields.io/github/release/grafana/alloy.svg" alt="Latest Release"></a>
@@ -9,7 +12,7 @@ Grafana Alloy is a vendor-agnostic OpenTelemetry Collector distribution with
 extra capabilities for writing, running, and debugging powerful pipelines.
 
 <p>
-<img src="https://grafana.com/media/docs/agent/grafana-agent-screenshot.png">
+<img src="docs/sources/assets/alloy_screenshot.png">
 </p>
 
 ## What can Alloy do?
