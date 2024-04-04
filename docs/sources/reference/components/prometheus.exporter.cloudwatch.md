@@ -90,27 +90,27 @@ To use all of the integration features, use the following AWS IAM Policy:
 
 ```alloy
 prometheus.exporter.cloudwatch "queues" {
-	sts_region = "us-east-2"
+    sts_region = "us-east-2"
 
-	discovery {
-		type        = "sqs"
-		regions     = ["us-east-2"]
-		search_tags = {
-			"scrape" = "true",
-		}
+    discovery {
+        type        = "sqs"
+        regions     = ["us-east-2"]
+        search_tags = {
+            "scrape" = "true",
+        }
 
-		metric {
-			name       = "NumberOfMessagesSent"
-			statistics = ["Sum", "Average"]
-			period     = "1m"
-		}
+        metric {
+            name       = "NumberOfMessagesSent"
+            statistics = ["Sum", "Average"]
+            period     = "1m"
+        }
 
-		metric {
-			name       = "NumberOfMessagesReceived"
-			statistics = ["Sum", "Average"]
-			period     = "1m"
-		}
-	}
+        metric {
+            name       = "NumberOfMessagesReceived"
+            statistics = ["Sum", "Average"]
+            period     = "1m"
+        }
+    }
 }
 ```
 
@@ -161,24 +161,24 @@ and export them to Prometheus. For example, if we wanted to scrape CPU utilizati
 
 ```alloy
 prometheus.exporter.cloudwatch "discover_instances" {
-	sts_region = "us-east-2"
+    sts_region = "us-east-2"
 
-	discovery {
-		type    = "AWS/EC2"
-		regions = ["us-east-2"]
+    discovery {
+        type    = "AWS/EC2"
+        regions = ["us-east-2"]
 
-		metric {
-			name       = "CPUUtilization"
-			statistics = ["Average"]
-			period     = "5m"
-		}
+        metric {
+            name       = "CPUUtilization"
+            statistics = ["Average"]
+            period     = "5m"
+        }
 
-		metric {
-			name       = "NetworkPacketsIn"
-			statistics = ["Average"]
-			period     = "5m"
-		}
-	}
+        metric {
+            name       = "NetworkPacketsIn"
+            statistics = ["Average"]
+            period     = "5m"
+        }
+    }
 }
 ```
 
@@ -210,21 +210,21 @@ For example, if you want to scrape the same metrics in the discovery example, bu
 
 ```alloy
 prometheus.exporter.cloudwatch "static_instances" {
-	sts_region = "us-east-2"
+    sts_region = "us-east-2"
 
-	static "instances" {
-		regions    = ["us-east-2"]
-		namespace  = "AWS/EC2"
-		dimensions = {
-			"InstanceId" = "i01u29u12ue1u2c",
-		}
+    static "instances" {
+        regions    = ["us-east-2"]
+        namespace  = "AWS/EC2"
+        dimensions = {
+            "InstanceId" = "i01u29u12ue1u2c",
+        }
 
-		metric {
-			name       = "CPUUsage"
-			statistics = ["Sum", "Average"]
-			period     = "1m"
-		}
-	}
+        metric {
+            name       = "CPUUsage"
+            statistics = ["Sum", "Average"]
+            period     = "1m"
+        }
+    }
 }
 ```
 
@@ -277,7 +277,7 @@ on how to explore metrics, to easily pick the ones you need.
 controls how far back in time CloudWatch metrics are considered during each {{< param "PRODUCT_NAME" >}} scrape.
 If both settings are configured, the time parameters when calling CloudWatch APIs works as follows:
 
-![](https://grafana.com/media/docs/agent/cloudwatch-period-and-length-time-model-2.png)
+{{< figure src="/media/docs/alloy/cloudwatch-period-and-length-time-model-2.png" >}}
 
 As noted above, if across multiple metrics under the same static or discovery job, there's different `period`
 and/or `length`
@@ -291,7 +291,7 @@ If all metrics within a job (discovery or static) have the same `period` value c
 requested
 for metrics from the scrape time, to `period`s seconds in the past. The values of these are exported to Prometheus.
 
-![](https://grafana.com/media/docs/agent/cloudwatch-single-period-time-model.png)
+{{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" >}}
 
 On the other hand, if metrics with different `period`s are configured under an individual job, this works differently.
 First, two variables are calculated aggregating all periods: `length`, taking the maximum value of all periods, and
@@ -299,7 +299,7 @@ the new `period` value, taking the minimum of all periods. Then, CloudWatch APIs
 `now - length` to `now`, aggregating each in samples for `period` seconds. For each metric, the most recent sample
 is exported to CloudWatch.
 
-![](https://grafana.com/media/docs/agent/cloudwatch-multiple-period-time-model.png)
+{{< figure src="/media/docs/alloy/cloudwatch-multiple-period-time-model.png" >}}
 
 ### role block
 
