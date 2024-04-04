@@ -3,7 +3,7 @@
     <img src="docs/sources/assets/logo_alloy_dark.svg#gh-light-mode-only" alt="Grafana Alloy logo" height="100px">
 </p>
 
-<p>
+<p align="center">
   <a href="https://github.com/grafana/alloy/releases"><img src="https://img.shields.io/github/release/grafana/alloy.svg" alt="Latest Release"></a>
   <a href="https://grafana.com/docs/alloy/latest"><img src="https://img.shields.io/badge/Documentation-link-blue?logo=gitbook" alt="Documentation link"></a>
 </p>
