@@ -38,6 +38,7 @@ spec:
             - --storage.path=/tmp/alloy
             - --server.http.listen-addr=0.0.0.0:80
             - --server.http.ui-path-prefix=/
+            - --stability.level=generally-available
           env:
             - name: ALLOY_DEPLOY_MODE
               value: "helm"

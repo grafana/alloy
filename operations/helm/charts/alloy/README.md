@@ -51,6 +51,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.mounts.varlog | bool | `false` | Mount /var/log from the host into the container for log collection. |
 | alloy.resources | object | `{}` | Resource requests and limits to apply to the Grafana Alloy container. |
 | alloy.securityContext | object | `{}` | Security context to apply to the Grafana Alloy container. |
+| alloy.stabilityLevel | string | `"generally-available"` |  |
 | alloy.storagePath | string | `"/tmp/alloy"` | Path to where Grafana Alloy stores data (for example, the Write-Ahead Log). By default, data is lost between reboots. |
 | alloy.uiPathPrefix | string | `"/"` | Base path where the UI is exposed. |
 | configReloader.customArgs | list | `[]` | Override the args passed to the container. |
