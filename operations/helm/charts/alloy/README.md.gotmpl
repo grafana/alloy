@@ -43,6 +43,15 @@ the chart for `grafana/alloy`, with two exceptions:
   listen port in other installations. To retain the previous default, set
   `alloy.listenPort` to `80` when installing.
 
+### alloy.stabilityLevel
+
+`alloy.stabilityLevel` controls the minimum level of stability for what
+components can be created (directly or through imported modules). Note that
+setting this field to a lower stability may also enable internal behaviour of a
+lower stability, such as experimental memory optimizations.
+
+Valid settings are `experimental`, `public-preview`, and `generally-available`.
+
 ### alloy.extraArgs
 
 `alloy.extraArgs` allows for passing extra arguments to the Grafana Alloy
