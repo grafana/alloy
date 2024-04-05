@@ -8,8 +8,9 @@
   <a href="https://grafana.com/docs/alloy/latest"><img src="https://img.shields.io/badge/Documentation-link-blue?logo=gitbook" alt="Documentation link"></a>
 </p>
 
-Grafana Alloy is a vendor-agnostic OpenTelemetry Collector distribution with
-extra capabilities for writing, running, and debugging powerful pipelines.
+Grafana Alloy is an open source OpenTelemetry Collector distribution with
+built-in Prometheus pipelines and support for metrics, logs, traces, and 
+profiles. 
 
 <p>
 <img src="docs/sources/assets/alloy_screenshot.png">
@@ -24,8 +25,9 @@ extra capabilities for writing, running, and debugging powerful pipelines.
   OpenTelemetry Collector and supports dozens of its components, alongside new
   components that make use of Alloy's programmable pipelines.
 
-* **Vendor-agnostic**: Alloy embraces Grafana's "big tent" philosophy, and has
-  components to perfectly integrate with multiple telemetry ecosystems:
+* **Big tent**: Alloy embraces Grafana's "big tent" philosophy, where Alloy
+  can be used with other vendors or open source databases. It has components
+  to perfectly integrate with multiple telemetry ecosystems:
 
   * [OpenTelemetry Collector][]
   * [Prometheus][]
