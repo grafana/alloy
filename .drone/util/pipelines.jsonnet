@@ -20,5 +20,5 @@
     },
   },
 
-  windows_command(command):: '& "C:/Program Files/git/bin/bash.exe" -c "%s"' % command,
+  windows_command(command):: '& "C:/Program Files/git/bin/bash.exe" -c \'%s\'' % command,
 }

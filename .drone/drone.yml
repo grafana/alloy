@@ -302,11 +302,11 @@ platform:
   version: "1809"
 steps:
 - commands:
-  - '& "C:/Program Files/git/bin/bash.exe" -c "mkdir -p $HOME/.docker"'
-  - '& "C:/Program Files/git/bin/bash.exe" -c "printenv GCR_CREDS > $HOME/.docker/config.json"'
-  - '& "C:/Program Files/git/bin/bash.exe" -c "docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD"'
-  - '& "C:/Program Files/git/bin/bash.exe" -c "./tools/ci/docker-containers-windows
-    alloy-devel"'
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''mkdir -p $HOME/.docker'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''printenv GCR_CREDS > $HOME/.docker/config.json'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
+    alloy-devel'''
   environment:
     DOCKER_LOGIN:
       from_secret: docker_login
@@ -379,11 +379,11 @@ platform:
   version: "1809"
 steps:
 - commands:
-  - '& "C:/Program Files/git/bin/bash.exe" -c "mkdir -p $HOME/.docker"'
-  - '& "C:/Program Files/git/bin/bash.exe" -c "printenv GCR_CREDS > $HOME/.docker/config.json"'
-  - '& "C:/Program Files/git/bin/bash.exe" -c "docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD"'
-  - '& "C:/Program Files/git/bin/bash.exe" -c "./tools/ci/docker-containers-windows
-    alloy"'
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''mkdir -p $HOME/.docker'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''printenv GCR_CREDS > $HOME/.docker/config.json'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
+    alloy'''
   environment:
     DOCKER_LOGIN:
       from_secret: docker_login
@@ -565,6 +565,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 33ad6940aa3d0615eb3be75bbeee0a90910b5b03280c1a80cc664abeb0de2932
+hmac: 3484a2c2210641cb0e653616c7100ec52f49cb68c7f20647248de013e0da1826
 
 ...
