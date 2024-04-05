@@ -5,7 +5,9 @@ menuTitle: remotecfg
 title: remotecfg block
 ---
 
-# remotecfg block (public preview)
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
+# remotecfg block
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -18,15 +20,15 @@ The [API definition][] for managing and fetching configuration that the `remotec
 
 ```alloy
 remotecfg {
-	url = "SERVICE_URL"
-	basic_auth {
-		username      = "USERNAME"
-		password_file = "PASSWORD_FILE"
-	}
+    url = "SERVICE_URL"
+    basic_auth {
+        username      = "USERNAME"
+        password_file = "PASSWORD_FILE"
+    }
 
-	id             = constants.hostname
-	metadata       = {"cluster" = "dev", "namespace" = "otlp-dev"}
-	poll_frequency = "5m"
+    id             = constants.hostname
+    metadata       = {"cluster" = "dev", "namespace" = "otlp-dev"}
+    poll_frequency = "5m"
 }
 ```
 
