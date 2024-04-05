@@ -15,11 +15,9 @@ You can configure the component to collect telemetry data from a specific port o
 The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTEL exporter component.
 
 {{< admonition type="note" >}}
-To run this component, {{< param "PRODUCT_NAME" >}} requires administrative (`sudo`) privileges, or at least it needs to be granted the `CAP_SYS_ADMIN` and `CAP_SYS_PTRACE` capability. In Kubernetes environments, app armour must be disabled for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
+To run this component, {{< param "PRODUCT_NAME" >}} requires administrative (`sudo`) privileges, or at least it needs to be granted the `CAP_SYS_ADMIN` and `CAP_SYS_PTRACE` capability.
+In Kubernetes environments, app armour must be disabled for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
-
-[Grafana Beyla]: https://github.com/grafana/beyla
-[eBPF]: https://ebpf.io/
 
 ## Usage
 
@@ -33,11 +31,10 @@ beyla.ebpf "<LABEL>" {
 
 `beyla.ebpf` supports the following arguments:
 
-Name | Type | Description                                               | Default | Required
----- | ---- |-----------------------------------------------------------| ------- | --------
-`open_port` | `string` | The port of the running service for Beyla automatically instrumented with eBPF. | | no
-`excutable_name` | `string` | The name of the executable to match for Beyla automatically instrumented with eBPF. | | no
-
+Name             | Type     | Description                                                                         | Default | Required
+-----------------|----------|-------------------------------------------------------------------------------------|---------|---------
+`open_port`      | `string` | The port of the running service for Beyla automatically instrumented with eBPF.     |         | no
+`excutable_name` | `string` | The name of the executable to match for Beyla automatically instrumented with eBPF. |         | no
 
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it is considered to match the selection criteria.
@@ -48,37 +45,28 @@ If the executable matches only one of the ports in the list, it is considered to
 
 The following blocks are supported inside the definition of `beyla.ebpf`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-routes | [routes][] | Configures the routes to match HTTP paths into user-provided HTTP routes. | no
-attributes | [attributes][] | Configures the Beyla attributes for the component. | no
+Hierarchy               | Block          | Description                                                                                        | Required
+------------------------|----------------|----------------------------------------------------------------------------------------------------|---------
+routes                  | [routes][]     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
+attributes              | [attributes][] | Configures the Beyla attributes for the component.                                                 | no
 attributes > kubernetes | [kubernetes][] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
-discovery | [discovery][] | Configures the discovery for instrumentable processes matching a given criteria. | no
-discovery > services | [services][] | Configures the discovery for the component. | no
-output | [output][] | Configures where to send received telemetry data. | yes
+discovery               | [discovery][]  | Configures the discovery for instrumentable processes matching a given criteria.                   | no
+discovery > services    | [services][]   | Configures the discovery for the component.                                                        | no
+output                  | [output][]     | Configures where to send received telemetry data.                                                  | yes
 
-The `>` symbol indicates deeper levels of nesting. For example,
-`attributes > kubernetes` refers to a `kubernetes` block defined inside an
-`attributes` block.
-
-[routes]: #routes-block
-[attributes]: #attributes-block
-[kubernetes]: #kubernetes-block
-[discovery]: #discovery-block
-[services]: #services-block
-[output]: #output-block
+The `>` symbol indicates deeper levels of nesting.
+For example,`attributes > kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
 
 ### attributes block
 
 This block allows you to configure how some attributes for metrics and traces are decorated.
 
 It contains the following blocks:
-[kubernetes]: #kubernetes-block
 
 #### kubernetes block
 
-Name | Type | Description                                               | Default | Required
----- | ---- |-----------------------------------------------------------| ------- | --------
+Name     | Type     | Description                                | Default | Required
+---------|----------|--------------------------------------------|---------|---------
 `enable` | `string` | Enable the Kubernetes metadata decoration. | `false` | no
 
 If set to `true`, Beyla will decorate the metrics and traces with Kubernetes metadata. The following labels will be added:
@@ -95,19 +83,18 @@ If set to `true`, Beyla will decorate the metrics and traces with Kubernetes met
 
 If set to `false`, the Kubernetes metadata decorator will be disabled.
 
-If set to `autodetect`, Beyla will try to automatically detect if it is running inside Kubernetes, and enable the metadata decoration if that is the case.
-
+If set to `autodetect`, Beyla will try to automatically detect if it is running inside Kubernetes, and enable the metadata decoration if that's the case.
 
 ### routes block
 
 This block is used to configure the routes to match HTTP paths into user-provided HTTP routes.
 
-Name | Type | Description                                               | Default | Required
----- | ---- |-----------------------------------------------------------| ------- | --------
-`patterns` | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property | | no
-`ignore_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property. | | no
-`ignore_mode` | `string` | The mode to use when ignoring patterns. | | no
-`unmatched` | `string` | Specifies what to do when a trace HTTP path does not match any of the `patterns` entries | | no
+Name              | Type           | Description                                                                               | Default | Required
+------------------|----------------|-------------------------------------------------------------------------------------------|---------|---------
+`patterns`        | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property          |         | no
+`ignore_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.     |         | no
+`ignore_mode`     | `string`       | The mode to use when ignoring patterns.                                                   |         | no
+`unmatched`       | `string`       | Specifies what to do when a trace HTTP path does not match any of the `patterns` entries. |         | no
 
 `patterns` and `ignored_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
 The matcher tags can be in the `:name` or `{name}` format.
@@ -124,30 +111,29 @@ The matcher tags can be in the `:name` or `{name}` format.
   - Any path components that have numbers or characters outside of the ASCII alphabet (or `-` and _), are replaced by an asterisk `*`.
   - Any alphabetical components that don’t look like words are replaced by an asterisk `*`.
 
-
 ### discovery block
 
 This block is used to configure the discovery for instrumentable processes matching a given criteria.
 
 It contains the following blocks:
-[services]: #services-block
 
 ### services block
 
 In some scenarios, Beyla will instrument a wide variety of services, such as a Kubernetes DaemonSet that instruments all the services in a node.
 This block allows you to filter the services to instrument based on their metadata.
 
-Name | Type | Description                                               | Default | Required
----- | ---- |-----------------------------------------------------------| ------- | --------
-`name ` | `string` | The name of the service to match. | | no
-`namespace` | `string` | The namespace of the service to match. | | no
-`open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF. | | no
-`path` | `string` | The path of the running service for Beyla automatically instrumented with eBPF. | | no
+Name         | Type     | Description                                                                     | Default | Required
+-------------|----------|---------------------------------------------------------------------------------|---------|---------
+`name `      | `string` | The name of the service to match.                                               |         | no
+`namespace`  | `string` | The namespace of the service to match.                                          |         | no
+`open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF. |         | no
+`path`       | `string` | The path of the running service for Beyla automatically instrumented with eBPF. |         | no
 
-`name` defines a name for the matching instrumented service. It is used to populate the `service.name` OTEL property and/or the `service_name` Prometheus property in the exported metrics/traces.
-`open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`). If the executable matches only one of the ports in the list, it is considered to match the selection criteria.
+`name` defines a name for the matching instrumented service.
+It is used to populate the `service.name` OTEL property and/or the `service_name` Prometheus property in the exported metrics/traces.
+`open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
+If the executable matches only one of the ports in the list, it is considered to match the selection criteria.
 `path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
-
 
 ### output block
 
@@ -168,32 +154,26 @@ Configure the `traces` argument to send traces data to other components.
 The following fields are exported and can be referenced by other components.
 
 Name      | Type                | Description
-----------|---------------------|----------------------------------------------------------
+----------|---------------------|------------------------------------------------------------------------------------
 `targets` | `list(map(string))` | The targets that can be used to collect metrics of instrumented services with eBPF.
 
 For example, the `targets` can either be passed to a `discovery.relabel` component to rewrite the targets' label sets or to a `prometheus.scrape` component that collects the exposed metrics.
 
 The exported targets use the configured [in-memory traffic][] address specified by the [run command][].
 
-[in-memory traffic]: ../../../concepts/component_controller#in-memory-traffic
-[run command]: ../../cli/run/
-
 ## Component health
 
-`beyla.ebpf` is only reported as unhealthy if given an invalid
-configuration.
+`beyla.ebpf` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`beyla.ebpf` does not expose any component-specific debug
-information.
+`beyla.ebpf` does not expose any component-specific debug information.
 
 ## Example
 
 ### Metrics
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `beyla.ebpf` of
-the specified port:
+This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `beyla.ebpf` of the specified port:
 
 ```alloy
 beyla.ebpf "default" {
@@ -224,8 +204,6 @@ Replace the following:
 - _`<USERNAME>`_: The username to use for authentication to the remote_write API.
 - _`<PASSWORD>`_: The password to use for authentication to the remote_write API.
 
-[scrape]: ../prometheus.scrape/
-
 ### Traces
 
 This example gets traces from `beyla.ebpf` and forwards them to `otlp`:
@@ -255,6 +233,18 @@ Replace the following:
 
 - _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
 - _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
+
+[Grafana Beyla]: https://github.com/grafana/beyla
+[eBPF]: https://ebpf.io/
+[routes]: #routes-block
+[attributes]: #attributes-block
+[kubernetes]: #kubernetes-block
+[discovery]: #discovery-block
+[services]: #services-block
+[output]: #output-block
+[in-memory traffic]: ../../../concepts/component_controller#in-memory-traffic
+[run command]: ../../cli/run/
+[scrape]: ../prometheus.scrape/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
