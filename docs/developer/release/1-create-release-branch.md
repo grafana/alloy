@@ -2,7 +2,7 @@
 
 A single release branch is created for every major or minor release. That release
 branch is then used for all Release Candidates, the Stable Release, and all
-Patch Releases for that major pr minor version of the agent.
+Patch Releases for that version of Alloy.
 
 ## Before you begin
 

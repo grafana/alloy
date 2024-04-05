@@ -154,7 +154,7 @@ following two mechanisms:
 
 The WAL is located inside a component-specific directory relative to the
 storage path {{< param "PRODUCT_NAME" >}} is configured to use. See the
-[`agent run` documentation][run] for how to change the storage path.
+[`alloy run` documentation][run] for how to change the storage path.
 
 The following arguments are supported:
 

@@ -24,7 +24,7 @@ The following example shows some references.
 
 ```alloy
 local.file "target" {
-  filename = "/etc/agent/target"
+  filename = "/etc/alloy/target"
 }
 
 prometheus.scrape "default" {

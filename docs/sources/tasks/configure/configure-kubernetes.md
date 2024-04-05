@@ -121,10 +121,10 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
    }
    ```
 
-1. Create a ConfigMap called `agent-config` from the above file:
+1. Create a ConfigMap called `alloy-config` from the above file:
 
    ```shell
-   kubectl create configmap --namespace <NAMESPACE> agent-config "--from-file=config.alloy=./config.alloy"
+   kubectl create configmap --namespace <NAMESPACE> alloy-config "--from-file=config.alloy=./config.alloy"
    ```
 
    Replace the following:
@@ -134,10 +134,10 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
 1. Modify Helm Chart's configuration in your `values.yaml` to use the existing ConfigMap:
 
    ```yaml
-     agent:
+     alloy:
      configMap:
        create: false
-       name: agent-config
+       name: alloy-config
        key: config.alloy
    ```
 
