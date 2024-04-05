@@ -19,4 +19,6 @@
       version: '1809',
     },
   },
+
+  windows_command(command):: '& "C:/Program Files/git/bin/bash.exe" -c "%s"' % command,
 }

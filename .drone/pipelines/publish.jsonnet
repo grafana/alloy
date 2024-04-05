@@ -74,9 +74,13 @@ local windows_containers_dev_jobs = std.map(function(container) (
       environment: {
         DOCKER_LOGIN: secrets.docker_login.fromSecret,
         DOCKER_PASSWORD: secrets.docker_password.fromSecret,
+        GCR_CREDS: secrets.gcr_admin.fromSecret,
       },
       commands: [
-        '& "C:/Program Files/git/bin/bash.exe" ./tools/ci/docker-containers-windows %s-devel' % container,
+        pipelines.windows_command('mkdir -p $HOME/.docker'),
+        pipelines.windows_command('printenv GCR_CREDS > $HOME/.docker/config.json'),
+        pipelines.windows_command('docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'),
+        pipelines.windows_command('./tools/ci/docker-containers-windows %s-devel' % container),
       ],
     }],
     volumes: [{
@@ -137,9 +141,6 @@ local linux_containers_jobs = std.map(function(container) (
 ), linux_containers);
 
 
-local windows_bash_command = function(command)
-  '& "C:/Program Files/git/bin/bash.exe" -c "%s"' % command;
-
 local windows_containers_jobs = std.map(function(container) (
   pipelines.windows('Publish Windows %s container' % container) {
     trigger: {
@@ -158,10 +159,10 @@ local windows_containers_jobs = std.map(function(container) (
         GCR_CREDS: secrets.gcr_admin.fromSecret,
       },
       commands: [
-        windows_bash_command('mkdir -p $HOME/.docker'),
-        windows_bash_command('printenv GCR_CREDS > $HOME/.docker/config.json'),
-        windows_bash_command('docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'),
-        windows_bash_command('./tools/ci/docker-containers-windows %s' % container),
+        pipelines.windows_command('mkdir -p $HOME/.docker'),
+        pipelines.windows_command('printenv GCR_CREDS > $HOME/.docker/config.json'),
+        pipelines.windows_command('docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'),
+        pipelines.windows_command('./tools/ci/docker-containers-windows %s' % container),
       ],
     }],
     volumes: [{

@@ -6,7 +6,7 @@ local linux_containers = [
 ];
 
 local windows_containers = [
-  { name: 'grafana/alloy', argument: 'alloy', path: 'Dockerfile.windows' },
+  { name: 'grafana/alloy', make: 'make alloy-image-windows', path: 'Dockerfile.windows' },
 ];
 
 (
@@ -45,7 +45,7 @@ local windows_containers = [
         path: '//./pipe/docker_engine/',
       }],
       commands: [
-        '& "C:/Program Files/git/bin/bash.exe" ./tools/ci/docker-containers-windows %s' % container.argument,
+        '& "C:/Program Files/git/bin/bash.exe" -c "%s"' % container.make,
       ],
     }],
     volumes: [{
