@@ -51,6 +51,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.mounts.varlog | bool | `false` | Mount /var/log from the host into the container for log collection. |
 | alloy.resources | object | `{}` | Resource requests and limits to apply to the Grafana Alloy container. |
 | alloy.securityContext | object | `{}` | Security context to apply to the Grafana Alloy container. |
+| alloy.stabilityLevel | string | `"generally-available"` | Minimum stability level of components and behavior to enable. Must be one of "experimental", "public-preview", or "generally-available". |
 | alloy.storagePath | string | `"/tmp/alloy"` | Path to where Grafana Alloy stores data (for example, the Write-Ahead Log). By default, data is lost between reboots. |
 | alloy.uiPathPrefix | string | `"/"` | Base path where the UI is exposed. |
 | configReloader.customArgs | list | `[]` | Override the args passed to the container. |
@@ -142,6 +143,15 @@ the chart for `grafana/alloy`, with two exceptions:
 * The default value for `alloy.listenPort` is `12345` to align with the default
   listen port in other installations. To retain the previous default, set
   `alloy.listenPort` to `80` when installing.
+
+### alloy.stabilityLevel
+
+`alloy.stabilityLevel` controls the minimum level of stability for what
+components can be created (directly or through imported modules). Note that
+setting this field to a lower stability may also enable internal behaviour of a
+lower stability, such as experimental memory optimizations.
+
+Valid settings are `experimental`, `public-preview`, and `generally-available`.
 
 ### alloy.extraArgs
 
