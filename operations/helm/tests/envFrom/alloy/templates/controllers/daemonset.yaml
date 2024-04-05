@@ -33,7 +33,7 @@ spec:
             - run
             - /etc/alloy/config.alloy
             - --storage.path=/tmp/alloy
-            - --server.http.listen-addr=0.0.0.0:80
+            - --server.http.listen-addr=0.0.0.0:12345
             - --server.http.ui-path-prefix=/
             - --stability.level=generally-available
           env:
@@ -47,12 +47,12 @@ spec:
             - configMapRef:
                 name: special-config
           ports:
-            - containerPort: 80
+            - containerPort: 12345
               name: http-metrics
           readinessProbe:
             httpGet:
               path: /-/ready
-              port: 80
+              port: 12345
               scheme: HTTP
             initialDelaySeconds: 10
             timeoutSeconds: 1
@@ -63,7 +63,7 @@ spec:
           image: ghcr.io/jimmidyson/configmap-reload:v0.12.0
           args:
             - --volume-dir=/etc/alloy
-            - --webhook-url=http://localhost:80/-/reload
+            - --webhook-url=http://localhost:12345/-/reload
           volumeMounts:
             - name: config
               mountPath: /etc/alloy

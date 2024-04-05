@@ -44,7 +44,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.extraEnv | list | `[]` | Extra environment variables to pass to the Alloy container. |
 | alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. |
 | alloy.listenAddr | string | `"0.0.0.0"` | Address to listen for traffic on. 0.0.0.0 exposes the UI to other containers. |
-| alloy.listenPort | int | `80` | Port to listen for traffic on. |
+| alloy.listenPort | int | `12345` | Port to listen for traffic on. |
 | alloy.listenScheme | string | `"HTTP"` | Scheme is needed for readiness probes. If enabling tls in your configs, set to "HTTPS" |
 | alloy.mounts.dockercontainers | bool | `false` | Mount /var/lib/docker/containers from the host into the container for log collection. |
 | alloy.mounts.extra | list | `[]` | Extra volume mounts to add into the Grafana Alloy container. Does not affect the watch container. |
@@ -131,6 +131,18 @@ useful if just using the default DaemonSet isn't sufficient.
 | serviceMonitor.metricRelabelings | list | `[]` | MetricRelabelConfigs to apply to samples after scraping, but before ingestion. ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#relabelconfig |
 | serviceMonitor.relabelings | list | `[]` | RelabelConfigs to apply to samples before scraping ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#relabelconfig |
 | serviceMonitor.tlsConfig | object | `{}` | Customize tls parameters for the service monitor |
+
+#### Migrate from `grafana/grafana-agent` chart to `grafana/alloy`
+
+The `values.yaml` file for the `grafana/grafana-agent` chart is compatible with
+the chart for `grafana/alloy`, with two exceptions:
+
+* The `agent` field in `values.yaml` is deprecated in favor of `alloy`. Support
+  for the `agent` field will be removed in a future release.
+
+* The default value for `alloy.listenPort` is `12345` to align with the default
+  listen port in other installations. To retain the previous default, set
+  `alloy.listenPort` to `80` when installing.
 
 ### alloy.extraArgs
 

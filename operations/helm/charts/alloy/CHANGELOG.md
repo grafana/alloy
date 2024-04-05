@@ -14,4 +14,5 @@ internal API changes are not present.
 
 - Introduce a Grafana Alloy Helm chart. The Grafana Alloy Helm chart is
   backwards compatibile with the values.yaml from the `grafana-agent` Helm
-  chart. (@rfratto)
+  chart. Review the Helm chart README for a description on how to migrate.
+  (@rfratto)
