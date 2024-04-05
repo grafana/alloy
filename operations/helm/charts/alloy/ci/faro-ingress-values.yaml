@@ -1,4 +1,4 @@
-agent:
+alloy:
   extraPorts:
     - name: "faro"
       port: 12347

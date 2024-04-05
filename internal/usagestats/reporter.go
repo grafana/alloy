@@ -89,8 +89,9 @@ func (rep *Reporter) reportUsage(ctx context.Context, interval time.Time, metric
 	return errs.Err()
 }
 
-// nextReport compute the next report time based on the interval.
-// The interval is based off the creation of the Alloy seed to avoid all agents reporting at the same time.
+// nextReport compute the next report time based on the interval. The interval
+// is based off the creation of the Alloy seed to avoid all Alloy instances
+// reporting at the same time.
 func nextReport(interval time.Duration, createdAt, now time.Time) time.Time {
 	duration := math.Ceil(float64(now.Sub(createdAt)) / float64(interval))
 	return createdAt.Add(time.Duration(duration) * interval)

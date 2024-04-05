@@ -7,11 +7,6 @@
 # from a Drone trigger.
 set -euxo pipefail
 
-RELEASE_ALLOY_IMAGE=grafana/alloy
-DEVELOPMENT_ALLOY_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
-
-DEFAULT_ALLOY_IMAGE=${RELEASE_ALLOY_IMAGE}
-
 # Environment variables used throughout this script. These must be set
 # otherwise bash will fail with an "unbound variable" error because of the `set
 # -u` flag on the above line.
@@ -20,13 +15,9 @@ DEFAULT_ALLOY_IMAGE=${RELEASE_ALLOY_IMAGE}
 # empty string.
 export TARGET_CONTAINER=${1:-}
 export DRONE_TAG=${DRONE_TAG:-}
-export DEVELOPMENT=${DEVELOPMENT:-}
 
-if [ -n "$DEVELOPMENT" ]; then
-  DEFAULT_ALLOY_IMAGE=${DEVELOPMENT_ALLOY_IMAGE}
-fi
-
-export ALLOY_IMAGE=${DEFAULT_ALLOY_IMAGE}
+export RELEASE_ALLOY_IMAGE=grafana/alloy
+export DEVEL_ALLOY_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
 
 # We need to determine what version to assign to built binaries. If containers
 # are being built from a Drone tag trigger, we force the version to come from the
@@ -67,14 +58,25 @@ case "$TARGET_CONTAINER" in
       --platform $BUILD_PLATFORMS     \
       --build-arg RELEASE_BUILD=1     \
       --build-arg VERSION="$VERSION"  \
-      -t "$ALLOY_IMAGE:$TAG_VERSION"  \
-      -t "$ALLOY_IMAGE:$BRANCH_TAG"   \
+      -t "$RELEASE_ALLOY_IMAGE:$TAG_VERSION"  \
+      -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"   \
+      -f Dockerfile \
+      .
+    ;;
+
+  alloy-devel)
+    docker buildx build --push        \
+      --platform $BUILD_PLATFORMS     \
+      --build-arg RELEASE_BUILD=1     \
+      --build-arg VERSION="$VERSION"  \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION"  \
+      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"   \
       -f Dockerfile \
       .
     ;;
 
   *)
-    echo "Usage: $0 alloy"
+    echo "Usage: $0 alloy|alloy-devel"
     exit 1
     ;;
 esac

@@ -4,7 +4,7 @@ controller:
   autoscaling:
     enabled: true
   enableStatefulSetAutoDeletePVC: true
-agent:
+alloy:
   resources:
     requests:
       memory: 100Mi

@@ -23,7 +23,8 @@ crds:
   create: true
 
 ## Various Alloy settings. For backwards compatibility with the grafana-agent
-## chart, this field may also be called "agent".
+## chart, this field may also be called "agent". Naming this field "agent" is
+## deprecated and will be removed in a future release.
 alloy:
   configMap:
     # -- Create a new ConfigMap for the config file.

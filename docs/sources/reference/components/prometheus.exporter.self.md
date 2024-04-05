@@ -11,7 +11,7 @@ The `prometheus.exporter.self` component collects and exposes metrics about {{< 
 ## Usage
 
 ```alloy
-prometheus.exporter.self "agent" {
+prometheus.exporter.self "alloy" {
 }
 ```
 
@@ -46,7 +46,7 @@ from `prometheus.exporter.self`:
 ```alloy
 prometheus.exporter.self "example" {}
 
-// Configure a prometheus.scrape component to collect agent metrics.
+// Configure a prometheus.scrape component to collect Alloy metrics.
 prometheus.scrape "demo" {
   targets    = prometheus.exporter.self.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]

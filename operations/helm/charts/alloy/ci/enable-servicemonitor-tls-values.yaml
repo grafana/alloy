@@ -1,5 +1,5 @@
 # Test rendering of the chart with the service monitor enabled
-agent:
+alloy:
   listenScheme: HTTPS
 service:
   enabled: true

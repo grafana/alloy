@@ -245,8 +245,8 @@ Alloy is deployed in.
 
 The [loki.source.kubernetes][] component may be used to collect logs from
 containers using the Kubernetes API. This component does not require mounting
-the hosts filesystem into the Agent, nor requires additional security contexts
-to work correctly.
+the hosts filesystem into Alloy, nor requires additional security contexts to
+work correctly.
 
 [loki.source.kubernetes]: https://grafana.com/docs/alloy/latest/reference/components/loki.source.kubernetes/
 

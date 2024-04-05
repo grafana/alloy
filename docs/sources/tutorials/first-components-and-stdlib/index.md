@@ -281,7 +281,7 @@ prometheus.remote_write "local_prom" {
 
 ## Finishing up and next steps
 
-You might have noticed that running {{< param "PRODUCT_NAME" >}} with the configurations created a directory called `data-agent` in the directory you ran {{< param "PRODUCT_NAME" >}} from.
+You might have noticed that running {{< param "PRODUCT_NAME" >}} with the configurations created a directory called `data-alloy` in the directory you ran {{< param "PRODUCT_NAME" >}} from.
 This directory is where components can store data, such as the `prometheus.exporter.unix` component storing its WAL (Write Ahead Log).
 If you look in the directory, do you notice anything interesting? The directory for each component is the fully qualified name.
 

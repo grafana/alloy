@@ -1,5 +1,5 @@
 # Specify extra ports for verifying rendering the template works
-agent:
+alloy:
   extraPorts:
     - name: jaeger-thrift
       port: 14268
