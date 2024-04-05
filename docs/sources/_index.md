@@ -64,8 +64,8 @@ Some of these features include:
 * **Clustering support:** {{< param "PRODUCT_NAME" >}} has native clustering support.
   Clustering helps distribute the workload and ensures you have high availability.
   You can quickly create horizontally scalable deployments with minimal resource and operational overhead.
-* **Security:** {{< param "PRODUCT_NAME" >}} helps you manage authentication credentials and connect to HashiCorp Vaults or Kubernetes clusters to retrieve secrets.
-* **Debugging utilities:** {{< param "PRODUCT_NAME" >}} provides troubleshooting support and an embedded [user interface][UI] to help you identify and resolve configuration problems.
+* **Security:** {{< param "PRODUCT_NAME" >}} helps you manage authentication credentials and connect to HashiCorp Vault servers or Kubernetes clusters to retrieve Kubernetes secrets.
+* **Debugging utilities:** {{< param "PRODUCT_NAME" >}} provides debugging tools such as an embedded [user interface][UI] to help you identify and resolve configuration problems.
 
 ## Explore
 
