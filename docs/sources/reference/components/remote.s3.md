@@ -6,18 +6,18 @@ title: remote.s3
 
 # remote.s3
 
-`remote.s3` exposes the string contents of a file located in [AWS S3](https://aws.amazon.com/s3/)
-to other components. The file will be polled for changes so that the most
-recent content is always available.
+`remote.s3` exposes the string contents of a file located in [AWS S3](https://aws.amazon.com/s3/) to other components.
+The file will be polled for changes so that the most recent content is always available.
 
 The most common use of `remote.s3` is to load secrets from files.
 
 Multiple `remote.s3` components can be specified using different name
 labels. By default, [AWS environment variables](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html) are used to authenticate against S3. The `key` and `secret` arguments inside `client` blocks can be used to provide custom authentication.
 
-> **NOTE**: Other S3-compatible systems can be read  with `remote.s3` but may require specific
-> authentication environment variables. There is no  guarantee that `remote.s3` will work with non-AWS S3
-> systems.
+{{< admonition type="note" >}}
+Other S3-compatible systems can be read  with `remote.s3` but may require specific authentication environment variables.
+There is no  guarantee that `remote.s3` will work with non-AWS S3 systems.
+{{< /admonition >}}
 
 ## Usage
 
@@ -37,15 +37,17 @@ Name             | Type       | Description                                     
 `poll_frequency` | `duration` | How often to poll the file for changes. Must be greater than 30 seconds. | `"10m"` | no
 `is_secret`      | `bool`     | Marks the file as containing a [secret][].                               | `false` | no
 
-> **NOTE**: `path` must include a full path to a file. This does not support reading of directories.
+{{< admonition type="note" >}}
+`path` must include a full path to a file. This does not support reading of directories.
+{{< /admonition >}}
 
 [secret]: ../../../concepts/configuration-syntax/expressions/types_and_values/#secrets
 
 ## Blocks
 
-Hierarchy | Name       | Description | Required
---------- |------------| ----------- | --------
-client | [client][] | Additional options for configuring the S3 client. | no
+Hierarchy | Name       | Description                                       | Required
+----------|------------|---------------------------------------------------|---------
+client    | [client][] | Additional options for configuring the S3 client. | no
 
 [client]: #client-block
 
@@ -68,24 +70,23 @@ Name             | Type     | Description                                       
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`content` | `string` or `secret` | The contents of the file. | | no
+Name      | Type                 | Description               | Default | Required
+----------|----------------------|---------------------------|---------|---------
+`content` | `string` or `secret` | The contents of the file. |         | no
 
 The `content` field will be secret if `is_secret` was set to true.
 
 ## Component health
 
-Instances of `remote.s3` report as healthy if the most recent read of
-the watched file was successful.
+Instances of `remote.s3` report as healthy if the most recent read of the watched file was successful.
 
 ## Debug information
 
-`remote.s3` does not expose any component-specific debug information.
+`remote.s3` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`remote.s3` does not expose any component-specific debug metrics.
+`remote.s3` doesn't expose any component-specific debug metrics.
 
 ## Example
 

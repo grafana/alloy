@@ -10,11 +10,9 @@ title: pyroscope.write
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`pyroscope.write` receives performance profiles from other components and forwards them
-to a series of user-supplied endpoints using [Pyroscope' Push API](/oss/pyroscope/).
+`pyroscope.write` receives performance profiles from other components and forwards them to a series of user-supplied endpoints using [Pyroscope' Push API](/oss/pyroscope/).
 
-Multiple `pyroscope.write` components can be specified by giving them
-different labels.
+Multiple `pyroscope.write` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -34,27 +32,25 @@ pyroscope.write "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`external_labels` | `map(string)` | Labels to add to profiles sent over the network. | | no
+Name              | Type          | Description                                      | Default | Required
+------------------|---------------|--------------------------------------------------|---------|---------
+`external_labels` | `map(string)` | Labels to add to profiles sent over the network. |         | no
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`pyroscope.write`:
+The following blocks are supported inside the definition of `pyroscope.write`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-endpoint | [endpoint][] | Location to send profiles to. | no
-endpoint > basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the endpoint. | no
-endpoint > authorization | [authorization][] | Configure generic authorization to the endpoint. | no
-endpoint > oauth2 | [oauth2][] | Configure OAuth2 for authenticating to the endpoint. | no
-endpoint > oauth2 > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
-endpoint > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
+Hierarchy                      | Block             | Description                                              | Required
+-------------------------------|-------------------|----------------------------------------------------------|---------
+endpoint                       | [endpoint][]      | Location to send profiles to.                            | no
+endpoint > basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no
+endpoint > authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no
+endpoint > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no
+endpoint > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
+endpoint > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
 
-The `>` symbol indicates deeper levels of nesting. For example, `endpoint >
-basic_auth` refers to a `basic_auth` block defined inside an
-`endpoint` block.
+The `>` symbol indicates deeper levels of nesting.
+For example, `endpoint > basic_auth` refers to a `basic_auth` block defined inside an `endpoint` block.
 
 [endpoint]: #endpoint-block
 [basic_auth]: #basic_auth-block
@@ -64,8 +60,8 @@ basic_auth` refers to a `basic_auth` block defined inside an
 
 ### endpoint block
 
-The `endpoint` block describes a single location to send profiles to. Multiple
-`endpoint` blocks can be provided to send profiles to multiple locations.
+The `endpoint` block describes a single location to send profiles to.
+Multiple `endpoint` blocks can be provided to send profiles to multiple locations.
 
 The following arguments are supported:
 
@@ -96,8 +92,7 @@ Name                     | Type                | Description                    
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-When multiple `endpoint` blocks are provided, profiles are concurrently forwarded to all
-configured locations.
+When multiple `endpoint` blocks are provided, profiles are concurrently forwarded to all configured locations.
 
 ### basic_auth block
 
@@ -119,20 +114,18 @@ configured locations.
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name       | Type       | Description
+-----------|------------|-----------------------------------------------------------
 `receiver` | `receiver` | A value that other components can use to send profiles to.
 
 ## Component health
 
-`pyroscope.write` is only reported as unhealthy if given an invalid
-configuration. In those cases, exported fields are kept at their last healthy
-values.
+`pyroscope.write` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields are kept at their last healthy values.
 
 ## Debug information
 
-`pyroscope.write` does not expose any component-specific debug
-information.
+`pyroscope.write` does not expose any component-specific debug information.
 
 ## Example
 
@@ -149,7 +142,6 @@ pyroscope.write "staging" {
     "env" = "staging",
   }
 }
-
 
 pyroscope.scrape "default" {
   targets = [
