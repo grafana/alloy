@@ -17,34 +17,36 @@
 ##
 ##   test              Run tests
 ##   lint              Lint code
-##   integration-test Run integration tests
+##   integration-test  Run integration tests
 ##
 ## Targets for building binaries:
 ##
-##   binaries                        Compiles all binaries.
-##   alloy                           Compiles Alloy to $(ALLOY_BINARY)
-##   alloy-service                   Compiles internal/cmd/alloy-service to $(SERVICE_BINARY)
+##   binaries       Compiles all binaries.
+##   alloy          Compiles Alloy to $(ALLOY_BINARY)
+##   alloy-service  Compiles internal/cmd/alloy-service to $(SERVICE_BINARY)
 ##
 ## Targets for building Docker images:
 ##
-##   images                   Builds all Docker images.
-##   alloy-image              Builds alloy Docker image.
+##   images               Builds all (Linux) Docker images.
+##   images-windows       Builds all (Windows) Docker images.
+##   alloy-image          Builds alloy Docker image.
+##   alloy-image-windows  Builds alloy Docker image for Windows.
 ##
 ## Targets for packaging:
 ##
-##   dist                   Produce release assets for everything.
-##   dist-alloy-binaries    Produce release-ready Alloy binaries.
-##   dist-packages          Produce release-ready DEB and RPM packages.
-##   dist-alloy-installer   Produce a Windows installer for Alloy.
+##   dist                 Produce release assets for everything.
+##   dist-alloy-binaries  Produce release-ready Alloy binaries.
+##   dist-packages        Produce release-ready DEB and RPM packages.
+##   dist-alloy-installer Produce a Windows installer for Alloy.
 ##
 ## Targets for generating assets:
 ##
-##   generate                 Generate everything.
-##   generate-drone           Generate the Drone YAML from Jsonnet.
-##   generate-helm-docs       Generate Helm chart documentation.
-##   generate-helm-tests      Generate Helm chart tests.
-##   generate-ui              Generate the UI assets.
-##   generate-versioned-files Generate versioned files.
+##   generate                  Generate everything.
+##   generate-drone            Generate the Drone YAML from Jsonnet.
+##   generate-helm-docs        Generate Helm chart documentation.
+##   generate-helm-tests       Generate Helm chart tests.
+##   generate-ui               Generate the UI assets.
+##   generate-versioned-files  Generate versioned files.
 ##
 ## Other targets:
 ##
@@ -57,38 +59,40 @@
 ##
 ## Environment variables:
 ##
-##   USE_CONTAINER      Set to 1 to enable proxying commands to build container
-##   ALLOY_IMAGE        Image name:tag built by `make alloy-image`
-##   BUILD_IMAGE        Image name:tag used by USE_CONTAINER=1
-##   ALLOY_BINARY       Output path of `make alloy` (default build/alloy)
-##   SERVICE_BINARY     Output path of `make alloy-service` (default build/alloy-service)
-##   GOOS               Override OS to build binaries for
-##   GOARCH             Override target architecture to build binaries for
-##   GOARM              Override ARM version (6 or 7) when GOARCH=arm
-##   CGO_ENABLED        Set to 0 to disable Cgo for binaries.
-##   RELEASE_BUILD      Set to 1 to build release binaries.
-##   VERSION            Version to inject into built binaries.
-##   GO_TAGS            Extra tags to use when building.
-##   DOCKER_PLATFORM    Overrides platform to build Docker images for (defaults to host platform).
-##   GOEXPERIMENT       Used to enable Go features behind feature flags.
+##   USE_CONTAINER        Set to 1 to enable proxying commands to build container
+##   ALLOY_IMAGE          Image name:tag built by `make alloy-image`
+##   ALLOY_IMAGE_WINDOWS  Image name:tag built by `make alloy-image-windows`
+##   BUILD_IMAGE          Image name:tag used by USE_CONTAINER=1
+##   ALLOY_BINARY         Output path of `make alloy` (default build/alloy)
+##   SERVICE_BINARY       Output path of `make alloy-service` (default build/alloy-service)
+##   GOOS                 Override OS to build binaries for
+##   GOARCH               Override target architecture to build binaries for
+##   GOARM                Override ARM version (6 or 7) when GOARCH=arm
+##   CGO_ENABLED          Set to 0 to disable Cgo for binaries.
+##   RELEASE_BUILD        Set to 1 to build release binaries.
+##   VERSION              Version to inject into built binaries.
+##   GO_TAGS              Extra tags to use when building.
+##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
+##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 
 include tools/make/*.mk
 
-ALLOY_IMAGE                             ?= grafana/alloy:latest
-ALLOY_BINARY                            ?= build/alloy
-SERVICE_BINARY                          ?= build/alloy-service
-ALLOYLINT_BINARY                        ?= build/alloylint
-GOOS                                    ?= $(shell go env GOOS)
-GOARCH                                  ?= $(shell go env GOARCH)
-GOARM                                   ?= $(shell go env GOARM)
-CGO_ENABLED                             ?= 1
-RELEASE_BUILD                           ?= 0
-GOEXPERIMENT                            ?= $(shell go env GOEXPERIMENT)
+ALLOY_IMAGE          ?= grafana/alloy:latest
+ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:latest-nanoserver-1809
+ALLOY_BINARY         ?= build/alloy
+SERVICE_BINARY       ?= build/alloy-service
+ALLOYLINT_BINARY     ?= build/alloylint
+GOOS                 ?= $(shell go env GOOS)
+GOARCH               ?= $(shell go env GOARCH)
+GOARM                ?= $(shell go env GOARM)
+CGO_ENABLED          ?= 1
+RELEASE_BUILD        ?= 0
+GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
 
 # List of all environment variables which will propagate to the build
 # container. USE_CONTAINER must _not_ be included to avoid infinite recursion.
 PROPAGATE_VARS := \
-    ALLOY_IMAGE \
+    ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
     VERSION GO_TAGS GOEXPERIMENT
@@ -196,6 +200,12 @@ images: alloy-image
 alloy-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
 
+.PHONY: images-windows alloy-image-windows
+images: alloy-image-windows
+
+alloy-image-windows:
+	docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE_WINDOWS) -f Dockerfile.windows .
+
 #
 # Targets for generating assets
 #
@@ -261,18 +271,19 @@ clean: clean-dist clean-build-container-cache
 
 .PHONY: info
 info:
-	@printf "USE_CONTAINER   = $(USE_CONTAINER)\n"
-	@printf "ALLOY_IMAGE     = $(ALLOY_IMAGE)\n"
-	@printf "BUILD_IMAGE     = $(BUILD_IMAGE)\n"
-	@printf "ALLOY_BINARY    = $(ALLOY_BINARY)\n"
-	@printf "GOOS            = $(GOOS)\n"
-	@printf "GOARCH          = $(GOARCH)\n"
-	@printf "GOARM           = $(GOARM)\n"
-	@printf "CGO_ENABLED     = $(CGO_ENABLED)\n"
-	@printf "RELEASE_BUILD   = $(RELEASE_BUILD)\n"
-	@printf "VERSION         = $(VERSION)\n"
-	@printf "GO_TAGS         = $(GO_TAGS)\n"
-	@printf "GOEXPERIMENT    = $(GOEXPERIMENT)\n"
+	@printf "USE_CONTAINER       = $(USE_CONTAINER)\n"
+	@printf "ALLOY_IMAGE         = $(ALLOY_IMAGE)\n"
+	@printf "ALLOY_IMAGE_WINDOWS = $(ALLOY_IMAGE_WINDOWS)\n"
+	@printf "BUILD_IMAGE         = $(BUILD_IMAGE)\n"
+	@printf "ALLOY_BINARY        = $(ALLOY_BINARY)\n"
+	@printf "GOOS                = $(GOOS)\n"
+	@printf "GOARCH              = $(GOARCH)\n"
+	@printf "GOARM               = $(GOARM)\n"
+	@printf "CGO_ENABLED         = $(CGO_ENABLED)\n"
+	@printf "RELEASE_BUILD       = $(RELEASE_BUILD)\n"
+	@printf "VERSION             = $(VERSION)\n"
+	@printf "GO_TAGS             = $(GO_TAGS)\n"
+	@printf "GOEXPERIMENT        = $(GOEXPERIMENT)\n"
 
 # awk magic to print out the comment block at the top of this file.
 .PHONY: help

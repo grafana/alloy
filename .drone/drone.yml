@@ -101,7 +101,7 @@ platform:
   version: "1809"
 steps:
 - commands:
-  - '& "C:/Program Files/git/bin/bash.exe" ./tools/ci/docker-containers-windows alloy'
+  - '& "C:/Program Files/git/bin/bash.exe" -c "make alloy-image-windows"'
   image: grafana/agent-build-image:0.40.2-windows
   name: Build container
   volumes:
@@ -302,12 +302,18 @@ platform:
   version: "1809"
 steps:
 - commands:
-  - '& "C:/Program Files/git/bin/bash.exe" ./tools/ci/docker-containers-windows alloy-devel'
+  - '& "C:/Program Files/git/bin/bash.exe" -c "mkdir -p $HOME/.docker"'
+  - '& "C:/Program Files/git/bin/bash.exe" -c "printenv GCR_CREDS > $HOME/.docker/config.json"'
+  - '& "C:/Program Files/git/bin/bash.exe" -c "docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD"'
+  - '& "C:/Program Files/git/bin/bash.exe" -c "./tools/ci/docker-containers-windows
+    alloy-devel"'
   environment:
     DOCKER_LOGIN:
       from_secret: docker_login
     DOCKER_PASSWORD:
       from_secret: docker_password
+    GCR_CREDS:
+      from_secret: gcr_admin
   image: grafana/agent-build-image:0.40.2-windows
   name: Build containers
   volumes:
@@ -559,6 +565,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 21df6cb02f24c4eab41dc3425f43c865141d400b2ad00571bde9a1803577e77c
+hmac: 33ad6940aa3d0615eb3be75bbeee0a90910b5b03280c1a80cc664abeb0de2932
 
 ...
