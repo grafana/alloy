@@ -20,7 +20,7 @@ The `initial_interval` argument specifies how long to wait before the first retr
 If requests continue to fail, the time to wait before retrying increases by the factor specified by the `multiplier` argument, which must be greater than `1.0`.
 The `max_interval` argument specifies the upper bound of how long to wait between retries.
 
-The `randomization_factor` argument is useful for adding jitter between retrying agents.
+The `randomization_factor` argument is useful for adding jitter between retrying Alloy instances.
 If `randomization_factor` is greater than `0`, the wait time before retries is multiplied by a random factor in the range `[ I - randomization_factor * I, I + randomization_factor * I]`, where `I` is the current interval.
 
 If a batch hasn't been sent successfully, it is discarded after the time specified by `max_elapsed_time` elapses.

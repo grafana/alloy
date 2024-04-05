@@ -35,7 +35,7 @@ consider using `otelcol.processor.k8sattributes` instead.
 
 ------
 The main use case for `otelcol.processor.discovery` is for users who migrate to {{< param "PRODUCT_NAME" >}}
-from Static mode's `prom_sd_operation_type`/`prom_sd_pod_associations` [configuration options][Traces].
+from Grafana Agent Static mode's `prom_sd_operation_type`/`prom_sd_pod_associations` [configuration options][Traces].
 
 [Prometheus data model]: https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 [OTEL sem conv]: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/README.md

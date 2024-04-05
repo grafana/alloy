@@ -496,7 +496,7 @@ To delete the corrupted WAL:
 1. Find and delete the contents of the `wal` directory.
 
    By default the `wal` directory is a subdirectory
-   of the `data-agent` directory located in the {{< param "PRODUCT_NAME" >}} working directory. The WAL data directory
+   of the `data-alloy` directory located in the {{< param "PRODUCT_NAME" >}} working directory. The WAL data directory
    may be different than the default depending on the path specified by the [command line flag][run] `--storage-path`.
 
    {{< admonition type="note" >}}
@@ -522,5 +522,5 @@ Refer to the linked documentation for more details.
 
 [snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)
 [WAL block]: #wal-block
-[Stop]: ../../../get-started/start-agent/
-[run]: ../../../reference/cli/run/
+[Stop]: ../../get-started
+[run]: ../../reference/cli/run/

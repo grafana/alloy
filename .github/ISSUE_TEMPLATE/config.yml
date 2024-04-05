@@ -2,12 +2,12 @@
 # recognize it.
 blank_issues_enabled: true
 contact_links:
-  - name: Grafana Agent community support
-    url: https://github.com/grafana/agent/discussions
-    about: If you need help or support, ask questions in Github Discussions.
-  - name: Grafana Agent Slack
+  - name: Grafana Alloy community support
+    url: https://community.grafana.com/
+    about: If you need help or support, ask questions in our community forum.
+  - name: Grafana Alloy Slack
     url: https://slack.grafana.com/
-    about: "Join the #agent slack channel to chat about Grafana Agent in real-time."
+    about: "Join the #alloy slack channel to chat about Grafana Alloy in real-time."
   - name: Grafana Cloud or Grafana Enterprise
     url: https://grafana.com/profile/org#support
     about: Open a support ticket for help with Grafana Cloud or Grafana Enterprise.
