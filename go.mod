@@ -53,7 +53,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/agent-remote-config v0.0.2
-	github.com/grafana/alloy/syntax v0.0.0-00010101000000-000000000000
+	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/beyla v1.4.1-0.20240328093156-fca861576b2c
 	github.com/grafana/ckit v0.0.0-20230906125525-c046c99a5c04
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
