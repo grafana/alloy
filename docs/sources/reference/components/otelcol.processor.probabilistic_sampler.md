@@ -1,14 +1,10 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.probabilistic_sampler/
 description: Learn about telcol.processor.probabilistic_sampler
-labels:
-  stage: experimental
 title: otelcol.processor.probabilistic_sampler
 ---
 
 # otelcol.processor.probabilistic_sampler
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.probabilistic_sampler` accepts logs and traces data from other otelcol components and applies probabilistic sampling based on configuration options.
 

@@ -1,8 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.filter/
 description: Learn about otelcol.processor.filter
-labels:
-  stage: stable
 title: otelcol.processor.filter
 ---
 

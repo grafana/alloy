@@ -4,6 +4,8 @@ description: Learn about pyroscope.java
 title: pyroscope.java
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # pyroscope.java
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}

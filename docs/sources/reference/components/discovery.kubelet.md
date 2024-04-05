@@ -4,11 +4,7 @@ description: Learn about discovery.kubelet
 title: discovery.kubelet
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # discovery.kubelet
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `discovery.kubelet` discovers Kubernetes pods running on the specified Kubelet and exposes them as scrape targets.
 

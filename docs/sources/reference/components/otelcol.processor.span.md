@@ -1,14 +1,10 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.span/
 description: Learn about otelcol.processor.span
-labels:
-  stage: experimental
 title: otelcol.processor.span
 ---
 
 # otelcol.processor.span
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.span` accepts traces telemetry data from other `otelcol` components and modifies the names and attributes of the spans.
 It also supports the ability to filter input data to determine if it should be included or excluded from this processor.

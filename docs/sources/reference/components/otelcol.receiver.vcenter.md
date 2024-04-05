@@ -2,15 +2,15 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.vcenter/
 title: otelcol.receiver.vcenter
 description: Learn about otelcol.receiver.vcenter
-labels:
-  stage: experimental
 ---
+
+<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
 # otelcol.receiver.vcenter
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.receiver.vcenter` accepts metrics from a 
+`otelcol.receiver.vcenter` accepts metrics from a
 vCenter or ESXi host running VMware vSphere APIs and
 forwards it to other `otelcol.*` components.
 

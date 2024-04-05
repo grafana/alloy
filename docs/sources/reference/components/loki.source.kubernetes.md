@@ -1,14 +1,10 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.kubernetes/
 description: Learn about loki.source.kubernetes
-labels:
-  stage: experimental
 title: loki.source.kubernetes
 ---
 
 # loki.source.kubernetes
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `loki.source.kubernetes` tails logs from Kubernetes containers using the
 Kubernetes API. It has the following benefits over `loki.source.file`:

@@ -1,14 +1,10 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.extension.jaeger_remote_sampling/
 description: Learn about otelcol.extension.jaeger_remote_sampling
-label:
-  stage: experimental
 title: otelcol.extension.jaeger_remote_sampling
 ---
 
 # otelcol.extension.jaeger_remote_sampling
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.extension.jaeger_remote_sampling` serves a specified Jaeger remote sampling document.
 

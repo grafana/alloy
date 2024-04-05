@@ -1,8 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.transform/
 description: Learn about otelcol.processor.transform
-labels:
-  stage: stable
 title: otelcol.processor.transform
 ---
 

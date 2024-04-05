@@ -1,13 +1,9 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.rules.kubernetes/
 title: loki.rules.kubernetes
-labels:
-  stage: experimental
 ---
 
 # loki.rules.kubernetes
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `loki.rules.kubernetes` discovers `PrometheusRule` Kubernetes resources and
 loads them into a Loki instance.
