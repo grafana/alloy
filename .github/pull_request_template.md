@@ -24,3 +24,4 @@ contributors around things like how to update the changelog.
 - [ ] CHANGELOG.md updated
 - [ ] Documentation added
 - [ ] Tests updated
+- [ ] Config converters updated

@@ -239,8 +239,6 @@ of data in the WAL; samples aren't removed until they are at least as old as
 `min_keepalive_time`, and samples are forcibly removed if they are older than
 `max_keepalive_time`.
 
-[run]: {../../cli/run/
-
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
@@ -523,4 +521,4 @@ Refer to the linked documentation for more details.
 [snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)
 [WAL block]: #wal-block
 [Stop]: ../../../get-started
-[run]: ../../reference/cli/run/
+[run]: ../../cli/run/

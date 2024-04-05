@@ -3,8 +3,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Grafana Alloy community support
-    url: https://community.grafana.com/
-    about: If you need help or support, ask questions in our community forum.
+    url: https://github.com/grafana/alloy/discussions
+    about: If you need help or support, ask questions in GitHub Discussions.
   - name: Grafana Alloy Slack
     url: https://slack.grafana.com/
     about: "Join the #alloy slack channel to chat about Grafana Alloy in real-time."
