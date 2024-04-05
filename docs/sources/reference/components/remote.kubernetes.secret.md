@@ -23,12 +23,12 @@ remote.kubernetes.secret "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`namespace` | `string` | Kubernetes namespace containing the desired Secret. | | yes
-`name` | `string` | Name of the Kubernetes Secret | | yes
-`poll_frequency` | `duration` | Frequency to poll the Kubernetes API. | `"1m"` | no
-`poll_timeout` | `duration` | Timeout when polling the Kubernetes API. | `"15s"` | no
+Name             | Type       | Description                                         | Default | Required
+-----------------|------------|-----------------------------------------------------|---------|---------
+`namespace`      | `string`   | Kubernetes namespace containing the desired Secret. |         | yes
+`name`           | `string`   | Name of the Kubernetes Secret                       |         | yes
+`poll_frequency` | `duration` | Frequency to poll the Kubernetes API.               | `"1m"`  | no
+`poll_timeout`   | `duration` | Timeout when polling the Kubernetes API.            | `"15s"` | no
 
 When this component performs a poll operation, it requests the Secret data from the Kubernetes API.
 A poll is triggered by the following:
@@ -37,24 +37,24 @@ A poll is triggered by the following:
 * Every time the component's arguments get re-evaluated.
 * At the frequency specified by the `poll_frequency` argument.
 
-Any error while polling will mark the component as unhealthy. After
-a successful poll, all data is exported with the same field names as the source Secret.
+Any error while polling will mark the component as unhealthy.
+After a successful poll, all data is exported with the same field names as the source Secret.
 
 ## Blocks
 
 The following blocks are supported inside the definition of `remote.kubernetes.secret`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-client | [client][] | Configures Kubernetes client used to find Probes. | no
-client > basic_auth | [basic_auth][] | Configure basic authentication to the Kubernetes API. | no
-client > authorization | [authorization][] | Configure generic authorization to the Kubernetes API. | no
-client > oauth2 | [oauth2][] | Configure OAuth2 for authenticating to the Kubernetes API. | no
-client > oauth2 > tls_config | [tls_config][] | Configure TLS settings for connecting to the Kubernetes API. | no
-client > tls_config | [tls_config][] | Configure TLS settings for connecting to the Kubernetes API. | no
+Hierarchy                    | Block             | Description                                                  | Required
+-----------------------------|-------------------|--------------------------------------------------------------|---------
+client                       | [client][]        | Configures Kubernetes client used to find Probes.            | no
+client > basic_auth          | [basic_auth][]    | Configure basic authentication to the Kubernetes API.        | no
+client > authorization       | [authorization][] | Configure generic authorization to the Kubernetes API.       | no
+client > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the Kubernetes API.   | no
+client > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the Kubernetes API. | no
+client > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the Kubernetes API. | no
 
-The `>` symbol indicates deeper levels of nesting. For example, `client > basic_auth`
-refers to a `basic_auth` block defined inside a `client` block.
+The `>` symbol indicates deeper levels of nesting.
+For example, `client > basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
 [client]: #client-block
 [basic_auth]: #basic_auth-block
@@ -64,8 +64,8 @@ refers to a `basic_auth` block defined inside a `client` block.
 
 ### client block
 
-The `client` block configures the Kubernetes client used to discover Probes. If the `client` block isn't provided, the default in-cluster
-configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
+The `client` block configures the Kubernetes client used to discover Probes.
+If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
 
 The following arguments are supported:
 
@@ -112,21 +112,19 @@ Name                     | Type                | Description                    
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name   | Type          | Description
+-------|---------------|-----------------------------------------------
 `data` | `map(secret)` | Data from the secret obtained from Kubernetes.
 
 The `data` field contains a mapping from field names to values.
 
-If an individual key stored in `data` does not hold sensitive data, it can be
-converted into a string using [the `nonsensitive` function][nonsensitive]:
+If an individual key stored in `data` does not hold sensitive data, it can be converted into a string using [the `nonsensitive` function][nonsensitive]:
 
 ```alloy
 nonsensitive(remote.kubernetes.secret.LABEL.data.KEY_NAME)
 ```
 
-Using `nonsensitive` allows for using the exports of `remote.kubernetes.secret` for
-attributes in components that do not support secrets.
+Using `nonsensitive` allows for using the exports of `remote.kubernetes.secret` for attributes in components that do not support secrets.
 
 [nonsensitive]: ../../stdlib/nonsensitive/
 
@@ -168,5 +166,4 @@ prometheus.remote_write "default" {
 }
 ```
 
-This example assumes that the Secret and ConfigMap have already been created, and that the appropriate field names
-exist in their data.
+This example assumes that the Secret and ConfigMap have already been created, and that the appropriate field names exist in their data.

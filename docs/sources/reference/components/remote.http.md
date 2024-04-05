@@ -6,14 +6,12 @@ title: remote.http
 
 # remote.http
 
-`remote.http` exposes the response body of a URL to other components. The URL
-is polled for changes so that the most recent content is always available.
+`remote.http` exposes the response body of a URL to other components.
+The URL is polled for changes so that the most recent content is always available.
 
-The most common use of `remote.http` is to load discovery targets from an HTTP
-server.
+The most common use of `remote.http` is to load discovery targets from an HTTP server.
 
-Multiple `remote.http` components can be specified by giving them different
-labels.
+Multiple `remote.http` components can be specified by giving them different labels.
 
 ## Usage
 
@@ -37,17 +35,16 @@ Name             | Type          | Description                                  
 `poll_timeout`   | `duration`    | Timeout when polling the URL.                            | `"10s"` | no
 `is_secret`      | `bool`        | Whether the response body should be treated as a secret. | false   | no
 
-When `remote.http` performs a poll operation, an HTTP `GET` request is made
-against the URL specified by the `url` argument. A poll is triggered by the
-following:
+When `remote.http` performs a poll operation, an HTTP `GET` request is made against the URL specified by the `url` argument.
+A poll is triggered by the following:
 
 * When the component first loads.
 * Every time the component's arguments get re-evaluated.
 * At the frequency specified by the `poll_frequency` argument.
 
-The poll is successful if the URL returns a `200 OK` response code. All other
-response codes are treated as errors and mark the component as unhealthy. After
-a successful poll, the response body from the URL is exported.
+The poll is successful if the URL returns a `200 OK` response code.
+All other response codes are treated as errors and mark the component as unhealthy.
+After a successful poll, the response body from the URL is exported.
 
 [secret]: ../../../concepts/configuration-syntax/expressions/types_and_values/#secrets
 
@@ -64,8 +61,8 @@ client > oauth2              | [oauth2][]        | Configure OAuth2 for authenti
 client > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
 client > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
 
-The `>` symbol indicates deeper levels of nesting. For example, `client >
-basic_auth` refers to an `basic_auth` block defined inside a `client` block.
+The `>` symbol indicates deeper levels of nesting.
+For example, `client > basic_auth` refers to an `basic_auth` block defined inside a `client` block.
 
 [client]: #client-block
 [basic_auth]: #basic_auth-block
@@ -75,29 +72,25 @@ basic_auth` refers to an `basic_auth` block defined inside a `client` block.
 
 ### client block
 
-The `client` block configures settings used to connect to the HTTP
-server.
+The `client` block configures settings used to connect to the HTTP server.
 
 {{< docs/shared lookup="reference/components/http-client-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### basic_auth block
 
-The `basic_auth` block configures basic authentication to use when polling the
-configured URL.
+The `basic_auth` block configures basic authentication to use when polling the configured URL.
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### authorization block
 
-The `authorization` block configures custom authorization to use when polling
-the configured URL.
+The `authorization` block configures custom authorization to use when polling the configured URL.
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### oauth2 block
 
-The `oauth2` block configures OAuth2 authorization to use when polling the
-configured URL.
+The `oauth2` block configures OAuth2 authorization to use when polling the configured URL.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -119,21 +112,19 @@ If the `is_secret` argument was `true`, `content` is a secret type.
 
 ## Component health
 
-Instances of `remote.http` report as healthy if the most recent HTTP `GET`
-request of the specified URL succeeds.
+Instances of `remote.http` report as healthy if the most recent HTTP `GET` request of the specified URL succeeds.
 
 ## Debug information
 
-`remote.http` does not expose any component-specific debug information.
+`remote.http` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`remote.http` does not expose any component-specific debug metrics.
+`remote.http` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example reads a JSON array of objects from an endpoint and uses them as a
-set of scrape targets:
+This example reads a JSON array of objects from an endpoint and uses them as a set of scrape targets:
 
 ```alloy
 remote.http "targets" {

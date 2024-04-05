@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/setup-metamonitoring/
+canonical: https://grafana.com/docs/alloy/latest/tasks/metamonitoring/
 description: Learn how to set up meta-monitoring for Grafana Alloy
 title: Set up meta-monitoring
 weight: 200
