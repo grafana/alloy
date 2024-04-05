@@ -4,11 +4,7 @@ description: Learn about otelcol.receiver.loki
 title: otelcol.receiver.loki
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # otelcol.receiver.loki
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.receiver.loki` receives Loki log entries, converts them to the
 OpenTelemetry logs format, and forwards them to other `otelcol.*` components.

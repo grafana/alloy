@@ -1,8 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.host_info/
 description: Learn about otelcol.connector.host_info
-labels:
-  stage: stable
 title: otelcol.connector.host_info
 ---
 

@@ -1,14 +1,10 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.podlogs/
 description: Learn about loki.source.podlogs
-labels:
-  stage: experimental
 title: loki.source.podlogs
 ---
 
 # loki.source.podlogs
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `loki.source.podlogs` discovers `PodLogs` resources on Kubernetes and, using
 the Kubernetes API, tails logs from Kubernetes containers of Pods specified by

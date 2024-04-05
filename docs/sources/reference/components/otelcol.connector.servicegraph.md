@@ -1,8 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.servicegraph/
 description: Learn about otelcol.connector.servicegraph
-labels:
-  stage: stable
 title: otelcol.connector.servicegraph
 ---
 

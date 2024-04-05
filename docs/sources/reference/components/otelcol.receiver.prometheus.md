@@ -4,8 +4,6 @@ description: Learn about otelcol.receiver.prometheus
 title: otelcol.receiver.prometheus
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # otelcol.receiver.prometheus
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}

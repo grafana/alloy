@@ -4,11 +4,7 @@ description: Learn about loki.echo
 title: loki.echo
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # loki.echo
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `loki.echo` receives log entries from other `loki` components and prints them to the process' standard output (stdout).
 

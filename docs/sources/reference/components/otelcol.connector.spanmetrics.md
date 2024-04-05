@@ -1,8 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.spanmetrics/
 description: Learn about otelcol.connector.spanmetrics
-labels:
-  stage: stable
 title: otelcol.connector.spanmetrics
 ---
 

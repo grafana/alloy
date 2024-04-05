@@ -4,8 +4,6 @@ description: Learn about prometheus.exporter.postgres
 title: prometheus.exporter.postgres
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # prometheus.exporter.postgres
 
 The `prometheus.exporter.postgres` component embeds

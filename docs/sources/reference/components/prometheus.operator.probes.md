@@ -4,11 +4,7 @@ description: Learn about prometheus.operator.probes
 title: prometheus.operator.probes
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # prometheus.operator.probes
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `prometheus.operator.probes` discovers [Probe](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.Probe) resources in your Kubernetes cluster and scrapes the targets they reference.
  This component performs three main functions:

@@ -4,11 +4,7 @@ title: otelcol.processor.resourcedetection
 description: Learn about otelcol.processor.resourcedetection
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # otelcol.processor.resourcedetection
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.resourcedetection` detects resource information from the host in a format that conforms to the [OpenTelemetry resource semantic conventions][], and appends or overrides the resource values in the telemetry data with this information.
 
