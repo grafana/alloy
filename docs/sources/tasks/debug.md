@@ -106,7 +106,7 @@ To debug issues when using [clustering][], check for the following symptoms.
   Check the clustering page to view the state of the peers and verify that the terminating {{< param "PRODUCT_NAME" >}} has been shut down.
 
 {{< admonition type="note" >}}
-Some issues that appear to be clustering issues may be symptoms of other issues, for example, problems with scraping or service discovery can result in missing metrics for an agent that can be interpreted as a node not joining the cluster.
+Some issues that appear to be clustering issues may be symptoms of other issues, for example, problems with scraping or service discovery can result in missing metrics for an Alloy instance that can be interpreted as a node not joining the cluster.
 {{< /admonition >}}
 
 [logging]: ../../reference/config-blocks/logging/

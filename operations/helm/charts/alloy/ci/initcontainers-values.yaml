@@ -22,7 +22,7 @@ controller:
       - name: geoip
         mountPath: /etc/geoip
 
-agent:
+alloy:
   mounts:
     extra:
       - name: geoip

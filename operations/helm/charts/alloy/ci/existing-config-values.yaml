@@ -1,4 +1,4 @@
-agent:
+alloy:
   configMap:
     create: false
     name: existing-config

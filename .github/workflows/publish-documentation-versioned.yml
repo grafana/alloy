@@ -3,7 +3,7 @@ name: "publish-technical-documentation-version"
 on:
   push:
     branches:
-      - 'release-*'
+      - 'release/*'
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
     paths:
@@ -49,7 +49,7 @@ jobs:
       with:
         ref_name: "${{ github.ref_name }}"
         release_tag_regexp: "^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
-        release_branch_regexp: "^release-v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+        release_branch_regexp: "^release/v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
 
     - name: "Extract semver"
       if: "steps.has-matching-release-tag.outputs.bool == 'true'"
@@ -72,7 +72,7 @@ jobs:
       id: "publish_release"
       with:
         repository: grafana/website
-        branch: alloy-docs
+        branch: robbymilo/alloy-launch
         host: github.com
         # PUBLISH_TO_WEBSITE_TOKEN is a fine-grained GitHub Personal Access Token that expires.
         # It must be regenerated in the grafanabot GitHub account and requires a Grafana organization

@@ -407,7 +407,7 @@ local remoteWritePanels(y_offset) = [
         label_values(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace"}, instance)
       |||),
       dashboard.newMultiTemplateVariable('component_path', |||
-        label_values(agent_wal_samples_appended_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"prometheus\\.remote_write\\..*", component_path=~".*"}, component_path)
+        label_values(prometheus_remote_write_wal_samples_appended_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"prometheus\\.remote_write\\..*", component_path=~".*"}, component_path)
       |||),
       dashboard.newMultiTemplateVariable('component', |||
         label_values(prometheus_remote_write_wal_samples_appended_total{cluster="$cluster", namespace="$namespace", instance=~"$instance", component_id=~"prometheus\\.remote_write\\..*"}, component_id)

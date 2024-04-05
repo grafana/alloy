@@ -22,7 +22,8 @@ export DRONE_BRANCH=${DRONE_BRANCH:-}
 export DOCKER_LOGIN=${DOCKER_LOGIN:-}
 export DOCKER_PASSWORD=${DOCKER_PASSWORD:-}
 
-export ALLOY_IMAGE=grafana/alloy
+export RELEASE_ALLOY_IMAGE=grafana/alloy
+export DEVEL_ALLOY_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
 
 if [ -n "$DRONE_TAG" ]; then
   VERSION=$DRONE_TAG
@@ -54,8 +55,18 @@ fi
 case "$TARGET_CONTAINER" in
   alloy)
     docker build                        \
-      -t "$ALLOY_IMAGE:$VERSION_TAG"    \
-      -t "$ALLOY_IMAGE:$BRANCH_TAG"     \
+      -t "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"    \
+      -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"     \
+      --build-arg VERSION="$VERSION"    \
+      --build-arg RELEASE_BUILD=1       \
+      -f ./Dockerfile.windows \
+      .
+    ;;
+
+  alloy-devel)
+    docker build                        \
+      -t "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"    \
+      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"     \
       --build-arg VERSION="$VERSION"    \
       --build-arg RELEASE_BUILD=1       \
       -f ./Dockerfile.windows \
@@ -63,7 +74,7 @@ case "$TARGET_CONTAINER" in
     ;;
 
   *)
-    echo "Usage: $0 alloy"
+    echo "Usage: $0 alloy|alloy-devel"
     exit 1
     ;;
 esac
@@ -74,12 +85,17 @@ if [ -n "$DOCKER_LOGIN" ] && [ -n "$DOCKER_PASSWORD" ]; then
 
   case "$TARGET_CONTAINER" in
     alloy)
-      docker push "$ALLOY_IMAGE:$VERSION_TAG"
-      docker push "$ALLOY_IMAGE:$BRANCH_TAG"
+      docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
+      docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+      ;;
+
+    alloy-devel)
+      docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
+      docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
       ;;
 
     *)
-      echo "Usage: $0 alloy"
+      echo "Usage: $0 alloy|alloy-devel"
       exit 1
       ;;
   esac

@@ -19,7 +19,7 @@ controller:
           value: 100
           periodSeconds: 15
       stabilizationWindowSeconds: 80
-agent:
+alloy:
   resources:
     requests:
       memory: 100Mi

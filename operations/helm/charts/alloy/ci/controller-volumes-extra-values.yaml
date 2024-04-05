@@ -5,7 +5,7 @@ controller:
         emptyDir:
           sizeLimit: 500Mi
 
-agent:
+alloy:
   mounts:
     extra:
       - mountPath: /cache

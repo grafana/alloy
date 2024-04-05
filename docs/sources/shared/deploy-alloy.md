@@ -32,7 +32,7 @@ You can also use a Kubernetes Deployment in cases where persistent storage isn't
 
 ### Pros
 
-* Straightforward scaling using [clustering][] or [hashmod sharding][]
+* Straightforward scaling using [clustering][]
 * Minimizes the “noisy neighbor” effect
 * Easy to meta-monitor
 
@@ -118,6 +118,4 @@ The Pod’s controller, network configuration, enabled capabilities, and availab
 * Scenarios where the {{< param "PRODUCT_NAME" >}} deployment size grows so large it can become a noisy neighbor
 
 <!-- ToDo: Check URL path -->
-[hashmod sharding]: https://grafana.com/docs/agent/latest/static/operation-guide/
-
 [clustering]: ../../concepts/clustering/

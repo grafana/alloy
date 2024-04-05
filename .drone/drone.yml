@@ -271,7 +271,7 @@ steps:
   - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
   - docker buildx create --name multiarch-alloy-alloy-${DRONE_COMMIT_SHA} --driver
     docker-container --use
-  - DEVELOPMENT=1 ./tools/ci/docker-containers alloy
+  - ./tools/ci/docker-containers alloy-devel
   - docker buildx rm multiarch-alloy-alloy-${DRONE_COMMIT_SHA}
   environment:
     DOCKER_LOGIN:
@@ -288,6 +288,158 @@ steps:
 trigger:
   ref:
   - refs/heads/main
+type: docker
+volumes:
+- host:
+    path: /var/run/docker.sock
+  name: docker
+---
+kind: pipeline
+name: Publish development Windows alloy container
+platform:
+  arch: amd64
+  os: windows
+  version: "1809"
+steps:
+- commands:
+  - '& "C:/Program Files/git/bin/bash.exe" ./tools/ci/docker-containers-windows alloy-devel'
+  environment:
+    DOCKER_LOGIN:
+      from_secret: docker_login
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+  image: grafana/agent-build-image:0.40.2-windows
+  name: Build containers
+  volumes:
+  - name: docker
+    path: //./pipe/docker_engine/
+trigger:
+  ref:
+  - refs/heads/main
+type: docker
+volumes:
+- host:
+    path: //./pipe/docker_engine/
+  name: docker
+---
+kind: pipeline
+name: Publish Linux alloy container
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  failure: ignore
+  image: grafana/agent-build-image:0.40.2
+  name: Configure QEMU
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+- commands:
+  - mkdir -p $HOME/.docker
+  - printenv GCR_CREDS > $HOME/.docker/config.json
+  - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
+  - docker buildx create --name multiarch-alloy-alloy-${DRONE_COMMIT_SHA} --driver
+    docker-container --use
+  - ./tools/ci/docker-containers alloy
+  - docker buildx rm multiarch-alloy-alloy-${DRONE_COMMIT_SHA}
+  environment:
+    DOCKER_LOGIN:
+      from_secret: docker_login
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+    GCR_CREDS:
+      from_secret: gcr_admin
+  image: grafana/agent-build-image:0.40.2
+  name: Publish container
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+trigger:
+  ref:
+  - refs/tags/v*
+type: docker
+volumes:
+- host:
+    path: /var/run/docker.sock
+  name: docker
+---
+kind: pipeline
+name: Publish Windows alloy container
+platform:
+  arch: amd64
+  os: windows
+  version: "1809"
+steps:
+- commands:
+  - '& "C:/Program Files/git/bin/bash.exe" ./tools/ci/docker-containers-windows alloy'
+  environment:
+    DOCKER_LOGIN:
+      from_secret: docker_login
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+  image: grafana/agent-build-image:0.40.2-windows
+  name: Build containers
+  volumes:
+  - name: docker
+    path: //./pipe/docker_engine/
+trigger:
+  ref:
+  - refs/tags/v*
+type: docker
+volumes:
+- host:
+    path: //./pipe/docker_engine/
+  name: docker
+---
+depends_on:
+- Publish Linux alloy container
+- Publish Windows alloy container
+image_pull_secrets:
+- dockerconfigjson
+kind: pipeline
+name: Publish release
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - /usr/bin/github-app-external-token > /drone/src/gh-token.txt
+  environment:
+    GITHUB_APP_ID:
+      from_secret: updater_app_id
+    GITHUB_APP_INSTALLATION_ID:
+      from_secret: updater_app_installation_id
+    GITHUB_APP_PRIVATE_KEY:
+      from_secret: updater_private_key
+  image: us.gcr.io/kubernetes-dev/github-app-secret-writer:latest
+  name: Generate GitHub token
+- commands:
+  - export GITHUB_TOKEN=$(cat /drone/src/gh-token.txt)
+  - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
+  - RELEASE_BUILD=1 VERSION="${DRONE_TAG}" make -j4 dist
+  - |
+    VERSION="${DRONE_TAG}" RELEASE_DOC_TAG=$(echo "${DRONE_TAG}" | awk -F '.' '{print $1"."$2}') ./tools/release
+  environment:
+    DOCKER_LOGIN:
+      from_secret: docker_login
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+    GPG_PASSPHRASE:
+      from_secret: gpg_passphrase
+    GPG_PRIVATE_KEY:
+      from_secret: gpg_private_key
+    GPG_PUBLIC_KEY:
+      from_secret: gpg_public_key
+  image: grafana/agent-build-image:0.40.2
+  name: Publish release
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+trigger:
+  ref:
+  - refs/tags/v*
 type: docker
 volumes:
 - host:
@@ -401,6 +553,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 1c75c3c155d1dba9707728f7b6a5fed9399518900e86c7fba55e52a253bdb26b
+hmac: 8dfa15c0fd4f3dde68d7099e77e6a4f90f3fd6685288805e6927f6ad24b9359a
 
 ...

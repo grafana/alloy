@@ -130,7 +130,7 @@ The following blocks are supported inside the definition of
 
 ### filesystem block
 
-The default values can vary by the operating system the agent runs on - refer to the [integration source](https://github.com/grafana/alloy/blob/main/internal/static/integrations/node_exporter/config.go) for up-to-date values on each OS.
+The default values can vary by the operating system Alloy runs on - refer to the [integration source](https://github.com/grafana/alloy/blob/main/internal/static/integrations/node_exporter/config.go) for up-to-date values on each OS.
 
 | Name                   | Type       | Description                                                         | Default                                         | Required |
 | ---------------------- | ---------- | ------------------------------------------------------------------- | ----------------------------------------------- | -------- |

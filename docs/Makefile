@@ -15,6 +15,3 @@ check-cloudwatch-integration:
 
 generate-cloudwatch-integration:
 	$(PODMAN) run -v $(shell git rev-parse --show-toplevel):/repo -v $(shell pwd):/docs -w /repo golang:1.22.1-bullseye go run internal/static/integrations/cloudwatch_exporter/docs/doc.go generate
-
-sources/assets/hierarchy.svg: sources/operator/hierarchy.dot
-	cat $< | $(PODMAN) run --rm -i nshine/dot dot -Tsvg > $@

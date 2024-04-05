@@ -1,4 +1,4 @@
-agent:
+alloy:
   clustering:
     enabled: true
 
