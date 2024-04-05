@@ -522,5 +522,5 @@ Refer to the linked documentation for more details.
 
 [snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)
 [WAL block]: #wal-block
-[Stop]: ../../get-started
+[Stop]: ../../../get-started
 [run]: ../../reference/cli/run/
