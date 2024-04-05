@@ -31,6 +31,18 @@ useful if just using the default DaemonSet isn't sufficient.
 
 {{ template "chart.valuesSection" . }}
 
+#### Migrate from `grafana/grafana-agent` chart to `grafana/alloy`
+
+The `values.yaml` file for the `grafana/grafana-agent` chart is compatible with
+the chart for `grafana/alloy`, with two exceptions:
+
+* The `agent` field in `values.yaml` is deprecated in favor of `alloy`. Support
+  for the `agent` field will be removed in a future release.
+
+* The default value for `alloy.listenPort` is `12345` to align with the default
+  listen port in other installations. To retain the previous default, set
+  `alloy.listenPort` to `80` when installing.
+
 ### alloy.extraArgs
 
 `alloy.extraArgs` allows for passing extra arguments to the Grafana Alloy

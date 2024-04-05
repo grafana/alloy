@@ -18,8 +18,8 @@ spec:
   internalTrafficPolicy: Cluster
   ports:
     - name: http-metrics
-      port: 80
-      targetPort: 80
+      port: 12345
+      targetPort: 12345
       protocol: "TCP"
     - name: jaeger-thrift
       port: 14268
