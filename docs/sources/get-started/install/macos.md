@@ -34,7 +34,7 @@ To install {{< param "PRODUCT_NAME" >}} on macOS, run the following commands in 
 1. Install {{< param "PRODUCT_NAME" >}}:
 
    ```shell
-   brew install alloy
+   brew install grafana/grafana/alloy
    ```
 
 ## Upgrade
@@ -44,7 +44,7 @@ To upgrade {{< param "PRODUCT_NAME" >}} on macOS, run the following commands in 
 1. Upgrade {{< param "PRODUCT_NAME" >}}:
 
    ```shell
-   brew upgrade alloy
+   brew upgrade grafana/grafana/alloy
    ```
 
 1. Restart {{< param "PRODUCT_NAME" >}}:
@@ -58,7 +58,7 @@ To upgrade {{< param "PRODUCT_NAME" >}} on macOS, run the following commands in 
 To uninstall {{< param "PRODUCT_NAME" >}} on macOS, run the following command in a terminal window:
 
 ```shell
-brew uninstall alloy
+brew uninstall grafana/grafana/alloy
 ```
 
 ## Next steps
