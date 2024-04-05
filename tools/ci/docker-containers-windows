@@ -79,24 +79,19 @@ case "$TARGET_CONTAINER" in
     ;;
 esac
 
-# Push images only if we have docker credentials and a drone tag is set
-if [ -n "$DOCKER_LOGIN" ] && [ -n "$DOCKER_PASSWORD" ]; then
-  docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWORD"
+case "$TARGET_CONTAINER" in
+  alloy)
+    docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
+    docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+    ;;
 
-  case "$TARGET_CONTAINER" in
-    alloy)
-      docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
-      docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
-      ;;
+  alloy-devel)
+    docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
+    docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
+    ;;
 
-    alloy-devel)
-      docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
-      docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
-      ;;
-
-    *)
-      echo "Usage: $0 alloy|alloy-devel"
-      exit 1
-      ;;
-  esac
-fi
+  *)
+    echo "Usage: $0 alloy|alloy-devel"
+    exit 1
+    ;;
+esac
