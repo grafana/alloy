@@ -30,5 +30,4 @@ v1.0.0 (2024-04-09)
 
 - A built-in UI for visualizing and debugging pipelines.
 
-[upgrade guide]: https://grafana.com/docs/agent/latest/upgrade-guide/
 [contributors guide]: ./docs/developer/contributing.md#updating-the-changelog

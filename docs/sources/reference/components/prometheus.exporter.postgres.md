@@ -141,7 +141,7 @@ Replace the following:
 ### Collect custom metrics from an allowlisted set of databases
 
 This example uses a `prometheus.exporter.postgres` component to collect custom metrics from a set of
-specific databases, replacing default metrics with custom metrics derived from queries in `/etc/agent/custom-postgres-metrics.yaml`:
+specific databases, replacing default metrics with custom metrics derived from queries in `/etc/alloy/custom-postgres-metrics.yaml`:
 
 ```alloy
 prometheus.exporter.postgres "example" {
@@ -156,7 +156,7 @@ prometheus.exporter.postgres "example" {
   }
 
   disable_default_metrics    = true
-  custom_queries_config_path = "/etc/agent/custom-postgres-metrics.yaml"
+  custom_queries_config_path = "/etc/alloy/custom-postgres-metrics.yaml"
 }
 
 prometheus.scrape "default" {

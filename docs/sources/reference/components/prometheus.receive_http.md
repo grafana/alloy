@@ -105,9 +105,9 @@ In order to send metrics to the `prometheus.receive_http` component defined in t
 
 ```alloy
 // Collects metrics of localhost:12345
-prometheus.scrape "agent_self" {
+prometheus.scrape "self" {
   targets = [
-    {"__address__" = "localhost:12345", "job" = "agent"},
+    {"__address__" = "localhost:12345", "job" = "alloy"},
   ]
   forward_to = [prometheus.remote_write.local.receiver]
 }

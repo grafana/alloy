@@ -83,7 +83,7 @@ Brackets | Description
 The following example uses curly braces and square brackets to define an object and an array.
 
 ```alloy
-obj = { app = "agent", namespace = "dev" }
+obj = { app = "alloy", namespace = "dev" }
 arr = [1, true, 7 * (1+1), 3]
 ```
 

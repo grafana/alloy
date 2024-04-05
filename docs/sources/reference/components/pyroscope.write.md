@@ -146,7 +146,7 @@ pyroscope.write "staging" {
 pyroscope.scrape "default" {
   targets = [
     {"__address__" = "pyroscope:4100", "service_name"="pyroscope"},
-    {"__address__" = "agent:12345", "service_name"="agent"},
+    {"__address__" = "alloy:12345", "service_name"="alloy"},
   ]
   forward_to = [pyroscope.write.staging.receiver]
 }

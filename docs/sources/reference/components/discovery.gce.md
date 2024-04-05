@@ -88,7 +88,7 @@ In those cases, exported fields retain their last healthy values.
 
 ```alloy
 discovery.gce "gce" {
-  project = "agent"
+  project = "alloy"
   zone    = "us-east1-a"
 }
 
