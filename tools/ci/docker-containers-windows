@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 #
-# This script builds and pushes windows Docker containers. Maintainers
-# can run this without pushing to a remote repo as long as DOCKER_LOGIN or
-# DOCKER_PASSWORD are not set. For pushing to personal repos
-# set those 2 env vars and update the *_IMAGE values below to point to your repos
+# This script builds and pushes windows Docker containers.
 #
 # This script expects to be run from the repo root and has checks for running
 # from a Drone trigger.
@@ -18,9 +15,6 @@ set -euxo pipefail
 # empty string.
 export TARGET_CONTAINER=${1:-}
 export DRONE_TAG=${DRONE_TAG:-}
-export DRONE_BRANCH=${DRONE_BRANCH:-}
-export DOCKER_LOGIN=${DOCKER_LOGIN:-}
-export DOCKER_PASSWORD=${DOCKER_PASSWORD:-}
 
 export RELEASE_ALLOY_IMAGE=grafana/alloy
 export DEVEL_ALLOY_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
@@ -46,8 +40,6 @@ VERSION_TAG=${VERSION//+/-}-nanoserver-1809
 # image twice.
 if [ -n "$DRONE_TAG" ] && [[ "$DRONE_TAG" != *"-rc."* ]]; then
   BRANCH_TAG=latest-nanoserver-1809
-elif [ -n "$DRONE_BRANCH" ]; then
-  BRANCH_TAG=$DRONE_BRANCH-nanoserver-1809
 else
   BRANCH_TAG=$VERSION_TAG
 fi
@@ -61,6 +53,9 @@ case "$TARGET_CONTAINER" in
       --build-arg RELEASE_BUILD=1       \
       -f ./Dockerfile.windows \
       .
+
+    docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
+    docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
     ;;
 
   alloy-devel)
@@ -71,21 +66,7 @@ case "$TARGET_CONTAINER" in
       --build-arg RELEASE_BUILD=1       \
       -f ./Dockerfile.windows \
       .
-    ;;
 
-  *)
-    echo "Usage: $0 alloy|alloy-devel"
-    exit 1
-    ;;
-esac
-
-case "$TARGET_CONTAINER" in
-  alloy)
-    docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
-    docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
-    ;;
-
-  alloy-devel)
     docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
     docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
     ;;
