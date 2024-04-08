@@ -1,9 +1,9 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/backwards-compatability/
+canonical: https://grafana.com/docs/alloy/latest/introduction/backward-compatability/
 description: Grafana Alloy backward compatibility
 menuTitle: Backward compatibility
 title: Grafana Alloy backward compatibility
-weight: 950
+weight: 999
 ---
 
 # {{% param "FULL_PRODUCT_NAME" %}} backward compatibility
