@@ -1,19 +1,19 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/backwards-compatability/
-description: Grafana Alloy backwards compatibility
-menuTitle: Backwards compatibility
-title: Grafana Alloy backwards compatibility
+description: Grafana Alloy backward compatibility
+menuTitle: Backward compatibility
+title: Grafana Alloy backward compatibility
 weight: 950
 ---
 
-# {{% param "FULL_PRODUCT_NAME" %}} backwards compatibility
+# {{% param "FULL_PRODUCT_NAME" %}} backward compatibility
 
 {{< param "FULL_PRODUCT_NAME" >}} follows [semantic versioning][].
-This means that {{< param "PRODUCT_NAME" >}} is stable, and that we strive to maintain backwards compatibility between minor and patch versions.
+{{< param "PRODUCT_NAME" >}} is stable, and we strive to maintain backward compatibility between minor and patch versions.
 
-Functionality which is documented and released as _Generally available_ is covered by backwards compatibility, including:
+Documented functionality that's released as _Generally available_ is covered by backward compatibility, including:
 
-* **User configuration**, including the {{< param "PRODUCT_NAME" >}} configuration syntax, semantics of the configuration file, and the command-line interface.
+* **User configuration**, including the {{< param "PRODUCT_NAME" >}} configuration syntax, the semantics of the configuration file, and the command-line interface.
 
 * **APIs**, for any network or code API released as v1.0.0 or later.
 
@@ -21,7 +21,7 @@ Functionality which is documented and released as _Generally available_ is cover
 
 ## Exceptions
 
-We strive to maintain backwards compatibility, but there are situations which may arise that require a breaking change without a new major version:
+We strive to maintain backward compatibility, but there are situations that may arise that require a breaking change without a new major version:
 
 * **Security**: A security issue may arise that requires breaking compatibility.
 
@@ -33,7 +33,7 @@ We strive to maintain backwards compatibility, but there are situations which ma
 
 * **Upstream changes**: Much of the functionality of {{< param "PRODUCT_NAME" >}} is built on top of other software, such as OpenTelemetry Collector and Prometheus. If upstream software breaks compatibility, we may need to reflect this in {{< param "PRODUCT_NAME" >}}.
 
-We try whenever possible to resolve these issues without breaking compatibility.
+We try, whenever possible, to resolve these issues without breaking compatibility.
 
 [semantic versioning]: https://semver.org/
 [alloy-mixin]: https://github.com/grafana/alloy/tree/main/operations/alloy-mixin
