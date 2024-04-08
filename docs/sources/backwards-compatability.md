@@ -27,11 +27,11 @@ We strive to maintain backwards compatibility, but there are situations which ma
 
 * **Legal requirements**: If we learn that exposed behavior violates a licensing or legal requirement, a breaking change may be required.
 
-* **Specification errors**: If a specification for a feature is foudn to be incomplete or inconsistent, fixing the specification may require a breaking change.
+* **Specification errors**: If a specification for a feature is found to be incomplete or inconsistent, fixing the specification may require a breaking change.
 
-* **Bugs**: If a bug is found that goes against the documented specification of that functionality, fixing the bug may require breaing compatibility for users who are relying on the incorrect behavior.
+* **Bugs**: If a bug is found that goes against the documented specification of that functionality, fixing the bug may require breaking compatibility for users who are relying on the incorrect behavior.
 
-* **Upstream changes**: Much of the functionality of {{< param "PRODUCT_NAME" >}} is built on top of other software, such as OpenTelemetry Collector and Prometheus. If upstream software makes a breaks compatibility, we may need to reflect in {{< param "PRODUCT_NAME" >}}.
+* **Upstream changes**: Much of the functionality of {{< param "PRODUCT_NAME" >}} is built on top of other software, such as OpenTelemetry Collector and Prometheus. If upstream software breaks compatibility, we may need to reflect this in {{< param "PRODUCT_NAME" >}}.
 
 We try whenever possible to resolve these issues without breaking compatibility.
 
