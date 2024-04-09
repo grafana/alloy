@@ -51,7 +51,7 @@ profiles.
 * **Debugging utilities**: Use the [built-in UI][ui] for visualizing and
   debugging pipelines.
 
-[syntax]: https://grafana.com/docs/alloy/latest/concepts/config-syntax/
+[syntax]: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/
 [distribution]: https://opentelemetry.io/docs/collector/distributions/
 [OpenTelemetry Collector]: https://opentelemetry.io
 [Prometheus]: https://prometheus.io
