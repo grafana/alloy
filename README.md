@@ -102,7 +102,7 @@ Check out our [documentation][] to see:
 
 [documentation]: https://grafana.com/docs/alloy/latest
 [install]: https://grafana.com/docs/alloy/latest/get-started/install/
-[get-started]: https://grafana.com/docs/alloy/latest/getting_started/
+[get-started]: https://grafana.com/docs/alloy/latest/get-started/
 [components]: https://grafana.com/docs/alloy/latest/reference/components/
 
 ## Release cadence
