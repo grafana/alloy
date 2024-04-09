@@ -17,10 +17,12 @@ func TestReadLogFile(t *testing.T) {
 		err := common.FetchDataFromURL(query, &logResponse)
 		assert.NoError(c, err)
 		if assert.NotEmpty(c, logResponse.Data.Result) {
-			assert.Equal(c, logResponse.Data.Result[0].Stream["filename"], "logs.txt")
-			logs := make([]string, len(logResponse.Data.Result[0].Values))
-			for i, valuePair := range logResponse.Data.Result[0].Values {
-				logs[i] = valuePair[1]
+			logs := make([]string, 0)
+			for _, result := range logResponse.Data.Result {
+				assert.Equal(c, result.Stream["filename"], "logs.txt")
+				for _, valuePair := range result.Values {
+					logs = append(logs, valuePair[1])
+				}
 			}
 			assert.Contains(c, logs, "[2023-10-02 14:25:43] INFO: Starting the web application...")
 		}
