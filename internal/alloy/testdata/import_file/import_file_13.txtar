@@ -1,0 +1,76 @@
+Import module with an import block and update the import block to point to another file
+
+-- main.alloy --
+testcomponents.count "inc" {
+  frequency = "10ms"
+  max = 10
+}
+
+import.file "testImport" {
+  filename = "module.alloy"
+}
+
+testImport.a "cc" {
+  input = testcomponents.count.inc.count
+}
+
+testcomponents.summation "sum" {
+  input = testImport.a.cc.output
+}
+
+-- module.alloy --
+import.file "testImport" {
+  filename = "nested_module.alloy"
+}
+
+declare "a" {
+  argument "input" {}
+
+  testImport.a "cc" {
+    input = argument.input.value
+  }
+
+  export "output" {
+    value = testImport.a.cc.output
+  }
+}
+
+-- nested_module.alloy --
+declare "a" {
+  argument "input" {}
+
+  testcomponents.passthrough "pt" {
+    input = argument.input.value
+    lag = "1ms"
+  }
+
+  export "output" {
+    value = testcomponents.passthrough.pt.output
+  }
+}
+
+-- other_nested_module.alloy --
+declare "a" {
+  argument "input" {}
+
+  export "output" {
+    value = -argument.input.value
+  }
+}
+
+-- update/module.alloy --
+import.file "testImport" {
+  filename = "other_nested_module.alloy"
+}
+
+declare "a" {
+  argument "input" {}
+
+  testImport.a "cc" {
+    input = argument.input.value
+  }
+
+  export "output" {
+    value = testImport.a.cc.output
+  }
+}

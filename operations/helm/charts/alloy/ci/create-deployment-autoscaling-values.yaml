@@ -1,0 +1,25 @@
+# Test rendering of the chart with the controller explicitly set to Deployment and autoscaling enabled.
+controller:
+  type: deployment
+  autoscaling:
+    enabled: true
+    scaleDown:
+      policies:
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+      selectPolicy: Min
+      stabilizationWindowSeconds: 100
+    scaleUp:
+      policies:
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+      stabilizationWindowSeconds: 80
+alloy:
+  resources:
+    requests:
+      memory: 100Mi

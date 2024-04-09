@@ -5,14 +5,14 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	fnet "github.com/grafana/agent/internal/component/common/net"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	ht "github.com/grafana/agent/internal/component/loki/source/heroku/internal/herokutarget"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	ht "github.com/grafana/alloy/internal/component/loki/source/heroku/internal/herokutarget"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -21,7 +21,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.heroku",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -33,14 +33,14 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.heroku
 // component.
 type Arguments struct {
-	Server               *fnet.ServerConfig  `river:",squash"`
-	Labels               map[string]string   `river:"labels,attr,optional"`
-	UseIncomingTimestamp bool                `river:"use_incoming_timestamp,attr,optional"`
-	ForwardTo            []loki.LogsReceiver `river:"forward_to,attr"`
-	RelabelRules         flow_relabel.Rules  `river:"relabel_rules,attr,optional"`
+	Server               *fnet.ServerConfig  `alloy:",squash"`
+	Labels               map[string]string   `alloy:"labels,attr,optional"`
+	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
+	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
+	RelabelRules         alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
 		Server: fnet.DefaultServerConfig(),
@@ -123,7 +123,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	var rcs []*relabel.Config
 	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
-		rcs = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
 	restartRequired := changed(c.args.Server, newArgs.Server) ||
@@ -159,7 +159,7 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-// Convert is used to bridge between the River and Promtail types.
+// Convert is used to bridge between the Alloy and Promtail types.
 func (args *Arguments) Convert() *ht.HerokuDrainTargetConfig {
 	lbls := make(model.LabelSet, len(args.Labels))
 	for k, v := range args.Labels {
@@ -187,8 +187,8 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type readerDebugInfo struct {
-	Ready   bool   `river:"ready,attr"`
-	Address string `river:"address,attr"`
+	Ready   bool   `alloy:"ready,attr"`
+	Address string `alloy:"address,attr"`
 }
 
 func changed(prev, next any) bool {

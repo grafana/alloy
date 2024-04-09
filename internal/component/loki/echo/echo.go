@@ -4,16 +4,16 @@ import (
 	"context"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.echo",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -29,13 +29,13 @@ type Arguments struct{}
 
 // Exports holds the values exported by the loki.echo component.
 type Exports struct {
-	Receiver loki.LogsReceiver `river:"receiver,attr"`
+	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
 }
 
 // DefaultArguments defines the default settings for log scraping.
 var DefaultArguments = Arguments{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }

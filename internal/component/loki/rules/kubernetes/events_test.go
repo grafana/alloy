@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/common/kubernetes"
-	lokiClient "github.com/grafana/agent/internal/loki/client"
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	lokiClient "github.com/grafana/alloy/internal/loki/client"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/prometheus/prometheus/model/rulefmt"
@@ -133,7 +133,7 @@ func TestEventLoop(t *testing.T) {
 		ruleLister:        ruleLister,
 		ruleSelector:      labels.Everything(),
 		lokiClient:        newFakeLokiClient(),
-		args:              Arguments{LokiNameSpacePrefix: "agent"},
+		args:              Arguments{LokiNameSpacePrefix: "alloy"},
 		metrics:           newMetrics(),
 	}
 	eventHandler := kubernetes.NewQueuedEventHandler(component.log, component.queue)
@@ -168,7 +168,7 @@ func TestEventLoop(t *testing.T) {
 	require.Eventually(t, func() bool {
 		allRules, err := component.lokiClient.ListRules(ctx, "")
 		require.NoError(t, err)
-		rules := allRules[lokiNamespaceForRuleCRD("agent", rule)][0].Rules
+		rules := allRules[lokiNamespaceForRuleCRD("alloy", rule)][0].Rules
 		return len(rules) == 2
 	}, time.Second, 10*time.Millisecond)
 	component.queue.AddRateLimited(kubernetes.Event{Typ: eventTypeSyncLoki})

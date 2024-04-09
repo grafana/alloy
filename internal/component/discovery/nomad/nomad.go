@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/nomad"
 )
@@ -16,7 +16,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.nomad",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -27,13 +27,13 @@ func init() {
 }
 
 type Arguments struct {
-	AllowStale       bool                    `river:"allow_stale,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
-	Namespace        string                  `river:"namespace,attr,optional"`
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
-	Region           string                  `river:"region,attr,optional"`
-	Server           string                  `river:"server,attr,optional"`
-	TagSeparator     string                  `river:"tag_separator,attr,optional"`
+	AllowStale       bool                    `alloy:"allow_stale,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
+	Namespace        string                  `alloy:"namespace,attr,optional"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	Region           string                  `alloy:"region,attr,optional"`
+	Server           string                  `alloy:"server,attr,optional"`
+	TagSeparator     string                  `alloy:"tag_separator,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -46,12 +46,12 @@ var DefaultArguments = Arguments{
 	TagSeparator:     ",",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if strings.TrimSpace(a.Server) == "" {
 		return fmt.Errorf("nomad SD configuration requires a server address")

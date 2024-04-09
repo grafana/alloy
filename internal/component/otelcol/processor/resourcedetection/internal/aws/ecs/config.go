@@ -1,14 +1,14 @@
 package ecs
 
 import (
-	rac "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
-	"github.com/grafana/river"
+	rac "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
+	"github.com/grafana/alloy/syntax"
 )
 
 const Name = "ecs"
 
 type Config struct {
-	ResourceAttributes ResourceAttributesConfig `river:"resource_attributes,block,optional"`
+	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -32,9 +32,9 @@ var DefaultArguments = Config{
 	},
 }
 
-var _ river.Defaulter = (*Config)(nil)
+var _ syntax.Defaulter = (*Config)(nil)
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
@@ -51,21 +51,21 @@ func (args *Config) Convert() map[string]interface{} {
 
 // ResourceAttributesConfig provides config for ecs resource attributes.
 type ResourceAttributesConfig struct {
-	AwsEcsClusterArn      rac.ResourceAttributeConfig `river:"aws.ecs.cluster.arn,block,optional"`
-	AwsEcsLaunchtype      rac.ResourceAttributeConfig `river:"aws.ecs.launchtype,block,optional"`
-	AwsEcsTaskArn         rac.ResourceAttributeConfig `river:"aws.ecs.task.arn,block,optional"`
-	AwsEcsTaskFamily      rac.ResourceAttributeConfig `river:"aws.ecs.task.family,block,optional"`
-	AwsEcsTaskID          rac.ResourceAttributeConfig `river:"aws.ecs.task.id,block,optional"`
-	AwsEcsTaskRevision    rac.ResourceAttributeConfig `river:"aws.ecs.task.revision,block,optional"`
-	AwsLogGroupArns       rac.ResourceAttributeConfig `river:"aws.log.group.arns,block,optional"`
-	AwsLogGroupNames      rac.ResourceAttributeConfig `river:"aws.log.group.names,block,optional"`
-	AwsLogStreamArns      rac.ResourceAttributeConfig `river:"aws.log.stream.arns,block,optional"`
-	AwsLogStreamNames     rac.ResourceAttributeConfig `river:"aws.log.stream.names,block,optional"`
-	CloudAccountID        rac.ResourceAttributeConfig `river:"cloud.account.id,block,optional"`
-	CloudAvailabilityZone rac.ResourceAttributeConfig `river:"cloud.availability_zone,block,optional"`
-	CloudPlatform         rac.ResourceAttributeConfig `river:"cloud.platform,block,optional"`
-	CloudProvider         rac.ResourceAttributeConfig `river:"cloud.provider,block,optional"`
-	CloudRegion           rac.ResourceAttributeConfig `river:"cloud.region,block,optional"`
+	AwsEcsClusterArn      rac.ResourceAttributeConfig `alloy:"aws.ecs.cluster.arn,block,optional"`
+	AwsEcsLaunchtype      rac.ResourceAttributeConfig `alloy:"aws.ecs.launchtype,block,optional"`
+	AwsEcsTaskArn         rac.ResourceAttributeConfig `alloy:"aws.ecs.task.arn,block,optional"`
+	AwsEcsTaskFamily      rac.ResourceAttributeConfig `alloy:"aws.ecs.task.family,block,optional"`
+	AwsEcsTaskID          rac.ResourceAttributeConfig `alloy:"aws.ecs.task.id,block,optional"`
+	AwsEcsTaskRevision    rac.ResourceAttributeConfig `alloy:"aws.ecs.task.revision,block,optional"`
+	AwsLogGroupArns       rac.ResourceAttributeConfig `alloy:"aws.log.group.arns,block,optional"`
+	AwsLogGroupNames      rac.ResourceAttributeConfig `alloy:"aws.log.group.names,block,optional"`
+	AwsLogStreamArns      rac.ResourceAttributeConfig `alloy:"aws.log.stream.arns,block,optional"`
+	AwsLogStreamNames     rac.ResourceAttributeConfig `alloy:"aws.log.stream.names,block,optional"`
+	CloudAccountID        rac.ResourceAttributeConfig `alloy:"cloud.account.id,block,optional"`
+	CloudAvailabilityZone rac.ResourceAttributeConfig `alloy:"cloud.availability_zone,block,optional"`
+	CloudPlatform         rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
+	CloudProvider         rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
+	CloudRegion           rac.ResourceAttributeConfig `alloy:"cloud.region,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {

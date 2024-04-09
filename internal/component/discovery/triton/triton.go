@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/triton"
 )
@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.triton",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -26,15 +26,15 @@ func init() {
 }
 
 type Arguments struct {
-	Account         string           `river:"account,attr"`
-	Role            string           `river:"role,attr,optional"`
-	DNSSuffix       string           `river:"dns_suffix,attr"`
-	Endpoint        string           `river:"endpoint,attr"`
-	Groups          []string         `river:"groups,attr,optional"`
-	Port            int              `river:"port,attr,optional"`
-	RefreshInterval time.Duration    `river:"refresh_interval,attr,optional"`
-	Version         int              `river:"version,attr,optional"`
-	TLSConfig       config.TLSConfig `river:"tls_config,block,optional"`
+	Account         string           `alloy:"account,attr"`
+	Role            string           `alloy:"role,attr,optional"`
+	DNSSuffix       string           `alloy:"dns_suffix,attr"`
+	Endpoint        string           `alloy:"endpoint,attr"`
+	Groups          []string         `alloy:"groups,attr,optional"`
+	Port            int              `alloy:"port,attr,optional"`
+	RefreshInterval time.Duration    `alloy:"refresh_interval,attr,optional"`
+	Version         int              `alloy:"version,attr,optional"`
+	TLSConfig       config.TLSConfig `alloy:"tls_config,block,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -44,12 +44,12 @@ var DefaultArguments = Arguments{
 	Version:         1,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.RefreshInterval <= 0 {
 		return fmt.Errorf("refresh_interval must be greater than 0")

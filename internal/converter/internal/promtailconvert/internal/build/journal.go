@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	flowrelabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/journal"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	alloyrelabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/journal"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 )
 
 func (s *ScrapeConfigBuilder) AppendJournalConfig() {
@@ -34,11 +34,11 @@ func (s *ScrapeConfigBuilder) AppendJournalConfig() {
 		Path:         jc.Path,
 		Receivers:    s.getOrNewProcessStageReceivers(),
 		Labels:       convertPromLabels(jc.Labels),
-		RelabelRules: flowrelabel.Rules{},
+		RelabelRules: alloyrelabel.Rules{},
 	}
 	relabelRulesExpr := s.getOrNewDiscoveryRelabelRules()
 	hook := func(val interface{}) interface{} {
-		if _, ok := val.(flowrelabel.Rules); ok {
+		if _, ok := val.(alloyrelabel.Rules); ok {
 			return common.CustomTokenizer{Expr: relabelRulesExpr}
 		}
 		return val

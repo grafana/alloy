@@ -3,11 +3,11 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/receiver/vcenter"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver/vcenter"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver"
 	"go.opentelemetry.io/collector/component"
 )
@@ -25,7 +25,7 @@ func (vcenterReceiverConverter) InputComponentName() string { return "" }
 func (vcenterReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toVcenterReceiver(state, id, cfg.(*vcenterreceiver.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "vcenter"}, label, args)
@@ -48,7 +48,7 @@ func toVcenterReceiver(state *State, id component.InstanceID, cfg *vcenterreceiv
 	return &vcenter.Arguments{
 		Endpoint: cfg.Endpoint,
 		Username: cfg.Username,
-		Password: rivertypes.Secret(cfg.Password),
+		Password: alloytypes.Secret(cfg.Password),
 
 		DebugMetrics: common.DefaultValue[vcenter.Arguments]().DebugMetrics,
 

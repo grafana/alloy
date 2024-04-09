@@ -1,4 +1,4 @@
-// Package exporter exposes utilities to create a Flow component from
+// Package exporter exposes utilities to create an Alloy component from
 // OpenTelemetry Collector exporters.
 package exporter
 
@@ -7,14 +7,14 @@ import (
 	"errors"
 	"os"
 
-	"github.com/grafana/agent/internal/build"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazycollector"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/internal/scheduler"
-	"github.com/grafana/agent/internal/component/otelcol/internal/views"
-	"github.com/grafana/agent/internal/util/zapadapter"
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/views"
+	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelexporter "go.opentelemetry.io/collector/exporter"
@@ -71,7 +71,7 @@ func (s TypeSignal) SupportsTraces() bool {
 	return s&TypeTraces != 0
 }
 
-// Exporter is a Flow component shim which manages an OpenTelemetry Collector
+// Exporter is an Alloy component shim which manages an OpenTelemetry Collector
 // exporter component.
 type Exporter struct {
 	ctx    context.Context
@@ -94,9 +94,9 @@ var (
 	_ component.HealthComponent = (*Exporter)(nil)
 )
 
-// New creates a new Flow component which encapsulates an OpenTelemetry
-// Collector exporter. args must hold a value of the argument type registered
-// with the Flow component.
+// New creates a new component which encapsulates an OpenTelemetry Collector
+// exporter. args must hold a value of the argument type registered with the
+// Alloy component.
 //
 // The registered component must be registered to export the
 // otelcol.ConsumerExports type, otherwise New will panic.
@@ -179,7 +179,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 
 		BuildInfo: otelcomponent.BuildInfo{
 			Command:     os.Args[0],
-			Description: "Grafana Agent",
+			Description: "Grafana Alloy",
 			Version:     build.Version,
 		},
 	}

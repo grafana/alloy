@@ -1,0 +1,7 @@
+valid_attr = 15
+
+// The parser parses block names for both blocks and attributes, and later
+// validates that the attribute name is just a single identifier with no label.
+
+invalid/* ERROR "attribute names may only consist of a single identifier" */.attr = 20
+invalid "label" /* ERROR "attribute names may not have labels" */ = 20

@@ -10,10 +10,10 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/runner"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
@@ -140,7 +140,7 @@ func (ctrl *eventController) configureInformers(ctx context.Context, informers c
 		if err != nil {
 			if errors.Is(informerCtx.Err(), context.DeadlineExceeded) { // Check the context to prevent GetInformer returning a fake timeout
 				return fmt.Errorf("timeout exceeded while configuring informers. Check the connection"+
-					" to the Kubernetes API is stable and that the Agent has appropriate RBAC permissions for %v", ty)
+					" to the Kubernetes API is stable and that Alloy has appropriate RBAC permissions for %v", ty)
 			}
 			return err
 		}
@@ -344,6 +344,6 @@ func (ctrl *eventController) DebugInfo() controllerInfo {
 }
 
 type controllerInfo struct {
-	Namespace     string    `river:"namespace,attr"`
-	LastTimestamp time.Time `river:"last_event_timestamp,attr"`
+	Namespace     string    `alloy:"namespace,attr"`
+	LastTimestamp time.Time `alloy:"last_event_timestamp,attr"`
 }

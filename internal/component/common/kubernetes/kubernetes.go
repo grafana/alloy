@@ -5,9 +5,9 @@ import (
 	"reflect"
 
 	"github.com/go-kit/log"
-	commoncfg "github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/useragent"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	commoncfg "github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/useragent"
 	promconfig "github.com/prometheus/common/config"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -15,9 +15,9 @@ import (
 
 // ClientArguments controls how to connect to a Kubernetes cluster.
 type ClientArguments struct {
-	APIServer        commoncfg.URL              `river:"api_server,attr,optional"`
-	KubeConfig       string                     `river:"kubeconfig_file,attr,optional"`
-	HTTPClientConfig commoncfg.HTTPClientConfig `river:",squash"`
+	APIServer        commoncfg.URL              `alloy:"api_server,attr,optional"`
+	KubeConfig       string                     `alloy:"kubeconfig_file,attr,optional"`
+	HTTPClientConfig commoncfg.HTTPClientConfig `alloy:",squash"`
 }
 
 // DefaultClientArguments holds default values for Arguments.
@@ -25,12 +25,12 @@ var DefaultClientArguments = ClientArguments{
 	HTTPClientConfig: commoncfg.DefaultHTTPClientConfig,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *ClientArguments) SetToDefault() {
 	*args = DefaultClientArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *ClientArguments) Validate() error {
 	if args.APIServer.URL != nil && args.KubeConfig != "" {
 		return fmt.Errorf("only one of api_server and kubeconfig_file can be set")

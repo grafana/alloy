@@ -3,49 +3,49 @@ package staticconvert
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/static/config"
-	v1 "github.com/grafana/agent/internal/static/integrations"
-	agent_exporter "github.com/grafana/agent/internal/static/integrations/agent"
-	"github.com/grafana/agent/internal/static/integrations/apache_http"
-	"github.com/grafana/agent/internal/static/integrations/azure_exporter"
-	"github.com/grafana/agent/internal/static/integrations/blackbox_exporter"
-	"github.com/grafana/agent/internal/static/integrations/cadvisor"
-	"github.com/grafana/agent/internal/static/integrations/cloudwatch_exporter"
-	"github.com/grafana/agent/internal/static/integrations/consul_exporter"
-	"github.com/grafana/agent/internal/static/integrations/dnsmasq_exporter"
-	"github.com/grafana/agent/internal/static/integrations/elasticsearch_exporter"
-	"github.com/grafana/agent/internal/static/integrations/gcp_exporter"
-	"github.com/grafana/agent/internal/static/integrations/github_exporter"
-	"github.com/grafana/agent/internal/static/integrations/kafka_exporter"
-	"github.com/grafana/agent/internal/static/integrations/memcached_exporter"
-	"github.com/grafana/agent/internal/static/integrations/mongodb_exporter"
-	mssql_exporter "github.com/grafana/agent/internal/static/integrations/mssql"
-	"github.com/grafana/agent/internal/static/integrations/mysqld_exporter"
-	"github.com/grafana/agent/internal/static/integrations/node_exporter"
-	"github.com/grafana/agent/internal/static/integrations/oracledb_exporter"
-	"github.com/grafana/agent/internal/static/integrations/postgres_exporter"
-	"github.com/grafana/agent/internal/static/integrations/process_exporter"
-	"github.com/grafana/agent/internal/static/integrations/redis_exporter"
-	"github.com/grafana/agent/internal/static/integrations/snmp_exporter"
-	"github.com/grafana/agent/internal/static/integrations/snowflake_exporter"
-	"github.com/grafana/agent/internal/static/integrations/squid_exporter"
-	"github.com/grafana/agent/internal/static/integrations/statsd_exporter"
-	v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	agent_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/agent"
-	apache_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/apache_http"
-	app_agent_receiver_v2 "github.com/grafana/agent/internal/static/integrations/v2/app_agent_receiver"
-	blackbox_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/blackbox_exporter"
-	eventhandler_v2 "github.com/grafana/agent/internal/static/integrations/v2/eventhandler"
-	metricsutils_v2 "github.com/grafana/agent/internal/static/integrations/v2/metricsutils"
-	snmp_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/snmp_exporter"
-	vmware_exporter_v2 "github.com/grafana/agent/internal/static/integrations/v2/vmware_exporter"
-	"github.com/grafana/agent/internal/static/integrations/windows_exporter"
-	"github.com/grafana/agent/internal/static/logs"
-	"github.com/grafana/agent/internal/static/metrics"
-	"github.com/grafana/agent/internal/static/server"
-	"github.com/grafana/agent/internal/static/traces"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/static/config"
+	v1 "github.com/grafana/alloy/internal/static/integrations"
+	agent_exporter "github.com/grafana/alloy/internal/static/integrations/agent"
+	"github.com/grafana/alloy/internal/static/integrations/apache_http"
+	"github.com/grafana/alloy/internal/static/integrations/azure_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/blackbox_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/cadvisor"
+	"github.com/grafana/alloy/internal/static/integrations/cloudwatch_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/consul_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/dnsmasq_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/elasticsearch_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/gcp_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/github_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/kafka_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/memcached_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/mongodb_exporter"
+	mssql_exporter "github.com/grafana/alloy/internal/static/integrations/mssql"
+	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/node_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/oracledb_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/postgres_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/process_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/redis_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/snowflake_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/squid_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/statsd_exporter"
+	v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	agent_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/agent"
+	apache_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/apache_http"
+	app_agent_receiver_v2 "github.com/grafana/alloy/internal/static/integrations/v2/app_agent_receiver"
+	blackbox_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/blackbox_exporter"
+	eventhandler_v2 "github.com/grafana/alloy/internal/static/integrations/v2/eventhandler"
+	metricsutils_v2 "github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
+	snmp_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/snmp_exporter"
+	vmware_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/vmware_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/windows_exporter"
+	"github.com/grafana/alloy/internal/static/logs"
+	"github.com/grafana/alloy/internal/static/metrics"
+	"github.com/grafana/alloy/internal/static/server"
+	"github.com/grafana/alloy/internal/static/traces"
 
 	_ "github.com/prometheus/prometheus/discovery/install" // Register Prometheus SDs
 )
@@ -69,7 +69,7 @@ func validate(staticConfig *config.Config) diag.Diagnostics {
 func validateCommandLine() diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	diags.Add(diag.SeverityLevelWarn, "Please review your agent command line flags and ensure they are set in your Flow mode config file where necessary.")
+	diags.Add(diag.SeverityLevelWarn, "Please review your agent command line flags and ensure they are set in your Alloy config file where necessary.")
 
 	return diags
 }
@@ -78,7 +78,7 @@ func validateServer(serverConfig *server.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	defaultServerConfig := server.DefaultConfig()
-	diags.AddAll(common.ValidateSupported(common.NotDeepEquals, serverConfig.GRPC, defaultServerConfig.GRPC, "grpc_tls_config server", "flow mode does not have a gRPC server to configure."))
+	diags.AddAll(common.ValidateSupported(common.NotDeepEquals, serverConfig.GRPC, defaultServerConfig.GRPC, "grpc_tls_config server", "Alloy does not have a gRPC server to configure."))
 	diags.AddAll(common.ValidateSupported(common.NotEquals, serverConfig.HTTP.TLSConfig.PreferServerCipherSuites, defaultServerConfig.HTTP.TLSConfig.PreferServerCipherSuites, "prefer_server_cipher_suites server", ""))
 
 	return diags
@@ -101,7 +101,7 @@ func validateMetrics(metricsConfig metrics.Config, grpcListenPort int) diag.Diag
 	diags.AddAll(common.ValidateSupported(common.NotEquals, metricsConfig.IdleConnTimeout, defaultMetrics.IdleConnTimeout, "http_idle_conn_timeout metrics", ""))
 
 	if metricsConfig.WALDir != defaultMetrics.WALDir {
-		diags.Add(diag.SeverityLevelWarn, "The converter does not support converting the provided metrics wal_directory config: Use the run command flag --storage.path for Flow mode instead.")
+		diags.Add(diag.SeverityLevelWarn, "The converter does not support converting the provided metrics wal_directory config: Use the run command flag --storage.path instead.")
 	}
 
 	return diags
@@ -175,6 +175,11 @@ func validateIntegrationsV2(integrationsConfig *v2.SubsystemOptions) diag.Diagno
 		case *eventhandler_v2.Config:
 		case *snmp_exporter_v2.Config:
 		case *vmware_exporter_v2.Config:
+			diags.AddWithDetail(
+				diag.SeverityLevelError,
+				"Support for the vsphere integration has been removed in Alloy v1.0, and conversion will not be performed.",
+				"To achieve similar functionality, consider creating an otelcol.receiver.vcenter component and converting generated metrics to a Prometheus pipeline using otelcol.exporter.prometheus.",
+			)
 		case *metricsutils_v2.ConfigShim:
 			switch v1_itg := itg.Orig.(type) {
 			case *azure_exporter.Config:

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/extension"
-	"github.com/grafana/agent/internal/component/otelcol/extension/jaeger_remote_sampling/internal/jaegerremotesampling"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
+	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling/internal/jaegerremotesampling"
+	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 )
@@ -16,7 +16,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.extension.jaeger_remote_sampling",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -39,17 +39,17 @@ type (
 
 // Arguments configures the otelcol.extension.jaegerremotesampling component.
 type Arguments struct {
-	GRPC *GRPCServerArguments `river:"grpc,block,optional"`
-	HTTP *HTTPServerArguments `river:"http,block,optional"`
+	GRPC *GRPCServerArguments `alloy:"grpc,block,optional"`
+	HTTP *HTTPServerArguments `alloy:"http,block,optional"`
 
-	Source ArgumentsSource `river:"source,block"`
+	Source ArgumentsSource `alloy:"source,block"`
 }
 
 type ArgumentsSource struct {
-	Content        string               `river:"content,attr,optional"`
-	Remote         *GRPCClientArguments `river:"remote,block,optional"`
-	File           string               `river:"file,attr,optional"`
-	ReloadInterval time.Duration        `river:"reload_interval,attr,optional"`
+	Content        string               `alloy:"content,attr,optional"`
+	Remote         *GRPCClientArguments `alloy:"remote,block,optional"`
+	File           string               `alloy:"file,attr,optional"`
+	ReloadInterval time.Duration        `alloy:"reload_interval,attr,optional"`
 }
 
 var (
@@ -80,7 +80,7 @@ func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.I
 	return nil
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if a.GRPC == nil && a.HTTP == nil {
 		return fmt.Errorf("http or grpc must be configured to serve the sampling document")
@@ -89,7 +89,7 @@ func (a *Arguments) Validate() error {
 	return nil
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *ArgumentsSource) Validate() error {
 	// remote config, local file and contents are all mutually exclusive
 	sourcesSet := 0
@@ -113,7 +113,7 @@ func (a *ArgumentsSource) Validate() error {
 	return nil
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GRPCServerArguments) SetToDefault() {
 	*args = GRPCServerArguments{
 		Endpoint:  "0.0.0.0:14250",
@@ -121,7 +121,7 @@ func (args *GRPCServerArguments) SetToDefault() {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *HTTPServerArguments) SetToDefault() {
 	*args = HTTPServerArguments{
 		Endpoint: "0.0.0.0:5778",
@@ -133,7 +133,7 @@ func (args *HTTPServerArguments) SetToDefault() {
 // component-specific defaults.
 type GRPCClientArguments otelcol.GRPCClientArguments
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GRPCClientArguments) SetToDefault() {
 	*args = GRPCClientArguments{
 		Headers:         map[string]string{},

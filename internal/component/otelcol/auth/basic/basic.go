@@ -2,10 +2,10 @@
 package basic
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol/auth"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.auth.basic",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   auth.Exports{},
 
@@ -30,8 +30,8 @@ func init() {
 type Arguments struct {
 	// TODO(rfratto): should we support htpasswd?
 
-	Username string            `river:"username,attr"`
-	Password rivertypes.Secret `river:"password,attr"`
+	Username string            `alloy:"username,attr"`
+	Password alloytypes.Secret `alloy:"password,attr"`
 }
 
 var _ auth.Arguments = Arguments{}

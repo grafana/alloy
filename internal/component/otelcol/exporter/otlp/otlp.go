@@ -4,10 +4,10 @@ package otlp
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/exporter"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelpexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.otlp",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -30,20 +30,20 @@ func init() {
 
 // Arguments configures the otelcol.exporter.otlp component.
 type Arguments struct {
-	Timeout time.Duration `river:"timeout,attr,optional"`
+	Timeout time.Duration `alloy:"timeout,attr,optional"`
 
-	Queue otelcol.QueueArguments `river:"sending_queue,block,optional"`
-	Retry otelcol.RetryArguments `river:"retry_on_failure,block,optional"`
+	Queue otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
+	Retry otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
-	Client GRPCClientArguments `river:"client,block"`
+	Client GRPCClientArguments `alloy:"client,block"`
 }
 
 var _ exporter.Arguments = Arguments{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		Timeout: otelcol.DefaultTimeout,
@@ -86,7 +86,7 @@ func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
 // component-specific defaults.
 type GRPCClientArguments otelcol.GRPCClientArguments
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GRPCClientArguments) SetToDefault() {
 	*args = GRPCClientArguments{
 		Headers:         map[string]string{},

@@ -4,28 +4,28 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/aws/ec2"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/aws/ecs"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/aws/eks"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/aws/elasticbeanstalk"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/aws/lambda"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/azure"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/azure/aks"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/consul"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/docker"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/gcp"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/heroku"
-	kubernetes_node "github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/openshift"
-	"github.com/grafana/agent/internal/component/otelcol/processor/resourcedetection/internal/system"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/ec2"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/ecs"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/eks"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/elasticbeanstalk"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/lambda"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/aks"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/consul"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/docker"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/gcp"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/heroku"
+	kubernetes_node "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/openshift"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/system"
+	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
 	"github.com/stretchr/testify/require"
 )
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	var defaultArgs system.Config
 	defaultArgs.SetToDefault()
 
@@ -1495,7 +1495,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args resourcedetection.Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			if tc.errorMsg != "" {
 				require.ErrorContains(t, err, tc.errorMsg)
 				return

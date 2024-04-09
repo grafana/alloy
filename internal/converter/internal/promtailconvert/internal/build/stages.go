@@ -12,9 +12,9 @@ import (
 	"github.com/grafana/loki/pkg/util/flagext"
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/grafana/agent/internal/component/loki/process/metric"
-	"github.com/grafana/agent/internal/component/loki/process/stages"
-	"github.com/grafana/agent/internal/converter/diag"
+	"github.com/grafana/alloy/internal/component/loki/process/metric"
+	"github.com/grafana/alloy/internal/component/loki/process/stages"
+	"github.com/grafana/alloy/internal/converter/diag"
 )
 
 func convertStage(st interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
@@ -303,7 +303,7 @@ func convertDrop(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, 
 		}
 		longerThan, err = units.ParseBase2Bytes(fmt.Sprintf("%dB", pLongerThan.Val()))
 		if err != nil {
-			diags.Add(diag.SeverityLevelError, fmt.Sprintf("invalid pipeline_stages.drop.longer_than field: failed river type conversion: %v", err))
+			diags.Add(diag.SeverityLevelError, fmt.Sprintf("invalid pipeline_stages.drop.longer_than field: failed Alloy type conversion: %v", err))
 			return stages.StageConfig{}, false
 		}
 	}
@@ -459,7 +459,7 @@ func convertMetrics(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfi
 
 	for _, name := range sortedNames {
 		pMetric := (*pMetrics)[name]
-		fMetric, ok := toFlowMetricProcessStage(name, pMetric, diags)
+		fMetric, ok := toAlloyMetricsProcessStage(name, pMetric, diags)
 		if !ok {
 			return stages.StageConfig{}, false
 		}
@@ -470,7 +470,7 @@ func convertMetrics(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfi
 	}}, true
 }
 
-func toFlowMetricProcessStage(name string, pMetric promtailstages.MetricConfig, diags *diag.Diagnostics) (stages.MetricConfig, bool) {
+func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig, diags *diag.Diagnostics) (stages.MetricConfig, bool) {
 	var fMetric stages.MetricConfig
 
 	var maxIdle time.Duration

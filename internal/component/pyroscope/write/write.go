@@ -7,19 +7,19 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/agent/internal/agentseed"
-	"github.com/grafana/agent/internal/component/pyroscope"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/useragent"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/oklog/run"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.uber.org/multierr"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -37,7 +37,7 @@ var (
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.write",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
@@ -49,11 +49,11 @@ func init() {
 // Arguments represents the input state of the pyroscope.write
 // component.
 type Arguments struct {
-	ExternalLabels map[string]string  `river:"external_labels,attr,optional"`
-	Endpoints      []*EndpointOptions `river:"endpoint,block,optional"`
+	ExternalLabels map[string]string  `alloy:"external_labels,attr,optional"`
+	Endpoints      []*EndpointOptions `alloy:"endpoint,block,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (rc *Arguments) SetToDefault() {
 	*rc = DefaultArguments()
 }
@@ -61,14 +61,14 @@ func (rc *Arguments) SetToDefault() {
 // EndpointOptions describes an individual location for where profiles
 // should be delivered to using the Pyroscope push API.
 type EndpointOptions struct {
-	Name              string                   `river:"name,attr,optional"`
-	URL               string                   `river:"url,attr"`
-	RemoteTimeout     time.Duration            `river:"remote_timeout,attr,optional"`
-	Headers           map[string]string        `river:"headers,attr,optional"`
-	HTTPClientConfig  *config.HTTPClientConfig `river:",squash"`
-	MinBackoff        time.Duration            `river:"min_backoff_period,attr,optional"`  // start backoff at this level
-	MaxBackoff        time.Duration            `river:"max_backoff_period,attr,optional"`  // increase exponentially to this level
-	MaxBackoffRetries int                      `river:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+	Name              string                   `alloy:"name,attr,optional"`
+	URL               string                   `alloy:"url,attr"`
+	RemoteTimeout     time.Duration            `alloy:"remote_timeout,attr,optional"`
+	Headers           map[string]string        `alloy:"headers,attr,optional"`
+	HTTPClientConfig  *config.HTTPClientConfig `alloy:",squash"`
+	MinBackoff        time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
+	MaxBackoff        time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
+	MaxBackoffRetries int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
 }
 
 func GetDefaultEndpointOptions() EndpointOptions {
@@ -83,12 +83,12 @@ func GetDefaultEndpointOptions() EndpointOptions {
 	return defaultEndpointOptions
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (r *EndpointOptions) SetToDefault() {
 	*r = GetDefaultEndpointOptions()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (r *EndpointOptions) Validate() error {
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	if r.HTTPClientConfig != nil {
@@ -107,7 +107,7 @@ type Component struct {
 
 // Exports are the set of fields exposed by the pyroscope.write component.
 type Exports struct {
-	Receiver pyroscope.Appendable `river:"receiver,attr"`
+	Receiver pyroscope.Appendable `alloy:"receiver,attr"`
 }
 
 // New creates a new pyroscope.write component.
@@ -159,12 +159,13 @@ type fanOutClient struct {
 // NewFanOut creates a new fan out client that will fan out to all endpoints.
 func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fanOutClient, error) {
 	clients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
-	uid := agentseed.Get().UID
+	uid := alloyseed.Get().UID
 	for _, endpoint := range config.Endpoints {
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
-		endpoint.Headers[agentseed.HeaderName] = uid
+		endpoint.Headers[alloyseed.LegacyHeaderName] = uid
+		endpoint.Headers[alloyseed.HeaderName] = uid
 		httpClient, err := commonconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
 		if err != nil {
 			return nil, err

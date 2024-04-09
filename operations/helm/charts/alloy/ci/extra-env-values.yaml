@@ -1,0 +1,9 @@
+# Specify extra ports for verifying rendering the template works
+alloy:
+  extraEnv:
+    - name: GREETING
+      value: "Warm greetings to"
+    - name: HONORIFIC
+      value: "The Most Honorable"
+    - name: NAME
+      value: "Kubernetes"

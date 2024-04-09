@@ -7,17 +7,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/component/pyroscope"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/service/cluster"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 
-	"github.com/grafana/agent/internal/component"
-	component_config "github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/scrape"
+	"github.com/grafana/alloy/internal/component"
+	component_config "github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/scrape"
 )
 
 const (
@@ -35,7 +35,7 @@ const (
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.scrape",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -47,57 +47,57 @@ func init() {
 // Arguments holds values which are used to configure the pprof.scrape
 // component.
 type Arguments struct {
-	Targets   []discovery.Target     `river:"targets,attr"`
-	ForwardTo []pyroscope.Appendable `river:"forward_to,attr"`
+	Targets   []discovery.Target     `alloy:"targets,attr"`
+	ForwardTo []pyroscope.Appendable `alloy:"forward_to,attr"`
 
 	// The job name to override the job label with.
-	JobName string `river:"job_name,attr,optional"`
+	JobName string `alloy:"job_name,attr,optional"`
 	// A set of query parameters with which the target is scraped.
-	Params url.Values `river:"params,attr,optional"`
+	Params url.Values `alloy:"params,attr,optional"`
 	// How frequently to scrape the targets of this scrape config.
-	ScrapeInterval time.Duration `river:"scrape_interval,attr,optional"`
+	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
 	// The timeout for scraping targets of this config.
-	ScrapeTimeout time.Duration `river:"scrape_timeout,attr,optional"`
+	ScrapeTimeout time.Duration `alloy:"scrape_timeout,attr,optional"`
 	// The URL scheme with which to fetch metrics from targets.
-	Scheme string `river:"scheme,attr,optional"`
+	Scheme string `alloy:"scheme,attr,optional"`
 
 	// todo(ctovena): add support for limits.
 	// // An uncompressed response body larger than this many bytes will cause the
 	// // scrape to fail. 0 means no limit.
-	// BodySizeLimit units.Base2Bytes `river:"body_size_limit,attr,optional"`
+	// BodySizeLimit units.Base2Bytes `alloy:"body_size_limit,attr,optional"`
 	// // More than this many targets after the target relabeling will cause the
 	// // scrapes to fail.
-	// TargetLimit uint `river:"target_limit,attr,optional"`
+	// TargetLimit uint `alloy:"target_limit,attr,optional"`
 	// // More than this many labels post metric-relabeling will cause the scrape
 	// // to fail.
-	// LabelLimit uint `river:"label_limit,attr,optional"`
+	// LabelLimit uint `alloy:"label_limit,attr,optional"`
 	// // More than this label name length post metric-relabeling will cause the
 	// // scrape to fail.
-	// LabelNameLengthLimit uint `river:"label_name_length_limit,attr,optional"`
+	// LabelNameLengthLimit uint `alloy:"label_name_length_limit,attr,optional"`
 	// // More than this label value length post metric-relabeling will cause the
 	// // scrape to fail.
-	// LabelValueLengthLimit uint `river:"label_value_length_limit,attr,optional"`
+	// LabelValueLengthLimit uint `alloy:"label_value_length_limit,attr,optional"`
 
-	HTTPClientConfig component_config.HTTPClientConfig `river:",squash"`
+	HTTPClientConfig component_config.HTTPClientConfig `alloy:",squash"`
 
-	ProfilingConfig ProfilingConfig `river:"profiling_config,block,optional"`
+	ProfilingConfig ProfilingConfig `alloy:"profiling_config,block,optional"`
 
-	Clustering cluster.ComponentBlock `river:"clustering,block,optional"`
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
 type ProfilingConfig struct {
-	Memory            ProfilingTarget         `river:"profile.memory,block,optional"`
-	Block             ProfilingTarget         `river:"profile.block,block,optional"`
-	Goroutine         ProfilingTarget         `river:"profile.goroutine,block,optional"`
-	Mutex             ProfilingTarget         `river:"profile.mutex,block,optional"`
-	ProcessCPU        ProfilingTarget         `river:"profile.process_cpu,block,optional"`
-	FGProf            ProfilingTarget         `river:"profile.fgprof,block,optional"`
-	GoDeltaProfMemory ProfilingTarget         `river:"profile.godeltaprof_memory,block,optional"`
-	GoDeltaProfMutex  ProfilingTarget         `river:"profile.godeltaprof_mutex,block,optional"`
-	GoDeltaProfBlock  ProfilingTarget         `river:"profile.godeltaprof_block,block,optional"`
-	Custom            []CustomProfilingTarget `river:"profile.custom,block,optional"`
+	Memory            ProfilingTarget         `alloy:"profile.memory,block,optional"`
+	Block             ProfilingTarget         `alloy:"profile.block,block,optional"`
+	Goroutine         ProfilingTarget         `alloy:"profile.goroutine,block,optional"`
+	Mutex             ProfilingTarget         `alloy:"profile.mutex,block,optional"`
+	ProcessCPU        ProfilingTarget         `alloy:"profile.process_cpu,block,optional"`
+	FGProf            ProfilingTarget         `alloy:"profile.fgprof,block,optional"`
+	GoDeltaProfMemory ProfilingTarget         `alloy:"profile.godeltaprof_memory,block,optional"`
+	GoDeltaProfMutex  ProfilingTarget         `alloy:"profile.godeltaprof_mutex,block,optional"`
+	GoDeltaProfBlock  ProfilingTarget         `alloy:"profile.godeltaprof_block,block,optional"`
+	Custom            []CustomProfilingTarget `alloy:"profile.custom,block,optional"`
 
-	PprofPrefix string `river:"path_prefix,attr,optional"`
+	PprofPrefix string `alloy:"path_prefix,attr,optional"`
 }
 
 // AllTargets returns the set of all standard and custom profiling targets,
@@ -169,22 +169,22 @@ var DefaultProfilingConfig = ProfilingConfig{
 	},
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (cfg *ProfilingConfig) SetToDefault() {
 	*cfg = DefaultProfilingConfig
 }
 
 type ProfilingTarget struct {
-	Enabled bool   `river:"enabled,attr,optional"`
-	Path    string `river:"path,attr,optional"`
-	Delta   bool   `river:"delta,attr,optional"`
+	Enabled bool   `alloy:"enabled,attr,optional"`
+	Path    string `alloy:"path,attr,optional"`
+	Delta   bool   `alloy:"delta,attr,optional"`
 }
 
 type CustomProfilingTarget struct {
-	Enabled bool   `river:"enabled,attr"`
-	Path    string `river:"path,attr"`
-	Delta   bool   `river:"delta,attr,optional"`
-	Name    string `river:",label"`
+	Enabled bool   `alloy:"enabled,attr"`
+	Path    string `alloy:"path,attr"`
+	Delta   bool   `alloy:"delta,attr,optional"`
+	Name    string `alloy:",label"`
 }
 
 var DefaultArguments = NewDefaultArguments()
@@ -200,12 +200,12 @@ func NewDefaultArguments() Arguments {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (arg *Arguments) SetToDefault() {
 	*arg = NewDefaultArguments()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (arg *Arguments) Validate() error {
 	if arg.ScrapeTimeout.Seconds() <= 0 {
 		return fmt.Errorf("scrape_timeout must be greater than 0")
@@ -247,14 +247,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	clusterData := data.(cluster.Cluster)
 
-	flowAppendable := pyroscope.NewFanout(args.ForwardTo, o.ID, o.Registerer)
-	scraper := NewManager(flowAppendable, o.Logger)
+	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, o.ID, o.Registerer)
+	scraper := NewManager(alloyAppendable, o.Logger)
 	c := &Component{
 		opts:          o,
 		cluster:       clusterData,
 		reloadTargets: make(chan struct{}, 1),
 		scraper:       scraper,
-		appendable:    flowAppendable,
+		appendable:    alloyAppendable,
 	}
 
 	// Call to Update() to set the receivers and targets once at the start.

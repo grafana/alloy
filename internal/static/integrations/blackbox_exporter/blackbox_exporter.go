@@ -7,9 +7,9 @@ import (
 	"net/url"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/config"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/config"
+	"github.com/grafana/alloy/internal/util"
 	blackbox_config "github.com/prometheus/blackbox_exporter/config"
 	"github.com/prometheus/blackbox_exporter/prober"
 	"github.com/prometheus/client_golang/prometheus"

@@ -17,8 +17,8 @@ go_modules:
 # explicitly in go.mod *OR* are in go.mod but replaced with a fork should be
 # added here.
 #
-# The "current" version being used in the Agent must be provided explicitly as
-# you can see below.
+# The "current" version being used in Alloy must be provided explicitly as you
+# can see below.
 github_repos:
   - github.com/google/dnsmasq_exporter v0.2.0
   - github.com/ncabatoff/process-exporter v0.7.5

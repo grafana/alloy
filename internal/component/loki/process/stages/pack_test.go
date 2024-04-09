@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/grafana/loki/pkg/logqlmodel"
 	json "github.com/json-iterator/go"
@@ -16,7 +16,7 @@ import (
 )
 
 // Not all these are tested but are here to make sure the different types marshal without error
-var testPackRiver = `
+var testPackAlloy = `
 stage.match {
 		selector = "{container=\"foo\"}"
 		stage.pack {
@@ -32,13 +32,13 @@ stage.match {
 		}
 }`
 
-// TestDropPipeline is used to verify we properly parse the river config and
+// TestDropPipeline is used to verify we properly parse the Alloy config and
 // create a working pipeline.
 func TestPackPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_pack_pipeline"
-	logger := util.TestFlowLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testPackRiver), &plName, registry)
+	logger := util.TestAlloyLogger(t)
+	pl, err := NewPipeline(logger, loadConfig(testPackAlloy), &plName, registry)
 	require.NoError(t, err)
 
 	l1Lbls := model.LabelSet{
@@ -335,7 +335,7 @@ func TestPackStage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			m := newPackStage(logger, *tt.config, prometheus.DefaultRegisterer)
 			// Normal pipeline operation will put all the labels into the extracted map
 			// replicate that here.

@@ -1,7 +1,0 @@
-global:
-  podSecurityContext:
-    fsGroup: 473
-agent:
-  securityContext:
-    runAsUser: 473
-    runAsGroup: 473

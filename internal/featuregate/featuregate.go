@@ -1,5 +1,5 @@
 // Package featuregate provides a way to gate features in the collector based on different options, such as the
-// feature's stability level and user-defined minimum allowed stability level. This package is used by Flow Mode only.
+// feature's stability level and user-defined minimum allowed stability level.
 package featuregate
 
 import (
@@ -13,14 +13,24 @@ import (
 type Stability int
 
 const (
+	// NOTE(rfratto): Grafana has a life cycle stage called "Private Preview"
+	// after experimental but before Public Preview. This stage doesn't make
+	// sense for Alloy, as it's not possible for a feature to be only available
+	// upon request.
+	//
+	// Based on this, we only use Experimental, Public preview, and Generally available.
+
 	// StabilityUndefined is the default value for Stability, which indicates an error and should never be used.
 	StabilityUndefined Stability = iota
-	// StabilityExperimental is used to designate experimental features.
+	// StabilityExperimental is used to designate features in the Experimental
+	// stage.
 	StabilityExperimental
-	// StabilityBeta is used to designate beta features.
-	StabilityBeta
-	// StabilityStable is used to designate stable features.
-	StabilityStable
+	// StabilityPublicPreview is used to designate features in the Public Preview
+	// stage.
+	StabilityPublicPreview
+	// StabilityGenerallyAvailable is used to designate features in the Generally
+	// Available stage.
+	StabilityGenerallyAvailable
 )
 
 func CheckAllowed(stability Stability, minStability Stability, featureName string) error {
@@ -47,8 +57,8 @@ func CheckAllowed(stability Stability, minStability Stability, featureName strin
 
 func AllowedValues() []string {
 	return []string{
-		StabilityStable.String(),
-		StabilityBeta.String(),
+		StabilityGenerallyAvailable.String(),
+		StabilityPublicPreview.String(),
 		StabilityExperimental.String(),
 	}
 }
@@ -58,9 +68,9 @@ var (
 	_ pflag.Value = (*Stability)(nil)
 	// stabilityToString defines how to convert a Stability to a string.
 	stabilityToString = map[Stability]string{
-		StabilityExperimental: "experimental",
-		StabilityBeta:         "beta",
-		StabilityStable:       "stable",
+		StabilityExperimental:       "experimental",
+		StabilityPublicPreview:      "public-preview",
+		StabilityGenerallyAvailable: "generally-available",
 	}
 )
 

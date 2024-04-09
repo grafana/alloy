@@ -1,4 +1,4 @@
-// Package connector exposes utilities to create a Flow component from
+// Package connector exposes utilities to create an Alloy component from
 // OpenTelemetry Collector connectors.
 package connector
 
@@ -7,14 +7,14 @@ import (
 	"errors"
 	"os"
 
-	"github.com/grafana/agent/internal/build"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazycollector"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/internal/scheduler"
-	"github.com/grafana/agent/internal/util/zapadapter"
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconnector "go.opentelemetry.io/collector/connector"
@@ -58,8 +58,8 @@ type Arguments interface {
 	ConnectorType() int
 }
 
-// Connector is a Flow component shim which manages an OpenTelemetry Collector
-// connector component.
+// Connector is an Alloy component shim which manages an OpenTelemetry
+// Collector connector component.
 type Connector struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -77,9 +77,9 @@ var (
 	_ component.HealthComponent = (*Connector)(nil)
 )
 
-// New creates a new Flow component which encapsulates an OpenTelemetry
+// New creates a new Alloy component which encapsulates an OpenTelemetry
 // Collector connector. args must hold a value of the argument type registered
-// with the Flow component.
+// with the Alloy component.
 //
 // The registered component must be registered to export the
 // otelcol.ConsumerExports type, otherwise New will panic.
@@ -155,7 +155,7 @@ func (p *Connector) Update(args component.Arguments) error {
 
 		BuildInfo: otelcomponent.BuildInfo{
 			Command:     os.Args[0],
-			Description: "Grafana Agent",
+			Description: "Grafana Alloy",
 			Version:     build.Version,
 		},
 	}

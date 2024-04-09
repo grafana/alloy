@@ -14,7 +14,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	agentWal "github.com/grafana/agent/internal/component/common/loki/wal"
+	alloyWal "github.com/grafana/alloy/internal/component/common/loki/wal"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -28,7 +29,7 @@ import (
 
 // StoppableWriteTo is a mixing of the WAL's WriteTo interface, that is Stoppable as well.
 type StoppableWriteTo interface {
-	agentWal.WriteTo
+	alloyWal.WriteTo
 	Stop()
 	StopNow()
 }
@@ -224,7 +225,7 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		return nil, err
 	}
 
-	c.client, err = config.NewClientFromConfig(cfg.Client, "GrafanaAgent", config.WithHTTP2Disabled())
+	c.client, err = config.NewClientFromConfig(cfg.Client, useragent.ProductName, config.WithHTTP2Disabled())
 	if err != nil {
 		return nil, err
 	}

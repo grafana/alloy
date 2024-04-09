@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +24,7 @@ func Test(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(cfg), &args)
+	err := syntax.Unmarshal([]byte(cfg), &args)
 	require.NoError(t, err)
 
 	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.docker")
@@ -50,7 +50,7 @@ func TestDuplicateTargets(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(cfg), &args)
+	err := syntax.Unmarshal([]byte(cfg), &args)
 	require.NoError(t, err)
 
 	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.docker")
@@ -65,7 +65,7 @@ func TestDuplicateTargets(t *testing.T) {
 
 	cmp, err := New(component.Options{
 		ID:         "loki.source.docker.test",
-		Logger:     util.TestFlowLogger(t),
+		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus.NewRegistry(),
 		DataPath:   t.TempDir(),
 	}, args)

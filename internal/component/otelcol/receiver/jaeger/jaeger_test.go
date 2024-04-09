@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/receiver/jaeger"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver/jaeger"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )
@@ -34,7 +34,7 @@ func Test(t *testing.T) {
 		output { /* no-op */ }
 	`, httpAddr)
 	var args jaeger.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	go func() {
 		err := ctrl.Run(ctx, args)
@@ -49,7 +49,7 @@ func Test(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	t.Run("grpc", func(t *testing.T) {
 		in := `
 			protocols { grpc {} }
@@ -57,7 +57,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 		`
 
 		var args jaeger.Arguments
-		require.NoError(t, river.Unmarshal([]byte(in), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 
 		defaults := &jaeger.GRPC{}
 		defaults.SetToDefault()
@@ -75,7 +75,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 		`
 
 		var args jaeger.Arguments
-		require.NoError(t, river.Unmarshal([]byte(in), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 
 		defaults := &jaeger.ThriftHTTP{}
 		defaults.SetToDefault()
@@ -93,7 +93,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 		`
 
 		var args jaeger.Arguments
-		require.NoError(t, river.Unmarshal([]byte(in), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 
 		defaults := &jaeger.ThriftBinary{}
 		defaults.SetToDefault()
@@ -111,7 +111,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 		`
 
 		var args jaeger.Arguments
-		require.NoError(t, river.Unmarshal([]byte(in), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 
 		defaults := &jaeger.ThriftCompact{}
 		defaults.SetToDefault()
@@ -135,12 +135,12 @@ func getFreeAddr(t *testing.T) string {
 func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
-		agentCfg string
+		alloyCfg string
 		expected otelcol.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
-			agentCfg: `
+			alloyCfg: `
 			protocols { thrift_compact {} }
 			output {}
 			`,
@@ -150,7 +150,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_false",
-			agentCfg: `
+			alloyCfg: `
 			protocols { thrift_compact {} }
 			debug_metrics {
 				disable_high_cardinality_metrics = false
@@ -163,7 +163,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_true",
-			agentCfg: `
+			alloyCfg: `
 			protocols { thrift_compact {} }
 			debug_metrics {
 				disable_high_cardinality_metrics = true
@@ -179,7 +179,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args jaeger.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

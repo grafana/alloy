@@ -4,9 +4,9 @@ package dnsmasq_exporter
 import (
 	"github.com/go-kit/log"
 	"github.com/google/dnsmasq_exporter/collector"
-	"github.com/grafana/agent/internal/static/integrations"
-	integrations_v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/metricsutils"
+	"github.com/grafana/alloy/internal/static/integrations"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/miekg/dns"
 )
 

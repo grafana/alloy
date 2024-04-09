@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/processor"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/processor"
+	"github.com/grafana/alloy/internal/featuregate"
 	tsp "github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.tail_sampling",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -30,12 +30,12 @@ func init() {
 
 // Arguments configures the otelcol.processor.tail_sampling component.
 type Arguments struct {
-	PolicyCfgs              []PolicyConfig `river:"policy,block"`
-	DecisionWait            time.Duration  `river:"decision_wait,attr,optional"`
-	NumTraces               uint64         `river:"num_traces,attr,optional"`
-	ExpectedNewTracesPerSec uint64         `river:"expected_new_traces_per_sec,attr,optional"`
+	PolicyCfgs              []PolicyConfig `alloy:"policy,block"`
+	DecisionWait            time.Duration  `alloy:"decision_wait,attr,optional"`
+	NumTraces               uint64         `alloy:"num_traces,attr,optional"`
+	ExpectedNewTracesPerSec uint64         `alloy:"expected_new_traces_per_sec,attr,optional"`
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (
@@ -49,12 +49,12 @@ var DefaultArguments = Arguments{
 	ExpectedNewTracesPerSec: 0,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.DecisionWait.Milliseconds() <= 0 {
 		return fmt.Errorf("decision_wait must be greater than zero")

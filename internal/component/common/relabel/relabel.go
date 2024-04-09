@@ -109,13 +109,13 @@ func (re Regexp) String() string {
 
 // Config describes a relabelling step to be applied on a target.
 type Config struct {
-	SourceLabels []string `river:"source_labels,attr,optional"`
-	Separator    string   `river:"separator,attr,optional"`
-	Regex        Regexp   `river:"regex,attr,optional"`
-	Modulus      uint64   `river:"modulus,attr,optional"`
-	TargetLabel  string   `river:"target_label,attr,optional"`
-	Replacement  string   `river:"replacement,attr,optional"`
-	Action       Action   `river:"action,attr,optional"`
+	SourceLabels []string `alloy:"source_labels,attr,optional"`
+	Separator    string   `alloy:"separator,attr,optional"`
+	Regex        Regexp   `alloy:"regex,attr,optional"`
+	Modulus      uint64   `alloy:"modulus,attr,optional"`
+	TargetLabel  string   `alloy:"target_label,attr,optional"`
+	Replacement  string   `alloy:"replacement,attr,optional"`
+	Action       Action   `alloy:"action,attr,optional"`
 }
 
 // DefaultRelabelConfig sets the default values of fields when decoding a RelabelConfig block.
@@ -126,7 +126,7 @@ var DefaultRelabelConfig = Config{
 	Replacement: "$1",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (c *Config) SetToDefault() {
 	*c = Config{
 		Action:      Replace,
@@ -138,7 +138,7 @@ func (c *Config) SetToDefault() {
 
 var relabelTarget = regexp.MustCompile(`^(?:(?:[a-zA-Z_]|\$(?:\{\w+\}|\w+))+\w*)+$`)
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (rc *Config) Validate() error {
 	if rc.Action == "" {
 		return fmt.Errorf("relabel action cannot be empty")
@@ -213,6 +213,6 @@ func ComponentToPromRelabelConfigs(rcs []*Config) []*relabel.Config {
 // Rules returns the relabel configs in use for a relabeling component.
 type Rules []*Config
 
-// RiverCapsule marks the alias defined above as a "capsule type" so that it
-// cannot be invoked by River code.
-func (r Rules) RiverCapsule() {}
+// AlloyCapsule marks the alias defined above as a "capsule type" so that it
+// cannot be invoked by Alloy code.
+func (r Rules) AlloyCapsule() {}

@@ -25,11 +25,8 @@ import (
 	"net/url"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/static/integrations/v2/autoscrape"
-	"github.com/grafana/agent/internal/static/logs"
-	"github.com/grafana/agent/internal/static/metrics"
-	"github.com/grafana/agent/internal/static/server"
-	"github.com/grafana/agent/internal/static/traces"
+	"github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
+	"github.com/grafana/alloy/internal/static/server"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 )
@@ -83,14 +80,6 @@ type Globals struct {
 	// AgentIdentifier will be set to the hostname:port of the running agent.
 	// TODO(rfratto): flag to override identifier at agent level?
 	AgentIdentifier string
-
-	// Some integrations may wish to interact with various subsystems for their
-	// implementation if the desired behavior is not supported natively by the
-	// integration manager.
-
-	Metrics *metrics.Agent // Metrics subsystem
-	Logs    *logs.Logs     // Logs subsystem
-	Tracing *traces.Traces // Traces subsystem
 
 	// Options the integrations subsystem is using.
 	SubsystemOpts SubsystemOptions

@@ -4,22 +4,22 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/otelcol"
 )
 
 // ComponentConverter represents a converter which converts an OpenTelemetry
-// Collector component into a Flow component.
+// Collector component into an Alloy component.
 type ComponentConverter interface {
 	// Factory should return the factory for the OpenTelemetry Collector
 	// component.
 	Factory() component.Factory
 
-	// InputComponentName should return the name of the Flow component where
-	// other Flow components forward OpenTelemetry data to.
+	// InputComponentName should return the name of the Alloy component where
+	// other Alloy components forward OpenTelemetry data to.
 	//
 	// For example, a converter which emits a chain of components
 	// (otelcol.receiver.prometheus -> prometheus.remote_write) should return
@@ -31,14 +31,14 @@ type ComponentConverter interface {
 	InputComponentName() string
 
 	// ConvertAndAppend should convert the provided OpenTelemetry Collector
-	// component configuration into Flow configuration and append the result to
+	// component configuration into Alloy configuration and append the result to
 	// [state.Body]. Implementations are expected to append configuration where
 	// all required arguments are set and all optional arguments are set to the
-	// values from the input configuration or the Flow mode default.
+	// values from the input configuration or the Alloy default.
 	//
 	// ConvertAndAppend may be called more than once with the same component used
-	// in different pipelines. Use [state.FlowComponentLabel] to get a guaranteed
-	// unique Flow component label for the current state.
+	// in different pipelines. Use [state.AlloyComponentLabel] to get a guaranteed
+	// unique Alloy component label for the current state.
 	ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics
 }
 
@@ -59,7 +59,7 @@ type State struct {
 	// converterLookup maps a converter key to the associated converter instance.
 	converterLookup map[converterKey]ComponentConverter
 
-	// extensionLookup maps OTel extensions to Flow component IDs.
+	// extensionLookup maps OTel extensions to Alloy component IDs.
 	extensionLookup map[component.ID]componentID
 
 	componentID          component.InstanceID // ID of the current component being converted.
@@ -76,20 +76,20 @@ type converterKey struct {
 // [componentConverter] should use this to append components.
 func (state *State) Body() *builder.Body { return state.file.Body() }
 
-// FlowComponentLabel returns the unique Flow label for the OpenTelemetry
+// AlloyComponentLabel returns the unique Alloy label for the OpenTelemetry
 // Component component being converted. It is safe to use this label to create
-// multiple Flow components in a chain.
-func (state *State) FlowComponentLabel() string {
-	return state.flowLabelForComponent(state.componentID)
+// multiple Alloy components in a chain.
+func (state *State) AlloyComponentLabel() string {
+	return state.alloyLabelForComponent(state.componentID)
 }
 
-// flowLabelForComponent returns the unique Flow label for the given
+// alloyLabelForComponent returns the unique Alloy label for the given
 // OpenTelemetry Collector component.
-func (state *State) flowLabelForComponent(c component.InstanceID) string {
+func (state *State) alloyLabelForComponent(c component.InstanceID) string {
 	const defaultLabel = "default"
 
 	// We need to prove that it's possible to statelessly compute the label for a
-	// Flow component just by using the group name and the otelcol component name:
+	// Alloy component just by using the group name and the otelcol component name:
 	//
 	// 1. OpenTelemetry Collector components are created once per pipeline, where
 	//    the pipeline must have a unique key (a combination of telemetry type and
@@ -117,7 +117,7 @@ func (state *State) flowLabelForComponent(c component.InstanceID) string {
 
 	// We want to make the component label as idiomatic as possible. If both the
 	// group and component name are empty, we'll name it "default," aligning
-	// with standard Flow naming conventions.
+	// with standard Alloy naming conventions.
 	//
 	// Otherwise, we'll replace empty group and component names with "default"
 	// and concatenate them with an underscore.
@@ -142,7 +142,7 @@ func (state *State) flowLabelForComponent(c component.InstanceID) string {
 	return common.SanitizeIdentifierPanics(unsanitizedLabel)
 }
 
-// Next returns the set of Flow component IDs for a given data type that the
+// Next returns the set of Alloy component IDs for a given data type that the
 // current component being converted should forward data to.
 func (state *State) Next(c component.InstanceID, dataType component.DataType) []componentID {
 	instances := state.nextInstances(c, dataType)
@@ -156,7 +156,7 @@ func (state *State) Next(c component.InstanceID, dataType component.DataType) []
 		}
 
 		// Look up the converter associated with the instance and retrieve the name
-		// of the Flow component expected to receive data.
+		// of the Alloy component expected to receive data.
 		converter, found := state.converterLookup[key]
 		if !found {
 			panic(fmt.Sprintf("otelcolconvert: no component name found for converter key %v", key))
@@ -166,7 +166,7 @@ func (state *State) Next(c component.InstanceID, dataType component.DataType) []
 			panic(fmt.Sprintf("otelcolconvert: converter %T returned empty component name", converter))
 		}
 
-		componentLabel := state.flowLabelForComponent(instance)
+		componentLabel := state.alloyLabelForComponent(instance)
 
 		ids = append(ids, componentID{
 			Name:  strings.Split(componentName, "."),

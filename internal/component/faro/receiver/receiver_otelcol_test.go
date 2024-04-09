@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/auth"
-	"github.com/grafana/agent/internal/component/otelcol/auth/headers"
-	otlphttp "github.com/grafana/agent/internal/component/otelcol/exporter/otlphttp"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/component/otelcol/auth/headers"
+	otlphttp "github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )

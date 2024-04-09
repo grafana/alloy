@@ -1,9 +1,9 @@
 package build
 
 import (
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/exporter/cloudwatch"
-	"github.com/grafana/agent/internal/static/integrations/cloudwatch_exporter"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/cloudwatch"
+	"github.com/grafana/alloy/internal/static/integrations/cloudwatch_exporter"
 )
 
 func (b *ConfigBuilder) appendCloudwatchExporter(config *cloudwatch_exporter.Config, instanceKey *string) discovery.Exports {

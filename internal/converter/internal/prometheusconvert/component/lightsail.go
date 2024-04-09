@@ -3,12 +3,12 @@ package component
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/discovery/aws"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery/aws"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_aws "github.com/prometheus/prometheus/discovery/aws"
 )
 
@@ -33,7 +33,7 @@ func toDiscoveryLightsail(sdConfig *prom_aws.LightsailSDConfig) *aws.LightsailAr
 		Endpoint:         sdConfig.Endpoint,
 		Region:           sdConfig.Region,
 		AccessKey:        sdConfig.AccessKey,
-		SecretKey:        rivertypes.Secret(sdConfig.SecretKey),
+		SecretKey:        alloytypes.Secret(sdConfig.SecretKey),
 		Profile:          sdConfig.Profile,
 		RoleARN:          sdConfig.RoleARN,
 		RefreshInterval:  time.Duration(sdConfig.RefreshInterval),

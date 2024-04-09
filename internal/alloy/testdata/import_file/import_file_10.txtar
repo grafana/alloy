@@ -1,0 +1,66 @@
+Import module with two declares; one used in the other one.
+
+-- main.alloy --
+testcomponents.count "inc" {
+  frequency = "10ms"
+  max = 10
+}
+
+import.file "testImport" {
+  filename = "module.alloy"
+}
+
+testImport.b "cc" {
+  input = testcomponents.count.inc.count
+}
+
+testcomponents.summation "sum" {
+  input = testImport.b.cc.output
+}
+
+-- module.alloy --
+declare "a" {
+  argument "input" {}
+
+  testcomponents.passthrough "pt" {
+    input = argument.input.value
+    lag = "1ms"
+  }
+
+  export "output" {
+    value = testcomponents.passthrough.pt.output
+  }
+}
+
+declare "b" {
+  argument "input" {}
+
+  a "cc" {
+    input = argument.input.value
+  }
+
+  export "output" {
+    value = a.cc.output
+  }
+}
+
+-- update/module.alloy --
+declare "a" {
+  argument "input" {}
+
+  export "output" {
+    value = -argument.input.value
+  }
+}
+
+declare "b" {
+  argument "input" {}
+
+  a "cc" {
+    input = argument.input.value
+  }
+
+  export "output" {
+    value = a.cc.output
+  }
+}

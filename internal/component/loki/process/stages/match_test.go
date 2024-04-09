@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
 
-var testMatchRiver = `
+var testMatchAlloy = `
 stage.json {
 		expressions = { "app" = "" }
 }
@@ -64,8 +64,8 @@ var testMatchLogLineApp2 = `
 func TestMatchStage(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_match_pipeline"
-	logger := util.TestFlowLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testMatchRiver), &plName, registry)
+	logger := util.TestAlloyLogger(t)
+	pl, err := NewPipeline(logger, loadConfig(testMatchAlloy), &plName, registry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func TestMatcher(t *testing.T) {
 				"",
 				"",
 			}
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			s, err := newMatcherStage(logger, nil, matchConfig, prometheus.DefaultRegisterer)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("withMatcher() error = %v, wantErr %v", err, tt.wantErr)

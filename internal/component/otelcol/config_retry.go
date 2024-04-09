@@ -4,27 +4,27 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"go.opentelemetry.io/collector/config/configretry"
 )
 
 // RetryArguments holds shared settings for components which can retry
 // requests.
 type RetryArguments struct {
-	Enabled             bool          `river:"enabled,attr,optional"`
-	InitialInterval     time.Duration `river:"initial_interval,attr,optional"`
-	RandomizationFactor float64       `river:"randomization_factor,attr,optional"`
-	Multiplier          float64       `river:"multiplier,attr,optional"`
-	MaxInterval         time.Duration `river:"max_interval,attr,optional"`
-	MaxElapsedTime      time.Duration `river:"max_elapsed_time,attr,optional"`
+	Enabled             bool          `alloy:"enabled,attr,optional"`
+	InitialInterval     time.Duration `alloy:"initial_interval,attr,optional"`
+	RandomizationFactor float64       `alloy:"randomization_factor,attr,optional"`
+	Multiplier          float64       `alloy:"multiplier,attr,optional"`
+	MaxInterval         time.Duration `alloy:"max_interval,attr,optional"`
+	MaxElapsedTime      time.Duration `alloy:"max_elapsed_time,attr,optional"`
 }
 
 var (
-	_ river.Defaulter = (*RetryArguments)(nil)
-	_ river.Validator = (*RetryArguments)(nil)
+	_ syntax.Defaulter = (*RetryArguments)(nil)
+	_ syntax.Validator = (*RetryArguments)(nil)
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *RetryArguments) SetToDefault() {
 	*args = RetryArguments{
 		Enabled:             true,

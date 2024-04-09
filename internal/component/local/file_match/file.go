@@ -5,16 +5,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "local.file_match",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -26,8 +26,8 @@ func init() {
 // Arguments holds values which are used to configure the local.file_match
 // component.
 type Arguments struct {
-	PathTargets []discovery.Target `river:"path_targets,attr"`
-	SyncPeriod  time.Duration      `river:"sync_period,attr,optional"`
+	PathTargets []discovery.Target `alloy:"path_targets,attr"`
+	SyncPeriod  time.Duration      `alloy:"sync_period,attr,optional"`
 }
 
 var _ component.Component = (*Component)(nil)
@@ -62,7 +62,7 @@ func getDefault() Arguments {
 	return Arguments{SyncPeriod: 10 * time.Second}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = getDefault()
 }

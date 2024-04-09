@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/golang/snappy"
-	"github.com/grafana/agent/internal/component"
-	fnet "github.com/grafana/agent/internal/component/common/net"
-	agentprom "github.com/grafana/agent/internal/component/prometheus"
-	"github.com/grafana/agent/internal/service/labelstore"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
@@ -349,10 +349,10 @@ func testAppendable(actualSamples chan testSample) []storage.Appendable {
 	}
 
 	ls := labelstore.New(nil, prometheus.DefaultRegisterer)
-	return []storage.Appendable{agentprom.NewInterceptor(
+	return []storage.Appendable{alloyprom.NewInterceptor(
 		nil,
 		ls,
-		agentprom.WithAppendHook(
+		alloyprom.WithAppendHook(
 			hookFn))}
 }
 
@@ -382,7 +382,7 @@ func request(ctx context.Context, rawRemoteWriteURL string, req *prompb.WriteReq
 func testOptions(t *testing.T) component.Options {
 	return component.Options{
 		ID:         "prometheus.receive_http.test",
-		Logger:     util.TestFlowLogger(t),
+		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus.NewRegistry(),
 		GetServiceData: func(name string) (interface{}, error) {
 			return labelstore.New(nil, prometheus.DefaultRegisterer), nil

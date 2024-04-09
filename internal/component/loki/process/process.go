@@ -8,10 +8,10 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/loki/process/stages"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/process/stages"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 // TODO(thampiotr): We should reconsider which parts of this component should be exported and which should
@@ -22,7 +22,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.process",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -34,14 +34,14 @@ func init() {
 // Arguments holds values which are used to configure the loki.process
 // component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver  `river:"forward_to,attr"`
-	Stages    []stages.StageConfig `river:"stage,enum,optional"`
+	ForwardTo []loki.LogsReceiver  `alloy:"forward_to,attr"`
+	Stages    []stages.StageConfig `alloy:"stage,enum,optional"`
 }
 
 // Exports exposes the receiver that can be used to send log entries to
 // loki.process.
 type Exports struct {
-	Receiver loki.LogsReceiver `river:"receiver,attr"`
+	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
 }
 
 var (

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/util"
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -16,7 +16,7 @@ import (
 )
 
 // Not all these are tested but are here to make sure the different types marshal without error
-var testDropRiver = `
+var testDropAlloy = `
 stage.json {
 		expressions = { "app" = "", "msg" = "" }
 }
@@ -415,7 +415,7 @@ func Test_dropStage_Process(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			}
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			m, err := newDropStage(logger, *tt.config, prometheus.DefaultRegisterer)
 			require.NoError(t, err)
 			out := processEntries(m, newEntry(tt.extracted, tt.labels, tt.entry, tt.t))
@@ -431,8 +431,8 @@ func Test_dropStage_Process(t *testing.T) {
 func TestDropPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_drop_pipeline"
-	logger := util.TestFlowLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testDropRiver), &plName, registry)
+	logger := util.TestAlloyLogger(t)
+	pl, err := NewPipeline(logger, loadConfig(testDropAlloy), &plName, registry)
 	require.NoError(t, err)
 	out := processEntries(pl,
 		newEntry(nil, nil, testMatchLogLineApp1, time.Now()),

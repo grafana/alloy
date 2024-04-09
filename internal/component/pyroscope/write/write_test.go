@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/pyroscope"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/river"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
@@ -44,7 +44,7 @@ func Test_Write_FanOut(t *testing.T) {
 			func(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 				pushTotal.Inc()
 				require.Equal(t, "test", req.Header()["X-Test-Header"][0])
-				require.Contains(t, req.Header()["User-Agent"][0], "GrafanaAgent/")
+				require.Contains(t, req.Header()["User-Agent"][0], "Alloy/")
 				require.Equal(t, []*typesv1.LabelPair{
 					{Name: "__name__", Value: "test"},
 					{Name: "foo", Value: "buzz"},
@@ -85,7 +85,7 @@ func Test_Write_FanOut(t *testing.T) {
 		wg.Add(1)
 		c, err := New(component.Options{
 			ID:         "1",
-			Logger:     util.TestFlowLogger(t),
+			Logger:     util.TestAlloyLogger(t),
 			Registerer: prometheus.NewRegistry(),
 			OnStateChange: func(e component.Exports) {
 				defer wg.Done()
@@ -161,7 +161,7 @@ func Test_Write_Update(t *testing.T) {
 	wg.Add(1)
 	c, err := New(component.Options{
 		ID:         "1",
-		Logger:     util.TestFlowLogger(t),
+		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {
 			defer wg.Done()
@@ -210,7 +210,7 @@ func Test_Write_Update(t *testing.T) {
 
 func Test_Unmarshal_Config(t *testing.T) {
 	var arg Arguments
-	river.Unmarshal([]byte(`
+	syntax.Unmarshal([]byte(`
 	endpoint {
 		url = "http://localhost:4100"
 		remote_timeout = "10s"
@@ -235,8 +235,8 @@ func Test_Unmarshal_Config(t *testing.T) {
 	require.Equal(t, 10, arg.Endpoints[1].MaxBackoffRetries)
 }
 
-func TestBadRiverConfig(t *testing.T) {
-	exampleRiverConfig := `
+func TestBadAlloyConfig(t *testing.T) {
+	exampleAlloyConfig := `
 	endpoint {
 		url = "http://localhost:4100"
 		remote_timeout = "10s"
@@ -250,6 +250,6 @@ func TestBadRiverConfig(t *testing.T) {
 
 	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 }

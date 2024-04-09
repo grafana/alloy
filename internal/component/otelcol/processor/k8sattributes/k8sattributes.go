@@ -2,10 +2,10 @@
 package k8sattributes
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/processor"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/processor"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.k8sattributes",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -32,18 +32,18 @@ var (
 
 // Arguments configures the otelcol.processor.k8sattributes component.
 type Arguments struct {
-	AuthType        string              `river:"auth_type,attr,optional"`
-	Passthrough     bool                `river:"passthrough,attr,optional"`
-	ExtractConfig   ExtractConfig       `river:"extract,block,optional"`
-	Filter          FilterConfig        `river:"filter,block,optional"`
-	PodAssociations PodAssociationSlice `river:"pod_association,block,optional"`
-	Exclude         ExcludeConfig       `river:"exclude,block,optional"`
+	AuthType        string              `alloy:"auth_type,attr,optional"`
+	Passthrough     bool                `alloy:"passthrough,attr,optional"`
+	ExtractConfig   ExtractConfig       `alloy:"extract,block,optional"`
+	Filter          FilterConfig        `alloy:"filter,block,optional"`
+	PodAssociations PodAssociationSlice `alloy:"pod_association,block,optional"`
+	Exclude         ExcludeConfig       `alloy:"exclude,block,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	// These are default excludes from upstream opentelemetry-collector-contrib
 	// Source: https://github.com/open-telemetry/opentelemetry-collector-contrib/blame/main/processor/k8sattributesprocessor/factory.go#L21
@@ -55,7 +55,7 @@ func (args *Arguments) SetToDefault() {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	cfg, err := args.Convert()
 	if err != nil {

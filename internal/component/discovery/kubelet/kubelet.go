@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/refresh"
@@ -61,7 +61,7 @@ var (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.kubelet",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -72,13 +72,13 @@ func init() {
 
 // Arguments configures the discovery.kubelet component.
 type Arguments struct {
-	URL              config.URL              `river:"url,attr,optional"`
-	Interval         time.Duration           `river:"refresh_interval,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
-	Namespaces       []string                `river:"namespaces,attr,optional"`
+	URL              config.URL              `alloy:"url,attr,optional"`
+	Interval         time.Duration           `alloy:"refresh_interval,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
+	Namespaces       []string                `alloy:"namespaces,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	cloneDefaultKubeletUrl := *defaultKubeletURL
 	*args = Arguments{
@@ -89,7 +89,7 @@ func (args *Arguments) SetToDefault() {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	return args.HTTPClientConfig.Validate()

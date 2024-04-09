@@ -8,11 +8,11 @@ import (
 	"path"
 
 	"github.com/gorilla/mux"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/service"
-	http_service "github.com/grafana/agent/internal/service/http"
-	"github.com/grafana/agent/internal/web/api"
-	"github.com/grafana/agent/internal/web/ui"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service"
+	http_service "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/web/api"
+	"github.com/grafana/alloy/internal/web/ui"
 )
 
 // ServiceName defines the name used for the UI service.
@@ -47,7 +47,7 @@ func (s *Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: nil, // ui does not accept configuration
 		DependsOn:  []string{http_service.ServiceName},
-		Stability:  featuregate.StabilityStable,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 
@@ -75,7 +75,7 @@ func (s *Service) Data() any {
 func (s *Service) ServiceHandler(host service.Host) (base string, handler http.Handler) {
 	r := mux.NewRouter()
 
-	fa := api.NewFlowAPI(host)
+	fa := api.NewAlloyAPI(host)
 	fa.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), r)
 	ui.RegisterRoutes(s.opts.UIPrefix, r)
 

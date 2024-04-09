@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/processor"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/processor"
+	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.batch",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -30,14 +30,14 @@ func init() {
 
 // Arguments configures the otelcol.processor.batch component.
 type Arguments struct {
-	Timeout                  time.Duration `river:"timeout,attr,optional"`
-	SendBatchSize            uint32        `river:"send_batch_size,attr,optional"`
-	SendBatchMaxSize         uint32        `river:"send_batch_max_size,attr,optional"`
-	MetadataKeys             []string      `river:"metadata_keys,attr,optional"`
-	MetadataCardinalityLimit uint32        `river:"metadata_cardinality_limit,attr,optional"`
+	Timeout                  time.Duration `alloy:"timeout,attr,optional"`
+	SendBatchSize            uint32        `alloy:"send_batch_size,attr,optional"`
+	SendBatchMaxSize         uint32        `alloy:"send_batch_max_size,attr,optional"`
+	MetadataKeys             []string      `alloy:"metadata_keys,attr,optional"`
+	MetadataCardinalityLimit uint32        `alloy:"metadata_cardinality_limit,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (
@@ -51,12 +51,12 @@ var DefaultArguments = Arguments{
 	MetadataCardinalityLimit: 1000,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.SendBatchMaxSize > 0 && args.SendBatchMaxSize < args.SendBatchSize {
 		return fmt.Errorf("send_batch_max_size must be greater or equal to send_batch_size when not 0")

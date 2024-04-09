@@ -19,9 +19,9 @@ import (
 	"unsafe"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
@@ -239,7 +239,7 @@ func (d *decompressor) readLines() {
 			if err != nil {
 				level.Debug(d.logger).Log("msg", "failed to convert encoding", "error", err)
 				d.metrics.encodingFailures.WithLabelValues(d.path).Inc()
-				finalText = fmt.Sprintf("the requested encoding conversion for this line failed in Grafana Agent: %s", err.Error())
+				finalText = fmt.Sprintf("the requested encoding conversion for this line failed in Grafana Alloy: %s", err.Error())
 			}
 		} else {
 			finalText = text

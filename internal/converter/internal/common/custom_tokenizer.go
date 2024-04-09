@@ -1,8 +1,8 @@
 package common
 
 import (
-	"github.com/grafana/river/token"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax/token"
+	"github.com/grafana/alloy/syntax/token/builder"
 )
 
 type CustomTokenizer struct {
@@ -11,7 +11,7 @@ type CustomTokenizer struct {
 
 var _ builder.Tokenizer = CustomTokenizer{}
 
-func (f CustomTokenizer) RiverTokenize() []builder.Token {
+func (f CustomTokenizer) AlloyTokenize() []builder.Token {
 	return []builder.Token{{
 		Tok: token.STRING,
 		Lit: f.Expr,

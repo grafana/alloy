@@ -4,16 +4,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/receiver/kafka"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"
+	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"github.com/stretchr/testify/require"
 )
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string
@@ -116,7 +116,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args kafka.Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			require.NoError(t, err)
 
 			actualPtr, err := args.Convert()
@@ -358,7 +358,7 @@ func TestArguments_Auth(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args kafka.Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			require.NoError(t, err)
 
 			actualPtr, err := args.Convert()
@@ -378,12 +378,12 @@ func TestArguments_Auth(t *testing.T) {
 func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
-		agentCfg string
+		alloyCfg string
 		expected otelcol.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
-			agentCfg: `
+			alloyCfg: `
 			brokers = ["10.10.10.10:9092"]
 			protocol_version = "2.0.0"
 			output {}
@@ -394,7 +394,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_false",
-			agentCfg: `
+			alloyCfg: `
 			brokers = ["10.10.10.10:9092"]
 			protocol_version = "2.0.0"
 			debug_metrics {
@@ -408,7 +408,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_true",
-			agentCfg: `
+			alloyCfg: `
 			brokers = ["10.10.10.10:9092"]
 			protocol_version = "2.0.0"
 			debug_metrics {
@@ -425,7 +425,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args kafka.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

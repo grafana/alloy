@@ -3,11 +3,11 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/receiver/kafka"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
@@ -28,7 +28,7 @@ func (kafkaReceiverConverter) InputComponentName() string { return "" }
 func (kafkaReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toKafkaReceiver(state, id, cfg.(*kafkareceiver.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "kafka"}, label, args)
@@ -92,7 +92,7 @@ func toKafkaPlaintext(cfg map[string]any) *kafka.PlaintextArguments {
 
 	return &kafka.PlaintextArguments{
 		Username: cfg["username"].(string),
-		Password: rivertypes.Secret(cfg["password"].(string)),
+		Password: alloytypes.Secret(cfg["password"].(string)),
 	}
 }
 
@@ -103,7 +103,7 @@ func toKafkaSASL(cfg map[string]any) *kafka.SASLArguments {
 
 	return &kafka.SASLArguments{
 		Username:  cfg["username"].(string),
-		Password:  rivertypes.Secret(cfg["password"].(string)),
+		Password:  alloytypes.Secret(cfg["password"].(string)),
 		Mechanism: cfg["mechanism"].(string),
 		Version:   cfg["version"].(int),
 		AWSMSK:    toKafkaAWSMSK(encodeMapstruct(cfg["aws_msk"])),
@@ -146,7 +146,7 @@ func toKafkaKerberos(cfg map[string]any) *kafka.KerberosArguments {
 		Realm:       cfg["realm"].(string),
 		UseKeyTab:   cfg["use_keytab"].(bool),
 		Username:    cfg["username"].(string),
-		Password:    rivertypes.Secret(cfg["password"].(string)),
+		Password:    alloytypes.Secret(cfg["password"].(string)),
 		ConfigPath:  cfg["config_file"].(string),
 		KeyTabPath:  cfg["keytab_file"].(string),
 	}
@@ -182,8 +182,8 @@ func toKafkaMessageMarking(cfg kafkareceiver.MessageMarking) kafka.MessageMarkin
 
 func toKafkaHeaderExtraction(cfg kafkareceiver.HeaderExtraction) kafka.HeaderExtraction {
 	// If cfg.Headers is nil, we set it to an empty slice to align with
-	// the default of the Flow component; if this isn't done than default headers
-	// will be explicitly set as `[]` in the generated Flow configuration file, which
+	// the default of the Alloy component; if this isn't done than default headers
+	// will be explicitly set as `[]` in the generated Alloy configuration file, which
 	// may confuse users.
 	if cfg.Headers == nil {
 		cfg.Headers = []string{}

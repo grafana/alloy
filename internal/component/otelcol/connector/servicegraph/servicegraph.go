@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/connector"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/connector"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.connector.servicegraph",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -31,7 +31,7 @@ func init() {
 // Arguments configures the otelcol.connector.servicegraph component.
 type Arguments struct {
 	// LatencyHistogramBuckets is the list of durations representing latency histogram buckets.
-	LatencyHistogramBuckets []time.Duration `river:"latency_histogram_buckets,attr,optional"`
+	LatencyHistogramBuckets []time.Duration `alloy:"latency_histogram_buckets,attr,optional"`
 
 	// Dimensions defines the list of additional dimensions on top of the provided:
 	// - client
@@ -40,32 +40,32 @@ type Arguments struct {
 	// - connection_type
 	// The dimensions will be fetched from the span's attributes. Examples of some conventionally used attributes:
 	// https://github.com/open-telemetry/opentelemetry-collector/blob/main/model/semconv/opentelemetry.go.
-	Dimensions []string `river:"dimensions,attr,optional"`
+	Dimensions []string `alloy:"dimensions,attr,optional"`
 
 	// Store contains the config for the in-memory store used to find requests between services by pairing spans.
-	Store StoreConfig `river:"store,block,optional"`
+	Store StoreConfig `alloy:"store,block,optional"`
 	// CacheLoop defines how often to clean the cache of stale series.
-	CacheLoop time.Duration `river:"cache_loop,attr,optional"`
+	CacheLoop time.Duration `alloy:"cache_loop,attr,optional"`
 	// StoreExpirationLoop defines how often to expire old entries from the store.
-	StoreExpirationLoop time.Duration `river:"store_expiration_loop,attr,optional"`
+	StoreExpirationLoop time.Duration `alloy:"store_expiration_loop,attr,optional"`
 	// VirtualNodePeerAttributes the list of attributes need to match, the higher the front, the higher the priority.
 	//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 	// the "processor.servicegraph.virtualNode" feature gate.
-	// VirtualNodePeerAttributes []string `river:"virtual_node_peer_attributes,attr,optional"`
+	// VirtualNodePeerAttributes []string `alloy:"virtual_node_peer_attributes,attr,optional"`
 
 	// MetricsFlushInterval is the interval at which metrics are flushed to the exporter.
 	// If set to 0, metrics are flushed on every received batch of traces.
-	MetricsFlushInterval time.Duration `river:"metrics_flush_interval,attr,optional"`
+	MetricsFlushInterval time.Duration `alloy:"metrics_flush_interval,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 type StoreConfig struct {
 	// MaxItems is the maximum number of items to keep in the store.
-	MaxItems int `river:"max_items,attr,optional"`
+	MaxItems int `alloy:"max_items,attr,optional"`
 	// TTL is the time to live for items in the store.
-	TTL time.Duration `river:"ttl,attr,optional"`
+	TTL time.Duration `alloy:"ttl,attr,optional"`
 }
 
 func (sc *StoreConfig) SetToDefault() {
@@ -76,11 +76,11 @@ func (sc *StoreConfig) SetToDefault() {
 }
 
 var (
-	_ river.Validator = (*Arguments)(nil)
-	_ river.Defaulter = (*Arguments)(nil)
+	_ syntax.Validator = (*Arguments)(nil)
+	_ syntax.Defaulter = (*Arguments)(nil)
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		LatencyHistogramBuckets: []time.Duration{
@@ -120,7 +120,7 @@ func (args *Arguments) SetToDefault() {
 	args.Store.SetToDefault()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.CacheLoop <= 0 {
 		return fmt.Errorf("cache_loop must be greater than 0")

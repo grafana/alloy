@@ -5,7 +5,7 @@ package testappender
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/util/testappender/internal/dtobuilder"
+	"github.com/grafana/alloy/internal/util/testappender/internal/dtobuilder"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"

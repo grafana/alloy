@@ -1,4 +1,4 @@
-import { AttrStmt, Body as RiverBody } from '../river-js/types';
+import { AttrStmt, Body as AlloyBody } from '../alloy-syntax-js/types';
 
 /**
  * ComponentInfo is high-level information for a component.
@@ -87,19 +87,19 @@ export interface ComponentDetail extends ComponentInfo {
    * This is expected to be the *evaluated* arguments, not the raw expressions
    * a user may have used.
    */
-  arguments: RiverBody;
+  arguments: AlloyBody;
 
   /**
    * Exports is the list of component-generated values which other components
    * can reference.
    */
-  exports?: RiverBody;
+  exports?: AlloyBody;
 
   /**
    * Components may emit generic debug information, which would be contained
    * here.
    */
-  debugInfo?: RiverBody;
+  debugInfo?: AlloyBody;
 
   /**
    * If a component is a module loader, the IDs of modules it created are included here.

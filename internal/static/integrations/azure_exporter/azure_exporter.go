@@ -14,7 +14,7 @@ import (
 	"github.com/webdevops/azure-metrics-exporter/metrics"
 	"github.com/webdevops/go-common/azuresdk/armclient"
 
-	"github.com/grafana/agent/internal/static/integrations/config"
+	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
 type Exporter struct {

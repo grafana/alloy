@@ -5,10 +5,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/moby"
 )
@@ -16,7 +16,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.dockerswarm",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -27,17 +27,17 @@ func init() {
 }
 
 type Arguments struct {
-	Host             string                  `river:"host,attr"`
-	Role             string                  `river:"role,attr"`
-	Port             int                     `river:"port,attr,optional"`
-	Filters          []Filter                `river:"filter,block,optional"`
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
+	Host             string                  `alloy:"host,attr"`
+	Role             string                  `alloy:"role,attr"`
+	Port             int                     `alloy:"port,attr,optional"`
+	Filters          []Filter                `alloy:"filter,block,optional"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
 }
 
 type Filter struct {
-	Name   string   `river:"name,attr"`
-	Values []string `river:"values,attr"`
+	Name   string   `alloy:"name,attr"`
+	Values []string `alloy:"values,attr"`
 }
 
 var DefaultArguments = Arguments{
@@ -46,12 +46,12 @@ var DefaultArguments = Arguments{
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if _, err := url.Parse(a.Host); err != nil {
 		return err

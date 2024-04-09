@@ -3,10 +3,10 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/otelcol/auth/basic"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/otelcol/auth/basic"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension"
 	"go.opentelemetry.io/collector/component"
 )
@@ -26,7 +26,7 @@ func (basicAuthConverterConverter) InputComponentName() string { return "otelcol
 func (basicAuthConverterConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toBasicAuthExtension(cfg.(*basicauthextension.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "auth", "basic"}, label, args)
@@ -43,6 +43,6 @@ func (basicAuthConverterConverter) ConvertAndAppend(state *State, id component.I
 func toBasicAuthExtension(cfg *basicauthextension.Config) *basic.Arguments {
 	return &basic.Arguments{
 		Username: cfg.ClientAuth.Username,
-		Password: rivertypes.Secret(string(cfg.ClientAuth.Password)),
+		Password: alloytypes.Secret(string(cfg.ClientAuth.Password)),
 	}
 }

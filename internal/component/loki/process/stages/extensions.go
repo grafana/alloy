@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 )
@@ -22,14 +22,14 @@ type DockerConfig struct{}
 // CRIConfig is an empty struct that is used to enable a pre-defined pipeline
 // for decoding entries that are using the CRI logging format.
 type CRIConfig struct {
-	MaxPartialLines            int    `river:"max_partial_lines,attr,optional"`
-	MaxPartialLineSize         uint64 `river:"max_partial_line_size,attr,optional"`
-	MaxPartialLineSizeTruncate bool   `river:"max_partial_line_size_truncate,attr,optional"`
+	MaxPartialLines            int    `alloy:"max_partial_lines,attr,optional"`
+	MaxPartialLineSize         uint64 `alloy:"max_partial_line_size,attr,optional"`
+	MaxPartialLineSizeTruncate bool   `alloy:"max_partial_line_size_truncate,attr,optional"`
 }
 
 var (
-	_ river.Defaulter = (*CRIConfig)(nil)
-	_ river.Validator = (*CRIConfig)(nil)
+	_ syntax.Defaulter = (*CRIConfig)(nil)
+	_ syntax.Validator = (*CRIConfig)(nil)
 )
 
 // DefaultCRIConfig contains the default CRIConfig values.
@@ -39,12 +39,12 @@ var DefaultCRIConfig = CRIConfig{
 	MaxPartialLineSizeTruncate: false,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *CRIConfig) SetToDefault() {
 	*args = DefaultCRIConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *CRIConfig) Validate() error {
 	if args.MaxPartialLines <= 0 {
 		return fmt.Errorf("max_partial_lines must be greater than 0")

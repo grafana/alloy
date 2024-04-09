@@ -3,14 +3,14 @@ package build
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/kubernetes_events"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	eventhandler_v2 "github.com/grafana/agent/internal/static/integrations/v2/eventhandler"
-	"github.com/grafana/river/scanner"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/kubernetes_events"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	eventhandler_v2 "github.com/grafana/alloy/internal/static/integrations/v2/eventhandler"
+	"github.com/grafana/alloy/syntax/scanner"
 )
 
 func (b *ConfigBuilder) appendEventHandlerV2(config *eventhandler_v2.Config) {
@@ -19,14 +19,14 @@ func (b *ConfigBuilder) appendEventHandlerV2(config *eventhandler_v2.Config) {
 		b.diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to sanitize job name: %s", err))
 	}
 
-	b.diags.AddAll(common.ValidateSupported(common.NotDeepEquals, config.SendTimeout, eventhandler_v2.DefaultConfig.SendTimeout, "eventhandler send_timeout", "this field is not configurable in flow mode"))
-	b.diags.AddAll(common.ValidateSupported(common.NotDeepEquals, config.InformerResync, eventhandler_v2.DefaultConfig.InformerResync, "eventhandler informer_resync", "this field is not configurable in flow mode"))
-	b.diags.AddAll(common.ValidateSupported(common.NotDeepEquals, config.FlushInterval, eventhandler_v2.DefaultConfig.FlushInterval, "eventhandler flush_interval", "this field is not configurable in flow mode"))
+	b.diags.AddAll(common.ValidateSupported(common.NotDeepEquals, config.SendTimeout, eventhandler_v2.DefaultConfig.SendTimeout, "eventhandler send_timeout", "this field is not configurable in Alloy"))
+	b.diags.AddAll(common.ValidateSupported(common.NotDeepEquals, config.InformerResync, eventhandler_v2.DefaultConfig.InformerResync, "eventhandler informer_resync", "this field is not configurable in Alloy"))
+	b.diags.AddAll(common.ValidateSupported(common.NotDeepEquals, config.FlushInterval, eventhandler_v2.DefaultConfig.FlushInterval, "eventhandler flush_interval", "this field is not configurable in Alloy"))
 
 	if config.CachePath != eventhandler_v2.DefaultConfig.CachePath {
 		b.diags.Add(
 			diag.SeverityLevelWarn,
-			"The eventhandler cache_path is unnecessary in flow mode because the storage path is governed by the --storage.path cmd argument and is always local to the component.",
+			"The eventhandler cache_path is unnecessary in Alloy because the storage path is governed by the --storage.path cmd argument and is always local to the component.",
 		)
 	}
 
@@ -45,9 +45,9 @@ func (b *ConfigBuilder) appendEventHandlerV2(config *eventhandler_v2.Config) {
 }
 
 func (b *ConfigBuilder) injectExtraLabels(config *eventhandler_v2.Config, receiver common.ConvertLogsReceiver, compLabel string) common.ConvertLogsReceiver {
-	var relabelConfigs []*flow_relabel.Config
+	var relabelConfigs []*alloy_relabel.Config
 	for _, extraLabel := range config.ExtraLabels {
-		defaultConfig := flow_relabel.DefaultRelabelConfig
+		defaultConfig := alloy_relabel.DefaultRelabelConfig
 		relabelConfig := &defaultConfig
 		relabelConfig.SourceLabels = []string{"__address__"}
 		relabelConfig.TargetLabel = extraLabel.Name

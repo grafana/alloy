@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
@@ -35,14 +35,14 @@ type ModuleController interface {
 	// NewModule must provide unique values for id. The empty string is a valid unique
 	// value for id.
 	//
-	// If id is non-empty, it must be a valid River identifier, matching the
+	// If id is non-empty, it must be a valid Alloy identifier, matching the
 	// regex /[A-Za-z_][A-Za-z0-9_]/.
 	NewModule(id string, export ExportFunc) (Module, error)
 }
 
 // Module is a controller for running components within a Module.
 type Module interface {
-	// LoadConfig parses River config and loads it into the Module.
+	// LoadConfig parses Alloy config and loads it into the Module.
 	// LoadConfig can be called multiple times, and called prior to
 	// [Module.Run].
 	LoadConfig(config []byte, args map[string]any) error
@@ -80,7 +80,7 @@ type Options struct {
 	DataPath string
 
 	// OnStateChange may be invoked at any time by a component whose Export value
-	// changes. The Flow controller then will queue re-processing components
+	// changes. The Alloy controller then will queue re-processing components
 	// which depend on the changed component.
 	//
 	// OnStateChange will panic if e does not match the Exports type registered
@@ -121,7 +121,7 @@ type Registration struct {
 	Name string
 
 	// Stability is the overall stability level of the component. This is used to make
-	// sure the user is not accidentally using a component that is not yet stable - users
+	// sure the user is not accidentally using a component that is not yet GA - users
 	// need to explicitly enable less-than-stable components via, for example, a command-line flag.
 	// If a component is not stable enough, an attempt to create it via the controller will fail.
 	// This field must be set to a non-zero value.

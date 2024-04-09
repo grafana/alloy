@@ -3,11 +3,11 @@ package build
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
 
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
@@ -37,11 +37,11 @@ func (s *ScrapeConfigBuilder) AppendSDs() {
 
 	// write the target literals as a string if there are any
 	if len(targetLiterals) != 0 {
-		literalsStr, err := toRiverExpression(targetLiterals)
+		literalsStr, err := toAlloyExpression(targetLiterals)
 		if err != nil { // should not happen, unless we have a bug
 			s.diags.Add(
 				diag.SeverityLevelCritical,
-				"failed to write static SD targets as valid River expression: "+err.Error(),
+				"failed to write static SD targets as valid Alloy expression: "+err.Error(),
 			)
 		}
 		s.allTargetsExps = append(s.allTargetsExps, literalsStr)

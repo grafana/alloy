@@ -7,16 +7,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/util"
 	util_log "github.com/grafana/loki/pkg/util/log"
 )
 
-var testLogfmtRiverSingleStageWithoutSource = `
+var testLogfmtAlloySingleStageWithoutSource = `
 stage.logfmt {
 		mapping = { "out" = "message", "app" = "", "duration" = "", "unknown" = "" }
 }`
 
-var testLogfmtRiverMultiStageWithSource = `
+var testLogfmtAlloyMultiStageWithSource = `
 stage.logfmt {
 		mapping = { "extra" = "" }
 }
@@ -37,7 +37,7 @@ func TestLogfmt(t *testing.T) {
 		expectedExtract map[string]interface{}
 	}{
 		"successfully run a pipeline with 1 logfmt stage without source": {
-			testLogfmtRiverSingleStageWithoutSource,
+			testLogfmtAlloySingleStageWithoutSource,
 			testLogfmtLogLine,
 			map[string]interface{}{
 				"out":      "this is a log line",
@@ -46,7 +46,7 @@ func TestLogfmt(t *testing.T) {
 			},
 		},
 		"successfully run a pipeline with 2 logfmt stages with source": {
-			testLogfmtRiverMultiStageWithSource,
+			testLogfmtAlloyMultiStageWithSource,
 			testLogfmtLogLine,
 			map[string]interface{}{
 				"extra": "user=foo",
@@ -128,7 +128,7 @@ var testLogfmtLogFixture = `
 
 func TestLogfmtParser_Parse(t *testing.T) {
 	t.Parallel()
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	tests := map[string]struct {
 		config          LogfmtConfig
 		extracted       map[string]interface{}

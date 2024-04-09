@@ -10,31 +10,31 @@ import (
 // report health information.
 //
 // Health information is exposed to the end user for informational purposes and
-// cannot be referened in a River expression.
+// cannot be referened in an Alloy expression.
 type HealthComponent interface {
 	Component
 
 	// CurrentHealth returns the current Health status for the component.
 	//
-	// CurrentHealth may be overridden by the Flow controller if there is a
+	// CurrentHealth may be overridden by the Alloy controller if there is a
 	// higher-level issue, such as a config file being invalid or a Component
 	// shutting down unexpectedly.
 	CurrentHealth() Health
 }
 
 // Health is the reported health state of a component. It can be encoded to
-// River.
+// Alloy.
 type Health struct {
 	// The specific health value.
-	Health HealthType `river:"state,attr"`
+	Health HealthType `alloy:"state,attr"`
 
 	// An optional message to describe the health; useful to say why a component
 	// is unhealthy.
-	Message string `river:"message,attr,optional"`
+	Message string `alloy:"message,attr,optional"`
 
 	// An optional time to indicate when the component last modified something
 	// which updated its health.
-	UpdateTime time.Time `river:"update_time,attr,optional"`
+	UpdateTime time.Time `alloy:"update_time,attr,optional"`
 }
 
 // HealthType holds the health value for a component.

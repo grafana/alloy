@@ -1,7 +1,7 @@
-// Package extension provides utilities to create a Flow component from
+// Package extension provides utilities to create an Alloy component from
 // OpenTelemetry Collector extensions.
 //
-// Other OpenTelemetry Collector extensions are better served as generic Flow
+// Other OpenTelemetry Collector extensions are better served as generic Alloy
 // components rather than being placed in the otelcol namespace.
 package extension
 
@@ -9,11 +9,11 @@ import (
 	"context"
 	"os"
 
-	"github.com/grafana/agent/internal/build"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazycollector"
-	"github.com/grafana/agent/internal/component/otelcol/internal/scheduler"
-	"github.com/grafana/agent/internal/util/zapadapter"
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -39,8 +39,8 @@ type Arguments interface {
 	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
 }
 
-// Extension is a Flow component shim which manages an OpenTelemetry Collector
-// extension.
+// Extension is an Alloy component shim which manages an OpenTelemetry
+// Collector extension.
 type Extension struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -57,9 +57,9 @@ var (
 	_ component.HealthComponent = (*Extension)(nil)
 )
 
-// New creates a new Flow component which encapsulates an OpenTelemetry
+// New creates a new Alloy component which encapsulates an OpenTelemetry
 // Collector extension. args must hold a value of the argument
-// type registered with the Flow component.
+// type registered with the Alloy component.
 func New(opts component.Options, f otelextension.Factory, args Arguments) (*Extension, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -122,7 +122,7 @@ func (e *Extension) Update(args component.Arguments) error {
 
 		BuildInfo: otelcomponent.BuildInfo{
 			Command:     os.Args[0],
-			Description: "Grafana Agent",
+			Description: "Grafana Alloy",
 			Version:     build.Version,
 		},
 	}

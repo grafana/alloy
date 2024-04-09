@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	v1 "github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/v2/common"
+	v1 "github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/v2/common"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )

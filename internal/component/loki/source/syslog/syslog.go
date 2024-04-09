@@ -5,19 +5,19 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	st "github.com/grafana/agent/internal/component/loki/source/syslog/internal/syslogtarget"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/prometheus/model/relabel"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.syslog",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -29,9 +29,9 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.syslog
 // component.
 type Arguments struct {
-	SyslogListeners []ListenerConfig    `river:"listener,block"`
-	ForwardTo       []loki.LogsReceiver `river:"forward_to,attr"`
-	RelabelRules    flow_relabel.Rules  `river:"relabel_rules,attr,optional"`
+	SyslogListeners []ListenerConfig    `alloy:"listener,block"`
+	ForwardTo       []loki.LogsReceiver `alloy:"forward_to,attr"`
+	RelabelRules    alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
 // Component implements the loki.source.syslog component.
@@ -102,7 +102,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	var rcs []*relabel.Config
 	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
-		rcs = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
 	if listenersChanged(c.args.SyslogListeners, newArgs.SyslogListeners) || relabelRulesChanged(c.args.RelabelRules, newArgs.RelabelRules) {
@@ -146,19 +146,19 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type readerDebugInfo struct {
-	ListenersInfo []listenerInfo `river:"listeners_info,attr"`
+	ListenersInfo []listenerInfo `alloy:"listeners_info,attr"`
 }
 
 type listenerInfo struct {
-	Type          string `river:"type,attr"`
-	Ready         bool   `river:"ready,attr"`
-	ListenAddress string `river:"listen_address,attr"`
-	Labels        string `river:"labels,attr"`
+	Type          string `alloy:"type,attr"`
+	Ready         bool   `alloy:"ready,attr"`
+	ListenAddress string `alloy:"listen_address,attr"`
+	Labels        string `alloy:"labels,attr"`
 }
 
 func listenersChanged(prev, next []ListenerConfig) bool {
 	return !reflect.DeepEqual(prev, next)
 }
-func relabelRulesChanged(prev, next flow_relabel.Rules) bool {
+func relabelRulesChanged(prev, next alloy_relabel.Rules) bool {
 	return !reflect.DeepEqual(prev, next)
 }

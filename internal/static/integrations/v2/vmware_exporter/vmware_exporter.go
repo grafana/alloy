@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/common"
-	"github.com/grafana/agent/internal/static/integrations/v2/metricsutils"
+	"github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/common"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/grafana/vmware_exporter/vsphere"
 	config_util "github.com/prometheus/common/config"
 )

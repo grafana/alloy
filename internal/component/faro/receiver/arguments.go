@@ -4,22 +4,22 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 // Arguments configures the app_agent_receiver component.
 type Arguments struct {
-	LogLabels map[string]string `river:"extra_log_labels,attr,optional"`
+	LogLabels map[string]string `alloy:"extra_log_labels,attr,optional"`
 
-	Server     ServerArguments     `river:"server,block,optional"`
-	SourceMaps SourceMapsArguments `river:"sourcemaps,block,optional"`
-	Output     OutputArguments     `river:"output,block"`
+	Server     ServerArguments     `alloy:"server,block,optional"`
+	SourceMaps SourceMapsArguments `alloy:"sourcemaps,block,optional"`
+	Output     OutputArguments     `alloy:"output,block"`
 }
 
-var _ river.Defaulter = (*Arguments)(nil)
+var _ syntax.Defaulter = (*Arguments)(nil)
 
 // SetToDefault applies default settings.
 func (args *Arguments) SetToDefault() {
@@ -30,14 +30,14 @@ func (args *Arguments) SetToDefault() {
 // ServerArguments configures the HTTP server where telemetry information will
 // be sent from Faro clients.
 type ServerArguments struct {
-	Host                  string            `river:"listen_address,attr,optional"`
-	Port                  int               `river:"listen_port,attr,optional"`
-	CORSAllowedOrigins    []string          `river:"cors_allowed_origins,attr,optional"`
-	APIKey                rivertypes.Secret `river:"api_key,attr,optional"`
-	MaxAllowedPayloadSize units.Base2Bytes  `river:"max_allowed_payload_size,attr,optional"`
+	Host                  string            `alloy:"listen_address,attr,optional"`
+	Port                  int               `alloy:"listen_port,attr,optional"`
+	CORSAllowedOrigins    []string          `alloy:"cors_allowed_origins,attr,optional"`
+	APIKey                alloytypes.Secret `alloy:"api_key,attr,optional"`
+	MaxAllowedPayloadSize units.Base2Bytes  `alloy:"max_allowed_payload_size,attr,optional"`
 
-	RateLimiting    RateLimitingArguments `river:"rate_limiting,block,optional"`
-	IncludeMetadata bool                  `river:"include_metadata,attr,optional"`
+	RateLimiting    RateLimitingArguments `alloy:"rate_limiting,block,optional"`
+	IncludeMetadata bool                  `alloy:"include_metadata,attr,optional"`
 }
 
 func (s *ServerArguments) SetToDefault() {
@@ -51,9 +51,9 @@ func (s *ServerArguments) SetToDefault() {
 
 // RateLimitingArguments configures rate limiting for the HTTP server.
 type RateLimitingArguments struct {
-	Enabled   bool    `river:"enabled,attr,optional"`
-	Rate      float64 `river:"rate,attr,optional"`
-	BurstSize float64 `river:"burst_size,attr,optional"`
+	Enabled   bool    `alloy:"enabled,attr,optional"`
+	Rate      float64 `alloy:"rate,attr,optional"`
+	BurstSize float64 `alloy:"burst_size,attr,optional"`
 }
 
 func (r *RateLimitingArguments) SetToDefault() {
@@ -67,10 +67,10 @@ func (r *RateLimitingArguments) SetToDefault() {
 // SourceMapsArguments configures how app_agent_receiver will retrieve source
 // maps for transforming stack traces.
 type SourceMapsArguments struct {
-	Download            bool                `river:"download,attr,optional"`
-	DownloadFromOrigins []string            `river:"download_from_origins,attr,optional"`
-	DownloadTimeout     time.Duration       `river:"download_timeout,attr,optional"`
-	Locations           []LocationArguments `river:"location,block,optional"`
+	Download            bool                `alloy:"download,attr,optional"`
+	DownloadFromOrigins []string            `alloy:"download_from_origins,attr,optional"`
+	DownloadTimeout     time.Duration       `alloy:"download_timeout,attr,optional"`
+	Locations           []LocationArguments `alloy:"location,block,optional"`
 }
 
 func (s *SourceMapsArguments) SetToDefault() {
@@ -83,13 +83,13 @@ func (s *SourceMapsArguments) SetToDefault() {
 
 // LocationArguments specifies an individual location where source maps will be loaded.
 type LocationArguments struct {
-	Path               string `river:"path,attr"`
-	MinifiedPathPrefix string `river:"minified_path_prefix,attr"`
+	Path               string `alloy:"path,attr"`
+	MinifiedPathPrefix string `alloy:"minified_path_prefix,attr"`
 }
 
 // OutputArguments configures where to send emitted logs and traces. Metrics
 // emitted by app_agent_receiver are exported as targets to be scraped.
 type OutputArguments struct {
-	Logs   []loki.LogsReceiver `river:"logs,attr,optional"`
-	Traces []otelcol.Consumer  `river:"traces,attr,optional"`
+	Logs   []loki.LogsReceiver `alloy:"logs,attr,optional"`
+	Traces []otelcol.Consumer  `alloy:"traces,attr,optional"`
 }

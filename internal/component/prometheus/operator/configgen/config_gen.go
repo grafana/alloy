@@ -5,9 +5,9 @@ package configgen
 import (
 	"regexp"
 
-	k8sConfig "github.com/grafana/agent/internal/component/common/kubernetes"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/prometheus/operator"
+	k8sConfig "github.com/grafana/alloy/internal/component/common/kubernetes"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -19,7 +19,7 @@ import (
 type ConfigGenerator struct {
 	Client                   *k8sConfig.ClientArguments
 	Secrets                  SecretFetcher
-	AdditionalRelabelConfigs []*flow_relabel.Config
+	AdditionalRelabelConfigs []*alloy_relabel.Config
 	ScrapeOptions            operator.ScrapeOptions
 }
 
@@ -235,7 +235,7 @@ func (cg *ConfigGenerator) initRelabelings() relabeler {
 	r := relabeler{}
 	// first add any relabelings from the component config
 	if len(cg.AdditionalRelabelConfigs) > 0 {
-		for _, c := range flow_relabel.ComponentToPromRelabelConfigs(cg.AdditionalRelabelConfigs) {
+		for _, c := range alloy_relabel.ComponentToPromRelabelConfigs(cg.AdditionalRelabelConfigs) {
 			r.add(c)
 		}
 	}

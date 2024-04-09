@@ -10,14 +10,14 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/grafana/agent/internal/agentseed"
-	"github.com/grafana/agent/internal/useragent"
+	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/common/version"
 )
 
 var (
 	httpClient    = http.Client{Timeout: 5 * time.Second}
-	usageStatsURL = "https://stats.grafana.org/agent-usage-report"
+	usageStatsURL = "https://stats.grafana.org/alloy-usage-report"
 )
 
 // Report is the payload to be sent to stats.grafana.org
@@ -32,7 +32,7 @@ type Report struct {
 	DeployMode   string                 `json:"deployMode"`
 }
 
-func sendReport(ctx context.Context, seed *agentseed.AgentSeed, interval time.Time, metrics map[string]interface{}) error {
+func sendReport(ctx context.Context, seed *alloyseed.Seed, interval time.Time, metrics map[string]interface{}) error {
 	report := Report{
 		UsageStatsID: seed.UID,
 		CreatedAt:    seed.CreatedAt,

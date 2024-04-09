@@ -1,0 +1,13 @@
+// Test that missing trailing commas for multiline expressions get reported.
+
+field = [
+  0,
+  1,
+  2/* ERROR HERE "missing ',' in expression list" */
+]
+
+obj = {
+  field_a = 0,
+  field_b = 1,
+  field_c = 2/* ERROR HERE "missing ',' in field list" */
+}

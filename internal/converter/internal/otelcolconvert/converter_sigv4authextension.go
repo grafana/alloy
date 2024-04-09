@@ -3,9 +3,9 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/otelcol/auth/sigv4"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/otelcol/auth/sigv4"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension"
 	"go.opentelemetry.io/collector/component"
 )
@@ -27,7 +27,7 @@ func (sigV4AuthExtensionConverter) InputComponentName() string {
 func (sigV4AuthExtensionConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toSigV4AuthExtension(cfg.(*sigv4authextension.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "auth", "sigv4"}, label, args)

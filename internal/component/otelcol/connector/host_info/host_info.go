@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/connector"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/connector"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 )
@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.connector.host_info",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -30,20 +30,20 @@ func init() {
 
 // Arguments configures the otelcol.connector.host_info component.
 type Arguments struct {
-	HostIdentifiers      []string      `river:"host_identifiers,attr,optional"`
-	MetricsFlushInterval time.Duration `river:"metrics_flush_interval,attr,optional"`
+	HostIdentifiers      []string      `alloy:"host_identifiers,attr,optional"`
+	MetricsFlushInterval time.Duration `alloy:"metrics_flush_interval,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (
-	_ river.Validator     = (*Arguments)(nil)
-	_ river.Defaulter     = (*Arguments)(nil)
+	_ syntax.Validator    = (*Arguments)(nil)
+	_ syntax.Defaulter    = (*Arguments)(nil)
 	_ connector.Arguments = (*Arguments)(nil)
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		HostIdentifiers:      []string{"host.id"},
@@ -51,7 +51,7 @@ func (args *Arguments) SetToDefault() {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if len(args.HostIdentifiers) == 0 {
 		return fmt.Errorf("host_identifiers must not be empty")

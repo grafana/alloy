@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/grafana/agent/internal/static/agentctl/waltools"
+	"github.com/grafana/alloy/internal/static/agentctl/waltools"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )

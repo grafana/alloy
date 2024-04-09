@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/prometheus"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/component"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	lru "github.com/hashicorp/golang-lru/v2"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -25,7 +25,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.relabel",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -39,23 +39,23 @@ func init() {
 // component.
 type Arguments struct {
 	// Where the relabelled metrics should be forwarded to.
-	ForwardTo []storage.Appendable `river:"forward_to,attr"`
+	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
 
 	// The relabelling rules to apply to each metric before it's forwarded.
-	MetricRelabelConfigs []*flow_relabel.Config `river:"rule,block,optional"`
+	MetricRelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 
 	// Cache size to use for LRU cache.
-	CacheSize int `river:"max_cache_size,attr,optional"`
+	CacheSize int `alloy:"max_cache_size,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (arg *Arguments) SetToDefault() {
 	*arg = Arguments{
 		CacheSize: 100_000,
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (arg *Arguments) Validate() error {
 	if arg.CacheSize <= 0 {
 		return fmt.Errorf("max_cache_size must be greater than 0 and is %d", arg.CacheSize)
@@ -65,8 +65,8 @@ func (arg *Arguments) Validate() error {
 
 // Exports holds values which are exported by the prometheus.relabel component.
 type Exports struct {
-	Receiver storage.Appendable `river:"receiver,attr"`
-	Rules    flow_relabel.Rules `river:"rules,attr"`
+	Receiver storage.Appendable  `alloy:"receiver,attr"`
+	Rules    alloy_relabel.Rules `alloy:"rules,attr"`
 }
 
 // Component implements the prometheus.relabel component.
@@ -109,27 +109,27 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		ls:    data.(labelstore.LabelStore),
 	}
 	c.metricsProcessed = prometheus_client.NewCounter(prometheus_client.CounterOpts{
-		Name: "agent_prometheus_relabel_metrics_processed",
+		Name: "alloy_prometheus_relabel_metrics_processed",
 		Help: "Total number of metrics processed",
 	})
 	c.metricsOutgoing = prometheus_client.NewCounter(prometheus_client.CounterOpts{
-		Name: "agent_prometheus_relabel_metrics_written",
+		Name: "alloy_prometheus_relabel_metrics_written",
 		Help: "Total number of metrics written",
 	})
 	c.cacheMisses = prometheus_client.NewCounter(prometheus_client.CounterOpts{
-		Name: "agent_prometheus_relabel_cache_misses",
+		Name: "alloy_prometheus_relabel_cache_misses",
 		Help: "Total number of cache misses",
 	})
 	c.cacheHits = prometheus_client.NewCounter(prometheus_client.CounterOpts{
-		Name: "agent_prometheus_relabel_cache_hits",
+		Name: "alloy_prometheus_relabel_cache_hits",
 		Help: "Total number of cache hits",
 	})
 	c.cacheSize = prometheus_client.NewGauge(prometheus_client.GaugeOpts{
-		Name: "agent_prometheus_relabel_cache_size",
+		Name: "alloy_prometheus_relabel_cache_size",
 		Help: "Total size of relabel cache",
 	})
 	c.cacheDeletes = prometheus_client.NewCounter(prometheus_client.CounterOpts{
-		Name: "agent_prometheus_relabel_cache_deletes",
+		Name: "alloy_prometheus_relabel_cache_deletes",
 		Help: "Total number of cache deletes",
 	})
 
@@ -218,7 +218,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 	c.clearCache(newArgs.CacheSize)
-	c.mrc = flow_relabel.ComponentToPromRelabelConfigs(newArgs.MetricRelabelConfigs)
+	c.mrc = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.MetricRelabelConfigs)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	c.opts.OnStateChange(Exports{Receiver: c.receiver, Rules: newArgs.MetricRelabelConfigs})

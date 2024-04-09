@@ -6,13 +6,13 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	fnet "github.com/grafana/agent/internal/component/common/net"
-	"github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/api/internal/lokipush"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	"github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/api/internal/lokipush"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 )
@@ -20,7 +20,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.api",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			return New(opts, args.(Arguments))
@@ -29,14 +29,14 @@ func init() {
 }
 
 type Arguments struct {
-	Server               *fnet.ServerConfig  `river:",squash"`
-	ForwardTo            []loki.LogsReceiver `river:"forward_to,attr"`
-	Labels               map[string]string   `river:"labels,attr,optional"`
-	RelabelRules         relabel.Rules       `river:"relabel_rules,attr,optional"`
-	UseIncomingTimestamp bool                `river:"use_incoming_timestamp,attr,optional"`
+	Server               *fnet.ServerConfig  `alloy:",squash"`
+	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Labels               map[string]string   `alloy:"labels,attr,optional"`
+	RelabelRules         relabel.Rules       `alloy:"relabel_rules,attr,optional"`
+	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
 		Server: fnet.DefaultServerConfig(),

@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/receiver/otlp"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver/otlp"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -29,7 +29,7 @@ func (otlpReceiverConverter) InputComponentName() string { return "" }
 func (otlpReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toOtelcolReceiverOTLP(state, id, cfg.(*otlpreceiver.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "otlp"}, label, args)
@@ -104,7 +104,7 @@ func toTLSSetting(cfg configtls.TLSSetting) otelcol.TLSSetting {
 		CAFile:                   cfg.CAFile,
 		Cert:                     string(cfg.CertPem),
 		CertFile:                 cfg.CertFile,
-		Key:                      rivertypes.Secret(cfg.KeyPem),
+		Key:                      alloytypes.Secret(cfg.KeyPem),
 		KeyFile:                  cfg.KeyFile,
 		MinVersion:               cfg.MinVersion,
 		MaxVersion:               cfg.MaxVersion,

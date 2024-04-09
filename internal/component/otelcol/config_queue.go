@@ -9,14 +9,14 @@ import (
 // QueueArguments holds shared settings for components which can queue
 // requests.
 type QueueArguments struct {
-	Enabled      bool `river:"enabled,attr,optional"`
-	NumConsumers int  `river:"num_consumers,attr,optional"`
-	QueueSize    int  `river:"queue_size,attr,optional"`
+	Enabled      bool `alloy:"enabled,attr,optional"`
+	NumConsumers int  `alloy:"num_consumers,attr,optional"`
+	QueueSize    int  `alloy:"queue_size,attr,optional"`
 
 	// TODO(rfratto): queues can send to persistent storage through an extension.
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *QueueArguments) SetToDefault() {
 	*args = QueueArguments{
 		Enabled:      true,

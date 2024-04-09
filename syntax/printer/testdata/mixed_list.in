@@ -1,0 +1,16 @@
+mixed_list = [0, true, {
+	key_1 = true,
+	key_2 = true,
+	key_3 = true,
+}, "Hello!"]
+
+mixed_list_2 = [
+	0,
+	true,
+	{
+		key_1 = true,
+		key_2 = true,
+		key_3 = true,
+	},
+	"Hello!",
+]

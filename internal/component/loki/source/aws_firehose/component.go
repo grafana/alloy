@@ -8,23 +8,23 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/relabel"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	fnet "github.com/grafana/agent/internal/component/common/net"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/aws_firehose/internal"
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/aws_firehose/internal"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.awsfirehose",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -34,14 +34,14 @@ func init() {
 }
 
 type Arguments struct {
-	Server               *fnet.ServerConfig  `river:",squash"`
-	AccessKey            rivertypes.Secret   `river:"access_key,attr,optional"`
-	UseIncomingTimestamp bool                `river:"use_incoming_timestamp,attr,optional"`
-	ForwardTo            []loki.LogsReceiver `river:"forward_to,attr"`
-	RelabelRules         flow_relabel.Rules  `river:"relabel_rules,attr,optional"`
+	Server               *fnet.ServerConfig  `alloy:",squash"`
+	AccessKey            alloytypes.Secret   `alloy:"access_key,attr,optional"`
+	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
+	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
+	RelabelRules         alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
 		Server: fnet.DefaultServerConfig(),
@@ -129,7 +129,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// then, if the relabel rules changed
 	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
 		handlerNeedsUpdate = true
-		newRelabels = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		newRelabels = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	} else if c.rbs != nil && len(c.rbs) > 0 && (newArgs.RelabelRules == nil || len(newArgs.RelabelRules) == 0) {
 		// nil out relabel rules if they need to be cleared
 		handlerNeedsUpdate = true

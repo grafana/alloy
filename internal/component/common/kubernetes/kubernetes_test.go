@@ -3,24 +3,24 @@ package kubernetes
 import (
 	"testing"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
-func TestUnmarshalRiver(t *testing.T) {
-	var exampleRiverConfig = `
+func TestUnmarshalAlloy(t *testing.T) {
+	var exampleAlloyConfig = `
 		api_server = "localhost:9091"
 		proxy_url = "http://0.0.0.0:11111"
 	`
 	var args ClientArguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
-	exampleRiverConfig = `
+	exampleAlloyConfig = `
 		kubeconfig_file = "/etc/k8s/kubeconfig.yaml"
 	`
 	var args1 ClientArguments
-	err = river.Unmarshal([]byte(exampleRiverConfig), &args1)
+	err = syntax.Unmarshal([]byte(exampleAlloyConfig), &args1)
 	require.NoError(t, err)
 }
 
@@ -54,7 +54,7 @@ func TestBadConfigs(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var args ClientArguments
-			err := river.Unmarshal([]byte(test.config), &args)
+			err := syntax.Unmarshal([]byte(test.config), &args)
 			require.Error(t, err)
 		})
 	}

@@ -1,13 +1,13 @@
 name: Bug report
-description: Create a report to help us improve Grafana Agent.
+description: Create a report to help us improve Grafana Alloy.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you for opening a bug report for Grafana Agent.
+        Thank you for opening a bug report for Grafana Alloy.
 
-        Please do not use GitHub issues for support questions. If you need help or support, ask a question in [GitHub Discussions](https://github.com/grafana/agent/discussions) or join the `#agent` channel on the [Grafana Slack](https://slack.grafana.com/).
+        Please do not use GitHub issues for support questions. If you need help or support, ask a question in [GitHub Discussions](https://github.com/grafana/alloy/discussions) or join the `#alloy` channel on the [Grafana Slack](https://slack.grafana.com/).
   - type: textarea
     attributes:
       label: What's wrong?
@@ -27,7 +27,7 @@ body:
     attributes:
       label: Software version
       description: Provide the version of the software you are using.
-      placeholder: e.g. Grafana Agent v0.33.0
+      placeholder: e.g. Grafana Alloy v1.0.0
   - type: textarea
     attributes:
       label: Configuration

@@ -8,59 +8,59 @@ import (
 	"os"
 	"time"
 
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/regexp"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
 )
 
 // TLSArguments configures TLS settings for the HTTP service.
 type TLSArguments struct {
-	Cert             string            `river:"cert_pem,attr,optional"`
-	CertFile         string            `river:"cert_file,attr,optional"`
-	Key              rivertypes.Secret `river:"key_pem,attr,optional"`
-	KeyFile          string            `river:"key_file,attr,optional"`
-	ClientCA         string            `river:"client_ca_pem,attr,optional"`
-	ClientCAFile     string            `river:"client_ca_file,attr,optional"`
-	ClientAuth       ClientAuth        `river:"client_auth_type,attr,optional"`
-	CipherSuites     []TLSCipher       `river:"cipher_suites,attr,optional"`
-	CurvePreferences []TLSCurve        `river:"curve_preferences,attr,optional"`
-	MinVersion       TLSVersion        `river:"min_version,attr,optional"`
-	MaxVersion       TLSVersion        `river:"max_version,attr,optional"`
+	Cert             string            `alloy:"cert_pem,attr,optional"`
+	CertFile         string            `alloy:"cert_file,attr,optional"`
+	Key              alloytypes.Secret `alloy:"key_pem,attr,optional"`
+	KeyFile          string            `alloy:"key_file,attr,optional"`
+	ClientCA         string            `alloy:"client_ca_pem,attr,optional"`
+	ClientCAFile     string            `alloy:"client_ca_file,attr,optional"`
+	ClientAuth       ClientAuth        `alloy:"client_auth_type,attr,optional"`
+	CipherSuites     []TLSCipher       `alloy:"cipher_suites,attr,optional"`
+	CurvePreferences []TLSCurve        `alloy:"curve_preferences,attr,optional"`
+	MinVersion       TLSVersion        `alloy:"min_version,attr,optional"`
+	MaxVersion       TLSVersion        `alloy:"max_version,attr,optional"`
 
 	// Windows Certificate Filter
-	WindowsFilter *WindowsCertificateFilter `river:"windows_certificate_filter,block,optional"`
+	WindowsFilter *WindowsCertificateFilter `alloy:"windows_certificate_filter,block,optional"`
 }
 
 // WindowsCertificateFilter represents the configuration for accessing the Windows store
 type WindowsCertificateFilter struct {
-	Server *WindowsServerFilter `river:"server,block"`
-	Client *WindowsClientFilter `river:"client,block"`
+	Server *WindowsServerFilter `alloy:"server,block"`
+	Client *WindowsClientFilter `alloy:"client,block"`
 }
 
 // WindowsClientFilter is used to select a client root CA certificate
 type WindowsClientFilter struct {
-	IssuerCommonNames []string `river:"issuer_common_names,attr,optional"`
-	SubjectRegEx      string   `river:"subject_regex,attr,optional"`
-	TemplateID        string   `river:"template_id,attr,optional"`
+	IssuerCommonNames []string `alloy:"issuer_common_names,attr,optional"`
+	SubjectRegEx      string   `alloy:"subject_regex,attr,optional"`
+	TemplateID        string   `alloy:"template_id,attr,optional"`
 }
 
 // WindowsServerFilter is used to select a server certificate
 type WindowsServerFilter struct {
-	Store             string        `river:"store,attr,optional"`
-	SystemStore       string        `river:"system_store,attr,optional"`
-	IssuerCommonNames []string      `river:"issuer_common_names,attr,optional"`
-	TemplateID        string        `river:"template_id,attr,optional"`
-	RefreshInterval   time.Duration `river:"refresh_interval,attr,optional"`
+	Store             string        `alloy:"store,attr,optional"`
+	SystemStore       string        `alloy:"system_store,attr,optional"`
+	IssuerCommonNames []string      `alloy:"issuer_common_names,attr,optional"`
+	TemplateID        string        `alloy:"template_id,attr,optional"`
+	RefreshInterval   time.Duration `alloy:"refresh_interval,attr,optional"`
 }
 
-var _ river.Defaulter = (*WindowsServerFilter)(nil)
+var _ syntax.Defaulter = (*WindowsServerFilter)(nil)
 
 // SetToDefault sets the default for WindowsServerFilter
 func (wcf *WindowsServerFilter) SetToDefault() {
 	wcf.RefreshInterval = 5 * time.Minute
 }
 
-var _ river.Validator = (*TLSArguments)(nil)
+var _ syntax.Validator = (*TLSArguments)(nil)
 
 // Validate returns whether args is valid.
 func (args *TLSArguments) Validate() error {

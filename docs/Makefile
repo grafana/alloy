@@ -11,11 +11,7 @@ include docs.mk
 docs: check-cloudwatch-integration
 
 check-cloudwatch-integration:
-	$(PODMAN) run -v $(shell git rev-parse --show-toplevel):/repo -v $(shell pwd):/docs -w /repo golang:1.22.1-bullseye go run internal/static/integrations/cloudwatch_exporter/docs/doc.go check /docs/sources/static/configuration/integrations/cloudwatch-exporter-config.md
-	$(PODMAN) run -v $(shell git rev-parse --show-toplevel):/repo -v $(shell pwd):/docs -w /repo golang:1.22.1-bullseye go run internal/static/integrations/cloudwatch_exporter/docs/doc.go check /docs/sources/flow/reference/components/prometheus.exporter.cloudwatch.md
+	$(PODMAN) run -v $(shell git rev-parse --show-toplevel):/repo -v $(shell pwd):/docs -w /repo golang:1.22.1-bullseye go run internal/static/integrations/cloudwatch_exporter/docs/doc.go check /docs/sources/reference/components/prometheus.exporter.cloudwatch.md
 
 generate-cloudwatch-integration:
 	$(PODMAN) run -v $(shell git rev-parse --show-toplevel):/repo -v $(shell pwd):/docs -w /repo golang:1.22.1-bullseye go run internal/static/integrations/cloudwatch_exporter/docs/doc.go generate
-
-sources/assets/hierarchy.svg: sources/operator/hierarchy.dot
-	cat $< | $(PODMAN) run --rm -i nshine/dot dot -Tsvg > $@

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	monitoringv1alpha2 "github.com/grafana/agent/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -175,7 +175,7 @@ func (ctrl *controller) configureInformers(ctx context.Context, informers cache.
 		if err != nil {
 			if errors.Is(informerCtx.Err(), context.DeadlineExceeded) { // Check the context to prevent GetInformer returning a fake timeout
 				return fmt.Errorf("Timeout exceeded while configuring informers. Check the connection"+
-					" to the Kubernetes API is stable and that the Agent has appropriate RBAC permissions for %v", ty)
+					" to the Kubernetes API is stable and that Alloy has appropriate RBAC permissions for %v", ty)
 			}
 
 			return err

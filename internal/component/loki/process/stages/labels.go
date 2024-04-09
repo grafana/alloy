@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/prometheus/common/model"
 )
 
@@ -18,7 +18,7 @@ const (
 
 // LabelsConfig is a set of labels to be extracted
 type LabelsConfig struct {
-	Values map[string]*string `river:"values,attr"`
+	Values map[string]*string `alloy:"values,attr"`
 }
 
 // validateLabelsConfig validates the Label stage configuration

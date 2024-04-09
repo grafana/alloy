@@ -3,8 +3,8 @@ package otelcolconvert_test
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/converter/internal/otelcolconvert"
-	"github.com/grafana/agent/internal/converter/internal/test_common"
+	"github.com/grafana/alloy/internal/converter/internal/otelcolconvert"
+	"github.com/grafana/alloy/internal/converter/internal/test_common"
 )
 
 func TestConvert(t *testing.T) {

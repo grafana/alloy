@@ -1,0 +1,9 @@
+# Test rendering of the chart with the service monitor enabled
+alloy:
+  listenScheme: HTTPS
+service:
+  enabled: true
+serviceMonitor:
+  enabled: true
+  tlsConfig:
+    insecureSkipVerify: true

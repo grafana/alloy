@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -18,7 +18,7 @@ import (
 
 var _ storage.Appendable = (*Fanout)(nil)
 
-// Fanout supports the default Flow style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
+// Fanout supports the default Alloy style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
 type Fanout struct {
 	mut sync.RWMutex
 	// children is where to fan out.
@@ -33,13 +33,13 @@ type Fanout struct {
 // NewFanout creates a fanout appendable.
 func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name: "agent_prometheus_fanout_latency",
+		Name: "prometheus_fanout_latency",
 		Help: "Write latency for sending to direct and indirect components",
 	})
 	_ = register.Register(wl)
 
 	s := prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "agent_prometheus_forwarded_samples_total",
+		Name: "prometheus_forwarded_samples_total",
 		Help: "Total number of samples sent to downstream components.",
 	})
 	_ = register.Register(s)
@@ -69,7 +69,7 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 	// code from the prometheusreceiver which expects the Appender context to
 	// be contain both a scrape target and a metadata store, and fails the
 	// conversion if they are missing. We should find a way around this as both
-	// Targets and Metadata will be handled in a different way in Flow.
+	// Targets and Metadata will be handled in a different way in Alloy.
 	ctx = scrape.ContextWithTarget(ctx, &scrape.Target{})
 	ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
 

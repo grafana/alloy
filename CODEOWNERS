@@ -1,8 +1,8 @@
 # The CODEOWNERS file is used to define ownership of individuals or teams
-# outside of the core set of Grafana Agent maintainers.
+# outside of the core set of Grafana Alloy maintainers.
 #
 # If a directory is not listed here, it is assumed to be owned by the
-# @grafana/grafana-agent-maintainers; they are not explicitly listed as
+# @grafana/grafana-alloy-maintainers; they are not explicitly listed as
 # CODEOWNERS as a GitHub project board is used instead for PR tracking, which
 # helps reduce notification noise of the members of that team.
 

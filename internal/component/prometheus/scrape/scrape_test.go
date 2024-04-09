@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus"
-	"github.com/grafana/agent/internal/service/cluster"
-	http_service "github.com/grafana/agent/internal/service/http"
-	"github.com/grafana/agent/internal/service/labelstore"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/service/cluster"
+	http_service "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/ckit/memconn"
-	"github.com/grafana/river"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/prometheus/model/labels"
@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	targets         = [{ "target1" = "target1" }]
 	forward_to      = []
 	scrape_interval = "10s"
@@ -47,12 +47,12 @@ func TestRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestBadRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestBadAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	targets         = [{ "target1" = "target1" }]
 	forward_to      = []
 	scrape_interval = "10s"
@@ -67,20 +67,20 @@ func TestBadRiverConfig(t *testing.T) {
 
 	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 }
 
 func TestForwardingToAppendable(t *testing.T) {
 	opts := component.Options{
-		Logger:     util.TestFlowLogger(t),
+		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus_client.NewRegistry(),
 		GetServiceData: func(name string) (interface{}, error) {
 			switch name {
 			case http_service.ServiceName:
 				return http_service.Data{
 					HTTPListenAddr:   "localhost:12345",
-					MemoryListenAddr: "agent.internal:1245",
+					MemoryListenAddr: "alloy.internal:1245",
 					BaseHTTPPath:     "/",
 					DialFunc:         (&net.Dialer{}).DialContext,
 				}, nil
@@ -173,11 +173,11 @@ func TestCustomDialer(t *testing.T) {
 	scrape_timeout  = "85ms"
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(config), &args)
+	err := syntax.Unmarshal([]byte(config), &args)
 	require.NoError(t, err)
 
 	opts := component.Options{
-		Logger:     util.TestFlowLogger(t),
+		Logger:     util.TestAlloyLogger(t),
 		Registerer: prometheus_client.NewRegistry(),
 		GetServiceData: func(name string) (interface{}, error) {
 			switch name {
@@ -212,7 +212,7 @@ func TestCustomDialer(t *testing.T) {
 }
 
 func TestValidateScrapeConfig(t *testing.T) {
-	var exampleRiverConfig = `
+	var exampleAlloyConfig = `
 	targets         = [{ "target1" = "target1" }]
 	forward_to      = []
 	scrape_interval = "10s"
@@ -220,6 +220,6 @@ func TestValidateScrapeConfig(t *testing.T) {
 	job_name        = "local"
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "scrape_timeout (20s) greater than scrape_interval (10s) for scrape config with job name \"local\"")
 }

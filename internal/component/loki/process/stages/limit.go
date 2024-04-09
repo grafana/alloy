@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"golang.org/x/time/rate"
@@ -24,11 +24,11 @@ const MinReasonableMaxDistinctLabels = 10000 // 80bytes per rate.Limiter ~ 1MiB 
 
 // LimitConfig sets up a Limit stage.
 type LimitConfig struct {
-	Rate              float64 `river:"rate,attr"`
-	Burst             int     `river:"burst,attr"`
-	Drop              bool    `river:"drop,attr,optional"`
-	ByLabelName       string  `river:"by_label_name,attr,optional"`
-	MaxDistinctLabels int     `river:"max_distinct_labels,attr,optional"`
+	Rate              float64 `alloy:"rate,attr"`
+	Burst             int     `alloy:"burst,attr"`
+	Drop              bool    `alloy:"drop,attr,optional"`
+	ByLabelName       string  `alloy:"by_label_name,attr,optional"`
+	MaxDistinctLabels int     `alloy:"max_distinct_labels,attr,optional"`
 }
 
 func newLimitStage(logger log.Logger, cfg LimitConfig, registerer prometheus.Registerer) (Stage, error) {

@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/processor/memorylimiter"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/memorylimiter"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor/memorylimiterprocessor"
 )
@@ -28,7 +28,7 @@ func (memoryLimiterProcessorConverter) InputComponentName() string {
 func (memoryLimiterProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toMemoryLimiterProcessor(state, id, cfg.(*memorylimiterprocessor.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "memory_limiter"}, label, args)

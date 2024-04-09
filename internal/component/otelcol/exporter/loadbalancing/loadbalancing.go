@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/auth"
-	"github.com/grafana/agent/internal/component/otelcol/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
@@ -25,13 +25,13 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.loadbalancing",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := loadbalancingexporter.NewFactory()
-			//TODO(ptodev): LB exporter cannot yet work with metrics due to a limitation in the Agent:
+			//TODO(ptodev): LB exporter cannot yet work with metrics due to a limitation in Alloy:
 			// https://github.com/grafana/agent/pull/5684
 			// Once the limitation is removed, we may be able to remove the need for exporter.TypeSignal altogether.
 			return exporter.New(opts, fact, args.(Arguments), exporter.TypeLogs|exporter.TypeTraces)
@@ -41,21 +41,21 @@ func init() {
 
 // Arguments configures the otelcol.exporter.loadbalancing component.
 type Arguments struct {
-	Protocol   Protocol         `river:"protocol,block"`
-	Resolver   ResolverSettings `river:"resolver,block"`
-	RoutingKey string           `river:"routing_key,attr,optional"`
+	Protocol   Protocol         `alloy:"protocol,block"`
+	Resolver   ResolverSettings `alloy:"resolver,block"`
+	RoutingKey string           `alloy:"routing_key,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 var (
 	_ exporter.Arguments = Arguments{}
-	_ river.Defaulter    = &Arguments{}
-	_ river.Validator    = &Arguments{}
+	_ syntax.Defaulter   = &Arguments{}
+	_ syntax.Validator   = &Arguments{}
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		RoutingKey: "traceID",
@@ -64,12 +64,12 @@ func (args *Arguments) SetToDefault() {
 	args.Protocol.OTLP.SetToDefault()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	//TODO(ptodev): Add support for "resource" and "metric" routing keys later.
 	// The reason we can't add them yet is that otelcol.exporter.loadbalancing
 	// is labeled as "beta", but those routing keys are experimental.
-	// We need a way to label otelcol.exporter.loadbalancing as "beta"
+	// We need a way to label otelcol.exporter.loadbalancing as "public-preview"
 	// for logs and traces, but "experimental" for metrics.
 	switch args.RoutingKey {
 	case "service", "traceID":
@@ -91,7 +91,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Protocol holds the individual protocol-specific settings. Only OTLP is supported at the moment.
 type Protocol struct {
-	OTLP OtlpConfig `river:"otlp,block"`
+	OTLP OtlpConfig `alloy:"otlp,block"`
 }
 
 func (protocol Protocol) Convert() loadbalancingexporter.Protocol {
@@ -102,12 +102,12 @@ func (protocol Protocol) Convert() loadbalancingexporter.Protocol {
 
 // OtlpConfig defines the config for an OTLP exporter
 type OtlpConfig struct {
-	Timeout time.Duration          `river:"timeout,attr,optional"`
-	Queue   otelcol.QueueArguments `river:"queue,block,optional"`
-	Retry   otelcol.RetryArguments `river:"retry,block,optional"`
+	Timeout time.Duration          `alloy:"timeout,attr,optional"`
+	Queue   otelcol.QueueArguments `alloy:"queue,block,optional"`
+	Retry   otelcol.RetryArguments `alloy:"retry,block,optional"`
 	// Most of the time, the user will not have to set anything in the client block.
 	// However, the block should not be "optional" so that the defaults are populated.
-	Client GRPCClientArguments `river:"client,block"`
+	Client GRPCClientArguments `alloy:"client,block"`
 }
 
 func (oc *OtlpConfig) SetToDefault() {
@@ -132,9 +132,9 @@ func (oc OtlpConfig) Convert() otlpexporter.Config {
 
 // ResolverSettings defines the configurations for the backend resolver
 type ResolverSettings struct {
-	Static     *StaticResolver     `river:"static,block,optional"`
-	DNS        *DNSResolver        `river:"dns,block,optional"`
-	Kubernetes *KubernetesResolver `river:"kubernetes,block,optional"`
+	Static     *StaticResolver     `alloy:"static,block,optional"`
+	DNS        *DNSResolver        `alloy:"dns,block,optional"`
+	Kubernetes *KubernetesResolver `alloy:"kubernetes,block,optional"`
 }
 
 func (resolverSettings ResolverSettings) Convert() loadbalancingexporter.ResolverSettings {
@@ -160,7 +160,7 @@ func (resolverSettings ResolverSettings) Convert() loadbalancingexporter.Resolve
 
 // StaticResolver defines the configuration for the resolver providing a fixed list of backends
 type StaticResolver struct {
-	Hostnames []string `river:"hostnames,attr"`
+	Hostnames []string `alloy:"hostnames,attr"`
 }
 
 func (staticResolver StaticResolver) Convert() loadbalancingexporter.StaticResolver {
@@ -171,13 +171,13 @@ func (staticResolver StaticResolver) Convert() loadbalancingexporter.StaticResol
 
 // DNSResolver defines the configuration for the DNS resolver
 type DNSResolver struct {
-	Hostname string        `river:"hostname,attr"`
-	Port     string        `river:"port,attr,optional"`
-	Interval time.Duration `river:"interval,attr,optional"`
-	Timeout  time.Duration `river:"timeout,attr,optional"`
+	Hostname string        `alloy:"hostname,attr"`
+	Port     string        `alloy:"port,attr,optional"`
+	Interval time.Duration `alloy:"interval,attr,optional"`
+	Timeout  time.Duration `alloy:"timeout,attr,optional"`
 }
 
-var _ river.Defaulter = &DNSResolver{}
+var _ syntax.Defaulter = &DNSResolver{}
 
 // DefaultDNSResolver holds default values for DNSResolver.
 var DefaultDNSResolver = DNSResolver{
@@ -186,7 +186,7 @@ var DefaultDNSResolver = DNSResolver{
 	Timeout:  1 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *DNSResolver) SetToDefault() {
 	*args = DefaultDNSResolver
 }
@@ -202,13 +202,13 @@ func (dnsResolver *DNSResolver) Convert() loadbalancingexporter.DNSResolver {
 
 // KubernetesResolver defines the configuration for the k8s resolver
 type KubernetesResolver struct {
-	Service string  `river:"service,attr"`
-	Ports   []int32 `river:"ports,attr,optional"`
+	Service string  `alloy:"service,attr"`
+	Ports   []int32 `alloy:"ports,attr,optional"`
 }
 
-var _ river.Defaulter = &KubernetesResolver{}
+var _ syntax.Defaulter = &KubernetesResolver{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *KubernetesResolver) SetToDefault() {
 	if args == nil {
 		args = &KubernetesResolver{}
@@ -240,24 +240,24 @@ func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
 
 // GRPCClientArguments is the same as otelcol.GRPCClientArguments, but without an "endpoint" attribute
 type GRPCClientArguments struct {
-	Compression otelcol.CompressionType `river:"compression,attr,optional"`
+	Compression otelcol.CompressionType `alloy:"compression,attr,optional"`
 
-	TLS       otelcol.TLSClientArguments        `river:"tls,block,optional"`
-	Keepalive *otelcol.KeepaliveClientArguments `river:"keepalive,block,optional"`
+	TLS       otelcol.TLSClientArguments        `alloy:"tls,block,optional"`
+	Keepalive *otelcol.KeepaliveClientArguments `alloy:"keepalive,block,optional"`
 
-	ReadBufferSize  units.Base2Bytes  `river:"read_buffer_size,attr,optional"`
-	WriteBufferSize units.Base2Bytes  `river:"write_buffer_size,attr,optional"`
-	WaitForReady    bool              `river:"wait_for_ready,attr,optional"`
-	Headers         map[string]string `river:"headers,attr,optional"`
-	BalancerName    string            `river:"balancer_name,attr,optional"`
-	Authority       string            `river:"authority,attr,optional"`
+	ReadBufferSize  units.Base2Bytes  `alloy:"read_buffer_size,attr,optional"`
+	WriteBufferSize units.Base2Bytes  `alloy:"write_buffer_size,attr,optional"`
+	WaitForReady    bool              `alloy:"wait_for_ready,attr,optional"`
+	Headers         map[string]string `alloy:"headers,attr,optional"`
+	BalancerName    string            `alloy:"balancer_name,attr,optional"`
+	Authority       string            `alloy:"authority,attr,optional"`
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `river:"auth,attr,optional"`
+	Auth *auth.Handler `alloy:"auth,attr,optional"`
 }
 
-var _ river.Defaulter = &GRPCClientArguments{}
+var _ syntax.Defaulter = &GRPCClientArguments{}
 
 // Convert converts args into the upstream type.
 func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
@@ -307,7 +307,7 @@ func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension
 	return m
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GRPCClientArguments) SetToDefault() {
 	*args = GRPCClientArguments{
 		Headers:         map[string]string{},

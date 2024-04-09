@@ -1,0 +1,7 @@
+# Specify extra ports for verifying rendering the template works
+alloy:
+  extraPorts:
+    - name: jaeger-thrift
+      port: 14268
+      targetPort: 14268
+      protocol: TCP

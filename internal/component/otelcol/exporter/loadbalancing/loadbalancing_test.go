@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/exporter/loadbalancing"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -45,12 +45,12 @@ func TestConfigConversion(t *testing.T) {
 
 	tests := []struct {
 		testName string
-		agentCfg string
+		alloyCfg string
 		expected loadbalancingexporter.Config
 	}{
 		{
 			testName: "static",
-			agentCfg: `
+			alloyCfg: `
 			resolver {
 				static {
 					hostnames = ["endpoint-1"]
@@ -75,7 +75,7 @@ func TestConfigConversion(t *testing.T) {
 		},
 		{
 			testName: "static with service routing",
-			agentCfg: `
+			alloyCfg: `
 			routing_key = "service"
 			resolver {
 				static {
@@ -101,7 +101,7 @@ func TestConfigConversion(t *testing.T) {
 		},
 		{
 			testName: "static with timeout",
-			agentCfg: `
+			alloyCfg: `
 			protocol {
 				otlp {
 					timeout = "1s"
@@ -144,7 +144,7 @@ func TestConfigConversion(t *testing.T) {
 		},
 		{
 			testName: "dns with defaults",
-			agentCfg: `
+			alloyCfg: `
 			resolver {
 				dns {
 					hostname = "service-1"
@@ -172,7 +172,7 @@ func TestConfigConversion(t *testing.T) {
 		},
 		{
 			testName: "dns with non-defaults",
-			agentCfg: `
+			alloyCfg: `
 			resolver {
 				dns {
 					hostname = "service-1"
@@ -203,7 +203,7 @@ func TestConfigConversion(t *testing.T) {
 		},
 		{
 			testName: "k8s with defaults",
-			agentCfg: `
+			alloyCfg: `
 			resolver {
 				kubernetes {
 					service = "lb-svc.lb-ns"
@@ -229,7 +229,7 @@ func TestConfigConversion(t *testing.T) {
 		},
 		{
 			testName: "k8s with non-defaults",
-			agentCfg: `
+			alloyCfg: `
 			resolver {
 				kubernetes {
 					service = "lb-svc.lb-ns"
@@ -259,7 +259,7 @@ func TestConfigConversion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args loadbalancing.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
 			actual, err := args.Convert()
 			require.NoError(t, err)
 			require.Equal(t, &tc.expected, actual.(*loadbalancingexporter.Config))
@@ -270,12 +270,12 @@ func TestConfigConversion(t *testing.T) {
 func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
-		agentCfg string
+		alloyCfg string
 		expected otelcol.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
-			agentCfg: `
+			alloyCfg: `
 			resolver {
 				static {
 					hostnames = ["endpoint-1"]
@@ -293,7 +293,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_false",
-			agentCfg: `
+			alloyCfg: `
 			resolver {
 				static {
 					hostnames = ["endpoint-1"]
@@ -314,7 +314,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_true",
-			agentCfg: `
+			alloyCfg: `
 			resolver {
 				static {
 					hostnames = ["endpoint-1"]
@@ -338,7 +338,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args loadbalancing.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

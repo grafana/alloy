@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/syntax/token/builder"
 )
 
 const (
@@ -64,7 +64,7 @@ func ValidateNodes(f *builder.File) diag.Diagnostics {
 				label += "." + n.Label
 			}
 			if _, ok := labels[label]; ok {
-				diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("duplicate label after conversion %q. this is due to how valid flow labels are assembled and can be avoided by updating named properties in the source config.", label))
+				diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("duplicate label after conversion %q. this is due to how valid Alloy labels are assembled and can be avoided by updating named properties in the source config.", label))
 			} else {
 				labels[label] = label
 			}

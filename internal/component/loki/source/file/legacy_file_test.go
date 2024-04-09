@@ -2,6 +2,10 @@
 
 package file
 
+// NOTE(rfratto): the following test needs to be rewritten to not rely on the
+// removed static mode code (logs.New)
+
+/*
 import (
 	"context"
 	"fmt"
@@ -13,20 +17,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/loki/pkg/loghttp/push"
 	"gopkg.in/yaml.v2"
 
 	logkit "github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/static/logs"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 )
+
 
 // TestFullEndToEndLegacyConversion tests using static mode to tail a log, then converting and then writing new entries and ensuring
 // the previously tailed data does not come through.
@@ -163,3 +167,4 @@ configs:
 		return strings.Contains(entry.Line, "new thing!")
 	}, 5*time.Second, 100*time.Millisecond)
 }
+*/

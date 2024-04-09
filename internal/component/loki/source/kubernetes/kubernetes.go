@@ -11,22 +11,22 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	commonk8s "github.com/grafana/agent/internal/component/common/kubernetes"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/loki/source/kubernetes/kubetail"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/service/cluster"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/cluster"
 	"k8s.io/client-go/kubernetes"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.kubernetes",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -38,13 +38,13 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.kubernetes
 // component.
 type Arguments struct {
-	Targets   []discovery.Target  `river:"targets,attr"`
-	ForwardTo []loki.LogsReceiver `river:"forward_to,attr"`
+	Targets   []discovery.Target  `alloy:"targets,attr"`
+	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 
 	// Client settings to connect to Kubernetes.
-	Client commonk8s.ClientArguments `river:"client,block,optional"`
+	Client commonk8s.ClientArguments `alloy:"client,block,optional"`
 
-	Clustering cluster.ComponentBlock `river:"clustering,block,optional"`
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
 // DefaultArguments holds default settings for loki.source.kubernetes.
@@ -52,7 +52,7 @@ var DefaultArguments = Arguments{
 	Client: commonk8s.DefaultClientArguments,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
@@ -269,14 +269,14 @@ func (c *Component) DebugInfo() interface{} {
 
 // DebugInfo represents debug information for loki.source.kubernetes.
 type DebugInfo struct {
-	Targets []DebugInfoTarget `river:"target,block,optional"`
+	Targets []DebugInfoTarget `alloy:"target,block,optional"`
 }
 
 // DebugInfoTarget is debug information for an individual target being tailed
 // for logs.
 type DebugInfoTarget struct {
-	Labels          map[string]string `river:"labels,attr,optional"`
-	DiscoveryLabels map[string]string `river:"discovery_labels,attr,optional"`
-	LastError       string            `river:"last_error,attr,optional"`
-	UpdateTime      time.Time         `river:"update_time,attr,optional"`
+	Labels          map[string]string `alloy:"labels,attr,optional"`
+	DiscoveryLabels map[string]string `alloy:"discovery_labels,attr,optional"`
+	LastError       string            `alloy:"last_error,attr,optional"`
+	UpdateTime      time.Time         `alloy:"update_time,attr,optional"`
 }

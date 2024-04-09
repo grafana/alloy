@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/dns"
 )
@@ -16,7 +16,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.dns",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -28,10 +28,10 @@ func init() {
 
 // Arguments configures the discovery.dns component.
 type Arguments struct {
-	Names           []string      `river:"names,attr"`
-	RefreshInterval time.Duration `river:"refresh_interval,attr,optional"`
-	Type            string        `river:"type,attr,optional"`
-	Port            int           `river:"port,attr,optional"`
+	Names           []string      `alloy:"names,attr"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
+	Type            string        `alloy:"type,attr,optional"`
+	Port            int           `alloy:"port,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -39,12 +39,12 @@ var DefaultArguments = Arguments{
 	Type:            "SRV",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	switch strings.ToUpper(args.Type) {
 	case "SRV":

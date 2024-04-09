@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/linode"
 )
@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.linode",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -27,10 +27,10 @@ func init() {
 
 // Arguments configure the discovery.linode component.
 type Arguments struct {
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
-	Port             int                     `river:"port,attr,optional"`
-	TagSeparator     string                  `river:"tag_separator,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	Port             int                     `alloy:"port,attr,optional"`
+	TagSeparator     string                  `alloy:"tag_separator,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
 }
 
 // DefaultArguments is used to initialize default values for Arguments.
@@ -42,12 +42,12 @@ var DefaultArguments = Arguments{
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.RefreshInterval <= 0 {
 		return fmt.Errorf("refresh_interval must be greater than 0")

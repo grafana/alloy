@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/snmp_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	snmp_config "github.com/prometheus/snmp_exporter/config"
 	"gopkg.in/yaml.v2"
 )
@@ -19,7 +19,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.snmp",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 
@@ -63,11 +63,11 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 
 // SNMPTarget defines a target to be used by the exporter.
 type SNMPTarget struct {
-	Name       string `river:",label"`
-	Target     string `river:"address,attr"`
-	Module     string `river:"module,attr,optional"`
-	Auth       string `river:"auth,attr,optional"`
-	WalkParams string `river:"walk_params,attr,optional"`
+	Name       string `alloy:",label"`
+	Target     string `alloy:"address,attr"`
+	Module     string `alloy:"module,attr,optional"`
+	Auth       string `alloy:"auth,attr,optional"`
+	WalkParams string `alloy:"walk_params,attr,optional"`
 }
 
 type TargetBlock []SNMPTarget
@@ -88,11 +88,11 @@ func (t TargetBlock) Convert() []snmp_exporter.SNMPTarget {
 }
 
 type WalkParam struct {
-	Name                    string        `river:",label"`
-	MaxRepetitions          uint32        `river:"max_repetitions,attr,optional"`
-	Retries                 int           `river:"retries,attr,optional"`
-	Timeout                 time.Duration `river:"timeout,attr,optional"`
-	UseUnconnectedUDPSocket bool          `river:"use_unconnected_udp_socket,attr,optional"`
+	Name                    string        `alloy:",label"`
+	MaxRepetitions          uint32        `alloy:"max_repetitions,attr,optional"`
+	Retries                 int           `alloy:"retries,attr,optional"`
+	Timeout                 time.Duration `alloy:"timeout,attr,optional"`
+	UseUnconnectedUDPSocket bool          `alloy:"use_unconnected_udp_socket,attr,optional"`
 }
 
 type WalkParams []WalkParam
@@ -112,15 +112,15 @@ func (w WalkParams) Convert() map[string]snmp_config.WalkParams {
 }
 
 type Arguments struct {
-	ConfigFile   string                    `river:"config_file,attr,optional"`
-	Config       rivertypes.OptionalSecret `river:"config,attr,optional"`
-	Targets      TargetBlock               `river:"target,block"`
-	WalkParams   WalkParams                `river:"walk_param,block,optional"`
+	ConfigFile   string                    `alloy:"config_file,attr,optional"`
+	Config       alloytypes.OptionalSecret `alloy:"config,attr,optional"`
+	Targets      TargetBlock               `alloy:"target,block"`
+	WalkParams   WalkParams                `alloy:"walk_param,block,optional"`
 	ConfigStruct snmp_config.Config
 }
 
-// UnmarshalRiver implements River unmarshalling for Arguments.
-func (a *Arguments) UnmarshalRiver(f func(interface{}) error) error {
+// UnmarshalAlloy implements Alloy unmarshalling for Arguments.
+func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 	type args Arguments
 	if err := f((*args)(a)); err != nil {
 		return err

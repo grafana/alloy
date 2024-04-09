@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/digitalocean"
 )
@@ -16,7 +16,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.digitalocean",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -27,15 +27,15 @@ func init() {
 }
 
 type Arguments struct {
-	RefreshInterval time.Duration `river:"refresh_interval,attr,optional"`
-	Port            int           `river:"port,attr,optional"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
+	Port            int           `alloy:"port,attr,optional"`
 
-	BearerToken     rivertypes.Secret `river:"bearer_token,attr,optional"`
-	BearerTokenFile string            `river:"bearer_token_file,attr,optional"`
+	BearerToken     alloytypes.Secret `alloy:"bearer_token,attr,optional"`
+	BearerTokenFile string            `alloy:"bearer_token_file,attr,optional"`
 
-	ProxyConfig     *config.ProxyConfig `river:",squash"`
-	FollowRedirects bool                `river:"follow_redirects,attr,optional"`
-	EnableHTTP2     bool                `river:"enable_http2,attr,optional"`
+	ProxyConfig     *config.ProxyConfig `alloy:",squash"`
+	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
+	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -45,12 +45,12 @@ var DefaultArguments = Arguments{
 	EnableHTTP2:     true,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 //
 // Validate validates the arguments. Specifically, it checks that a BearerToken or
 // BearerTokenFile is specified, as the DigitalOcean API requires a Bearer Token for

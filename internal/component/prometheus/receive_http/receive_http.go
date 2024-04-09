@@ -8,13 +8,13 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
-	"github.com/grafana/agent/internal/component"
-	fnet "github.com/grafana/agent/internal/component/common/net"
-	agentprom "github.com/grafana/agent/internal/component/prometheus"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/service/labelstore"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote"
@@ -23,7 +23,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.receive_http",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -33,11 +33,11 @@ func init() {
 }
 
 type Arguments struct {
-	Server    *fnet.ServerConfig   `river:",squash"`
-	ForwardTo []storage.Appendable `river:"forward_to,attr"`
+	Server    *fnet.ServerConfig   `alloy:",squash"`
+	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		Server: fnet.DefaultServerConfig(),
@@ -47,7 +47,7 @@ func (args *Arguments) SetToDefault() {
 type Component struct {
 	opts               component.Options
 	handler            http.Handler
-	fanout             *agentprom.Fanout
+	fanout             *alloyprom.Fanout
 	uncheckedCollector *util.UncheckedCollector
 
 	updateMut sync.RWMutex
@@ -61,7 +61,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 	ls := service.(labelstore.LabelStore)
-	fanout := agentprom.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls)
+	fanout := alloyprom.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls)
 
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)

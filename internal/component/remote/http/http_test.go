@@ -10,13 +10,13 @@ import (
 	"testing"
 	"time"
 
-	http_component "github.com/grafana/agent/internal/component/remote/http"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	http_component "github.com/grafana/alloy/internal/component/remote/http"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,7 +50,7 @@ func Test(t *testing.T) {
 		poll_timeout   = "25ms" 
 	`, srv.URL, http.MethodPut, "hello there!")
 	var args http_component.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	go func() {
 		err := ctrl.Run(ctx, args)
@@ -71,7 +71,7 @@ func Test(t *testing.T) {
 	}
 
 	requireExports(http_component.Exports{
-		Content: rivertypes.OptionalSecret{
+		Content: alloytypes.OptionalSecret{
 			IsSecret: false,
 			Value:    "Hello, world!",
 		},
@@ -87,7 +87,7 @@ func Test(t *testing.T) {
 	})
 	require.NoError(t, ctrl.WaitExports(time.Second), "component didn't update exports")
 	requireExports(http_component.Exports{
-		Content: rivertypes.OptionalSecret{
+		Content: alloytypes.OptionalSecret{
 			IsSecret: false,
 			Value:    "Testing!\nMethod: PUT\nHeader: value",
 		},
@@ -126,7 +126,7 @@ func TestUnmarshalValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testname, func(t *testing.T) {
 			var args http_component.Arguments
-			require.EqualError(t, river.Unmarshal([]byte(tt.cfg), &args), tt.expectedError)
+			require.EqualError(t, syntax.Unmarshal([]byte(tt.cfg), &args), tt.expectedError)
 		})
 	}
 }

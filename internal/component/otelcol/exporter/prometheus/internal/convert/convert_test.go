@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/grafana/agent/internal/component/otelcol/exporter/prometheus/internal/convert"
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/agent/internal/util/testappender"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus/internal/convert"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/testappender"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pmetric"

@@ -1,5 +1,5 @@
-// Package cluster implements the cluster service for Flow, where multiple
-// instances of Flow connect to each other for work distribution.
+// Package cluster implements the cluster service, where multiple instances of
+// Alloy connect to each other for work distribution.
 package cluster
 
 import (
@@ -14,11 +14,11 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/service"
-	http_service "github.com/grafana/agent/internal/service/http"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service"
+	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/ckit"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
@@ -55,7 +55,7 @@ type Options struct {
 	Tracer  trace.TracerProvider  // Where to send traces.
 
 	// EnableClustering toggles clustering as a whole. When EnableClustering is
-	// false, the instance of Flow acts as a single-node cluster and it is not
+	// false, the instance of Alloy acts as a single-node cluster and it is not
 	// possible for other nodes to join the cluster.
 	EnableClustering bool
 
@@ -163,7 +163,7 @@ func (s *Service) Definition() service.Definition {
 			// Cluster depends on the HTTP service to work properly.
 			http_service.ServiceName,
 		},
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 	}
 }
 
@@ -347,7 +347,7 @@ func (s *Service) Data() any {
 	return &sharderCluster{sharder: s.sharder}
 }
 
-// Component is a Flow component which subscribes to clustering updates.
+// Component is a component which subscribes to clustering updates.
 type Component interface {
 	component.Component
 
@@ -363,7 +363,7 @@ type Component interface {
 // component. ComponentBlock is intended to be exposed as a block called
 // "clustering".
 type ComponentBlock struct {
-	Enabled bool `river:"enabled,attr"`
+	Enabled bool `alloy:"enabled,attr"`
 }
 
 // Cluster is a read-only view of a cluster.

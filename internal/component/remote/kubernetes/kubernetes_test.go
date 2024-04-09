@@ -4,20 +4,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverCfg := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyCfg := `
 		name = "foo"
 		namespace = "bar"
 		poll_frequency = "10m"
 		poll_timeout = "1s"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 
 	assert.Equal(t, 10*time.Minute, args.PollFrequency)

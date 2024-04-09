@@ -22,7 +22,7 @@ func Test_ReportLoop(t *testing.T) {
 	var (
 		mut          sync.Mutex
 		totalReports int
-		agentIDs     []string
+		alloyIDs     []string
 	)
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -33,7 +33,7 @@ func Test_ReportLoop(t *testing.T) {
 
 		var received Report
 		require.NoError(t, jsoniter.NewDecoder(r.Body).Decode(&received))
-		agentIDs = append(agentIDs, received.UsageStatsID)
+		alloyIDs = append(alloyIDs, received.UsageStatsID)
 
 		rw.WriteHeader(http.StatusOK)
 	}))
@@ -57,11 +57,11 @@ func Test_ReportLoop(t *testing.T) {
 	defer mut.Unlock()
 
 	require.GreaterOrEqual(t, totalReports, 5)
-	first := agentIDs[0]
-	for _, uid := range agentIDs {
+	first := alloyIDs[0]
+	for _, uid := range alloyIDs {
 		require.Equal(t, first, uid)
 	}
-	require.Equal(t, first, r.agentSeed.UID)
+	require.Equal(t, first, r.seed.UID)
 }
 
 func Test_NextReport(t *testing.T) {

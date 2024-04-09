@@ -2,11 +2,11 @@
 package probabilistic_sampler
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/processor"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/processor"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.probabilistic_sampler",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -28,20 +28,20 @@ func init() {
 
 // Arguments configures the otelcol.processor.probabilistic_sampler component.
 type Arguments struct {
-	SamplingPercentage float32 `river:"sampling_percentage,attr,optional"`
-	HashSeed           uint32  `river:"hash_seed,attr,optional"`
-	AttributeSource    string  `river:"attribute_source,attr,optional"`
-	FromAttribute      string  `river:"from_attribute,attr,optional"`
-	SamplingPriority   string  `river:"sampling_priority,attr,optional"`
+	SamplingPercentage float32 `alloy:"sampling_percentage,attr,optional"`
+	HashSeed           uint32  `alloy:"hash_seed,attr,optional"`
+	AttributeSource    string  `alloy:"attribute_source,attr,optional"`
+	FromAttribute      string  `alloy:"from_attribute,attr,optional"`
+	SamplingPriority   string  `alloy:"sampling_priority,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (
 	_ processor.Arguments = Arguments{}
-	_ river.Validator     = (*Arguments)(nil)
-	_ river.Defaulter     = (*Arguments)(nil)
+	_ syntax.Validator    = (*Arguments)(nil)
+	_ syntax.Defaulter    = (*Arguments)(nil)
 )
 
 // DefaultArguments holds default settings for Arguments.
@@ -49,12 +49,12 @@ var DefaultArguments = Arguments{
 	AttributeSource: "traceID",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	cfg, err := args.Convert()
 	if err != nil {

@@ -1,7 +1,7 @@
 package promtailconvert
 
 import (
-	"github.com/grafana/agent/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/diag"
 	promtailcfg "github.com/grafana/loki/clients/pkg/promtail/config"
 )
 
@@ -12,7 +12,7 @@ func validateTopLevelConfig(cfg *promtailcfg.Config, diags *diag.Diagnostics) {
 	if cfg.WAL.Enabled {
 		diags.Add(
 			diag.SeverityLevelError,
-			"Promtail's WAL is currently not supported in Flow Mode",
+			"Promtail's WAL is currently not supported in Alloy",
 		)
 	}
 
@@ -22,44 +22,44 @@ func validateTopLevelConfig(cfg *promtailcfg.Config, diags *diag.Diagnostics) {
 	if cfg.LimitsConfig != DefaultLimitsConfig() {
 		diags.Add(
 			diag.SeverityLevelError,
-			"limits_config is not yet supported in Flow Mode",
+			"limits_config is not yet supported in Alloy",
 		)
 	}
 
-	// We cannot migrate the tracing config to Flow Mode, since in promtail it relies on
+	// We cannot migrate the tracing config to Alloy, since in promtail it relies on
 	// environment variables that can be set or not and depending on what is set, different
 	// features of tracing are configured. We'd need to have conditionals in the
-	// flow config to translate this. See https://www.jaegertracing.io/docs/1.16/client-features/
+	// Alloy config to translate this. See https://www.jaegertracing.io/docs/1.16/client-features/
 	if cfg.Tracing.Enabled {
 		diags.Add(
 			diag.SeverityLevelWarn,
-			"If you have a tracing set up for Promtail, it cannot be migrated to Flow Mode automatically. "+
-				"Refer to the documentation on how to configure tracing in Flow Mode.",
+			"If you have a tracing set up for Promtail, it cannot be migrated to Alloy automatically. "+
+				"Refer to the documentation on how to configure tracing in Alloy.",
 		)
 	}
 
 	if cfg.TargetConfig.Stdin {
 		diags.Add(
 			diag.SeverityLevelError,
-			"reading targets from stdin is not supported in Flow Mode configuration file",
+			"reading targets from stdin is not supported in Alloy configuration file",
 		)
 	}
 	if cfg.ServerConfig.ProfilingEnabled {
-		diags.Add(diag.SeverityLevelWarn, "server.profiling_enabled is not supported - use Agent's "+
+		diags.Add(diag.SeverityLevelWarn, "server.profiling_enabled is not supported - use Alloy's "+
 			"main HTTP server's profiling endpoints instead")
 	}
 
 	if cfg.ServerConfig.RegisterInstrumentation {
 		diags.Add(
 			diag.SeverityLevelWarn,
-			"The Agent's Flow Mode metrics are different from the metrics emitted by Promtail. If you "+
+			"Alloy's metrics are different from the metrics emitted by Promtail. If you "+
 				"rely on Promtail's metrics, you must change your configuration, for example, your alerts and dashboards.",
 		)
 	}
 
 	if cfg.ServerConfig.LogLevel.String() != "info" {
 		diags.Add(diag.SeverityLevelWarn, "The converter does not support converting the provided server.log_level config: "+
-			"The equivalent feature in Flow mode is to use the logging config block to set the level argument.")
+			"The equivalent feature in Alloy is to use the logging config block to set the level argument.")
 	}
 
 	if cfg.ServerConfig.PathPrefix != "" {
@@ -67,6 +67,6 @@ func validateTopLevelConfig(cfg *promtailcfg.Config, diags *diag.Diagnostics) {
 	}
 
 	if cfg.ServerConfig.HealthCheckTarget != nil && !*cfg.ServerConfig.HealthCheckTarget {
-		diags.Add(diag.SeverityLevelWarn, "server.health_check_target disabling is not supported in Flow mode")
+		diags.Add(diag.SeverityLevelWarn, "server.health_check_target disabling is not supported in Alloy")
 	}
 }

@@ -3,16 +3,16 @@ package process
 import (
 	"testing"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/ncabatoff/process-exporter/config"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfigUnmarshal(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigUnmarshal(t *testing.T) {
+	var exampleAlloyConfig = `
 	matcher {
-		name    = "flow"
-		comm    = ["grafana-agent"]
+		name    = "alloy"
+		comm    = ["alloy"]
 		cmdline = ["*run*"]
 	}
 	track_children    = false
@@ -22,7 +22,7 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	require.False(t, args.Children)
@@ -32,19 +32,19 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 
 	expected := []MatcherGroup{
 		{
-			Name:         "flow",
-			CommRules:    []string{"grafana-agent"},
+			Name:         "alloy",
+			CommRules:    []string{"alloy"},
 			CmdlineRules: []string{"*run*"},
 		},
 	}
 	require.Equal(t, expected, args.ProcessExporter)
 }
 
-func TestRiverConfigConvert(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigConvert(t *testing.T) {
+	var exampleAlloyConfig = `
 	matcher {
 		name    = "static"
-		comm    = ["grafana-agent"]
+		comm    = ["alloy"]
 		cmdline = ["*config.file*"]
 	}
 	track_children    = true
@@ -54,7 +54,7 @@ func TestRiverConfigConvert(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	require.True(t, args.Children)
@@ -65,7 +65,7 @@ func TestRiverConfigConvert(t *testing.T) {
 	expected := []MatcherGroup{
 		{
 			Name:         "static",
-			CommRules:    []string{"grafana-agent"},
+			CommRules:    []string{"alloy"},
 			CmdlineRules: []string{"*config.file*"},
 		},
 	}
@@ -80,7 +80,7 @@ func TestRiverConfigConvert(t *testing.T) {
 	e := config.MatcherRules{
 		{
 			Name:         "static",
-			CommRules:    []string{"grafana-agent"},
+			CommRules:    []string{"alloy"},
 			CmdlineRules: []string{"*config.file*"},
 		},
 	}

@@ -7,7 +7,7 @@ import (
 	"reflect"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/jmespath/go-jmespath"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
@@ -56,10 +56,10 @@ var fields = map[GeoIPFields]string{
 
 // GeoIPConfig represents GeoIP stage config
 type GeoIPConfig struct {
-	DB            string            `river:"db,attr"`
-	Source        *string           `river:"source,attr"`
-	DBType        string            `river:"db_type,attr,optional"`
-	CustomLookups map[string]string `river:"custom_lookups,attr,optional"`
+	DB            string            `alloy:"db,attr"`
+	Source        *string           `alloy:"source,attr"`
+	DBType        string            `alloy:"db_type,attr,optional"`
+	CustomLookups map[string]string `alloy:"custom_lookups,attr,optional"`
 }
 
 func validateGeoIPConfig(c GeoIPConfig) (map[string]*jmespath.JMESPath, error) {

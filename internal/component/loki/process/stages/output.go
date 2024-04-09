@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/prometheus/common/model"
 )
 
@@ -19,7 +19,7 @@ var (
 // OutputConfig initializes a configuration stage which sets the log line to a
 // value from the extracted map.
 type OutputConfig struct {
-	Source string `river:"source,attr"`
+	Source string `alloy:"source,attr"`
 }
 
 // newOutputStage creates a new outputStage

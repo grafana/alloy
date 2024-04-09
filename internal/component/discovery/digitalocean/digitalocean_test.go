@@ -5,30 +5,30 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax"
 	prom_common_config "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyUnmarshal(t *testing.T) {
+	var exampleAlloyConfig = `
 	refresh_interval = "5m"
 	port = 8181
 	bearer_token = "token"
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	assert.Equal(t, 5*time.Minute, args.RefreshInterval)
 	assert.Equal(t, 8181, args.Port)
 	assert.Equal(t, "token", string(args.BearerToken))
 
-	var fullerExampleRiverConfig = `
+	var fullerExampleAlloyConfig = `
 	refresh_interval = "3m"
 	port = 9119
 	proxy_url = "http://proxy:8080"
@@ -36,7 +36,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	enable_http2 = false
 	bearer_token = "token"
 	`
-	err = river.Unmarshal([]byte(fullerExampleRiverConfig), &args)
+	err = syntax.Unmarshal([]byte(fullerExampleAlloyConfig), &args)
 	require.NoError(t, err)
 	assert.Equal(t, 3*time.Minute, args.RefreshInterval)
 	assert.Equal(t, 9119, args.Port)
@@ -45,7 +45,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	assert.Equal(t, false, args.EnableHTTP2)
 }
 
-func TestBadRiverConfig(t *testing.T) {
+func TestBadAlloyConfig(t *testing.T) {
 	var badConfigTooManyBearerTokens = `
 	refresh_interval = "5m"
 	port = 8181
@@ -54,7 +54,7 @@ func TestBadRiverConfig(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(badConfigTooManyBearerTokens), &args)
+	err := syntax.Unmarshal([]byte(badConfigTooManyBearerTokens), &args)
 	require.ErrorContains(t, err, "exactly one of bearer_token or bearer_token_file must be specified")
 
 	var badConfigMissingAuth = `
@@ -62,7 +62,7 @@ func TestBadRiverConfig(t *testing.T) {
 	port = 8181
 	`
 	var args2 Arguments
-	err = river.Unmarshal([]byte(badConfigMissingAuth), &args2)
+	err = syntax.Unmarshal([]byte(badConfigMissingAuth), &args2)
 	require.ErrorContains(t, err, "exactly one of bearer_token or bearer_token_file must be specified")
 }
 

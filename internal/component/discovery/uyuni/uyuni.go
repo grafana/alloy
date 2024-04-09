@@ -5,11 +5,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/uyuni"
@@ -18,7 +18,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.uyuni",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -29,16 +29,16 @@ func init() {
 }
 
 type Arguments struct {
-	Server          string              `river:"server,attr"`
-	Username        string              `river:"username,attr"`
-	Password        rivertypes.Secret   `river:"password,attr"`
-	Entitlement     string              `river:"entitlement,attr,optional"`
-	Separator       string              `river:"separator,attr,optional"`
-	RefreshInterval time.Duration       `river:"refresh_interval,attr,optional"`
-	ProxyConfig     *config.ProxyConfig `river:",squash"`
-	TLSConfig       config.TLSConfig    `river:"tls_config,block,optional"`
-	FollowRedirects bool                `river:"follow_redirects,attr,optional"`
-	EnableHTTP2     bool                `river:"enable_http2,attr,optional"`
+	Server          string              `alloy:"server,attr"`
+	Username        string              `alloy:"username,attr"`
+	Password        alloytypes.Secret   `alloy:"password,attr"`
+	Entitlement     string              `alloy:"entitlement,attr,optional"`
+	Separator       string              `alloy:"separator,attr,optional"`
+	RefreshInterval time.Duration       `alloy:"refresh_interval,attr,optional"`
+	ProxyConfig     *config.ProxyConfig `alloy:",squash"`
+	TLSConfig       config.TLSConfig    `alloy:"tls_config,block,optional"`
+	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
+	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -50,12 +50,12 @@ var DefaultArguments = Arguments{
 	FollowRedirects: config.DefaultHTTPClientConfig.FollowRedirects,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	_, err := url.Parse(a.Server)
 	if err != nil {

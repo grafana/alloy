@@ -15,14 +15,14 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	lokiClient "github.com/grafana/agent/internal/component/common/loki/client"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	lokiClient "github.com/grafana/alloy/internal/component/common/loki/client"
 )
 
 const (

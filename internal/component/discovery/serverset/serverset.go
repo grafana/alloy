@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/zookeeper"
 )
@@ -16,7 +16,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.serverset",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -27,21 +27,21 @@ func init() {
 }
 
 type Arguments struct {
-	Servers []string      `river:"servers,attr"`
-	Paths   []string      `river:"paths,attr"`
-	Timeout time.Duration `river:"timeout,attr,optional"`
+	Servers []string      `alloy:"servers,attr"`
+	Paths   []string      `alloy:"paths,attr"`
+	Timeout time.Duration `alloy:"timeout,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
 	Timeout: 10 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if len(args.Servers) == 0 {
 		return errors.New("discovery.serverset config must contain at least one Zookeeper server")

@@ -1,9 +1,9 @@
 package sigv4
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol/auth"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -12,7 +12,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.auth.sigv4",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   auth.Exports{},
 
@@ -25,9 +25,9 @@ func init() {
 
 // Arguments configures the otelcol.auth.sigv4 component.
 type Arguments struct {
-	Region     string     `river:"region,attr,optional"`
-	Service    string     `river:"service,attr,optional"`
-	AssumeRole AssumeRole `river:"assume_role,block,optional"`
+	Region     string     `alloy:"region,attr,optional"`
+	Service    string     `alloy:"service,attr,optional"`
+	AssumeRole AssumeRole `alloy:"assume_role,block,optional"`
 }
 
 var (
@@ -49,7 +49,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &res, nil
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args Arguments) Validate() error {
 	_, err := args.Convert()
 	return err
@@ -67,9 +67,9 @@ func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.I
 
 // AssumeRole replicates sigv4authextension.Config.AssumeRole
 type AssumeRole struct {
-	ARN         string `river:"arn,attr,optional"`
-	SessionName string `river:"session_name,attr,optional"`
-	STSRegion   string `river:"sts_region,attr,optional"`
+	ARN         string `alloy:"arn,attr,optional"`
+	SessionName string `alloy:"session_name,attr,optional"`
+	STSRegion   string `alloy:"sts_region,attr,optional"`
 }
 
 // Convert converts args into the upstream type.

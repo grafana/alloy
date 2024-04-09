@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/fakeconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/receiver"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
@@ -38,7 +38,7 @@ func TestReceiver(t *testing.T) {
 		}
 	)
 
-	// Create and start our Flow component. We then wait for it to export a
+	// Create and start our Alloy component. We then wait for it to export a
 	// consumer that we can send data to.
 	te := newTestEnvironment(t, onTracesConsumer)
 	te.Start(fakeReceiverArgs{

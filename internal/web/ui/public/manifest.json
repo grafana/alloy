@@ -1,6 +1,6 @@
 {
-  "short_name": "Grafana Agent",
-  "name": "Grafana Agent",
+  "short_name": "Grafana Alloy",
+  "name": "Grafana Alloy",
   "icons": [
     {
       "src": "favicon.ico",

@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/pyroscope"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/featuregate"
 	ebpfspy "github.com/grafana/pyroscope/ebpf"
 	demangle2 "github.com/grafana/pyroscope/ebpf/cpp/demangle"
 	"github.com/grafana/pyroscope/ebpf/pprof"
@@ -25,7 +25,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.ebpf",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -51,12 +51,12 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		return nil, fmt.Errorf("ebpf session create: %w", err)
 	}
 
-	flowAppendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
+	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
 
 	res := &Component{
 		options:      opts,
 		metrics:      ms,
-		appendable:   flowAppendable,
+		appendable:   alloyAppendable,
 		args:         args,
 		targetFinder: targetFinder,
 		session:      session,
@@ -66,7 +66,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	return res, nil
 }
 
-func (rc *Arguments) UnmarshalRiver(f func(interface{}) error) error {
+func (rc *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 	*rc = defaultArguments()
 	type config Arguments
 	return f((*config)(rc))
@@ -200,8 +200,8 @@ func (c *Component) collectProfiles() error {
 }
 
 type DebugInfo struct {
-	Targets interface{} `river:"targets,attr,optional"`
-	Session interface{} `river:"session,attr,optional"`
+	Targets interface{} `alloy:"targets,attr,optional"`
+	Session interface{} `alloy:"session,attr,optional"`
 }
 
 func (c *Component) updateDebugInfo() {

@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"sort"
 
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/otelcol/exporter/prometheus"
-	"github.com/grafana/agent/internal/component/prometheus/relabel"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/otelcolconvert"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	prometheus_component "github.com/grafana/agent/internal/converter/internal/prometheusconvert/component"
-	"github.com/grafana/agent/internal/static/traces/remotewriteexporter"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus"
+	"github.com/grafana/alloy/internal/component/prometheus/relabel"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/otelcolconvert"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
+	prometheus_component "github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
+	"github.com/grafana/alloy/internal/static/traces/remotewriteexporter"
 	prom_relabel "github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/storage"
 	"go.opentelemetry.io/collector/component"
@@ -33,7 +33,7 @@ func (remoteWriteExporterConverter) InputComponentName() string {
 }
 
 func (remoteWriteExporterConverter) ConvertAndAppend(state *otelcolconvert.State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	// We overloaded the ServerConfig.Endpoint field to be the prometheus.remote_write label
 	rwLabel := "metrics_" + cfg.(*remotewriteexporter.Config).PromInstance
@@ -59,7 +59,7 @@ func (remoteWriteExporterConverter) ConvertAndAppend(state *otelcolconvert.State
 func includeRelabelConfig(label string, cfg component.Config, state *otelcolconvert.State, forwardTo []storage.Appendable) *relabel.Exports {
 	pb := build.NewPrometheusBlocks()
 
-	defaultRelabelConfigs := &flow_relabel.Config{}
+	defaultRelabelConfigs := &alloy_relabel.Config{}
 	defaultRelabelConfigs.SetToDefault()
 	relabelConfigs := []*prom_relabel.Config{}
 

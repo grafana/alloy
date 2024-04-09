@@ -4,9 +4,9 @@ package gce
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/gce"
 )
@@ -14,7 +14,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.gce",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -26,12 +26,12 @@ func init() {
 
 // Arguments configures the discovery.gce component.
 type Arguments struct {
-	Project         string        `river:"project,attr"`
-	Zone            string        `river:"zone,attr"`
-	Filter          string        `river:"filter,attr,optional"`
-	RefreshInterval time.Duration `river:"refresh_interval,attr,optional"`
-	Port            int           `river:"port,attr,optional"`
-	TagSeparator    string        `river:"tag_separator,attr,optional"`
+	Project         string        `alloy:"project,attr"`
+	Zone            string        `alloy:"zone,attr"`
+	Filter          string        `alloy:"filter,attr,optional"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
+	Port            int           `alloy:"port,attr,optional"`
+	TagSeparator    string        `alloy:"tag_separator,attr,optional"`
 }
 
 // DefaultArguments holds default values for Arguments.
@@ -41,7 +41,7 @@ var DefaultArguments = Arguments{
 	RefreshInterval: 60 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }

@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMultilineStageProcess(t *testing.T) {
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second}
 	err := validateMultilineConfig(&mcfg)
 	require.NoError(t, err)
@@ -41,7 +41,7 @@ func TestMultilineStageProcess(t *testing.T) {
 }
 
 func TestMultilineStageMultiStreams(t *testing.T) {
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second}
 	err := validateMultilineConfig(&mcfg)
 	require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestMultilineStageMultiStreams(t *testing.T) {
 }
 
 func TestMultilineStageMaxWaitTime(t *testing.T) {
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 100 * time.Millisecond}
 	err := validateMultilineConfig(&mcfg)
 	require.NoError(t, err)

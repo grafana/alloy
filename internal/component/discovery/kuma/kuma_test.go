@@ -4,15 +4,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax"
 	promConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	server = "http://kuma-control-plane.kuma-system.svc:5676"
 
 	refresh_interval = "10s"
@@ -20,12 +20,12 @@ func TestRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestBadRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestBadAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	server = "http://kuma-control-plane.kuma-system.svc:5676"
 	tls_config {
 		ca_file = "/path/to/ca_file"
@@ -35,12 +35,12 @@ func TestBadRiverConfig(t *testing.T) {
 
 	// Make sure the TLSConfig Validate function is being utilized correctly
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "at most one of ca_pem and ca_file must be configured")
 }
 
 func TestConvert(t *testing.T) {
-	riverArgs := Arguments{
+	alloyArgs := Arguments{
 		Server:          "srv",
 		RefreshInterval: 30 * time.Second,
 		FetchTimeout:    10 * time.Second,
@@ -52,7 +52,7 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	promArgs := riverArgs.Convert()
+	promArgs := alloyArgs.Convert()
 	require.Equal(t, "srv", promArgs.Server)
 	require.Equal(t, model.Duration(30*time.Second), promArgs.RefreshInterval)
 	require.Equal(t, model.Duration(10*time.Second), promArgs.FetchTimeout)
@@ -62,17 +62,17 @@ func TestConvert(t *testing.T) {
 
 func TestValidateNoServers(t *testing.T) {
 	t.Run("validate fetch timeout", func(t *testing.T) {
-		riverArgs := Arguments{
+		alloyArgs := Arguments{
 			RefreshInterval: 10 * time.Second,
 		}
-		err := riverArgs.Validate()
+		err := alloyArgs.Validate()
 		require.ErrorContains(t, err, "fetch_timeout must be greater than 0")
 	})
 	t.Run("validate refresh interval", func(t *testing.T) {
-		riverArgs := Arguments{
+		alloyArgs := Arguments{
 			FetchTimeout: 10 * time.Second,
 		}
-		err := riverArgs.Validate()
+		err := alloyArgs.Validate()
 		require.ErrorContains(t, err, "refresh_interval must be greater than 0")
 	})
 }

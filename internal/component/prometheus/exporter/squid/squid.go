@@ -3,19 +3,19 @@ package squid
 import (
 	"net"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/squid_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/squid_exporter"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.squid",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 
@@ -30,17 +30,17 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 
 // Arguments controls the squid exporter.
 type Arguments struct {
-	SquidAddr     string            `river:"address,attr"`
-	SquidUser     string            `river:"username,attr,optional"`
-	SquidPassword rivertypes.Secret `river:"password,attr,optional"`
+	SquidAddr     string            `alloy:"address,attr"`
+	SquidUser     string            `alloy:"username,attr,optional"`
+	SquidPassword alloytypes.Secret `alloy:"password,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if a.SquidAddr == "" {
 		return squid_exporter.ErrNoAddress

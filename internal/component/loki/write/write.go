@@ -7,19 +7,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/agentseed"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/client"
-	"github.com/grafana/agent/internal/component/common/loki/limit"
-	"github.com/grafana/agent/internal/component/common/loki/wal"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/client"
+	"github.com/grafana/alloy/internal/component/common/loki/limit"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.write",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -31,20 +31,20 @@ func init() {
 
 // Arguments holds values which are used to configure the loki.write component.
 type Arguments struct {
-	Endpoints      []EndpointOptions `river:"endpoint,block,optional"`
-	ExternalLabels map[string]string `river:"external_labels,attr,optional"`
-	MaxStreams     int               `river:"max_streams,attr,optional"`
-	WAL            WalArguments      `river:"wal,block,optional"`
+	Endpoints      []EndpointOptions `alloy:"endpoint,block,optional"`
+	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
+	MaxStreams     int               `alloy:"max_streams,attr,optional"`
+	WAL            WalArguments      `alloy:"wal,block,optional"`
 }
 
 // WalArguments holds the settings for configuring the Write-Ahead Log (WAL) used
 // by the underlying remote write client.
 type WalArguments struct {
-	Enabled          bool          `river:"enabled,attr,optional"`
-	MaxSegmentAge    time.Duration `river:"max_segment_age,attr,optional"`
-	MinReadFrequency time.Duration `river:"min_read_frequency,attr,optional"`
-	MaxReadFrequency time.Duration `river:"max_read_frequency,attr,optional"`
-	DrainTimeout     time.Duration `river:"drain_timeout,attr,optional"`
+	Enabled          bool          `alloy:"enabled,attr,optional"`
+	MaxSegmentAge    time.Duration `alloy:"max_segment_age,attr,optional"`
+	MinReadFrequency time.Duration `alloy:"min_read_frequency,attr,optional"`
+	MaxReadFrequency time.Duration `alloy:"max_read_frequency,attr,optional"`
+	DrainTimeout     time.Duration `alloy:"drain_timeout,attr,optional"`
 }
 
 func (wa *WalArguments) Validate() error {
@@ -69,7 +69,7 @@ func (wa *WalArguments) SetToDefault() {
 // Exports holds the receiver that is used to send log entries to the
 // loki.write component.
 type Exports struct {
-	Receiver loki.LogsReceiver `river:"receiver,attr"`
+	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
 }
 
 var (
@@ -123,7 +123,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.walWriter.Stop()
 		}
 		if c.clientManger != nil {
-			// drain, since the component is shutting down. That means the agent is shutting down as well
+			// drain, since the component is shutting down. That means Alloy is shutting down as well
 			c.clientManger.StopWithDrain(true)
 		}
 	}()
@@ -163,13 +163,14 @@ func (c *Component) Update(args component.Arguments) error {
 
 	cfgs := newArgs.convertClientConfigs()
 
-	uid := agentseed.Get().UID
+	uid := alloyseed.Get().UID
 	for i := range cfgs {
 		//cfgs is slice of struct values, so we set by index
 		if cfgs[i].Headers == nil {
 			cfgs[i].Headers = map[string]string{}
 		}
-		cfgs[i].Headers[agentseed.HeaderName] = uid
+		cfgs[i].Headers[alloyseed.LegacyHeaderName] = uid
+		cfgs[i].Headers[alloyseed.HeaderName] = uid
 	}
 	walCfg := wal.Config{
 		Enabled:       newArgs.WAL.Enabled,

@@ -3,14 +3,14 @@ package mysql
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/static/integrations/mysqld_exporter"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfigUnmarshal(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigUnmarshal(t *testing.T) {
+	var exampleAlloyConfig = `
 	data_source_name = "root:secret_password@tcp(localhost:3306)/mydb"
 	enable_collectors = ["collector1"]
 	disable_collectors = ["collector2"]
@@ -55,7 +55,7 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	require.Equal(t, "root:secret_password@tcp(localhost:3306)/mydb", string(args.DataSourceName))
@@ -80,8 +80,8 @@ func TestRiverConfigUnmarshal(t *testing.T) {
 	require.False(t, args.MySQLUser.Privileges)
 }
 
-func TestRiverConfigConvert(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigConvert(t *testing.T) {
+	var exampleAlloyConfig = `
 	data_source_name = "root:secret_password@tcp(localhost:3306)/mydb"
 	enable_collectors = ["collector1"]
 	disable_collectors = ["collector2"]
@@ -126,7 +126,7 @@ func TestRiverConfigConvert(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
 	c := args.Convert()
@@ -152,7 +152,7 @@ func TestRiverConfigConvert(t *testing.T) {
 	require.False(t, c.MySQLUserPrivileges)
 }
 
-// Checks that the flow and static default configs have not drifted
+// Checks that the configs have not drifted between Grafana Agent static mode and Alloy.
 func TestDefaultsSame(t *testing.T) {
 	convertedDefaults := DefaultArguments.Convert()
 	require.Equal(t, mysqld_exporter.DefaultConfig, *convertedDefaults)
@@ -160,14 +160,14 @@ func TestDefaultsSame(t *testing.T) {
 
 func TestValidate_ValidDataSource(t *testing.T) {
 	args := Arguments{
-		DataSourceName: rivertypes.Secret("root:secret_password@tcp(localhost:3306)/mydb"),
+		DataSourceName: alloytypes.Secret("root:secret_password@tcp(localhost:3306)/mydb"),
 	}
 	require.NoError(t, args.Validate())
 }
 
 func TestValidate_InvalidDataSource(t *testing.T) {
 	args := Arguments{
-		DataSourceName: rivertypes.Secret("root:secret_password@invalid/mydb"),
+		DataSourceName: alloytypes.Secret("root:secret_password@invalid/mydb"),
 	}
 	require.Error(t, args.Validate())
 }

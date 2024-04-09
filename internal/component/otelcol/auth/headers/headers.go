@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol/auth"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -19,7 +19,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.auth.headers",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   auth.Exports{},
 
@@ -32,7 +32,7 @@ func init() {
 
 // Arguments configures the otelcol.auth.headers component.
 type Arguments struct {
-	Headers []Header `river:"header,block,optional"`
+	Headers []Header `alloy:"header,block,optional"`
 }
 
 var _ auth.Arguments = Arguments{}
@@ -85,11 +85,11 @@ const (
 )
 
 var (
-	_ river.Validator          = (*Action)(nil)
+	_ syntax.Validator         = (*Action)(nil)
 	_ encoding.TextUnmarshaler = (*Action)(nil)
 )
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Action) Validate() error {
 	switch *a {
 	case ActionInsert, ActionUpdate, ActionUpsert, ActionDelete:
@@ -100,7 +100,7 @@ func (a *Action) Validate() error {
 	return nil
 }
 
-// Convert the River type to the Otel type.
+// Convert the Alloy type to the Otel type.
 // TODO: When headerssetterextension.actionValue is made external,
 // remove the input parameter and make this output the Otel type.
 func (a *Action) Convert(hc *headerssetterextension.HeaderConfig) error {
@@ -132,24 +132,24 @@ func (a *Action) UnmarshalText(text []byte) error {
 
 // Header is an individual Header to send along with requests.
 type Header struct {
-	Key         string                     `river:"key,attr"`
-	Value       *rivertypes.OptionalSecret `river:"value,attr,optional"`
-	FromContext *string                    `river:"from_context,attr,optional"`
-	Action      Action                     `river:"action,attr,optional"`
+	Key         string                     `alloy:"key,attr"`
+	Value       *alloytypes.OptionalSecret `alloy:"value,attr,optional"`
+	FromContext *string                    `alloy:"from_context,attr,optional"`
+	Action      Action                     `alloy:"action,attr,optional"`
 }
 
-var _ river.Defaulter = &Header{}
+var _ syntax.Defaulter = &Header{}
 
 var DefaultHeader = Header{
 	Action: ActionUpsert,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (h *Header) SetToDefault() {
 	*h = DefaultHeader
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (h *Header) Validate() error {
 	err := h.Action.Validate()
 	if err != nil {

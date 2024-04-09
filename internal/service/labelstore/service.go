@@ -6,10 +6,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	agent_service "github.com/grafana/agent/internal/service"
-	flow_service "github.com/grafana/agent/internal/service"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/featuregate"
+	alloy_service "github.com/grafana/alloy/internal/service"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
@@ -36,7 +35,7 @@ type staleMarker struct {
 
 type Arguments struct{}
 
-var _ flow_service.Service = (*service)(nil)
+var _ alloy_service.Service = (*service)(nil)
 
 func New(l log.Logger, r prometheus.Registerer) *service {
 	if l == nil {
@@ -48,10 +47,10 @@ func New(l log.Logger, r prometheus.Registerer) *service {
 		mappings:            make(map[string]*remoteWriteMapping),
 		labelsHashToGlobal:  make(map[uint64]uint64),
 		staleGlobals:        make(map[uint64]*staleMarker),
-		totalIDs:            prometheus.NewDesc("agent_labelstore_global_ids_count", "Total number of global ids.", nil, nil),
-		idsInRemoteWrapping: prometheus.NewDesc("agent_labelstore_remote_store_ids_count", "Total number of ids per remote write", []string{"remote_name"}, nil),
+		totalIDs:            prometheus.NewDesc("alloy_labelstore_global_ids_count", "Total number of global ids.", nil, nil),
+		idsInRemoteWrapping: prometheus.NewDesc("alloy_labelstore_remote_store_ids_count", "Total number of ids per remote write", []string{"remote_name"}, nil),
 		lastStaleCheck: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "agent_labelstore_last_stale_check_timestamp",
+			Name: "alloy_labelstore_last_stale_check_timestamp",
 			Help: "Last time stale check was ran expressed in unix timestamp.",
 		}),
 	}
@@ -63,12 +62,12 @@ func New(l log.Logger, r prometheus.Registerer) *service {
 // Definition returns the Definition of the Service.
 // Definition must always return the same value across all
 // calls.
-func (s *service) Definition() agent_service.Definition {
-	return agent_service.Definition{
+func (s *service) Definition() alloy_service.Definition {
+	return alloy_service.Definition{
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  nil,
-		Stability:  featuregate.StabilityStable,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 
@@ -90,7 +89,7 @@ func (s *service) Collect(m chan<- prometheus.Metric) {
 // Run starts a Service. Run must block until the provided
 // context is canceled. Returning an error should be treated
 // as a fatal error for the Service.
-func (s *service) Run(ctx context.Context, host agent_service.Host) error {
+func (s *service) Run(ctx context.Context, host alloy_service.Host) error {
 	staleCheck := time.NewTicker(10 * time.Minute)
 	for {
 		select {

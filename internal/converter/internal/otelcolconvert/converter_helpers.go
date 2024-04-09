@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/river/token"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/syntax/token"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -21,9 +21,9 @@ type tokenizedConsumer struct {
 	Expr string // Expr is the string to return during tokenization.
 }
 
-func (tc tokenizedConsumer) RiverCapsule() {}
+func (tc tokenizedConsumer) AlloyCapsule() {}
 
-func (tc tokenizedConsumer) RiverTokenize() []builder.Token {
+func (tc tokenizedConsumer) AlloyTokenize() []builder.Token {
 	return []builder.Token{{
 		Tok: token.STRING,
 		Lit: tc.Expr,

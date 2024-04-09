@@ -7,7 +7,9 @@ local pipelines = import '../util/pipelines.jsonnet';
       ref: ['refs/heads/main'],
       paths: [
         'packaging/**',
+        'internal/tools/packaging_test/**',
         'Makefile',
+        'tools/make/*.mk',
       ],
     },
     steps: [{
@@ -18,9 +20,7 @@ local pipelines = import '../util/pipelines.jsonnet';
         path: '/var/run/docker.sock',
       }],
       commands: [
-        'DOCKER_OPTS="" make dist/grafana-agent-linux-amd64',
-        'DOCKER_OPTS="" make dist/grafana-agentctl-linux-amd64',
-        'DOCKER_OPTS="" make dist.temp/grafana-agent-flow-linux-amd64',
+        'DOCKER_OPTS="" make dist/alloy-linux-amd64',
         'DOCKER_OPTS="" make test-packages',
       ],
     }],

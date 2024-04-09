@@ -9,7 +9,7 @@ jobs:
     - name: "Build technical documentation"
       run: >
         docker run
-        --volume "${PWD}/docs/sources:/hugo/content/docs/agent/latest"
+        --volume "${PWD}/docs/sources:/hugo/content/docs/alloy/latest"
         --env HUGO_REFLINKSERRORLEVEL=ERROR
         --rm grafana/docs-base:latest
-        /bin/bash -c 'echo -e "---\\nredirectURL: /docs/agent/latest/\\ntype: redirect\\nversioned: true\\n---\\n" > /hugo/content/docs/agent/_index.md && make hugo'
+        /bin/bash -c 'echo -e "---\\nredirectURL: /docs/alloy/latest/\\ntype: redirect\\nversioned: true\\n---\\n" > /hugo/content/docs/alloy/_index.md && make hugo'

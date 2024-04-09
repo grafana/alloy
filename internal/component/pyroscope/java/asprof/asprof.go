@@ -69,7 +69,7 @@ type Archive struct {
 }
 
 func NewProfiler(tmpDir string, archive Archive) *Profiler {
-	res := &Profiler{tmpDir: tmpDir, glibcDist: new(Distribution), muslDist: new(Distribution), tmpDirMarker: "grafana-agent-asprof"}
+	res := &Profiler{tmpDir: tmpDir, glibcDist: new(Distribution), muslDist: new(Distribution), tmpDirMarker: "alloy-asprof"}
 	sum := sha1.Sum(archive.data)
 	hexSum := hex.EncodeToString(sum[:])
 	res.archiveHash = hexSum

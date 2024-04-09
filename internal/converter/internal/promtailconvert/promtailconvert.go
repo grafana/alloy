@@ -5,10 +5,11 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/promtailconvert/internal/build"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/promtailconvert/internal/build"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/grafana/dskit/flagext"
 	promtailcfg "github.com/grafana/loki/clients/pkg/promtail/config"
 	"github.com/grafana/loki/clients/pkg/promtail/limit"
@@ -16,7 +17,6 @@ import (
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/clients/pkg/promtail/targets/file"
 	lokicfgutil "github.com/grafana/loki/pkg/util/cfg"
-	"github.com/grafana/river/token/builder"
 	"gopkg.in/yaml.v2"
 )
 
@@ -75,7 +75,7 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 
 	var buf bytes.Buffer
 	if _, err := f.WriteTo(&buf); err != nil {
-		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to render Flow config: %s", err.Error()))
+		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to render Alloy config: %s", err.Error()))
 		return nil, diags
 	}
 
@@ -89,7 +89,7 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 }
 
 // AppendAll analyzes the entire promtail config in memory and transforms it
-// into Flow components. It then appends each argument to the file builder.
+// into Alloy components. It then appends each argument to the file builder.
 func AppendAll(f *builder.File, cfg *promtailcfg.Config, labelPrefix string, diags diag.Diagnostics) diag.Diagnostics {
 	validateTopLevelConfig(cfg, &diags)
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/alecthomas/units"
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -30,13 +30,13 @@ var (
 
 // DropConfig contains the configuration for a dropStage
 type DropConfig struct {
-	DropReason string           `river:"drop_counter_reason,attr,optional"`
-	Source     string           `river:"source,attr,optional"`
-	Value      string           `river:"value,attr,optional"`
-	Separator  string           `river:"separator,attr,optional"`
-	Expression string           `river:"expression,attr,optional"`
-	OlderThan  time.Duration    `river:"older_than,attr,optional"`
-	LongerThan units.Base2Bytes `river:"longer_than,attr,optional"`
+	DropReason string           `alloy:"drop_counter_reason,attr,optional"`
+	Source     string           `alloy:"source,attr,optional"`
+	Value      string           `alloy:"value,attr,optional"`
+	Separator  string           `alloy:"separator,attr,optional"`
+	Expression string           `alloy:"expression,attr,optional"`
+	OlderThan  time.Duration    `alloy:"older_than,attr,optional"`
+	LongerThan units.Base2Bytes `alloy:"longer_than,attr,optional"`
 	regex      *regexp.Regexp
 }
 

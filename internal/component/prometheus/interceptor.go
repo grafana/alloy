@@ -3,7 +3,7 @@ package prometheus
 import (
 	"context"
 
-	"github.com/grafana/agent/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"

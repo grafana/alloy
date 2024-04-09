@@ -3,12 +3,12 @@ package azure_event_hubs
 import (
 	"testing"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfigOAuth(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigOAuth(t *testing.T) {
+	var exampleAlloyConfig = `
 
 	fully_qualified_namespace = "my-ns.servicebus.windows.net:9093"
 	event_hubs                = ["test"]
@@ -20,12 +20,12 @@ func TestRiverConfigOAuth(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestRiverConfigConnectionString(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigConnectionString(t *testing.T) {
+	var exampleAlloyConfig = `
 
 	fully_qualified_namespace = "my-ns.servicebus.windows.net:9093"
 	event_hubs                = ["test"]
@@ -38,12 +38,12 @@ func TestRiverConfigConnectionString(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestRiverConfigValidateAssignor(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfigValidateAssignor(t *testing.T) {
+	var exampleAlloyConfig = `
 
 	fully_qualified_namespace = "my-ns.servicebus.windows.net:9093"
 	event_hubs                = ["test"]
@@ -57,6 +57,6 @@ func TestRiverConfigValidateAssignor(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.EqualError(t, err, "assignor value invalid-value is invalid, must be one of: [sticky roundrobin range]")
 }

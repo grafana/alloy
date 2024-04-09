@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/grafana/agent/internal/component/metadata"
+	"github.com/grafana/alloy/internal/component/metadata"
 )
 
 type LinksToTypesGenerator struct {
@@ -76,7 +76,7 @@ func (l *LinksToTypesGenerator) endMarker() string {
 }
 
 func (l *LinksToTypesGenerator) pathToComponentMarkdown() string {
-	return fmt.Sprintf("../../../docs/sources/flow/reference/components/%s.md", l.component)
+	return fmt.Sprintf("../../../docs/sources/reference/components/%s.md", l.component)
 }
 
 func outputComponentsSection(name string, meta metadata.Metadata) string {

@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/agent/internal/component/prometheus/remotewrite"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/sigv4"
 	prom_config "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
@@ -75,7 +75,7 @@ func getEndpointOptions(remoteWriteConfigs []*prom_config.RemoteWriteConfig) []*
 			HTTPClientConfig:     common.ToHttpClientConfig(&remoteWriteConfig.HTTPClientConfig),
 			QueueOptions:         toQueueOptions(&remoteWriteConfig.QueueConfig),
 			MetadataOptions:      toMetadataOptions(&remoteWriteConfig.MetadataConfig),
-			WriteRelabelConfigs:  ToFlowRelabelConfigs(remoteWriteConfig.WriteRelabelConfigs),
+			WriteRelabelConfigs:  ToAlloyRelabelConfigs(remoteWriteConfig.WriteRelabelConfigs),
 			SigV4:                toSigV4(remoteWriteConfig.SigV4Config),
 			AzureAD:              toAzureAD(remoteWriteConfig.AzureADConfig),
 		}
@@ -108,7 +108,7 @@ func toMetadataOptions(metadataConfig *prom_config.MetadataConfig) *remotewrite.
 	}
 }
 
-// toSigV4 converts a Prometheus SigV4 config to a River SigV4 config.
+// toSigV4 converts a Prometheus SigV4 config to an Alloy SigV4 config.
 func toSigV4(sigv4Config *sigv4.SigV4Config) *remotewrite.SigV4Config {
 	if sigv4Config == nil {
 		return nil
@@ -117,13 +117,13 @@ func toSigV4(sigv4Config *sigv4.SigV4Config) *remotewrite.SigV4Config {
 	return &remotewrite.SigV4Config{
 		Region:    sigv4Config.Region,
 		AccessKey: sigv4Config.AccessKey,
-		SecretKey: rivertypes.Secret(sigv4Config.SecretKey),
+		SecretKey: alloytypes.Secret(sigv4Config.SecretKey),
 		Profile:   sigv4Config.Profile,
 		RoleARN:   sigv4Config.RoleARN,
 	}
 }
 
-// toAzureAD converts a Prometheus AzureAD config to a River AzureAD config.
+// toAzureAD converts a Prometheus AzureAD config to an Alloy AzureAD config.
 func toAzureAD(azureADConfig *azuread.AzureADConfig) *remotewrite.AzureADConfig {
 	if azureADConfig == nil {
 		return nil

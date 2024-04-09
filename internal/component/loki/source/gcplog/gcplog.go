@@ -6,23 +6,23 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/relabel"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/gcplog/gcptypes"
-	gt "github.com/grafana/agent/internal/component/loki/source/gcplog/internal/gcplogtarget"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
+	gt "github.com/grafana/alloy/internal/component/loki/source/gcplog/internal/gcplogtarget"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.gcplog",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -34,18 +34,18 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.gcplog
 // component.
 type Arguments struct {
-	PullTarget   *gcptypes.PullConfig `river:"pull,block,optional"`
-	PushTarget   *gcptypes.PushConfig `river:"push,block,optional"`
-	ForwardTo    []loki.LogsReceiver  `river:"forward_to,attr"`
-	RelabelRules flow_relabel.Rules   `river:"relabel_rules,attr,optional"`
+	PullTarget   *gcptypes.PullConfig `alloy:"pull,block,optional"`
+	PushTarget   *gcptypes.PushConfig `alloy:"push,block,optional"`
+	ForwardTo    []loki.LogsReceiver  `alloy:"forward_to,attr"`
+	RelabelRules alloy_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if (a.PullTarget != nil) == (a.PushTarget != nil) {
 		return fmt.Errorf("exactly one of 'push' or 'pull' must be provided")
@@ -122,7 +122,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	var rcs []*relabel.Config
 	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
-		rcs = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
 	if c.target != nil {
@@ -171,5 +171,5 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type targetDebugInfo struct {
-	Details map[string]string `river:"target_info,attr"`
+	Details map[string]string `alloy:"target_info,attr"`
 }

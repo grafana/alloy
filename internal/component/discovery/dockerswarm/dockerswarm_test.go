@@ -4,17 +4,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverCfg := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyCfg := `
 		host = "unix:///var/run/docker.sock"
 		role = "nodes"
 		port = 81
@@ -34,7 +34,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []Filter{{"n1", []string{"v11", "v12"}}, {"n2", []string{"v21"}}}, args.Filters)
 	assert.Equal(t, "unix:///var/run/docker.sock", args.Host)
@@ -42,11 +42,11 @@ func TestRiverUnmarshal(t *testing.T) {
 	assert.Equal(t, 81, args.Port)
 	assert.Equal(t, 12*time.Second, args.RefreshInterval)
 	assert.Equal(t, "username", args.HTTPClientConfig.BasicAuth.Username)
-	assert.Equal(t, rivertypes.Secret("pass"), args.HTTPClientConfig.BasicAuth.Password)
+	assert.Equal(t, alloytypes.Secret("pass"), args.HTTPClientConfig.BasicAuth.Password)
 }
 
 func TestConvert(t *testing.T) {
-	riverArgs := Arguments{
+	alloyArgs := Arguments{
 		Host:            "host",
 		Role:            "nodes",
 		Port:            81,
@@ -60,7 +60,7 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	promArgs := riverArgs.Convert()
+	promArgs := alloyArgs.Convert()
 	assert.Equal(t, 2, len(promArgs.Filters))
 	assert.Equal(t, "n1", promArgs.Filters[0].Name)
 	require.ElementsMatch(t, []string{"v11", "v12"}, promArgs.Filters[0].Values)
@@ -75,33 +75,33 @@ func TestConvert(t *testing.T) {
 }
 
 func TestValidateRole(t *testing.T) {
-	riverArgs := Arguments{
+	alloyArgs := Arguments{
 		Host:            "host",
 		Role:            "nodes",
 		RefreshInterval: time.Second,
 	}
-	err := riverArgs.Validate()
+	err := alloyArgs.Validate()
 	require.NoError(t, err)
 
-	riverArgs.Role = "services"
-	err = riverArgs.Validate()
+	alloyArgs.Role = "services"
+	err = alloyArgs.Validate()
 	require.NoError(t, err)
 
-	riverArgs.Role = "tasks"
-	err = riverArgs.Validate()
+	alloyArgs.Role = "tasks"
+	err = alloyArgs.Validate()
 	require.NoError(t, err)
 
-	riverArgs.Role = "wrong"
-	err = riverArgs.Validate()
+	alloyArgs.Role = "wrong"
+	err = alloyArgs.Validate()
 	assert.Error(t, err, "invalid role wrong, expected tasks, services, or nodes")
 }
 
 func TestValidateUrl(t *testing.T) {
-	riverArgs := Arguments{
+	alloyArgs := Arguments{
 		Host:            "::",
 		Role:            "nodes",
 		RefreshInterval: time.Second,
 	}
-	err := riverArgs.Validate()
+	err := alloyArgs.Validate()
 	assert.Error(t, err, "parse \"::\": missing protocol scheme")
 }

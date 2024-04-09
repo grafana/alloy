@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -258,11 +258,11 @@ func (tm *tokenManager) DebugInfo() secretInfo {
 }
 
 type secretInfo struct {
-	LatestRequestID  string    `river:"latest_request_id,attr"`
-	LastUpdateTime   time.Time `river:"last_update_time,attr"`
-	SecretExpireTime time.Time `river:"secret_expire_time,attr"`
-	Renewable        bool      `river:"renewable,attr"`
-	Warnings         []string  `river:"warnings,attr"`
+	LatestRequestID  string    `alloy:"latest_request_id,attr"`
+	LastUpdateTime   time.Time `alloy:"last_update_time,attr"`
+	SecretExpireTime time.Time `alloy:"secret_expire_time,attr"`
+	Renewable        bool      `alloy:"renewable,attr"`
+	Warnings         []string  `alloy:"warnings,attr"`
 }
 
 func getSecretInfo(secret *vault.Secret, updateTime time.Time) secretInfo {

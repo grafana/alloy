@@ -4,14 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/receiver/vcenter"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver/vcenter"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver"
 	"github.com/stretchr/testify/require"
 )
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	in := `
 		endpoint = "http://localhost:1234"
 		username = "user"
@@ -160,7 +160,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 	`
 
 	var args vcenter.Arguments
-	require.NoError(t, river.Unmarshal([]byte(in), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 	args.Convert()
 	ext, err := args.Convert()
 	require.NoError(t, err)
@@ -230,12 +230,12 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
-		agentCfg string
+		alloyCfg string
 		expected otelcol.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
-			agentCfg: `
+			alloyCfg: `
 			endpoint = "http://localhost:1234"
 			username = "user"
 			password = "pass"
@@ -248,7 +248,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_false",
-			agentCfg: `
+			alloyCfg: `
 			endpoint = "http://localhost:1234"
 			username = "user"
 			password = "pass"
@@ -265,7 +265,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_true",
-			agentCfg: `
+			alloyCfg: `
 			endpoint = "http://localhost:1234"
 			username = "user"
 			password = "pass"
@@ -285,7 +285,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args vcenter.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

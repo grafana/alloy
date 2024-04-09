@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ import (
 )
 
 func TestEventLogger(t *testing.T) {
-	var loggerName = "agent_test"
+	var loggerName = "alloy_test"
 	//Setup Windows Event log with the log source name and logging levels
 	_ = eventlog.InstallAsEventCreate(loggerName, eventlog.Info|eventlog.Warning|eventlog.Error)
 	wlog, err := eventlog.Open(loggerName)
@@ -29,7 +29,7 @@ func TestEventLogger(t *testing.T) {
 	rec := loki.NewLogsReceiver()
 	c, err := New(component.Options{
 		ID:       "loki.source.windowsevent.test",
-		Logger:   util.TestFlowLogger(t),
+		Logger:   util.TestAlloyLogger(t),
 		DataPath: dataPath,
 		OnStateChange: func(e component.Exports) {
 
@@ -87,7 +87,7 @@ func TestLegacyBookmarkConversion(t *testing.T) {
 	rec := loki.NewLogsReceiver()
 	c, err := New(component.Options{
 		ID:       "loki.source.windowsevent.test",
-		Logger:   util.TestFlowLogger(t),
+		Logger:   util.TestAlloyLogger(t),
 		DataPath: dataPath,
 		OnStateChange: func(e component.Exports) {
 

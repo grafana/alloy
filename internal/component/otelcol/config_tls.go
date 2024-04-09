@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"go.opentelemetry.io/collector/config/configopaque"
 	otelconfigtls "go.opentelemetry.io/collector/config/configtls"
 )
@@ -12,9 +12,9 @@ import (
 // TLSServerArguments holds shared TLS settings for components which launch
 // servers with TLS.
 type TLSServerArguments struct {
-	TLSSetting TLSSetting `river:",squash"`
+	TLSSetting TLSSetting `alloy:",squash"`
 
-	ClientCAFile string `river:"client_ca_file,attr,optional"`
+	ClientCAFile string `alloy:"client_ca_file,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -32,11 +32,11 @@ func (args *TLSServerArguments) Convert() *otelconfigtls.TLSServerSetting {
 // TLSClientArguments holds shared TLS settings for components which launch
 // TLS clients.
 type TLSClientArguments struct {
-	TLSSetting TLSSetting `river:",squash"`
+	TLSSetting TLSSetting `alloy:",squash"`
 
-	Insecure           bool   `river:"insecure,attr,optional"`
-	InsecureSkipVerify bool   `river:"insecure_skip_verify,attr,optional"`
-	ServerName         string `river:"server_name,attr,optional"`
+	Insecure           bool   `alloy:"insecure,attr,optional"`
+	InsecureSkipVerify bool   `alloy:"insecure_skip_verify,attr,optional"`
+	ServerName         string `alloy:"server_name,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -54,17 +54,17 @@ func (args *TLSClientArguments) Convert() *otelconfigtls.TLSClientSetting {
 }
 
 type TLSSetting struct {
-	CA                       string            `river:"ca_pem,attr,optional"`
-	CAFile                   string            `river:"ca_file,attr,optional"`
-	Cert                     string            `river:"cert_pem,attr,optional"`
-	CertFile                 string            `river:"cert_file,attr,optional"`
-	Key                      rivertypes.Secret `river:"key_pem,attr,optional"`
-	KeyFile                  string            `river:"key_file,attr,optional"`
-	MinVersion               string            `river:"min_version,attr,optional"`
-	MaxVersion               string            `river:"max_version,attr,optional"`
-	ReloadInterval           time.Duration     `river:"reload_interval,attr,optional"`
-	CipherSuites             []string          `river:"cipher_suites,attr,optional"`
-	IncludeSystemCACertsPool bool              `river:"include_system_ca_certs_pool,attr,optional"`
+	CA                       string            `alloy:"ca_pem,attr,optional"`
+	CAFile                   string            `alloy:"ca_file,attr,optional"`
+	Cert                     string            `alloy:"cert_pem,attr,optional"`
+	CertFile                 string            `alloy:"cert_file,attr,optional"`
+	Key                      alloytypes.Secret `alloy:"key_pem,attr,optional"`
+	KeyFile                  string            `alloy:"key_file,attr,optional"`
+	MinVersion               string            `alloy:"min_version,attr,optional"`
+	MaxVersion               string            `alloy:"max_version,attr,optional"`
+	ReloadInterval           time.Duration     `alloy:"reload_interval,attr,optional"`
+	CipherSuites             []string          `alloy:"cipher_suites,attr,optional"`
+	IncludeSystemCACertsPool bool              `alloy:"include_system_ca_certs_pool,attr,optional"`
 }
 
 func (args *TLSSetting) Convert() *otelconfigtls.TLSSetting {
@@ -87,7 +87,7 @@ func (args *TLSSetting) Convert() *otelconfigtls.TLSSetting {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (t *TLSSetting) Validate() error {
 	if len(t.CA) > 0 && len(t.CAFile) > 0 {
 		return fmt.Errorf("at most one of ca_pem and ca_file must be configured")

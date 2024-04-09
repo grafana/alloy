@@ -7,7 +7,7 @@ import (
 	ae "github.com/Lusitaniae/apache_exporter/collector"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/agent/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations"
 )
 
 // DefaultConfig holds the default settings for the apache_http integration

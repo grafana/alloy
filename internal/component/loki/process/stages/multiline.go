@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/common/model"
 )
@@ -24,9 +24,9 @@ var (
 
 // MultilineConfig contains the configuration for a Multiline stage.
 type MultilineConfig struct {
-	Expression  string        `river:"firstline,attr"`
-	MaxLines    uint64        `river:"max_lines,attr,optional"`
-	MaxWaitTime time.Duration `river:"max_wait_time,attr,optional"`
+	Expression  string        `alloy:"firstline,attr"`
+	MaxLines    uint64        `alloy:"max_lines,attr,optional"`
+	MaxWaitTime time.Duration `alloy:"max_wait_time,attr,optional"`
 	regex       *regexp.Regexp
 }
 
@@ -36,12 +36,12 @@ var DefaultMultilineConfig = MultilineConfig{
 	MaxWaitTime: 3 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *MultilineConfig) SetToDefault() {
 	*args = DefaultMultilineConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *MultilineConfig) Validate() error {
 	if args.MaxWaitTime <= 0 {
 		return fmt.Errorf("max_wait_time must be greater than 0")

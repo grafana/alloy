@@ -3,12 +3,12 @@ package component
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/discovery/scaleway"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery/scaleway"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_scaleway "github.com/prometheus/prometheus/discovery/scaleway"
 )
 
@@ -35,7 +35,7 @@ func toDiscoveryScaleway(sdConfig *prom_scaleway.SDConfig) *scaleway.Arguments {
 		APIURL:          sdConfig.APIURL,
 		Zone:            sdConfig.Zone,
 		AccessKey:       sdConfig.AccessKey,
-		SecretKey:       rivertypes.Secret(sdConfig.SecretKey),
+		SecretKey:       alloytypes.Secret(sdConfig.SecretKey),
 		SecretKeyFile:   sdConfig.SecretKeyFile,
 		NameFilter:      sdConfig.NameFilter,
 		TagsFilter:      sdConfig.TagsFilter,

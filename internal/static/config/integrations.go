@@ -4,15 +4,11 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/go-kit/log"
-	"github.com/gorilla/mux"
-	v1 "github.com/grafana/agent/internal/static/integrations"
-	v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/metrics"
-	"github.com/grafana/agent/internal/static/server"
-	"github.com/grafana/agent/internal/util"
-	"github.com/prometheus/statsd_exporter/pkg/level"
-	"golang.org/x/exp/maps"
+	v1 "github.com/grafana/alloy/internal/static/integrations"
+	v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/metrics"
+	"github.com/grafana/alloy/internal/static/server"
+	"github.com/grafana/alloy/internal/util"
 	"gopkg.in/yaml.v2"
 )
 
@@ -128,65 +124,4 @@ func (c *VersionedIntegrations) setVersion(v IntegrationsVersion) error {
 	default:
 		panic(fmt.Sprintf("unknown integrations version %d", c.Version))
 	}
-}
-
-// EnabledIntegrations returns a slice of enabled integrations
-func (c *VersionedIntegrations) EnabledIntegrations() []string {
-	integrations := map[string]struct{}{}
-	if c.ConfigV1 != nil {
-		for _, integration := range c.ConfigV1.Integrations {
-			integrations[integration.Name()] = struct{}{}
-		}
-	}
-	if c.ConfigV2 != nil {
-		for _, integration := range c.ConfigV2.Configs {
-			integrations[integration.Name()] = struct{}{}
-		}
-	}
-	return maps.Keys(integrations)
-}
-
-// IntegrationsGlobals is a global struct shared across integrations.
-type IntegrationsGlobals = v2.Globals
-
-// Integrations is an abstraction over both the v1 and v2 systems.
-type Integrations interface {
-	ApplyConfig(*VersionedIntegrations, IntegrationsGlobals) error
-	WireAPI(*mux.Router)
-	Stop()
-}
-
-// NewIntegrations creates a new subsystem. globals should be provided regardless
-// of useV2. globals.SubsystemOptions will be automatically set if cfg.Version
-// is set to IntegrationsVersion2.
-func NewIntegrations(logger log.Logger, cfg *VersionedIntegrations, globals IntegrationsGlobals) (Integrations, error) {
-	if cfg.Version != IntegrationsVersion2 {
-		instance, err := v1.NewManager(*cfg.ConfigV1, logger, globals.Metrics.InstanceManager(), globals.Metrics.Validate)
-		if err != nil {
-			return nil, err
-		}
-		return &v1Integrations{Manager: instance}, nil
-	}
-
-	level.Warn(logger).Log("msg", "integrations-next is enabled. integrations-next is subject to change")
-
-	globals.SubsystemOpts = *cfg.ConfigV2
-	instance, err := v2.NewSubsystem(logger, globals)
-	if err != nil {
-		return nil, err
-	}
-	return &v2Integrations{Subsystem: instance}, nil
-}
-
-type v1Integrations struct{ *v1.Manager }
-
-func (s *v1Integrations) ApplyConfig(cfg *VersionedIntegrations, _ IntegrationsGlobals) error {
-	return s.Manager.ApplyConfig(*cfg.ConfigV1)
-}
-
-type v2Integrations struct{ *v2.Subsystem }
-
-func (s *v2Integrations) ApplyConfig(cfg *VersionedIntegrations, globals IntegrationsGlobals) error {
-	globals.SubsystemOpts = *cfg.ConfigV2
-	return s.Subsystem.ApplyConfig(globals)
 }

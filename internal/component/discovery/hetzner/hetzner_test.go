@@ -4,20 +4,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverCfg := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyCfg := `
 		port = 8080
 		refresh_interval = "10m"
 		role = "robot"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 
 	assert.Equal(t, 8080, args.Port)
@@ -30,7 +30,7 @@ func TestValidate(t *testing.T) {
 	role = "test"`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(wrongRole), &args)
+	err := syntax.Unmarshal([]byte(wrongRole), &args)
 	require.ErrorContains(t, err, "unknown role test, must be one of robot or hcloud")
 }
 

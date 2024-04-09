@@ -4,10 +4,10 @@ package attributes
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/processor"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/processor"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.attributes",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -31,14 +31,14 @@ func init() {
 // Arguments configures the otelcol.processor.attributes component.
 type Arguments struct {
 	// Pre-processing filtering to include/exclude data from the processor.
-	Match otelcol.MatchConfig `river:",squash"`
+	Match otelcol.MatchConfig `alloy:",squash"`
 
 	// Actions performed on the input data in the order specified in the config.
 	// Example actions are "insert", "update", "upsert", "delete", "hash".
-	Actions otelcol.AttrActionKeyValueSlice `river:"action,block,optional"`
+	Actions otelcol.AttrActionKeyValueSlice `alloy:"action,block,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (

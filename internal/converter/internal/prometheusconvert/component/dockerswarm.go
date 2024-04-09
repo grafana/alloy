@@ -3,11 +3,11 @@ package component
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/discovery/dockerswarm"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery/dockerswarm"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
 	prom_moby "github.com/prometheus/prometheus/discovery/moby"
 )
 
@@ -39,11 +39,11 @@ func toDiscoveryDockerswarm(sdConfig *prom_moby.DockerSwarmSDConfig) *dockerswar
 }
 
 func convertFilters(mobyFilters []prom_moby.Filter) []dockerswarm.Filter {
-	riverFilters := make([]dockerswarm.Filter, len(mobyFilters))
+	alloyFilters := make([]dockerswarm.Filter, len(mobyFilters))
 	for i, mobyFilter := range mobyFilters {
-		riverFilters[i] = convertFilter(&mobyFilter)
+		alloyFilters[i] = convertFilter(&mobyFilter)
 	}
-	return riverFilters
+	return alloyFilters
 }
 
 func convertFilter(mobyFilter *prom_moby.Filter) dockerswarm.Filter {

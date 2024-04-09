@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/flow"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/service"
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/alloy"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
@@ -172,10 +172,10 @@ func newTestEnvironment(t *testing.T) (*testEnvironment, error) {
 		Gatherer: prometheus.NewRegistry(),
 
 		ReadyFunc:  func() bool { return true },
-		ReloadFunc: func() (*flow.Source, error) { return nil, nil },
+		ReloadFunc: func() (*alloy.Source, error) { return nil, nil },
 
 		HTTPListenAddr:   fmt.Sprintf("127.0.0.1:%d", port),
-		MemoryListenAddr: "agent.internal:12345",
+		MemoryListenAddr: "alloy.internal:12345",
 		EnablePProf:      true,
 	})
 
@@ -187,7 +187,7 @@ func newTestEnvironment(t *testing.T) (*testEnvironment, error) {
 
 func (env *testEnvironment) ApplyConfig(config string) error {
 	var args Arguments
-	if err := river.Unmarshal([]byte(config), &args); err != nil {
+	if err := syntax.Unmarshal([]byte(config), &args); err != nil {
 		return err
 	}
 	return env.svc.Update(args)

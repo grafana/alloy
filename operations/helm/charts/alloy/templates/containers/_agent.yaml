@@ -1,0 +1,81 @@
+{{- define "alloy.container" -}}
+{{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
+- name: alloy
+  image: {{ .Values.global.image.registry | default .Values.image.registry }}/{{ .Values.image.repository }}{{ include "alloy.imageId" . }}
+  imagePullPolicy: {{ .Values.image.pullPolicy }}
+  args:
+    - run
+    - /etc/alloy/{{ include "alloy.config-map.key" . }}
+    - --storage.path={{ $values.storagePath }}
+    - --server.http.listen-addr={{ $values.listenAddr }}:{{ $values.listenPort }}
+    - --server.http.ui-path-prefix={{ $values.uiPathPrefix }}
+    {{- if not $values.enableReporting }}
+    - --disable-reporting
+    {{- end}}
+    {{- if $values.clustering.enabled }}
+    - --cluster.enabled=true
+    - --cluster.join-addresses={{ include "alloy.fullname" . }}-cluster
+    {{- end}}
+    {{- if $values.stabilityLevel }}
+    - --stability.level={{ $values.stabilityLevel }}
+    {{- end }}
+    {{- range $values.extraArgs }}
+    - {{ . }}
+    {{- end}}
+  env:
+    - name: ALLOY_DEPLOY_MODE
+      value: "helm"
+    - name: HOSTNAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    {{- range $values.extraEnv }}
+    - {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- if $values.envFrom }}
+  envFrom:
+    {{- toYaml $values.envFrom | nindent 4 }}
+  {{- end }}
+  ports:
+    - containerPort: {{ $values.listenPort }}
+      name: http-metrics
+    {{- range $portMap := $values.extraPorts }}
+    - containerPort: {{ $portMap.targetPort }}
+      {{- if $portMap.hostPort }}
+      hostPort: {{ $portMap.hostPort }}
+      {{- end}}
+      name: {{ $portMap.name }}
+      protocol: {{ coalesce $portMap.protocol "TCP" }}
+    {{- end }}
+  readinessProbe:
+    httpGet:
+      path: /-/ready
+      port: {{ $values.listenPort }}
+      scheme: {{ $values.listenScheme }}
+    initialDelaySeconds: 10
+    timeoutSeconds: 1
+  {{- with $values.resources }}
+  resources:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $values.securityContext }}
+  securityContext:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  volumeMounts:
+    - name: config
+      mountPath: /etc/alloy
+    {{- if $values.mounts.varlog }}
+    - name: varlog
+      mountPath: /var/log
+      readOnly: true
+    {{- end }}
+    {{- if $values.mounts.dockercontainers }}
+    - name: dockercontainers
+      mountPath: /var/lib/docker/containers
+      readOnly: true
+    {{- end }}
+    {{- range $values.mounts.extra }}
+    - {{- toYaml . | nindent 6 }}
+    {{- end }}
+{{- end }}

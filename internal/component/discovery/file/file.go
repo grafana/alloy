@@ -3,9 +3,9 @@ package file
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/file"
 )
@@ -13,7 +13,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.file",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -24,15 +24,15 @@ func init() {
 }
 
 type Arguments struct {
-	Files           []string      `river:"files,attr"`
-	RefreshInterval time.Duration `river:"refresh_interval,attr,optional"`
+	Files           []string      `alloy:"files,attr"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
 	RefreshInterval: 5 * time.Minute,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

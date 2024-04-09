@@ -3,12 +3,12 @@ package component
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/discovery/openstack"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery/openstack"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_openstack "github.com/prometheus/prometheus/discovery/openstack"
 )
 
@@ -33,14 +33,14 @@ func toDiscoveryOpenstack(sdConfig *prom_openstack.SDConfig) *openstack.Argument
 		IdentityEndpoint:            sdConfig.IdentityEndpoint,
 		Username:                    sdConfig.Username,
 		UserID:                      sdConfig.UserID,
-		Password:                    rivertypes.Secret(sdConfig.Password),
+		Password:                    alloytypes.Secret(sdConfig.Password),
 		ProjectName:                 sdConfig.ProjectName,
 		ProjectID:                   sdConfig.ProjectID,
 		DomainName:                  sdConfig.DomainName,
 		DomainID:                    sdConfig.DomainID,
 		ApplicationCredentialName:   sdConfig.ApplicationCredentialName,
 		ApplicationCredentialID:     sdConfig.ApplicationCredentialID,
-		ApplicationCredentialSecret: rivertypes.Secret(sdConfig.ApplicationCredentialSecret),
+		ApplicationCredentialSecret: alloytypes.Secret(sdConfig.ApplicationCredentialSecret),
 		Role:                        string(sdConfig.Role),
 		Region:                      sdConfig.Region,
 		RefreshInterval:             time.Duration(sdConfig.RefreshInterval),

@@ -6,14 +6,14 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/beyla/pkg/beyla"
 	"github.com/grafana/beyla/pkg/services"
 	"github.com/grafana/beyla/pkg/transform"
-	"github.com/grafana/river"
 	"github.com/stretchr/testify/require"
 )
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalSyntax(t *testing.T) {
 	in := `
 		open_port = "80,443,8000-8999"
 		executable_name = "test"
@@ -43,7 +43,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 		output { /* no-op */ }
 	`
 	var args Arguments
-	require.NoError(t, river.Unmarshal([]byte(in), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 	cfg, err := args.Convert()
 	require.NoError(t, err)
 	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}, {Start: 443, End: 0}, {Start: 8000, End: 8999}}}, cfg.Port)
@@ -58,7 +58,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 	require.Equal(t, "default", cfg.Discovery.Services[0].Namespace)
 }
 
-func TestArguments_UnmarshalInvalidRiver(t *testing.T) {
+func TestArguments_UnmarshalInvalidSyntax(t *testing.T) {
 	var tests = []struct {
 		testname      string
 		cfg           string
@@ -82,7 +82,7 @@ func TestArguments_UnmarshalInvalidRiver(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testname, func(t *testing.T) {
 			var args Arguments
-			require.NoError(t, river.Unmarshal([]byte(tt.cfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tt.cfg), &args))
 			_, err := args.Convert()
 			require.EqualError(t, err, tt.expectedError)
 		})

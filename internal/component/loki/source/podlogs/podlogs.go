@@ -10,16 +10,16 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	commonk8s "github.com/grafana/agent/internal/component/common/kubernetes"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
-	"github.com/grafana/agent/internal/component/loki/source/kubernetes"
-	"github.com/grafana/agent/internal/component/loki/source/kubernetes/kubetail"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/service/cluster"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/kubernetes"
+	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/oklog/run"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -28,7 +28,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.podlogs",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -40,15 +40,15 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.podlogs
 // component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver `river:"forward_to,attr"`
+	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 
 	// Client settings to connect to Kubernetes.
-	Client commonk8s.ClientArguments `river:"client,block,optional"`
+	Client commonk8s.ClientArguments `alloy:"client,block,optional"`
 
-	Selector          config.LabelSelector `river:"selector,block,optional"`
-	NamespaceSelector config.LabelSelector `river:"namespace_selector,block,optional"`
+	Selector          config.LabelSelector `alloy:"selector,block,optional"`
+	NamespaceSelector config.LabelSelector `alloy:"namespace_selector,block,optional"`
 
-	Clustering cluster.ComponentBlock `river:"clustering,block,optional"`
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
 // DefaultArguments holds default settings for loki.source.kubernetes.
@@ -56,7 +56,7 @@ var DefaultArguments = Arguments{
 	Client: commonk8s.DefaultClientArguments,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
@@ -326,6 +326,6 @@ func (c *Component) DebugInfo() interface{} {
 
 // DebugInfo stores debug information for loki.source.podlogs.
 type DebugInfo struct {
-	DiscoveredPodLogs []DiscoveredPodLogs          `river:"pod_logs,block"`
-	Targets           []kubernetes.DebugInfoTarget `river:"target,block,optional"`
+	DiscoveredPodLogs []DiscoveredPodLogs          `alloy:"pod_logs,block"`
+	Targets           []kubernetes.DebugInfoTarget `alloy:"target,block,optional"`
 }

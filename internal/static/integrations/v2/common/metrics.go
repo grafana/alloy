@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/grafana/agent/internal/static/integrations/v2/autoscrape"
+	"github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
 	"github.com/prometheus/prometheus/model/labels"
 )
 

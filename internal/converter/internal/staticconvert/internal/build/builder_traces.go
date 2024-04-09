@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/otelcolconvert"
-	"github.com/grafana/agent/internal/static/traces"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/otelcolconvert"
+	"github.com/grafana/alloy/internal/static/traces"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	otel_component "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/exporter/loggingexporter"
@@ -42,8 +42,8 @@ func (b *ConfigBuilder) appendTraces() {
 		// Remove the service_graphs processor which is an implementation detail for static mode and unnecessary for the otel config.
 		if _, ok := otelCfg.Processors[otel_component.NewID("service_graphs")]; ok {
 			removeProcessor(otelCfg, "traces", "service_graphs")
-			b.diags.Add(diag.SeverityLevelError, "The service_graphs processor for traces has no direct flow equivalent. "+
-				"This configuration appends metrics to the /metrics endpoint of the agent which is not possible in flow. "+
+			b.diags.Add(diag.SeverityLevelError, "The service_graphs processor for traces has no direct Alloy equivalent. "+
+				"This configuration appends metrics to the /metrics endpoint of the agent which is not possible in Alloy. "+
 				"Alternatively, you can use the otelcol.connector.servicegraph component to build a pipeline which generates "+
 				"and forwards service graph metrics.")
 		}
@@ -61,10 +61,10 @@ func (b *ConfigBuilder) translateAutomaticLogging(otelCfg *otelcol.Config, cfg t
 	}
 
 	if cfg.AutomaticLogging.Backend == "stdout" {
-		b.diags.Add(diag.SeverityLevelWarn, "automatic_logging for traces has no direct flow equivalent. "+
+		b.diags.Add(diag.SeverityLevelWarn, "automatic_logging for traces has no direct Alloy equivalent. "+
 			"A best effort translation has been made to otelcol.exporter.logging but the behavior will differ.")
 	} else {
-		b.diags.Add(diag.SeverityLevelError, "automatic_logging for traces has no direct flow equivalent. "+
+		b.diags.Add(diag.SeverityLevelError, "automatic_logging for traces has no direct Alloy equivalent. "+
 			"A best effort translation can be made which only outputs to stdout and not directly to loki by bypassing errors.")
 	}
 

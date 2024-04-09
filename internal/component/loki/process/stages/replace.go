@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/prometheus/common/model"
 )
 
@@ -28,9 +28,9 @@ func init() {
 
 // ReplaceConfig contains a regexStage configuration
 type ReplaceConfig struct {
-	Expression string `river:"expression,attr"`
-	Source     string `river:"source,attr,optional"`
-	Replace    string `river:"replace,attr,optional"`
+	Expression string `alloy:"expression,attr"`
+	Source     string `alloy:"source,attr,optional"`
+	Replace    string `alloy:"replace,attr,optional"`
 }
 
 func getExpressionRegex(c ReplaceConfig) (*regexp.Regexp, error) {

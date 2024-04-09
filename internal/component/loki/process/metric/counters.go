@@ -18,17 +18,17 @@ const (
 // CounterConfig defines a counter metric whose value only goes up.
 type CounterConfig struct {
 	// Shared fields
-	Name        string        `river:"name,attr"`
-	Description string        `river:"description,attr,optional"`
-	Source      string        `river:"source,attr,optional"`
-	Prefix      string        `river:"prefix,attr,optional"`
-	MaxIdle     time.Duration `river:"max_idle_duration,attr,optional"`
-	Value       string        `river:"value,attr,optional"`
+	Name        string        `alloy:"name,attr"`
+	Description string        `alloy:"description,attr,optional"`
+	Source      string        `alloy:"source,attr,optional"`
+	Prefix      string        `alloy:"prefix,attr,optional"`
+	MaxIdle     time.Duration `alloy:"max_idle_duration,attr,optional"`
+	Value       string        `alloy:"value,attr,optional"`
 
 	// Counter-specific fields
-	Action          string `river:"action,attr"`
-	MatchAll        bool   `river:"match_all,attr,optional"`
-	CountEntryBytes bool   `river:"count_entry_bytes,attr,optional"`
+	Action          string `alloy:"action,attr"`
+	MatchAll        bool   `alloy:"match_all,attr,optional"`
+	CountEntryBytes bool   `alloy:"count_entry_bytes,attr,optional"`
 }
 
 // DefaultCounterConfig sets the default for a Counter.
@@ -36,12 +36,12 @@ var DefaultCounterConfig = CounterConfig{
 	MaxIdle: 5 * time.Minute,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (c *CounterConfig) SetToDefault() {
 	*c = DefaultCounterConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (c *CounterConfig) Validate() error {
 	if c.MaxIdle < 1*time.Second {
 		return fmt.Errorf("max_idle_duration must be greater or equal than 1s")

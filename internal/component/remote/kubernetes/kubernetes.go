@@ -10,9 +10,9 @@ import (
 
 	"github.com/go-kit/log"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/kubernetes"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/syntax/alloytypes"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	client_go "k8s.io/client-go/kubernetes"
@@ -27,13 +27,13 @@ const (
 
 // Arguments control the component.
 type Arguments struct {
-	Namespace     string        `river:"namespace,attr"`
-	Name          string        `river:"name,attr"`
-	PollFrequency time.Duration `river:"poll_frequency,attr,optional"`
-	PollTimeout   time.Duration `river:"poll_timeout,attr,optional"`
+	Namespace     string        `alloy:"namespace,attr"`
+	Name          string        `alloy:"name,attr"`
+	PollFrequency time.Duration `alloy:"poll_frequency,attr,optional"`
+	PollTimeout   time.Duration `alloy:"poll_timeout,attr,optional"`
 
 	// Client settings to connect to Kubernetes.
-	Client kubernetes.ClientArguments `river:"client,block,optional"`
+	Client kubernetes.ClientArguments `alloy:"client,block,optional"`
 }
 
 // DefaultArguments holds default settings for Arguments.
@@ -42,12 +42,12 @@ var DefaultArguments = Arguments{
 	PollTimeout:   15 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.PollFrequency <= 0 {
 		return fmt.Errorf("poll_frequency must be greater than 0")
@@ -60,7 +60,7 @@ func (args *Arguments) Validate() error {
 
 // Exports holds settings exported by this component.
 type Exports struct {
-	Data map[string]rivertypes.OptionalSecret `river:"data,attr"`
+	Data map[string]alloytypes.OptionalSecret `alloy:"data,attr"`
 }
 
 // Component implements the remote.kubernetes.* component.
@@ -171,14 +171,14 @@ func (c *Component) pollError() error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.args.PollTimeout)
 	defer cancel()
 
-	data := map[string]rivertypes.OptionalSecret{}
+	data := map[string]alloytypes.OptionalSecret{}
 	if c.kind == TypeSecret {
 		secret, err := c.client.CoreV1().Secrets(c.args.Namespace).Get(ctx, c.args.Name, v1.GetOptions{})
 		if err != nil {
 			return err
 		}
 		for k, v := range secret.Data {
-			data[k] = rivertypes.OptionalSecret{
+			data[k] = alloytypes.OptionalSecret{
 				Value:    string(v),
 				IsSecret: true,
 			}
@@ -189,7 +189,7 @@ func (c *Component) pollError() error {
 			return err
 		}
 		for k, v := range cmap.Data {
-			data[k] = rivertypes.OptionalSecret{
+			data[k] = alloytypes.OptionalSecret{
 				Value:    v,
 				IsSecret: false,
 			}

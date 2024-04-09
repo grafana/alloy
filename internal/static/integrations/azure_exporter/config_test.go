@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/webdevops/azure-metrics-exporter/metrics"
 
-	"github.com/grafana/agent/internal/static/integrations/azure_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/azure_exporter"
 )
 
 func TestConfig_ToScrapeSettings(t *testing.T) {

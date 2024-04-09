@@ -1,7 +1,7 @@
 server:
   log_level: ${SOME_ENVIRONMENT_VARIABLE:='debug'}
   log_format: json
-  
+
 metrics:
   global:
     remote_write:
@@ -182,7 +182,7 @@ integrations:
   oracledb_configs:
     - connection_string: oracle://user:password@localhost:1521/orcl.localnet
   postgres_configs:
-    - data_source_names: 
+    - data_source_names:
       - postgres://postgres:password@localhost:5432/postgres?sslmode=disable
       autoscrape:
         relabel_configs:
@@ -228,13 +228,3 @@ integrations:
   statsd:
     autoscrape:
       metrics_instance: "default"
-  vsphere_configs:
-    - vsphere_url: https://127.0.0.1:8989/sdk
-      vsphere_user: user
-      vsphere_password: pass
-      request_chunk_size: 256
-      collect_concurrency: 8
-      instance: vsphere
-      autoscrape:
-        enable: true
-        metrics_instance: default

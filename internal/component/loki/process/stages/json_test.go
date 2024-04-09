@@ -10,17 +10,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
-var testJSONRiverSingleStageWithoutSource = `
+var testJSONAlloySingleStageWithoutSource = `
 stage.json {
     expressions = {"out" = "message", "app" = "", "nested" = "", duration = "", unknown = "" }
 }
 `
 
-var testJSONRiverMultiStageWithSource = `
+var testJSONAlloyMultiStageWithSource = `
 stage.json {
     expressions = { "extra" = "" }
 }
@@ -45,7 +45,7 @@ var testJSONLogLine = `
 
 func TestPipeline_JSON(t *testing.T) {
 	t.Parallel()
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 
 	tests := map[string]struct {
 		config          string
@@ -53,7 +53,7 @@ func TestPipeline_JSON(t *testing.T) {
 		expectedExtract map[string]interface{}
 	}{
 		"successfully run a pipeline with 1 json stage without source": {
-			testJSONRiverSingleStageWithoutSource,
+			testJSONAlloySingleStageWithoutSource,
 			testJSONLogLine,
 			map[string]interface{}{
 				"out":      "this is a log line",
@@ -64,7 +64,7 @@ func TestPipeline_JSON(t *testing.T) {
 			},
 		},
 		"successfully run a pipeline with 2 json stages with source": {
-			testJSONRiverMultiStageWithSource,
+			testJSONAlloyMultiStageWithSource,
 			testJSONLogLine,
 			map[string]interface{}{
 				"extra": "{\"user\":\"marco\"}",
@@ -95,12 +95,12 @@ var jsonCfg = `
 `
 
 // nolint
-func TestRiver(t *testing.T) {
+func TestAlloy(t *testing.T) {
 	t.Parallel()
 
-	// testing that we can use river data into the config structure.
+	// testing that we can use Alloy data into the config structure.
 	var got JSONConfig
-	err := river.Unmarshal([]byte(jsonCfg), &got)
+	err := syntax.Unmarshal([]byte(jsonCfg), &got)
 	assert.NoError(t, err, "error while un-marshalling config: %s", err)
 
 	want := JSONConfig{
@@ -212,7 +212,7 @@ var logFixture = `
 
 func TestJSONParser_Parse(t *testing.T) {
 	t.Parallel()
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 
 	var logString = "log"
 	tests := map[string]struct {
@@ -351,7 +351,7 @@ func TestJSONParser_Parse(t *testing.T) {
 }
 
 func TestValidateJSONDrop(t *testing.T) {
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	labels := map[string]string{"foo": "bar"}
 	matchConfig := &JSONConfig{
 		DropMalformed: true,

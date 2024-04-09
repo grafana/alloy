@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/mitchellh/mapstructure"
 	"github.com/prometheus/common/model"
 )
@@ -23,8 +23,8 @@ var (
 // RegexConfig configures a processing stage uses regular expressions to
 // extract values from log lines into the shared values map.
 type RegexConfig struct {
-	Expression string  `river:"expression,attr"`
-	Source     *string `river:"source,attr,optional"`
+	Expression string  `alloy:"expression,attr"`
+	Source     *string `alloy:"source,attr,optional"`
 }
 
 // validateRegexConfig validates the config and return a regex

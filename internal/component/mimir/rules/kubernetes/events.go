@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/common/kubernetes"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	mimirClient "github.com/grafana/agent/internal/mimir/client"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	mimirClient "github.com/grafana/alloy/internal/mimir/client"
 	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
@@ -270,12 +270,12 @@ func (e *eventProcessor) getKubernetesState() (map[string][]*promv1.PrometheusRu
 
 // mimirNamespaceForRuleCRD returns the namespace that the rule CRD should be
 // stored in mimir. This function, along with isManagedNamespace, is used to
-// determine if a rule CRD is managed by the agent.
+// determine if a rule CRD is managed by Alloy.
 func mimirNamespaceForRuleCRD(prefix string, pr *promv1.PrometheusRule) string {
 	return fmt.Sprintf("%s/%s/%s/%s", prefix, pr.Namespace, pr.Name, pr.UID)
 }
 
-// isManagedMimirNamespace returns true if the namespace is managed by the agent.
+// isManagedMimirNamespace returns true if the namespace is managed by Alloy.
 // Unmanaged namespaces are left as is by the operator.
 func isManagedMimirNamespace(prefix, namespace string) bool {
 	prefixPart := regexp.QuoteMeta(prefix)

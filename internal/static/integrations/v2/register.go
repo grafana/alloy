@@ -8,9 +8,9 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	v1 "github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/v2/common"
-	"github.com/grafana/agent/internal/util"
+	v1 "github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/v2/common"
+	"github.com/grafana/alloy/internal/util"
 )
 
 var (

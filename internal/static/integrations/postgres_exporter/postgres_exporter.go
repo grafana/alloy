@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/static/integrations"
-	integrations_v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/metricsutils"
+	"github.com/grafana/alloy/internal/static/integrations"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/lib/pq"
 	"github.com/prometheus-community/postgres_exporter/cmd/postgres_exporter"
 	"github.com/prometheus-community/postgres_exporter/collector"
@@ -28,10 +28,10 @@ type Config struct {
 	DisableDefaultMetrics  bool     `yaml:"disable_default_metrics,omitempty"`
 	QueryPath              string   `yaml:"query_path,omitempty"`
 
-	//-- The fields below are only used in flow mode and not (yet) exposed in the static mode.--
+	//-- The fields below were not available in Grafana Agent Static. --
 
-	// Instance is used by the flow mode to specify the instance name manually. This is only used when there are multiple
-	// DSNs provided.
+	// Instance is used by Alloy to specify the instance name manually. This is
+	// only used when there are multiple DSNs provided.
 	Instance string
 	// EnabledCollectors is a list of additional collectors to enable. NOTE: Due to limitations of the postgres_exporter,
 	// this is only used for the first DSN provided and only some collectors can be enabled/disabled this way. See the
@@ -60,7 +60,7 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 		if c.Instance != "" {
 			return c.Instance, nil
 		}
-		// This should not be possible in the flow mode, because `c.Instance` is always set.
+		// This should not be possible in Alloy, because `c.Instance` is always set.
 		return "", fmt.Errorf("can't automatically determine a value for `instance` with %d DSN. either use 1 DSN or manually assign a value for `instance` in the integration config", len(dsn))
 	}
 

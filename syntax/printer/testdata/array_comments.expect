@@ -1,0 +1,17 @@
+// array_comments.in expects that comments in arrays are formatted to
+// retain the indentation level of elements within the arrays.
+
+attr = [ // Inline comment
+	0, 1, 2, // Inline comment
+	3, 4, 5, // Inline comment
+	// Trailing comment
+]
+
+attr = [
+	0,
+	// Element-level comment
+	1,
+	// Element-level comment
+	2,
+	// Trailing comment
+]

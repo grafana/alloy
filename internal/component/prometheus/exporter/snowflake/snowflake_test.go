@@ -3,15 +3,15 @@ package snowflake
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/static/integrations/snowflake_exporter"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/static/integrations/snowflake_exporter"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverConfig := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyConfig := `
 	account_name = "some_account"
 	username     = "some_user"
 	password     = "some_password"
@@ -20,13 +20,13 @@ func TestRiverUnmarshal(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
 		AccountName: "some_account",
 		Username:    "some_user",
-		Password:    rivertypes.Secret("some_password"),
+		Password:    alloytypes.Secret("some_password"),
 		Role:        "some_role",
 		Warehouse:   "some_warehouse",
 	}
@@ -35,14 +35,14 @@ func TestRiverUnmarshal(t *testing.T) {
 }
 
 func TestConvert(t *testing.T) {
-	riverConfig := `
+	alloyConfig := `
 	account_name = "some_account"
 	username     = "some_user"
 	password     = "some_password"
 	warehouse    = "some_warehouse"
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	res := args.Convert()

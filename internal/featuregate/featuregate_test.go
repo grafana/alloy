@@ -21,7 +21,7 @@ func TestCheckAllowed(t *testing.T) {
 			name: "undefined stability",
 			args: args{
 				stability:    StabilityUndefined,
-				minStability: StabilityStable,
+				minStability: StabilityGenerallyAvailable,
 				featureName:  "component do.all.things",
 			},
 			errContains: "stability levels must be defined: got <invalid_stability_level> as stability of component do.all.things",
@@ -29,25 +29,25 @@ func TestCheckAllowed(t *testing.T) {
 		{
 			name: "too low stability",
 			args: args{
-				stability:    StabilityBeta,
-				minStability: StabilityStable,
+				stability:    StabilityPublicPreview,
+				minStability: StabilityGenerallyAvailable,
 				featureName:  "component do.all.things",
 			},
-			errContains: "component do.all.things is at stability level \"beta\", which is below the minimum allowed stability level \"stable\"",
+			errContains: "component do.all.things is at stability level \"public-preview\", which is below the minimum allowed stability level \"generally-available\"",
 		},
 		{
 			name: "equal stability",
 			args: args{
-				stability:    StabilityBeta,
-				minStability: StabilityBeta,
+				stability:    StabilityPublicPreview,
+				minStability: StabilityPublicPreview,
 				featureName:  "component do.all.things",
 			},
 		},
 		{
 			name: "higher stability",
 			args: args{
-				stability:    StabilityStable,
-				minStability: StabilityBeta,
+				stability:    StabilityGenerallyAvailable,
+				minStability: StabilityPublicPreview,
 				featureName:  "component do.all.things",
 			},
 		},

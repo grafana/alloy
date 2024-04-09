@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/pyroscope"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	ebpfspy "github.com/grafana/pyroscope/ebpf"
 	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/sd"
-	"github.com/grafana/river"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
@@ -71,7 +71,7 @@ func (m *mockSession) DebugInfo() interface{} {
 }
 
 func TestShutdownOnError(t *testing.T) {
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	ms := newMetrics(nil)
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/foo"), logger, sd.TargetsOptions{
 		ContainerCacheSize: 1024,
@@ -98,7 +98,7 @@ func TestShutdownOnError(t *testing.T) {
 }
 
 func TestContextShutdown(t *testing.T) {
-	logger := util.TestFlowLogger(t)
+	logger := util.TestAlloyLogger(t)
 	ms := newMetrics(nil)
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/foo"), logger, sd.TargetsOptions{
 		ContainerCacheSize: 1024,
@@ -151,7 +151,7 @@ func TestContextShutdown(t *testing.T) {
 
 func TestUnmarshalConfig(t *testing.T) {
 	var arg Arguments
-	err := river.Unmarshal([]byte(`targets = [{"service_name" = "foo", "container_id"= "cid"}]
+	err := syntax.Unmarshal([]byte(`targets = [{"service_name" = "foo", "container_id"= "cid"}]
 forward_to = []
 collect_interval = "3s"
 sample_rate = 239
@@ -177,7 +177,7 @@ collect_kernel_profile = false`), &arg)
 
 func TestUnmarshalBadConfig(t *testing.T) {
 	var arg Arguments
-	err := river.Unmarshal([]byte(`targets = [{"service_name" = "foo", "container_id"= "cid"}]
+	err := syntax.Unmarshal([]byte(`targets = [{"service_name" = "foo", "container_id"= "cid"}]
 forward_to = []
 collect_interval = 3s"
 sample_rate = 239
@@ -192,11 +192,11 @@ collect_kernel_profile = false`), &arg)
 }
 
 func newTestComponent(opts component.Options, args Arguments, session *mockSession, targetFinder sd.TargetFinder, ms *metrics) *Component {
-	flowAppendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
+	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
 	res := &Component{
 		options:      opts,
 		metrics:      ms,
-		appendable:   flowAppendable,
+		appendable:   alloyAppendable,
 		args:         args,
 		targetFinder: targetFinder,
 		session:      session,

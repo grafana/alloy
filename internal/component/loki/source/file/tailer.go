@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/loki/pkg/logproto"
 	"github.com/grafana/loki/pkg/util"
 	"github.com/grafana/tail"
@@ -253,7 +253,7 @@ func (t *tailer) readLines() {
 			if err != nil {
 				level.Debug(t.logger).Log("msg", "failed to convert encoding", "error", err)
 				t.metrics.encodingFailures.WithLabelValues(t.path).Inc()
-				text = fmt.Sprintf("the requested encoding conversion for this line failed in Grafana Agent Flow: %s", err.Error())
+				text = fmt.Sprintf("the requested encoding conversion for this line failed in Alloy: %s", err.Error())
 			}
 		} else {
 			text = line.Text

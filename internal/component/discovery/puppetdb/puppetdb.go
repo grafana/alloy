@@ -5,10 +5,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/puppetdb"
 )
@@ -16,7 +16,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.puppetdb",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -27,12 +27,12 @@ func init() {
 }
 
 type Arguments struct {
-	HTTPClientConfig  config.HTTPClientConfig `river:",squash"`
-	RefreshInterval   time.Duration           `river:"refresh_interval,attr,optional"`
-	URL               string                  `river:"url,attr"`
-	Query             string                  `river:"query,attr"`
-	IncludeParameters bool                    `river:"include_parameters,attr,optional"`
-	Port              int                     `river:"port,attr,optional"`
+	HTTPClientConfig  config.HTTPClientConfig `alloy:",squash"`
+	RefreshInterval   time.Duration           `alloy:"refresh_interval,attr,optional"`
+	URL               string                  `alloy:"url,attr"`
+	Query             string                  `alloy:"query,attr"`
+	IncludeParameters bool                    `alloy:"include_parameters,attr,optional"`
+	Port              int                     `alloy:"port,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -41,12 +41,12 @@ var DefaultArguments = Arguments{
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	parsedURL, err := url.Parse(args.URL)
 	if err != nil {

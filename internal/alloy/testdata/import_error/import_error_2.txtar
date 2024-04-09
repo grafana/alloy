@@ -1,0 +1,13 @@
+Root tries to access declare in nested import.
+
+-- main.alloy --
+import.string "testImport" {
+  content = `import.string "nestedImport" {
+    content = 'declare "cantAccessThis" {}'
+  }`
+}
+
+testImport.cantAccessThis "cc" {}
+
+-- error --
+Failed to build component: loading custom component controller: custom component config not found in the registry, namespace: "testImport", componentName: "cantAccessThis"

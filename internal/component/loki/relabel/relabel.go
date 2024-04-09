@@ -5,11 +5,11 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/featuregate"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -19,7 +19,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.relabel",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -32,13 +32,13 @@ func init() {
 // component.
 type Arguments struct {
 	// Where the relabeled metrics should be forwarded to.
-	ForwardTo []loki.LogsReceiver `river:"forward_to,attr"`
+	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 
 	// The relabelling rules to apply to each log entry before it's forwarded.
-	RelabelConfigs []*flow_relabel.Config `river:"rule,block,optional"`
+	RelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 
 	// The maximum number of items to hold in the component's LRU cache.
-	MaxCacheSize int `river:"max_cache_size,attr,optional"`
+	MaxCacheSize int `alloy:"max_cache_size,attr,optional"`
 }
 
 // DefaultArguments provides the default arguments for the loki.relabel
@@ -47,15 +47,15 @@ var DefaultArguments = Arguments{
 	MaxCacheSize: 10_000,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
 // Exports holds values which are exported by the loki.relabel component.
 type Exports struct {
-	Receiver loki.LogsReceiver  `river:"receiver,attr"`
-	Rules    flow_relabel.Rules `river:"rules,attr"`
+	Receiver loki.LogsReceiver   `alloy:"receiver,attr"`
+	Rules    alloy_relabel.Rules `alloy:"rules,attr"`
 }
 
 // Component implements the loki.relabel component.
@@ -136,7 +136,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	newRCS := flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
+	newRCS := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
 	if relabelingChanged(c.rcs, newRCS) {
 		level.Debug(c.opts.Logger).Log("msg", "received new relabel configs, purging cache")
 		c.cache.Purge()

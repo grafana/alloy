@@ -3,13 +3,13 @@ package mongodb
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/static/integrations/mongodb_exporter"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/static/integrations/mongodb_exporter"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverConfig := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyConfig := `
 	mongodb_uri = "mongodb://127.0.0.1:27017"
 	direct_connect = true
 	discovering_mode = true
@@ -17,7 +17,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
@@ -31,14 +31,14 @@ func TestRiverUnmarshal(t *testing.T) {
 }
 
 func TestConvert(t *testing.T) {
-	riverConfig := `
+	alloyConfig := `
 	mongodb_uri = "mongodb://127.0.0.1:27017"
 	direct_connect = true
 	discovering_mode = true
 	tls_basic_auth_config_path = "/etc/path-to-file"
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	res := args.Convert()

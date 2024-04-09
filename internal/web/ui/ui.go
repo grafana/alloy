@@ -1,4 +1,4 @@
-// Package ui exposes utilities to get a Handler for the Grafana Agent Flow UI.
+// Package ui exposes utilities to get a Handler for the Grafana Alloy UI.
 package ui
 
 import (
@@ -18,11 +18,11 @@ import (
 )
 
 // RegisterRoutes registers routes to the provided mux.Router for serving the
-// Grafana Agent Flow UI. The UI will be served relative to pathPrefix. If no
+// Grafana Alloy UI. The UI will be served relative to pathPrefix. If no
 // pathPrefix is specified, the UI will be served at root.
 //
 // By default, the UI is retrieved from the ./internal/web/ui/build directory
-// relative to working directory, assuming that the Agent is run from the repo
+// relative to working directory, assuming that Alloy is run from the repo
 // root. However, if the builtinassets Go tag is present, the built UI will be
 // embedded into the binary; run go generate -tags builtinassets for this
 // package to generate the assets to embed.
@@ -31,7 +31,7 @@ import (
 // invoked after all other routes have been registered.
 //
 // RegisterRoutes is not intended for public use and will only work properly
-// when called from github.com/grafana/agent.
+// when called from github.com/grafana/alloy.
 func RegisterRoutes(pathPrefix string, router *mux.Router) {
 	if !strings.HasSuffix(pathPrefix, "/") {
 		pathPrefix = pathPrefix + "/"

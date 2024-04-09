@@ -5,22 +5,22 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert"
-	"github.com/grafana/agent/internal/converter/internal/promtailconvert"
-	"github.com/grafana/agent/internal/converter/internal/staticconvert/internal/build"
-	"github.com/grafana/agent/internal/static/config"
-	"github.com/grafana/agent/internal/static/logs"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
+	"github.com/grafana/alloy/internal/converter/internal/promtailconvert"
+	"github.com/grafana/alloy/internal/converter/internal/staticconvert/internal/build"
+	"github.com/grafana/alloy/internal/static/config"
+	"github.com/grafana/alloy/internal/static/logs"
+	"github.com/grafana/alloy/syntax/scanner"
+	"github.com/grafana/alloy/syntax/token/builder"
 	promtail_config "github.com/grafana/loki/clients/pkg/promtail/config"
 	"github.com/grafana/loki/clients/pkg/promtail/limit"
 	"github.com/grafana/loki/clients/pkg/promtail/targets/file"
-	"github.com/grafana/river/scanner"
-	"github.com/grafana/river/token/builder"
 	prom_config "github.com/prometheus/prometheus/config"
 
-	_ "github.com/grafana/agent/internal/static/integrations/install" // Install integrations
+	_ "github.com/grafana/alloy/internal/static/integrations/install" // Install integrations
 )
 
 // Convert implements a Static config converter.
@@ -48,7 +48,7 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 
 	var buf bytes.Buffer
 	if _, err := f.WriteTo(&buf); err != nil {
-		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to render Flow config: %s", err.Error()))
+		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to render Alloy config: %s", err.Error()))
 		return nil, diags
 	}
 
@@ -61,10 +61,10 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 	return prettyByte, diags
 }
 
-// AppendAll analyzes the entire static config in memory and transforms it
-// into Flow Arguments. It then appends each argument to the file builder.
-// Exports from other components are correctly referenced to build the Flow
-// pipeline.
+// AppendAll analyzes the entire static config in memory and transforms it into
+// Alloy component Arguments. It then appends each argument to the file
+// builder. Exports from other components are correctly referenced to build the
+// Alloy pipeline.
 func AppendAll(f *builder.File, staticConfig *config.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 

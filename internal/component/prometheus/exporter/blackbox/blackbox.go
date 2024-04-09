@@ -8,20 +8,20 @@ import (
 	blackbox_config "github.com/prometheus/blackbox_exporter/config"
 	"gopkg.in/yaml.v2"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/blackbox_exporter"
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/blackbox_exporter"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.blackbox",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 
@@ -62,17 +62,17 @@ func buildBlackboxTargets(baseTarget discovery.Target, args component.Arguments)
 }
 
 // DefaultArguments holds non-zero default options for Arguments when it is
-// unmarshaled from river.
+// unmarshaled from Alloy.
 var DefaultArguments = Arguments{
 	ProbeTimeoutOffset: 500 * time.Millisecond,
 }
 
 // BlackboxTarget defines a target to be used by the exporter.
 type BlackboxTarget struct {
-	Name   string            `river:"name,attr"`
-	Target string            `river:"address,attr"`
-	Module string            `river:"module,attr,optional"`
-	Labels map[string]string `river:"labels,attr,optional"`
+	Name   string            `alloy:"name,attr"`
+	Target string            `alloy:"address,attr"`
+	Module string            `alloy:"module,attr,optional"`
+	Labels map[string]string `alloy:"labels,attr,optional"`
 }
 
 type TargetBlock []BlackboxTarget
@@ -91,18 +91,18 @@ func (t TargetBlock) Convert() []blackbox_exporter.BlackboxTarget {
 }
 
 type Arguments struct {
-	ConfigFile         string                    `river:"config_file,attr,optional"`
-	Config             rivertypes.OptionalSecret `river:"config,attr,optional"`
-	Targets            TargetBlock               `river:"target,block"`
-	ProbeTimeoutOffset time.Duration             `river:"probe_timeout_offset,attr,optional"`
+	ConfigFile         string                    `alloy:"config_file,attr,optional"`
+	Config             alloytypes.OptionalSecret `alloy:"config,attr,optional"`
+	Targets            TargetBlock               `alloy:"target,block"`
+	ProbeTimeoutOffset time.Duration             `alloy:"probe_timeout_offset,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if a.ConfigFile != "" && a.Config.Value != "" {
 		return errors.New("config and config_file are mutually exclusive")

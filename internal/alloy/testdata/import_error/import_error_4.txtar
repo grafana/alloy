@@ -1,0 +1,18 @@
+Use of a nested declare component with too low stability level propagates the error
+
+-- main.alloy --
+
+declare "a" {
+
+  declare "b" {
+    testcomponents.experimental "unstable" {}
+  }
+
+  b "cc" {}
+
+}
+
+a "cc" {}
+
+-- error --
+component "testcomponents.experimental" is at stability level "experimental", which is below the minimum allowed stability level "public-preview"

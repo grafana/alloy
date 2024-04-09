@@ -1,7 +1,7 @@
-// Package auth provides utilities to create a Flow component from
+// Package auth provides utilities to create an Alloy component from
 // OpenTelemetry Collector authentication extensions.
 //
-// Other OpenTelemetry Collector extensions are better served as generic Flow
+// Other OpenTelemetry Collector extensions are better served as generic Alloy
 // components rather than being placed in the otelcol namespace.
 package auth
 
@@ -9,12 +9,12 @@ import (
 	"context"
 	"os"
 
-	"github.com/grafana/agent/internal/build"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazycollector"
-	"github.com/grafana/agent/internal/component/otelcol/internal/scheduler"
-	"github.com/grafana/agent/internal/util/zapadapter"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	"github.com/grafana/alloy/internal/util/zapadapter"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -40,12 +40,12 @@ type Arguments interface {
 	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
 }
 
-// Exports is a common Exports type for Flow components which expose
+// Exports is a common Exports type for Alloy components which expose
 // OpenTelemetry Collector authentication extensions.
 type Exports struct {
 	// Handler is the managed component. Handler is updated any time the
 	// extension is updated.
-	Handler Handler `river:"handler,attr"`
+	Handler Handler `alloy:"handler,attr"`
 }
 
 // Handler combines an extension with its ID.
@@ -54,12 +54,12 @@ type Handler struct {
 	Extension otelextension.Extension
 }
 
-var _ river.Capsule = Handler{}
+var _ syntax.Capsule = Handler{}
 
-// RiverCapsule marks Handler as a capsule type.
-func (Handler) RiverCapsule() {}
+// AlloyCapsule marks Handler as a capsule type.
+func (Handler) AlloyCapsule() {}
 
-// Auth is a Flow component shim which manages an OpenTelemetry Collector
+// Auth is an Alloy component shim which manages an OpenTelemetry Collector
 // authentication extension.
 type Auth struct {
 	ctx    context.Context
@@ -77,9 +77,9 @@ var (
 	_ component.HealthComponent = (*Auth)(nil)
 )
 
-// New creates a new Flow component which encapsulates an OpenTelemetry
+// New creates a new Alloy component which encapsulates an OpenTelemetry
 // Collector authentication extension. args must hold a value of the argument
-// type registered with the Flow component.
+// type registered with the Alloy component.
 //
 // The registered component must be registered to export the Exports type from
 // this package, otherwise New will panic.
@@ -145,7 +145,7 @@ func (a *Auth) Update(args component.Arguments) error {
 
 		BuildInfo: otelcomponent.BuildInfo{
 			Command:     os.Args[0],
-			Description: "Grafana Agent",
+			Description: "Grafana Alloy",
 			Version:     build.Version,
 		},
 	}

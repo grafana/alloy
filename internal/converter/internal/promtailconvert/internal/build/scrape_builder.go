@@ -5,23 +5,22 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/discovery/relabel"
-	filematch "github.com/grafana/agent/internal/component/local/file_match"
-	"github.com/grafana/agent/internal/component/loki/process"
-	"github.com/grafana/agent/internal/component/loki/process/stages"
-
-	lokirelabel "github.com/grafana/agent/internal/component/loki/relabel"
-	lokisourcefile "github.com/grafana/agent/internal/component/loki/source/file"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery/relabel"
+	filematch "github.com/grafana/alloy/internal/component/local/file_match"
+	"github.com/grafana/alloy/internal/component/loki/process"
+	"github.com/grafana/alloy/internal/component/loki/process/stages"
+	lokirelabel "github.com/grafana/alloy/internal/component/loki/relabel"
+	lokisourcefile "github.com/grafana/alloy/internal/component/loki/source/file"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
+	"github.com/grafana/alloy/syntax/scanner"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/grafana/loki/clients/pkg/promtail/positions"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/clients/pkg/promtail/targets/file"
-	"github.com/grafana/river/scanner"
-	"github.com/grafana/river/token/builder"
 	"github.com/prometheus/common/model"
 )
 
@@ -104,7 +103,7 @@ func (s *ScrapeConfigBuilder) getOrNewLokiRelabel() string {
 	if s.lokiRelabelReceiverExpr == "" {
 		args := lokirelabel.Arguments{
 			ForwardTo:      s.getOrNewProcessStageReceivers(),
-			RelabelConfigs: component.ToFlowRelabelConfigs(s.cfg.RelabelConfigs),
+			RelabelConfigs: component.ToAlloyRelabelConfigs(s.cfg.RelabelConfigs),
 			// max_cache_size doesnt exist in static, and we need to manually set it to default.
 			// Since the default is 10_000 if we didnt set the value, it would compare the default 10k to 0 and emit 0.
 			// We actually dont want to emit anything since this setting doesnt exist in static, setting to 10k matches the default
@@ -127,15 +126,15 @@ func (s *ScrapeConfigBuilder) getOrNewProcessStageReceivers() []loki.LogsReceive
 		return s.processStageReceivers
 	}
 
-	flowStages := make([]stages.StageConfig, len(s.cfg.PipelineStages))
+	alloyStages := make([]stages.StageConfig, len(s.cfg.PipelineStages))
 	for i, ps := range s.cfg.PipelineStages {
 		if fs, ok := convertStage(ps, s.diags); ok {
-			flowStages[i] = fs
+			alloyStages[i] = fs
 		}
 	}
 	args := process.Arguments{
 		ForwardTo: s.globalCtx.WriteReceivers,
-		Stages:    flowStages,
+		Stages:    alloyStages,
 	}
 	compLabel := common.LabelForParts(s.globalCtx.LabelPrefix, s.cfg.JobName)
 	s.f.Body().AppendBlock(common.NewBlockWithOverride([]string{"loki", "process"}, compLabel, args))
@@ -155,7 +154,7 @@ func (s *ScrapeConfigBuilder) appendDiscoveryRelabel() {
 		return
 	}
 
-	relabelConfigs := component.ToFlowRelabelConfigs(s.cfg.RelabelConfigs)
+	relabelConfigs := component.ToAlloyRelabelConfigs(s.cfg.RelabelConfigs)
 	args := relabel.Arguments{
 		RelabelConfigs: relabelConfigs,
 	}
@@ -265,7 +264,7 @@ func logsReceiversToExpr(r []loki.LogsReceiver) string {
 	return "[" + strings.Join(exprs, ", ") + "]"
 }
 
-func toRiverExpression(goValue interface{}) (string, error) {
+func toAlloyExpression(goValue interface{}) (string, error) {
 	e := builder.NewExpr()
 	e.SetValue(goValue)
 	var buff bytes.Buffer

@@ -1,17 +1,17 @@
 package apache
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/apache_http"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/apache_http"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.apache",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 
@@ -33,12 +33,12 @@ var DefaultArguments = Arguments{
 
 // Arguments controls the apache exporter.
 type Arguments struct {
-	ApacheAddr         string `river:"scrape_uri,attr,optional"`
-	ApacheHostOverride string `river:"host_override,attr,optional"`
-	ApacheInsecure     bool   `river:"insecure,attr,optional"`
+	ApacheAddr         string `alloy:"scrape_uri,attr,optional"`
+	ApacheHostOverride string `alloy:"host_override,attr,optional"`
+	ApacheInsecure     bool   `alloy:"insecure,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

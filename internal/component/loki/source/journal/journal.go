@@ -9,21 +9,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/journal/internal/target"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/journal/internal/target"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/agent/internal/component"
+	"github.com/grafana/alloy/internal/component"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.journal",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -112,7 +112,7 @@ func (c *Component) Update(args component.Arguments) error {
 			return err
 		}
 	}
-	rcs := flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+	rcs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	entryHandler := loki.NewEntryHandler(c.handler, func() {})
 
 	newTarget, err := target.NewJournalTarget(c.metrics, c.o.Logger, entryHandler, c.positions, c.o.ID, rcs, convertArgs(c.o.ID, newArgs))

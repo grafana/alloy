@@ -2,17 +2,17 @@
 package kubernetes
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.kubernetes",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -24,13 +24,13 @@ func init() {
 
 // Arguments configures the discovery.kubernetes component.
 type Arguments struct {
-	APIServer          config.URL              `river:"api_server,attr,optional"`
-	Role               string                  `river:"role,attr"`
-	KubeConfig         string                  `river:"kubeconfig_file,attr,optional"`
-	HTTPClientConfig   config.HTTPClientConfig `river:",squash"`
-	NamespaceDiscovery NamespaceDiscovery      `river:"namespaces,block,optional"`
-	Selectors          []SelectorConfig        `river:"selectors,block,optional"`
-	AttachMetadata     AttachMetadataConfig    `river:"attach_metadata,block,optional"`
+	APIServer          config.URL              `alloy:"api_server,attr,optional"`
+	Role               string                  `alloy:"role,attr"`
+	KubeConfig         string                  `alloy:"kubeconfig_file,attr,optional"`
+	HTTPClientConfig   config.HTTPClientConfig `alloy:",squash"`
+	NamespaceDiscovery NamespaceDiscovery      `alloy:"namespaces,block,optional"`
+	Selectors          []SelectorConfig        `alloy:"selectors,block,optional"`
+	AttachMetadata     AttachMetadataConfig    `alloy:"attach_metadata,block,optional"`
 }
 
 // DefaultConfig holds defaults for SDConfig.
@@ -38,12 +38,12 @@ var DefaultConfig = Arguments{
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	return args.HTTPClientConfig.Validate()
@@ -68,8 +68,8 @@ func (args *Arguments) Convert() *promk8s.SDConfig {
 
 // NamespaceDiscovery configures filtering rules for which namespaces to discover.
 type NamespaceDiscovery struct {
-	IncludeOwnNamespace bool     `river:"own_namespace,attr,optional"`
-	Names               []string `river:"names,attr,optional"`
+	IncludeOwnNamespace bool     `alloy:"own_namespace,attr,optional"`
+	Names               []string `alloy:"names,attr,optional"`
 }
 
 func (nd *NamespaceDiscovery) convert() *promk8s.NamespaceDiscovery {
@@ -81,9 +81,9 @@ func (nd *NamespaceDiscovery) convert() *promk8s.NamespaceDiscovery {
 
 // SelectorConfig configures selectors to filter resources to discover.
 type SelectorConfig struct {
-	Role  string `river:"role,attr"`
-	Label string `river:"label,attr,optional"`
-	Field string `river:"field,attr,optional"`
+	Role  string `alloy:"role,attr"`
+	Label string `alloy:"label,attr,optional"`
+	Field string `alloy:"field,attr,optional"`
 }
 
 func (sc *SelectorConfig) convert() *promk8s.SelectorConfig {
@@ -95,7 +95,7 @@ func (sc *SelectorConfig) convert() *promk8s.SelectorConfig {
 }
 
 type AttachMetadataConfig struct {
-	Node bool `river:"node,attr,optional"`
+	Node bool `alloy:"node,attr,optional"`
 }
 
 func (am *AttachMetadataConfig) convert() *promk8s.AttachMetadataConfig {

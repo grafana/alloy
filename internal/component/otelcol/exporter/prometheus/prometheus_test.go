@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol/exporter/prometheus"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 )
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string
@@ -66,7 +66,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args prometheus.Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			if tc.errorMsg != "" {
 				require.EqualError(t, err, tc.errorMsg)
 				return

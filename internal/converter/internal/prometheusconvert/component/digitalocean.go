@@ -3,12 +3,12 @@ package component
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/discovery/digitalocean"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery/digitalocean"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_config "github.com/prometheus/common/config"
 	prom_digitalocean "github.com/prometheus/prometheus/discovery/digitalocean"
 )
@@ -46,7 +46,7 @@ func toDiscoveryDigitalOcean(sdConfig *prom_digitalocean.SDConfig) *digitalocean
 	return &digitalocean.Arguments{
 		RefreshInterval: time.Duration(sdConfig.RefreshInterval),
 		Port:            sdConfig.Port,
-		BearerToken:     rivertypes.Secret(sdConfig.HTTPClientConfig.BearerToken),
+		BearerToken:     alloytypes.Secret(sdConfig.HTTPClientConfig.BearerToken),
 		BearerTokenFile: sdConfig.HTTPClientConfig.BearerTokenFile,
 		ProxyConfig:     common.ToProxyConfig(sdConfig.HTTPClientConfig.ProxyConfig),
 		FollowRedirects: sdConfig.HTTPClientConfig.FollowRedirects,

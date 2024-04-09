@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/common/kubernetes"
-	mimirClient "github.com/grafana/agent/internal/mimir/client"
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	mimirClient "github.com/grafana/alloy/internal/mimir/client"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/prometheus/prometheus/model/rulefmt"
@@ -140,7 +140,7 @@ func TestEventLoop(t *testing.T) {
 		ruleLister:        ruleLister,
 		namespaceSelector: labels.Everything(),
 		ruleSelector:      labels.Everything(),
-		namespacePrefix:   "agent",
+		namespacePrefix:   "alloy",
 		metrics:           newMetrics(),
 		logger:            log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
 	}
@@ -178,7 +178,7 @@ func TestEventLoop(t *testing.T) {
 	require.Eventually(t, func() bool {
 		allRules, err := processor.mimirClient.ListRules(ctx, "")
 		require.NoError(t, err)
-		rules := allRules[mimirNamespaceForRuleCRD("agent", rule)][0].Rules
+		rules := allRules[mimirNamespaceForRuleCRD("alloy", rule)][0].Rules
 		return len(rules) == 2
 	}, time.Second, 10*time.Millisecond)
 

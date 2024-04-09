@@ -1,7 +1,7 @@
 import React, { Fragment } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 
-import { riverStringify } from '../river-js/stringify';
+import { alloyStringify } from '../alloy-syntax-js/stringify';
 
 import { style } from './style';
 import Table from './Table';
@@ -26,7 +26,7 @@ const ComponentBody = ({ partition }: ComponentBodyProps) => {
           <td>
             <pre className={styles.pre}>
               <SyntaxHighlighter language="javascript" style={style}>
-                {riverStringify(value)}
+                {alloyStringify(value)}
               </SyntaxHighlighter>
             </pre>
           </td>

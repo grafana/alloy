@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/agent/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	otelconfighttp "go.opentelemetry.io/collector/config/confighttp"
@@ -15,11 +15,11 @@ import (
 // HTTPServerArguments holds shared settings for components which launch HTTP
 // servers.
 type HTTPServerArguments struct {
-	Endpoint string `river:"endpoint,attr,optional"`
+	Endpoint string `alloy:"endpoint,attr,optional"`
 
-	TLS *TLSServerArguments `river:"tls,block,optional"`
+	TLS *TLSServerArguments `alloy:"tls,block,optional"`
 
-	CORS *CORSArguments `river:"cors,block,optional"`
+	CORS *CORSArguments `alloy:"cors,block,optional"`
 
 	// TODO(rfratto): auth
 	//
@@ -29,8 +29,8 @@ type HTTPServerArguments struct {
 	// We will need to generally figure out how we want to provide common
 	// authentication extensions to all of our components.
 
-	MaxRequestBodySize units.Base2Bytes `river:"max_request_body_size,attr,optional"`
-	IncludeMetadata    bool             `river:"include_metadata,attr,optional"`
+	MaxRequestBodySize units.Base2Bytes `alloy:"max_request_body_size,attr,optional"`
+	IncludeMetadata    bool             `alloy:"include_metadata,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -51,10 +51,10 @@ func (args *HTTPServerArguments) Convert() *otelconfighttp.ServerConfig {
 // CORSArguments holds shared CORS settings for components which launch HTTP
 // servers.
 type CORSArguments struct {
-	AllowedOrigins []string `river:"allowed_origins,attr,optional"`
-	AllowedHeaders []string `river:"allowed_headers,attr,optional"`
+	AllowedOrigins []string `alloy:"allowed_origins,attr,optional"`
+	AllowedHeaders []string `alloy:"allowed_headers,attr,optional"`
 
-	MaxAge int `river:"max_age,attr,optional"`
+	MaxAge int `alloy:"max_age,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -74,28 +74,28 @@ func (args *CORSArguments) Convert() *otelconfighttp.CORSConfig {
 // HTTPClientArguments holds shared HTTP settings for components which launch
 // HTTP clients.
 type HTTPClientArguments struct {
-	Endpoint string `river:"endpoint,attr"`
+	Endpoint string `alloy:"endpoint,attr"`
 
-	Compression CompressionType `river:"compression,attr,optional"`
+	Compression CompressionType `alloy:"compression,attr,optional"`
 
-	TLS TLSClientArguments `river:"tls,block,optional"`
+	TLS TLSClientArguments `alloy:"tls,block,optional"`
 
-	ReadBufferSize  units.Base2Bytes  `river:"read_buffer_size,attr,optional"`
-	WriteBufferSize units.Base2Bytes  `river:"write_buffer_size,attr,optional"`
-	Timeout         time.Duration     `river:"timeout,attr,optional"`
-	Headers         map[string]string `river:"headers,attr,optional"`
+	ReadBufferSize  units.Base2Bytes  `alloy:"read_buffer_size,attr,optional"`
+	WriteBufferSize units.Base2Bytes  `alloy:"write_buffer_size,attr,optional"`
+	Timeout         time.Duration     `alloy:"timeout,attr,optional"`
+	Headers         map[string]string `alloy:"headers,attr,optional"`
 	// CustomRoundTripper  func(next http.RoundTripper) (http.RoundTripper, error) TODO (@tpaschalis)
-	MaxIdleConns         *int           `river:"max_idle_conns,attr,optional"`
-	MaxIdleConnsPerHost  *int           `river:"max_idle_conns_per_host,attr,optional"`
-	MaxConnsPerHost      *int           `river:"max_conns_per_host,attr,optional"`
-	IdleConnTimeout      *time.Duration `river:"idle_conn_timeout,attr,optional"`
-	DisableKeepAlives    bool           `river:"disable_keep_alives,attr,optional"`
-	HTTP2ReadIdleTimeout time.Duration  `river:"http2_read_idle_timeout,attr,optional"`
-	HTTP2PingTimeout     time.Duration  `river:"http2_ping_timeout,attr,optional"`
+	MaxIdleConns         *int           `alloy:"max_idle_conns,attr,optional"`
+	MaxIdleConnsPerHost  *int           `alloy:"max_idle_conns_per_host,attr,optional"`
+	MaxConnsPerHost      *int           `alloy:"max_conns_per_host,attr,optional"`
+	IdleConnTimeout      *time.Duration `alloy:"idle_conn_timeout,attr,optional"`
+	DisableKeepAlives    bool           `alloy:"disable_keep_alives,attr,optional"`
+	HTTP2ReadIdleTimeout time.Duration  `alloy:"http2_read_idle_timeout,attr,optional"`
+	HTTP2PingTimeout     time.Duration  `alloy:"http2_ping_timeout,attr,optional"`
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `river:"auth,attr,optional"`
+	Auth *auth.Handler `alloy:"auth,attr,optional"`
 }
 
 // Convert converts args into the upstream type.

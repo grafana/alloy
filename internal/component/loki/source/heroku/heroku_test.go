@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	fnet "github.com/grafana/agent/internal/component/common/net"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/heroku/internal/herokutarget"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/heroku/internal/herokutarget"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/regexp"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
@@ -120,7 +120,7 @@ func TestUpdate_detectsWhenTargetRequiresARestart(t *testing.T) {
 			name: "change in relabel rules requires server restart",
 			args: testArgsWithPorts(httpPort, grpcPort),
 			newArgs: testArgsWith(t, func(args *Arguments) {
-				args.RelabelRules = flow_relabel.Rules{}
+				args.RelabelRules = alloy_relabel.Rules{}
 				args.Server.HTTP.ListenPort = httpPort
 				args.Server.GRPC.ListenPort = grpcPort
 			}),
@@ -166,32 +166,32 @@ func TestUpdate_detectsWhenTargetRequiresARestart(t *testing.T) {
 const testPayload = `270 <158>1 2022-06-13T14:52:23.622778+00:00 host heroku router - at=info method=GET path="/" host=cryptic-cliffs-27764.herokuapp.com request_id=59da6323-2bc4-4143-8677-cc66ccfb115f fwd="181.167.87.140" dyno=web.1 connect=0ms service=3ms status=200 bytes=6979 protocol=https
 `
 
-var rulesExport = flow_relabel.Rules{
+var rulesExport = alloy_relabel.Rules{
 	{
 		SourceLabels: []string{"__heroku_drain_host"},
 		Regex:        newRegexp(),
-		Action:       flow_relabel.Replace,
+		Action:       alloy_relabel.Replace,
 		Replacement:  "$1",
 		TargetLabel:  "host",
 	},
 	{
 		SourceLabels: []string{"__heroku_drain_app"},
 		Regex:        newRegexp(),
-		Action:       flow_relabel.Replace,
+		Action:       alloy_relabel.Replace,
 		Replacement:  "$1",
 		TargetLabel:  "app",
 	},
 	{
 		SourceLabels: []string{"__heroku_drain_proc"},
 		Regex:        newRegexp(),
-		Action:       flow_relabel.Replace,
+		Action:       alloy_relabel.Replace,
 		Replacement:  "$1",
 		TargetLabel:  "proc",
 	},
 	{
 		SourceLabels: []string{"__heroku_drain_log_id"},
 		Regex:        newRegexp(),
-		Action:       flow_relabel.Replace,
+		Action:       alloy_relabel.Replace,
 		Replacement:  "$1",
 		TargetLabel:  "log_id",
 	},
@@ -199,7 +199,7 @@ var rulesExport = flow_relabel.Rules{
 
 func defaultOptions(t *testing.T) component.Options {
 	return component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -219,11 +219,11 @@ func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
 		},
 		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver(), loki.NewLogsReceiver()},
 		Labels:    map[string]string{"foo": "bar", "fizz": "buzz"},
-		RelabelRules: flow_relabel.Rules{
+		RelabelRules: alloy_relabel.Rules{
 			{
 				SourceLabels: []string{"tag"},
-				Regex:        flow_relabel.Regexp{Regexp: regexp.MustCompile("ignore")},
-				Action:       flow_relabel.Drop,
+				Regex:        alloy_relabel.Regexp{Regexp: regexp.MustCompile("ignore")},
+				Action:       alloy_relabel.Drop,
 			},
 		},
 		UseIncomingTimestamp: false,
@@ -252,12 +252,12 @@ func getFreePort(t *testing.T) int {
 	return port
 }
 
-func newRegexp() flow_relabel.Regexp {
+func newRegexp() alloy_relabel.Regexp {
 	re, err := regexp.Compile("^(?:(.*))$")
 	if err != nil {
 		panic(err)
 	}
-	return flow_relabel.Regexp{Regexp: re}
+	return alloy_relabel.Regexp{Regexp: re}
 }
 
 func getEndpoint(target *herokutarget.HerokuTarget) string {

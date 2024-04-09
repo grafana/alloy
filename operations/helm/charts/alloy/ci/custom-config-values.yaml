@@ -1,0 +1,10 @@
+alloy:
+  configMap:
+    content: |-
+        logging {
+          level  = "warn"
+          format = "logfmt"
+        }
+        discovery.kubernetes "custom_pods" {
+          role = "pod"
+        }

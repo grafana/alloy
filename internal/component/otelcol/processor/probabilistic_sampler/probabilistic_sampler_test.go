@@ -4,16 +4,16 @@ import (
 	"context"
 	"testing"
 
-	probabilisticsampler "github.com/grafana/agent/internal/component/otelcol/processor/probabilistic_sampler"
-	"github.com/grafana/agent/internal/component/otelcol/processor/processortest"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	probabilisticsampler "github.com/grafana/alloy/internal/component/otelcol/processor/probabilistic_sampler"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/processortest"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor"
 	"github.com/stretchr/testify/require"
 )
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string
@@ -73,7 +73,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args probabilisticsampler.Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			if tc.errorMsg != "" {
 				require.EqualError(t, err, tc.errorMsg)
 				return
@@ -101,7 +101,7 @@ func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorCon
 	require.NoError(t, err)
 
 	var args probabilisticsampler.Arguments
-	require.NoError(t, river.Unmarshal([]byte(processorConfig), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(processorConfig), &args))
 
 	// Override the arguments so signals get forwarded to the test channel.
 	args.Output = testSignal.MakeOutput()
@@ -126,7 +126,7 @@ func TestLogProcessing(t *testing.T) {
 			}
 		`
 	var args probabilisticsampler.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	var inputLogs = `{
 		"resourceLogs": [{
@@ -171,7 +171,7 @@ func TestTraceProcessing(t *testing.T) {
 	`
 
 	var args probabilisticsampler.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	var inputTraces = `{
 		"resourceSpans": [{

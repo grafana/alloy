@@ -9,15 +9,15 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.uber.org/multierr"
 )
 
 // Scheduler implements manages a set of OpenTelemetry Collector components.
-// Scheduler is intended to be used from Flow components which need to schedule
-// OpenTelemetry Collector components; it does not implement the full
+// Scheduler is intended to be used from Alloy components which need to
+// schedule OpenTelemetry Collector components; it does not implement the full
 // component.Component interface.
 //
 // Each OpenTelemetry Collector component has one instance per supported

@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/logproto"
 	util_log "github.com/grafana/loki/pkg/util/log"
-	"github.com/grafana/river"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +22,7 @@ import (
 
 // Configs defines multiple StageConfigs as consequent blocks.
 type Configs struct {
-	Stages []StageConfig `river:"stage,enum,optional"`
+	Stages []StageConfig `alloy:"stage,enum,optional"`
 }
 
 func withInboundEntries(entries ...Entry) chan Entry {
@@ -45,7 +45,7 @@ func processEntries(s Stage, entries ...Entry) []Entry {
 
 func loadConfig(yml string) []StageConfig {
 	var config Configs
-	err := river.Unmarshal([]byte(yml), &config)
+	err := syntax.Unmarshal([]byte(yml), &config)
 	if err != nil {
 		panic(err)
 	}
@@ -64,7 +64,7 @@ var (
 	processedTestLine = `11.11.11.11 - frank [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`
 )
 
-var testMultiStageRiver = `
+var testMultiStageAlloy = `
 stage.match {
 		selector = "{match=\"true\"}"
 		stage.docker {}
@@ -88,7 +88,7 @@ stage.match {
 		action   = "drop"
 }`
 
-var testLabelsFromJSONRiver = `
+var testLabelsFromJSONAlloy = `
 stage.json {
 		expressions = { "app" = "", "message" = "" }
 }
@@ -100,7 +100,7 @@ stage.output {
 }`
 
 func TestNewPipeline(t *testing.T) {
-	p, err := NewPipeline(util_log.Logger, loadConfig(testMultiStageRiver), nil, prometheus.DefaultRegisterer)
+	p, err := NewPipeline(util_log.Logger, loadConfig(testMultiStageAlloy), nil, prometheus.DefaultRegisterer)
 	if err != nil {
 		panic(err)
 	}
@@ -125,7 +125,7 @@ func TestPipeline_Process(t *testing.T) {
 		expectedLabels model.LabelSet
 	}{
 		"happy path": {
-			testMultiStageRiver,
+			testMultiStageAlloy,
 			rawTestLine,
 			processedTestLine,
 			time.Now(),
@@ -141,7 +141,7 @@ func TestPipeline_Process(t *testing.T) {
 			},
 		},
 		"no match": {
-			testMultiStageRiver,
+			testMultiStageAlloy,
 			rawTestLine,
 			rawTestLine,
 			ct,
@@ -154,7 +154,7 @@ func TestPipeline_Process(t *testing.T) {
 			},
 		},
 		"should initialize the extracted map with the initial labels": {
-			testMultiStageRiver,
+			testMultiStageAlloy,
 			rawTestLine,
 			processedTestLine,
 			time.Now(),
@@ -173,7 +173,7 @@ func TestPipeline_Process(t *testing.T) {
 			},
 		},
 		"should set a label from value extracted from JSON": {
-			testLabelsFromJSONRiver,
+			testLabelsFromJSONAlloy,
 			`{"message":"hello world","app":"api"}`,
 			"hello world",
 			ct,
@@ -184,7 +184,7 @@ func TestPipeline_Process(t *testing.T) {
 			},
 		},
 		"should not set a label if the field does not exist in the JSON": {
-			testLabelsFromJSONRiver,
+			testLabelsFromJSONAlloy,
 			`{"message":"hello world"}`,
 			"hello world",
 			ct,
@@ -193,7 +193,7 @@ func TestPipeline_Process(t *testing.T) {
 			map[model.LabelName]model.LabelValue{},
 		},
 		"should not set a label if the value extracted from JSON is null": {
-			testLabelsFromJSONRiver,
+			testLabelsFromJSONAlloy,
 			`{"message":"hello world","app":null}`,
 			"hello world",
 			ct,
@@ -209,7 +209,7 @@ func TestPipeline_Process(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			var config Configs
 
-			err := river.Unmarshal([]byte(tt.config), &config)
+			err := syntax.Unmarshal([]byte(tt.config), &config)
 			require.NoError(t, err)
 
 			p, err := NewPipeline(util_log.Logger, loadConfig(tt.config), nil, prometheus.DefaultRegisterer)
@@ -241,13 +241,13 @@ func BenchmarkPipeline(b *testing.B) {
 	}{
 		{
 			"two stage info level",
-			loadConfig(testMultiStageRiver),
+			loadConfig(testMultiStageAlloy),
 			infoLogger,
 			rawTestLine,
 		},
 		{
 			"two stage debug level",
-			loadConfig(testMultiStageRiver),
+			loadConfig(testMultiStageAlloy),
 			debugLogger,
 			rawTestLine,
 		},
@@ -279,7 +279,7 @@ func BenchmarkPipeline(b *testing.B) {
 
 func TestPipeline_Wrap(t *testing.T) {
 	now := time.Now()
-	p, err := NewPipeline(util_log.Logger, loadConfig(testMultiStageRiver), nil, prometheus.DefaultRegisterer)
+	p, err := NewPipeline(util_log.Logger, loadConfig(testMultiStageAlloy), nil, prometheus.DefaultRegisterer)
 	if err != nil {
 		panic(err)
 	}

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/common/sigv4"
@@ -63,7 +63,7 @@ func expectedCfg(transform func(c *config.Config)) *config.Config {
 	return res
 }
 
-func TestRiverConfig(t *testing.T) {
+func TestAlloyConfig(t *testing.T) {
 	tests := []struct {
 		testName    string
 		cfg         string
@@ -263,7 +263,7 @@ func TestRiverConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 
 			if tc.errorMsg != "" {
 				require.ErrorContains(t, err, tc.errorMsg)

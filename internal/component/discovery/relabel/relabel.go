@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 )
@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.relabel",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -28,16 +28,16 @@ func init() {
 // Arguments holds values which are used to configure the discovery.relabel component.
 type Arguments struct {
 	// Targets contains the input 'targets' passed by a service discovery component.
-	Targets []discovery.Target `river:"targets,attr"`
+	Targets []discovery.Target `alloy:"targets,attr"`
 
 	// The relabelling rules to apply to each target's label set.
-	RelabelConfigs []*flow_relabel.Config `river:"rule,block,optional"`
+	RelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 }
 
 // Exports holds values which are exported by the discovery.relabel component.
 type Exports struct {
-	Output []discovery.Target `river:"output,attr"`
-	Rules  flow_relabel.Rules `river:"rules,attr"`
+	Output []discovery.Target  `alloy:"output,attr"`
+	Rules  alloy_relabel.Rules `alloy:"rules,attr"`
 }
 
 // Component implements the discovery.relabel component.
@@ -76,7 +76,7 @@ func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
 	targets := make([]discovery.Target, 0, len(newArgs.Targets))
-	relabelConfigs := flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
+	relabelConfigs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
 	c.rcs = relabelConfigs
 
 	for _, t := range newArgs.Targets {

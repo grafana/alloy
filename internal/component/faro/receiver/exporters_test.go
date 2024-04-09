@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grafana/agent/internal/component/faro/receiver/internal/payload"
+	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/prometheus/client_golang/prometheus"
 	promtestutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"

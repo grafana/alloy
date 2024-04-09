@@ -1,124 +1,81 @@
 ---
-aliases:
-- /docs/grafana-cloud/agent/
-- /docs/grafana-cloud/monitor-infrastructure/agent/
-- /docs/grafana-cloud/monitor-infrastructure/integrations/agent/
-- /docs/grafana-cloud/send-data/agent/
-canonical: https://grafana.com/docs/agent/latest/
-title: Grafana Agent
-description: Grafana Agent is a flexible, performant, vendor-neutral, telemetry collector
+canonical: https://grafana.com/docs/alloy/latest/
+title: Grafana Alloy
+description: Grafana Alloy is a a vendor-neutral distribution of the OTel Collector
 weight: 350
 cascade:
-  AGENT_RELEASE: $AGENT_VERSION
-  OTEL_VERSION: v0.96.0
+  ALLOY_RELEASE: $ALLOY_VERSION
+  OTEL_VERSION: v0.87.0
+  FULL_PRODUCT_NAME: Grafana Alloy
+  PRODUCT_NAME: Alloy
+hero:
+  title: Grafana Alloy
+  level: 1
+  image: /media/docs/alloy/alloy_icon.png
+  width: 110
+  height: 110
+  description: >-
+    Grafana Alloy is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector. Alloy uniquely combines the very best OSS observability signals in the community.
+cards:
+  title_class: pt-0 lh-1
+  items:
+    - title: Install Alloy
+      href: ./get-started/install/
+      description: Learn how to install and uninstall Alloy on Docker, Kubernetes, Linux, macOS, or Windows.
+    - title: Run Alloy
+      href: ./get-started/run/
+      description: Learn how to start, restart, and stop Alloy after you have installed it.
+    - title: Configure Alloy
+      href: ./tasks/configure/
+      description: Learn how to configure Alloy on Kubernetes, Linux, macOS, or Windows.
+    - title: Migrate to Alloy
+      href: ./tasks/migrate/
+      description: Learn how to migrate to Alloy from Grafana Agent Operator, Prometheus, Promtail, Grafana Agent Static, or Grafana Agent Flow.
+    - title: Concepts
+      href: ./concepts/
+      description: Learn about components, modules, clustering, and the Alloy configuration syntax.
+    - title: Reference
+      href: ./reference/
+      description: Read the reference documentation about the command line tools, configuration blocks, components, and standard library.
 ---
 
-# Grafana Agent
+{{< docs/hero-simple key="hero" >}}
 
-Grafana Agent is an OpenTelemetry Collector distribution with configuration
-inspired by [Terraform][]. It is designed to be flexible, performant, and
-compatible with multiple ecosystems such as Prometheus and OpenTelemetry.
+---
 
-Grafana Agent is based around **components**. Components are wired together to
-form programmable observability **pipelines** for telemetry collection,
-processing, and delivery.
+# Overview
 
-{{< admonition type="note" >}}
-This page focuses mainly on [Flow mode](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/), the Terraform-inspired variant of Grafana Agent.
+{{< param "PRODUCT_NAME" >}} offers native pipelines for OTel, [Prometheus][], [Pyroscope][], [Loki][], and many other metrics, logs, traces, and profile tools.
+In addition, you can use {{< param "PRODUCT_NAME" >}} pipelines to do different tasks, such as configure alert rules in Loki and Mimir.
+{{< param "PRODUCT_NAME" >}} is fully compatible with the OTel Collector, Prometheus Agent, and Promtail.
+You can use {{< param "PRODUCT_NAME" >}} as an alternative to either of these solutions or combine it into a hybrid system of multiple collectors and agents.
+You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructure and pair it with your Grafana LGTM stack, a telemetry backend from Grafana Cloud, or any other compatible backend from any other vendor.
+{{< param "PRODUCT_NAME" >}} is flexible, and you can easily configure it to fit your needs in on-prem, cloud-only, or a mix of both.
 
-For information on other variants of Grafana Agent, refer to [Introduction to Grafana Agent]({{< relref "./about.md" >}}).
-{{< /admonition >}}
+## What can {{% param "PRODUCT_NAME" %}} do?
 
-Grafana Agent can collect, transform, and send data to:
+{{< param "PRODUCT_NAME" >}} is more than just observability signals like metrics, logs, and traces. It provides many features that help you quickly find and process your data in complex environments.
+Some of these features include:
 
-* The [Prometheus][] ecosystem
-* The [OpenTelemetry][] ecosystem
-* The Grafana open source ecosystem ([Loki][], [Grafana][], [Tempo][], [Mimir][], [Pyroscope][])
+* **Custom components:** You can use {{< param "PRODUCT_NAME" >}} to create and share custom components.
+  Custom components combine a pipeline of existing components into a single, easy-to-understand component that's just a few lines long.
+  You can use pre-built custom components from the community, ones packaged by Grafana, or create your own.
+* **GitOps compatibility:** {{< param "PRODUCT_NAME" >}} uses frameworks to pull configurations from Git, S3, HTTP endpoints, and just about any other source.
+* **Clustering support:** {{< param "PRODUCT_NAME" >}} has native clustering support.
+  Clustering helps distribute the workload and ensures you have high availability.
+  You can quickly create horizontally scalable deployments with minimal resource and operational overhead.
+* **Security:** {{< param "PRODUCT_NAME" >}} helps you manage authentication credentials and connect to HashiCorp Vault servers or Kubernetes clusters to retrieve Kubernetes secrets.
+* **Debugging utilities:** {{< param "PRODUCT_NAME" >}} provides debugging tools such as an embedded [user interface][UI] to help you identify and resolve configuration problems.
 
-[Terraform]: https://terraform.io
-[Prometheus]: https://prometheus.io
-[OpenTelemetry]: https://opentelemetry.io
-[Loki]: https://github.com/grafana/loki
-[Grafana]: https://github.com/grafana/grafana
-[Tempo]: https://github.com/grafana/tempo
-[Mimir]: https://github.com/grafana/mimir
-[Pyroscope]: https://github.com/grafana/pyroscope
+## Explore
 
-## Why use Grafana Agent?
+{{< card-grid key="cards" type="simple" >}}
 
-* **Vendor-neutral**: Fully compatible with the Prometheus, OpenTelemetry, and
-  Grafana open source ecosystems.
-* **Every signal**: Collect telemetry data for metrics, logs, traces, and
-  continuous profiles.
-* **Scalable**: Deploy on any number of machines to collect millions of active
-  series and terabytes of logs.
-* **Battle-tested**: Grafana Agent extends the existing battle-tested code from
-  the Prometheus and OpenTelemetry Collector projects.
-* **Powerful**: Write programmable pipelines with ease, and debug them using a
-  [built-in UI][UI].
-* **Batteries included**: Integrate with systems like MySQL, Kubernetes, and
-  Apache to get telemetry that's immediately useful.
-
-## Getting started
-
-* Choose a [variant][variants] of Grafana Agent to run.
-* Refer to the documentation for the variant to use:
-  * [Static mode][]
-  * [Static mode Kubernetes operator][]
-  * [Flow mode][]
-
-## Supported platforms
-
-* Linux
-
-  * Minimum version: kernel 2.6.32 or later
-  * Architectures: AMD64, ARM64
-
-* Windows
-
-  * Minimum version: Windows Server 2016 or later, or Windows 10 or later.
-  * Architectures: AMD64
-
-* macOS
-
-  * Minimum version: macOS 10.13 or later
-  * Architectures: AMD64 (Intel), ARM64 (Apple Silicon)
-
-* FreeBSD
-
-  * Minimum version: FreeBSD 10 or later
-  * Architectures: AMD64
-
-## Release cadence
-
-A new minor release is planned every six weeks for the entire Grafana Agent
-project, including Static mode, the Static mode Kubernetes operator, and Flow
-mode.
-
-The release cadence is best-effort: if necessary, releases may be performed
-outside of this cadence, or a scheduled release date can be moved forwards or
-backwards.
-
-Minor releases published on cadence include updating dependencies for upstream
-OpenTelemetry Collector code if new versions are available. Minor releases
-published outside of the release cadence may not include these dependency
-updates.
-
-Patch and security releases may be created at any time.
-
-{{% docs/reference %}}
-[variants]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/about"
-[variants]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/about"
-
-[Static mode]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/static"
-[Static mode]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/static"
-
-[Static mode Kubernetes operator]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/operator"
-[Static mode Kubernetes operator]: "/docs/grafana-cloud/ -> /docs/grafana-cloud/send-data/agent/operator"
-
-[Flow mode]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow"
-[Flow mode]: "/docs/grafana-cloud/ -> /docs/agent/<AGENT_VERSION>/flow"
-
-[UI]: "/docs/agent/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug.md#grafana-agent-flow-ui"
-[UI]: "/docs/grafana-cloud/ -> /docs/agent/<AGENT_VERSION>/flow/tasks/debug.md#grafana-agent-flow-ui"
-{{% /docs/reference %}}
+[OpenTelemetry]: https://opentelemetry.io/ecosystem/distributions/
+[Prometheus]: https://prometheus.io/
+[Loki]: https://grafana.com/docs/loki/
+[Grafana]: https://grafana.com/docs/grafana/
+[Tempo]: https://grafana.com/docs/tempo/
+[Mimir]: https://grafana.com/docs/mimir/
+[Pyroscope]: https://grafana.com/docs/pyroscope/
+[UI]: ./tasks/debug/#alloy-ui

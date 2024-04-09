@@ -1,8 +1,8 @@
 # Releasing
 
 This document describes the process of creating a release for the
-`grafana/agent` repo. A release includes release assets for everything inside
-the repository, including Grafana Agent and Grafana Agent Operator.
+`grafana/alloy` repo. A release includes release assets for everything inside
+the repository.
 
 The processes described here are for v0.24.0 and above.
 

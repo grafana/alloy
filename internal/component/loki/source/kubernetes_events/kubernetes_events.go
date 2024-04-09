@@ -12,13 +12,13 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/kubernetes"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/runner"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runner"
 	"github.com/oklog/run"
 	"k8s.io/client-go/rest"
 )
@@ -29,7 +29,7 @@ const informerSyncTimeout = 10 * time.Second
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.kubernetes_events",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -41,14 +41,14 @@ func init() {
 // Arguments holds values which are used to configure the
 // loki.source.kubernetes_events component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver `river:"forward_to,attr"`
+	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 
-	JobName    string   `river:"job_name,attr,optional"`
-	Namespaces []string `river:"namespaces,attr,optional"`
-	LogFormat  string   `river:"log_format,attr,optional"`
+	JobName    string   `alloy:"job_name,attr,optional"`
+	Namespaces []string `alloy:"namespaces,attr,optional"`
+	LogFormat  string   `alloy:"log_format,attr,optional"`
 
 	// Client settings to connect to Kubernetes.
-	Client kubernetes.ClientArguments `river:"client,block,optional"`
+	Client kubernetes.ClientArguments `alloy:"client,block,optional"`
 }
 
 // DefaultArguments holds default settings for loki.source.kubernetes_events.
@@ -59,12 +59,12 @@ var DefaultArguments = Arguments{
 	Client: kubernetes.DefaultClientArguments,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.JobName == "" {
 		return fmt.Errorf("job_name must not be an empty string")
@@ -248,7 +248,7 @@ func getNamespaces(args Arguments) []string {
 // DebugInfo implements [component.DebugComponent].
 func (c *Component) DebugInfo() interface{} {
 	type Info struct {
-		Controllers []controllerInfo `river:"event_controller,block,optional"`
+		Controllers []controllerInfo `alloy:"event_controller,block,optional"`
 	}
 
 	var info Info

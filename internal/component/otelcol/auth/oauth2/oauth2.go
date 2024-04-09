@@ -4,11 +4,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/auth"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -18,7 +18,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.auth.oauth2",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   auth.Exports{},
 
@@ -31,15 +31,15 @@ func init() {
 
 // Arguments configures the otelcol.auth.oauth2 component.
 type Arguments struct {
-	ClientID         string                     `river:"client_id,attr,optional"`
-	ClientIDFile     string                     `river:"client_id_file,attr,optional"`
-	ClientSecret     rivertypes.Secret          `river:"client_secret,attr,optional"`
-	ClientSecretFile string                     `river:"client_secret_file,attr,optional"`
-	TokenURL         string                     `river:"token_url,attr"`
-	EndpointParams   url.Values                 `river:"endpoint_params,attr,optional"`
-	Scopes           []string                   `river:"scopes,attr,optional"`
-	TLSSetting       otelcol.TLSClientArguments `river:"tls,block,optional"`
-	Timeout          time.Duration              `river:"timeout,attr,optional"`
+	ClientID         string                     `alloy:"client_id,attr,optional"`
+	ClientIDFile     string                     `alloy:"client_id_file,attr,optional"`
+	ClientSecret     alloytypes.Secret          `alloy:"client_secret,attr,optional"`
+	ClientSecretFile string                     `alloy:"client_secret_file,attr,optional"`
+	TokenURL         string                     `alloy:"token_url,attr"`
+	EndpointParams   url.Values                 `alloy:"endpoint_params,attr,optional"`
+	Scopes           []string                   `alloy:"scopes,attr,optional"`
+	TLSSetting       otelcol.TLSClientArguments `alloy:"tls,block,optional"`
+	Timeout          time.Duration              `alloy:"timeout,attr,optional"`
 }
 
 var _ auth.Arguments = Arguments{}

@@ -29,33 +29,33 @@ func newConfigMetrics() *configMetrics {
 
 	m.configHash = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "agent_config_hash",
+			Name: "alloy_config_hash",
 			Help: "Hash of the currently active config file.",
 		},
 		[]string{"sha256"},
 	)
 	m.configLoadSuccess = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "agent_config_last_load_successful",
+		Name: "alloy_config_last_load_successful",
 		Help: "Config loaded successfully.",
 	})
 	m.configLoadSuccessSeconds = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "agent_config_last_load_success_timestamp_seconds",
+		Name: "alloy_config_last_load_success_timestamp_seconds",
 		Help: "Timestamp of the last successful configuration load.",
 	})
 	m.configLoadFailures = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "agent_config_load_failures_total",
+		Name: "alloy_config_load_failures_total",
 		Help: "Configuration load failures.",
 	})
 	return &m
 }
 
 // Create a sha256 hash of the config before expansion and expose it via
-// the agent_config_hash metric.
+// the alloy_config_hash metric.
 func InstrumentConfig(buf []byte) {
 	InstrumentSHA256(sha256.Sum256(buf))
 }
 
-// InstrumentSHA256 stores the provided hash to the agent_config_hash metric.
+// InstrumentSHA256 stores the provided hash to the alloy_config_hash metric.
 func InstrumentSHA256(hash [sha256.Size]byte) {
 	configMetricsInitializer.Do(initializeConfigMetrics)
 	confMetrics.configHash.Reset()

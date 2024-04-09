@@ -1,5 +1,5 @@
+import { AttrStmt, Body, StmtType } from '../features/alloy-syntax-js/types';
 import { PartitionedBody } from '../features/component/types';
-import { AttrStmt, Body, StmtType } from '../features/river-js/types';
 
 /**
  * partitionBody groups a body by attributes and inner blocks, assigning unique

@@ -4,16 +4,16 @@ import (
 	"testing"
 	"time"
 
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/discovery/relabel"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery/relabel"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRelabelConfigApplication(t *testing.T) {
-	riverArguments := `
+	alloyArguments := `
 targets = [ 
 	{ "__meta_foo" = "foo", "__meta_bar" = "bar", "__address__" = "localhost", "instance" = "one",   "app" = "backend",  "__tmp_a" = "tmp" },
 	{ "__meta_foo" = "foo", "__meta_bar" = "bar", "__address__" = "localhost", "instance" = "two",   "app" = "db",       "__tmp_b" = "tmp" },
@@ -60,7 +60,7 @@ rule {
 	}
 
 	var args relabel.Arguments
-	require.NoError(t, river.Unmarshal([]byte(riverArguments), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(alloyArguments), &args))
 
 	tc, err := componenttest.NewControllerFromID(nil, "discovery.relabel")
 	require.NoError(t, err)
@@ -84,7 +84,7 @@ rule {
 	regex         = "up"
 }`
 	var args relabel.Arguments
-	require.NoError(t, river.Unmarshal([]byte(originalCfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(originalCfg), &args))
 
 	tc, err := componenttest.NewControllerFromID(nil, "discovery.relabel")
 	require.NoError(t, err)
@@ -108,7 +108,7 @@ rule {
 	source_labels = ["__name__"]
 	regex         = "up"
 }`
-	require.NoError(t, river.Unmarshal([]byte(updatedCfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(updatedCfg), &args))
 
 	require.NoError(t, tc.Update(args))
 	exports = tc.Exports().(relabel.Exports)
@@ -118,8 +118,8 @@ rule {
 	require.Len(t, gotOriginal, 1)
 	require.Len(t, gotUpdated, 1)
 
-	require.Equal(t, gotOriginal[0].Action, flow_relabel.Keep)
-	require.Equal(t, gotUpdated[0].Action, flow_relabel.Drop)
+	require.Equal(t, gotOriginal[0].Action, alloy_relabel.Keep)
+	require.Equal(t, gotUpdated[0].Action, alloy_relabel.Drop)
 	require.Equal(t, gotUpdated[0].SourceLabels, gotOriginal[0].SourceLabels)
 	require.Equal(t, gotUpdated[0].Regex, gotOriginal[0].Regex)
 }

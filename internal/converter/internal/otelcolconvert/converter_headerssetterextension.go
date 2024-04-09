@@ -3,10 +3,10 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/otelcol/auth/headers"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/otelcol/auth/headers"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
 	"go.opentelemetry.io/collector/component"
 )
@@ -26,7 +26,7 @@ func (headersSetterExtensionConverter) InputComponentName() string { return "ote
 func (headersSetterExtensionConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toHeadersSetterExtension(cfg.(*headerssetterextension.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "auth", "headers"}, label, args)
@@ -43,9 +43,9 @@ func (headersSetterExtensionConverter) ConvertAndAppend(state *State, id compone
 func toHeadersSetterExtension(cfg *headerssetterextension.Config) *headers.Arguments {
 	res := make([]headers.Header, 0, len(cfg.HeadersConfig))
 	for _, h := range cfg.HeadersConfig {
-		var val *rivertypes.OptionalSecret
+		var val *alloytypes.OptionalSecret
 		if h.Value != nil {
-			val = &rivertypes.OptionalSecret{
+			val = &alloytypes.OptionalSecret{
 				IsSecret: false, // we default to non-secret so that the converted configuration includes the actual value instead of (secret).
 				Value:    *h.Value,
 			}

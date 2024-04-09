@@ -3,11 +3,11 @@ package build
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/discovery/consulagent"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/discovery/consulagent"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promtail_consulagent "github.com/grafana/loki/clients/pkg/promtail/discovery/consulagent"
-	"github.com/grafana/river/rivertypes"
 )
 
 func (s *ScrapeConfigBuilder) AppendConsulAgentSDs() {
@@ -43,12 +43,12 @@ func toDiscoveryAgentConsul(sdConfig *promtail_consulagent.SDConfig, diags *diag
 	return &consulagent.Arguments{
 		RefreshInterval: time.Duration(sdConfig.RefreshInterval),
 		Server:          sdConfig.Server,
-		Token:           rivertypes.Secret(sdConfig.Token),
+		Token:           alloytypes.Secret(sdConfig.Token),
 		Datacenter:      sdConfig.Datacenter,
 		TagSeparator:    sdConfig.TagSeparator,
 		Scheme:          sdConfig.Scheme,
 		Username:        sdConfig.Username,
-		Password:        rivertypes.Secret(sdConfig.Password),
+		Password:        alloytypes.Secret(sdConfig.Password),
 		Services:        sdConfig.Services,
 		ServiceTags:     sdConfig.ServiceTags,
 		TLSConfig:       *common.ToTLSConfig(&sdConfig.TLSConfig),

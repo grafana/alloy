@@ -15,15 +15,15 @@ import (
 // If both 'include' and 'exclude' are specified, the 'include' properties are checked
 // before the 'exclude' properties.
 type MatchConfig struct {
-	Include *MatchProperties `river:"include,block,optional"`
-	Exclude *MatchProperties `river:"exclude,block,optional"`
+	Include *MatchProperties `alloy:"include,block,optional"`
+	Exclude *MatchProperties `alloy:"exclude,block,optional"`
 }
 
 // MatchProperties specifies the set of properties in a spans/log/metric to match
 // against and if the input data should be included or excluded from the processor.
 type MatchProperties struct {
-	MatchType    string        `river:"match_type,attr"`
-	RegexpConfig *RegexpConfig `river:"regexp,block,optional"`
+	MatchType    string        `alloy:"match_type,attr"`
+	RegexpConfig *RegexpConfig `alloy:"regexp,block,optional"`
 
 	// Note: For spans, one of Services, SpanNames, Attributes, Resources, or Libraries must be specified with a
 	// non-empty value for a valid configuration.
@@ -35,41 +35,41 @@ type MatchProperties struct {
 
 	// Services specify the list of items to match service name against.
 	// A match occurs if the span's service name matches at least one item in this list.
-	Services []string `river:"services,attr,optional"`
+	Services []string `alloy:"services,attr,optional"`
 
 	// SpanNames specify the list of items to match span name against.
 	// A match occurs if the span name matches at least one item in this list.
-	SpanNames []string `river:"span_names,attr,optional"`
+	SpanNames []string `alloy:"span_names,attr,optional"`
 
 	// LogBodies is a list of strings that the LogRecord's body field must match against.
-	LogBodies []string `river:"log_bodies,attr,optional"`
+	LogBodies []string `alloy:"log_bodies,attr,optional"`
 
 	// LogSeverityTexts is a list of strings that the LogRecord's severity text field must match against.
-	LogSeverityTexts []string `river:"log_severity_texts,attr,optional"`
+	LogSeverityTexts []string `alloy:"log_severity_texts,attr,optional"`
 
 	// LogSeverity defines how to match against a log record's SeverityNumber, if defined.
-	LogSeverity *LogSeverityNumberMatchProperties `river:"log_severity,block,optional"`
+	LogSeverity *LogSeverityNumberMatchProperties `alloy:"log_severity,block,optional"`
 
 	// MetricNames is a list of strings to match metric name against.
 	// A match occurs if metric name matches at least one item in the list.
-	MetricNames []string `river:"metric_names,attr,optional"`
+	MetricNames []string `alloy:"metric_names,attr,optional"`
 
 	// Attributes specifies the list of attributes to match against.
 	// All of these attributes must match exactly for a match to occur.
 	// Only match_type=strict is allowed if "attributes" are specified.
-	Attributes []Attribute `river:"attribute,block,optional"`
+	Attributes []Attribute `alloy:"attribute,block,optional"`
 
 	// Resources specify the list of items to match the resources against.
 	// A match occurs if the data's resources match at least one item in this list.
-	Resources []Attribute `river:"resource,block,optional"`
+	Resources []Attribute `alloy:"resource,block,optional"`
 
 	// Libraries specify the list of items to match the implementation library against.
 	// A match occurs if the span's implementation library matches at least one item in this list.
-	Libraries []InstrumentationLibrary `river:"library,block,optional"`
+	Libraries []InstrumentationLibrary `alloy:"library,block,optional"`
 
 	// SpanKinds specify the list of items to match the span kind against.
 	// A match occurs if the span's span kind matches at least one item in this list.
-	SpanKinds []string `river:"span_kinds,attr,optional"`
+	SpanKinds []string `alloy:"span_kinds,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -104,7 +104,7 @@ func (args *MatchProperties) Convert() (map[string]interface{}, error) {
 
 	if args.LogSeverity != nil {
 		// The Otel config's field is called "log_severity_number" because it uses a number.
-		// The River config's field is called just "log_severity" because it uses a a textual
+		// The Alloy config's field is called just "log_severity" because it uses a a textual
 		// representation of the log severity instead of a number.
 		logSevNum, err := args.LogSeverity.convert()
 		if err != nil {
@@ -157,10 +157,10 @@ func convertInstrumentationLibrariesSlice(libs []InstrumentationLibrary) []inter
 type RegexpConfig struct {
 	// CacheEnabled determines whether match results are LRU cached to make subsequent matches faster.
 	// Cache size is unlimited unless CacheMaxNumEntries is also specified.
-	CacheEnabled bool `river:"cache_enabled,attr,optional"`
+	CacheEnabled bool `alloy:"cache_enabled,attr,optional"`
 	// CacheMaxNumEntries is the max number of entries of the LRU cache that stores match results.
 	// CacheMaxNumEntries is ignored if CacheEnabled is false.
-	CacheMaxNumEntries int `river:"cache_max_num_entries,attr,optional"`
+	CacheMaxNumEntries int `alloy:"cache_max_num_entries,attr,optional"`
 }
 
 func (args RegexpConfig) convert() map[string]interface{} {
@@ -173,11 +173,11 @@ func (args RegexpConfig) convert() map[string]interface{} {
 // Attribute specifies the attribute key and optional value to match against.
 type Attribute struct {
 	// Key specifies the attribute key.
-	Key string `river:"key,attr"`
+	Key string `alloy:"key,attr"`
 
 	// Values specifies the value to match against.
 	// If it is not set, any value will match.
-	Value interface{} `river:"value,attr,optional"`
+	Value interface{} `alloy:"value,attr,optional"`
 }
 
 func (args Attribute) convert() map[string]interface{} {
@@ -189,7 +189,7 @@ func (args Attribute) convert() map[string]interface{} {
 
 // InstrumentationLibrary specifies the instrumentation library and optional version to match against.
 type InstrumentationLibrary struct {
-	Name string `river:"name,attr"`
+	Name string `alloy:"name,attr"`
 	// version match
 	//  expected actual  match
 	//  nil      <blank> yes
@@ -198,7 +198,7 @@ type InstrumentationLibrary struct {
 	//  <blank>  1       no
 	//  1        <blank> no
 	//  1        1       yes
-	Version *string `river:"version,attr,optional"`
+	Version *string `alloy:"version,attr,optional"`
 }
 
 func (args InstrumentationLibrary) convert() map[string]interface{} {
@@ -216,11 +216,11 @@ func (args InstrumentationLibrary) convert() map[string]interface{} {
 type LogSeverityNumberMatchProperties struct {
 	// Min is the lowest severity that may be matched.
 	// e.g. if this is plog.SeverityNumberInfo, INFO, WARN, ERROR, and FATAL logs will match.
-	Min SeverityLevel `river:"min,attr"`
+	Min SeverityLevel `alloy:"min,attr"`
 
 	// MatchUndefined controls whether logs with "undefined" severity matches.
 	// If this is true, entries with undefined severity will match.
-	MatchUndefined bool `river:"match_undefined,attr"`
+	MatchUndefined bool `alloy:"match_undefined,attr"`
 }
 
 func (args LogSeverityNumberMatchProperties) convert() (map[string]interface{}, error) {
@@ -298,9 +298,9 @@ var severityNumbers = map[plog.SeverityNumber]SeverityLevel{
 
 // UnmarshalText implements encoding.TextUnmarshaler for SeverityLevel.
 func (sl *SeverityLevel) UnmarshalText(text []byte) error {
-	agentSevLevelStr := SeverityLevel(text)
-	if _, exists := severityLevels[agentSevLevelStr]; exists {
-		*sl = agentSevLevelStr
+	alloySevLevelStr := SeverityLevel(text)
+	if _, exists := severityLevels[alloySevLevelStr]; exists {
+		*sl = alloySevLevelStr
 		return nil
 	}
 	return fmt.Errorf("unrecognized severity level %q", string(text))

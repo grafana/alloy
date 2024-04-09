@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/fakeconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/receiver/prometheus"
-	flowprometheus "github.com/grafana/agent/internal/component/prometheus"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus"
+	alloyprometheus "github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
@@ -36,7 +36,7 @@ func Test(t *testing.T) {
 		}
 	`
 	var args prometheus.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	// Override our settings so metrics get forwarded to metricCh.
 	metricCh := make(chan pmetric.Metrics)
@@ -80,7 +80,7 @@ func Test(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		ctx = scrape.ContextWithMetricMetadataStore(ctx, flowprometheus.NoopMetadataStore{})
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, alloyprometheus.NoopMetadataStore{})
 		ctx = scrape.ContextWithTarget(ctx, &scrape.Target{})
 		app := exports.Receiver.Appender(ctx)
 		_, err := app.Append(0, l, ts, v)

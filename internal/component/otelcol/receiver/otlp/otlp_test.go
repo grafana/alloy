@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/fakeconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/receiver/otlp"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver/otlp"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/river"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -46,7 +46,7 @@ func Test(t *testing.T) {
 	require.NoError(t, err)
 
 	var args otlp.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	// Override our settings so traces get forwarded to traceCh.
 	traceCh := make(chan ptrace.Traces)
@@ -124,7 +124,7 @@ func getFreeAddr(t *testing.T) string {
 }
 
 func TestUnmarshalGrpc(t *testing.T) {
-	riverCfg := `
+	alloyCfg := `
 		grpc {
 			endpoint = "/v1/traces"
 		}
@@ -133,12 +133,12 @@ func TestUnmarshalGrpc(t *testing.T) {
 		}
 	`
 	var args otlp.Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 }
 
 func TestUnmarshalHttp(t *testing.T) {
-	riverCfg := `
+	alloyCfg := `
 		http {
 			endpoint = "/v1/traces"
 		}
@@ -147,7 +147,7 @@ func TestUnmarshalHttp(t *testing.T) {
 		}
 	`
 	var args otlp.Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	assert.Equal(t, "/v1/logs", args.HTTP.LogsURLPath)
 	assert.Equal(t, "/v1/metrics", args.HTTP.MetricsURLPath)
@@ -155,7 +155,7 @@ func TestUnmarshalHttp(t *testing.T) {
 }
 
 func TestUnmarshalHttpUrls(t *testing.T) {
-	riverCfg := `
+	alloyCfg := `
 		http {
 			endpoint = "/v1/traces"
 			traces_url_path = "custom/traces"
@@ -167,7 +167,7 @@ func TestUnmarshalHttpUrls(t *testing.T) {
 		}
 	`
 	var args otlp.Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	assert.Equal(t, "custom/logs", args.HTTP.LogsURLPath)
 	assert.Equal(t, "custom/metrics", args.HTTP.MetricsURLPath)
@@ -177,12 +177,12 @@ func TestUnmarshalHttpUrls(t *testing.T) {
 func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
-		agentCfg string
+		alloyCfg string
 		expected otelcol.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
-			agentCfg: `
+			alloyCfg: `
 			grpc {
 				endpoint = "/v1/traces"
 			}
@@ -194,7 +194,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_false",
-			agentCfg: `
+			alloyCfg: `
 			grpc {
 				endpoint = "/v1/traces"
 			}
@@ -209,7 +209,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 		},
 		{
 			testName: "explicit_true",
-			agentCfg: `
+			alloyCfg: `
 			grpc {
 				endpoint = "/v1/traces"
 			}
@@ -227,7 +227,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args otlp.Arguments
-			require.NoError(t, river.Unmarshal([]byte(tc.agentCfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

@@ -9,11 +9,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	http_service "github.com/grafana/agent/internal/service/http"
-	"github.com/grafana/agent/internal/static/integrations"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	http_service "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/prometheus/common/model"
 )
 
@@ -22,7 +22,7 @@ type Creator func(component.Options, component.Arguments, string) (integrations.
 
 // Exports are simply a list of targets for a scraper to consume.
 type Exports struct {
-	Targets []discovery.Target `river:"targets,attr"`
+	Targets []discovery.Target `alloy:"targets,attr"`
 }
 
 type Component struct {

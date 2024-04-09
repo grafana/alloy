@@ -1,14 +1,16 @@
 package build
 
 import (
+	"strings"
+
+	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 )
 
-// Version information passed to Prometheus version package.
-// Package path as used by linker changes based on vendoring being used or not,
-// so it's easier just to use stable Agent path, and pass it to
-// Prometheus in the code.
+// Version information passed to Prometheus version package. Package path as
+// used by linker changes based on vendoring being used or not, so it's easier
+// just to use stable Alloy path, and pass it to Prometheus in the code.
 var (
 	Version   string
 	Revision  string
@@ -18,7 +20,25 @@ var (
 )
 
 func init() {
+	Version = normalizeVersion(Version)
 	injectVersion()
+}
+
+// normalizeVersion normalizes the version string to always contain a "v"
+// prefix. If version cannot be parsed as a semantic version, version is returned unmodified.
+//
+// if version is empty, normalizeVersion returns "v0.0.0".
+func normalizeVersion(version string) string {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return "v0.0.0"
+	}
+
+	parsed, err := semver.ParseTolerant(version)
+	if err != nil {
+		return version
+	}
+	return "v" + parsed.String()
 }
 
 func injectVersion() {

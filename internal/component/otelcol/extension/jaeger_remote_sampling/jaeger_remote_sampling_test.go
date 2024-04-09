@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/extension/jaeger_remote_sampling"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )
@@ -100,7 +100,7 @@ func startJaegerRemoteSamplingServer(t *testing.T, cfg string, listenAddr string
 	require.NoError(t, err)
 
 	var args jaeger_remote_sampling.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	go func() {
 		err := ctrl.Run(ctx, args)
@@ -134,7 +134,7 @@ func TestUnmarshalFailsWithNoServerConfig(t *testing.T) {
 	`
 
 	var args jaeger_remote_sampling.Arguments
-	err := river.Unmarshal([]byte(cfg), &args)
+	err := syntax.Unmarshal([]byte(cfg), &args)
 	require.ErrorContains(t, err, "http or grpc must be configured to serve the sampling document")
 }
 
@@ -230,7 +230,7 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 
 	for _, tc := range tcs {
 		var args jaeger_remote_sampling.Arguments
-		err := river.Unmarshal([]byte(tc.cfg), &args)
+		err := syntax.Unmarshal([]byte(tc.cfg), &args)
 		require.NoError(t, err)
 		require.Equal(t, tc.expected, args)
 	}
@@ -264,7 +264,7 @@ func TestUnmarshalRequiresExactlyOneSource(t *testing.T) {
 
 	for _, tc := range tcs {
 		var args jaeger_remote_sampling.Arguments
-		err := river.Unmarshal([]byte(tc.cfg), &args)
+		err := syntax.Unmarshal([]byte(tc.cfg), &args)
 		require.EqualError(t, err, tc.expectedError)
 	}
 }

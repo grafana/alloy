@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/service/cluster"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery"
@@ -21,7 +21,7 @@ import (
 type Target map[string]string
 
 // DistributedTargets uses the node's Lookup method to distribute discovery
-// targets when a Flow component runs in a cluster.
+// targets when a component runs in a cluster.
 type DistributedTargets struct {
 	useClustering bool
 	cluster       cluster.Cluster
@@ -90,7 +90,7 @@ func (t Target) NonMetaLabels() labels.Labels {
 
 // Exports holds values which are exported by all discovery components.
 type Exports struct {
-	Targets []Target `river:"targets,attr"`
+	Targets []Target `alloy:"targets,attr"`
 }
 
 // Discoverer is an alias for Prometheus' Discoverer interface, so users of this package don't need

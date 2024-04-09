@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
 )
@@ -22,7 +22,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.file",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -39,18 +39,18 @@ const (
 // Arguments holds values which are used to configure the loki.source.file
 // component.
 type Arguments struct {
-	Targets             []discovery.Target  `river:"targets,attr"`
-	ForwardTo           []loki.LogsReceiver `river:"forward_to,attr"`
-	Encoding            string              `river:"encoding,attr,optional"`
-	DecompressionConfig DecompressionConfig `river:"decompression,block,optional"`
-	FileWatch           FileWatch           `river:"file_watch,block,optional"`
-	TailFromEnd         bool                `river:"tail_from_end,attr,optional"`
-	LegacyPositionsFile string              `river:"legacy_positions_file,attr,optional"`
+	Targets             []discovery.Target  `alloy:"targets,attr"`
+	ForwardTo           []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Encoding            string              `alloy:"encoding,attr,optional"`
+	DecompressionConfig DecompressionConfig `alloy:"decompression,block,optional"`
+	FileWatch           FileWatch           `alloy:"file_watch,block,optional"`
+	TailFromEnd         bool                `alloy:"tail_from_end,attr,optional"`
+	LegacyPositionsFile string              `alloy:"legacy_positions_file,attr,optional"`
 }
 
 type FileWatch struct {
-	MinPollFrequency time.Duration `river:"min_poll_frequency,attr,optional"`
-	MaxPollFrequency time.Duration `river:"max_poll_frequency,attr,optional"`
+	MinPollFrequency time.Duration `alloy:"min_poll_frequency,attr,optional"`
+	MaxPollFrequency time.Duration `alloy:"max_poll_frequency,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -60,15 +60,15 @@ var DefaultArguments = Arguments{
 	},
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
 type DecompressionConfig struct {
-	Enabled      bool              `river:"enabled,attr"`
-	InitialDelay time.Duration     `river:"initial_delay,attr,optional"`
-	Format       CompressionFormat `river:"format,attr"`
+	Enabled      bool              `alloy:"enabled,attr"`
+	InitialDelay time.Duration     `alloy:"initial_delay,attr,optional"`
+	Format       CompressionFormat `alloy:"format,attr"`
 }
 
 var _ component.Component = (*Component)(nil)
@@ -284,14 +284,14 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type readerDebugInfo struct {
-	TargetsInfo []targetInfo `river:"targets_info,block"`
+	TargetsInfo []targetInfo `alloy:"targets_info,block"`
 }
 
 type targetInfo struct {
-	Path       string `river:"path,attr"`
-	Labels     string `river:"labels,attr"`
-	IsRunning  bool   `river:"is_running,attr"`
-	ReadOffset int64  `river:"read_offset,attr"`
+	Path       string `alloy:"path,attr"`
+	Labels     string `alloy:"labels,attr"`
+	IsRunning  bool   `alloy:"is_running,attr"`
+	ReadOffset int64  `alloy:"read_offset,attr"`
 }
 
 // Returns the elements from set b which are missing from set a

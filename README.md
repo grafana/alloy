@@ -1,101 +1,109 @@
-<p align="center"><img src="docs/sources/assets/logo_and_name.png" alt="Grafana Agent logo"></p>
+<p align="center">
+    <img src="docs/sources/assets/logo_alloy_light.svg#gh-dark-mode-only" alt="Grafana Alloy logo" height="100px">
+    <img src="docs/sources/assets/logo_alloy_dark.svg#gh-light-mode-only" alt="Grafana Alloy logo" height="100px">
+</p>
 
-Grafana Agent is an OpenTelemetry Collector distribution with configuration
-inspired by [Terraform][]. It is designed to be flexible, performant, and
-compatible with multiple ecosystems such as Prometheus and OpenTelemetry.
+<p align="center">
+  <a href="https://github.com/grafana/alloy/releases"><img src="https://img.shields.io/github/release/grafana/alloy.svg" alt="Latest Release"></a>
+  <a href="https://grafana.com/docs/alloy/latest"><img src="https://img.shields.io/badge/Documentation-link-blue?logo=gitbook" alt="Documentation link"></a>
+</p>
 
-Grafana Agent is based around **components**. Components are wired together to
-form programmable observability **pipelines** for telemetry collection,
-processing, and delivery.
+Grafana Alloy is an open source OpenTelemetry Collector distribution with
+built-in Prometheus pipelines and support for metrics, logs, traces, and 
+profiles. 
 
-> **NOTE**: This page focuses mainly on "[Flow mode][Grafana Agent Flow]," the
-> Terraform-inspired revision of Grafana Agent.
+<p>
+<img src="docs/sources/assets/alloy_screenshot.png">
+</p>
 
-Grafana Agent can collect, transform, and send data to:
+## What can Alloy do?
 
-* The [Prometheus][] ecosystem
-* The [OpenTelemetry][] ecosystem
-* The Grafana open source ecosystem ([Loki][], [Grafana][], [Tempo][], [Mimir][], [Pyroscope][])
+* **Programmable pipelines**: Use a rich [expression-based syntax][syntax] for
+  configuring powerful observability pipelines.
 
-[Terraform]: https://terraform.io
-[Grafana Agent Flow]: https://grafana.com/docs/agent/latest/flow/
+* **OpenTelemetry Collector Distribution**: Alloy is a [distribution][] of
+  OpenTelemetry Collector and supports dozens of its components, alongside new
+  components that make use of Alloy's programmable pipelines.
+
+* **Big tent**: Alloy embraces Grafana's "big tent" philosophy, where Alloy
+  can be used with other vendors or open source databases. It has components
+  to perfectly integrate with multiple telemetry ecosystems:
+
+  * [OpenTelemetry Collector][]
+  * [Prometheus][]
+  * [Grafana Loki][]
+  * [Grafana Pyroscope][]
+
+* **Kubernetes-native**: Use components to interact with native and custom
+  Kubernetes resources; no need to learn how to use a separate Kubernetes
+  operator.
+
+* **Shareable pipelines**: Use [modules][] to share your pipelines with the
+  world.
+
+* **Automatic workload distribution**: Configure Alloy instances to form a
+  [cluster][] for automatic workload distribution.
+
+* **Centralized configuration support**: Alloy supports retrieving its
+  configuration from a [server][remotecfg] for centralized configuration
+  management.
+
+* **Debugging utilities**: Use the [built-in UI][ui] for visualizing and
+  debugging pipelines.
+
+[syntax]: https://grafana.com/docs/alloy/latest/concepts/config-syntax/
+[distribution]: https://opentelemetry.io/docs/collector/distributions/
+[OpenTelemetry Collector]: https://opentelemetry.io
 [Prometheus]: https://prometheus.io
-[OpenTelemetry]: https://opentelemetry.io
-[Loki]: https://github.com/grafana/loki
-[Grafana]: https://github.com/grafana/grafana
-[Tempo]: https://github.com/grafana/tempo
-[Mimir]: https://github.com/grafana/mimir
-[Pyroscope]: https://github.com/grafana/pyroscope
+[Grafana Loki]: https://github.com/grafana/loki
+[Grafana Pyroscope]: https://github.com/grafana/pyroscope
+[modules]: https://grafana.com/docs/alloy/latest/concepts/modules/
+[cluster]: https://grafana.com/docs/alloy/latest/concepts/clustering/
+[remotecfg]: https://grafana.com/docs/alloy/latest/reference/config-blocks/remotecfg/
+[ui]: https://grafana.com/docs/alloy/latest/tasks/debug/
 
-## Why use Grafana Agent?
+## Example
 
-* **Vendor-neutral**: Fully compatible with the Prometheus, OpenTelemetry, and
-  Grafana open source ecosystems.
-* **Every signal**: Collect telemetry data for metrics, logs, traces, and
-  continuous profiles.
-* **Scalable**: Deploy on any number of machines to collect millions of active
-  series and terabytes of logs.
-* **Battle-tested**: Grafana Agent extends the existing battle-tested code from
-  the Prometheus and OpenTelemetry Collector projects.
-* **Powerful**: Write programmable pipelines with ease, and debug them using a
-  [built-in UI][UI].
-* **Batteries included**: Integrate with systems like MySQL, Kubernetes, and
-  Apache to get telemetry that's immediately useful.
+```alloy
+otelcol.receiver.otlp "example" {
+  grpc {
+    endpoint = "127.0.0.1:4317"
+  }
 
-[UI]: https://grafana.com/docs/agent/latest/flow/monitoring/debugging/#grafana-agent-flow-ui
+  output {
+    metrics = [otelcol.processor.batch.example.input]
+    logs    = [otelcol.processor.batch.example.input]
+    traces  = [otelcol.processor.batch.example.input]
+  }
+}
+
+otelcol.processor.batch "example" {
+  output {
+    metrics = [otelcol.exporter.otlp.default.input]
+    logs    = [otelcol.exporter.otlp.default.input]
+    traces  = [otelcol.exporter.otlp.default.input]
+  }
+}
+
+otelcol.exporter.otlp "default" {
+  client {
+    endpoint = "my-otlp-grpc-server:4317"
+  }
+}
+```
 
 ## Getting started
 
 Check out our [documentation][] to see:
 
-* [Installation instructions][] for Grafana Agent Flow
-* Details about [Grafana Agent Flow][]
-* Steps for [Getting started][] with Grafana Agent Flow
-* The list of Grafana Agent Flow [Components][]
+* [Installation instructions][install] for Alloy
+* Steps for [Getting started][get-started] with Alloy
+* The list of Alloy [components][]
 
-[documentation]: https://grafana.com/docs/agent/latest/
-[Installation instructions]: https://grafana.com/docs/agent/latest/flow/setup/install/
-[Grafana Agent Flow]: https://grafana.com/docs/agent/latest/flow/
-[Getting started]: https://grafana.com/docs/agent/latest/flow/getting_started/
-[Components]: https://grafana.com/docs/agent/latest/flow/reference/components/
-
-## Example
-
-```river
-// Discover Kubernetes pods to collect metrics from.
-discovery.kubernetes "pods" {
-  role = "pod"
-}
-
-// Collect metrics from Kubernetes pods.
-prometheus.scrape "default" {
-  targets    = discovery.kubernetes.pods.targets
-  forward_to = [prometheus.remote_write.default.receiver]
-}
-
-// Get an API key from disk.
-local.file "apikey" {
-  filename  = "/var/data/my-api-key.txt"
-  is_secret = true
-}
-
-// Send metrics to a Prometheus remote_write endpoint.
-prometheus.remote_write "default" {
-  endpoint {
-    url = "http://localhost:9009/api/prom/push"
-
-    basic_auth {
-      username = "MY_USERNAME"
-      password = local.file.apikey.content
-    }
-  }
-}
-```
-
-We maintain an example [Docker Compose environment][] that can be used to
-launch dependencies to play with Grafana Agent locally.
-
-[Docker Compose environment]: ./example/docker-compose/
+[documentation]: https://grafana.com/docs/alloy/latest
+[install]: https://grafana.com/docs/alloy/latest/get-started/install/
+[get-started]: https://grafana.com/docs/alloy/latest/getting_started/
+[components]: https://grafana.com/docs/alloy/latest/reference/components/
 
 ## Release cadence
 
@@ -110,25 +118,34 @@ OpenTelemetry Collector code if new versions are available. Minor releases
 published outside of the release cadence may not include these dependency
 updates.
 
-Patch and security releases may be created at any time.
+Patch and security releases may be published at any time.
 
 ## Community
 
-To engage with the Grafana Agent community:
+To engage with the Alloy community:
 
 * Chat with us on our community Slack channel. To invite yourself to the
-  Grafana Slack, visit <https://slack.grafana.com/> and join the `#agent`
+  Grafana Slack, visit <https://slack.grafana.com/> and join the `#alloy`
   channel.
-* Ask questions on the [Discussions page][].
-* [File an issue][] for bugs, issues, and feature suggestions.
-* Attend the monthly [community call][].
 
-[Discussions page]: https://github.com/grafana/agent/discussions
-[File an issue]: https://github.com/grafana/agent/issues/new
-[community call]: https://docs.google.com/document/d/1TqaZD1JPfNadZ4V81OCBPCG_TksDYGlNlGdMnTWUSpo
+* Ask questions on the [Discussions page][discussions].
 
-## Contribute
+* [File an issue][issue] for bugs, issues, and feature suggestions.
+
+* Attend the monthly [community call][community-call].
+
+[discussions]: https://github.com/grafana/alloy/discussions
+[issue]: https://github.com/grafana/alloy/issues/new
+[community-call]: https://docs.google.com/document/d/1TqaZD1JPfNadZ4V81OCBPCG_TksDYGlNlGdMnTWUSpo
+
+## Contributing
 
 Refer to our [contributors guide][] to learn how to contribute.
 
-[contributors guide]: ./docs/developer/contributing.md
+Thanks to all the people who have already contributed!
+
+<a href="https://github.com/grafana/alloy/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=grafana/alloy" />
+</a>
+
+[contributors guide]: https://github.com/grafana/alloy/blob/main/docs/developer/contributing.md

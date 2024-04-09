@@ -1,0 +1,11 @@
+block { }
+
+block { }
+
+block { }
+
+block { }
+
+block {
+	// Comments should be kept.
+}

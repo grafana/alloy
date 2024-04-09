@@ -13,14 +13,14 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"google.golang.org/api/option"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/loki/source/gcplog/gcptypes"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
 )
 
 // PullTarget represents a target that scrapes logs from a GCP project id and
@@ -45,7 +45,7 @@ type PullTarget struct {
 	msgs chan *pubsub.Message
 }
 
-// TODO(@tpaschalis) Expose this as River configuration in the future.
+// TODO(@tpaschalis) Expose this as Alloy configuration in the future.
 var defaultBackoff = backoff.Config{
 	MinBackoff: 1 * time.Second,
 	MaxBackoff: 10 * time.Second,

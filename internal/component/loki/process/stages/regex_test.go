@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -16,13 +16,13 @@ import (
 
 var protocolStr = "protocol"
 
-var testRegexRiverSingleStageWithoutSource = `
+var testRegexAlloySingleStageWithoutSource = `
 stage.regex {
     expression =  "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
 }
 `
 
-var testRegexRiverMultiStageWithSource = `
+var testRegexAlloyMultiStageWithSource = `
 stage.regex {
     expression = "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
 }
@@ -32,7 +32,7 @@ stage.regex {
 }
 `
 
-var testRegexRiverSourceWithMissingKey = `
+var testRegexAlloySourceWithMissingKey = `
 stage.json {
     expressions = { "time" = "" }
 }
@@ -65,7 +65,7 @@ func TestPipeline_Regex(t *testing.T) {
 		expectedExtract map[string]interface{}
 	}{
 		"successfully run a pipeline with 1 regex stage without source": {
-			testRegexRiverSingleStageWithoutSource,
+			testRegexAlloySingleStageWithoutSource,
 			testRegexLogLine,
 			map[string]interface{}{
 				"ip":        "11.11.11.11",
@@ -82,7 +82,7 @@ func TestPipeline_Regex(t *testing.T) {
 			},
 		},
 		"successfully run a pipeline with 2 regex stages with source": {
-			testRegexRiverMultiStageWithSource,
+			testRegexAlloyMultiStageWithSource,
 			testRegexLogLine,
 			map[string]interface{}{
 				"ip":               "11.11.11.11",
@@ -107,7 +107,7 @@ func TestPipeline_Regex(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			pl, err := NewPipeline(logger, loadConfig(testData.config), nil, prometheus.DefaultRegisterer)
 			if err != nil {
 				t.Fatal(err)
@@ -123,7 +123,7 @@ func TestPipelineWithMissingKey_Regex(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testRegexRiverSourceWithMissingKey), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testRegexAlloySourceWithMissingKey), nil, prometheus.DefaultRegisterer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +298,7 @@ func TestRegexParser_Parse(t *testing.T) {
 		tt := tt
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			p, err := New(logger, nil, StageConfig{RegexConfig: &tt.config}, nil)
 			if err != nil {
 				t.Fatalf("failed to create regex parser: %s", err)
@@ -323,7 +323,7 @@ func BenchmarkRegexStage(b *testing.B) {
 	}
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			logger := util.TestFlowLogger(b)
+			logger := util.TestAlloyLogger(b)
 			stage, err := New(logger, nil, StageConfig{RegexConfig: &bm.config}, nil)
 			if err != nil {
 				panic(err)

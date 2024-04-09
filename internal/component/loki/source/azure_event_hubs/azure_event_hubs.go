@@ -7,13 +7,13 @@ import (
 	"sync"
 
 	"github.com/IBM/sarama"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/azure_event_hubs/internal/parser"
-	kt "github.com/grafana/agent/internal/component/loki/source/internal/kafkatarget"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/azure_event_hubs/internal/parser"
+	kt "github.com/grafana/alloy/internal/component/loki/source/internal/kafkatarget"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/dskit/flagext"
 
 	"github.com/prometheus/common/model"
@@ -22,7 +22,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.azure_event_hubs",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -33,26 +33,26 @@ func init() {
 
 // Arguments holds values which are used to configure the loki.source.azure_event_hubs component.
 type Arguments struct {
-	FullyQualifiedNamespace string   `river:"fully_qualified_namespace,attr"`
-	EventHubs               []string `river:"event_hubs,attr"`
+	FullyQualifiedNamespace string   `alloy:"fully_qualified_namespace,attr"`
+	EventHubs               []string `alloy:"event_hubs,attr"`
 
-	Authentication AzureEventHubsAuthentication `river:"authentication,block"`
+	Authentication AzureEventHubsAuthentication `alloy:"authentication,block"`
 
-	GroupID                string             `river:"group_id,attr,optional"`
-	UseIncomingTimestamp   bool               `river:"use_incoming_timestamp,attr,optional"`
-	DisallowCustomMessages bool               `river:"disallow_custom_messages,attr,optional"`
-	RelabelRules           flow_relabel.Rules `river:"relabel_rules,attr,optional"`
-	Labels                 map[string]string  `river:"labels,attr,optional"`
-	Assignor               string             `river:"assignor,attr,optional"`
+	GroupID                string              `alloy:"group_id,attr,optional"`
+	UseIncomingTimestamp   bool                `alloy:"use_incoming_timestamp,attr,optional"`
+	DisallowCustomMessages bool                `alloy:"disallow_custom_messages,attr,optional"`
+	RelabelRules           alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
+	Labels                 map[string]string   `alloy:"labels,attr,optional"`
+	Assignor               string              `alloy:"assignor,attr,optional"`
 
-	ForwardTo []loki.LogsReceiver `river:"forward_to,attr"`
+	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
 
 // AzureEventHubsAuthentication describe the configuration for authentication with Azure Event Hub
 type AzureEventHubsAuthentication struct {
-	Mechanism        string   `river:"mechanism,attr"`
-	Scopes           []string `river:"scopes,attr,optional"`
-	ConnectionString string   `river:"connection_string,attr,optional"`
+	Mechanism        string   `alloy:"mechanism,attr"`
+	Scopes           []string `alloy:"scopes,attr,optional"`
+	ConnectionString string   `alloy:"connection_string,attr,optional"`
 }
 
 func getDefault() Arguments {
@@ -63,12 +63,12 @@ func getDefault() Arguments {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = getDefault()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	return a.validateAssignor()
 }
@@ -155,7 +155,7 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-// Convert is used to bridge between the River and Promtail types.
+// Convert is used to bridge between the Alloy and Promtail types.
 func (a *Arguments) Convert() (kt.Config, error) {
 	lbls := make(model.LabelSet, len(a.Labels))
 	for k, v := range a.Labels {
@@ -163,7 +163,7 @@ func (a *Arguments) Convert() (kt.Config, error) {
 	}
 
 	cfg := kt.Config{
-		RelabelConfigs: flow_relabel.ComponentToPromRelabelConfigs(a.RelabelRules),
+		RelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(a.RelabelRules),
 		KafkaConfig: kt.TargetConfig{
 			Brokers:              []string{a.FullyQualifiedNamespace},
 			Topics:               a.EventHubs,

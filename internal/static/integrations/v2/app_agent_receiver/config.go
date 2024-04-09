@@ -3,8 +3,8 @@ package app_agent_receiver
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/common"
+	"github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/common"
 )
 
 const (

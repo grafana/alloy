@@ -2,10 +2,10 @@
 package bearer
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol/auth"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.auth.bearer",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   auth.Exports{},
 
@@ -29,8 +29,8 @@ func init() {
 // Arguments configures the otelcol.auth.bearer component.
 type Arguments struct {
 	// Do not include the "filename" attribute - users should use local.file instead.
-	Scheme string            `river:"scheme,attr,optional"`
-	Token  rivertypes.Secret `river:"token,attr"`
+	Scheme string            `alloy:"scheme,attr,optional"`
+	Token  alloytypes.Secret `alloy:"token,attr"`
 }
 
 var _ auth.Arguments = Arguments{}
@@ -40,7 +40,7 @@ var DefaultArguments = Arguments{
 	Scheme: "Bearer",
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }

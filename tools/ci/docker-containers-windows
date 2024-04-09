@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 #
-# This script builds and pushes windows Docker containers. Maintainers
-# can run this without pushing to a remote repo as long as DOCKER_LOGIN or
-# DOCKER_PASSWORD are not set. For pushing to personal repos
-# set those 2 env vars and update the *_IMAGE values below to point to your repos
+# This script builds and pushes windows Docker containers.
 #
 # This script expects to be run from the repo root and has checks for running
 # from a Drone trigger.
@@ -18,12 +15,9 @@ set -euxo pipefail
 # empty string.
 export TARGET_CONTAINER=${1:-}
 export DRONE_TAG=${DRONE_TAG:-}
-export DRONE_BRANCH=${DRONE_BRANCH:-}
-export DOCKER_LOGIN=${DOCKER_LOGIN:-}
-export DOCKER_PASSWORD=${DOCKER_PASSWORD:-}
 
-export AGENT_IMAGE=grafana/agent
-export AGENTCTL_IMAGE=grafana/agentctl
+export RELEASE_ALLOY_IMAGE=grafana/alloy
+export DEVEL_ALLOY_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
 
 if [ -n "$DRONE_TAG" ]; then
   VERSION=$DRONE_TAG
@@ -31,7 +25,10 @@ else
   VERSION=$(./tools/image-tag)
 fi
 
-VERSION_TAG=$VERSION-windows
+# The VERSION_TAG is the version to use for the Docker tag. It is sanitized to
+# force it to be a valid tag name; ./tools/image-tag can emit characters that
+# are valid for semver but invalid for Docker tags, such as +.
+VERSION_TAG=${VERSION//+/-}-nanoserver-1809
 
 # We also need to know which "branch tag" to update. Branch tags are used as a
 # secondary tag for Docker containers. The branch tag is "latest" when being
@@ -42,58 +39,40 @@ VERSION_TAG=$VERSION-windows
 # version. This effectively acts as a no-op because it will tag the same Docker
 # image twice.
 if [ -n "$DRONE_TAG" ] && [[ "$DRONE_TAG" != *"-rc."* ]]; then
-  BRANCH_TAG=latest-windows
-elif [ -n "$DRONE_BRANCH" ]; then
-  BRANCH_TAG=$DRONE_BRANCH-windows
+  BRANCH_TAG=latest-nanoserver-1809
 else
   BRANCH_TAG=$VERSION_TAG
 fi
 
 case "$TARGET_CONTAINER" in
-  agent)
-    docker build                                \
-      -t "$AGENT_IMAGE:$VERSION_TAG"            \
-      -t "$AGENT_IMAGE:$BRANCH_TAG"             \
-      --build-arg VERSION="$VERSION"            \
-      --build-arg RELEASE_BUILD=1               \
-      -f ./cmd/grafana-agent/Dockerfile.windows \
+  alloy)
+    docker build                        \
+      -t "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"    \
+      -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"     \
+      --build-arg VERSION="$VERSION"    \
+      --build-arg RELEASE_BUILD=1       \
+      -f ./Dockerfile.windows \
       .
+
+    docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
+    docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
     ;;
 
-  agentctl)
-    docker build                                   \
-      -t "$AGENTCTL_IMAGE:$VERSION_TAG"            \
-      -t "$AGENTCTL_IMAGE:$BRANCH_TAG"             \
-      --build-arg VERSION="$VERSION"               \
-      --build-arg RELEASE_BUILD=1                  \
-      -f ./cmd/grafana-agentctl/Dockerfile.windows \
+  alloy-devel)
+    docker build                        \
+      -t "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"    \
+      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"     \
+      --build-arg VERSION="$VERSION"    \
+      --build-arg RELEASE_BUILD=1       \
+      -f ./Dockerfile.windows \
       .
+
+    docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
+    docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
     ;;
 
   *)
-    echo "Usage: $0 agent|agentctl"
+    echo "Usage: $0 alloy|alloy-devel"
     exit 1
     ;;
 esac
-
-# Push images only if we have docker credentials and a drone tag is set
-if [ -n "$DOCKER_LOGIN" ] && [ -n "$DOCKER_PASSWORD" ]; then
-  docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWORD"
-
-  case "$TARGET_CONTAINER" in
-    agent)
-      docker push "$AGENT_IMAGE:$VERSION_TAG"
-      docker push "$AGENT_IMAGE:$BRANCH_TAG"
-      ;;
-
-    agentctl)
-      docker push "$AGENTCTL_IMAGE:$VERSION_TAG"
-      docker push "$AGENTCTL_IMAGE:$BRANCH_TAG"
-      ;;
-
-    *)
-      echo "Usage: $0 agent|agentctl"
-      exit 1
-      ;;
-  esac
-fi

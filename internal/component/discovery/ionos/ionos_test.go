@@ -4,17 +4,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverCfg := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyCfg := `
 		datacenter_id = "datacenter_id"
 		refresh_interval = "20s"
 		port = 60
@@ -25,17 +25,17 @@ func TestRiverUnmarshal(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	assert.Equal(t, "datacenter_id", args.DatacenterID)
 	assert.Equal(t, 20*time.Second, args.RefreshInterval)
 	assert.Equal(t, 60, args.Port)
 	assert.Equal(t, "username", args.HTTPClientConfig.BasicAuth.Username)
-	assert.Equal(t, rivertypes.Secret("pass"), args.HTTPClientConfig.BasicAuth.Password)
+	assert.Equal(t, alloytypes.Secret("pass"), args.HTTPClientConfig.BasicAuth.Password)
 }
 
 func TestConvert(t *testing.T) {
-	riverArgs := Arguments{
+	alloyArgs := Arguments{
 		DatacenterID:    "datacenter_id",
 		RefreshInterval: 20 * time.Second,
 		Port:            81,
@@ -46,7 +46,7 @@ func TestConvert(t *testing.T) {
 			},
 		},
 	}
-	promArgs := riverArgs.Convert()
+	promArgs := alloyArgs.Convert()
 	assert.Equal(t, "datacenter_id", promArgs.DatacenterID)
 	assert.Equal(t, model.Duration(20*time.Second), promArgs.RefreshInterval)
 	assert.Equal(t, 81, promArgs.Port)
@@ -55,20 +55,20 @@ func TestConvert(t *testing.T) {
 }
 
 func TestValidateNoDatacenterId(t *testing.T) {
-	riverArgs := Arguments{
+	alloyArgs := Arguments{
 		RefreshInterval: 20 * time.Second,
 		Port:            81,
 	}
-	err := riverArgs.Validate()
+	err := alloyArgs.Validate()
 	assert.Error(t, err, "datacenter_id can't be empty")
 }
 
 func TestValidateRefreshIntervalZero(t *testing.T) {
-	riverArgs := Arguments{
+	alloyArgs := Arguments{
 		DatacenterID:    "datacenter_id",
 		RefreshInterval: 0,
 		Port:            81,
 	}
-	err := riverArgs.Validate()
+	err := alloyArgs.Validate()
 	assert.Error(t, err, "refresh_interval must be greater than 0")
 }

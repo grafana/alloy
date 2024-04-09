@@ -3,9 +3,9 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/otelcol/extension/jaeger_remote_sampling"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
 	"go.opentelemetry.io/collector/component"
 )
@@ -27,7 +27,7 @@ func (jaegerRemoteSamplingExtensionConverter) InputComponentName() string {
 func (jaegerRemoteSamplingExtensionConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toJaegerRemoteSamplingExtension(cfg.(*jaegerremotesampling.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "extension", "jaeger_remote_sampling"}, label, args)

@@ -1,4 +1,4 @@
-// Package receiver utilities to create a Flow component from OpenTelemetry
+// Package receiver utilities to create an Alloy component from OpenTelemetry
 // Collector receivers.
 package receiver
 
@@ -7,14 +7,14 @@ import (
 	"errors"
 	"os"
 
-	"github.com/grafana/agent/internal/build"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazycollector"
-	"github.com/grafana/agent/internal/component/otelcol/internal/scheduler"
-	"github.com/grafana/agent/internal/component/otelcol/internal/views"
-	"github.com/grafana/agent/internal/util/zapadapter"
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/views"
+	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -47,7 +47,7 @@ type Arguments interface {
 	DebugMetricsConfig() otelcol.DebugMetricsArguments
 }
 
-// Receiver is a Flow component shim which manages an OpenTelemetry Collector
+// Receiver is an Alloy component shim which manages an OpenTelemetry Collector
 // receiver component.
 type Receiver struct {
 	ctx    context.Context
@@ -65,11 +65,11 @@ var (
 	_ component.HealthComponent = (*Receiver)(nil)
 )
 
-// New creates a new Flow component which encapsulates an OpenTelemetry
+// New creates a new Alloy component which encapsulates an OpenTelemetry
 // Collector receiver. args must hold a value of the argument type registered
-// with the Flow component.
+// with the Alloy component.
 //
-// If the registered Flow component registers exported fields, it is the
+// If the registered Alloy component registers exported fields, it is the
 // responsibility of the caller to export values when needed; the Receiver
 // component never exports any values.
 func New(opts component.Options, f otelreceiver.Factory, args Arguments) (*Receiver, error) {
@@ -139,7 +139,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 
 		BuildInfo: otelcomponent.BuildInfo{
 			Command:     os.Args[0],
-			Description: "Grafana Agent",
+			Description: "Grafana Alloy",
 			Version:     build.Version,
 		},
 	}

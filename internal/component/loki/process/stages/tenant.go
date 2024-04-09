@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/prometheus/common/model"
 )
 
@@ -26,9 +26,9 @@ type tenantStage struct {
 
 // TenantConfig configures a tenant stage.
 type TenantConfig struct {
-	Label  string `river:"label,attr,optional"`
-	Source string `river:"source,attr,optional"`
-	Value  string `river:"value,attr,optional"`
+	Label  string `alloy:"label,attr,optional"`
+	Source string `alloy:"source,attr,optional"`
+	Value  string `alloy:"value,attr,optional"`
 }
 
 // validateTenantConfig validates the tenant stage configuration

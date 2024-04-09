@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/postgres_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/postgres_exporter"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/lib/pq"
 	config_util "github.com/prometheus/common/config"
 )
@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.postgres",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 
@@ -77,16 +77,16 @@ type Arguments struct {
 	// DataSourceNames to use to connect to Postgres. This is marked optional because it
 	// may also be supplied by the POSTGRES_EXPORTER_DATA_SOURCE_NAME env var,
 	// though it is not recommended to do so.
-	DataSourceNames []rivertypes.Secret `river:"data_source_names,attr,optional"`
+	DataSourceNames []alloytypes.Secret `alloy:"data_source_names,attr,optional"`
 
 	// Attributes
-	DisableSettingsMetrics  bool     `river:"disable_settings_metrics,attr,optional"`
-	DisableDefaultMetrics   bool     `river:"disable_default_metrics,attr,optional"`
-	CustomQueriesConfigPath string   `river:"custom_queries_config_path,attr,optional"`
-	EnabledCollectors       []string `river:"enabled_collectors,attr,optional"`
+	DisableSettingsMetrics  bool     `alloy:"disable_settings_metrics,attr,optional"`
+	DisableDefaultMetrics   bool     `alloy:"disable_default_metrics,attr,optional"`
+	CustomQueriesConfigPath string   `alloy:"custom_queries_config_path,attr,optional"`
+	EnabledCollectors       []string `alloy:"enabled_collectors,attr,optional"`
 
 	// Blocks
-	AutoDiscovery AutoDiscovery `river:"autodiscovery,block,optional"`
+	AutoDiscovery AutoDiscovery `alloy:"autodiscovery,block,optional"`
 }
 
 func (a *Arguments) Validate() error {
@@ -101,12 +101,12 @@ func (a *Arguments) Validate() error {
 
 // AutoDiscovery controls discovery of databases outside any specified in DataSourceNames.
 type AutoDiscovery struct {
-	Enabled           bool     `river:"enabled,attr,optional"`
-	DatabaseAllowlist []string `river:"database_allowlist,attr,optional"`
-	DatabaseDenylist  []string `river:"database_denylist,attr,optional"`
+	Enabled           bool     `alloy:"enabled,attr,optional"`
+	DatabaseAllowlist []string `alloy:"database_allowlist,attr,optional"`
+	DatabaseDenylist  []string `alloy:"database_denylist,attr,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

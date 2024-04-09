@@ -1,0 +1,14 @@
+Use of an imported component with too low stability level propagates the error
+
+-- main.alloy --
+
+import.string "testImport" {
+  content = ` declare "a" {
+    testcomponents.experimental "unstable" {}
+  }`
+}
+
+testImport.a "cc" {}
+
+-- error --
+component "testcomponents.experimental" is at stability level "experimental", which is below the minimum allowed stability level "public-preview"

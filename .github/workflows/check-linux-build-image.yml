@@ -3,7 +3,7 @@ name: Check Linux build image
 on:
   pull_request:
     paths:
-      - 'build-image/*'
+      - 'tools/build-image/*'
 
 jobs:
   check-linux-build-image:
@@ -21,17 +21,17 @@ jobs:
       - name: Create test Linux build image
         uses: docker/build-push-action@v5
         with:
-          context: ./build-image
+          context: ./tools/build-image
           push: false
-          tags: grafana/agent-build-image:latest
+          tags: grafana/alloy-build-image:latest
           build-args: |
             GO_RUNTIME=golang:1.22.1-bullseye
 
       - name: Create test Linux build image for boring crypto
         uses: docker/build-push-action@v5
         with:
-          context: ./build-image
+          context: ./tools/build-image
           push: false
-          tags: grafana/agent-build-image:latest
+          tags: grafana/alloy-build-image:latest
           build-args: |
             GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.22.1-bullseye

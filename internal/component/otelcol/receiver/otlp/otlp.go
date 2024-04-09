@@ -6,10 +6,10 @@ import (
 	net_url "net/url"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/receiver"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver"
+	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
@@ -18,7 +18,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.receiver.otlp",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -30,27 +30,27 @@ func init() {
 
 // Arguments configures the otelcol.receiver.otlp component.
 type Arguments struct {
-	GRPC *GRPCServerArguments `river:"grpc,block,optional"`
-	HTTP *HTTPConfigArguments `river:"http,block,optional"`
+	GRPC *GRPCServerArguments `alloy:"grpc,block,optional"`
+	HTTP *HTTPConfigArguments `alloy:"http,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	// Output configures where to send received data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 type HTTPConfigArguments struct {
-	HTTPServerArguments *otelcol.HTTPServerArguments `river:",squash"`
+	HTTPServerArguments *otelcol.HTTPServerArguments `alloy:",squash"`
 
 	// The URL path to receive traces on. If omitted "/v1/traces" will be used.
-	TracesURLPath string `river:"traces_url_path,attr,optional"`
+	TracesURLPath string `alloy:"traces_url_path,attr,optional"`
 
 	// The URL path to receive metrics on. If omitted "/v1/metrics" will be used.
-	MetricsURLPath string `river:"metrics_url_path,attr,optional"`
+	MetricsURLPath string `alloy:"metrics_url_path,attr,optional"`
 
 	// The URL path to receive logs on. If omitted "/v1/logs" will be used.
-	LogsURLPath string `river:"logs_url_path,attr,optional"`
+	LogsURLPath string `alloy:"logs_url_path,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -69,7 +69,7 @@ func (args *HTTPConfigArguments) Convert() *otlpreceiver.HTTPConfig {
 
 var _ receiver.Arguments = Arguments{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{}
 	args.DebugMetrics.SetToDefault()
@@ -106,7 +106,7 @@ type (
 	GRPCServerArguments otelcol.GRPCServerArguments
 )
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.HTTP != nil {
 		if err := validateURL(args.HTTP.TracesURLPath, "traces_url_path"); err != nil {
@@ -132,7 +132,7 @@ func validateURL(url string, urlName string) error {
 	return nil
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *GRPCServerArguments) SetToDefault() {
 	*args = GRPCServerArguments{
 		Endpoint:  "0.0.0.0:4317",
@@ -143,7 +143,7 @@ func (args *GRPCServerArguments) SetToDefault() {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *HTTPConfigArguments) SetToDefault() {
 	*args = HTTPConfigArguments{
 		HTTPServerArguments: &otelcol.HTTPServerArguments{

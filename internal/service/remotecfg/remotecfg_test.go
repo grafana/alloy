@@ -11,15 +11,15 @@ import (
 
 	"connectrpc.com/connect"
 	agentv1 "github.com/grafana/agent-remote-config/api/gen/proto/go/agent/v1"
-	"github.com/grafana/agent/internal/component"
-	_ "github.com/grafana/agent/internal/component/loki/process"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/flow/logging"
-	"github.com/grafana/agent/internal/service"
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/alloy"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/alloy/logging"
+	"github.com/grafana/alloy/internal/component"
+	_ "github.com/grafana/alloy/internal/component/loki/process"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,7 +43,7 @@ func TestOnDiskCache(t *testing.T) {
 	env.svc.asClient = client
 
 	// Mock client to return an unparseable response.
-	client.getConfigFunc = buildGetConfigHandler("unparseable river config")
+	client.getConfigFunc = buildGetConfigHandler("unparseable config")
 
 	// Write the cache contents, and run the service.
 	err := os.WriteFile(env.svc.dataPath, []byte(cacheContents), 0644)
@@ -135,7 +135,7 @@ func newTestEnvironment(t *testing.T) *testEnvironment {
 
 func (env *testEnvironment) ApplyConfig(config string) error {
 	var args Arguments
-	if err := river.Unmarshal([]byte(config), &args); err != nil {
+	if err := syntax.Unmarshal([]byte(config), &args); err != nil {
 		return err
 	}
 	return env.svc.Update(args)
@@ -165,12 +165,12 @@ func (fakeHost) GetService(_ string) (service.Service, bool)     { return nil, f
 
 func (f fakeHost) NewController(id string) service.Controller {
 	logger, _ := logging.New(io.Discard, logging.DefaultOptions)
-	ctrl := flow.New(flow.Options{
+	ctrl := alloy.New(alloy.Options{
 		ControllerID:    ServiceName,
 		Logger:          logger,
 		Tracer:          nil,
 		DataPath:        "",
-		MinStability:    featuregate.StabilityStable,
+		MinStability:    featuregate.StabilityGenerallyAvailable,
 		Reg:             prometheus.NewRegistry(),
 		OnExportsChange: func(map[string]interface{}) {},
 		Services:        []service.Service{},
@@ -211,12 +211,12 @@ func (ag *agentClient) ListAgents(context.Context, *connect.Request[agentv1.List
 }
 
 type serviceController struct {
-	f *flow.Flow
+	f *alloy.Alloy
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
 func (sc serviceController) LoadSource(b []byte, args map[string]any) error {
-	source, err := flow.ParseSource("", b)
+	source, err := alloy.ParseSource("", b)
 	if err != nil {
 		return err
 	}

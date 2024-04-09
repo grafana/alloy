@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/processor"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/processor"
+	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/processor/memorylimiterprocessor"
@@ -18,7 +18,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.memory_limiter",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -31,14 +31,14 @@ func init() {
 
 // Arguments configures the otelcol.processor.memory_limiter component.
 type Arguments struct {
-	CheckInterval         time.Duration    `river:"check_interval,attr"`
-	MemoryLimit           units.Base2Bytes `river:"limit,attr,optional"`
-	MemorySpikeLimit      units.Base2Bytes `river:"spike_limit,attr,optional"`
-	MemoryLimitPercentage uint32           `river:"limit_percentage,attr,optional"`
-	MemorySpikePercentage uint32           `river:"spike_limit_percentage,attr,optional"`
+	CheckInterval         time.Duration    `alloy:"check_interval,attr"`
+	MemoryLimit           units.Base2Bytes `alloy:"limit,attr,optional"`
+	MemorySpikeLimit      units.Base2Bytes `alloy:"spike_limit,attr,optional"`
+	MemoryLimitPercentage uint32           `alloy:"limit_percentage,attr,optional"`
+	MemorySpikePercentage uint32           `alloy:"spike_limit_percentage,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (
@@ -54,12 +54,12 @@ var DefaultArguments = Arguments{
 	MemorySpikePercentage: 0,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.CheckInterval <= 0 {
 		return fmt.Errorf("check_interval must be greater than zero")

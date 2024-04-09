@@ -3,10 +3,10 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/processor/probabilistic_sampler"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/probabilistic_sampler"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor"
 	"go.opentelemetry.io/collector/component"
 )
@@ -28,7 +28,7 @@ func (probabilisticSamplerProcessorConverter) InputComponentName() string {
 func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args := toProbabilisticSamplerProcessor(state, id, cfg.(*probabilisticsamplerprocessor.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "probabilistic_sampler"}, label, args)

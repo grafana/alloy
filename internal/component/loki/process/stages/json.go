@@ -6,7 +6,7 @@ import (
 	"reflect"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/jmespath/go-jmespath"
 	json "github.com/json-iterator/go"
 )
@@ -22,9 +22,9 @@ const (
 
 // JSONConfig represents a JSON Stage configuration
 type JSONConfig struct {
-	Expressions   map[string]string `river:"expressions,attr"`
-	Source        *string           `river:"source,attr,optional"`
-	DropMalformed bool              `river:"drop_malformed,attr,optional"`
+	Expressions   map[string]string `alloy:"expressions,attr"`
+	Source        *string           `alloy:"source,attr,optional"`
+	DropMalformed bool              `alloy:"drop_malformed,attr,optional"`
 }
 
 // validateJSONConfig validates a json config and returns a map of necessary jmespath expressions.

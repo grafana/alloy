@@ -16,10 +16,10 @@ import (
 	"github.com/webdevops/go-common/azuresdk/cloudconfig"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/agent/internal/static/integrations"
-	integrations_v2 "github.com/grafana/agent/internal/static/integrations/v2"
-	"github.com/grafana/agent/internal/static/integrations/v2/metricsutils"
-	"github.com/grafana/agent/internal/util/zapadapter"
+	"github.com/grafana/alloy/internal/static/integrations"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
+	"github.com/grafana/alloy/internal/util/zapadapter"
 )
 
 func init() {

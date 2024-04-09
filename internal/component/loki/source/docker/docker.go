@@ -15,16 +15,16 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	types "github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/common/loki/positions"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/discovery"
-	dt "github.com/grafana/agent/internal/component/loki/source/docker/internal/dockertarget"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/useragent"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	types "github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/discovery"
+	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -33,7 +33,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.docker",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -53,13 +53,13 @@ const (
 // Arguments holds values which are used to configure the loki.source.docker
 // component.
 type Arguments struct {
-	Host             string                  `river:"host,attr"`
-	Targets          []discovery.Target      `river:"targets,attr"`
-	ForwardTo        []loki.LogsReceiver     `river:"forward_to,attr"`
-	Labels           map[string]string       `river:"labels,attr,optional"`
-	RelabelRules     flow_relabel.Rules      `river:"relabel_rules,attr,optional"`
-	HTTPClientConfig *types.HTTPClientConfig `river:"http_client_config,block,optional"`
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
+	Host             string                  `alloy:"host,attr"`
+	Targets          []discovery.Target      `alloy:"targets,attr"`
+	ForwardTo        []loki.LogsReceiver     `alloy:"forward_to,attr"`
+	Labels           map[string]string       `alloy:"labels,attr,optional"`
+	RelabelRules     alloy_relabel.Rules     `alloy:"relabel_rules,attr,optional"`
+	HTTPClientConfig *types.HTTPClientConfig `alloy:"http_client_config,block,optional"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
 }
 
 // GetDefaultArguments return an instance of Arguments with the optional fields
@@ -71,12 +71,12 @@ func GetDefaultArguments() Arguments {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = GetDefaultArguments()
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if _, err := url.Parse(a.Host); err != nil {
 		return fmt.Errorf("failed to parse Docker host %q: %w", a.Host, err)
@@ -210,7 +210,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.defaultLabels = defaultLabels
 
 	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
-		c.rcs = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		c.rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	} else {
 		c.rcs = []*relabel.Config{}
 	}
@@ -328,13 +328,13 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type readerDebugInfo struct {
-	TargetsInfo []targetInfo `river:"targets_info,block"`
+	TargetsInfo []targetInfo `alloy:"targets_info,block"`
 }
 
 type targetInfo struct {
-	ID         string `river:"id,attr"`
-	LastError  string `river:"last_error,attr"`
-	Labels     string `river:"labels,attr"`
-	IsRunning  string `river:"is_running,attr"`
-	ReadOffset string `river:"read_offset,attr"`
+	ID         string `alloy:"id,attr"`
+	LastError  string `alloy:"last_error,attr"`
+	Labels     string `alloy:"labels,attr"`
+	IsRunning  string `alloy:"is_running,attr"`
+	ReadOffset string `alloy:"read_offset,attr"`
 }

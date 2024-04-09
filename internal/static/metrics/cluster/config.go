@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/agent/internal/static/metrics/cluster/client"
-	flagutil "github.com/grafana/agent/internal/util"
-	util_log "github.com/grafana/agent/internal/util/log"
+	"github.com/grafana/alloy/internal/static/metrics/cluster/client"
+	flagutil "github.com/grafana/alloy/internal/util"
+	util_log "github.com/grafana/alloy/internal/util/log"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
 )
@@ -45,7 +45,6 @@ type Config struct {
 
 	DangerousAllowReadingFiles bool `yaml:"dangerous_allow_reading_files,omitempty"`
 
-	// TODO(rfratto): deprecate scraping_service_client in Agent and replace with this.
 	Client                    client.Config `yaml:"-"`
 	APIEnableGetConfiguration bool          `yaml:"-"`
 }

@@ -3,12 +3,12 @@ package kafka
 import (
 	"testing"
 
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	brokers                = ["localhost:9092","localhost:23456"]
 	topics                 = ["quickstart-events"]
 	labels                 = {component = "loki.source.kafka"}
@@ -17,12 +17,12 @@ func TestRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestTLSRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestTLSAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	brokers                = ["localhost:9092","localhost:23456"]
 	topics                 = ["quickstart-events"]
 	authentication {
@@ -37,12 +37,12 @@ func TestTLSRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestSASLRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestSASLAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	brokers                = ["localhost:9092","localhost:23456"]
 	topics                 = ["quickstart-events"]
 	authentication {
@@ -57,12 +57,12 @@ func TestSASLRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
-func TestSASLOAuthRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestSASLOAuthAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	brokers = ["localhost:9092", "localhost:23456"]
 	topics  = ["quickstart-events"]
 
@@ -81,6 +81,6 @@ func TestSASLOAuthRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }

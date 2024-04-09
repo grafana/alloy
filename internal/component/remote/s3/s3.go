@@ -12,16 +12,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	aws_config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "remote.s3",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -67,11 +67,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		health:     component.Health{},
 		updateChan: make(chan result),
 		s3Errors: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "agent_remote_s3_errors_total",
+			Name: "remote_s3_errors_total",
 			Help: "The number of errors while accessing s3",
 		}),
 		lastAccessed: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "agent_remote_s3_timestamp_last_accessed_unix_seconds",
+			Name: "remote_s3_timestamp_last_accessed_unix_seconds",
 			Help: "The last successful access in unix seconds",
 		}),
 	}
@@ -205,7 +205,7 @@ func (s *Component) handleContentPolling(newContent string, err error) {
 
 	if err == nil {
 		s.opts.OnStateChange(Exports{
-			Content: rivertypes.OptionalSecret{
+			Content: alloytypes.OptionalSecret{
 				IsSecret: s.args.IsSecret,
 				Value:    newContent,
 			},

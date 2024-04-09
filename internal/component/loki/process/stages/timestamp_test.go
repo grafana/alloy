@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var testTimestampRiver = `
+var testTimestampAlloy = `
 stage.json {
     expressions = { ts = "time" }
 }
@@ -42,8 +42,8 @@ var testTimestampLogLineWithMissingKey = `
 `
 
 func TestTimestampPipeline(t *testing.T) {
-	logger := util.TestFlowLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testTimestampRiver), nil, prometheus.DefaultRegisterer)
+	logger := util.TestAlloyLogger(t)
+	pl, err := NewPipeline(logger, loadConfig(testTimestampAlloy), nil, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
 
 	out := processEntries(pl, newEntry(nil, nil, testTimestampLogLine, time.Now()))[0]
@@ -60,7 +60,7 @@ func TestPipelineWithMissingKey_Timestamp(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testTimestampRiver), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testTimestampAlloy), nil, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
 
 	_ = processEntries(pl, newEntry(nil, nil, testTimestampLogLineWithMissingKey, time.Now()))
@@ -287,7 +287,7 @@ func TestTimestampStage_Process(t *testing.T) {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			st, err := newTimestampStage(logger, test.config)
 			require.NoError(t, err)
 
@@ -428,7 +428,7 @@ func TestTimestampStage_ProcessActionOnFailure(t *testing.T) {
 			// Ensure the test has been correctly set
 			require.Equal(t, len(testData.inputEntries), len(testData.expectedTimestamps))
 
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			s, err := newTimestampStage(logger, testData.config)
 			require.NoError(t, err)
 

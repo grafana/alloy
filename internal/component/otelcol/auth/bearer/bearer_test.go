@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol/auth"
-	"github.com/grafana/agent/internal/component/otelcol/auth/bearer"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/component/otelcol/auth/bearer"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	extauth "go.opentelemetry.io/collector/extension/auth"
@@ -23,21 +23,21 @@ func Test(t *testing.T) {
 	type TestDefinition struct {
 		testName          string
 		expectedHeaderVal string
-		riverConfig       string
+		alloyConfig       string
 	}
 
 	tests := []TestDefinition{
 		{
 			testName:          "Test1",
 			expectedHeaderVal: "Bearer example_access_key_id",
-			riverConfig: `
+			alloyConfig: `
 			token = "example_access_key_id"
 			`,
 		},
 		{
 			testName:          "Test2",
 			expectedHeaderVal: "Bearer example_access_key_id",
-			riverConfig: `
+			alloyConfig: `
 			token = "example_access_key_id"
 			scheme = "Bearer"
 			`,
@@ -45,7 +45,7 @@ func Test(t *testing.T) {
 		{
 			testName:          "Test3",
 			expectedHeaderVal: "MyScheme example_access_key_id",
-			riverConfig: `
+			alloyConfig: `
 			token = "example_access_key_id"
 			scheme = "MyScheme"
 			`,
@@ -53,7 +53,7 @@ func Test(t *testing.T) {
 		{
 			testName:          "Test4",
 			expectedHeaderVal: "example_access_key_id",
-			riverConfig: `
+			alloyConfig: `
 			token = "example_access_key_id"
 			scheme = ""
 			`,
@@ -82,7 +82,7 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 
 		var args bearer.Arguments
-		require.NoError(t, river.Unmarshal([]byte(tt.riverConfig), &args))
+		require.NoError(t, syntax.Unmarshal([]byte(tt.alloyConfig), &args))
 
 		go func() {
 			err := ctrl.Run(ctx, args)

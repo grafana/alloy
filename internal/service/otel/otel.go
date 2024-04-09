@@ -1,4 +1,4 @@
-// Package otel implements the otel service for Flow.
+// Package otel implements the otel service.
 // This service registers feature gates will be used by the otelcol components
 // based on upstream Collector components.
 package otel
@@ -8,9 +8,9 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/service"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // ServiceName defines the name used for the otel service.
@@ -30,7 +30,7 @@ func New(logger log.Logger) *Service {
 	// an Otel component. If we set the feature gates in Run(), it will
 	// be too late - Otel would have already checked the feature gate by then.
 	// This is because the services are not started prior to the graph evaluation.
-	err := util.SetupFlowModeOtelFeatureGates()
+	err := util.SetupOtelFeatureGates()
 	if err != nil {
 		logger.Log("msg", "failed to set up Otel feature gates", "err", err)
 		return nil
@@ -51,7 +51,7 @@ func (*Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: nil, // otel does not accept configuration
 		DependsOn:  []string{},
-		Stability:  featuregate.StabilityStable,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 

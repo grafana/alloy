@@ -8,20 +8,20 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/exporter/prometheus/internal/convert"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/agent/internal/component/prometheus"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus/internal/convert"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/prometheus/prometheus/storage"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.prometheus",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -33,13 +33,13 @@ func init() {
 
 // Arguments configures the otelcol.exporter.prometheus component.
 type Arguments struct {
-	IncludeTargetInfo             bool                 `river:"include_target_info,attr,optional"`
-	IncludeScopeInfo              bool                 `river:"include_scope_info,attr,optional"`
-	IncludeScopeLabels            bool                 `river:"include_scope_labels,attr,optional"`
-	GCFrequency                   time.Duration        `river:"gc_frequency,attr,optional"`
-	ForwardTo                     []storage.Appendable `river:"forward_to,attr"`
-	AddMetricSuffixes             bool                 `river:"add_metric_suffixes,attr,optional"`
-	ResourceToTelemetryConversion bool                 `river:"resource_to_telemetry_conversion,attr,optional"`
+	IncludeTargetInfo             bool                 `alloy:"include_target_info,attr,optional"`
+	IncludeScopeInfo              bool                 `alloy:"include_scope_info,attr,optional"`
+	IncludeScopeLabels            bool                 `alloy:"include_scope_labels,attr,optional"`
+	GCFrequency                   time.Duration        `alloy:"gc_frequency,attr,optional"`
+	ForwardTo                     []storage.Appendable `alloy:"forward_to,attr"`
+	AddMetricSuffixes             bool                 `alloy:"add_metric_suffixes,attr,optional"`
+	ResourceToTelemetryConversion bool                 `alloy:"resource_to_telemetry_conversion,attr,optional"`
 }
 
 // DefaultArguments holds defaults values.
@@ -52,12 +52,12 @@ var DefaultArguments = Arguments{
 	ResourceToTelemetryConversion: false,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.GCFrequency == 0 {
 		return fmt.Errorf("gc_frequency must be greater than 0")

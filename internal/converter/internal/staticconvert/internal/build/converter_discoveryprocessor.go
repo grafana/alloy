@@ -3,16 +3,16 @@ package build
 import (
 	"fmt"
 
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/otelcol"
-	otelcol_discovery "github.com/grafana/agent/internal/component/otelcol/processor/discovery"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/otelcolconvert"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	prometheus_component "github.com/grafana/agent/internal/converter/internal/prometheusconvert/component"
-	"github.com/grafana/agent/internal/static/traces/promsdprocessor"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcol_discovery "github.com/grafana/alloy/internal/component/otelcol/processor/discovery"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/otelcolconvert"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
+	prometheus_component "github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
+	"github.com/grafana/alloy/internal/static/traces/promsdprocessor"
 	prom_config "github.com/prometheus/prometheus/config"
 	"go.opentelemetry.io/collector/component"
 	"gopkg.in/yaml.v3"
@@ -33,7 +33,7 @@ func (discoveryProcessorConverter) InputComponentName() string {
 }
 
 func (discoveryProcessorConverter) ConvertAndAppend(state *otelcolconvert.State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	args, diags := toDiscoveryProcessor(state, id, cfg.(*promsdprocessor.Config), label)
 	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "discovery"}, label, args)

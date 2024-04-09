@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/loki/process/metric"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 )
@@ -33,16 +33,16 @@ var (
 )
 
 // MetricConfig is a single metrics configuration.
-// TODO(@tpaschalis) Rework once River squashing is implemented.
+// TODO(@tpaschalis) Rework once Alloy squashing is implemented.
 type MetricConfig struct {
-	Counter   *metric.CounterConfig   `river:"counter,block,optional"`
-	Gauge     *metric.GaugeConfig     `river:"gauge,block,optional"`
-	Histogram *metric.HistogramConfig `river:"histogram,block,optional"`
+	Counter   *metric.CounterConfig   `alloy:"counter,block,optional"`
+	Gauge     *metric.GaugeConfig     `alloy:"gauge,block,optional"`
+	Histogram *metric.HistogramConfig `alloy:"histogram,block,optional"`
 }
 
 // MetricsConfig is a set of configured metrics.
 type MetricsConfig struct {
-	Metrics []MetricConfig `river:"metric,enum,optional"`
+	Metrics []MetricConfig `alloy:"metric,enum,optional"`
 }
 
 type cfgCollector struct {

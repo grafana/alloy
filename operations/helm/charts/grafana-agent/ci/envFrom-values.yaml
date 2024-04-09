@@ -1,5 +1,0 @@
-# Specify extra ports for verifying rendering the template works
-agent:
-  envFrom:
-    - configMapRef:
-        name: special-config

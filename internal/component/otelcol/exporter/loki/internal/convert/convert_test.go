@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/otelcol/exporter/loki/internal/convert"
-	"github.com/grafana/agent/internal/component/otelcol/processor/processortest"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/loki/internal/convert"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/processortest"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -312,7 +312,7 @@ func TestConsumeLogs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
-			logger := util.TestFlowLogger(t)
+			logger := util.TestAlloyLogger(t)
 			promReg := prometheus.NewRegistry()
 			receiver := loki.NewLogsReceiverWithChannel(make(chan loki.Entry, maxTestedLogEntries))
 

@@ -4,16 +4,16 @@ import (
 	"testing"
 	"time"
 
-	commonCfg "github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/static/integrations/elasticsearch_exporter"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	commonCfg "github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/static/integrations/elasticsearch_exporter"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promCfg "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverConfig := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyConfig := `
 	address              = "http://localhost:9300"
 	timeout              = "10s"
 	all                  = true
@@ -37,7 +37,7 @@ func TestRiverUnmarshal(t *testing.T) {
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
@@ -59,7 +59,7 @@ func TestRiverUnmarshal(t *testing.T) {
 		ExportSLM:                 true,
 		BasicAuth: &commonCfg.BasicAuth{
 			Username: "username",
-			Password: rivertypes.Secret("pass"),
+			Password: alloytypes.Secret("pass"),
 		},
 	}
 
@@ -67,7 +67,7 @@ func TestRiverUnmarshal(t *testing.T) {
 }
 
 func TestConvert(t *testing.T) {
-	riverConfig := `
+	alloyConfig := `
 	address              = "http://localhost:9300"
 	timeout              = "10s"
 	all                  = true
@@ -90,7 +90,7 @@ func TestConvert(t *testing.T) {
 	}
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	res := args.Convert()

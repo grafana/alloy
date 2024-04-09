@@ -4,41 +4,41 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/grafana/agent/internal/static/integrations/squid_exporter"
-	"github.com/grafana/river"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/static/integrations/squid_exporter"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverUnmarshal(t *testing.T) {
-	riverConfig := `
+func TestAlloyUnmarshal(t *testing.T) {
+	alloyConfig := `
 	address  = "some_address:port"
 	username = "some_user"
 	password = "some_password"
 	`
 
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	expected := Arguments{
 		SquidAddr:     "some_address:port",
 		SquidUser:     "some_user",
-		SquidPassword: rivertypes.Secret("some_password"),
+		SquidPassword: alloytypes.Secret("some_password"),
 	}
 
 	require.Equal(t, expected, args)
 }
 
 func TestConvert(t *testing.T) {
-	riverConfig := `
+	alloyConfig := `
 	address  = "some_address:port"
 	username = "some_user"
 	password = "some_password"
 	`
 	var args Arguments
-	err := river.Unmarshal([]byte(riverConfig), &args)
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
 	require.NoError(t, err)
 
 	res := args.Convert()

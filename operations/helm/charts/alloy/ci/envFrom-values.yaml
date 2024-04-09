@@ -1,0 +1,5 @@
+# Specify extra ports for verifying rendering the template works
+alloy:
+  envFrom:
+    - configMapRef:
+        name: special-config

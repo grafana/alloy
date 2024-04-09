@@ -1,4 +1,4 @@
-// Package http implements the HTTP service for Flow.
+// Package http implements the HTTP service.
 package http
 
 import (
@@ -15,12 +15,12 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/service"
-	"github.com/grafana/agent/internal/static/server"
+	"github.com/grafana/alloy/internal/alloy"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/static/server"
 	"github.com/grafana/ckit/memconn"
 	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof" // Register godeltaprof handler
 	"github.com/prometheus/client_golang/prometheus"
@@ -43,7 +43,7 @@ type Options struct {
 	Gatherer prometheus.Gatherer  // Where to collect metrics from.
 
 	ReadyFunc  func() bool
-	ReloadFunc func() (*flow.Source, error)
+	ReloadFunc func() (*alloy.Source, error)
 
 	HTTPListenAddr   string // Address to listen for HTTP traffic on.
 	MemoryListenAddr string // Address to accept in-memory traffic on.
@@ -52,7 +52,7 @@ type Options struct {
 
 // Arguments holds runtime settings for the HTTP service.
 type Arguments struct {
-	TLS *TLSArguments `river:"tls,block,optional"`
+	TLS *TLSArguments `alloy:"tls,block,optional"`
 }
 
 type Service struct {
@@ -129,7 +129,7 @@ func (s *Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  nil, // http has no dependencies.
-		Stability:  featuregate.StabilityStable,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 
@@ -159,7 +159,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	r := mux.NewRouter()
 	r.Use(otelmux.Middleware(
-		"grafana-agent",
+		"alloy",
 		otelmux.WithTracerProvider(s.tracer),
 	))
 
@@ -177,10 +177,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.HandleFunc("/-/ready", func(w http.ResponseWriter, _ *http.Request) {
 			if s.opts.ReadyFunc() {
 				w.WriteHeader(http.StatusOK)
-				fmt.Fprintln(w, "Agent is ready.")
+				fmt.Fprintln(w, "Alloy is ready.")
 			} else {
 				w.WriteHeader(http.StatusServiceUnavailable)
-				fmt.Fprintln(w, "Agent is not ready.")
+				fmt.Fprintln(w, "Alloy is not ready.")
 			}
 		})
 	}
@@ -384,7 +384,7 @@ func (d Data) HTTPPathForComponent(componentID string) string {
 	return merged
 }
 
-// Component is a Flow component which also contains a custom HTTP handler.
+// Component is a component which also contains a custom HTTP handler.
 type Component interface {
 	component.Component
 

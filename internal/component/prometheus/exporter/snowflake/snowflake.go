@@ -1,19 +1,19 @@
 package snowflake
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/snowflake_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/snowflake_exporter"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.snowflake",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 
@@ -33,14 +33,14 @@ var DefaultArguments = Arguments{
 
 // Arguments controls the snowflake exporter.
 type Arguments struct {
-	AccountName string            `river:"account_name,attr"`
-	Username    string            `river:"username,attr"`
-	Password    rivertypes.Secret `river:"password,attr"`
-	Role        string            `river:"role,attr,optional"`
-	Warehouse   string            `river:"warehouse,attr"`
+	AccountName string            `alloy:"account_name,attr"`
+	Username    string            `alloy:"username,attr"`
+	Password    alloytypes.Secret `alloy:"password,attr"`
+	Role        string            `alloy:"role,attr,optional"`
+	Warehouse   string            `alloy:"warehouse,attr"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }

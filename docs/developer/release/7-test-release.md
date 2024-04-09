@@ -6,4 +6,4 @@ Validate the new version is working by running it.
 
 1. Validate performance metrics are consistent with the prior version.
 
-2. Validate Flow components are healthy.
+2. Validate components are healthy.

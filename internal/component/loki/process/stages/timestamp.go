@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/common/model"
 
@@ -44,11 +44,11 @@ var TimestampActionOnFailureOptions = []string{TimestampActionOnFailureSkip, Tim
 
 // TimestampConfig configures a processing stage for timestamp extraction.
 type TimestampConfig struct {
-	Source          string   `river:"source,attr"`
-	Format          string   `river:"format,attr"`
-	FallbackFormats []string `river:"fallback_formats,attr,optional"`
-	Location        *string  `river:"location,attr,optional"`
-	ActionOnFailure string   `river:"action_on_failure,attr,optional"`
+	Source          string   `alloy:"source,attr"`
+	Format          string   `alloy:"format,attr"`
+	FallbackFormats []string `alloy:"fallback_formats,attr,optional"`
+	Location        *string  `alloy:"location,attr,optional"`
+	ActionOnFailure string   `alloy:"action_on_failure,attr,optional"`
 }
 
 type parser func(string) (time.Time, error)

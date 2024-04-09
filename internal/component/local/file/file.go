@@ -10,11 +10,11 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/featuregate"
-	filedetector "github.com/grafana/agent/internal/filedetector"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	filedetector "github.com/grafana/alloy/internal/filedetector"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 // waitReadPeriod holds the time to wait before reading a file while the
@@ -27,7 +27,7 @@ const waitReadPeriod time.Duration = 30 * time.Millisecond
 func init() {
 	component.Register(component.Registration{
 		Name:      "local.file",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -40,15 +40,15 @@ func init() {
 // Arguments holds values which are used to configure the local.file component.
 type Arguments struct {
 	// Filename indicates the file to watch.
-	Filename string `river:"filename,attr"`
+	Filename string `alloy:"filename,attr"`
 	// Type indicates how to detect changes to the file.
-	Type filedetector.Detector `river:"detector,attr,optional"`
+	Type filedetector.Detector `alloy:"detector,attr,optional"`
 	// PollFrequency determines the frequency to check for changes when Type is
 	// Poll.
-	PollFrequency time.Duration `river:"poll_frequency,attr,optional"`
+	PollFrequency time.Duration `alloy:"poll_frequency,attr,optional"`
 	// IsSecret marks the file as holding a secret value which should not be
 	// displayed to the user.
-	IsSecret bool `river:"is_secret,attr,optional"`
+	IsSecret bool `alloy:"is_secret,attr,optional"`
 }
 
 // DefaultArguments provides the default arguments for the local.file
@@ -58,7 +58,7 @@ var DefaultArguments = Arguments{
 	PollFrequency: time.Minute,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
@@ -66,7 +66,7 @@ func (a *Arguments) SetToDefault() {
 // Exports holds values which are exported by the local.file component.
 type Exports struct {
 	// Content of the file.
-	Content rivertypes.OptionalSecret `river:"content,attr"`
+	Content alloytypes.OptionalSecret `alloy:"content,attr"`
 }
 
 // Component implements the local.file component.
@@ -99,7 +99,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 		reloadCh: make(chan struct{}, 1),
 		lastAccessed: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "agent_local_file_timestamp_last_accessed_unix_seconds",
+			Name: "local_file_timestamp_last_accessed_unix_seconds",
 			Help: "The last successful access in unix seconds",
 		}),
 	}
@@ -173,7 +173,7 @@ func (c *Component) readFile() error {
 	c.lastAccessed.SetToCurrentTime()
 
 	c.opts.OnStateChange(Exports{
-		Content: rivertypes.OptionalSecret{
+		Content: alloytypes.OptionalSecret{
 			IsSecret: c.args.IsSecret,
 			Value:    c.latestContent,
 		},

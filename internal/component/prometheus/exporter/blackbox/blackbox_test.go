@@ -4,17 +4,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/syntax"
 	blackbox_config "github.com/prometheus/blackbox_exporter/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
 
-func TestUnmarshalRiver(t *testing.T) {
-	riverCfg := `
+func TestUnmarshalAlloy(t *testing.T) {
+	alloyCfg := `
 		config_file = "modules.yml"
 		target {
 			name = "target_a"
@@ -29,7 +29,7 @@ func TestUnmarshalRiver(t *testing.T) {
 		probe_timeout_offset = "0.5s"
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "modules.yml", args.ConfigFile)
 	require.Equal(t, 2, len(args.Targets))
@@ -42,8 +42,8 @@ func TestUnmarshalRiver(t *testing.T) {
 	require.Contains(t, "http_2xx", args.Targets[1].Module)
 }
 
-func TestUnmarshalRiverWithInlineConfig(t *testing.T) {
-	riverCfg := `
+func TestUnmarshalAlloyWithInlineConfig(t *testing.T) {
+	alloyCfg := `
 		config = "{ modules: { http_2xx: { prober: http, timeout: 5s } } }"
 
 		target {
@@ -59,7 +59,7 @@ func TestUnmarshalRiverWithInlineConfig(t *testing.T) {
 		probe_timeout_offset = "0.5s"
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "", args.ConfigFile)
 	var blackboxConfig blackbox_config.Config
@@ -77,8 +77,8 @@ func TestUnmarshalRiverWithInlineConfig(t *testing.T) {
 	require.Contains(t, "http_2xx", args.Targets[1].Module)
 }
 
-func TestUnmarshalRiverWithInlineConfigYaml(t *testing.T) {
-	riverCfg := `
+func TestUnmarshalAlloyWithInlineConfigYaml(t *testing.T) {
+	alloyCfg := `
 		config = "modules:\n  http_2xx:\n    prober: http\n    timeout: 5s\n"
 
 		target {
@@ -94,7 +94,7 @@ func TestUnmarshalRiverWithInlineConfigYaml(t *testing.T) {
 		probe_timeout_offset = "0.5s"
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(riverCfg), &args)
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, "", args.ConfigFile)
 	var blackboxConfig blackbox_config.Config
@@ -112,7 +112,7 @@ func TestUnmarshalRiverWithInlineConfigYaml(t *testing.T) {
 	require.Contains(t, "http_2xx", args.Targets[1].Module)
 }
 
-func TestUnmarshalRiverWithInvalidConfig(t *testing.T) {
+func TestUnmarshalAlloyWithInvalidConfig(t *testing.T) {
 	var tests = []struct {
 		testname      string
 		cfg           string
@@ -183,7 +183,7 @@ func TestUnmarshalRiverWithInvalidConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testname, func(t *testing.T) {
 			var args Arguments
-			require.EqualError(t, river.Unmarshal([]byte(tt.cfg), &args), tt.expectedError)
+			require.EqualError(t, syntax.Unmarshal([]byte(tt.cfg), &args), tt.expectedError)
 		})
 	}
 }

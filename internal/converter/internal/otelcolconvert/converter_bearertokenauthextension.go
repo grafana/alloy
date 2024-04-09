@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component/local/file"
-	"github.com/grafana/agent/internal/component/otelcol/auth/bearer"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/river/rivertypes"
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/internal/component/local/file"
+	"github.com/grafana/alloy/internal/component/otelcol/auth/bearer"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
 	"go.opentelemetry.io/collector/component"
 )
@@ -29,7 +29,7 @@ func (bearerTokenAuthExtensionConverter) InputComponentName() string { return "o
 func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 
 	bcfg := cfg.(*bearertokenauthextension.Config)
 	var block *builder.Block
@@ -41,7 +41,7 @@ func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id compo
 		args, fileContents := toBearerTokenAuthExtensionWithFilename(state, bcfg)
 		overrideHook := func(val interface{}) interface{} {
 			switch value := val.(type) {
-			case rivertypes.Secret:
+			case alloytypes.Secret:
 				return common.CustomTokenizer{Expr: fileContents}
 			default:
 				return value
@@ -62,11 +62,12 @@ func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id compo
 func toBearerTokenAuthExtension(cfg *bearertokenauthextension.Config) *bearer.Arguments {
 	return &bearer.Arguments{
 		Scheme: cfg.Scheme,
-		Token:  rivertypes.Secret(string(cfg.BearerToken)),
+		Token:  alloytypes.Secret(string(cfg.BearerToken)),
 	}
 }
+
 func toBearerTokenAuthExtensionWithFilename(state *State, cfg *bearertokenauthextension.Config) (*bearer.Arguments, string) {
-	label := state.FlowComponentLabel()
+	label := state.AlloyComponentLabel()
 	args := &file.Arguments{
 		Filename:      cfg.Filename,
 		Type:          file.DefaultArguments.Type, // Using the default type (fsnotify) since that's what upstream also uses.

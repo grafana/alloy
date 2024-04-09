@@ -3,22 +3,22 @@ package process
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery"
 )
 
 type Arguments struct {
-	Join            []discovery.Target `river:"join,attr,optional"`
-	RefreshInterval time.Duration      `river:"refresh_interval,attr,optional"`
-	DiscoverConfig  DiscoverConfig     `river:"discover_config,block,optional"`
+	Join            []discovery.Target `alloy:"join,attr,optional"`
+	RefreshInterval time.Duration      `alloy:"refresh_interval,attr,optional"`
+	DiscoverConfig  DiscoverConfig     `alloy:"discover_config,block,optional"`
 }
 
 type DiscoverConfig struct {
-	Cwd         bool `river:"cwd,attr,optional"`
-	Exe         bool `river:"exe,attr,optional"`
-	Commandline bool `river:"commandline,attr,optional"`
-	Username    bool `river:"username,attr,optional"`
-	UID         bool `river:"uid,attr,optional"`
-	ContainerID bool `river:"container_id,attr,optional"`
+	Cwd         bool `alloy:"cwd,attr,optional"`
+	Exe         bool `alloy:"exe,attr,optional"`
+	Commandline bool `alloy:"commandline,attr,optional"`
+	Username    bool `alloy:"username,attr,optional"`
+	UID         bool `alloy:"uid,attr,optional"`
+	ContainerID bool `alloy:"container_id,attr,optional"`
 }
 
 var DefaultConfig = Arguments{

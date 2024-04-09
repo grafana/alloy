@@ -4,15 +4,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRiverConfig(t *testing.T) {
-	var exampleRiverConfig = `
+func TestAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
 	refresh_interval = "10s"
 	port = 8080
 	tag_separator = ";"
@@ -22,12 +22,12 @@ func TestRiverConfig(t *testing.T) {
 	}
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(exampleRiverConfig), &args)
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
 
 func TestConvert(t *testing.T) {
-	riverArgs := Arguments{
+	alloyArgs := Arguments{
 		Port:            8080,
 		RefreshInterval: 15 * time.Second,
 		TagSeparator:    ";",
@@ -40,7 +40,7 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	promArgs := riverArgs.Convert()
+	promArgs := alloyArgs.Convert()
 	require.Equal(t, 8080, promArgs.Port)
 	require.Equal(t, model.Duration(15*time.Second), promArgs.RefreshInterval)
 	require.Equal(t, ";", promArgs.TagSeparator)
@@ -51,10 +51,10 @@ func TestConvert(t *testing.T) {
 
 func TestValidate(t *testing.T) {
 	t.Run("validate RefreshInterval", func(t *testing.T) {
-		riverArgs := Arguments{
+		alloyArgs := Arguments{
 			RefreshInterval: 0,
 		}
-		err := riverArgs.Validate()
+		err := alloyArgs.Validate()
 		require.ErrorContains(t, err, "refresh_interval must be greater than 0")
 	})
 }

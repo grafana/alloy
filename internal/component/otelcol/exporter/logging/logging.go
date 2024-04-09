@@ -2,10 +2,10 @@
 package logging
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/exporter"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
 	loggingexporter "go.opentelemetry.io/collector/exporter/loggingexporter"
@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.logging",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -28,17 +28,17 @@ func init() {
 
 // Arguments configures the otelcol.exporter.logging component.
 type Arguments struct {
-	Verbosity          configtelemetry.Level `river:"verbosity,attr,optional"`
-	SamplingInitial    int                   `river:"sampling_initial,attr,optional"`
-	SamplingThereafter int                   `river:"sampling_thereafter,attr,optional"`
+	Verbosity          configtelemetry.Level `alloy:"verbosity,attr,optional"`
+	SamplingInitial    int                   `alloy:"sampling_initial,attr,optional"`
+	SamplingThereafter int                   `alloy:"sampling_thereafter,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 var _ exporter.Arguments = Arguments{}
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		Verbosity:          configtelemetry.LevelNormal,

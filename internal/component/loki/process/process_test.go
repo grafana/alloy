@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/loki/process/stages"
-	lsf "github.com/grafana/agent/internal/component/loki/source/file"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/loki/process/stages"
+	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/logproto"
-	"github.com/grafana/river"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -60,21 +60,21 @@ func TestJSONLabelsStage(t *testing.T) {
 			    }
 			}`
 
-	// Unmarshal the River relabel rules into a custom struct, as we don't have
+	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
-		Stages []stages.StageConfig `river:"stage,enum"`
+		Stages []stages.StageConfig `alloy:"stage,enum"`
 	}
 	var stagesCfg cfg
-	err := river.Unmarshal([]byte(stg), &stagesCfg)
+	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
 	require.NoError(t, err)
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -147,21 +147,21 @@ stage.label_keep {
     values = [ "foo", "baz", "filename" ]
 }`
 
-	// Unmarshal the River relabel rules into a custom struct, as we don't have
+	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
-		Stages []stages.StageConfig `river:"stage,enum"`
+		Stages []stages.StageConfig `alloy:"stage,enum"`
 	}
 	var stagesCfg cfg
-	err := river.Unmarshal([]byte(stg), &stagesCfg)
+	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
 	require.NoError(t, err)
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -242,21 +242,21 @@ stage.labels {
 		values = { src = "stream" }
 }`
 
-	// Unmarshal the River relabel rules into a custom struct, as we don't have
+	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
-		Stages []stages.StageConfig `river:"stage,enum"`
+		Stages []stages.StageConfig `alloy:"stage,enum"`
 	}
 	var stagesCfg cfg
-	err := river.Unmarshal([]byte(stg), &stagesCfg)
+	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
 	require.NoError(t, err)
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -328,8 +328,8 @@ stage.static_labels {
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 	var args1, args2 Arguments
-	require.NoError(t, river.Unmarshal([]byte(stg1), &args1))
-	require.NoError(t, river.Unmarshal([]byte(stg2), &args2))
+	require.NoError(t, syntax.Unmarshal([]byte(stg1), &args1))
+	require.NoError(t, syntax.Unmarshal([]byte(stg2), &args2))
 	args1.ForwardTo = []loki.LogsReceiver{ch1}
 	args2.ForwardTo = []loki.LogsReceiver{ch2}
 
@@ -408,21 +408,21 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 			    }
 			}`
 
-	// Unmarshal the River relabel rules into a custom struct, as we don't have
+	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
 	// an easy way to refer to a loki.LogsReceiver value for the forward_to
 	// argument.
 	type cfg struct {
-		Stages []stages.StageConfig `river:"stage,enum"`
+		Stages []stages.StageConfig `alloy:"stage,enum"`
 	}
 	var stagesCfg cfg
-	err := river.Unmarshal([]byte(stg), &stagesCfg)
+	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
 	require.NoError(t, err)
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestFlowLogger(t),
+		Logger:        util.TestAlloyLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}

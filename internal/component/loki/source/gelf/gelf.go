@@ -4,11 +4,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/loki"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/loki/source/gelf/internal/target"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/gelf/internal/target"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.gelf",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -78,7 +78,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	var rcs []*relabel.Config
 	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
-		rcs = flow_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
 	t, err := target.NewTarget(c.metrics, c.o.Logger, c.handler, rcs, convertConfig(newArgs))
@@ -92,10 +92,10 @@ func (c *Component) Update(args component.Arguments) error {
 // Arguments are the arguments for the component.
 type Arguments struct {
 	// ListenAddress only supports UDP.
-	ListenAddress        string              `river:"listen_address,attr,optional"`
-	UseIncomingTimestamp bool                `river:"use_incoming_timestamp,attr,optional"`
-	RelabelRules         flow_relabel.Rules  `river:"relabel_rules,attr,optional"`
-	Receivers            []loki.LogsReceiver `river:"forward_to,attr"`
+	ListenAddress        string              `alloy:"listen_address,attr,optional"`
+	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
+	RelabelRules         alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
+	Receivers            []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
 
 func defaultArgs() Arguments {
@@ -105,7 +105,7 @@ func defaultArgs() Arguments {
 	}
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (r *Arguments) SetToDefault() {
 	*r = defaultArgs()
 }

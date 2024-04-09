@@ -1,6 +1,7 @@
-// package useragent provides a consistent way to get a user agent for outbound http requests from Grafana Agent.
-// The default User-Agent is `GrafanaAgent/$VERSION($MODE)`
-// Where version is the build version of the agent and MODE is one of "static" or "flow".
+// package useragent provides a consistent way to get a user agent for outbound
+// http requests from Grafana Alloy. The default User-Agent is `Alloy/VERSION
+// (METADATA)`, where VERSION is the build version of Alloy and METADATA
+// includes information about how Alloy was deployed.
 package useragent
 
 import (
@@ -9,12 +10,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/grafana/agent/internal/build"
+	"github.com/grafana/alloy/internal/build"
 )
 
 const (
-	deployModeEnv = "AGENT_DEPLOY_MODE"
-	modeEnv       = "AGENT_MODE"
+	ProductName = "Alloy"
+
+	deployModeEnv = "ALLOY_DEPLOY_MODE"
 )
 
 // settable by tests
@@ -24,9 +26,6 @@ var executable = os.Executable
 func Get() string {
 	parenthesis := ""
 	metadata := []string{}
-	if mode := getRunMode(); mode != "" {
-		metadata = append(metadata, mode)
-	}
 	metadata = append(metadata, goos)
 	if op := GetDeployMode(); op != "" {
 		metadata = append(metadata, op)
@@ -34,23 +33,10 @@ func Get() string {
 	if len(metadata) > 0 {
 		parenthesis = fmt.Sprintf(" (%s)", strings.Join(metadata, "; "))
 	}
-	return fmt.Sprintf("GrafanaAgent/%s%s", build.Version, parenthesis)
+	return fmt.Sprintf("%s/%s%s", ProductName, build.Version, parenthesis)
 }
 
-// getRunMode attempts to get agent mode, using `unknown` for invalid values.
-func getRunMode() string {
-	key := os.Getenv(modeEnv)
-	switch key {
-	case "flow":
-		return "flow"
-	case "static", "":
-		return "static"
-	default:
-		return "unknown"
-	}
-}
-
-// GetDeployMode returns our best-effort guess at the way Grafana Agent was deployed.
+// GetDeployMode returns our best-effort guess at the way Grafana Alloy was deployed.
 func GetDeployMode() string {
 	op := os.Getenv(deployModeEnv)
 	// only return known modes. Use "binary" as a default catch-all.

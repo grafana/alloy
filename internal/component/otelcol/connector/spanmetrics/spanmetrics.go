@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/connector"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/connector"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -18,7 +18,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.connector.spanmetrics",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -38,16 +38,16 @@ type Arguments struct {
 	// - status.code
 	// The dimensions will be fetched from the span's attributes. Examples of some conventionally used attributes:
 	// https://github.com/open-telemetry/opentelemetry-collector/blob/main/model/semconv/opentelemetry.go.
-	Dimensions        []Dimension `river:"dimension,block,optional"`
-	ExcludeDimensions []string    `river:"exclude_dimensions,attr,optional"`
+	Dimensions        []Dimension `alloy:"dimension,block,optional"`
+	ExcludeDimensions []string    `alloy:"exclude_dimensions,attr,optional"`
 
 	// DimensionsCacheSize defines the size of cache for storing Dimensions, which helps to avoid cache memory growing
 	// indefinitely over the lifetime of the collector.
-	DimensionsCacheSize int `river:"dimensions_cache_size,attr,optional"`
+	DimensionsCacheSize int `alloy:"dimensions_cache_size,attr,optional"`
 
 	// ResourceMetricsCacheSize defines the size of the cache holding metrics for a service. This is mostly relevant for
 	// cumulative temporality to avoid memory leaks and correct metric timestamp resets.
-	ResourceMetricsCacheSize int `river:"resource_metrics_cache_size,attr,optional"`
+	ResourceMetricsCacheSize int `alloy:"resource_metrics_cache_size,attr,optional"`
 
 	// ResourceMetricsKeyAttributes filters the resource attributes used to create the resource metrics key hash.
 	// This can be used to avoid situations where resource attributes may change across service restarts, causing
@@ -56,31 +56,31 @@ type Arguments struct {
 	// than one service and span.
 	// e.g. ["service.name", "telemetry.sdk.language", "telemetry.sdk.name"]
 	// See https://opentelemetry.io/docs/specs/semconv/resource/ for possible attributes.
-	ResourceMetricsKeyAttributes []string `river:"resource_metrics_key_attributes,attr,optional"`
+	ResourceMetricsKeyAttributes []string `alloy:"resource_metrics_key_attributes,attr,optional"`
 
-	AggregationTemporality string `river:"aggregation_temporality,attr,optional"`
+	AggregationTemporality string `alloy:"aggregation_temporality,attr,optional"`
 
-	Histogram HistogramConfig `river:"histogram,block"`
+	Histogram HistogramConfig `alloy:"histogram,block"`
 
 	// MetricsEmitInterval is the time period between when metrics are flushed or emitted to the downstream components.
-	MetricsFlushInterval time.Duration `river:"metrics_flush_interval,attr,optional"`
+	MetricsFlushInterval time.Duration `alloy:"metrics_flush_interval,attr,optional"`
 
 	// Namespace is the namespace of the metrics emitted by the connector.
-	Namespace string `river:"namespace,attr,optional"`
+	Namespace string `alloy:"namespace,attr,optional"`
 
 	// Exemplars defines the configuration for exemplars.
-	Exemplars ExemplarsConfig `river:"exemplars,block,optional"`
+	Exemplars ExemplarsConfig `alloy:"exemplars,block,optional"`
 
 	// Events defines the configuration for events section of spans.
-	Events EventsConfig `river:"events,block,optional"`
+	Events EventsConfig `alloy:"events,block,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (
-	_ river.Validator     = (*Arguments)(nil)
-	_ river.Defaulter     = (*Arguments)(nil)
+	_ syntax.Validator    = (*Arguments)(nil)
+	_ syntax.Defaulter    = (*Arguments)(nil)
 	_ connector.Arguments = (*Arguments)(nil)
 )
 
@@ -97,12 +97,12 @@ var DefaultArguments = Arguments{
 	ResourceMetricsCacheSize: 1000,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.DimensionsCacheSize <= 0 {
 		return fmt.Errorf(

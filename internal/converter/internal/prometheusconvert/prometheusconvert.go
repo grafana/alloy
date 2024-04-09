@@ -5,17 +5,17 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/remotewrite"
-	"github.com/grafana/agent/internal/converter/diag"
-	"github.com/grafana/agent/internal/converter/internal/common"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/agent/internal/converter/internal/prometheusconvert/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
 	prom_config "github.com/prometheus/prometheus/config"
 	prom_discover "github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/storage"
 
-	"github.com/grafana/river/token/builder"
+	"github.com/grafana/alloy/syntax/token/builder"
 	_ "github.com/prometheus/prometheus/discovery/install" // Register Prometheus SDs
 )
 
@@ -43,7 +43,7 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 
 	var buf bytes.Buffer
 	if _, err := f.WriteTo(&buf); err != nil {
-		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to render Flow config: %s", err.Error()))
+		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to render Alloy config: %s", err.Error()))
 		return nil, diags
 	}
 
@@ -57,16 +57,16 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 }
 
 // AppendAll analyzes the entire prometheus config in memory and transforms it
-// into Flow Arguments. It then appends each argument to the file builder.
-// Exports from other components are correctly referenced to build the Flow
-// pipeline.
+// into Alloy component Arguments. It then appends each argument to the file
+// builder. Exports from other components are correctly referenced to build the
+// Alloy pipeline.
 func AppendAll(f *builder.File, promConfig *prom_config.Config) diag.Diagnostics {
 	return AppendAllNested(f, promConfig, nil, []discovery.Target{}, nil)
 }
 
 // AppendAllNested analyzes the entire prometheus config in memory and transforms it
-// into Flow Arguments. It then appends each argument to the file builder.
-// Exports from other components are correctly referenced to build the Flow
+// into Alloy component Arguments. It then appends each argument to the file builder.
+// Exports from other components are correctly referenced to build the Alloy
 // pipeline. Additional options can be provided overriding the job name, extra
 // scrape targets, and predefined remote write exports.
 func AppendAllNested(f *builder.File, promConfig *prom_config.Config, jobNameToCompLabelsFunc func(string) string, extraScrapeTargets []discovery.Target, remoteWriteExports *remotewrite.Exports) diag.Diagnostics {

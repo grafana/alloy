@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/discovery/ovhcloud"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/component/discovery/ovhcloud"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	prom_ovh "github.com/prometheus/prometheus/discovery/ovhcloud"
 	"github.com/stretchr/testify/require"
@@ -119,7 +119,7 @@ func TestUnmarshal(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args ovhcloud.Arguments
-			err := river.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			if tc.errorMsg != "" {
 				require.ErrorContains(t, err, tc.errorMsg)
 				return

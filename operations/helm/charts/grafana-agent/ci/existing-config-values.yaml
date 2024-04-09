@@ -1,5 +1,0 @@
-agent:
-  configMap:
-    create: false
-    name: existing-config
-    key: my-config.river

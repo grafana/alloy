@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
@@ -23,7 +23,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 
-	fnet "github.com/grafana/agent/internal/component/common/net"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
 )
 
 const localhost = "127.0.0.1"

@@ -10,18 +10,14 @@ import (
 	"unicode"
 
 	"github.com/drone/envsubst/v2"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/grafana/agent/internal/build"
-	"github.com/grafana/agent/internal/static/config/encoder"
-	"github.com/grafana/agent/internal/static/config/features"
-	"github.com/grafana/agent/internal/static/config/instrumentation"
-	"github.com/grafana/agent/internal/static/logs"
-	"github.com/grafana/agent/internal/static/metrics"
-	"github.com/grafana/agent/internal/static/server"
-	"github.com/grafana/agent/internal/static/traces"
-	"github.com/grafana/agent/internal/util"
-	"github.com/prometheus/common/config"
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/static/config/encoder"
+	"github.com/grafana/alloy/internal/static/config/features"
+	"github.com/grafana/alloy/internal/static/logs"
+	"github.com/grafana/alloy/internal/static/metrics"
+	"github.com/grafana/alloy/internal/static/server"
+	"github.com/grafana/alloy/internal/static/traces"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
@@ -62,7 +58,7 @@ func DefaultConfig() Config {
 	}
 }
 
-// Config contains underlying configurations for the agent
+// Config contains underlying configurations for Grafana Agent static mode.
 type Config struct {
 	Server          *server.Config        `yaml:"server,omitempty"`
 	Metrics         metrics.Config        `yaml:"metrics,omitempty"`
@@ -166,14 +162,6 @@ func (c Config) MarshalYAML() (interface{}, error) {
 	return m, nil
 }
 
-// LogDeprecations will log use of any deprecated fields to l as warn-level
-// messages.
-func (c *Config) LogDeprecations(l log.Logger) {
-	for _, d := range c.Deprecations {
-		level.Warn(l).Log("msg", fmt.Sprintf("DEPRECATION NOTICE: %s", d))
-	}
-}
-
 // Validate validates the config, flags, and sets default values.
 func (c *Config) Validate(fs *flag.FlagSet) error {
 	if c.Server == nil {
@@ -243,101 +231,6 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	f.BoolVar(&c.EnableConfigEndpoints, "config.enable-read-api", false, "Enables the /-/config and /agent/api/v1/configs/{name} APIs. Be aware that secrets could be exposed by enabling these endpoints!")
 }
 
-// LoadFile reads a file and passes the contents to Load
-func LoadFile(filename string, expandEnvVars bool, c *Config) error {
-	buf, err := os.ReadFile(filename)
-	if err != nil {
-		return fmt.Errorf("error reading config file %w", err)
-	}
-	instrumentation.InstrumentConfig(buf)
-	return LoadBytes(buf, expandEnvVars, c)
-}
-
-// loadFromAgentManagementAPI loads and merges a config from an Agent Management API.
-//  1. Read local initial config.
-//  2. Get the remote config.
-//     a) Fetch from remote. If this fails or is invalid:
-//     b) Read the remote config from cache. If this fails, return an error.
-//  4. Merge the initial and remote config into c.
-func loadFromAgentManagementAPI(path string, expandEnvVars bool, c *Config, log *server.Logger, fs *flag.FlagSet) error {
-	// Load the initial config from disk without instrumenting the config hash
-	buf, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("error reading initial config file %w", err)
-	}
-
-	err = LoadBytes(buf, expandEnvVars, c)
-	if err != nil {
-		return fmt.Errorf("failed to load initial config: %w", err)
-	}
-
-	configProvider, err := newRemoteConfigProvider(c)
-	if err != nil {
-		return err
-	}
-	remoteConfig, err := getRemoteConfig(expandEnvVars, configProvider, log, fs, true)
-	if err != nil {
-		return err
-	}
-	mergeEffectiveConfig(c, remoteConfig)
-
-	effectiveConfigBytes, err := yaml.Marshal(c)
-	if err != nil {
-		level.Warn(log).Log("msg", "error marshalling config for instrumenting config version", "err", err)
-	} else {
-		instrumentation.InstrumentConfig(effectiveConfigBytes)
-	}
-
-	return nil
-}
-
-// mergeEffectiveConfig overwrites any values in initialConfig with those in remoteConfig
-func mergeEffectiveConfig(initialConfig *Config, remoteConfig *Config) {
-	initialConfig.Server = remoteConfig.Server
-	initialConfig.Metrics = remoteConfig.Metrics
-	initialConfig.Integrations = remoteConfig.Integrations
-	initialConfig.Traces = remoteConfig.Traces
-	initialConfig.Logs = remoteConfig.Logs
-}
-
-// LoadRemote reads a config from url
-func LoadRemote(url string, expandEnvVars bool, c *Config) error {
-	remoteOpts := &remoteOpts{}
-	if c.BasicAuthUser != "" && c.BasicAuthPassFile != "" {
-		remoteOpts.HTTPClientConfig = &config.HTTPClientConfig{
-			BasicAuth: &config.BasicAuth{
-				Username:     c.BasicAuthUser,
-				PasswordFile: c.BasicAuthPassFile,
-			},
-		}
-	}
-
-	if remoteOpts.HTTPClientConfig != nil {
-		dir, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("failed to get current working directory: %w", err)
-		}
-		remoteOpts.HTTPClientConfig.SetDirectory(dir)
-	}
-
-	rc, err := newRemoteProvider(url, remoteOpts)
-	if err != nil {
-		return fmt.Errorf("error reading remote config: %w", err)
-	}
-	// fall back to file if no scheme is passed
-	if rc == nil {
-		return LoadFile(url, expandEnvVars, c)
-	}
-	bb, _, err := rc.retrieve()
-	if err != nil {
-		return fmt.Errorf("error retrieving remote config: %w", err)
-	}
-
-	instrumentation.InstrumentConfig(bb)
-
-	return LoadBytes(bb, expandEnvVars, c)
-}
-
 func performEnvVarExpansion(buf []byte, expandEnvVars bool) ([]byte, error) {
 	utf8Buf, err := encoder.EnsureUTF8(buf, false)
 	if err != nil {
@@ -383,29 +276,6 @@ func getenv(name string) string {
 		return fmt.Sprintf("${%s}", name)
 	}
 	return os.Getenv(name)
-}
-
-// Load loads a config file from a flagset. Flags will be registered
-// to the flagset before parsing them with the values specified by
-// args.
-func Load(fs *flag.FlagSet, args []string, log *server.Logger) (*Config, error) {
-	cfg, error := LoadFromFunc(fs, args, func(path, fileType string, expandEnvVars bool, c *Config) error {
-		switch fileType {
-		case fileTypeYAML:
-			if features.Enabled(fs, featRemoteConfigs) {
-				return LoadRemote(path, expandEnvVars, c)
-			}
-			if features.Enabled(fs, featAgentManagement) {
-				return loadFromAgentManagementAPI(path, expandEnvVars, c, log, fs)
-			}
-			return LoadFile(path, expandEnvVars, c)
-		default:
-			return fmt.Errorf("unknown file type %q. accepted values: %s", fileType, strings.Join(fileTypes, ", "))
-		}
-	})
-
-	instrumentation.InstrumentLoad(error == nil)
-	return cfg, error
 }
 
 type loaderFunc func(path string, fileType string, expandEnvVars bool, target *Config) error

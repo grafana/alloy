@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/build"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/receiver/prometheus/internal"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/util/zapadapter"
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus/internal"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -27,7 +27,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.receiver.prometheus",
-		Stability: featuregate.StabilityBeta,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -40,13 +40,13 @@ func init() {
 // Arguments configures the otelcol.receiver.prometheus component.
 type Arguments struct {
 	// Output configures where to send received data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 // Exports are the set of fields exposed by the otelcol.receiver.prometheus
 // component.
 type Exports struct {
-	Receiver storage.Appendable `river:"receiver,attr"`
+	Receiver storage.Appendable `alloy:"receiver,attr"`
 }
 
 // Component is the otelcol.receiver.prometheus component.
@@ -106,7 +106,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		useCreatedMetric = false
 
 		// Trimming the metric suffixes is used to remove the metric type and the unit and the end of the metric name.
-		// To trim the unit, the opentelemetry code uses the MetricMetadataStore which is currently not supported by the agent.
+		// To trim the unit, the opentelemetry code uses the MetricMetadataStore which is currently not supported by Alloy.
 		// When supported, this could be added as an arg.
 		trimMetricSuffixes = false
 
@@ -128,7 +128,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 		BuildInfo: otelcomponent.BuildInfo{
 			Command:     os.Args[0],
-			Description: "Grafana Agent",
+			Description: "Grafana Alloy",
 			Version:     build.Version,
 		},
 	}

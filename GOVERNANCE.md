@@ -3,20 +3,20 @@ title: Governance
 ---
 # Governance
 
-This document describes the rules and governance of the project. It is meant to be followed by all the developers of the project and the Grafana Agent community. Common terminology used in this governance document are listed below:
+This document describes the rules and governance of the project. It is meant to be followed by all the developers of the project and the Grafana Alloy community. Common terminology used in this governance document are listed below:
 
 - **Team members**: Any members of the private [team mailing list][team].
 
 - **Maintainers**: Maintainers lead an individual project or parts thereof ([`MAINTAINERS.md`][maintainers]).
 
 - **Projects**: A single repository in the Grafana GitHub organization and listed below is referred to as a project:
-  - Grafana Agent
+  - Grafana Alloy
 
-- **The Grafana Agent project**: The sum of all activities performed under this governance, concerning one or more repositories or the community.
+- **The Grafana Alloy project**: The sum of all activities performed under this governance, concerning one or more repositories or the community.
 
 ## Values
 
-The Grafana Agent developers and community are expected to follow the values defined in the [Code of Conduct][coc]. Furthermore, the Grafana Agent community strives for kindness, giving feedback effectively, and building a welcoming environment. The Grafana Agent developers generally decide by consensus and only resort to conflict resolution by a majority vote if consensus cannot be reached.
+The Grafana Alloy developers and community are expected to follow the values defined in the [Code of Conduct][coc]. Furthermore, the Grafana Alloy community strives for kindness, giving feedback effectively, and building a welcoming environment. The Grafana Alloy developers generally decide by consensus and only resort to conflict resolution by a majority vote if consensus cannot be reached.
 
 ## Projects
 
@@ -26,7 +26,7 @@ Each project must have a [`MAINTAINERS.md`][maintainers] file with at least one 
 
 ### Team members
 
-Team member status may be given to those who have made ongoing contributions to the Grafana Agent project for at least 3 months. This is usually in the form of code improvements and/or notable work on documentation, but organizing events or user support could also be taken into account.
+Team member status may be given to those who have made ongoing contributions to the Grafana Alloy project for at least 3 months. This is usually in the form of code improvements and/or notable work on documentation, but organizing events or user support could also be taken into account.
 
 New members may be proposed by any existing member by email to the [team mailing list][team]. It is highly desirable to reach consensus about acceptance of a new member. However, the proposal is ultimately voted on by a formal [supermajority vote](#supermajority-vote).
 
@@ -46,20 +46,19 @@ In case a member leaves, the [offboarding](#offboarding) procedure is applied.
 
 The current team members are:
 
-- Jorge Creixell - [jcreixell](https://github.com/jcreixell) ([Grafana Labs](https://grafana.com))
+- Erik Baranowski - [erikbaranowski](https://github.com/erikbaranowski) ([Grafana Labs](https://grafana.com))
+- William Dumont - [wildum](https://github.com/wildum) ([Grafana Labs](https://grafana.com))
 - Matt Durham - [mattdurham](https://github.com/mattdurham) ([Grafana Labs](https://grafana.com))
-- Joe Elliott - [joe-elliott](https://github.com/joe-elliott) ([Grafana Labs](https://grafana.com))
 - Robert Fratto - [rfratto](https://github.com/rfratto) ([Grafana Labs](https://grafana.com))
-- Richard Hartmann - [RichiH](https://github.com/RichiH) ([Grafana Labs](https://grafana.com))
-- Robert Lankford - [rlankfo](https://github.com/rlankfo) ([Grafana Labs](https://grafana.com))
-- Mario Rodriguez - [mapno](https://github.com/mapno) ([Grafana Labs](https://grafana.com))
+- Piotr Gwizdala - [thampiotr](https://github.com/thampiotr) ([Grafana Labs](https://grafana.com))
+- Paulin Todev - [ptodev](https://github.com/ptodev) ([Grafana Labs](https://grafana.com))
 - Paschalis Tsilias - [tpaschalis](https://github.com/tpaschalis) ([Grafana Labs](https://grafana.com))
 
 ### Maintainers
 
 Maintainers lead one or more project(s) or parts thereof and serve as a point of conflict resolution amongst the contributors to this project. Ideally, maintainers are also team members, but exceptions are possible for suitable maintainers that, for whatever reason, are not yet team members.
 
-Changes in maintainership have to be announced on the [developers mailing list][devs]. They are decided by [rough consensus](#consensus) and formalized by changing the [`MAINTAINERS.md`][maintainers] file of the respective repository.
+Changes in maintainership have to be announced on the [GitHub Discussions][discussions] page. They are decided by [rough consensus](#consensus) and formalized by changing the [`MAINTAINERS.md`][maintainers] file of the respective repository.
 
 Maintainers are granted commit rights to all projects covered by this governance.
 
@@ -69,7 +68,7 @@ A project may have multiple maintainers, as long as the responsibilities are cle
 
 ### Technical decisions
 
-Technical decisions that only affect a single project are made informally by the maintainer of this project, and [rough consensus](#consensus) is assumed. Technical decisions that span multiple parts of the project should be discussed and made on the [developer mailing list][devs].
+Technical decisions that only affect a single project are made informally by the maintainer of this project, and [rough consensus](#consensus) is assumed. Technical decisions that span multiple parts of the project should be discussed and made on the [GitHub discussions page][discussions].
 
 Decisions are usually made by [rough consensus](#consensus). If no consensus can be reached, the matter may be resolved by [majority vote](#majority-vote).
 
@@ -79,11 +78,11 @@ Changes to this document are made by Grafana Labs.
 
 ### Other matters
 
-Any matter that needs a decision may be called to a vote by any member if they deem it necessary. For private or personnel matters, discussion and voting takes place on the [team mailing list][team], otherwise on the [developer mailing list][devs].
+Any matter that needs a decision may be called to a vote by any member if they deem it necessary. For private or personnel matters, discussion and voting takes place on the [team mailing list][team], otherwise on the [GitHub discussions page][discussions].
 
 ## Voting
 
-The Grafana Agent project usually runs by informal consensus, however sometimes a formal decision must be made.
+The Grafana Alloy project usually runs by informal consensus, however sometimes a formal decision must be made.
 
 Depending on the subject matter, as laid out [above](#decision-making), different methods of voting are used.
 
@@ -91,15 +90,15 @@ For all votes, voting must be open for at least one week. The end date should be
 
 In all cases, all and only [team members](#team-members) are eligible to vote, with the sole exception of the forced removal of a team member, in which said member is not eligible to vote.
 
-Discussion and votes on personnel matters (including but not limited to team membership and maintainership) are held in private on the [team mailing list][team]. All other discussion and votes are held in public on the [developer mailing list][devs].
+Discussion and votes on personnel matters (including but not limited to team membership and maintainership) are held in private on the [team mailing list][team]. All other discussion and votes are held in public on the [GitHub discussions page][discussions].
 
 For public discussions, anyone interested is encouraged to participate. Formal power to object or vote is limited to [team members](#team-members).
 
 ### Consensus
 
-The default decision making mechanism for the Grafana Agent project is [rough][rough] consensus. This means that any decision on technical issues is considered supported by the [team][team] as long as nobody objects or the objection has been considered but not necessarily accommodated.
+The default decision making mechanism for the Grafana Alloy project is [rough][rough] consensus. This means that any decision on technical issues is considered supported by the [team][team] as long as nobody objects or the objection has been considered but not necessarily accommodated.
 
-Silence on any consensus decision is implicit agreement and equivalent to explicit agreement. Explicit agreement may be stated at will. Decisions may, but do not need to be called out and put up for decision on the [developers mailing list][devs] at any time and by anyone.
+Silence on any consensus decision is implicit agreement and equivalent to explicit agreement. Explicit agreement may be stated at will. Decisions may, but do not need to be called out and put up for decision on the [GitHub discussions page][discussions] at any time and by anyone.
 
 Consensus decisions can never override or go against the spirit of an earlier explicit vote.
 
@@ -134,7 +133,7 @@ If there are multiple alternatives, members may vote for one or more alternative
 The new member is
 
 - added to the list of [team members](#team-members). Ideally by sending a PR of their own, at least approving said PR.
-- announced on the [developers mailing list][devs] by an existing team member. Ideally, the new member replies in this thread, acknowledging team membership.
+- announced on the [GitHub discussions page][discussions] by an existing team member. Ideally, the new member replies in this thread, acknowledging team membership.
 - added to the projects with commit rights.
 - added to the [team mailing list][team].
 
@@ -151,9 +150,8 @@ The ex-member is
 
 If needed, we reserve the right to publicly announce removal.
 
-[coc]: https://github.com/grafana/agent/blob/main/CODE_OF_CONDUCT.md
-[devs]: https://groups.google.com/forum/#!forum/grafana-agent-developers
-[maintainers]: https://github.com/grafana/agent/blob/main/MAINTAINERS.md
+[coc]: https://github.com/grafana/alloy/blob/main/CODE_OF_CONDUCT.md
+[maintainers]: https://github.com/grafana/alloy/blob/main/MAINTAINERS.md
 [rough]: https://tools.ietf.org/html/rfc7282
-[team]: https://groups.google.com/forum/#!forum/grafana-agent-team
-[discussions]: https://github.com/grafana/agent/discussions
+[team]: https://groups.google.com/forum/#!forum/grafana-alloy-team
+[discussions]: https://github.com/grafana/alloy/discussions

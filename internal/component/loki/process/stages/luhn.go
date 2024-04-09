@@ -11,9 +11,9 @@ import (
 
 // LuhnFilterConfig configures a processing stage that filters out Luhn-valid numbers.
 type LuhnFilterConfig struct {
-	Replacement string  `river:"replacement,attr,optional"`
-	Source      *string `river:"source,attr,optional"`
-	MinLength   int     `river:"min_length,attr,optional"`
+	Replacement string  `alloy:"replacement,attr,optional"`
+	Source      *string `alloy:"source,attr,optional"`
+	MinLength   int     `alloy:"min_length,attr,optional"`
 }
 
 // validateLuhnFilterConfig validates the LuhnFilterConfig.

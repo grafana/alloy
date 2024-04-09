@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/prometheus/common/model"
 )
 
@@ -14,9 +14,9 @@ const (
 )
 
 type EventLogMessageConfig struct {
-	Source            string `river:"source,attr,optional"`
-	DropInvalidLabels bool   `river:"drop_invalid_labels,attr,optional"`
-	OverwriteExisting bool   `river:"overwrite_existing,attr,optional"`
+	Source            string `alloy:"source,attr,optional"`
+	DropInvalidLabels bool   `alloy:"drop_invalid_labels,attr,optional"`
+	OverwriteExisting bool   `alloy:"overwrite_existing,attr,optional"`
 }
 
 func (e *EventLogMessageConfig) Validate() error {

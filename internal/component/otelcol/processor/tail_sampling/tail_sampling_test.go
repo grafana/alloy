@@ -7,19 +7,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/fakeconsumer"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/river"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
-func TestBadRiverConfig(t *testing.T) {
-	exampleBadRiverConfig := `
+func TestBadAlloyConfig(t *testing.T) {
+	exampleBadAlloyConfig := `
     decision_wait               = "10s"
     num_traces                  = 0
     expected_new_traces_per_sec = 10
@@ -33,11 +33,11 @@ func TestBadRiverConfig(t *testing.T) {
 `
 
 	var args Arguments
-	require.Error(t, river.Unmarshal([]byte(exampleBadRiverConfig), &args), "num_traces must be greater than zero")
+	require.Error(t, syntax.Unmarshal([]byte(exampleBadAlloyConfig), &args), "num_traces must be greater than zero")
 }
 
-func TestBadRiverConfigErrorMode(t *testing.T) {
-	exampleBadRiverConfig := `
+func TestBadAlloyConfigErrorMode(t *testing.T) {
+	exampleBadAlloyConfig := `
     decision_wait               = "10s"
     num_traces                  = 5
     expected_new_traces_per_sec = 10
@@ -62,7 +62,7 @@ func TestBadRiverConfigErrorMode(t *testing.T) {
 `
 
 	var args Arguments
-	require.ErrorContains(t, river.Unmarshal([]byte(exampleBadRiverConfig), &args), "\"\" unknown error mode")
+	require.ErrorContains(t, syntax.Unmarshal([]byte(exampleBadAlloyConfig), &args), "\"\" unknown error mode")
 }
 
 func TestBadOtelConfig(t *testing.T) {
@@ -86,7 +86,7 @@ func TestBadOtelConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	var args Arguments
-	require.NoError(t, river.Unmarshal([]byte(exampleBadOtelConfig), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(exampleBadOtelConfig), &args))
 
 	// Override our arguments so traces get forwarded to traceCh.
 	traceCh := make(chan ptrace.Traces)
@@ -353,7 +353,7 @@ func TestBigConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	var args Arguments
-	require.NoError(t, river.Unmarshal([]byte(exampleBigConfig), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(exampleBigConfig), &args))
 
 	// Override our arguments so traces get forwarded to traceCh.
 	traceCh := make(chan ptrace.Traces)
@@ -388,7 +388,7 @@ func TestTraceProcessing(t *testing.T) {
 	require.NoError(t, err)
 
 	var args Arguments
-	require.NoError(t, river.Unmarshal([]byte(exampleSmallConfig), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(exampleSmallConfig), &args))
 
 	// Override our arguments so traces get forwarded to traceCh.
 	traceCh := make(chan ptrace.Traces)

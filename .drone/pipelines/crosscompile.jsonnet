@@ -29,28 +29,7 @@ local os_arch_tuples = [
 
 
 local targets = [
-  'agent',
-  'agent-flow',
-  'agentctl',
-  'operator',
-];
-
-local targets_boringcrypto = [
-  'agent-boringcrypto',
-];
-local targets_boringcrypto_windows = [
-  'agent-flow-windows-boringcrypto',
-];
-
-
-local os_arch_types_boringcrypto = [
-  // Linux boringcrypto
-  { name: 'Linux amd64 boringcrypto', os: 'linux', arch: 'amd64', experiment: 'boringcrypto' },
-  { name: 'Linux arm64 boringcrypto', os: 'linux', arch: 'arm64', experiment: 'boringcrypto' },
-];
-local windows_os_arch_types_boringcrypto = [
-  // Windows boringcrypto
-  { name: 'Windows amd64', os: 'windows', arch: 'amd64', experiment: 'cngcrypto' },
+  'alloy',
 ];
 
 local build_environments(targets, tuples, image) = std.flatMap(function(target) (
@@ -64,7 +43,7 @@ local build_environments(targets, tuples, image) = std.flatMap(function(target) 
         target: target,
 
         tags: go_tags[platform.os],
-      } + (if 'experiment' in platform then { GOEXPERIMENT: platform.experiment } else { }),
+      } + (if 'experiment' in platform then { GOEXPERIMENT: platform.experiment } else {}),
 
       trigger: {
         event: ['pull_request'],
@@ -75,7 +54,7 @@ local build_environments(targets, tuples, image) = std.flatMap(function(target) 
         image: image,
         commands: [
           'make generate-ui',
-          (if 'GOEXPERIMENT' in env 
+          (if 'GOEXPERIMENT' in env
            then 'GO_TAGS="%(tags)s" GOOS=%(GOOS)s GOARCH=%(GOARCH)s GOARM=%(GOARM)s GOEXPERIMENT=%(GOEXPERIMENT)s make %(target)s' % env
            else 'GO_TAGS="%(tags)s" GOOS=%(GOOS)s GOARCH=%(GOARCH)s GOARM=%(GOARM)s make %(target)s') % env,
         ],
@@ -84,6 +63,4 @@ local build_environments(targets, tuples, image) = std.flatMap(function(target) 
   ), tuples)
 ), targets);
 
-build_environments(targets, os_arch_tuples, build_image.linux) +
-build_environments(targets_boringcrypto, os_arch_types_boringcrypto, build_image.linux) +
-build_environments(targets_boringcrypto_windows, windows_os_arch_types_boringcrypto, build_image.boringcrypto)
+build_environments(targets, os_arch_tuples, build_image.linux)

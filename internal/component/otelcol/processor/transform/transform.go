@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/processor"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/processor"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
@@ -19,7 +19,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.transform",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -56,20 +56,20 @@ func (c *ContextID) UnmarshalText(text []byte) error {
 type ContextStatementsSlice []ContextStatements
 
 type ContextStatements struct {
-	Context    ContextID `river:"context,attr"`
-	Statements []string  `river:"statements,attr"`
+	Context    ContextID `alloy:"context,attr"`
+	Statements []string  `alloy:"statements,attr"`
 }
 
 // Arguments configures the otelcol.processor.transform component.
 type Arguments struct {
 	// ErrorMode determines how the processor reacts to errors that occur while processing a statement.
-	ErrorMode        ottl.ErrorMode         `river:"error_mode,attr,optional"`
-	TraceStatements  ContextStatementsSlice `river:"trace_statements,block,optional"`
-	MetricStatements ContextStatementsSlice `river:"metric_statements,block,optional"`
-	LogStatements    ContextStatementsSlice `river:"log_statements,block,optional"`
+	ErrorMode        ottl.ErrorMode         `alloy:"error_mode,attr,optional"`
+	TraceStatements  ContextStatementsSlice `alloy:"trace_statements,block,optional"`
+	MetricStatements ContextStatementsSlice `alloy:"metric_statements,block,optional"`
+	LogStatements    ContextStatementsSlice `alloy:"log_statements,block,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (
@@ -81,12 +81,12 @@ var DefaultArguments = Arguments{
 	ErrorMode: ottl.PropagateError,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	otelArgs, err := args.convertImpl()
 	if err != nil {

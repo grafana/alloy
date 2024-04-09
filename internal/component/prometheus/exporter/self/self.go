@@ -1,21 +1,21 @@
 package self
 
 import (
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/agent"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/agent"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.self",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 
-		Build: exporter.New(createExporter, "agent"),
+		Build: exporter.New(createExporter, "self"),
 	})
 }
 
@@ -30,7 +30,7 @@ type Arguments struct{}
 // Exports holds the values exported by the prometheus.exporter.self component.
 type Exports struct{}
 
-// SetToDefault implements river.Defaulter
+// SetToDefault implements syntax.Defaulter
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{}
 }

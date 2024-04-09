@@ -9,7 +9,7 @@ import (
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 
-	"github.com/grafana/agent/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"

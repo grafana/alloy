@@ -3,19 +3,19 @@ package dnsmasq
 import (
 	"testing"
 
-	"github.com/grafana/agent/internal/static/integrations/dnsmasq_exporter"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/static/integrations/dnsmasq_exporter"
+	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUnmarshalRiver(t *testing.T) {
+func TestUnmarshalAlloy(t *testing.T) {
 	rawCfg := `
   address       = "localhost:9999"
   leases_file   = "/etc/dnsmasq.leases"
   expose_leases = true
 `
 	var args Arguments
-	err := river.Unmarshal([]byte(rawCfg), &args)
+	err := syntax.Unmarshal([]byte(rawCfg), &args)
 	assert.NoError(t, err)
 
 	expected := Arguments{
@@ -26,10 +26,10 @@ func TestUnmarshalRiver(t *testing.T) {
 	assert.Equal(t, expected, args)
 }
 
-func TestUnmarshalRiverDefaults(t *testing.T) {
+func TestUnmarshalAlloyDefaults(t *testing.T) {
 	rawCfg := ``
 	var args Arguments
-	err := river.Unmarshal([]byte(rawCfg), &args)
+	err := syntax.Unmarshal([]byte(rawCfg), &args)
 	assert.NoError(t, err)
 
 	expected := DefaultArguments
@@ -37,7 +37,7 @@ func TestUnmarshalRiverDefaults(t *testing.T) {
 }
 
 func TestConvert(t *testing.T) {
-	riverArguments := Arguments{
+	alloyArguments := Arguments{
 		Address:      "localhost:9999",
 		LeasesFile:   "/etc/dnsmasq.leases",
 		ExposeLeases: true,
@@ -49,5 +49,5 @@ func TestConvert(t *testing.T) {
 		ExposeLeases:   true,
 	}
 
-	assert.Equal(t, expected, riverArguments.Convert())
+	assert.Equal(t, expected, alloyArguments.Convert())
 }

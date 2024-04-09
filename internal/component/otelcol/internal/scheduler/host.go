@@ -2,13 +2,13 @@ package scheduler
 
 import (
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/flow/logging/level"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 )
 
-// Host implements otelcomponent.Host for Grafana Agent Flow.
+// Host implements otelcomponent.Host for Grafana Alloy.
 type Host struct {
 	log log.Logger
 

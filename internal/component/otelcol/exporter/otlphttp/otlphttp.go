@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/exporter"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -18,7 +18,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.otlphttp",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -31,22 +31,22 @@ func init() {
 
 // Arguments configures the otelcol.exporter.otlphttp component.
 type Arguments struct {
-	Client HTTPClientArguments    `river:"client,block"`
-	Queue  otelcol.QueueArguments `river:"sending_queue,block,optional"`
-	Retry  otelcol.RetryArguments `river:"retry_on_failure,block,optional"`
+	Client HTTPClientArguments    `alloy:"client,block"`
+	Queue  otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
+	Retry  otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `river:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	// The URLs to send metrics/logs/traces to. If omitted the exporter will
 	// use Client.Endpoint by appending "/v1/metrics", "/v1/logs" or
 	// "/v1/traces", respectively. If set, these settings override
 	// Client.Endpoint for the corresponding signal.
-	TracesEndpoint  string `river:"traces_endpoint,attr,optional"`
-	MetricsEndpoint string `river:"metrics_endpoint,attr,optional"`
-	LogsEndpoint    string `river:"logs_endpoint,attr,optional"`
+	TracesEndpoint  string `alloy:"traces_endpoint,attr,optional"`
+	MetricsEndpoint string `alloy:"metrics_endpoint,attr,optional"`
+	LogsEndpoint    string `alloy:"logs_endpoint,attr,optional"`
 
-	Encoding string `river:"encoding,attr,optional"`
+	Encoding string `alloy:"encoding,attr,optional"`
 }
 
 var _ exporter.Arguments = Arguments{}
@@ -56,7 +56,7 @@ const (
 	EncodingJSON  string = "json"
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		Encoding: EncodingProto,
@@ -95,7 +95,7 @@ func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
 	return args.DebugMetrics
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.Client.Endpoint == "" && args.TracesEndpoint == "" && args.MetricsEndpoint == "" && args.LogsEndpoint == "" {
 		return errors.New("at least one endpoint must be specified")
@@ -116,7 +116,7 @@ var (
 	DefaultIdleConnTimeout = 90 * time.Second
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *HTTPClientArguments) SetToDefault() {
 	maxIdleConns := DefaultMaxIdleConns
 	idleConnTimeout := DefaultIdleConnTimeout

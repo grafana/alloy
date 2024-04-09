@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/zookeeper"
 )
@@ -14,7 +14,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.nerve",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 
@@ -26,9 +26,9 @@ func init() {
 
 // Arguments configure the discovery.nerve component.
 type Arguments struct {
-	Servers []string      `river:"servers,attr"`
-	Paths   []string      `river:"paths,attr"`
-	Timeout time.Duration `river:"timeout,attr,optional"`
+	Servers []string      `alloy:"servers,attr"`
+	Paths   []string      `alloy:"paths,attr"`
+	Timeout time.Duration `alloy:"timeout,attr,optional"`
 }
 
 // DefaultArguments is used to initialize default values for Arguments.
@@ -36,12 +36,12 @@ var DefaultArguments = Arguments{
 	Timeout: 10 * time.Second,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.Timeout <= 0 {
 		return fmt.Errorf("timeout must be greater than 0")

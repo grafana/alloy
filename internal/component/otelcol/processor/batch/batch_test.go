@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/fakeconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/processor/batch"
-	"github.com/grafana/agent/internal/flow/componenttest"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	"github.com/grafana/agent/internal/util"
+	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/batch"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/river"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
@@ -35,7 +35,7 @@ func Test(t *testing.T) {
 		}
 	`
 	var args batch.Arguments
-	require.NoError(t, river.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	// Override our arguments so traces get forwarded to traceCh.
 	traceCh := make(chan ptrace.Traces)
@@ -118,7 +118,7 @@ func createTestTraces() ptrace.Traces {
 	return data
 }
 
-func TestArguments_UnmarshalRiver(t *testing.T) {
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		cfg               string
 		expectedArguments batch.Arguments
@@ -171,7 +171,7 @@ func TestArguments_UnmarshalRiver(t *testing.T) {
 
 	for _, tc := range tests {
 		var args batch.Arguments
-		err := river.Unmarshal([]byte(tc.cfg), &args)
+		err := syntax.Unmarshal([]byte(tc.cfg), &args)
 		require.NoError(t, err)
 
 		ext, err := args.Convert()

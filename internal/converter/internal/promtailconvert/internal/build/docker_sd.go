@@ -3,12 +3,12 @@ package build
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component/common/loki"
-	flow_relabel "github.com/grafana/agent/internal/component/common/relabel"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/discovery/docker"
-	loki_docker "github.com/grafana/agent/internal/component/loki/source/docker"
-	"github.com/grafana/agent/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/discovery/docker"
+	loki_docker "github.com/grafana/alloy/internal/component/loki/source/docker"
+	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/prometheus/prometheus/discovery/moby"
 )
 
@@ -35,7 +35,7 @@ func (s *ScrapeConfigBuilder) AppendDockerPipeline() {
 			switch val.(type) {
 			case []discovery.Target: // override targets expression to our string
 				return common.CustomTokenizer{Expr: targets}
-			case flow_relabel.Rules: // use the relabel rules defined for this pipeline
+			case alloy_relabel.Rules: // use the relabel rules defined for this pipeline
 				return common.CustomTokenizer{Expr: s.getOrNewDiscoveryRelabelRules()}
 			}
 			return val
@@ -57,7 +57,7 @@ func toLokiSourceDocker(sd *moby.DockerSDConfig, forwardTo []loki.LogsReceiver) 
 		Targets:          nil,
 		ForwardTo:        forwardTo,
 		Labels:           nil,
-		RelabelRules:     flow_relabel.Rules{},
+		RelabelRules:     alloy_relabel.Rules{},
 		HTTPClientConfig: common.ToHttpClientConfig(&sd.HTTPClientConfig),
 		RefreshInterval:  time.Duration(sd.RefreshInterval),
 	}
@@ -73,23 +73,23 @@ func toDiscoveryDocker(sdConfig *moby.DockerSDConfig) *docker.Arguments {
 		Port:               sdConfig.Port,
 		HostNetworkingHost: sdConfig.HostNetworkingHost,
 		RefreshInterval:    time.Duration(sdConfig.RefreshInterval),
-		Filters:            toFlowDockerSDFilters(sdConfig.Filters),
+		Filters:            toAlloyDockerSDFilters(sdConfig.Filters),
 		HTTPClientConfig:   *common.ToHttpClientConfig(&sdConfig.HTTPClientConfig),
 	}
 }
 
-func toFlowDockerSDFilters(filters []moby.Filter) []docker.Filter {
+func toAlloyDockerSDFilters(filters []moby.Filter) []docker.Filter {
 	if len(filters) == 0 {
 		return nil
 	}
 
-	flowFilters := make([]docker.Filter, len(filters))
+	alloyFilters := make([]docker.Filter, len(filters))
 	for i, filter := range filters {
-		flowFilters[i] = docker.Filter{
+		alloyFilters[i] = docker.Filter{
 			Name:   filter.Name,
 			Values: filter.Values,
 		}
 	}
 
-	return flowFilters
+	return alloyFilters
 }

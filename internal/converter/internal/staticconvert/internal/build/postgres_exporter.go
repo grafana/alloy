@@ -1,10 +1,10 @@
 package build
 
 import (
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/prometheus/exporter/postgres"
-	"github.com/grafana/agent/internal/static/integrations/postgres_exporter"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
+	"github.com/grafana/alloy/internal/static/integrations/postgres_exporter"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (b *ConfigBuilder) appendPostgresExporter(config *postgres_exporter.Config, instanceKey *string) discovery.Exports {
@@ -13,9 +13,9 @@ func (b *ConfigBuilder) appendPostgresExporter(config *postgres_exporter.Config,
 }
 
 func toPostgresExporter(config *postgres_exporter.Config) *postgres.Arguments {
-	dataSourceNames := make([]rivertypes.Secret, 0)
+	dataSourceNames := make([]alloytypes.Secret, 0)
 	for _, dsn := range config.DataSourceNames {
-		dataSourceNames = append(dataSourceNames, rivertypes.Secret(dsn))
+		dataSourceNames = append(dataSourceNames, alloytypes.Secret(dsn))
 	}
 
 	return &postgres.Arguments{

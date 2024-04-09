@@ -3,18 +3,18 @@ package memcached
 import (
 	"time"
 
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/prometheus/exporter"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/static/integrations"
-	"github.com/grafana/agent/internal/static/integrations/memcached_exporter"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/memcached_exporter"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.memcached",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 
@@ -36,22 +36,22 @@ var DefaultArguments = Arguments{
 // Arguments configures the prometheus.exporter.memcached component.
 type Arguments struct {
 	// Address is the address of the memcached server to connect to (host:port).
-	Address string `river:"address,attr,optional"`
+	Address string `alloy:"address,attr,optional"`
 
 	// Timeout is the timeout for the memcached exporter to use when connecting to the
 	// memcached server.
-	Timeout time.Duration `river:"timeout,attr,optional"`
+	Timeout time.Duration `alloy:"timeout,attr,optional"`
 
 	// TLSConfig is used to configure TLS for connection to memcached.
-	TLSConfig *config.TLSConfig `river:"tls_config,block,optional"`
+	TLSConfig *config.TLSConfig `alloy:"tls_config,block,optional"`
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (a Arguments) Validate() error {
 	if a.TLSConfig == nil {
 		return nil

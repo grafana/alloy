@@ -49,37 +49,37 @@ type storageMetrics struct {
 func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 	m := storageMetrics{r: r}
 	m.numActiveSeries = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "agent_wal_storage_active_series",
+		Name: "prometheus_remote_write_wal_storage_active_series",
 		Help: "Current number of active series being tracked by the WAL storage",
 	})
 
 	m.numDeletedSeries = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "agent_wal_storage_deleted_series",
+		Name: "prometheus_remote_write_wal_storage_deleted_series",
 		Help: "Current number of series marked for deletion from memory",
 	})
 
 	m.totalOutOfOrderSamples = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "agent_wal_out_of_order_samples_total",
+		Name: "prometheus_remote_write_wal_out_of_order_samples_total",
 		Help: "Total number of out of order samples ingestion failed attempts.",
 	})
 
 	m.totalCreatedSeries = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "agent_wal_storage_created_series_total",
+		Name: "prometheus_remote_write_wal_storage_created_series_total",
 		Help: "Total number of created series appended to the WAL",
 	})
 
 	m.totalRemovedSeries = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "agent_wal_storage_removed_series_total",
+		Name: "prometheus_remote_write_wal_storage_removed_series_total",
 		Help: "Total number of created series removed from the WAL",
 	})
 
 	m.totalAppendedSamples = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "agent_wal_samples_appended_total",
+		Name: "prometheus_remote_write_wal_samples_appended_total",
 		Help: "Total number of samples appended to the WAL",
 	})
 
 	m.totalAppendedExemplars = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "agent_wal_exemplars_appended_total",
+		Name: "prometheus_remote_write_wal_exemplars_appended_total",
 		Help: "Total number of exemplars appended to the WAL",
 	})
 

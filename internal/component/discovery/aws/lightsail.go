@@ -7,11 +7,11 @@ import (
 
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/common/config"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/river/rivertypes"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	promaws "github.com/prometheus/prometheus/discovery/aws"
@@ -20,7 +20,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "discovery.lightsail",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      LightsailArguments{},
 		Exports:   discovery.Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -31,15 +31,15 @@ func init() {
 
 // LightsailArguments is the configuration for AWS Lightsail based service discovery.
 type LightsailArguments struct {
-	Endpoint         string                  `river:"endpoint,attr,optional"`
-	Region           string                  `river:"region,attr,optional"`
-	AccessKey        string                  `river:"access_key,attr,optional"`
-	SecretKey        rivertypes.Secret       `river:"secret_key,attr,optional"`
-	Profile          string                  `river:"profile,attr,optional"`
-	RoleARN          string                  `river:"role_arn,attr,optional"`
-	RefreshInterval  time.Duration           `river:"refresh_interval,attr,optional"`
-	Port             int                     `river:"port,attr,optional"`
-	HTTPClientConfig config.HTTPClientConfig `river:",squash"`
+	Endpoint         string                  `alloy:"endpoint,attr,optional"`
+	Region           string                  `alloy:"region,attr,optional"`
+	AccessKey        string                  `alloy:"access_key,attr,optional"`
+	SecretKey        alloytypes.Secret       `alloy:"secret_key,attr,optional"`
+	Profile          string                  `alloy:"profile,attr,optional"`
+	RoleARN          string                  `alloy:"role_arn,attr,optional"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	Port             int                     `alloy:"port,attr,optional"`
+	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
 }
 
 func (args LightsailArguments) Convert() *promaws.LightsailSDConfig {
@@ -64,12 +64,12 @@ var DefaultLightsailSDConfig = LightsailArguments{
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *LightsailArguments) SetToDefault() {
 	*args = DefaultLightsailSDConfig
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *LightsailArguments) Validate() error {
 	if args.Region == "" {
 		cfgCtx := context.TODO()

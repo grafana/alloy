@@ -6,21 +6,21 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/agent/internal/component"
-	"github.com/grafana/agent/internal/component/discovery"
-	"github.com/grafana/agent/internal/component/otelcol"
-	"github.com/grafana/agent/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/agent/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/agent/internal/featuregate"
-	"github.com/grafana/agent/internal/flow/logging/level"
-	promsdconsumer "github.com/grafana/agent/internal/static/traces/promsdprocessor/consumer"
-	"github.com/grafana/river"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/featuregate"
+	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
+	"github.com/grafana/alloy/syntax"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.discovery",
-		Stability: featuregate.StabilityStable,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -32,20 +32,20 @@ func init() {
 
 // Arguments configures the otelcol.processor.discovery component.
 type Arguments struct {
-	Targets         []discovery.Target `river:"targets,attr"`
-	OperationType   string             `river:"operation_type,attr,optional"`
-	PodAssociations []string           `river:"pod_associations,attr,optional"`
+	Targets         []discovery.Target `alloy:"targets,attr"`
+	OperationType   string             `alloy:"operation_type,attr,optional"`
+	PodAssociations []string           `alloy:"pod_associations,attr,optional"`
 
 	// Output configures where to send processed data. Required.
-	Output *otelcol.ConsumerArguments `river:"output,block"`
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 var (
-	_ river.Defaulter = (*Arguments)(nil)
-	_ river.Validator = (*Arguments)(nil)
+	_ syntax.Defaulter = (*Arguments)(nil)
+	_ syntax.Validator = (*Arguments)(nil)
 )
 
-// SetToDefault implements river.Defaulter.
+// SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		OperationType: promsdconsumer.OperationTypeUpsert,
@@ -59,7 +59,7 @@ func (args *Arguments) SetToDefault() {
 	}
 }
 
-// Validate implements river.Validator.
+// Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	err := promsdconsumer.ValidateOperationType(args.OperationType)
 	if err != nil {
