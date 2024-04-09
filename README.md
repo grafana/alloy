@@ -101,7 +101,7 @@ Check out our [documentation][] to see:
 * The list of Alloy [components][]
 
 [documentation]: https://grafana.com/docs/alloy/latest
-[install]: https://grafana.com/docs/alloy/latest/setup/install/
+[install]: https://grafana.com/docs/alloy/latest/get-started/install/
 [get-started]: https://grafana.com/docs/alloy/latest/getting_started/
 [components]: https://grafana.com/docs/alloy/latest/reference/components/
 
