@@ -1,8 +1,7 @@
 name: Release Helm chart
 on:
-  # TODO(rfratto): uncomment these after launch
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch: {}
 env:
   CR_CONFIGFILE: "${{ github.workspace }}/source/operations/helm/cr.yaml"
