@@ -1,0 +1,32 @@
+name: alloy-example
+
+include:
+  - ./grafana.yaml
+  - ./databases.yaml
+
+services:
+  alloy:
+    image: grafana/alloy:v1.0.0
+    pull_policy: always
+    profiles: ["alloy"]
+    restart: on-failure
+    volumes:
+      - ./config/alloy:/etc/alloy
+    environment:
+      REMOTE_WRITE_HOST: mimir:9009
+      LOKI_HOST: loki:3100
+      TEMPO_HOST: tempo:4317
+      PYROSCOPE_HOST: pyroscope:4040
+    depends_on:
+      - mimir
+      - loki
+      - tempo
+      - pyroscope
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --stability.level=experimental # Enable all functionality
+    ports:
+      - "12345:12345"
