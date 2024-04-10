@@ -239,9 +239,10 @@ Section "uninstall"
   RMDir /r "$INSTDIR"                # Install directory.
   RMDir /r "$APPDATA\${APPNAME}"     # Application data.
 
-  # Remove service and uninstaller information from the registry.
+  # Remove service and uninstaller information from the registry. Note that the
+  # service settings are stored in the 64-bit registry (so we use /reg:64),
+  # while the uninstaller information is stored in the 32-bit registry.
   nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\GrafanaLabs\Alloy"  /reg:64 /f'
   Pop $0
-  nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"  /reg:64 /f'
-  Pop $0
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 SectionEnd

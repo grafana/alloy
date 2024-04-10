@@ -7,6 +7,14 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+Unreleased
+----------
+
+### Bugfixes
+
+- Fix an issue on Windows where uninstalling Alloy did not remove it from the
+  Add/Remove programs list. (@rfratto)
+
 v1.0.0 (2024-04-09)
 -------------------
 
