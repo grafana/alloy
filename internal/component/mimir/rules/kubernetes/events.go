@@ -53,6 +53,7 @@ type eventProcessor struct {
 	currentStateMtx sync.RWMutex
 }
 
+// run processes events added to the queue until the queue is shutdown.
 func (e *eventProcessor) run(ctx context.Context) {
 	for {
 		eventInterface, shutdown := e.queue.Get()
@@ -93,8 +94,12 @@ func (e *eventProcessor) run(ctx context.Context) {
 	}
 }
 
+// stop stops adding new Kubernetes events to the queue and blocks until all existing
+// events have been processed by the run loop.
 func (e *eventProcessor) stop() {
 	close(e.stopChan)
+	// Because this method blocks until the queue is empty, it's important that we don't
+	// stop the run loop and let it continue to process existing items in the queue.
 	e.queue.ShutDownWithDrain()
 }
 
