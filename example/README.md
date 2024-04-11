@@ -3,6 +3,9 @@
 This directory contains a Docker Compose environment that can be used to test
 Grafana Alloy.
 
+> **NOTE**: This environment is not intended for production use, and is
+> maintained on a best-effort basis.
+
 By default, only Grafana and databases are exposed:
 
 * Grafana, for visualizing telemetry (`localhost:3000`)
