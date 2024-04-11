@@ -52,6 +52,10 @@ You can use {{< param "PRODUCT_NAME" >}} as an alternative to either of these so
 You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructure and pair it with your Grafana LGTM stack, a telemetry backend from Grafana Cloud, or any other compatible backend from any other vendor.
 {{< param "PRODUCT_NAME" >}} is flexible, and you can easily configure it to fit your needs in on-prem, cloud-only, or a mix of both.
 
+{{< admonition type="tip" >}}
+{{< param "PRODUCT_NAME" >}} uses the same components, code, and concepts that were first introduced in Grafana Agent Flow.
+{{< /admonition >}}
+
 ## What can {{% param "PRODUCT_NAME" %}} do?
 
 {{< param "PRODUCT_NAME" >}} is more than just observability signals like metrics, logs, and traces. It provides many features that help you quickly find and process your data in complex environments.
