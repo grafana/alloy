@@ -1,5 +1,6 @@
 name: Documentation feedback
 description: Give feedback on the Grafana Alloy documentation.
+title: "Docs feedback: "
 labels: ["type/docs"]
 body:
   - type: input
