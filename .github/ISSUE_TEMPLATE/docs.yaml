@@ -1,0 +1,20 @@
+name: Documentation feedback
+description: Give feedback on the Grafana Alloy documentation.
+title: "Docs feedback: "
+labels: ["type/docs"]
+body:
+  - type: input
+    id: url
+    attributes:
+      label: URL
+      description: The URL of the page you're providing feedback on.
+      placeholder: https://grafana.com/docs/alloy/latest/
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Feedback
+      description: What feedback do you have?
+    validations:
+      required: true
