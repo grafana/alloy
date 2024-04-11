@@ -3,11 +3,11 @@ description: Give feedback on the Grafana Alloy documentation.
 labels: ["type/docs"]
 body:
   - type: input
-    id: page
+    id: url
     attributes:
-      label: Page
-      description: The page you're providing feedback on.
-      placeholder: /docs/alloy/latest/getting-started/
+      label: URL
+      description: The URL of the page you're providing feedback on.
+      placeholder: https://grafana.com/docs/alloy/latest/
     validations:
       required: true
   - type: textarea
