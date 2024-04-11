@@ -1,0 +1,48 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <UI Id="CustomDlg">
+      <Dialog Id="CustomDlg" Height="270" Width="370" Title="Alloy Setup">
+        <!-- Header -->
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" Text="WixUI_Bmp_Banner" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Text="{\WixUI_Font_Title}Custom Dialog" Transparent="yes" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Text="Place your custom description here" Transparent="yes" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <!-- Body  -->
+        <Control Id="CustomLabel" Type="Text" X="20" Y="60" Width="290" Height="15" Text="Customer:" TabSkip="yes" />
+        <Control Id="Custom" Type="Edit" X="20" Y="80" Width="320" Height="18" Property="CUSTOM" />
+        <!-- Footer -->
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Next" Type="PushButton" Text="&amp;Next" TabSkip="no" Default="yes" Height="17" Width="56" X="236" Y="243">
+          <Publish Event="NewDialog" Value="CustomizeDlg" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" Text="Cancel" TabSkip="no" Height="17" Width="56" X="304" Y="243" Cancel="yes">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+        <Control Id="Back" Type="PushButton" Text="&amp;Back" TabSkip="no" Height="17" Width="56" X="180" Y="243">
+          <Publish Event="NewDialog" Value="LicenseAgreementDlg" />
+        </Control>
+      </Dialog>
+      <!-- Insert into dialog sequencing by inserting control events on previous and next dialogs-->
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="CustomDlg" />
+      <Publish Dialog="CustomizeDlg" Control="Back" Event="NewDialog" Value="CustomDlg" Order="3" Condition="NOT Installed" />
+    </UI>
+    <!-- Make Property a SecureCustom Property-->
+    <Property Id="CUSTOM" Secure="yes" />
+    <!-- Note: You must author a registry component somewhere in your installer to persist the property for later retrieval
+    Example:
+    ...
+    <Component Id='RememberCustom' Guid='{????????-????-????-????-????????????}' KeyPath='yes' Permanent='yes'>
+      <RegistryValue Root='HKLM' Key='SOFTWARE\CompanyName\ProductName' Name='Custom' Type='string' Value='[CUSTOM]'/>
+    </Component>
+    ...
+    -->
+    <!-- Attempt to retrieve previously persisted property -->
+    <Property Id="FINDCUSTOM" Secure="yes">
+      <RegistrySearch Id="CustomerNumber" Root="HKLM" Key="SOFTWARE\GrafanaLabs\Alloy" Name="Custom" Type="raw" />
+    </Property>
+    <!-- Assign default value if retrieval failed -->
+    <SetProperty Id="FINDCUSTOM" Value="default value" After="AppSearch" Sequence="first" Condition="Not FINDCUSTOM" />
+    <!-- Assign retrieved / defaulted value to actual property if it doesn't already have a value -->
+    <SetProperty Id="CUSTOM" Value="[FINDCUSTOM]" After="SetFINDCUSTOM" Sequence="first" Condition="Not CUSTOM" />
+  </Fragment>
+</Wix>
