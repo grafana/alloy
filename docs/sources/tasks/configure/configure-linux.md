@@ -10,7 +10,7 @@ weight: 300
 
 To configure {{< param "PRODUCT_NAME" >}} on Linux, perform the following steps:
 
-1. Edit the default configuration file at `/etc/alloy.config.alloy`.
+1. Edit the default configuration file at `/etc/alloy/config.alloy`.
 
 1. Run the following command in a terminal to reload the configuration file:
 
