@@ -25,8 +25,12 @@ const (
 	eventTypeSyncMimir kubernetes.EventType = "sync-mimir"
 )
 
+// healthReporter allows the eventProcessor to mark the owning component as healthy
+// or unhealthy. This interface allows for easier testing of the eventProcessor.
 type healthReporter interface {
+	// reportUnhealthy marks the owning component as unhealthy
 	reportUnhealthy(err error)
+	// reportHealthy marks the owning component as healthy
 	reportHealthy()
 }
 
