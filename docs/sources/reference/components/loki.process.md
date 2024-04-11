@@ -523,7 +523,7 @@ The following arguments are supported:
 | ------------- | ------------- | ---------------------------------------------- | ---------------- | -------- |
 | `replacement` | `string`      | String to substitute the matched patterns with | `"**REDACTED**"` | no      |
 | `source`      | `string`      | Source of the data to parse.                   | `""`             | no       |
-| `minLength`   | `int`         | Minimum length of digits to consider           | `13`             | no       |
+| `min_length`   | `int`         | Minimum length of digits to consider           | `13`             | no       |
 
 
 The `source` field defines the source of data to search. When `source` is
