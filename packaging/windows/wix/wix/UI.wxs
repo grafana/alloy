@@ -6,5 +6,5 @@
       <!--<UIRef Id="CustomDlg"/>-->
       <UIRef Id="WixUI_ErrorProgressText" />
     </UI>
-   </Fragment>
+  </Fragment>
 </Wix>

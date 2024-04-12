@@ -23,8 +23,8 @@
     </StandardDirectory>
     <Feature Id="Alloy" Title="Alloy" Description="Installs all the files needed for Alloy" Level="1" AllowAdvertise="no" ConfigurableDirectory="INSTALLLOCATION">
       <ComponentGroupRef Id="AlloyFiles" />
-			<ComponentGroupRef Id="AlloyRegistry" />
-			<ComponentGroupRef Id="AlloyService" />
+      <ComponentGroupRef Id="AlloyRegistry" />
+      <ComponentGroupRef Id="AlloyService" />
     </Feature>
   </Package>
 </Wix>

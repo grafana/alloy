@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix
+	xmlns="http://wixtoolset.org/schemas/v4/wxs"
+	xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+	
 	<?define ComponentRules="OneToOne"?>
 	<?define ServiceSourceDir="..\..\..\..\dist.temp"?>
 	<Fragment>
 		<ComponentGroup Id="AlloyService">
 			<Component Directory="INSTALLLOCATION">
 				<File Source="$(var.ServiceSourceDir)\alloy-service-windows-amd64.exe" />
-
+	
 				<ServiceInstall
 					Id="ServiceInstall"
 					Account="LocalSystem"
@@ -17,20 +20,25 @@
 					Vital="yes"
 					Description="Alloy by Grafana Labs"
 					DisplayName="Alloy">
-					<ServiceConfig OnInstall="yes" OnReinstall="yes" DelayedAutoStart="yes" />
+					<util:ServiceConfig
+						FirstFailureActionType="restart"
+						SecondFailureActionType="restart"
+						ThirdFailureActionType="restart"
+						RestartServiceDelayInSeconds="1"
+					/>
 				</ServiceInstall>
-
+	
 				<ServiceControl
 					Id="ServiceControl_Start"
 					Name="Alloy"
 					Start="install"
-					Wait="no"
-			  />
-
+					Wait="yes"
+				/>
+	
 				<ServiceControl
 					Id="ServiceControl_Stop"
 					Name="Alloy"
-					Stop="both"
+					Stop="uninstall"
 					Remove="uninstall"
 					Wait="yes"
 				/>

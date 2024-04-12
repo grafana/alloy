@@ -4,18 +4,18 @@
   <?define FileSourceDir="..\..\..\..\dist"?>
   <Fragment>
     <ComponentGroup Id="AlloyFiles">
-			<Component Directory="INSTALLLOCATION">
-				<File Source="Resources\config.alloy" />
-			</Component>
-			<Component Directory="INSTALLLOCATION">
-	  		<File Source="Resources\LICENSE.rtf" />
-			</Component>
-			<Component Directory="INSTALLLOCATION">
-				<File Source="Resources\Icon.ico" />
-			</Component>
-			<Component Directory="INSTALLLOCATION">
-				<File Source="$(var.FileSourceDir)\alloy-windows-amd64.exe" Name="alloy.exe" KeyPath="true" />
-			</Component>
+      <Component Directory="INSTALLLOCATION">
+      	<File Source="Resources\config.alloy" />
+      </Component>
+      <Component Directory="INSTALLLOCATION">
+      	<File Source="Resources\LICENSE.rtf" />
+      </Component>
+      <Component Directory="INSTALLLOCATION">
+      	<File Source="Resources\Icon.ico" />
+      </Component>
+      <Component Directory="INSTALLLOCATION">
+      	<File Source="$(var.FileSourceDir)\alloy-windows-amd64.exe" Name="alloy.exe" KeyPath="true" />
+      </Component>
     </ComponentGroup>
   </Fragment>
 </Wix>
