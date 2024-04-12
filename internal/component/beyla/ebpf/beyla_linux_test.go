@@ -5,6 +5,7 @@ package beyla
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/beyla/pkg/beyla"
@@ -135,8 +136,10 @@ func TestConvert_Attribute(t *testing.T) {
 	}
 
 	expectedConfig := beyla.Attributes{
+		InstanceID: beyla.DefaultConfig.Attributes.InstanceID,
 		Kubernetes: transform.KubernetesDecorator{
-			Enable: transform.KubeEnableFlag(args.Kubernetes.Enable),
+			Enable:               transform.KubeEnableFlag(args.Kubernetes.Enable),
+			InformersSyncTimeout: 30 * time.Second,
 		},
 	}
 
