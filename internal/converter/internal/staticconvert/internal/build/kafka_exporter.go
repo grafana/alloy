@@ -14,13 +14,16 @@ func (b *ConfigBuilder) appendKafkaExporter(config *kafka_exporter.Config, insta
 
 func toKafkaExporter(config *kafka_exporter.Config) *kafka.Arguments {
 	return &kafka.Arguments{
+		Instance:                config.Instance,
 		KafkaURIs:               config.KafkaURIs,
 		UseSASL:                 config.UseSASL,
 		UseSASLHandshake:        config.UseSASLHandshake,
 		SASLUsername:            config.SASLUsername,
 		SASLPassword:            alloytypes.Secret(config.SASLPassword),
 		SASLMechanism:           config.SASLMechanism,
+		SASLDisablePAFXFast:     config.SASLDisablePAFXFast,
 		UseTLS:                  config.UseTLS,
+		TlsServerName:           config.TlsServerName,
 		CAFile:                  config.CAFile,
 		CertFile:                config.CertFile,
 		KeyFile:                 config.KeyFile,
@@ -30,10 +33,20 @@ func toKafkaExporter(config *kafka_exporter.Config) *kafka.Arguments {
 		ZookeeperURIs:           config.ZookeeperURIs,
 		ClusterName:             config.ClusterName,
 		MetadataRefreshInterval: config.MetadataRefreshInterval,
+		ServiceName:             config.ServiceName,
+		KerberosConfigPath:      config.KerberosConfigPath,
+		Realm:                   config.Realm,
+		KeyTabPath:              config.KeyTabPath,
+		KerberosAuthType:        config.KerberosAuthType,
+		OffsetShowAll:           config.OffsetShowAll,
+		TopicWorkers:            config.TopicWorkers,
 		AllowConcurrent:         config.AllowConcurrent,
+		AllowAutoTopicCreation:  config.AllowAutoTopicCreation,
 		MaxOffsets:              config.MaxOffsets,
 		PruneIntervalSeconds:    config.PruneIntervalSeconds,
 		TopicsFilter:            config.TopicsFilter,
+		TopicsExclude:           config.TopicsExclude,
 		GroupFilter:             config.GroupFilter,
+		GroupExclude:            config.GroupExclude,
 	}
 }

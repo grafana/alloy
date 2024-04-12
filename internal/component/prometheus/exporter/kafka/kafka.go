@@ -21,8 +21,12 @@ var DefaultArguments = Arguments{
 	AllowConcurrent:         true,
 	MaxOffsets:              1000,
 	PruneIntervalSeconds:    30,
+	OffsetShowAll:           true,
+	TopicWorkers:            100,
 	TopicsFilter:            ".*",
+	TopicsExclude:           "^$",
 	GroupFilter:             ".*",
+	GroupExclude:            "^$",
 }
 
 type Arguments struct {
@@ -33,7 +37,9 @@ type Arguments struct {
 	SASLUsername            string            `alloy:"sasl_username,attr,optional"`
 	SASLPassword            alloytypes.Secret `alloy:"sasl_password,attr,optional"`
 	SASLMechanism           string            `alloy:"sasl_mechanism,attr,optional"`
+	SASLDisablePAFXFast     bool              `alloy:"sasl_disable_pafx_fast,attr,optional"`
 	UseTLS                  bool              `alloy:"use_tls,attr,optional"`
+	TlsServerName           string            `alloy:"tls_server_name,attr,optional"`
 	CAFile                  string            `alloy:"ca_file,attr,optional"`
 	CertFile                string            `alloy:"cert_file,attr,optional"`
 	KeyFile                 string            `alloy:"key_file,attr,optional"`
@@ -43,11 +49,21 @@ type Arguments struct {
 	ZookeeperURIs           []string          `alloy:"zookeeper_uris,attr,optional"`
 	ClusterName             string            `alloy:"kafka_cluster_name,attr,optional"`
 	MetadataRefreshInterval string            `alloy:"metadata_refresh_interval,attr,optional"`
+	ServiceName             string            `alloy:"gssapi_service_name,attr,optional"`
+	KerberosConfigPath      string            `alloy:"gssapi_kerberos_config_path,attr,optional"`
+	Realm                   string            `alloy:"gssapi_realm,attr,optional"`
+	KeyTabPath              string            `alloy:"gssapi_key_tab_path,attr,optional"`
+	KerberosAuthType        string            `alloy:"gssapi_kerberos_auth_type,attr,optional"`
+	OffsetShowAll           bool              `alloy:"offset_show_all,attr,optional"`
+	TopicWorkers            int               `alloy:"topic_workers,attr,optional"`
 	AllowConcurrent         bool              `alloy:"allow_concurrency,attr,optional"`
+	AllowAutoTopicCreation  bool              `alloy:"allow_auto_topic_creation,attr,optional"`
 	MaxOffsets              int               `alloy:"max_offsets,attr,optional"`
-	PruneIntervalSeconds    int               `alloy:"prune_interval_seconds,attr,optional"`
+	PruneIntervalSeconds    int               `alloy:"prune_interval_seconds,attr,optional"` // deprecated - no-op
 	TopicsFilter            string            `alloy:"topics_filter_regex,attr,optional"`
+	TopicsExclude           string            `alloy:"topics_exclude_regex,attr,optional"`
 	GroupFilter             string            `alloy:"groups_filter_regex,attr,optional"`
+	GroupExclude            string            `alloy:"groups_exclude_regex,attr,optional"`
 }
 
 func init() {
@@ -99,7 +115,9 @@ func (a *Arguments) Convert() *kafka_exporter.Config {
 		SASLUsername:            a.SASLUsername,
 		SASLPassword:            config.Secret(a.SASLPassword),
 		SASLMechanism:           a.SASLMechanism,
+		SASLDisablePAFXFast:     a.SASLDisablePAFXFast,
 		UseTLS:                  a.UseTLS,
+		TlsServerName:           a.TlsServerName,
 		CAFile:                  a.CAFile,
 		CertFile:                a.CertFile,
 		KeyFile:                 a.KeyFile,
@@ -109,10 +127,20 @@ func (a *Arguments) Convert() *kafka_exporter.Config {
 		ZookeeperURIs:           a.ZookeeperURIs,
 		ClusterName:             a.ClusterName,
 		MetadataRefreshInterval: a.MetadataRefreshInterval,
+		ServiceName:             a.ServiceName,
+		KerberosConfigPath:      a.KerberosConfigPath,
+		Realm:                   a.Realm,
+		KeyTabPath:              a.KeyTabPath,
+		KerberosAuthType:        a.KerberosAuthType,
+		OffsetShowAll:           a.OffsetShowAll,
+		TopicWorkers:            a.TopicWorkers,
 		AllowConcurrent:         a.AllowConcurrent,
+		AllowAutoTopicCreation:  a.AllowAutoTopicCreation,
 		MaxOffsets:              a.MaxOffsets,
 		PruneIntervalSeconds:    a.PruneIntervalSeconds,
 		TopicsFilter:            a.TopicsFilter,
+		TopicsExclude:           a.TopicsExclude,
 		GroupFilter:             a.GroupFilter,
+		GroupExclude:            a.GroupExclude,
 	}
 }
