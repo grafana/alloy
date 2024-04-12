@@ -62,11 +62,11 @@ func (args Routes) Convert() *transform.RoutesConfig {
 }
 
 func (args Attributes) Convert() beyla.Attributes {
-	return beyla.Attributes{
-		Kubernetes: transform.KubernetesDecorator{
-			Enable: transform.KubeEnableFlag(args.Kubernetes.Enable),
-		},
+	attrs := beyla.DefaultConfig.Attributes
+	if args.Kubernetes.Enable != "" {
+		attrs.Kubernetes.Enable = transform.KubeEnableFlag(args.Kubernetes.Enable)
 	}
+	return attrs
 }
 
 func (args Discovery) Convert() (services.DiscoveryConfig, error) {

@@ -58,6 +58,24 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "default", cfg.Discovery.Services[0].Namespace)
 }
 
+func TestArguments_ConvertDefaultConfig(t *testing.T) {
+	args := Arguments{}
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, cfg.ChannelBufferLen, beyla.DefaultConfig.ChannelBufferLen)
+	require.Equal(t, cfg.LogLevel, beyla.DefaultConfig.LogLevel)
+	require.Equal(t, cfg.EBPF, beyla.DefaultConfig.EBPF)
+	require.Equal(t, cfg.NetworkFlows, beyla.DefaultConfig.NetworkFlows)
+	require.Equal(t, cfg.Grafana, beyla.DefaultConfig.Grafana)
+	require.Equal(t, cfg.Attributes, beyla.DefaultConfig.Attributes)
+	require.Equal(t, cfg.Routes, beyla.DefaultConfig.Routes)
+	require.Equal(t, cfg.Metrics, beyla.DefaultConfig.Metrics)
+	require.Equal(t, cfg.Traces, beyla.DefaultConfig.Traces)
+	require.Equal(t, cfg.Prometheus, beyla.DefaultConfig.Prometheus)
+	require.Equal(t, cfg.InternalMetrics, beyla.DefaultConfig.InternalMetrics)
+	require.Equal(t, cfg.NetworkFlows, beyla.DefaultConfig.NetworkFlows)
+}
+
 func TestArguments_UnmarshalInvalidSyntax(t *testing.T) {
 	var tests = []struct {
 		testname      string
