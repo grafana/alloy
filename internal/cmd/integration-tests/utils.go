@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -39,6 +40,8 @@ func buildAlloy() {
 
 func setupEnvironment() {
 	executeCommand("docker-compose", []string{"up", "-d"}, "Setting up environment with Docker Compose")
+	fmt.Println("Sleep for 30 seconds to ensure that the env has time to initialize...")
+	time.Sleep(30 * time.Second)
 }
 
 func runSingleTest(testDir string, port int) {
