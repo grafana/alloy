@@ -25,6 +25,10 @@ Main (unreleased)
 - In `prometheus.exporter.kafka`, the interpolation table used to compute estimated lag metrics is now pruned
   on `metadata_refresh_interval` instead of `prune_interval_seconds`. (@wildum)
 
+### Bugfixes
+
+- Fixed issue with defaults for Beyla component not being applied correctly. (marctc)  
+
 v1.0.0 (2024-04-09)
 -------------------
 
