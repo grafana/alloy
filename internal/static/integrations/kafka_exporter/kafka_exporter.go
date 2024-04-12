@@ -6,11 +6,12 @@ import (
 	config_util "github.com/prometheus/common/config"
 
 	"github.com/IBM/sarama"
-	kafka_exporter "github.com/davidmparrott/kafka_exporter/v2/exporter"
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
+	kafka_exporter "github.com/grafana/kafka_exporter/exporter"
 )
 
 // DefaultConfig holds the default settings for the kafka_lag_exporter
@@ -22,8 +23,12 @@ var DefaultConfig = Config{
 	AllowConcurrent:         true,
 	MaxOffsets:              1000,
 	PruneIntervalSeconds:    30,
+	OffsetShowAll:           true,
+	TopicWorkers:            100,
 	TopicsFilter:            ".*",
+	TopicsExclude:           "^$",
 	GroupFilter:             ".*",
+	GroupExclude:            "^$",
 }
 
 // Config controls kafka_exporter
@@ -49,8 +54,14 @@ type Config struct {
 	// The SASL SCRAM SHA algorithm sha256 or sha512 as mechanism
 	SASLMechanism string `yaml:"sasl_mechanism,omitempty"`
 
+	// Configure the Kerberos client to not use PA_FX_FAST.
+	SASLDisablePAFXFast bool `yaml:"sasl_disable_pafx_fast,omitempty"`
+
 	// Connect using TLS
 	UseTLS bool `yaml:"use_tls,omitempty"`
+
+	// Used to verify the hostname on the returned certificates unless tls.insecure-skip-tls-verify is given. The kafka server's name should be given.
+	TlsServerName string `yaml:"tls_server_name,omitempty"`
 
 	// The optional certificate authority file for TLS client authentication
 	CAFile string `yaml:"ca_file,omitempty"`
@@ -79,20 +90,50 @@ type Config struct {
 	// Metadata refresh interval
 	MetadataRefreshInterval string `yaml:"metadata_refresh_interval,omitempty"`
 
+	// Service name when using kerberos Auth.
+	ServiceName string `yaml:"gssapi_service_name,omitempty"`
+
+	// Kerberos config path.
+	KerberosConfigPath string `yaml:"gssapi_kerberos_config_path,omitempty"`
+
+	// Kerberos realm.
+	Realm string `yaml:"gssapi_realm,omitempty"`
+
+	// Kerberos keytab file path.
+	KeyTabPath string `yaml:"gssapi_key_tab_path,omitempty"`
+
+	// Kerberos auth type. Either 'keytabAuth' or 'userAuth'.
+	KerberosAuthType string `yaml:"gssapi_kerberos_auth_type,omitempty"`
+
+	// Whether show the offset/lag for all consumer group, otherwise, only show connected consumer groups.
+	OffsetShowAll bool `yaml:"offset_show_all,omitempty"`
+
+	// Number of topic workers.
+	TopicWorkers int `yaml:"topic_workers,omitempty"`
+
 	// If true, all scrapes will trigger kafka operations otherwise, they will share results. WARN: This should be disabled on large clusters
 	AllowConcurrent bool `yaml:"allow_concurrency,omitempty"`
+
+	// If true, the broker may auto-create topics that we requested which do not already exist.
+	AllowAutoTopicCreation bool `yaml:"allow_auto_topic_creation,omitempty"`
 
 	// Maximum number of offsets to store in the interpolation table for a partition
 	MaxOffsets int `yaml:"max_offsets,omitempty"`
 
-	// How frequently should the interpolation table be pruned, in seconds
+	// No-op (deprecated). Use metadata_refresh_interval instead.
 	PruneIntervalSeconds int `yaml:"prune_interval_seconds,omitempty"`
 
 	// Regex filter for topics to be monitored
 	TopicsFilter string `yaml:"topics_filter_regex,omitempty"`
 
+	// Regex that determines which topics to exclude.
+	TopicsExclude string `yaml:"topics_exclude_regex,omitempty"`
+
 	// Regex filter for consumer groups to be monitored
 	GroupFilter string `yaml:"groups_filter_regex,omitempty"`
+
+	// Regex that determines which consumer groups to exclude.
+	GroupExclude string `yaml:"groups_exclude_regex,omitempty"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
@@ -147,6 +188,11 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		return nil, fmt.Errorf("zookeeper lag is enabled but no zookeeper uri was provided")
 	}
 
+	// 30 is the default value
+	if c.PruneIntervalSeconds != 30 {
+		level.Warn(logger).Log("msg", "prune_interval_seconds is not used anymore, use metadata_refresh_interval instead")
+	}
+
 	options := kafka_exporter.Options{
 		Uri:                      c.KafkaURIs,
 		UseSASL:                  c.UseSASL,
@@ -154,7 +200,9 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		SaslUsername:             c.SASLUsername,
 		SaslPassword:             string(c.SASLPassword),
 		SaslMechanism:            c.SASLMechanism,
+		SaslDisablePAFXFast:      c.SASLDisablePAFXFast,
 		UseTLS:                   c.UseTLS,
+		TlsServerName:            c.TlsServerName,
 		TlsCAFile:                c.CAFile,
 		TlsCertFile:              c.CertFile,
 		TlsKeyFile:               c.KeyFile,
@@ -164,12 +212,19 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		UriZookeeper:             c.ZookeeperURIs,
 		Labels:                   c.ClusterName,
 		MetadataRefreshInterval:  c.MetadataRefreshInterval,
+		ServiceName:              c.ServiceName,
+		KerberosConfigPath:       c.KerberosConfigPath,
+		Realm:                    c.Realm,
+		KeyTabPath:               c.KeyTabPath,
+		KerberosAuthType:         c.KerberosAuthType,
+		OffsetShowAll:            c.OffsetShowAll,
+		TopicWorkers:             c.TopicWorkers,
 		AllowConcurrent:          c.AllowConcurrent,
+		AllowAutoTopicCreation:   c.AllowAutoTopicCreation,
 		MaxOffsets:               c.MaxOffsets,
-		PruneIntervalSeconds:     c.PruneIntervalSeconds,
 	}
 
-	newExporter, err := kafka_exporter.New(logger, options, c.TopicsFilter, c.GroupFilter)
+	newExporter, err := kafka_exporter.New(logger, options, c.TopicsFilter, c.TopicsExclude, c.GroupFilter, c.GroupExclude)
 	if err != nil {
 		return nil, fmt.Errorf("could not instantiate kafka lag exporter: %w", err)
 	}

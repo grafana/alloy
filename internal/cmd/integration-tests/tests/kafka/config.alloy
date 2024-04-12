@@ -1,0 +1,25 @@
+prometheus.exporter.kafka "kafka_metrics" {
+  kafka_uris = ["127.0.0.1:9094"]
+}
+
+prometheus.scrape "kafka_metrics" {
+  targets    = prometheus.exporter.kafka.kafka_metrics.targets
+  forward_to = [prometheus.remote_write.kafka_metrics.receiver]
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.remote_write "kafka_metrics" {
+  endpoint {
+    url = "http://localhost:9009/api/v1/push"
+    metadata_config {
+        send_interval = "1s"
+    }
+    queue_config {
+        max_samples_per_send = 100
+    }
+  }
+  external_labels = {
+    test_name = "kafka_metrics",
+  }
+}
