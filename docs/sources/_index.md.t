@@ -31,6 +31,12 @@ cards:
     - title: Migrate to Alloy
       href: ./tasks/migrate/
       description: Learn how to migrate to Alloy from Grafana Agent Operator, Prometheus, Promtail, Grafana Agent Static, or Grafana Agent Flow.
+    - title: Collect OpenTelemetry data
+      href: ./tasks/collect-opentelemetry-data/
+      description: You can configure Alloy to collect OpenTelemetry-compatible data and forward it to any OpenTelemetry-compatible endpoint. Learn how to configure OpenTelemetry data delivery, configure batching, and receive OpenTelemetry data over OTLP.
+    - title: Collect and forward Prometheus metrics
+      href: ./tasks/collect-prometheus-metrics/
+      description: You can configure Alloy to collect Prometheus metrics and forward them to any Prometheus-compatible database. Learn how to configure metrics delivery and collect metrics from Kubernetes Pods.
     - title: Concepts
       href: ./concepts/
       description: Learn about components, modules, clustering, and the Alloy configuration syntax.
