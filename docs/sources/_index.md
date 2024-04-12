@@ -37,6 +37,12 @@ cards:
     - title: Reference
       href: ./reference/
       description: Read the reference documentation about the command line tools, configuration blocks, components, and standard library.
+    - title: Collect OpenTelemetry data
+      href: ./tasks/collect-opentelemetry-data/
+      description: You can configure Alloy to collect OpenTelemetry-compatible data and forward it to any OpenTelemetry-compatible endpoint. Learn how to configure OpenTelemetry data delivery, configure batching, and receive OpenTelemetry data over OTLP.
+    - title: Collect and forward Prometheus metrics
+      href: ./tasks/collect-prometheus-metrics/
+      description: You can configure Alloy to collect Prometheus metrics and forward them to any Prometheus-compatible database. Learn how to configure metrics delivery and collect metrics from Kubernetes Pods.
 ---
 
 {{< docs/hero-simple key="hero" >}}
@@ -59,17 +65,7 @@ You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructu
 ## What can {{% param "PRODUCT_NAME" %}} do?
 
 {{< param "PRODUCT_NAME" >}} is more than just observability signals like metrics, logs, and traces. It provides many features that help you quickly find and process your data in complex environments.
-Some of these features include:
-
-* **Custom components:** You can use {{< param "PRODUCT_NAME" >}} to create and share custom components.
-  Custom components combine a pipeline of existing components into a single, easy-to-understand component that's just a few lines long.
-  You can use pre-built custom components from the community, ones packaged by Grafana, or create your own.
-* **GitOps compatibility:** {{< param "PRODUCT_NAME" >}} uses frameworks to pull configurations from Git, S3, HTTP endpoints, and just about any other source.
-* **Clustering support:** {{< param "PRODUCT_NAME" >}} has native clustering support.
-  Clustering helps distribute the workload and ensures you have high availability.
-  You can quickly create horizontally scalable deployments with minimal resource and operational overhead.
-* **Security:** {{< param "PRODUCT_NAME" >}} helps you manage authentication credentials and connect to HashiCorp Vault servers or Kubernetes clusters to retrieve Kubernetes secrets.
-* **Debugging utilities:** {{< param "PRODUCT_NAME" >}} provides debugging tools such as an embedded [user interface][UI] to help you identify and resolve configuration problems.
+Some of these features include custom components, GitOps compatibility, clustering support, security, and debugging utilities. Refer to the {{< param "PRODUCT_NAME" >}} [Introduction] for more information on these and other key features.
 
 ## Explore
 
@@ -82,4 +78,4 @@ Some of these features include:
 [Tempo]: https://grafana.com/docs/tempo/
 [Mimir]: https://grafana.com/docs/mimir/
 [Pyroscope]: https://grafana.com/docs/pyroscope/
-[UI]: ./tasks/debug/#alloy-ui
+[Introduction]: ./introduction/
