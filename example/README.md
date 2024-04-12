@@ -10,7 +10,7 @@ By default, only Grafana and databases are exposed:
 
 * Grafana, for visualizing telemetry (`localhost:3000`)
 * Grafana Mimir, for storing metrics (`localhost:9009`)
-* Grafana Loki, for storing logs (`localhost:3000`)
+* Grafana Loki, for storing logs (`localhost:3100`)
 * Grafana Tempo, for storing traces (`localhost:3200`)
 * Grafana Pyroscope, for storing profiles (`localhost:4040`)
 
