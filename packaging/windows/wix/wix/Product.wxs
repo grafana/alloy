@@ -8,7 +8,7 @@
   The Product@Id attribute (ProductCode Property) will be a random GUID for each build.  This is to support "Major Upgrades" where each install 
   is a seamless uninstall/reinstall.
   -->
-  <Package Name="Alloy" Language="1033" Version="$(var.MSIProductVersion)" Manufacturer="Grafana" UpgradeCode="1d3d3582-0035-49ee-93c1-483b2a5b007b">
+	<Package Name="Alloy" Language="1033" Version="1.0.0" Manufacturer="Grafana" UpgradeCode="1d3d3582-0035-49ee-93c1-483b2a5b007b">
     <SummaryInformation />
     <MediaTemplate EmbedCab="yes" />
     <MajorUpgrade DowngradeErrorMessage="A newer version of Alloy is already installed." />
