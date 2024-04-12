@@ -15,6 +15,9 @@
     <Icon Id="Icon.ico" SourceFile="Resources\Icon.ico" />
     <Property Id="ARPPRODUCTICON" Value="Icon.ico"></Property>
     <Property Id="DISABLEADVTSHORTCUTS" Value="1"></Property>
+		<WixVariable Id="WixUILicenseRtf" Value="Resources\LICENSE.rtf"/>
+		<WixVariable Id="WixUIBannerBmp" Value="Resources\grafana_top_banner_white.bmp"/>
+		<WixVariable Id="WixUIDialogBmp" Value="Resources\grafana_dialog_background.bmp"/>
     <UIRef Id="UI" />
     <StandardDirectory Id="ProgramFiles6432Folder">
       <Directory Id="CompanyFolder" Name="GrafanaLabs">

@@ -1,15 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Wix
-	xmlns="http://wixtoolset.org/schemas/v4/wxs"
-	xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
-	
-	<?define ComponentRules="OneToOne"?>
-	<?define ServiceSourceDir="..\..\..\..\dist.temp"?>
-	<Fragment>
-		<ComponentGroup Id="AlloyService">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <?define ComponentRules="OneToOne"?>
+  <?define SourceDir="..\..\..\..\dist.temp"?>
+  <Fragment>
+    <ComponentGroup Id="AlloyService">
 			<Component Directory="INSTALLLOCATION">
-				<File Source="$(var.ServiceSourceDir)\alloy-service-windows-amd64.exe" />
-	
+				<File Source="$(var.SourceDir)\alloy-service-windows-amd64.exe" KeyPath="yes" />
+
 				<ServiceInstall
 					Id="ServiceInstall"
 					Account="LocalSystem"
@@ -21,28 +18,22 @@
 					Description="Alloy by Grafana Labs"
 					DisplayName="Alloy">
 					<util:ServiceConfig
-						FirstFailureActionType="restart"
-						SecondFailureActionType="restart"
-						ThirdFailureActionType="restart"
-						RestartServiceDelayInSeconds="1"
+							FirstFailureActionType="restart"
+							SecondFailureActionType="restart"
+							ThirdFailureActionType="restart"
+							RestartServiceDelayInSeconds="1"
 					/>
 				</ServiceInstall>
-	
+
 				<ServiceControl
-					Id="ServiceControl_Start"
-					Name="Alloy"
-					Start="install"
-					Wait="yes"
+						Id="ServiceControl"
+						Name="Alloy"
+						Start="install"
+						Stop="both"
+						Remove="both"
+						Wait="yes"
 				/>
-	
-				<ServiceControl
-					Id="ServiceControl_Stop"
-					Name="Alloy"
-					Stop="uninstall"
-					Remove="uninstall"
-					Wait="yes"
-				/>
-			</Component>
-		</ComponentGroup>
-	</Fragment>
+      </Component>
+    </ComponentGroup>
+  </Fragment>
 </Wix>

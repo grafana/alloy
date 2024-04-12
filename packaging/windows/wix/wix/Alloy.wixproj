@@ -18,7 +18,6 @@
     <OutputName>alloy-installer-windows-$(Platform)</OutputName>
     <OutputType>Package</OutputType>
     <OutputPath>..\..\..\..\dist</OutputPath>
-    <WixVariables>WixUILicenseRtf=Resources\LICENSE.rtf</WixVariables>
     <DefineConstants>MSIProductVersion=$(MSIProductVersion)</DefineConstants>
     <Platforms>x86;x64;ARM64</Platforms>
   </PropertyGroup>
@@ -32,12 +31,15 @@
     <DefineConstants>Debug;MSIProductVersion=$(MSIProductVersion)</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-	<Content Include="Resources\config.alloy" />
+    <Content Include="Resources\config.alloy" />
+    <Content Include="Resources\grafana_dialog_background.bmp" />
+    <Content Include="Resources\grafana_top_banner_white.bmp" />
     <Content Include="Resources\Icon.ico" />
     <Content Include="Resources\LICENSE.rtf" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\config.alloy" />
+    <None Include="Resources\LICENSE.md" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="WixToolset.UI.wixext" Version="5.0.0" />
