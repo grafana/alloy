@@ -10,6 +10,15 @@ weight: 300
 
 You can install {{< param "PRODUCT_NAME" >}} as a systemd service on Linux.
 
+## Before you begin
+
+Some Debian-based cloud Virtual Machines don't have GPG installed by default.
+To install GPG in your Linux Virtual Machine, run the following command in a terminal window.
+
+```shell
+sudo apt install gpg
+```
+
 ## Install
 
 To install {{< param "PRODUCT_NAME" >}} on Linux, run the following commands in a terminal window.
