@@ -20,7 +20,6 @@ local locals = {
   // TODO(rfratto): The following are temporarily diasbled as grafana/alloy
   // gets set up.
 
-  /*
   pipelines.linux('Create Linux build image') {
     trigger: locals.on_build_image_tag,
     steps: [{
@@ -36,7 +35,7 @@ local locals = {
         'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
         'docker run --rm --privileged multiarch/qemu-user-static --reset -p yes',
         'docker buildx create --name multiarch --driver docker-container --use',
-        'docker buildx build --build-arg="GO_RUNTIME=golang:1.22.1-bullseye" --push --platform linux/amd64,linux/arm64 -t grafana/agent-build-image:$IMAGE_TAG ./tools/build-image',
+        'docker buildx build --build-arg="GO_RUNTIME=golang:1.22.1-bullseye" --push --platform linux/amd64,linux/arm64 -t grafana/alloy-build-image:$IMAGE_TAG ./tools/build-image',
       ],
     }],
     volumes: [{
@@ -59,14 +58,14 @@ local locals = {
         'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
         'docker run --rm --privileged multiarch/qemu-user-static --reset -p yes',
         'docker buildx create --name multiarch --driver docker-container --use',
-        'docker buildx build --build-arg="GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.22.1-bullseye" --push --platform linux/amd64,linux/arm64 -t grafana/agent-build-image:$IMAGE_TAG ./tools/build-image',
+        'docker buildx build --build-arg="GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.22.1-bullseye" --push --platform linux/amd64,linux/arm64 -t grafana/alloy-build-image:$IMAGE_TAG ./tools/build-image',
       ],
     }],
     volumes: [{
       name: 'docker',
       host: { path: '/var/run/docker.sock' },
     }],
-   },
+  },
 
   pipelines.windows('Create Windows build image') {
     trigger: locals.on_build_image_tag,
@@ -83,8 +82,8 @@ local locals = {
         // and not by Windows (where the syntax obviously wouldn't work).
         '$IMAGE_TAG="${DRONE_TAG##build-image/v}-windows"',
         'docker login -u $Env:DOCKER_LOGIN -p $Env:DOCKER_PASSWORD',
-        'docker build -t grafana/agent-build-image:$IMAGE_TAG ./tools/build-image/windows',
-        'docker push grafana/agent-build-image:$IMAGE_TAG',
+        'docker build -t grafana/alloy-build-image:$IMAGE_TAG ./tools/build-image/windows',
+        'docker push grafana/alloy-build-image:$IMAGE_TAG',
       ],
     }],
     volumes: [{
@@ -92,5 +91,4 @@ local locals = {
       host: { path: '//./pipe/docker_engine/' },
     }],
   },
-  */
 ]
