@@ -250,6 +250,7 @@ loki.source.file "logs_varlogs_varlogs" {
         min_poll_frequency = "1s"
         max_poll_frequency = "5s"
     }
+    legacy_positions_file = "/var/lib/agent/data-agent/varlogs.yml"
 }
 
 loki.write "logs_varlogs" {
