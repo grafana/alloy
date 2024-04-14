@@ -19,7 +19,7 @@ import (
 var DefaultConfig = Config{
 	Global:                 instance.DefaultGlobalConfig,
 	InstanceRestartBackoff: 5 * time.Second,
-	WALDir:                 "data-agent/",
+	WALDir:                 "data-alloy/",
 	WALCleanupAge:          12 * time.Hour,
 	WALCleanupPeriod:       30 * time.Minute,
 	ServiceConfig:          cluster.DefaultConfig,
