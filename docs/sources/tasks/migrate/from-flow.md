@@ -60,11 +60,11 @@ Before migrating, modify your Grafana Agent Flow configuration to remove or repl
 
 ### Deploy {{% param "PRODUCT_NAME" %}} with a default configuration
 
-Follow the [installation instructions][install] for {{< param "PRODUCT_NAME" >}}, using the default configuration file. The configuration file will be customized in the following steps.
+Follow the [installation instructions][install] for {{< param "PRODUCT_NAME" >}}, using the default configuration file. The configuration file is customized in the following steps.
 
 When deploying {{< param "PRODUCT_NAME" >}}, be aware of the following settings:
 
-- {{< param "PRODUCT_NAME" >}} should be deployed with identical topology as Grafana Agent Flow: CPU, and storage limits should match.
+- {{< param "PRODUCT_NAME" >}} should be deployed with identical topology as Grafana Agent Flow. The CPU, and storage limits should match.
 - Custom command-line flags configured in Grafana Agent Flow should be reflected in your {{< param "PRODUCT_NAME" >}} installation.
 - {{< param "PRODUCT_NAME" >}} may need to be deployed with the `--stability.level` flag in [run] to enable non-stable components:
     - Set `--stability.level` to `public-preview` if you are using any of these components:
