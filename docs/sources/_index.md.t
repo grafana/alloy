@@ -71,11 +71,10 @@ Some of these features include custom components, GitOps compatibility, clusteri
 
 {{< card-grid key="cards" type="simple" >}}
 
-[OpenTelemetry]: https://opentelemetry.io/ecosystem/distributions/
+[OTel]: https://opentelemetry.io/ecosystem/distributions/
 [Prometheus]: https://prometheus.io/
-[Loki]: https://grafana.com/docs/loki/
-[Grafana]: https://grafana.com/docs/grafana/
-[Tempo]: https://grafana.com/docs/tempo/
-[Mimir]: https://grafana.com/docs/mimir/
 [Pyroscope]: https://grafana.com/docs/pyroscope/
+[Loki]: https://grafana.com/docs/loki/
+[Mimir]: https://grafana.com/docs/mimir/
+[Promtail]: https://grafana.com/docs/loki/latest/send-data/promtail/
 [Introduction]: ./introduction/

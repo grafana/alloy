@@ -51,9 +51,9 @@ cards:
 
 # Overview
 
-{{< param "PRODUCT_NAME" >}} offers native pipelines for OTel, [Prometheus][], [Pyroscope][], [Loki][], and many other metrics, logs, traces, and profile tools.
-In addition, you can use {{< param "PRODUCT_NAME" >}} pipelines to do different tasks, such as configure alert rules in Loki and Mimir.
-{{< param "PRODUCT_NAME" >}} is fully compatible with the OTel Collector, Prometheus Agent, and Promtail.
+{{< param "PRODUCT_NAME" >}} offers native pipelines for [OTel][], [Prometheus][], [Pyroscope][], [Loki][], and many other metrics, logs, traces, and profile tools.
+In addition, you can use {{< param "PRODUCT_NAME" >}} pipelines to do different tasks, such as configure alert rules in Loki and [Mimir][].
+{{< param "PRODUCT_NAME" >}} is fully compatible with the OTel Collector, Prometheus Agent, and [Promtail][].
 You can use {{< param "PRODUCT_NAME" >}} as an alternative to either of these solutions or combine it into a hybrid system of multiple collectors and agents.
 You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructure and pair it with your Grafana LGTM stack, a telemetry backend from Grafana Cloud, or any other compatible backend from any other vendor.
 {{< param "PRODUCT_NAME" >}} is flexible, and you can easily configure it to fit your needs in on-prem, cloud-only, or a mix of both.
@@ -71,11 +71,10 @@ Some of these features include custom components, GitOps compatibility, clusteri
 
 {{< card-grid key="cards" type="simple" >}}
 
-[OpenTelemetry]: https://opentelemetry.io/ecosystem/distributions/
+[OTel]: https://opentelemetry.io/ecosystem/distributions/
 [Prometheus]: https://prometheus.io/
-[Loki]: https://grafana.com/docs/loki/
-[Grafana]: https://grafana.com/docs/grafana/
-[Tempo]: https://grafana.com/docs/tempo/
-[Mimir]: https://grafana.com/docs/mimir/
 [Pyroscope]: https://grafana.com/docs/pyroscope/
+[Loki]: https://grafana.com/docs/loki/
+[Mimir]: https://grafana.com/docs/mimir/
+[Promtail]: https://grafana.com/docs/loki/latest/send-data/promtail/
 [Introduction]: ./introduction/
