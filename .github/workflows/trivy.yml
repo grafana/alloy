@@ -28,7 +28,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@d710430a6722f083d3b36b8339ff66b32f22ee55
         with:
-          image-ref: 'grafana/alloy:main'
+          image-ref: 'us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy:latest'
           format: 'template'
           template: '@/contrib/sarif.tpl'
           output: 'trivy-results.sarif'
