@@ -29,6 +29,8 @@ Main (unreleased)
 
 - Fixed issue with defaults for Beyla component not being applied correctly. (marctc)  
 
+- Fixed issue where text labels displayed outside of component node's boundary. (@hainenber)
+
 v1.0.0 (2024-04-09)
 -------------------
 

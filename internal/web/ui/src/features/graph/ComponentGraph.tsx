@@ -330,6 +330,12 @@ export const ComponentGraph: FC<ComponentGraphProps> = (props) => {
 
     const linkedNodes = nodes.append('a').attr('href', (n) => `${baseComponentPath}/${n.data.localID}`);
 
+    // Check if above `a` element got rendered with latitude equaling to node's margin
+    // If that's the case then we're running in quirks of Firefox SVG rendering
+    // and have to perform "hack"
+    const { x: linkedX } = linkedNodes.node()?.getBoundingClientRect() || {};
+    const withY = linkedX === nodeMargin;
+
     // Plot nodes
     linkedNodes
       .append('rect')
@@ -350,6 +356,7 @@ export const ComponentGraph: FC<ComponentGraphProps> = (props) => {
     nodeContent
       .append('text')
       .text((d) => d.data.name)
+      .attr('y', withY ? 10.5 : null)
       .attr('font-size', '13')
       .attr('font-weight', 'bold')
       .attr('font-family', '"Roboto", sans-serif')
@@ -361,7 +368,12 @@ export const ComponentGraph: FC<ComponentGraphProps> = (props) => {
     nodeContent
       .append('text')
       .text((d) => d.data.label || '')
-      .attr('y', 13 /* font size */ + 2 /* margin from previous text line */)
+      .attr(
+        'y',
+        13 /* font size */ +
+          2 /* margin from previous text line */ +
+          (withY ? 10.5 : 0) /* extra padding from above for Firefox rendering*/
+      )
       .attr('font-size', '13')
       .attr('font-weight', 'normal')
       .attr('font-family', '"Roboto", sans-serif')
@@ -399,7 +411,7 @@ export const ComponentGraph: FC<ComponentGraphProps> = (props) => {
         return text.charAt(0).toUpperCase() + text.substring(1);
       })
       .attr('x', 45 / 2) // Anchor to middle of box
-      .attr('y', 14 / 2) // Middle of box
+      .attr('y', 14 / 2 + (withY ? 2.5 : 0)) // Middle of box
       .attr('font-size', '7')
       .attr('font-weight', 'bold')
       .attr('font-family', '"Roboto", sans-serif')
