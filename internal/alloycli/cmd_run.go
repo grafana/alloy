@@ -30,6 +30,7 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	opamp_service "github.com/grafana/alloy/internal/service/opamp"
 	otel_service "github.com/grafana/alloy/internal/service/otel"
 	remotecfgservice "github.com/grafana/alloy/internal/service/remotecfg"
 	uiservice "github.com/grafana/alloy/internal/service/ui"
@@ -273,6 +274,11 @@ func (fr *alloyRun) Run(configPath string) error {
 		return fmt.Errorf("failed to create otel service")
 	}
 
+	opampService := opamp_service.New(l)
+	if opampService == nil {
+		return fmt.Errorf("failed to create opamp service")
+	}
+
 	labelService := labelstore.New(l, reg)
 	alloyseed.Init(fr.storagePath, l)
 
@@ -289,6 +295,7 @@ func (fr *alloyRun) Run(configPath string) error {
 			otelService,
 			labelService,
 			remoteCfgService,
+			opampService,
 		},
 	})
 

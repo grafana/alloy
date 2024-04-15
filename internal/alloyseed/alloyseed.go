@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/oklog/ulid/v2"
 	"github.com/prometheus/common/version"
 )
 
@@ -155,4 +156,16 @@ func writeSeedFile(seed *Seed, path string, logger log.Logger) {
 		level.Error(logger).Log("msg", "Writing seed file", "err", err)
 		return
 	}
+}
+
+func (s *Seed) Ulid() string {
+	if s == nil || s.UID == "" {
+		return ""
+	}
+	u, err := uuid.Parse(s.UID)
+	if err != nil {
+		return ""
+	}
+	ul := ulid.ULID(u)
+	return ul.String()
 }
