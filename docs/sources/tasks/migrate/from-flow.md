@@ -81,7 +81,7 @@ When deploying {{< param "PRODUCT_NAME" >}}, be aware of the following settings:
     - Set the number of instances to match the number of instances in your Grafana Agent Flow cluster.
     - Do not enable auto-scaling until the migration is complete.
 
-[install]: ../../get-started/install
+[install]: ../../../get-started/install
 [run]: ../../../reference/cli/run
 [discovery.process]: ../../../reference/components/discovery.process/
 [pyroscope.ebpf]: ../../../reference/components/pyroscope.ebpf/
