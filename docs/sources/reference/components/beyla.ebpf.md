@@ -31,15 +31,15 @@ beyla.ebpf "<LABEL>" {
 
 `beyla.ebpf` supports the following arguments:
 
-Name             | Type     | Description                                                                         | Default | Required
------------------|----------|-------------------------------------------------------------------------------------|---------|---------
-`open_port`      | `string` | The port of the running service for Beyla automatically instrumented with eBPF.     |         | no
-`excutable_name` | `string` | The name of the executable to match for Beyla automatically instrumented with eBPF. |         | no
+Name              | Type     | Description                                                                         | Default | Required
+------------------|----------|-------------------------------------------------------------------------------------|---------|---------
+`open_port`       | `string` | The port of the running service for Beyla automatically instrumented with eBPF.     |         | no
+`executable_name` | `string` | The name of the executable to match for Beyla automatically instrumented with eBPF. |         | no
 
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it is considered to match the selection criteria.
 
-`excutable_name` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
+`executable_name` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
 ## Blocks
 
