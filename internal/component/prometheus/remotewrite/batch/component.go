@@ -44,6 +44,7 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 	s := &Queue{
 		database: q,
 		opts:     opts,
+		b:        newBatch(q, args.BatchSize),
 	}
 
 	return s, s.Update(args)
@@ -58,12 +59,14 @@ type Queue struct {
 	opts       component.Options
 	wr         *writer
 	testClient WriteClient
+	b          *batch
 }
 
 // Run starts the component, blocking until ctx is canceled or the component
 // suffers a fatal error. Run is guaranteed to be called exactly once per
 // Component.
 func (s *Queue) Run(ctx context.Context) error {
+	go s.b.StartTimer(ctx)
 	qm, err := s.newQueueManager()
 	if err != nil {
 		return err
@@ -153,26 +156,7 @@ func (c *Queue) Appender(ctx context.Context) storage.Appender {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
-	return newAppender(c, c.args.TTL)
-}
-
-func (c *Queue) writeUncommitted(a *appender) string {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
-	if a.l.totalMetrics == 0 {
-		return ""
-	}
-	bb := buf.Get().(*bytes.Buffer)
-	defer bb.Reset()
-	defer buf.Put(bb)
-
-	a.l.Serialize(bb)
-	handle, err := c.database.AddUncommited(bb.Bytes())
-	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to write uncommitted to queue", "err", err)
-	}
-	return handle
+	return newAppender(c, c.args.TTL, c.b)
 }
 
 func (c *Queue) rollback(handles []string) {

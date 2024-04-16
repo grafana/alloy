@@ -1,0 +1,22 @@
+[
+    {
+        "name" : "normal",
+        "config": "./configs/normal.river",
+        "description": "This is a normal configuration for the agent. It is used as a baseline for comparison."
+    },
+    {
+        "name":"relabel_large_cache",
+        "config": "./configs/relabel_large_cache.river",
+        "description": "This configuration uses a large cache size for the relabeler."
+    },
+    {
+        "name":"relabel_normal_cache",
+        "config" : "./configs/relabel_cache.river",
+        "description": "This configuration uses a normal cache size for the relabeler."
+    },
+    {
+        "name":"batch",
+        "config" : "./configs/batch.river",
+        "description" : "Using batch remote write instead of prometheus."
+    }
+]

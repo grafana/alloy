@@ -1,0 +1,10 @@
+loki.test.logs "logs" {
+	number_of_files    = 100
+	file_churn_percent = .25
+	file_refresh       = "1m"
+	write_cadence      = "1s"
+	writes_per_cadence = 100
+	labels = {
+		"instance" = "localhost",
+	}
+}

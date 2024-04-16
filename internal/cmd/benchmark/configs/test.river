@@ -1,0 +1,33 @@
+// This is meant to mimic handling a single node_exporter instance.
+prometheus.test.metrics "single" {
+    number_of_instances = 1
+    number_of_metrics = 2000
+    number_of_labels = 5
+    metrics_refresh = "10m"
+    churn_percent = 0.05  
+}
+
+// This is meant to mimic handling many node_exporter instances.
+prometheus.test.metrics "many" {
+    number_of_instances = 1000
+    number_of_metrics = 2000
+    number_of_labels = 5
+    metrics_refresh = "10m"
+    churn_percent = 0.05
+}
+
+prometheus.test.metrics "large" {
+    number_of_instances = 2
+    number_of_metrics = 1000000
+    number_of_labels = 9
+    metrics_refresh = "10m"
+    churn_percent = 0.05
+}
+
+prometheus.test.metrics "churn" {
+    number_of_instances = 2
+    number_of_metrics = 200000
+    number_of_labels = 12
+    metrics_refresh = "2m"
+    churn_percent = 0.50
+}

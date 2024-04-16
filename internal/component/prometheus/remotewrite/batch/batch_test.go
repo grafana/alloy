@@ -1,6 +1,6 @@
 package batch
 
-import (
+import status(
 	"bytes"
 	"testing"
 	"time"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestLinear(t *testing.T) {
-	l := newBatch()
+	l := newBatch(nil, 16*1024*1024)
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -18,9 +18,9 @@ func TestLinear(t *testing.T) {
 	l.AddMetric(lbls, ts, 10)
 
 	bb := &bytes.Buffer{}
-	l.Serialize(bb)
+	l.serialize(bb)
 	out := bytes.NewBuffer(bb.Bytes())
-	metrics, err := l.Deserialize(out, 100)
+	metrics, err := Deserialize(out, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	require.Len(t, metrics[0].SeriesLabels, 1)
@@ -30,7 +30,7 @@ func TestLinear(t *testing.T) {
 }
 
 func TestLinearMultiple(t *testing.T) {
-	l := newBatch()
+	l := newBatch(nil, 16*1024*1024)
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -45,9 +45,9 @@ func TestLinearMultiple(t *testing.T) {
 	l.AddMetric(lbls2, ts, 11)
 
 	bb := &bytes.Buffer{}
-	l.Serialize(bb)
+	l.serialize(bb)
 	out := bytes.NewBuffer(bb.Bytes())
-	metrics, err := l.Deserialize(out, 100)
+	metrics, err := Deserialize(out, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
 
@@ -55,47 +55,37 @@ func TestLinearMultiple(t *testing.T) {
 	require.True(t, hasLabel(lbls2, metrics, ts, 11))
 }
 
-func TestLinearReuse(t *testing.T) {
-	l := LinearPool.Get().(*batch)
+func TestLinearMultipleDifferent(t *testing.T) {
+	l := newBatch(nil, 16*1024*1024)
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
+		"badlabel": "arrr",
 	})
 	ts := time.Now().Unix()
 	l.AddMetric(lbls, ts, 10)
 
 	lbls2 := labels.FromMap(map[string]string{
-		"__name__": "test",
+		"__name__": "test1",
 		"lbl":      "label_1",
+		"bob":      "foo",
 	})
+
 	l.AddMetric(lbls2, ts, 11)
 
 	bb := &bytes.Buffer{}
-	l.Serialize(bb)
+	l.serialize(bb)
 	out := bytes.NewBuffer(bb.Bytes())
-	metrics, err := l.Deserialize(out, 100)
+
+	metrics, err := Deserialize(out, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
 
 	require.True(t, hasLabel(lbls, metrics, ts, 10))
 	require.True(t, hasLabel(lbls2, metrics, ts, 11))
-
-	l.Reset()
-	LinearPool.Put(l)
-
-	l = LinearPool.Get().(*batch)
-	l.AddMetric(lbls, ts, 10)
-	bb = &bytes.Buffer{}
-	l.Serialize(bb)
-	out = bytes.NewBuffer(bb.Bytes())
-	metrics, err = l.Deserialize(out, 100)
-	require.NoError(t, err)
-	require.Len(t, metrics, 1)
-
-	require.True(t, hasLabel(lbls, metrics, ts, 10))
 }
 
 func TestLinearTTL(t *testing.T) {
-	l := newBatch()
+	l := newBatch(nil, 16*1024*1024)
 
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
@@ -104,10 +94,10 @@ func TestLinearTTL(t *testing.T) {
 	l.AddMetric(lbls, ts, 10)
 
 	bb := &bytes.Buffer{}
-	l.Serialize(bb)
+	l.serialize(bb)
 	out := bytes.NewBuffer(bb.Bytes())
 	time.Sleep(2 * time.Second)
-	metrics, err := l.Deserialize(out, 1)
+	metrics, err := Deserialize(out, 1)
 	ttl := &TTLError{}
 	require.ErrorAs(t, err, ttl)
 	require.Len(t, metrics, 0)

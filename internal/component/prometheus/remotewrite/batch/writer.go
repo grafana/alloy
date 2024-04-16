@@ -82,14 +82,11 @@ func (w *writer) send(val []byte, ctx context.Context) (success bool, recoverabl
 	recoverableError = true
 
 	var err error
-	l := LinearPool.Get().(*batch)
-	defer l.Reset()
-	defer LinearPool.Put(l)
 	wr := wrPool.Get().(*prompb.WriteRequest)
 	defer wrPool.Put(wr)
 
 	// TODO add setting to handle wal age.
-	d, err := l.Deserialize(bytes.NewBuffer(val), math.MaxInt64)
+	d, err := Deserialize(bytes.NewBuffer(val), math.MaxInt64)
 	if err != nil {
 		return false, false
 	}
@@ -103,30 +100,4 @@ func (w *writer) send(val []byte, ctx context.Context) (success bool, recoverabl
 		level.Error(w.l).Log("msg", "error sending samples", "err", err)
 	}
 	return success, recoverableError
-}
-
-func makeWriteRequestDeserialized(samples []*deserializedMetric, wr *prompb.WriteRequest) {
-	if len(samples) > len(wr.Timeseries) {
-		wr.Timeseries = make([]prompb.TimeSeries, len(samples))
-		for i := 0; i < len(samples); i++ {
-			wr.Timeseries[i].Samples = make([]prompb.Sample, 1)
-			wr.Timeseries[i].Samples[0] = prompb.Sample{}
-			wr.Timeseries[i].Labels = make([]prompb.Label, 0)
-		}
-	}
-
-	wr.Timeseries = wr.Timeseries[:len(samples)]
-	for i, s := range samples {
-		if cap(wr.Timeseries[i].Labels) < len(s.lbls) {
-			wr.Timeseries[i].Labels = make([]prompb.Label, len(s.lbls))
-		} else {
-			wr.Timeseries[i].Labels = wr.Timeseries[i].Labels[:len(s.lbls)]
-		}
-		for x, l := range s.lbls {
-			wr.Timeseries[i].Labels[x].Name = l.Name
-			wr.Timeseries[i].Labels[x].Value = l.Value
-		}
-		wr.Timeseries[i].Samples[0].Value = s.val
-		wr.Timeseries[i].Samples[0].Timestamp = s.ts
-	}
 }

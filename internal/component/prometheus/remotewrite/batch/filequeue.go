@@ -79,7 +79,7 @@ func (q *filequeue) Commit(handles []string) error {
 
 	for _, h := range handles {
 		newname := strings.Replace(h, "uncommitted", "committed", 1)
-		//TODO add windows specific check here
+		//TODO: @mattdurham add windows specific check here for renaming atomically.
 		err := os.Rename(h, newname)
 		if err != nil {
 			return err
@@ -122,7 +122,7 @@ func (q *filequeue) Delete(name string) {
 	q.mut.Lock()
 	defer q.mut.Unlock()
 
-	os.Remove(name)
+	_ = os.Remove(name)
 }
 
 func clearUncommitted(directory string) {

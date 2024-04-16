@@ -10,58 +10,39 @@ import (
 	"github.com/prometheus/prometheus/storage"
 )
 
-type SampleType uint16
-
-const (
-	Metric SampleType = iota
-)
-
 // appender is used to transfer from incoming samples to the PebbleDB.
 type appender struct {
-	parent  *Queue
-	ttl     time.Duration
-	l       *batch
-	handles []string
+	parent *Queue
+	ttl    time.Duration
+	l      *batch
 }
 
-func newAppender(parent *Queue, ttl time.Duration) *appender {
+func newAppender(parent *Queue, ttl time.Duration, b *batch) *appender {
 	app := &appender{
-		parent:  parent,
-		ttl:     ttl,
-		l:       LinearPool.Get().(*batch),
-		handles: make([]string, 0),
+		parent: parent,
+		ttl:    ttl,
+		l:      b,
 	}
 	return app
 }
 
 // Append metric
 func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
-	endTime := time.Now().UnixMilli() - int64(a.ttl.Seconds())
+	endTime := time.Now().UTC().Unix() - int64(a.ttl.Seconds())
 	if t < endTime {
 		return ref, nil
 	}
 	a.l.AddMetric(l, t, v)
-	// If we have over 16MB of data commit it. This reduces our ability to get good disk compression but helps memory pressure.
-	if a.l.estimatedSize > 16*1024*1024 {
-		a.handles = append(a.handles, a.parent.writeUncommitted(a))
-		a.l.Reset()
-	}
 	return ref, nil
 }
 
 // Commit metrics to the DB
 func (a *appender) Commit() (_ error) {
-	handle := a.parent.writeUncommitted(a)
-	a.handles = append(a.handles, handle)
-	a.parent.commit(a.handles)
-	a.l.Reset()
-	LinearPool.Put(a.l)
 	return nil
 }
 
 // Rollback does nothing.
 func (a *appender) Rollback() error {
-	a.parent.rollback(a.handles)
 	return nil
 }
 

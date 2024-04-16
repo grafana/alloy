@@ -47,3 +47,26 @@ func TestFileQueueMultiple(t *testing.T) {
 		q.Delete(name)
 	}
 }
+
+func TestFileQueueUncommitted(t *testing.T) {
+	dir := t.TempDir()
+	q, err := newFileQueue(dir)
+	require.NoError(t, err)
+	handle, err := q.AddUncommited([]byte("test"))
+	require.NoError(t, err)
+	require.True(t, handle != "")
+	data := make([]byte, 0)
+
+	data, _, found, more := q.Next(data)
+	require.False(t, found)
+	require.False(t, more)
+
+	err = q.Commit([]string{handle})
+	require.NoError(t, err)
+
+	// Now that we have a committed file we should find data.
+	data, _, found, more = q.Next(data)
+	require.True(t, found)
+	require.False(t, more)
+	require.True(t, string(data) == "test")
+}
