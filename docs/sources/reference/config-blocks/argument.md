@@ -70,4 +70,4 @@ declare "self_collect" {
 ```
 
 [custom component]: ../../../concepts/custom_components/
-[declare]: ../..//config-blocks/declare/
+[declare]: ../../config-blocks/declare/
