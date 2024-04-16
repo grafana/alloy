@@ -171,4 +171,4 @@ Refer to [alloy convert][] for more details on how `extra-args` work.
 [data collection]: ../../../data-collection/
 [components]: ../../concepts/components/
 [component controller]: ../../../concepts/component_controller/
-[UI]: ../../tasks/debug/#clustering-page
+[UI]: ../../../tasks/debug/#clustering-page

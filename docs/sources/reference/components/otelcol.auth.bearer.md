@@ -97,5 +97,5 @@ otelcol.auth.bearer "creds" {
 }
 ```
 
-[otelcol.exporter.otlp]: {../otelcol.exporter.otlp/
+[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
 [otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/
