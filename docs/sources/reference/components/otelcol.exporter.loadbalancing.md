@@ -264,7 +264,7 @@ Name    | Type               | Description
 Different {{< param "PRODUCT_NAME" >}} components require different load-balancing strategies.
 The use of `otelcol.exporter.loadbalancing` is only necessary for [stateful components][stateful-and-stateless-components].
 
-[stateful-and-stateless-components]: ../../../get-started/deploy-alloy/#stateful-and-stateless-components
+[stateful-and-stateless-components]: ../../../get-started/deploy/#stateful-and-stateless-components
 
 ### otelcol.processor.tail_sampling
 <!-- TODO: Add a picture of the architecture?  -->
