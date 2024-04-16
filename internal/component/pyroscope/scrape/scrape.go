@@ -63,7 +63,7 @@ type Arguments struct {
 	// The URL scheme with which to fetch metrics from targets.
 	Scheme string `alloy:"scheme,attr,optional"`
 	// The duration for a profile to be scrapped.
-	ProfilingDuration time.Duration `river:"profiling_duration,attr,optional"`
+	ProfilingDuration time.Duration `alloy:"profiling_duration,attr,optional"`
 
 	// todo(ctovena): add support for limits.
 	// // An uncompressed response body larger than this many bytes will cause the
