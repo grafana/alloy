@@ -45,7 +45,7 @@ grpc > keepalive > server_parameters  | [server_parameters][]  | Server paramete
 grpc > keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings.                                       | no
 source                                | [source][]             | Configures the Jaeger remote sampling document.                                  | yes
 source > remote                       | [remote][]             | Configures the gRPC client used to retrieve the Jaeger remote sampling document. | no
-source > remote > tls                 | [tls][]                | Configures TLS for the gRPC client.                                              | no
+source > remote > tls                 | [tls_client][]                | Configures TLS for the gRPC client.                                              | no
 source > remote > keepalive           | [keepalive][]          | Configures keepalive settings for the gRPC client.                               | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `grpc > tls`
@@ -80,7 +80,7 @@ Name                    | Type      | Description                               
 The `tls` block configures TLS settings used for a server. If the `tls` block
 isn't provided, TLS won't be used for connections to the server.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### cors block
 
@@ -223,7 +223,7 @@ able to handle and proxy HTTP/2 traffic.
 The `tls` block configures TLS settings used for the connection to the gRPC
 server.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### keepalive client block
 

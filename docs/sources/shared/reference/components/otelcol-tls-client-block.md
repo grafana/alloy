@@ -1,6 +1,6 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/otelcol-tls-config-block/
-description: Shared content, otelcol tls config block
+canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/otelcol-tls-client-block/
+description: Shared content, otelcol tls client block
 headless: true
 ---
 
