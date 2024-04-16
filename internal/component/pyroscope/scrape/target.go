@@ -406,7 +406,11 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 				}
 
 				if pcfg, found := targetTypes[profType]; found && pcfg.Delta {
-					params.Add("seconds", strconv.Itoa(int((cfg.ScrapeInterval)/time.Second)-1))
+					seconds := (cfg.ScrapeInterval)/time.Second - 1
+					if cfg.ProfilingDuration != defaultProfilingDuration {
+						seconds = (cfg.ProfilingDuration) / time.Second
+					}
+					params.Add("seconds", strconv.Itoa(int(seconds)))
 				}
 				targets = append(targets, NewTarget(lbls, origLabels, params))
 			}

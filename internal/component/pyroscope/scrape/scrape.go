@@ -21,15 +21,17 @@ import (
 )
 
 const (
-	pprofMemory            string = "memory"
-	pprofBlock             string = "block"
-	pprofGoroutine         string = "goroutine"
-	pprofMutex             string = "mutex"
-	pprofProcessCPU        string = "process_cpu"
-	pprofFgprof            string = "fgprof"
-	pprofGoDeltaProfMemory string = "godeltaprof_memory"
-	pprofGoDeltaProfBlock  string = "godeltaprof_block"
-	pprofGoDeltaProfMutex  string = "godeltaprof_mutex"
+	pprofMemory              string        = "memory"
+	pprofBlock               string        = "block"
+	pprofGoroutine           string        = "goroutine"
+	pprofMutex               string        = "mutex"
+	pprofProcessCPU          string        = "process_cpu"
+	pprofFgprof              string        = "fgprof"
+	pprofGoDeltaProfMemory   string        = "godeltaprof_memory"
+	pprofGoDeltaProfBlock    string        = "godeltaprof_block"
+	pprofGoDeltaProfMutex    string        = "godeltaprof_mutex"
+	defaultScrapeInterval    time.Duration = 15 * time.Second
+	defaultProfilingDuration time.Duration = 14 * time.Second
 )
 
 func init() {
@@ -60,6 +62,8 @@ type Arguments struct {
 	ScrapeTimeout time.Duration `alloy:"scrape_timeout,attr,optional"`
 	// The URL scheme with which to fetch metrics from targets.
 	Scheme string `alloy:"scheme,attr,optional"`
+	// The duration for a profile to be scrapped.
+	ProfilingDuration time.Duration `river:"profiling_duration,attr,optional"`
 
 	// todo(ctovena): add support for limits.
 	// // An uncompressed response body larger than this many bytes will cause the
@@ -192,11 +196,12 @@ var DefaultArguments = NewDefaultArguments()
 // NewDefaultArguments create the default settings for a scrape job.
 func NewDefaultArguments() Arguments {
 	return Arguments{
-		Scheme:           "http",
-		HTTPClientConfig: component_config.DefaultHTTPClientConfig,
-		ScrapeInterval:   15 * time.Second,
-		ScrapeTimeout:    10 * time.Second,
-		ProfilingConfig:  DefaultProfilingConfig,
+		Scheme:            "http",
+		HTTPClientConfig:  component_config.DefaultHTTPClientConfig,
+		ScrapeInterval:    15 * time.Second,
+		ScrapeTimeout:     10 * time.Second,
+		ProfilingConfig:   DefaultProfilingConfig,
+		ProfilingDuration: defaultProfilingDuration,
 	}
 }
 
@@ -217,6 +222,9 @@ func (arg *Arguments) Validate() error {
 	for _, target := range arg.ProfilingConfig.AllTargets() {
 		if target.Enabled && target.Delta && arg.ScrapeInterval.Seconds() < 2 {
 			return fmt.Errorf("scrape_interval must be at least 2 seconds when using delta profiling")
+		}
+		if target.Enabled && target.Delta && arg.ProfilingDuration.Seconds() <= 1 {
+			return fmt.Errorf("profiling_duration must be larger then 1 second when using delta profiling")
 		}
 	}
 
