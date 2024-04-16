@@ -29,10 +29,6 @@ Main (unreleased)
 
 - Fixed issue with defaults for Beyla component not being applied correctly. (marctc)  
 
-### Other changes
-
-- Migrate static mode's default WAL directory from `data-agent` to `data-alloy`. (@hainenber)
-
 v1.0.0 (2024-04-09)
 -------------------
 
