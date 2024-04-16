@@ -1,6 +1,6 @@
 package batch
 
-import status(
+import (
 	"bytes"
 	"testing"
 	"time"
