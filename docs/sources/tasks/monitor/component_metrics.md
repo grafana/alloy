@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/monitor/component_metrics/
+canonical: https://grafana.com/docs/alloy/latest/tasks/monitor/component_metrics/
 description: Learn how to monitor component metrics
 title: Monitor components
 weight: 200
