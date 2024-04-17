@@ -159,6 +159,5 @@ func TestUnixMetrics(t *testing.T) {
 		"node_vmstat_pswpin",
 		"node_vmstat_pswpout",
 	}
-	// TODO(marctc): Report list of failed metrics instead of one by one.
 	common.MimirMetricsTest(t, unixMetrics, []string{}, "unix_metrics")
 }

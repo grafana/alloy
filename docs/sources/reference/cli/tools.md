@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/aalloyent/latest/reference/cli/tools/
+canonical: https://grafana.com/docs/alloy/latest/reference/cli/tools/
 description: Learn about the tools command
 menuTitle: tools
 title: The tools command

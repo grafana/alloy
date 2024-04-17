@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+0.1.1 (2024-04-11)
+------------------
+
+### Other changes
+
+- Add missing Alloy icon to Chart.yaml. (@rfratto)
+
 0.1.0 (2024-04-09)
 ------------------
 

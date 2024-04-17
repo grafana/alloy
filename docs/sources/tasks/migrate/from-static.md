@@ -40,7 +40,7 @@ This conversion will enable you to take full advantage of the many additional fe
 1. Open a terminal window and run the following command.
 
    ```shell
-   graalloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
+   alloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
    Replace the following:
@@ -250,6 +250,7 @@ loki.source.file "logs_varlogs_varlogs" {
         min_poll_frequency = "1s"
         max_poll_frequency = "5s"
     }
+    legacy_positions_file = "/var/lib/agent/data-agent/varlogs.yml"
 }
 
 loki.write "logs_varlogs" {

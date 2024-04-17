@@ -11,7 +11,7 @@ noindex: true
 
 # Install or uninstall {{% param "FULL_PRODUCT_NAME" %}} using Ansible
 
-You can use Ansible to install and manage {{< param "PRODUCT_NAME" >}} on Linux hosts.
+You can use [Grafana Ansible Collection](https://github.com/grafana/grafana-ansible-collection) to install and manage {{< param "PRODUCT_NAME" >}} on Linux hosts.
 
 ## Before you begin
 
@@ -25,24 +25,31 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
 1. Create a file named `alloy.yml` and add the following:
 
     ```yaml
-    - name: Install Grafana Alloy
+    - name: Install Alloy
       hosts: all
       become: true
+
       tasks:
-        - name: Install Grafana Alloy
+        - name: Install Alloy
           ansible.builtin.include_role:
             name: grafana.grafana.alloy
           vars:
-            # Destination file name
-            grafana_alloy_config_filename: config.alloy
-            # Local file to copy
-            grafana_alloy_provisioned_config_file:  "<path-to-config-file-on-localhost>"
-            grafana_alloy_flags_extra:
-              server.http.listen-addr: '0.0.0.0:12345'
+            config: |
+              prometheus.scrape "default" {
+                targets = [{"__address__" = "localhost:12345"}]
+                forward_to = [prometheus.remote_write.prom.receiver]
+              }
+              prometheus.remote_write "prom" {
+                endpoint {
+                    url = "YOUR_PROMETHEUS_PUSH_ENDPOINT"
+                }
+              }
     ```
 
-   Replace the following:
-   - _`<path-to-config-file-on-localhost>`_: The path to the {{< param "PRODUCT_NAME" >}} configuration file on the Ansible Controller (Localhost).
+    The above snippet has a sample configuration to collect and send Alloy metrics to Prometheus
+
+    Replace the following:
+    - _`YOUR_PROMETHEUS_PUSH_ENDPOINT`_:  With the Remote write endpoint of your Prometheus Instance.
 
 1. Run the Ansible playbook. Open a terminal window and run the following command from the Ansible playbook directory.
 
@@ -76,5 +83,5 @@ Main PID: 3176 (alloy-linux-amd)
 
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
-[Ansible]: https://www.ansible.com/
+[Grafana Ansible Collection]: https://github.com/grafana/grafana-ansible-collection
 [Configure]: ../../../tasks/configure/configure-linux/
