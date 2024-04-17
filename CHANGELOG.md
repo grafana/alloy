@@ -27,7 +27,11 @@ Main (unreleased)
 
 ### Bugfixes
 
-- Fixed issue with defaults for Beyla component not being applied correctly. (marctc)  
+- Fixed issue with defaults for Beyla component not being applied correctly. (marctc)
+
+- Fix an issue on Windows where uninstalling Alloy did not remove it from the
+  Add/Remove programs list. (@rfratto)
+
 
 v1.0.0 (2024-04-09)
 -------------------
