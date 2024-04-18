@@ -201,6 +201,7 @@ func (l *batch) AddMetric(lbls labels.Labels, exemplarLabls labels.Labels, ts in
 		// Add label id length of 4 (uint32).
 		l.addToEstimatedSize(4)
 	}
+	item, _ = l.exemplarNameLabels.Get(name)
 	for x, ll := range exemplarLabls {
 		nameid := l.addOrGetID(ll.Name)
 		pm.exemplarValues[x] = l.addOrGetID(ll.Value)
@@ -245,8 +246,13 @@ func (l *batch) write() {
 	l.reset()
 }
 
-func (l *batch) AddHistogram(lbls labels.Labels, h *histogram.Histogram) {
-	panic("AddHistogram is not implemented yet.")
+func (l *batch) AddHistogram(lbls labels.Labels, h *histogram.Histogram, ts int64) {
+	l.mut.Lock()
+	defer l.mut.Unlock()
+
+	pm := metricPool.Get().(*prepocessedmetric)
+	pm.ts = ts
+	pm.val = h.Sum
 }
 
 func (l *batch) serialize(bb *buffer) {
@@ -401,6 +407,7 @@ func (l *batch) deserializeLabels(dm *TimeSeries, bb *buffer, names []string, lb
 		// Since some values are NONE we only want set values
 		index++
 	}
+	// Need to reset the labels since none may have been in the set.
 	dm.SeriesLabels = dm.SeriesLabels[:index]
 }
 
@@ -423,6 +430,8 @@ func (l *batch) deserializeExemplarLabels(dm *TimeSeries, bb *buffer, exemplarNa
 		// Since some values are NONE we only want set values
 		index++
 	}
+	// Need to reset the labels since none may have been in the set.
+	dm.ExemplarLabels = dm.ExemplarLabels[:index]
 }
 
 // alignAndEncodeLabel has a lot of magic that happens. It aligns all the values of a labels for a metric to be the same across all metrics
