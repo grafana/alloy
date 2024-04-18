@@ -3,7 +3,6 @@ package batch
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
 	"math"
 	"sync"
@@ -31,25 +30,31 @@ type batch struct {
 	index               int
 	dict                map[string]int
 	reverseDict         map[int]string
-	tb                  []byte
-	tb64                []byte
-	stringbuffer        []byte
-	totalMetrics        int
+	totalSignals        int
 	timestamps          map[int64][]*prepocessedmetric
-	preprocessedMetrics map[string][]*prepocessedmetric
+	preprocessedMetrics map[string]*signalParent
 	// @mattdurham found this created less allocations than a map.
 	// This associates metric name to a set of label name ids.
-	metricNameLabels *btree.Map[string, *intsets.Sparse]
-	checkpointSize   int
-	serializeBuffer  *bytes.Buffer
+	metricNameLabels   *btree.Map[string, *intsets.Sparse]
+	exemplarNameLabels *btree.Map[string, *intsets.Sparse]
+	checkpointSize     int
+	serializeBuffer    *buffer
+}
+
+type signalParent struct {
+	teleType TelemetryType
+	name     string
+	children []*prepocessedmetric
 }
 
 type prepocessedmetric struct {
-	ts     int64
-	name   string
-	keys   []int
-	values []int
-	val    float64
+	parent         *signalParent
+	ts             int64
+	keys           []int
+	values         []int
+	exemplarKeys   []int
+	exemplarValues []int
+	val            float64
 }
 
 // none_index is used to represent a none value in the label dictionary.
@@ -58,10 +63,12 @@ const none_index = 0
 var metricPool = sync.Pool{
 	New: func() any {
 		return &prepocessedmetric{
-			ts:     0,
-			val:    0,
-			keys:   make([]int, 0),
-			values: make([]int, 0),
+			ts:             0,
+			val:            0,
+			keys:           make([]int, 0),
+			values:         make([]int, 0),
+			exemplarKeys:   make([]int, 0),
+			exemplarValues: make([]int, 0),
 		}
 	},
 }
@@ -79,17 +86,20 @@ func newBatch(fq *filequeue, checkpointSize int) *batch {
 	return &batch{
 		fq:                  fq,
 		dict:                make(map[string]int),
-		preprocessedMetrics: make(map[string][]*prepocessedmetric),
+		preprocessedMetrics: make(map[string]*signalParent),
 		timestamps:          make(map[int64][]*prepocessedmetric),
 		reverseDict:         make(map[int]string),
 		metricNameLabels:    &btree.Map[string, *intsets.Sparse]{},
+		exemplarNameLabels:  &btree.Map[string, *intsets.Sparse]{},
 		// index 0 is reserved for <NONE> label value.
-		index:           1,
-		tb:              make([]byte, 4),
-		tb64:            make([]byte, 8),
-		stringbuffer:    make([]byte, 0),
-		checkpointSize:  checkpointSize,
-		serializeBuffer: &bytes.Buffer{},
+		index:          1,
+		checkpointSize: checkpointSize,
+		serializeBuffer: &buffer{
+			Buffer:       &bytes.Buffer{},
+			tb:           make([]byte, 4),
+			tb64:         make([]byte, 8),
+			stringbuffer: make([]byte, 0, 1024),
+		},
 	}
 }
 
@@ -117,26 +127,29 @@ func (l *batch) addToEstimatedSize(add int) {
 func (l *batch) reset() {
 	clear(l.dict)
 	for _, x := range l.preprocessedMetrics {
-		for _, m := range x {
-			m.values = m.values[:0]
-			m.keys = m.keys[:0]
-			m.ts = 0
-			m.val = 0
-			metricPool.Put(m)
+		for _, c := range x.children {
+			c.values = c.values[:0]
+			c.keys = c.keys[:0]
+			c.exemplarValues = c.exemplarValues[:0]
+			c.exemplarKeys = c.exemplarKeys[:0]
+			c.ts = 0
+			c.val = 0
+			metricPool.Put(c)
 		}
 	}
 	l.serializeBuffer.Reset()
 	clear(l.preprocessedMetrics)
 	l.metricNameLabels.Clear()
+	l.exemplarNameLabels.Clear()
 	clear(l.timestamps)
 	clear(l.reverseDict)
 	l.index = 1
-	l.totalMetrics = 0
+	l.totalSignals = 0
 	l.estimatedSize = 0
 }
 
 // AddMetric is used to add a metric to the internal metrics for use with serialization.
-func (l *batch) AddMetric(lbls labels.Labels, ts int64, val float64) {
+func (l *batch) AddMetric(lbls labels.Labels, exemplarLabls labels.Labels, ts int64, val float64, telemetryType TelemetryType) {
 	l.mut.Lock()
 	defer l.mut.Unlock()
 
@@ -144,13 +157,18 @@ func (l *batch) AddMetric(lbls labels.Labels, ts int64, val float64) {
 	pm.ts = ts
 	pm.val = val
 
+	name := ""
 	// Find the name and setup variables.
 	for _, ll := range lbls {
 		if ll.Name == "__name__" {
-			pm.name = ll.Value
-			if _, found := l.metricNameLabels.Get(pm.name); !found {
-				l.addToEstimatedSize(len(pm.name))
-				l.metricNameLabels.Set(pm.name, &intsets.Sparse{})
+			name = ll.Value
+			if _, found := l.metricNameLabels.Get(name); !found {
+				l.addToEstimatedSize(len(name))
+				l.metricNameLabels.Set(name, &intsets.Sparse{})
+			}
+			if _, found := l.exemplarNameLabels.Get(name); !found {
+				l.addToEstimatedSize(len(name))
+				l.exemplarNameLabels.Set(name, &intsets.Sparse{})
 			}
 			break
 		}
@@ -164,7 +182,16 @@ func (l *batch) AddMetric(lbls labels.Labels, ts int64, val float64) {
 		pm.values = pm.values[:len(lbls)]
 		pm.keys = pm.keys[:len(lbls)]
 	}
-	item, _ := l.metricNameLabels.Get(pm.name)
+	// Reset the lengths of the values and keys. Since they are reused.
+	if cap(pm.exemplarValues) < len(exemplarLabls) {
+		pm.exemplarValues = make([]int, len(exemplarLabls))
+		pm.exemplarKeys = make([]int, len(exemplarLabls))
+	} else {
+		pm.exemplarValues = pm.values[:len(exemplarLabls)]
+		pm.exemplarKeys = pm.keys[:len(exemplarLabls)]
+	}
+
+	item, _ := l.metricNameLabels.Get(name)
 	// Add all the labels.
 	for x, ll := range lbls {
 		nameid := l.addOrGetID(ll.Name)
@@ -174,12 +201,25 @@ func (l *batch) AddMetric(lbls labels.Labels, ts int64, val float64) {
 		// Add label id length of 4 (uint32).
 		l.addToEstimatedSize(4)
 	}
+	for x, ll := range exemplarLabls {
+		nameid := l.addOrGetID(ll.Name)
+		pm.exemplarValues[x] = l.addOrGetID(ll.Value)
+		pm.exemplarKeys[x] = nameid
+		item.Insert(nameid)
+		// Add label id length of 4 (uint32).
+		l.addToEstimatedSize(4)
+	}
 
 	// Need to create the parent metric root to hold the metrics underneath.
-	if _, found := l.preprocessedMetrics[pm.name]; !found {
-		l.preprocessedMetrics[pm.name] = make([]*prepocessedmetric, 0)
+	if _, found := l.preprocessedMetrics[name]; !found {
+		l.preprocessedMetrics[name] = &signalParent{
+			name:     name,
+			children: make([]*prepocessedmetric, 0),
+			teleType: telemetryType,
+		}
 	}
-	l.preprocessedMetrics[pm.name] = append(l.preprocessedMetrics[pm.name], pm)
+	pm.parent = l.preprocessedMetrics[name]
+	l.preprocessedMetrics[name].children = append(l.preprocessedMetrics[name].children, pm)
 
 	// Go ahead and add a timestamp record.
 	_, found := l.timestamps[ts]
@@ -188,7 +228,7 @@ func (l *batch) AddMetric(lbls labels.Labels, ts int64, val float64) {
 		l.addToEstimatedSize(8)
 	}
 	l.timestamps[ts] = append(l.timestamps[ts], pm)
-	l.totalMetrics++
+	l.totalSignals++
 
 	// We need to checkpoint.
 	if l.estimatedSize > l.checkpointSize {
@@ -209,115 +249,148 @@ func (l *batch) AddHistogram(lbls labels.Labels, h *histogram.Histogram) {
 	panic("AddHistogram is not implemented yet.")
 }
 
-func (l *batch) serialize(bb *bytes.Buffer) {
-
-	if l.totalMetrics == 0 {
+func (l *batch) serialize(bb *buffer) {
+	if l.totalSignals == 0 {
 		return
 	}
 	// Write version header.
-	l.addUint(bb, 1)
+	header := Header(1)
+	header.Serialize(bb)
 
 	// Write the timestamp
-	l.addInt(bb, time.Now().UTC().Unix())
+	ts := Timestamp(time.Now().UTC().Unix())
+	ts.Serialize(bb)
 
-	// Write the string dictionary
-	l.addUint(bb, uint32(len(l.dict)))
+	// Write the master string dictionary.
+	sd := newStringArray(l.reverseDict)
+	sd.Serialize(bb)
 
-	// Index 0 is implicitly <NONE>
-	for i := 1; i <= len(l.dict); i++ {
-		// Write the string length
-		l.addUint(bb, uint32(len(l.reverseDict[i])))
-		// Write the string
-		bb.WriteString(l.reverseDict[i])
-	}
-
-	l.addUint(bb, uint32(len(l.timestamps)))
-	values := make([]int, 0)
+	timestampCount := TimestampCount(len(l.timestamps))
+	timestampCount.Serialize(bb)
 	// Write by timestamp first
 	for ts, metrics := range l.timestamps {
 		// Add the timestamp.
-		l.addInt(bb, ts)
-		// Add the number of metrics.
-		l.addUint(bb, uint32(len(metrics)))
-		for _, m := range metrics {
-			labelSet, _ := l.metricNameLabels.Get(m.name)
-			ids := make([]int, 0)
-			// This returns an ordered slice.
-			ids = labelSet.AppendTo(ids)
-			// Add the number of labels.
-			l.addUint(bb, uint32(len(ids)))
-			//Add label name ids.
-			for i := 0; i < len(ids); i++ {
-				l.addUint(bb, uint32(ids[i]))
-			}
-			l.addInt(bb, int64(tSample))
-			values = l.alignAndEncodeLabel(ids, m.keys, m.values, values)
-			for _, b := range values {
-				// Add each value, none values will be inserted with a 0.
-				// Since each series will have the same number of labels in the same order, we only need the values
-				// from the value dictionary.
-				l.addUint(bb, uint32(b))
-			}
-			// Add the value.
-			l.addUInt64(bb, math.Float64bits(m.val))
+		metricTS := Timestamp(ts)
+		metricTS.Serialize(bb)
 
+		metricCount := MetricCount(len(metrics))
+		metricCount.Serialize(bb)
+		for _, m := range metrics {
+			l.serializeSignal(m, bb)
 		}
 	}
 }
 
+func (l *batch) serializeSignal(m *prepocessedmetric, bb *buffer) {
+	// Add the signal type
+	signalType := SignalType(m.parent.teleType)
+	signalType.Serialize(bb)
+
+	// Add the value.
+	value := Value(math.Float64bits(m.val))
+	value.Serialize(bb)
+
+	// Add the values
+	lblSet, _ := l.metricNameLabels.Get(m.parent.name)
+	l.serializeLabels(lblSet, m.keys, m.values, bb, false)
+	lblSet, _ = l.exemplarNameLabels.Get(m.parent.name)
+	l.serializeLabels(lblSet, m.exemplarKeys, m.exemplarValues, bb, true)
+}
+
+func (l *batch) serializeLabels(labelSet *intsets.Sparse, keys []int, values []int, bb *buffer, isExemplar bool) {
+	ids := make([]int, 0)
+	// This returns an ordered slice.
+	ids = labelSet.AppendTo(ids)
+	// Add the number of labels.
+	if isExemplar {
+		exemplarLabelCount := ExemplarLabelCount(len(ids))
+		exemplarLabelCount.Serialize(bb)
+	} else {
+		labelCount := LabelCount(len(ids))
+		labelCount.Serialize(bb)
+	}
+
+	var labelID LabelNameID
+	// Add label name ids.
+	for i := 0; i < len(ids); i++ {
+		labelID = LabelNameID(ids[i])
+		labelID.Serialize(bb)
+	}
+	encoded := make([]int, 0)
+	encoded = l.alignAndEncodeLabel(ids, keys, values, encoded)
+	for _, b := range encoded {
+		// Add each value, none values will be inserted with a 0.
+		// Since each series will have the same number of labels in the same order, we only need the values
+		// from the value dictionary.
+		labelValueID := LabelValueID(b)
+		labelValueID.Serialize(bb)
+	}
+}
+
 // Deserialize takes an input buffer and converts to an array of deserializemetrics.
-func Deserialize(bb *bytes.Buffer, maxAgeSeconds int) ([]*TimeSeries, error) {
+func Deserialize(bb *buffer, maxAgeSeconds int) ([]*TimeSeries, error) {
 	l := newBatch(nil, 0)
-	version := l.readUint(bb)
-	if version != 1 {
-		return nil, fmt.Errorf("unexpected version found %d while deserializing", version)
+	header := HeaderDeserialize(bb)
+	if header != 1 {
+		return nil, fmt.Errorf("unexpected version found %d while deserializing", header)
 	}
 	// Get the timestamp
-	timestamp := l.readInt(bb)
+	timestamp := TimestampDeserialize(bb)
 	utcNow := time.Now().UTC().Unix()
-	if utcNow-timestamp > int64(maxAgeSeconds) {
+	if utcNow-int64(timestamp) > int64(maxAgeSeconds) {
 		return nil, TTLError{
 			error: fmt.Errorf("wal timestamp %d is older than max age %d seconds current utc time %d", timestamp, maxAgeSeconds, utcNow),
 		}
 	}
-	// Get length of the dictionary
-	total := int(l.readUint(bb))
-	// The plus one accounts for the none dictionary.
-	dict := make([]string, total+1)
-	for i := 1; i <= total; i++ {
-		dict[i] = l.readString(bb)
-	}
-	timestampLength := l.readUint(bb)
+
+	dict := StringArrayDeserialize(bb)
+
+	timestampLength := TimestampCountDeserialize(bb)
 	metrics := make([]*TimeSeries, 0)
 	for i := 0; i < int(timestampLength); i++ {
-		ts := l.readInt(bb)
-		metricCount := l.readUint(bb)
+		ts := TimestampDeserialize(bb)
+		metricCount := MetricCountDeserialize(bb)
 		for j := 0; j < int(metricCount); j++ {
-			metricLabelCount := l.readUint(bb)
+			signalType := SignalTypeDeserialize(bb)
+			value := math.Float64frombits(uint64(ValueDeserialize(bb)))
+
+			metricLabelCount := LabelCountDeserialize(bb)
 			labelNames := make([]string, metricLabelCount)
 			for lblCnt := 0; lblCnt < int(metricLabelCount); lblCnt++ {
-				id := l.readUint(bb)
+				id := LabelNameIDDeserialize(bb)
 				name := dict[id]
 				labelNames[lblCnt] = name
 			}
-			dm := l.deserializeMetric(ts, bb, labelNames, metricLabelCount, dict)
+			dm := deserializeMetrics.Get().(*TimeSeries)
+			l.deserializeLabels(dm, bb, labelNames, metricLabelCount, dict)
+
+			exemplarCount := ExemplarLabelCountDeserialize(bb)
+			exemplarLabels := make([]string, exemplarCount)
+			for lblCnt := 0; lblCnt < int(exemplarCount); lblCnt++ {
+				id := LabelNameIDDeserialize(bb)
+				name := dict[id]
+				exemplarLabels[lblCnt] = name
+			}
+			l.deserializeExemplarLabels(dm, bb, exemplarLabels, exemplarCount, dict)
+
+			dm.Timestamp = int64(ts)
+			dm.SeriesType = TelemetryType(signalType)
+			dm.Value = value
 			metrics = append(metrics, dm)
 		}
 	}
 	return metrics, nil
 }
 
-func (l *batch) deserializeMetric(ts int64, bb *bytes.Buffer, names []string, lblCount uint32, dict []string) *TimeSeries {
-	dm := deserializeMetrics.Get().(*TimeSeries)
+func (l *batch) deserializeLabels(dm *TimeSeries, bb *buffer, names []string, lblCount LabelCount, dict []string) {
 	if cap(dm.SeriesLabels) < int(lblCount) {
 		dm.SeriesLabels = make(labels.Labels, int(lblCount))
 	} else {
 		dm.SeriesLabels = dm.SeriesLabels[:int(lblCount)]
 	}
-	sType := l.readInt(bb)
 	index := 0
 	for i := 0; i < int(lblCount); i++ {
-		id := l.readUint(bb)
+		id := LabelValueIDDeserialize(bb)
 		// Label is none value.
 		if id == 0 {
 			continue
@@ -329,16 +402,27 @@ func (l *batch) deserializeMetric(ts int64, bb *bytes.Buffer, names []string, lb
 		index++
 	}
 	dm.SeriesLabels = dm.SeriesLabels[:index]
-	dm.Timestamp = ts
-	dm.SeriesType = seriesType(sType)
-	dm.Value = math.Float64frombits(l.readUint64(bb))
-	return dm
 }
 
-type deserializedMetric struct {
-	ts   int64
-	val  float64
-	lbls labels.Labels
+func (l *batch) deserializeExemplarLabels(dm *TimeSeries, bb *buffer, exemplarNames []string, exemplarLblCount ExemplarLabelCount, dict StringArray) {
+	if cap(dm.ExemplarLabels) < int(exemplarLblCount) {
+		dm.ExemplarLabels = make(labels.Labels, int(exemplarLblCount))
+	} else {
+		dm.ExemplarLabels = dm.ExemplarLabels[:int(exemplarLblCount)]
+	}
+	index := 0
+	for i := 0; i < int(exemplarLblCount); i++ {
+		id := LabelValueIDDeserialize(bb)
+		// Label is none value.
+		if id == 0 {
+			continue
+		}
+		val := dict[id]
+		dm.ExemplarLabels[index].Name = exemplarNames[i]
+		dm.ExemplarLabels[index].Value = val
+		// Since some values are NONE we only want set values
+		index++
+	}
 }
 
 // alignAndEncodeLabel has a lot of magic that happens. It aligns all the values of a labels for a metric to be the same across all metrics
@@ -366,48 +450,6 @@ func (l *batch) alignAndEncodeLabel(total []int, keys []int, values []int, label
 		labelRef[i] = id
 	}
 	return labelRef
-}
-
-func (l *batch) readUint(bb *bytes.Buffer) uint32 {
-	_, _ = bb.Read(l.tb)
-	return binary.LittleEndian.Uint32(l.tb)
-}
-
-func (l *batch) readUint64(bb *bytes.Buffer) uint64 {
-	_, _ = bb.Read(l.tb64)
-	return binary.LittleEndian.Uint64(l.tb64)
-}
-
-func (l *batch) readInt(bb *bytes.Buffer) int64 {
-	_, _ = bb.Read(l.tb64)
-	return int64(binary.LittleEndian.Uint64(l.tb64))
-}
-
-// readString reads a string from the buffer.
-func (l *batch) readString(bb *bytes.Buffer) string {
-	length := l.readUint(bb)
-	if cap(l.stringbuffer) < int(length) {
-		l.stringbuffer = make([]byte, length)
-	} else {
-		l.stringbuffer = l.stringbuffer[:int(length)]
-	}
-	_, _ = bb.Read(l.stringbuffer)
-	return string(l.stringbuffer)
-}
-
-func (l *batch) addUint(bb *bytes.Buffer, num uint32) {
-	binary.LittleEndian.PutUint32(l.tb, num)
-	bb.Write(l.tb)
-}
-
-func (l *batch) addInt(bb *bytes.Buffer, num int64) {
-	binary.LittleEndian.PutUint64(l.tb64, uint64(num))
-	bb.Write(l.tb64)
-}
-
-func (l *batch) addUInt64(bb *bytes.Buffer, num uint64) {
-	binary.LittleEndian.PutUint64(l.tb64, num)
-	bb.Write(l.tb64)
 }
 
 // addOrGetID adds the string to the dictionary and returns the id.

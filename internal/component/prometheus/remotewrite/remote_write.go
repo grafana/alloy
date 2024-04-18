@@ -14,7 +14,6 @@ import (
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/static/metrics/wal"
 	"github.com/grafana/alloy/internal/useragent"
@@ -36,7 +35,7 @@ var remoteFlushDeadline = 1 * time.Minute
 func init() {
 	remote.UserAgent = useragent.Get()
 
-	component.Register(component.Registration{
+	/*component.Register(component.Registration{
 		Name:      "prometheus.remote_write",
 		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
@@ -45,7 +44,7 @@ func init() {
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
 			return New(o, c.(Arguments))
 		},
-	})
+	})*/
 }
 
 // Component is the prometheus.remote_write component.

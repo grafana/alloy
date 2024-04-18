@@ -104,7 +104,6 @@ func NewQueueManager(
 	enableExemplarRemoteWrite bool,
 	enableNativeHistogramRemoteWrite bool,
 ) *QueueManager {
-
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
@@ -346,7 +345,6 @@ func (t *QueueManager) Start(started chan struct{}) {
 	go t.updateShardsLoop()
 	go t.reshardLoop()
 	started <- struct{}{}
-
 }
 
 // Stop stops sending samples to the remote storage and waits for pending
@@ -668,13 +666,13 @@ type TimeSeries struct {
 	Timestamp      int64
 	ExemplarLabels labels.Labels
 	// The type of series: sample, exemplar, or histogram.
-	SeriesType seriesType
+	SeriesType TelemetryType
 }
 
-type seriesType int
+type TelemetryType int
 
 const (
-	tSample seriesType = iota
+	tSample TelemetryType = iota
 	tExemplar
 	tHistogram
 	tFloatHistogram

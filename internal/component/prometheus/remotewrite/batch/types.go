@@ -21,7 +21,7 @@ var (
 		BatchSendDeadline: 5 * time.Second,
 		MinBackoff:        30 * time.Millisecond,
 		MaxBackoff:        5 * time.Second,
-		RetryOnHTTP429:    false,
+		RetryOnHTTP429:    true,
 	}
 
 	DefaultMetadataOptions = MetadataOptions{
@@ -35,16 +35,15 @@ func defaultArgs() Arguments {
 	return Arguments{
 		TTL:       2 * time.Hour,
 		Evict:     1 * time.Hour,
-		Endpoint:  GetDefaultEndpointOptions(),
 		BatchSize: 64 * 1024 * 1024,
 	}
 }
 
 type Arguments struct {
-	TTL       time.Duration   `alloy:"ttl,attr,optional"`
-	Evict     time.Duration   `alloy:"evict_interval,attr,optional"`
-	BatchSize int             `alloy:"batch_size,attr,optional"`
-	Endpoint  EndpointOptions `alloy:"endpoint,block,optional"`
+	TTL       time.Duration      `alloy:"ttl,attr,optional"`
+	Evict     time.Duration      `alloy:"evict_interval,attr,optional"`
+	BatchSize int                `alloy:"batch_size,attr,optional"`
+	Endpoints []*EndpointOptions `alloy:"endpoint,block,optional"`
 }
 
 type Exports struct {
@@ -70,21 +69,13 @@ type EndpointOptions struct {
 	MetadataOptions      MetadataOptions         `alloy:"metadata_config,block,optional"`
 }
 
-func GetDefaultEndpointOptions() EndpointOptions {
-	var defaultEndpointOptions = EndpointOptions{
+// SetToDefault implements syntax.Defaulter.
+func (r *EndpointOptions) SetToDefault() {
+	*r = EndpointOptions{
 		RemoteTimeout:    30 * time.Second,
 		SendExemplars:    true,
 		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
-		QueueOptions:     DefaultQueueOptions,
-		MetadataOptions:  DefaultMetadataOptions,
 	}
-
-	return defaultEndpointOptions
-}
-
-// SetToDefaults sets the defaults
-func (r *EndpointOptions) SetToDefaults() {
-	*r = GetDefaultEndpointOptions()
 }
 
 func (r *EndpointOptions) Validate() error {

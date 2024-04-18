@@ -15,11 +15,23 @@ func TestLinear(t *testing.T) {
 		"__name__": "test",
 	})
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, ts, 10)
+	l.AddMetric(lbls, nil, ts, 10, tSample)
 
-	bb := &bytes.Buffer{}
+	bb := &buffer{
+		Buffer:       &bytes.Buffer{},
+		tb:           make([]byte, 4),
+		tb64:         make([]byte, 8),
+		stringbuffer: make([]byte, 0, 1024),
+		debug:        true,
+	}
 	l.serialize(bb)
-	out := bytes.NewBuffer(bb.Bytes())
+	out := &buffer{
+		Buffer:       bytes.NewBuffer(bb.Bytes()),
+		tb:           make([]byte, 4),
+		tb64:         make([]byte, 8),
+		stringbuffer: make([]byte, 0, 1024),
+		debug:        true,
+	}
 	metrics, err := Deserialize(out, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
@@ -35,18 +47,30 @@ func TestLinearMultiple(t *testing.T) {
 		"__name__": "test",
 	})
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, ts, 10)
+	l.AddMetric(lbls, nil, ts, 10, tSample)
 
 	lbls2 := labels.FromMap(map[string]string{
 		"__name__": "test",
 		"lbl":      "label_1",
 	})
 
-	l.AddMetric(lbls2, ts, 11)
+	l.AddMetric(lbls2, nil, ts, 11, tSample)
 
-	bb := &bytes.Buffer{}
+	bb := &buffer{
+		Buffer:       &bytes.Buffer{},
+		tb:           make([]byte, 4),
+		tb64:         make([]byte, 8),
+		stringbuffer: make([]byte, 0, 1024),
+		debug:        true,
+	}
 	l.serialize(bb)
-	out := bytes.NewBuffer(bb.Bytes())
+	out := &buffer{
+		Buffer:       bytes.NewBuffer(bb.Bytes()),
+		tb:           make([]byte, 4),
+		tb64:         make([]byte, 8),
+		stringbuffer: make([]byte, 0, 1024),
+		debug:        true,
+	}
 	metrics, err := Deserialize(out, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
@@ -62,7 +86,7 @@ func TestLinearMultipleDifferent(t *testing.T) {
 		"badlabel": "arrr",
 	})
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, ts, 10)
+	l.AddMetric(lbls, nil, ts, 10, tSample)
 
 	lbls2 := labels.FromMap(map[string]string{
 		"__name__": "test1",
@@ -70,12 +94,23 @@ func TestLinearMultipleDifferent(t *testing.T) {
 		"bob":      "foo",
 	})
 
-	l.AddMetric(lbls2, ts, 11)
+	l.AddMetric(lbls2, nil, ts, 11, tSample)
 
-	bb := &bytes.Buffer{}
+	bb := &buffer{
+		Buffer:       &bytes.Buffer{},
+		tb:           make([]byte, 4),
+		tb64:         make([]byte, 8),
+		stringbuffer: make([]byte, 0, 1024),
+		debug:        true,
+	}
 	l.serialize(bb)
-	out := bytes.NewBuffer(bb.Bytes())
-
+	out := &buffer{
+		Buffer:       bytes.NewBuffer(bb.Bytes()),
+		tb:           make([]byte, 4),
+		tb64:         make([]byte, 8),
+		stringbuffer: make([]byte, 0, 1024),
+		debug:        true,
+	}
 	metrics, err := Deserialize(out, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
@@ -91,11 +126,23 @@ func TestLinearTTL(t *testing.T) {
 		"__name__": "test",
 	})
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, ts, 10)
+	l.AddMetric(lbls, nil, ts, 10, tSample)
 
-	bb := &bytes.Buffer{}
+	bb := &buffer{
+		Buffer:       &bytes.Buffer{},
+		tb:           make([]byte, 4),
+		tb64:         make([]byte, 8),
+		stringbuffer: make([]byte, 0, 1024),
+		debug:        true,
+	}
 	l.serialize(bb)
-	out := bytes.NewBuffer(bb.Bytes())
+	out := &buffer{
+		Buffer:       bytes.NewBuffer(bb.Bytes()),
+		tb:           make([]byte, 4),
+		tb64:         make([]byte, 8),
+		stringbuffer: make([]byte, 0, 1024),
+		debug:        true,
+	}
 	time.Sleep(2 * time.Second)
 	metrics, err := Deserialize(out, 1)
 	ttl := &TTLError{}

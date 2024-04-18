@@ -1,6 +1,7 @@
 package batch
 
 import (
+	"math"
 	"time"
 
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -32,7 +33,7 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 	if t < endTime {
 		return ref, nil
 	}
-	a.l.AddMetric(l, t, v)
+	a.l.AddMetric(l, nil, t, v, tSample)
 	return ref, nil
 }
 
@@ -48,19 +49,16 @@ func (a *appender) Rollback() error {
 
 // AppendExemplar appends exemplar to cache.
 func (a *appender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (_ storage.SeriesRef, _ error) {
-	/*lbls := labelPool.Get().([]prompb.Label)
-	protoLabels := labelsToLabelsProto(l, lbls)
-
-	exemplarLbls := labelPool.Get().([]prompb.Label)
-	sample := prompb.TimeSeries{
-		Labels:     protoLabels,
-		Samples:    nil,
-		Exemplars:  []prompb.Exemplar{{Labels: labelsToLabelsProto(e.Labels, exemplarLbls), Value: e.Value, Timestamp: e.Ts}},
-		Histograms: nil,import "github.com/iancmcc/bingo"
+	endTime := time.Now().UTC().Unix() - int64(a.ttl.Seconds())
+	if e.HasTs && e.Ts < endTime {
+		return ref, nil
 	}
-	a.samples = append(a.samples, sample)
-	return ref, nil*/
-	return 0, nil
+	ts := int64(math.MaxInt64)
+	if e.HasTs {
+		ts = e.Ts
+	}
+	a.l.AddMetric(l, e.Labels, ts, e.Value, tSample)
+	return ref, nil
 }
 
 // AppendHistogram appends histogram

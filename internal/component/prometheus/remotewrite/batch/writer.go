@@ -86,7 +86,12 @@ func (w *writer) send(val []byte, ctx context.Context) (success bool, recoverabl
 	defer wrPool.Put(wr)
 
 	// TODO add setting to handle wal age.
-	d, err := Deserialize(bytes.NewBuffer(val), math.MaxInt64)
+	d, err := Deserialize(&buffer{
+		Buffer:       bytes.NewBuffer(val),
+		tb:           make([]byte, 4),
+		tb64:         make([]byte, 8),
+		stringbuffer: make([]byte, 0, 1024),
+	}, math.MaxInt64)
 	if err != nil {
 		return false, false
 	}

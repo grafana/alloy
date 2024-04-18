@@ -26,7 +26,7 @@ var buf = sync.Pool{
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "prometheus.remote.batch",
+		Name:      "prometheus.remote_write",
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Stability: featuregate.StabilityExperimental,
@@ -67,51 +67,56 @@ type Queue struct {
 // Component.
 func (s *Queue) Run(ctx context.Context) error {
 	go s.b.StartTimer(ctx)
-	qm, err := s.newQueueManager()
+	qms, err := s.newQueueManagers()
 	if err != nil {
 		return err
 	}
-	wr := newWriter(s.opts.ID, qm, s.database, s.opts.Logger)
-	s.wr = wr
-	started := make(chan struct{})
-	go qm.Start(started)
-	<-started
-	go wr.Start(ctx)
+	for _, qm := range qms {
+		wr := newWriter(s.opts.ID, qm, s.database, s.opts.Logger)
+		s.wr = wr
+		started := make(chan struct{})
+		go qm.Start(started)
+		<-started
+		go wr.Start(ctx)
+	}
 	<-ctx.Done()
 	return nil
 }
 
-func (s *Queue) newQueueManager() (*QueueManager, error) {
-	wr, err := s.newWriteClient()
-	if err != nil {
-		return nil, err
+func (s *Queue) newQueueManagers() ([]*QueueManager, error) {
+	qms := make([]*QueueManager, 0)
+	for _, ed := range s.args.Endpoints {
+		wr, err := s.newWriteClient(ed)
+		if err != nil {
+			return nil, err
+		}
+		qm := NewQueueManager(
+			s.opts.Registerer,
+			s.opts.Logger,
+			ed.QueueOptions,
+			ed.MetadataOptions,
+			wr,
+			1*time.Minute,
+			&maxTimestamp{
+				Gauge: prometheus.NewGauge(prometheus.GaugeOpts{
+					Namespace: "prometheus",
+					Subsystem: "remote_storage",
+					Name:      "highest_timestamp_in_seconds",
+					Help:      "Highest timestamp that has come into the remote storage via the Appender interface, in seconds since epoch.",
+				}),
+			},
+			true,
+			true,
+		)
+		qms = append(qms, qm)
 	}
-
-	qm := NewQueueManager(
-		s.opts.Registerer,
-		s.opts.Logger,
-		s.args.Endpoint.QueueOptions,
-		s.args.Endpoint.MetadataOptions,
-		wr,
-		1*time.Minute,
-		&maxTimestamp{
-			Gauge: prometheus.NewGauge(prometheus.GaugeOpts{
-				Namespace: "prometheus",
-				Subsystem: "remote_storage",
-				Name:      "highest_timestamp_in_seconds",
-				Help:      "Highest timestamp that has come into the remote storage via the Appender interface, in seconds since epoch.",
-			}),
-		},
-		true,
-		true,
-	)
-	return qm, nil
+	return qms, nil
 }
-func (s *Queue) newWriteClient() (WriteClient, error) {
+func (s *Queue) newWriteClient(ed *EndpointOptions) (WriteClient, error) {
 	if s.testClient != nil {
 		return s.testClient, nil
 	}
-	endUrl, err := url.Parse(s.args.Endpoint.URL)
+	endUrl, err := url.Parse(ed.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -122,11 +127,11 @@ func (s *Queue) newWriteClient() (WriteClient, error) {
 
 	wr, err := NewWriteClient(s.opts.ID, &ClientConfig{
 		URL:              cfgURL,
-		Timeout:          model.Duration(s.args.Endpoint.RemoteTimeout),
-		HTTPClientConfig: *s.args.Endpoint.HTTPClientConfig.Convert(),
+		Timeout:          model.Duration(ed.RemoteTimeout),
+		HTTPClientConfig: *ed.HTTPClientConfig.Convert(),
 		SigV4Config:      nil,
-		Headers:          s.args.Endpoint.Headers,
-		RetryOnRateLimit: s.args.Endpoint.QueueOptions.RetryOnHTTP429,
+		Headers:          ed.Headers,
+		RetryOnRateLimit: ed.QueueOptions.RetryOnHTTP429,
 	}, s.opts.Registerer)
 
 	return wr, err
