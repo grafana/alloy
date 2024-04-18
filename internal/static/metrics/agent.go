@@ -21,7 +21,7 @@ var DefaultConfig = Config{
 	InstanceRestartBackoff: 5 * time.Second,
 	// The following legacy WALDir path is intetionally kept for config conversion from static to Alloy.
 	// Consult Alloy maintainers for changes.
-	WALDir:              "data-alloy/",
+	WALDir:              "data-agent/",
 	WALCleanupAge:       12 * time.Hour,
 	WALCleanupPeriod:    30 * time.Minute,
 	ServiceConfig:       cluster.DefaultConfig,
