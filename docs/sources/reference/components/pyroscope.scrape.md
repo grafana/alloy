@@ -399,7 +399,7 @@ When the `delta` argument is `true`:
 * The default value for the `seconds` query parameter is `scrape_interval - 1`.
     If you set `profiling_duration`, then `seconds` is assigned the same value as `profiling_duration`.
     For example, if you set `scrape_interval` to `"15s"`, then `seconds` defaults to `14s`.
-    If you set `profiling_duration` to `16s`, then `seconds is set to `16s` regardless of the `scrape_interval` value.
+    If you set `profiling_duration` to `16s`, then `seconds` is set to `16s` regardless of the `scrape_interval` value.
   If the HTTP endpoint is `/debug/pprof/profile`, then the HTTP query will become `/debug/pprof/profile?seconds=14`
 
 ## Exported fields
