@@ -32,6 +32,7 @@ Main (unreleased)
 - Fix an issue on Windows where uninstalling Alloy did not remove it from the
   Add/Remove programs list. (@rfratto)
 
+- Fix wrong documentation on alloy.extraPorts.hostPort (@and1truong)
 
 v1.0.0 (2024-04-09)
 -------------------
