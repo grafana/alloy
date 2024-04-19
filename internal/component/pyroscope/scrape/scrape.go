@@ -31,7 +31,7 @@ const (
 	pprofGoDeltaProfBlock    string        = "godeltaprof_block"
 	pprofGoDeltaProfMutex    string        = "godeltaprof_mutex"
 	defaultScrapeInterval    time.Duration = 15 * time.Second
-	defaultProfilingDuration time.Duration = defaultScrapeInterval - 1 * time.Second
+	defaultProfilingDuration time.Duration = defaultScrapeInterval - 1*time.Second
 )
 
 func init() {
@@ -223,8 +223,13 @@ func (arg *Arguments) Validate() error {
 		if target.Enabled && target.Delta && arg.ScrapeInterval.Seconds() < 2 {
 			return fmt.Errorf("scrape_interval must be at least 2 seconds when using delta profiling")
 		}
-		if target.Enabled && target.Delta && arg.ProfilingDuration.Seconds() <= 1 {
-			return fmt.Errorf("profiling_duration must be larger then 1 second when using delta profiling")
+		if target.Enabled && target.Delta {
+			if arg.ProfilingDuration.Seconds() <= 1 {
+				return fmt.Errorf("profiling_duration must be larger than 1 second when using delta profiling")
+			}
+			if arg.ProfilingDuration.Seconds() >= arg.ScrapeInterval.Seconds() {
+				return fmt.Errorf("profiling_duration must be smaller than scrape_interval when using delta profiling")
+			}
 		}
 	}
 

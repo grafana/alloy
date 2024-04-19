@@ -161,6 +161,16 @@ func TestUnmarshalConfig(t *testing.T) {
 			`,
 			expectedErr: "profiling_duration must be larger then 1 second when using delta profiling",
 		},
+		"erroneous cpu profiling_duration": {
+			in: `
+			targets    = []
+			forward_to = null
+			scrape_timeout = "1s"
+			scrape_interval = "10s"
+			profiling_duration = "12s"
+			`,
+			expectedErr: "profiling_duration must be smaller than scrape_interval when using delta profiling",
+		},
 		"allow short scrape_intervals without delta": {
 			in: `
 			targets    = []
