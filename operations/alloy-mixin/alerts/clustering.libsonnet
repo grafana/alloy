@@ -19,8 +19,8 @@ alert.newGroup(
       // metrics.
       |||
         sum without (state) (cluster_node_peers) !=
-        on (cluster, namespace) group_left
-        count by (cluster, namespace) (cluster_node_info)
+        on (cluster, namespace, job) group_left
+        count by (cluster, namespace, job) (cluster_node_info)
       |||,
       'Nodes report different number of peers vs. the count of observed Alloy metrics. Some Alloy metrics may be missing or the cluster is in a split brain state.',
       '15m',
@@ -57,7 +57,7 @@ alert.newGroup(
       'ClusterConfigurationDrift',
       |||
         count without (sha256) (
-            max by (cluster, namespace, sha256) (alloy_config_hash and on(cluster, namespace) cluster_node_info)
+            max by (cluster, namespace, sha256, job) (alloy_config_hash and on(cluster, namespace) cluster_node_info)
         ) > 1
       |||,
       'Cluster nodes are not using the same configuration file.',
