@@ -195,7 +195,8 @@ func TestUnmarshalConfig(t *testing.T) {
 			targets    = []
 			forward_to = null
 			scrape_timeout = "5s"
-			scrape_interval = "2s"
+			scrape_interval = "3s"
+			profiling_duration = "2s"
 			bearer_token = "token"
 			bearer_token_file = "/path/to/file.token"
 			`,
