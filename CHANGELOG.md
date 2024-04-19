@@ -33,6 +33,8 @@ Main (unreleased)
   Add/Remove programs list. (@rfratto)
 
 
+- Fixed issue where text labels displayed outside of component node's boundary. (@hainenber)
+
 v1.0.0 (2024-04-09)
 -------------------
 
