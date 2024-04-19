@@ -1,6 +1,6 @@
 build/
 data/
-data-agent/
+data-alloy/
 dist/
 internal/web/ui/node_modules/
 internal/web/ui/build/

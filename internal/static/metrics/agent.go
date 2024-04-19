@@ -19,12 +19,14 @@ import (
 var DefaultConfig = Config{
 	Global:                 instance.DefaultGlobalConfig,
 	InstanceRestartBackoff: 5 * time.Second,
-	WALDir:                 "data-agent/",
-	WALCleanupAge:          12 * time.Hour,
-	WALCleanupPeriod:       30 * time.Minute,
-	ServiceConfig:          cluster.DefaultConfig,
-	ServiceClientConfig:    client.DefaultConfig,
-	InstanceMode:           instance.DefaultMode,
+	// The following legacy WALDir path is intentionally kept for config conversion from static to Alloy.
+	// Consult Alloy maintainers for changes.
+	WALDir:              "data-agent/",
+	WALCleanupAge:       12 * time.Hour,
+	WALCleanupPeriod:    30 * time.Minute,
+	ServiceConfig:       cluster.DefaultConfig,
+	ServiceClientConfig: client.DefaultConfig,
+	InstanceMode:        instance.DefaultMode,
 }
 
 // Config defines the configuration for the entire set of Prometheus client
