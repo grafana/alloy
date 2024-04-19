@@ -31,7 +31,7 @@ const (
 	pprofGoDeltaProfBlock    string        = "godeltaprof_block"
 	pprofGoDeltaProfMutex    string        = "godeltaprof_mutex"
 	defaultScrapeInterval    time.Duration = 15 * time.Second
-	defaultProfilingDuration time.Duration = 14 * time.Second
+	defaultProfilingDuration time.Duration = defaultScrapeInterval - 1 * time.Second
 )
 
 func init() {
