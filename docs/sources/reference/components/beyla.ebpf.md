@@ -182,7 +182,7 @@ beyla.ebpf "default" {
 
 prometheus.scrape "beyla" {
   targets = beyla.ebpf.default.targets
-  forward_to = [prometheus.remote_write.mimir.receiver]
+  forward_to = [prometheus.remote_write.demo.receiver]
 }
 
 prometheus.remote_write "demo" {
