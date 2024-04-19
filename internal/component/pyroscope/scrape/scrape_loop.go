@@ -37,8 +37,8 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(cfg Arguments, appendable pyroscope.Appendable, logger log.Logger) (*scrapePool, error) {
-	scrapeClient, err := commonconfig.NewClientFromConfig(*cfg.HTTPClientConfig.Convert(), cfg.JobName)
+func newScrapePool(hco []commonconfig.HTTPClientOption, cfg Arguments, appendable pyroscope.Appendable, logger log.Logger) (*scrapePool, error) {
+	scrapeClient, err := commonconfig.NewClientFromConfig(*cfg.HTTPClientConfig.Convert(), cfg.JobName, hco...)
 	if err != nil {
 		return nil, err
 	}

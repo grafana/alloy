@@ -7,6 +7,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/util"
+	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
@@ -16,7 +17,7 @@ import (
 func TestManager(t *testing.T) {
 	reloadInterval = time.Millisecond
 
-	m := NewManager(pyroscope.AppendableFunc(func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
+	m := NewManager([]config_util.HTTPClientOption{}, pyroscope.AppendableFunc(func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 		return nil
 	}), util.TestLogger(t))
 

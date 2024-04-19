@@ -48,6 +48,8 @@ Main (unreleased)
 
 - Add a description to Alloy DEB and RPM packages. (@rfratto)
 
+- Fix an issue where `pyroscope.scrape` cannot scrape `alloy.internal:12345`. (@hainenber)
+
 v1.0.0 (2024-04-09)
 -------------------
 
