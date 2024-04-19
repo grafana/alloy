@@ -2,6 +2,7 @@ package rules
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"sync"
@@ -10,7 +11,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	mimirClient "github.com/grafana/alloy/internal/mimir/client"
+	"github.com/grafana/alloy/internal/mimir/client"
 	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
@@ -39,7 +40,7 @@ type eventProcessor struct {
 	stopChan chan struct{}
 	health   healthReporter
 
-	mimirClient       mimirClient.Interface
+	mimirClient       client.Interface
 	namespaceLister   coreListers.NamespaceLister
 	ruleLister        promListers.PrometheusRuleLister
 	namespaceSelector labels.Selector
@@ -67,20 +68,21 @@ func (e *eventProcessor) run(ctx context.Context) {
 		err := e.processEvent(ctx, evt)
 
 		if err != nil {
-			retries := e.queue.NumRequeues(evt)
-			if retries < 5 {
-				e.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
-				e.queue.AddRateLimited(evt)
-				level.Error(e.logger).Log(
+			retries := c.queue.NumRequeues(evt)
+			if retries < 5 && !errors.Is(err, client.ErrUnrecoverable) {
+				c.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
+				c.queue.AddRateLimited(evt)
+				level.Error(c.log).Log(
+
 					"msg", "failed to process event, will retry",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,
 				)
 				continue
 			} else {
-				e.metrics.eventsFailed.WithLabelValues(string(evt.Typ)).Inc()
-				level.Error(e.logger).Log(
-					"msg", "failed to process event, max retries exceeded",
+				c.metrics.eventsFailed.WithLabelValues(string(evt.Typ)).Inc()
+				level.Error(c.log).Log(
+					"msg", "failed to process event, unrecoverable error or max retries exceeded",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,
 				)

@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"strings"
 
-	log "github.com/go-kit/log"
+	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/mimir/client/internal"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/instrument"
@@ -24,6 +24,7 @@ import (
 var (
 	ErrNoConfig         = errors.New("no config exists for this user")
 	ErrResourceNotFound = errors.New("requested resource not found")
+	ErrUnrecoverable    = errors.New("unrecoverable error response")
 )
 
 // Config is used to configure a MimirClient.
@@ -125,6 +126,8 @@ func checkResponse(r *http.Response) error {
 
 	if r.StatusCode == http.StatusNotFound {
 		return ErrResourceNotFound
+	} else if r.StatusCode/100 == 4 && r.StatusCode != http.StatusTooManyRequests {
+		return fmt.Errorf("%w: %s", ErrUnrecoverable, errMsg)
 	}
 
 	return errors.New(errMsg)
