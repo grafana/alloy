@@ -2,7 +2,6 @@ package rules
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"sync"
@@ -68,11 +67,11 @@ func (e *eventProcessor) run(ctx context.Context) {
 		err := e.processEvent(ctx, evt)
 
 		if err != nil {
-			retries := c.queue.NumRequeues(evt)
-			if retries < 5 && !errors.Is(err, client.ErrUnrecoverable) {
-				c.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
-				c.queue.AddRateLimited(evt)
-				level.Error(c.log).Log(
+			retries := e.queue.NumRequeues(evt)
+			if retries < 5 && !client.IsUnrecoverable(err) {
+				e.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
+				e.queue.AddRateLimited(evt)
+				level.Error(e.logger).Log(
 
 					"msg", "failed to process event, will retry",
 					"retries", fmt.Sprintf("%d/5", retries),
@@ -80,8 +79,8 @@ func (e *eventProcessor) run(ctx context.Context) {
 				)
 				continue
 			} else {
-				c.metrics.eventsFailed.WithLabelValues(string(evt.Typ)).Inc()
-				level.Error(c.log).Log(
+				e.metrics.eventsFailed.WithLabelValues(string(evt.Typ)).Inc()
+				level.Error(e.logger).Log(
 					"msg", "failed to process event, unrecoverable error or max retries exceeded",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,

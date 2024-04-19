@@ -1,7 +1,6 @@
 package client
 
 import (
-	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -178,7 +177,7 @@ func TestCheckResponseErrors(t *testing.T) {
 
 			err := checkResponse(response)
 			require.Error(t, err)
-			require.Equal(t, tt.fatal, errors.Is(err, ErrUnrecoverable), "%+v is not expected recoverable/unrecoverable", err)
+			require.Equal(t, tt.fatal, IsUnrecoverable(err), "%+v is not expected recoverable/unrecoverable", err)
 		})
 	}
 }
