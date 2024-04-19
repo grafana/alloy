@@ -159,7 +159,7 @@ func TestUnmarshalConfig(t *testing.T) {
 			scrape_interval = "10s"
 			profiling_duration = "1s"
 			`,
-			expectedErr: "profiling_duration must be larger then 1 second when using delta profiling",
+			expectedErr: "profiling_duration must be larger than 1 second when using delta profiling",
 		},
 		"erroneous cpu profiling_duration": {
 			in: `
