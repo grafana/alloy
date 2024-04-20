@@ -1,10 +1,8 @@
 package batch
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"math"
 	"strings"
 	"sync"
 	"time"
@@ -86,12 +84,8 @@ func (w *writer) send(val []byte, ctx context.Context) (success bool, recoverabl
 	defer wrPool.Put(wr)
 
 	// TODO add setting to handle wal age.
-	d, err := Deserialize(&buffer{
-		Buffer:       bytes.NewBuffer(val),
-		tb:           make([]byte, 4),
-		tb64:         make([]byte, 8),
-		stringbuffer: make([]byte, 0, 1024),
-	}, math.MaxInt64)
+	dur, _ := time.ParseDuration("36h")
+	d, err := DeserializeParquet(val, int64(dur.Seconds()))
 	if err != nil {
 		return false, false
 	}

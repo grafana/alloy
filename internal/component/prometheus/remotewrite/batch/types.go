@@ -1,6 +1,7 @@
 package batch
 
 import (
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 	"sync"
 	"time"
 
@@ -35,15 +36,17 @@ func defaultArgs() Arguments {
 	return Arguments{
 		TTL:       2 * time.Hour,
 		Evict:     1 * time.Hour,
-		BatchSize: 64 * 1024 * 1024,
+		BatchSize: 128 * 1024 * 1024,
 	}
 }
 
 type Arguments struct {
-	TTL       time.Duration      `alloy:"ttl,attr,optional"`
-	Evict     time.Duration      `alloy:"evict_interval,attr,optional"`
-	BatchSize int                `alloy:"batch_size,attr,optional"`
-	Endpoints []*EndpointOptions `alloy:"endpoint,block,optional"`
+	TTL            time.Duration          `alloy:"ttl,attr,optional"`
+	Evict          time.Duration          `alloy:"evict_interval,attr,optional"`
+	BatchSize      int64                  `alloy:"batch_size,attr,optional"`
+	Endpoints      []EndpointOptions      `alloy:"endpoint,block,optional"`
+	WALOptions     remotewrite.WALOptions `alloy:"wal,block,optional"`
+	ExternalLabels map[string]string      `alloy:"external_labels,attr,optional"`
 }
 
 type Exports struct {
@@ -75,9 +78,10 @@ func (r *EndpointOptions) SetToDefault() {
 		RemoteTimeout:    30 * time.Second,
 		SendExemplars:    true,
 		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
+		QueueOptions:     DefaultQueueOptions,
+		MetadataOptions:  DefaultMetadataOptions,
 	}
 }
-
 func (r *EndpointOptions) Validate() error {
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	if r.HTTPClientConfig != nil {
@@ -98,8 +102,8 @@ type QueueOptions struct {
 	RetryOnHTTP429    bool          `alloy:"retry_on_http_429,attr,optional"`
 }
 
-// SetToDefaults allows injecting of default values
-func (r *QueueOptions) SetToDefaults() {
+// SetToDefault implements syntax.Defaulter.
+func (r *QueueOptions) SetToDefault() {
 	*r = DefaultQueueOptions
 }
 
@@ -111,8 +115,8 @@ type MetadataOptions struct {
 	MaxSamplesPerSend int           `alloy:"max_samples_per_send,attr,optional"`
 }
 
-// SetToDefaults set to defaults.
-func (o *MetadataOptions) SetToDefaults() {
+// SetToDefault set to defaults.
+func (o *MetadataOptions) SetToDefault() {
 	*o = DefaultMetadataOptions
 }
 
@@ -141,10 +145,6 @@ func (m *maxTimestamp) Collect(c chan<- prometheus.Metric) {
 	if m.Get() > 0 {
 		m.Gauge.Collect(c)
 	}
-}
-
-type Bookmark struct {
-	Key uint64
 }
 
 type TTLError struct {

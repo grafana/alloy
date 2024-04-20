@@ -1,7 +1,6 @@
 package batch
 
 import (
-	"bytes"
 	"github.com/prometheus/prometheus/model/histogram"
 	"testing"
 	"time"
@@ -10,18 +9,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSample(t *testing.T) {
-	l := newBatch(nil, 16*1024*1024)
+func TestParquetSample(t *testing.T) {
+	l := newParquetWrite(nil, 16*1024*1024)
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
-
-	bb := newBuffer(nil)
-	l.serialize(bb)
-	out := newBuffer(bb.Bytes())
-	metrics, err := Deserialize(out, 100)
+	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
+	require.NoError(t, err)
+	require.NoError(t, l.serialize())
+	metrics, err := DeserializeParquet(l.bb.Bytes(), 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	require.Len(t, metrics[0].SeriesLabels, 1)
@@ -29,25 +26,26 @@ func TestSample(t *testing.T) {
 	require.True(t, hasLabel(lbls, metrics, ts, 10))
 }
 
-func TestSampleMultiple(t *testing.T) {
-	l := newBatch(nil, 16*1024*1024)
+func TestParquetSampleMultiple(t *testing.T) {
+	l := newParquetWrite(nil, 16*1024*1024)
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
+	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
+	require.NoError(t, err)
 
 	lbls2 := labels.FromMap(map[string]string{
 		"__name__": "test",
 		"lbl":      "label_1",
 	})
 
-	l.AddMetric(lbls2, nil, ts, 11, nil, nil, tSample)
+	err = l.AddMetric(lbls2, nil, ts, 11, nil, nil, tSample)
+	require.NoError(t, err)
 
-	bb := newBuffer(nil)
-	l.serialize(bb)
-	out := newBuffer(bb.Bytes())
-	metrics, err := Deserialize(out, 100)
+	err = l.serialize()
+	require.NoError(t, err)
+	metrics, err := DeserializeParquet(l.bb.Bytes(), 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
 
@@ -55,14 +53,15 @@ func TestSampleMultiple(t *testing.T) {
 	require.True(t, hasLabel(lbls2, metrics, ts, 11))
 }
 
-func TestSampleMultipleDifferent(t *testing.T) {
-	l := newBatch(nil, 16*1024*1024)
+func TestParquetSampleMultipleDifferent(t *testing.T) {
+	l := newParquetWrite(nil, 16*1024*1024)
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 		"badlabel": "arrr",
 	})
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
+	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
+	require.NoError(t, err)
 
 	lbls2 := labels.FromMap(map[string]string{
 		"__name__": "test1",
@@ -70,24 +69,11 @@ func TestSampleMultipleDifferent(t *testing.T) {
 		"bob":      "foo",
 	})
 
-	l.AddMetric(lbls2, nil, ts, 11, nil, nil, tSample)
+	err = l.AddMetric(lbls2, nil, ts, 11, nil, nil, tSample)
+	require.NoError(t, err)
 
-	bb := &buffer{
-		Buffer:       &bytes.Buffer{},
-		tb:           make([]byte, 4),
-		tb64:         make([]byte, 8),
-		stringbuffer: make([]byte, 0, 1024),
-		debug:        true,
-	}
-	l.serialize(bb)
-	out := &buffer{
-		Buffer:       bytes.NewBuffer(bb.Bytes()),
-		tb:           make([]byte, 4),
-		tb64:         make([]byte, 8),
-		stringbuffer: make([]byte, 0, 1024),
-		debug:        true,
-	}
-	metrics, err := Deserialize(out, 100)
+	l.serialize()
+	metrics, err := DeserializeParquet(l.bb.Bytes(), 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
 
@@ -95,27 +81,25 @@ func TestSampleMultipleDifferent(t *testing.T) {
 	require.True(t, hasLabel(lbls2, metrics, ts, 11))
 }
 
-func TestSampleTTL(t *testing.T) {
-	l := newBatch(nil, 16*1024*1024)
+func TestParquetSampleTTL(t *testing.T) {
+	l := newParquetWrite(nil, 16*1024*1024)
 
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
+	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
+	require.NoError(t, err)
 
-	bb := newBuffer(nil)
-	l.serialize(bb)
-	out := newBuffer(bb.Bytes())
+	l.serialize()
 	time.Sleep(2 * time.Second)
-	metrics, err := Deserialize(out, 1)
-	ttl := &TTLError{}
-	require.ErrorAs(t, err, ttl)
+	metrics, err := DeserializeParquet(l.bb.Bytes(), 1)
+	require.NoError(t, err)
 	require.Len(t, metrics, 0)
 }
 
-func TestExemplar(t *testing.T) {
-	l := newBatch(nil, 16*1024*1024)
+func TestParquetExemplar(t *testing.T) {
+	l := newParquetWrite(nil, 16*1024*1024)
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -123,12 +107,11 @@ func TestExemplar(t *testing.T) {
 		"ex": "one",
 	})
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, exemplarLabels, ts, 10, nil, nil, tExemplar)
+	err := l.AddMetric(lbls, exemplarLabels, ts, 10, nil, nil, tExemplar)
+	require.NoError(t, err)
 
-	bb := newBuffer(nil)
-	l.serialize(bb)
-	out := newBuffer(bb.Bytes())
-	metrics, err := Deserialize(out, 100)
+	l.serialize()
+	metrics, err := DeserializeParquet(l.bb.Bytes(), 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	require.True(t, metrics[0].SeriesType == tExemplar)
@@ -142,8 +125,8 @@ func TestExemplar(t *testing.T) {
 	require.True(t, metrics[0].ExemplarLabels[0].Value == "one")
 }
 
-func TestMultipleExemplar(t *testing.T) {
-	l := newBatch(nil, 16*1024*1024)
+func TestParquetMultipleExemplar(t *testing.T) {
+	l := newParquetWrite(nil, 16*1024*1024)
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -152,7 +135,8 @@ func TestMultipleExemplar(t *testing.T) {
 	})
 
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, exemplarLabels, ts, 10, nil, nil, tExemplar)
+	err := l.AddMetric(lbls, exemplarLabels, ts, 10, nil, nil, tExemplar)
+	require.NoError(t, err)
 
 	lbls2 := labels.FromMap(map[string]string{
 		"__name__": "test",
@@ -164,10 +148,8 @@ func TestMultipleExemplar(t *testing.T) {
 	})
 	l.AddMetric(lbls2, exemplarLabels2, ts, 11, nil, nil, tExemplar)
 
-	bb := newBuffer(nil)
-	l.serialize(bb)
-	out := newBuffer(bb.Bytes())
-	metrics, err := Deserialize(out, 100)
+	l.serialize()
+	metrics, err := DeserializeParquet(l.bb.Bytes(), 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
 	require.True(t, metrics[0].SeriesType == tExemplar)
@@ -181,32 +163,20 @@ func TestMultipleExemplar(t *testing.T) {
 	require.True(t, hasLabelsExemplar(exemplarLabels2, metrics, ts, 11))
 }
 
-func TestExemplarNoTS(t *testing.T) {
-	l := newBatch(nil, 16*1024*1024)
+func TestParquetExemplarNoTS(t *testing.T) {
+	l := newParquetWrite(nil, 16*1024*1024)
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
 	exemplarLabels := labels.FromMap(map[string]string{
 		"ex": "one",
 	})
-	l.AddMetric(lbls, exemplarLabels, 0, 10, nil, nil, tExemplar)
+	err := l.AddMetric(lbls, exemplarLabels, 0, 10, nil, nil, tExemplar)
+	require.NoError(t, err)
 
-	bb := &buffer{
-		Buffer:       &bytes.Buffer{},
-		tb:           make([]byte, 4),
-		tb64:         make([]byte, 8),
-		stringbuffer: make([]byte, 0, 1024),
-		debug:        true,
-	}
-	l.serialize(bb)
-	out := &buffer{
-		Buffer:       bytes.NewBuffer(bb.Bytes()),
-		tb:           make([]byte, 4),
-		tb64:         make([]byte, 8),
-		stringbuffer: make([]byte, 0, 1024),
-		debug:        true,
-	}
-	metrics, err := Deserialize(out, 100)
+	l.serialize()
+
+	metrics, err := DeserializeParquet(l.bb.Bytes(), 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	require.True(t, metrics[0].Timestamp == 0)
@@ -221,8 +191,8 @@ func TestExemplarNoTS(t *testing.T) {
 	require.True(t, metrics[0].ExemplarLabels[0].Value == "one")
 }
 
-func TestExemplarAndMetric(t *testing.T) {
-	l := newBatch(nil, 16*1024*1024)
+func TestParquetExemplarAndMetric(t *testing.T) {
+	l := newParquetWrite(nil, 16*1024*1024)
 
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
@@ -230,24 +200,12 @@ func TestExemplarAndMetric(t *testing.T) {
 	exemplarLabels := labels.FromMap(map[string]string{
 		"ex": "one",
 	})
-	l.AddMetric(lbls, exemplarLabels, 0, 10, nil, nil, tExemplar)
+	err := l.AddMetric(lbls, exemplarLabels, 0, 10, nil, nil, tExemplar)
+	require.NoError(t, err)
 
-	bb := &buffer{
-		Buffer:       &bytes.Buffer{},
-		tb:           make([]byte, 4),
-		tb64:         make([]byte, 8),
-		stringbuffer: make([]byte, 0, 1024),
-		debug:        true,
-	}
-	l.serialize(bb)
-	out := &buffer{
-		Buffer:       bytes.NewBuffer(bb.Bytes()),
-		tb:           make([]byte, 4),
-		tb64:         make([]byte, 8),
-		stringbuffer: make([]byte, 0, 1024),
-		debug:        true,
-	}
-	metrics, err := Deserialize(out, 100)
+	l.serialize()
+
+	metrics, err := DeserializeParquet(l.bb.Bytes(), 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	require.True(t, metrics[0].Timestamp == 0)
@@ -262,8 +220,8 @@ func TestExemplarAndMetric(t *testing.T) {
 	require.True(t, metrics[0].ExemplarLabels[0].Value == "one")
 }
 
-func TestHistogram(t *testing.T) {
-	l := newBatch(nil, 16*1024*1024)
+func TestParquetHistogram(t *testing.T) {
+	l := newParquetWrite(nil, 16*1024*1024)
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -304,12 +262,11 @@ func TestHistogram(t *testing.T) {
 		},
 	}
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, nil, ts, 0, h, nil, tHistogram)
+	err := l.AddMetric(lbls, nil, ts, 0, h, nil, tHistogram)
+	require.NoError(t, err)
 
-	bb := newBuffer(nil)
-	l.serialize(bb)
-	out := newBuffer(bb.Bytes())
-	metrics, err := Deserialize(out, 100)
+	l.serialize()
+	metrics, err := DeserializeParquet(l.bb.Bytes(), 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	m := metrics[0]
@@ -318,8 +275,8 @@ func TestHistogram(t *testing.T) {
 	require.True(t, h.Equals(m.Histogram))
 }
 
-func TestFloatHistogram(t *testing.T) {
-	l := newBatch(nil, 16*1024*1024)
+func TestParquetFloatHistogram(t *testing.T) {
+	l := newParquetWrite(nil, 16*1024*1024)
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -360,12 +317,11 @@ func TestFloatHistogram(t *testing.T) {
 		},
 	}
 	ts := time.Now().Unix()
-	l.AddMetric(lbls, nil, ts, 0, nil, h, tFloatHistogram)
+	err := l.AddMetric(lbls, nil, ts, 0, nil, h, tFloatHistogram)
+	require.NoError(t, err)
 
-	bb := newBuffer(nil)
-	l.serialize(bb)
-	out := newBuffer(bb.Bytes())
-	metrics, err := Deserialize(out, 100)
+	l.serialize()
+	metrics, err := DeserializeParquet(l.bb.Bytes(), 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	m := metrics[0]
@@ -390,14 +346,4 @@ func hasLabelsExemplar(lbls labels.Labels, metrics []*TimeSeries, ts int64, val 
 		}
 	}
 	return false
-}
-
-func newBuffer(bb []byte) *buffer {
-	return &buffer{
-		Buffer:       bytes.NewBuffer(bb),
-		tb:           make([]byte, 4),
-		tb64:         make([]byte, 8),
-		stringbuffer: make([]byte, 0, 1024),
-		debug:        true,
-	}
 }

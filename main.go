@@ -4,6 +4,7 @@ import (
 	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/build"
 	"github.com/prometheus/client_golang/prometheus"
+	"runtime/debug"
 
 	// Register Prometheus SD components
 	_ "github.com/grafana/loki/clients/pkg/promtail/discovery/consulagent"
@@ -22,5 +23,7 @@ func init() {
 }
 
 func main() {
+	// It is recommended increasing GOGC if go_memstats_gc_cpu_fraction exceeds 0.05 for extended periods of time.
+	debug.SetGCPercent(50)
 	alloycli.Run()
 }

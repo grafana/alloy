@@ -3,6 +3,7 @@ package remotewrite
 import (
 	"context"
 	"fmt"
+	"github.com/grafana/alloy/internal/featuregate"
 	"math"
 	"os"
 	"path/filepath"
@@ -35,7 +36,7 @@ var remoteFlushDeadline = 1 * time.Minute
 func init() {
 	remote.UserAgent = useragent.Get()
 
-	/*component.Register(component.Registration{
+	component.Register(component.Registration{
 		Name:      "prometheus.remote_write",
 		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
@@ -44,7 +45,7 @@ func init() {
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
 			return New(o, c.(Arguments))
 		},
-	})*/
+	})
 }
 
 // Component is the prometheus.remote_write component.

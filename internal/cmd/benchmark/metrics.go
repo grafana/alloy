@@ -111,8 +111,10 @@ func metricsCommand() *cobra.Command {
 func startNormalAgent(met metric, port int) *exec.Cmd {
 	cmd := exec.Command("./alloy", "run", met.Config, fmt.Sprintf("--storage.path=./data/%s", met.Name), fmt.Sprintf("--server.http.listen-addr=127.0.0.1:%d", port), "--stability.level=experimental")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	if met.Name != "batch" {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
 	err := cmd.Start()
 
 	if err != nil {

@@ -94,7 +94,7 @@ type ClientConfig struct {
 
 // NewWriteClient creates a new client for remote write.
 func NewWriteClient(name string, conf *ClientConfig, registry prometheus.Registerer) (WriteClient, error) {
-	registry.MustRegister(remoteReadQueriesTotal, remoteReadQueries, remoteReadQueryDuration)
+	//registry.MustRegister(remoteReadQueriesTotal, remoteReadQueries, remoteReadQueryDuration)
 	httpClient, err := config_util.NewClientFromConfig(conf.HTTPClientConfig, "remote_storage_write_client")
 	if err != nil {
 		return nil, err

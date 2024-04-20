@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math"
+
+	"github.com/prometheus/prometheus/model/histogram"
 )
 
 type Header uint
@@ -116,6 +119,296 @@ func MetricCountDeserialize(bb *buffer) MetricCount {
 	}
 
 	return MetricCount(bb.readUint())
+}
+
+type CounterResetHint int8
+
+func (mc CounterResetHint) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("COUNTER_RESET_HINT")
+	}
+
+	bb.WriteByte(byte(mc))
+}
+
+func CounterResetHintDeserialize(bb *buffer) CounterResetHint {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "COUNTER_RESET_HINT")
+	}
+
+	singleByte, _ := bb.ReadByte()
+	return CounterResetHint(singleByte)
+}
+
+type Schema int32
+
+func (mc Schema) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("SCHEMA")
+	}
+
+	bb.addInt32(int32(mc))
+}
+
+func SchemaDeserialize(bb *buffer) Schema {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "SCHEMA")
+	}
+	return Schema(bb.readInt32())
+}
+
+type ZeroThreshold float64
+
+func (mc ZeroThreshold) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("ZERO_THRESHHOLD")
+	}
+
+	bb.addUInt64(math.Float64bits(float64(mc)))
+}
+
+func ZeroThresholdDeserialize(bb *buffer) ZeroThreshold {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "ZERO_THRESHHOLD")
+	}
+	return ZeroThreshold(math.Float64frombits(bb.readUint64()))
+}
+
+type FloatPositiveBuckets []float64
+
+func (mc FloatPositiveBuckets) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("FLOAT_POSITIVE_BUCKETS")
+	}
+
+	bb.addUint(uint32(len(mc)))
+	for _, b := range mc {
+		bb.addUInt64(math.Float64bits(b))
+	}
+}
+
+func FloatPositiveBucketsDeserialize(bb *buffer) FloatPositiveBuckets {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "FLOAT_POSITIVE_BUCKETS")
+	}
+	count := bb.readUint()
+	buckets := make([]float64, count)
+	for i := 0; i < int(count); i++ {
+		buckets[i] = math.Float64frombits(bb.readUint64())
+	}
+	return FloatPositiveBuckets(buckets)
+}
+
+type FloatNegativeBuckets []float64
+
+func (mc FloatNegativeBuckets) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("FLOAT_NEGATIVE_BUCKETS")
+	}
+
+	bb.addUint(uint32(len(mc)))
+	for _, b := range mc {
+		bb.addUInt64(math.Float64bits(b))
+	}
+}
+
+func FloatNegativeBucketsDeserialize(bb *buffer) FloatNegativeBuckets {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "FLOAT_NEGATIVE_BUCKETS")
+	}
+	count := bb.readUint()
+	buckets := make([]float64, count)
+	for i := 0; i < int(count); i++ {
+		buckets[i] = math.Float64frombits(bb.readUint64())
+	}
+	return FloatNegativeBuckets(buckets)
+}
+
+type PositiveBuckets []int64
+
+func (mc PositiveBuckets) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("POSITIVE_BUCKETS")
+	}
+
+	bb.addUint(uint32(len(mc)))
+	for _, b := range mc {
+		bb.addInt64(b)
+	}
+}
+
+func PositiveBucketsDeserialize(bb *buffer) PositiveBuckets {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "POSITIVE_BUCKETS")
+	}
+	count := bb.readUint()
+	buckets := make([]int64, count)
+	for i := 0; i < int(count); i++ {
+		buckets[i] = bb.readInt64()
+	}
+	return PositiveBuckets(buckets)
+}
+
+type NegativeBuckets []int64
+
+func (mc NegativeBuckets) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("NEGATIVE_BUCKETS")
+	}
+
+	bb.addUint(uint32(len(mc)))
+	for _, b := range mc {
+		bb.addInt64(b)
+	}
+}
+
+func NegativeBucketsDeserialize(bb *buffer) NegativeBuckets {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "NEGATIVE_BUCKETS")
+	}
+	count := bb.readUint()
+	buckets := make([]int64, count)
+	for i := 0; i < int(count); i++ {
+		buckets[i] = bb.readInt64()
+	}
+	return NegativeBuckets(buckets)
+}
+
+type NegativeSpans []histogram.Span
+
+func (mc NegativeSpans) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("NEGATIVE_SPANS")
+	}
+
+	bb.addUint(uint32(len(mc)))
+	for _, b := range mc {
+		bb.addUint(b.Length)
+		bb.addInt32(b.Offset)
+	}
+}
+
+func NegativeSpansDeserialize(bb *buffer) NegativeSpans {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "NEGATIVE_SPANS")
+	}
+	count := bb.readUint()
+	buckets := make([]histogram.Span, count)
+	for i := 0; i < int(count); i++ {
+		buckets[i] = histogram.Span{}
+		buckets[i].Length = bb.readUint()
+		buckets[i].Offset = bb.readInt32()
+	}
+	return NegativeSpans(buckets)
+}
+
+type PositiveSpans []histogram.Span
+
+func (mc PositiveSpans) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("POSITIVE_SPANS")
+	}
+
+	bb.addUint(uint32(len(mc)))
+	for _, b := range mc {
+		bb.addUint(b.Length)
+		bb.addInt32(b.Offset)
+	}
+}
+
+func PositiveSpansDeserialize(bb *buffer) PositiveSpans {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "POSITIVE_SPANS")
+	}
+	count := bb.readUint()
+	buckets := make([]histogram.Span, count)
+	for i := 0; i < int(count); i++ {
+		buckets[i] = histogram.Span{}
+		buckets[i].Length = bb.readUint()
+		buckets[i].Offset = bb.readInt32()
+	}
+	return PositiveSpans(buckets)
+}
+
+type ZeroCount uint64
+
+func (mc ZeroCount) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("ZERO_COUNT")
+	}
+
+	bb.addUInt64(uint64(mc))
+}
+
+func ZeroCountDeserialize(bb *buffer) ZeroCount {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "ZERO_COUNT")
+	}
+	return ZeroCount(bb.readUint64())
+}
+
+type FloatZeroCount float64
+
+func (mc FloatZeroCount) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("FLOAT_ZERO_COUNT")
+	}
+
+	bb.addUInt64(math.Float64bits(float64(mc)))
+}
+
+func FloatZeroCountDeserialize(bb *buffer) FloatZeroCount {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "FLOAT_ZERO_COUNT")
+	}
+	return FloatZeroCount(math.Float64frombits(bb.readUint64()))
+}
+
+type Count int64
+
+func (mc Count) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("COUNT")
+	}
+
+	bb.addInt64(int64(mc))
+}
+
+func CountDeserialize(bb *buffer) Count {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "COUNT")
+	}
+	return Count(bb.readInt64())
+}
+
+type FloatCount float64
+
+func (mc FloatCount) Serialize(bb *buffer) {
+	if bb.debug {
+		bb.writeString("FLOAT_COUNT")
+	}
+
+	bb.addUInt64(math.Float64bits(float64(mc)))
+}
+
+func FloatCountDeserialize(bb *buffer) FloatCount {
+	if bb.debug {
+		check := bb.readString()
+		checkVal(check, "FLOAT_COUNT")
+	}
+	return FloatCount(math.Float64frombits(bb.readUint64()))
 }
 
 type SignalType TelemetryType
@@ -256,6 +549,11 @@ func (bb *buffer) readInt64() int64 {
 	return int64(binary.LittleEndian.Uint64(bb.tb64))
 }
 
+func (bb *buffer) readInt32() int32 {
+	_, _ = bb.Read(bb.tb)
+	return int32(binary.LittleEndian.Uint32(bb.tb))
+}
+
 func (bb *buffer) writeString(s string) {
 	bb.addUint(uint32(len(s)))
 	_, _ = bb.WriteString(s)
@@ -264,6 +562,11 @@ func (bb *buffer) writeString(s string) {
 func (bb *buffer) addInt64(num int64) {
 	binary.LittleEndian.PutUint64(bb.tb64, uint64(num))
 	bb.Write(bb.tb64)
+}
+
+func (bb *buffer) addInt32(num int32) {
+	binary.LittleEndian.PutUint32(bb.tb, uint32(num))
+	bb.Write(bb.tb)
 }
 
 func (bb *buffer) addUInt64(num uint64) {

@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/golang/snappy"
 )
 
 var bufPool = sync.Pool{New: func() any {
@@ -135,11 +133,7 @@ func clearUncommitted(directory string) {
 	}
 }
 func (q *filequeue) writeFile(name string, data []byte) error {
-	pntBuf := bufPool.Get().(*[]byte)
-	buffer := *pntBuf
-	defer bufPool.Put(&buffer)
-	buffer = snappy.Encode(buffer, data)
-	return os.WriteFile(name, buffer, 0644)
+	return os.WriteFile(name, data, 0644)
 }
 
 func (q *filequeue) readFile(name string, enc []byte) ([]byte, error) {
@@ -147,10 +141,5 @@ func (q *filequeue) readFile(name string, enc []byte) ([]byte, error) {
 	if err != nil {
 		return enc, err
 	}
-
-	enc, err = snappy.Decode(enc, bb)
-	if err != nil {
-		return enc, err
-	}
-	return enc, nil
+	return bb, err
 }

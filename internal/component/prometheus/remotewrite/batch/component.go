@@ -1,8 +1,8 @@
 package batch
 
 import (
-	"bytes"
 	"context"
+	"github.com/grafana/alloy/internal/featuregate"
 	"net/url"
 	"path/filepath"
 	"sync"
@@ -10,23 +10,15 @@ import (
 
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/client_golang/prometheus"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
 )
 
-// Create a byte sync.pool
-var buf = sync.Pool{
-	New: func() interface{} {
-		return &bytes.Buffer{}
-	},
-}
-
 func init() {
 	component.Register(component.Registration{
-		Name:      "prometheus.remote_write",
+		Name:      "prometheus.remote.batch",
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Stability: featuregate.StabilityExperimental,
@@ -44,7 +36,7 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 	s := &Queue{
 		database: q,
 		opts:     opts,
-		b:        newBatch(q, args.BatchSize),
+		b:        newParquetWrite(q, args.BatchSize, opts.Logger),
 	}
 
 	return s, s.Update(args)
@@ -57,9 +49,8 @@ type Queue struct {
 	database   *filequeue
 	args       Arguments
 	opts       component.Options
-	wr         *writer
 	testClient WriteClient
-	b          *batch
+	b          *parquetwrite
 }
 
 // Run starts the component, blocking until ctx is canceled or the component
@@ -73,7 +64,6 @@ func (s *Queue) Run(ctx context.Context) error {
 	}
 	for _, qm := range qms {
 		wr := newWriter(s.opts.ID, qm, s.database, s.opts.Logger)
-		s.wr = wr
 		started := make(chan struct{})
 		go qm.Start(started)
 		<-started
@@ -112,7 +102,7 @@ func (s *Queue) newQueueManagers() ([]*QueueManager, error) {
 	}
 	return qms, nil
 }
-func (s *Queue) newWriteClient(ed *EndpointOptions) (WriteClient, error) {
+func (s *Queue) newWriteClient(ed EndpointOptions) (WriteClient, error) {
 	if s.testClient != nil {
 		return s.testClient, nil
 	}
@@ -161,7 +151,7 @@ func (c *Queue) Appender(ctx context.Context) storage.Appender {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
-	return newAppender(c, c.args.TTL, c.b)
+	return newAppender(c, c.args.TTL, c.b, c.args.ExternalLabels)
 }
 
 func (c *Queue) rollback(handles []string) {
