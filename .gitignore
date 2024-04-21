@@ -24,5 +24,6 @@ buildx-v*
 cover*.out
 .uptodate
 node_modules
+*.syso
 
 /docs/variables.mk.local
