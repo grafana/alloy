@@ -81,7 +81,7 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-[API definition]: https://github.com/grafana/alloy-remote-config
+[API definition]: https://github.com/grafana/agent-remote-config
 [basic_auth]: #basic_auth-block
 [authorization]: #authorization-block
 [oauth2]: #oauth2-block
