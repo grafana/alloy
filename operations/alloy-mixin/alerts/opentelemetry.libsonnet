@@ -1,7 +1,7 @@
 local alert = import './utils/alert.jsonnet';
 
 alert.newGroup(
-  'otelcol',
+  'alloy_otelcol',
   [
     // An otelcol.exporter component rcould not push some spans to the pipeline.
     // This could be due to reaching a limit such as the ones
