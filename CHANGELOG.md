@@ -34,6 +34,9 @@ Main (unreleased)
 
 - Fixed issue where text labels displayed outside of component node's boundary. (@hainenber)
 
+- Flow: Fix an issue where `faro.receiver`'s `extra_log_labels` with empty value don't
+  map existing value in log line. (@hainenber)
+
 ### Other changes
 
 - Update `alloy-mixin` to use more specific alert group names (for example,
