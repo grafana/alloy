@@ -31,7 +31,7 @@ local locals = {
       }],
       environment: locals.docker_environment,
       commands: [
-        'export IMAGE_TAG=${DRONE_TAG##build-image/v}',
+        'export IMAGE_TAG=${DRONE_TAG##build-image/}',
         'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
         'docker run --rm --privileged multiarch/qemu-user-static --reset -p yes',
         'docker buildx create --name multiarch --driver docker-container --use',
@@ -54,7 +54,7 @@ local locals = {
       }],
       environment: locals.docker_environment,
       commands: [
-        'export IMAGE_TAG=${DRONE_TAG##build-image/v}-boringcrypto',
+        'export IMAGE_TAG=${DRONE_TAG##build-image/}-boringcrypto',
         'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
         'docker run --rm --privileged multiarch/qemu-user-static --reset -p yes',
         'docker buildx create --name multiarch --driver docker-container --use',
@@ -80,7 +80,7 @@ local locals = {
       commands: [
         // NOTE(rfratto): the variable syntax is parsed ahead of time by Drone,
         // and not by Windows (where the syntax obviously wouldn't work).
-        '$IMAGE_TAG="${DRONE_TAG##build-image/v}-windows"',
+        '$IMAGE_TAG="${DRONE_TAG##build-image/}-windows"',
         'docker login -u $Env:DOCKER_LOGIN -p $Env:DOCKER_PASSWORD',
         'docker build -t grafana/alloy-build-image:$IMAGE_TAG ./tools/build-image/windows',
         'docker push grafana/alloy-build-image:$IMAGE_TAG',
