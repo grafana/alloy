@@ -27,9 +27,9 @@ var (
 	ErrUnrecoverable    = errors.New("unrecoverable error response")
 )
 
-// IsUnrecoverable returns true for errors from API requests that should not be retried, false otherwise.
-func IsUnrecoverable(err error) bool {
-	return errors.Is(err, ErrUnrecoverable)
+// IsRecoverable returns true for errors from API requests that can be retried, false otherwise.
+func IsRecoverable(err error) bool {
+	return !errors.Is(err, ErrUnrecoverable)
 }
 
 // Config is used to configure a MimirClient.

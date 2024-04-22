@@ -139,31 +139,31 @@ func TestCheckResponseErrors(t *testing.T) {
 		name       string
 		body       string
 		statusCode int
-		fatal      bool
+		canRetry   bool
 	}{
 		{
 			name:       "returns correct error for 400 response",
 			body:       "400 message!",
 			statusCode: http.StatusBadRequest,
-			fatal:      true,
+			canRetry:   false,
 		},
 		{
 			name:       "returns correct error for 404 response",
 			body:       "404 message!",
 			statusCode: 404,
-			fatal:      false,
+			canRetry:   true,
 		},
 		{
 			name:       "returns correct error for 429 response",
 			body:       "429 message!",
 			statusCode: http.StatusTooManyRequests,
-			fatal:      false,
+			canRetry:   true,
 		},
 		{
 			name:       "returns correct error for 500 response",
 			body:       "500 message!",
 			statusCode: http.StatusInternalServerError,
-			fatal:      false,
+			canRetry:   true,
 		},
 	}
 
@@ -177,7 +177,7 @@ func TestCheckResponseErrors(t *testing.T) {
 
 			err := checkResponse(response)
 			require.Error(t, err)
-			require.Equal(t, tt.fatal, IsUnrecoverable(err), "%+v is not expected recoverable/unrecoverable", err)
+			require.Equal(t, tt.canRetry, IsRecoverable(err), "%+v is not expected recoverable/unrecoverable", err)
 		})
 	}
 }

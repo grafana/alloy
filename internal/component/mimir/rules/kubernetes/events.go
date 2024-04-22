@@ -68,7 +68,7 @@ func (e *eventProcessor) run(ctx context.Context) {
 
 		if err != nil {
 			retries := e.queue.NumRequeues(evt)
-			if retries < 5 && !client.IsUnrecoverable(err) {
+			if retries < 5 && client.IsRecoverable(err) {
 				e.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
 				e.queue.AddRateLimited(evt)
 				level.Error(e.logger).Log(
