@@ -17,7 +17,7 @@ export TARGET_CONTAINER=${1:-}
 export DRONE_TAG=${DRONE_TAG:-}
 
 export RELEASE_ALLOY_IMAGE=grafana/alloy
-export DEVEL_ALLOY_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
+export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
 
 # We need to determine what version to assign to built binaries. If containers
 # are being built from a Drone tag trigger, we force the version to come from the
@@ -37,12 +37,13 @@ TAG_VERSION=${VERSION//+/-}
 
 # We also need to know which "branch tag" to update. Branch tags are used as a
 # secondary tag for Docker containers. The branch tag is "latest" when being
-# tagged from a stable release (i.e., not a release candidate).
+# tagged from a stable release (i.e., not a release candidate) or when building
+# a dev image.
 #
 # If we're not running from drone, we'll set the branch tag to match the
 # version. This effectively acts as a no-op because it will tag the same Docker
 # image twice.
-if [ -n "$DRONE_TAG" ] && [[ "$DRONE_TAG" != *"-rc."* ]]; then
+if [[ -n "$DRONE_TAG" && "$DRONE_TAG" != *"-rc."* ]] || [[ "$TARGET_CONTAINER" == *"-devel" ]]; then
   BRANCH_TAG=latest
 else
   BRANCH_TAG=$TAG_VERSION
@@ -54,24 +55,24 @@ export BUILD_PLATFORMS=linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 
 case "$TARGET_CONTAINER" in
   alloy)
-    docker buildx build --push        \
-      --platform $BUILD_PLATFORMS     \
-      --build-arg RELEASE_BUILD=1     \
-      --build-arg VERSION="$VERSION"  \
-      -t "$RELEASE_ALLOY_IMAGE:$TAG_VERSION"  \
-      -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"   \
-      -f Dockerfile \
+    docker buildx build --push               \
+      --platform $BUILD_PLATFORMS            \
+      --build-arg RELEASE_BUILD=1            \
+      --build-arg VERSION="$VERSION"         \
+      -t "$RELEASE_ALLOY_IMAGE:$TAG_VERSION" \
+      -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"  \
+      -f Dockerfile                          \
       .
     ;;
 
   alloy-devel)
-    docker buildx build --push        \
-      --platform $BUILD_PLATFORMS     \
-      --build-arg RELEASE_BUILD=1     \
-      --build-arg VERSION="$VERSION"  \
-      -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION"  \
-      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"   \
-      -f Dockerfile \
+    docker buildx build --push             \
+      --platform $BUILD_PLATFORMS          \
+      --build-arg RELEASE_BUILD=1          \
+      --build-arg VERSION="$VERSION"       \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION" \
+      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"  \
+      -f Dockerfile                        \
       .
     ;;
 
