@@ -21,7 +21,6 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	coreListers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	_ "k8s.io/component-base/metrics/prometheus/workqueue"
 	controller "sigs.k8s.io/controller-runtime"
@@ -47,24 +46,15 @@ type Component struct {
 	opts component.Options
 	args Arguments
 
-	mimirClient  mimirClient.Interface
-	k8sClient    kubernetes.Interface
-	promClient   promVersioned.Interface
-	ruleLister   promListers.PrometheusRuleLister
-	ruleInformer cache.SharedIndexInformer
-
-	namespaceLister   coreListers.NamespaceLister
-	namespaceInformer cache.SharedIndexInformer
-	informerStopChan  chan struct{}
-	ticker            *time.Ticker
-
-	queue         workqueue.RateLimitingInterface
-	configUpdates chan ConfigUpdate
-
+	mimirClient       mimirClient.Interface
+	k8sClient         kubernetes.Interface
+	promClient        promVersioned.Interface
 	namespaceSelector labels.Selector
 	ruleSelector      labels.Selector
 
-	currentState commonK8s.RuleGroupsByNamespace
+	eventProcessor *eventProcessor
+	configUpdates  chan ConfigUpdate
+	ticker         *time.Ticker
 
 	metrics   *metrics
 	healthMut sync.RWMutex
@@ -203,9 +193,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.shutdown()
 			return nil
 		case <-c.ticker.C:
-			c.queue.Add(commonK8s.Event{
-				Typ: eventTypeSyncMimir,
-			})
+			c.eventProcessor.enqueueSyncMimir()
 		}
 	}
 }
@@ -213,25 +201,33 @@ func (c *Component) Run(ctx context.Context) error {
 // startup launches the informers and starts the event loop.
 func (c *Component) startup(ctx context.Context) error {
 	cfg := workqueue.RateLimitingQueueConfig{Name: "mimir.rules.kubernetes"}
-	c.queue = workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), cfg)
-	c.informerStopChan = make(chan struct{})
+	queue := workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), cfg)
+	informerStopChan := make(chan struct{})
 
-	if err := c.startNamespaceInformer(); err != nil {
+	namespaceLister, err := c.startNamespaceInformer(queue, informerStopChan)
+	if err != nil {
 		return err
 	}
-	if err := c.startRuleInformer(); err != nil {
+
+	ruleLister, err := c.startRuleInformer(queue, informerStopChan)
+	if err != nil {
 		return err
 	}
-	if err := c.syncMimir(ctx); err != nil {
+
+	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, ruleLister)
+	if err = c.eventProcessor.syncMimir(ctx); err != nil {
 		return err
 	}
-	go c.eventLoop(ctx)
+
+	go c.eventProcessor.run(ctx)
 	return nil
 }
 
 func (c *Component) shutdown() {
-	close(c.informerStopChan)
-	c.queue.ShutDownWithDrain()
+	if c.eventProcessor != nil {
+		c.eventProcessor.stop()
+		c.eventProcessor = nil
+	}
 }
 
 func (c *Component) Update(newConfig component.Arguments) error {
@@ -290,7 +286,7 @@ func (c *Component) init() error {
 	return nil
 }
 
-func (c *Component) startNamespaceInformer() error {
+func (c *Component) startNamespaceInformer(queue workqueue.RateLimitingInterface, stopChan chan struct{}) (coreListers.NamespaceLister, error) {
 	factory := informers.NewSharedInformerFactoryWithOptions(
 		c.k8sClient,
 		24*time.Hour,
@@ -300,19 +296,19 @@ func (c *Component) startNamespaceInformer() error {
 	)
 
 	namespaces := factory.Core().V1().Namespaces()
-	c.namespaceLister = namespaces.Lister()
-	c.namespaceInformer = namespaces.Informer()
-	_, err := c.namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, c.queue))
+	namespaceLister := namespaces.Lister()
+	namespaceInformer := namespaces.Informer()
+	_, err := namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, queue))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	factory.Start(c.informerStopChan)
-	factory.WaitForCacheSync(c.informerStopChan)
-	return nil
+	factory.Start(stopChan)
+	factory.WaitForCacheSync(stopChan)
+	return namespaceLister, nil
 }
 
-func (c *Component) startRuleInformer() error {
+func (c *Component) startRuleInformer(queue workqueue.RateLimitingInterface, stopChan chan struct{}) (promListers.PrometheusRuleLister, error) {
 	factory := promExternalVersions.NewSharedInformerFactoryWithOptions(
 		c.promClient,
 		24*time.Hour,
@@ -322,14 +318,30 @@ func (c *Component) startRuleInformer() error {
 	)
 
 	promRules := factory.Monitoring().V1().PrometheusRules()
-	c.ruleLister = promRules.Lister()
-	c.ruleInformer = promRules.Informer()
-	_, err := c.ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, c.queue))
+	ruleLister := promRules.Lister()
+	ruleInformer := promRules.Informer()
+	_, err := ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, queue))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	factory.Start(c.informerStopChan)
-	factory.WaitForCacheSync(c.informerStopChan)
-	return nil
+	factory.Start(stopChan)
+	factory.WaitForCacheSync(stopChan)
+	return ruleLister, nil
+}
+
+func (c *Component) newEventProcessor(queue workqueue.RateLimitingInterface, stopChan chan struct{}, namespaceLister coreListers.NamespaceLister, ruleLister promListers.PrometheusRuleLister) *eventProcessor {
+	return &eventProcessor{
+		queue:             queue,
+		stopChan:          stopChan,
+		health:            c,
+		mimirClient:       c.mimirClient,
+		namespaceLister:   namespaceLister,
+		ruleLister:        ruleLister,
+		namespaceSelector: c.namespaceSelector,
+		ruleSelector:      c.ruleSelector,
+		namespacePrefix:   c.args.MimirNameSpacePrefix,
+		metrics:           c.metrics,
+		logger:            c.log,
+	}
 }
