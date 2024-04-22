@@ -17,7 +17,7 @@ export TARGET_CONTAINER=${1:-}
 export DRONE_TAG=${DRONE_TAG:-}
 
 export RELEASE_ALLOY_IMAGE=grafana/alloy
-export DEVEL_ALLOY_IMAGE=us-docker.pkg.dev/grafanalabs-dev/docker-alloy-dev/alloy
+export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
 
 if [ -n "$DRONE_TAG" ]; then
   VERSION=$DRONE_TAG
@@ -32,13 +32,13 @@ VERSION_TAG=${VERSION//+/-}-nanoserver-1809
 
 # We also need to know which "branch tag" to update. Branch tags are used as a
 # secondary tag for Docker containers. The branch tag is "latest" when being
-# tagged from a stable release (i.e., not a release candidate) or the Drone
-# branch when coming from a Drone job.
+# tagged from a stable release (i.e., not a release candidate) or when building
+# a dev image.
 #
 # If we're not running from drone, we'll set the branch tag to match the
 # version. This effectively acts as a no-op because it will tag the same Docker
 # image twice.
-if [ -n "$DRONE_TAG" ] && [[ "$DRONE_TAG" != *"-rc."* ]]; then
+if [[ -n "$DRONE_TAG" && "$DRONE_TAG" != *"-rc."* ]] || [[ "$TARGET_CONTAINER" == *"-devel" ]]; then
   BRANCH_TAG=latest-nanoserver-1809
 else
   BRANCH_TAG=$VERSION_TAG
@@ -46,12 +46,12 @@ fi
 
 case "$TARGET_CONTAINER" in
   alloy)
-    docker build                        \
-      -t "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"    \
-      -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"     \
-      --build-arg VERSION="$VERSION"    \
-      --build-arg RELEASE_BUILD=1       \
-      -f ./Dockerfile.windows \
+    docker build                             \
+      -t "$RELEASE_ALLOY_IMAGE:$VERSION_TAG" \
+      -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"  \
+      --build-arg VERSION="$VERSION"         \
+      --build-arg RELEASE_BUILD=1            \
+      -f ./Dockerfile.windows                \
       .
 
     docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
@@ -59,12 +59,12 @@ case "$TARGET_CONTAINER" in
     ;;
 
   alloy-devel)
-    docker build                        \
-      -t "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"    \
-      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"     \
-      --build-arg VERSION="$VERSION"    \
-      --build-arg RELEASE_BUILD=1       \
-      -f ./Dockerfile.windows \
+    docker build                           \
+      -t "$DEVEL_ALLOY_IMAGE:$VERSION_TAG" \
+      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"  \
+      --build-arg VERSION="$VERSION"       \
+      --build-arg RELEASE_BUILD=1          \
+      -f ./Dockerfile.windows              \
       .
 
     docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
