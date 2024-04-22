@@ -1,7 +1,7 @@
 local alert = import './utils/alert.jsonnet';
 
 alert.newGroup(
-  'clustering',
+  'alloy_clustering',
   [
     // Cluster not converging.
     alert.newRule(

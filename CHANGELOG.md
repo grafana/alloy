@@ -19,7 +19,7 @@ Main (unreleased)
   * show the offset/lag for all consumer group or only the connected ones
   * set the minimum number of topics to monitor
   * enable/disable auto-creation of requested topics if they don't already exist
-  * regex to exclude topics / groups 
+  * regex to exclude topics / groups
   * added metric kafka_broker_info
 
 - In `prometheus.exporter.kafka`, the interpolation table used to compute estimated lag metrics is now pruned
@@ -32,8 +32,13 @@ Main (unreleased)
 - Fix an issue on Windows where uninstalling Alloy did not remove it from the
   Add/Remove programs list. (@rfratto)
 
-
 - Fixed issue where text labels displayed outside of component node's boundary. (@hainenber)
+
+### Other changes
+
+- Update `alloy-mixin` to use more specific alert group names (for example,
+  `alloy_clustering` instead of `clustering`) to avoid collision with installs
+  of `agent-flow-mixin`. (@rfratto)
 
 v1.0.0 (2024-04-09)
 -------------------
