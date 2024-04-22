@@ -6,7 +6,7 @@ platform:
   os: linux
 steps:
 - commands:
-  - export IMAGE_TAG=${DRONE_TAG##build-image/v}
+  - export IMAGE_TAG=${DRONE_TAG##build-image/}
   - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
   - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
   - docker buildx create --name multiarch --driver docker-container --use
@@ -40,7 +40,7 @@ platform:
   os: linux
 steps:
 - commands:
-  - export IMAGE_TAG=${DRONE_TAG##build-image/v}-boringcrypto
+  - export IMAGE_TAG=${DRONE_TAG##build-image/}-boringcrypto
   - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
   - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
   - docker buildx create --name multiarch --driver docker-container --use
@@ -76,7 +76,7 @@ platform:
   version: "1809"
 steps:
 - commands:
-  - $IMAGE_TAG="${DRONE_TAG##build-image/v}-windows"
+  - $IMAGE_TAG="${DRONE_TAG##build-image/}-windows"
   - docker login -u $Env:DOCKER_LOGIN -p $Env:DOCKER_PASSWORD
   - docker build -t grafana/alloy-build-image:$IMAGE_TAG ./tools/build-image/windows
   - docker push grafana/alloy-build-image:$IMAGE_TAG
@@ -667,6 +667,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: b8a4493d643d2f8f0f8fac5bfa627473eb28219f7a6e6a623366c35b7e549e08
+hmac: 335ecdc1356eb2f7f792d3055147a781d66bd3071c3dab334e82d60fd9cfedf5
 
 ...
