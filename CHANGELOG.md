@@ -32,6 +32,7 @@ Main (unreleased)
 - Fix an issue on Windows where uninstalling Alloy did not remove it from the
   Add/Remove programs list. (@rfratto)
 
+- Fix wrong documentation on alloy.extraPorts.hostPort (@and1truong)
 
 - Fixed issue where text labels displayed outside of component node's boundary. (@hainenber)
 
