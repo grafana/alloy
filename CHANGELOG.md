@@ -40,6 +40,8 @@ Main (unreleased)
   `alloy_clustering` instead of `clustering`) to avoid collision with installs
   of `agent-flow-mixin`. (@rfratto)
 
+- Add a description to Alloy DEB and RPM packages. (@rfratto)
+
 v1.0.0 (2024-04-09)
 -------------------
 
