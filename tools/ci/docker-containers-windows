@@ -22,13 +22,11 @@ export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
 if [ -n "$DRONE_TAG" ]; then
   VERSION=$DRONE_TAG
 else
-  VERSION=$(./tools/image-tag)
+  VERSION=$(./tools/image-tag-docker)
 fi
 
-# The VERSION_TAG is the version to use for the Docker tag. It is sanitized to
-# force it to be a valid tag name; ./tools/image-tag can emit characters that
-# are valid for semver but invalid for Docker tags, such as +.
-VERSION_TAG=${VERSION//+/-}-nanoserver-1809
+# The VERSION_TAG is the version to use for the Docker tag.
+VERSION_TAG=${VERSION}-nanoserver-1809
 
 # We also need to know which "branch tag" to update. Branch tags are used as a
 # secondary tag for Docker containers. The branch tag is "latest" when being

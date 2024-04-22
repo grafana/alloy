@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+#
+# image-tag-docker runs ./tools/image-tag but sanitizes invalid characters
+# for use in Docker image tags.
+
+TAG=$(sh ./tools/image-tag)
+echo ${TAG//+/-}
