@@ -30,10 +30,10 @@ The following pairs of arguments are mutually exclusive and can't both be set si
 * `key_pem` and `key_file`
 
 If `cipher_suites` is left blank, a safe default list is used.
-See the [Go Cipher Suites documentation][golang-cipher-suites] for a list of supported cipher suites.
+Refer to the [Go Cipher Suites documentation][golang-cipher-suites] for a list of supported cipher suites.
 
 `client_ca_file` sets the `ClientCA` and `ClientAuth` to `RequireAndVerifyClientCert` in the `TLSConfig`. 
-See to the [Go TLS documentation][golang-tls] for more information.
+Refer to the [Go TLS documentation][golang-tls] for more information.
 
 [golang-tls]: https://godoc.org/crypto/tls#Config
 [golang-cipher-suites]: https://go.dev/src/crypto/tls/cipher_suites.go
