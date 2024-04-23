@@ -34,6 +34,8 @@ Main (unreleased)
 
 - Fixed issue where text labels displayed outside of component node's boundary. (@hainenber)
 
+- In `mimir.rules.kubernetes`, fix an issue where unrecoverable errors from the Mimir API were retried. (@56quarters)
+
 ### Other changes
 
 - Update `alloy-mixin` to use more specific alert group names (for example,
