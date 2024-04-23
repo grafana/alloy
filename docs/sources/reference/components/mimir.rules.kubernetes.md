@@ -24,6 +24,12 @@ in Kubernetes in order for {{< param "PRODUCT_NAME" >}} to access it via the Kub
 [Role-based access control (RBAC)]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 {{< /admonition >}}
 
+{{< admonition type="warning" >}}
+This component does not support [clustered mode][] and must be run in a separate single-instance deployment of {{< param "PRODUCT_NAME" >}}.
+
+[clustered mode]: ../../../concepts/clustering/
+{{< /admonition >}}
+
 [Kubernetes label selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
 [prometheus-operator]: https://prometheus-operator.dev/
 [within a Pod]: https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/
