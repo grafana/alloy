@@ -184,9 +184,9 @@ linux_containers_jobs + windows_containers_jobs + [
         name: 'Create .image-tag',
         image: 'alpine',
         commands: [
-          'apk update && apk add git',
-          'echo "$(sh ./tools/image-tag-docker)" > .tag-only',
-          'echo "grafana/alloy-dev:$(sh ./tools/image-tag-docker)" > .image-tag',
+          'apk add --no-cache bash git',
+          'echo "$(bash ./tools/image-tag-docker)" > .tag-only',
+          'echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag',
         ],
       },
       {

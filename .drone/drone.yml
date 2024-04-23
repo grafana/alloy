@@ -518,9 +518,9 @@ platform:
   os: linux
 steps:
 - commands:
-  - apk update && apk add git
-  - echo "$(sh ./tools/image-tag-docker)" > .tag-only
-  - echo "grafana/alloy-dev:$(sh ./tools/image-tag-docker)" > .image-tag
+  - apk add --no-cache bash git
+  - echo "$(bash ./tools/image-tag-docker)" > .tag-only
+  - echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
   image: alpine
   name: Create .image-tag
 - image: us.gcr.io/kubernetes-dev/drone/plugins/updater
@@ -713,6 +713,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 478adbeda3c0ad620fbeb8eca6aa976709b6d9e71451644663a3c4362380df69
+hmac: eef3ddde1e027f6c8c113bf748036cb79961708262d651193c231096cda5260d
 
 ...
