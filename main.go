@@ -24,6 +24,6 @@ func init() {
 
 func main() {
 	// It is recommended increasing GOGC if go_memstats_gc_cpu_fraction exceeds 0.05 for extended periods of time.
-	debug.SetGCPercent(50)
+	debug.SetGCPercent(30)
 	alloycli.Run()
 }

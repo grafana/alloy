@@ -1,9 +1,10 @@
 package batch
 
 import (
-	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 	"sync"
 	"time"
+
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -15,10 +16,10 @@ import (
 // Defaults for config blocks.
 var (
 	DefaultQueueOptions = QueueOptions{
-		Capacity:          10000,
+		Capacity:          10,
 		MaxShards:         50,
 		MinShards:         1,
-		MaxSamplesPerSend: 2000,
+		MaxSamplesPerSend: 5,
 		BatchSendDeadline: 5 * time.Second,
 		MinBackoff:        30 * time.Millisecond,
 		MaxBackoff:        5 * time.Second,
@@ -36,7 +37,8 @@ func defaultArgs() Arguments {
 	return Arguments{
 		TTL:       2 * time.Hour,
 		Evict:     1 * time.Hour,
-		BatchSize: 128 * 1024 * 1024,
+		BatchSize: 256 * 1024 * 1024,
+		FlushTime: 30 * time.Second,
 	}
 }
 
@@ -47,6 +49,7 @@ type Arguments struct {
 	Endpoints      []EndpointOptions      `alloy:"endpoint,block,optional"`
 	WALOptions     remotewrite.WALOptions `alloy:"wal,block,optional"`
 	ExternalLabels map[string]string      `alloy:"external_labels,attr,optional"`
+	FlushTime      time.Duration          `alloy:"flush_time,attr,optional"`
 }
 
 type Exports struct {
@@ -82,6 +85,7 @@ func (r *EndpointOptions) SetToDefault() {
 		MetadataOptions:  DefaultMetadataOptions,
 	}
 }
+
 func (r *EndpointOptions) Validate() error {
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	if r.HTTPClientConfig != nil {
@@ -100,6 +104,7 @@ type QueueOptions struct {
 	MinBackoff        time.Duration `alloy:"min_backoff,attr,optional"`
 	MaxBackoff        time.Duration `alloy:"max_backoff,attr,optional"`
 	RetryOnHTTP429    bool          `alloy:"retry_on_http_429,attr,optional"`
+	SampleAgeLimit    time.Duration `alloy:"sample_age_limit,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.

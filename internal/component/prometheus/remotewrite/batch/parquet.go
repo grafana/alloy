@@ -3,52 +3,61 @@ package batch
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
+	"github.com/parquet-go/parquet-go/compress/snappy"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy/logging/level"
-	"github.com/parquet-go/parquet-go/compress/snappy"
-
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 )
 
 type parquetmetric struct {
-	Name           string
-	Telemetry      TelemetryType
-	Timestamp      int64
-	Keys           []string
-	Values         []string
-	ExemplarKeys   []string
-	ExemplarValues []string
-	Value          float64
+	Name      string     `parquet:"name"`
+	Type      seriesType `parquet:"telemetry,delta"`
+	Timestamp int64      `parquet:"timestamp,delta"`
+	Value     float64    `parquet:"value,split"`
+
+	Labels         []label `parquet:"labels"`
+	ExemplarLabels []label `parquet:"exemplar_labels,optional"`
 
 	// Shared Histogram
-	CounterResetHint int32
-	Schema           int32
+	CounterResetHint int32 `parquet:"counter_reset_hint,optional,delta"`
+	Schema           int32 `parquet:"schema,optional,delta"`
 
 	// Histogram
-	ZeroThreshold   float64
-	ZeroCount       uint64
-	Count           uint64
-	PositiveBuckets []int64
-	NegativeBuckets []int64
-	PositiveSpans   []span
-	NegativeSpans   []span
+	ZeroThreshold   float64 `parquet:"zero_threshold,optional,split"`
+	ZeroCount       uint64  `parquet:"zero_count,optional,delta"`
+	Count           uint64  `parquet:"count,optional,delta"`
+	PositiveBuckets []int64 `parquet:"positive_buckets,optional"`
+	NegativeBuckets []int64 `parquet:"negative_buckets,optional"`
+	PositiveSpans   []span  `parquet:"positive_spans,optional"`
+	NegativeSpans   []span  `parquet:"negative_spans,optional"`
 
-	// FlostHistogram Fields
-	FloatZeroCount       float64
-	FloatCount           float64
-	FloatPositiveBuckets []float64
-	FloatNegativeBuckets []float64
+	// FloatHistogram Fields
+	FloatZeroCount       float64   `parquet:"float_zero_count,optional,split"`
+	FloatCount           float64   `parquet:"float_count,optional,split"`
+	FloatPositiveBuckets []float64 `parquet:"float_positive_buckets,optional"`
+	FloatNegativeBuckets []float64 `parquet:"float_negative_buckets,optional"`
 }
 
 type span struct {
 	Offset int32
 	// Length of the span.
 	Length uint32
+}
+
+type label struct {
+	Name  int `parquet:"name,delta"`
+	Value int `parquet:"value,delta"`
+}
+
+type stringMap struct {
+	ID    int    `parquet:"id,delta"`
+	Value string `parquet:"value"`
 }
 
 // parquetwrite is the primary class for serializing and deserializing metrics.
@@ -58,9 +67,11 @@ type parquetwrite struct {
 	estimatedSize  int64
 	totalSignals   int64
 	checkpointSize int64
-	bb             *bytes.Buffer
-	buffer         *parquet.GenericWriter[*parquetmetric]
 	pm             *parquetmetric
+	writer         *parquet.GenericWriter[*parquetmetric]
+	bb             *bytes.Buffer
+	dictionary     map[string]int
+	index          int
 	l              log.Logger
 	flushTime      time.Duration
 }
@@ -72,12 +83,14 @@ func newParquetWrite(fq *filequeue, checkPointSize int64, flushTime time.Duratio
 		checkpointSize: checkPointSize,
 		estimatedSize:  0,
 		totalSignals:   0,
-		bb:             &bytes.Buffer{},
 		pm:             &parquetmetric{},
 		l:              l,
 		flushTime:      flushTime,
+		dictionary:     make(map[string]int),
+		bb:             &bytes.Buffer{},
 	}
-	pw.buffer = parquet.NewGenericWriter[*parquetmetric](pw.bb, parquet.Compression(&snappy.Codec{}))
+	pw.writer = parquet.NewGenericWriter[*parquetmetric](pw.bb, parquet.Compression(&snappy.Codec{}))
+
 	return pw
 }
 
@@ -96,50 +109,50 @@ func (pw *parquetwrite) SetFlushTime(flushTime time.Duration) {
 }
 
 // AddMetric is used to add a metric to the internal metrics for use with serialization.
-func (pw *parquetwrite) AddMetric(lbls labels.Labels, exemplarLabls labels.Labels, ts int64, val float64, histo *histogram.Histogram, floatHisto *histogram.FloatHistogram, telemetryType TelemetryType) error {
+func (pw *parquetwrite) AddMetric(lbls labels.Labels, exemplarLabls labels.Labels, ts int64, val float64, histo *histogram.Histogram, floatHisto *histogram.FloatHistogram, telemetryType seriesType) error {
 	pw.mut.Lock()
 	defer pw.mut.Unlock()
 
-	pw.pm.Timestamp = ts
+	pm := &parquetmetric{}
+	pm.Timestamp = ts
 	pw.addEstimatedSize(8)
-	pw.pm.Value = val
+	pm.Value = val
 	pw.addEstimatedSize(8)
 
 	for _, l := range lbls {
 		if l.Name == "__name__" {
-			pw.pm.Name = l.Value
+			pm.Name = l.Value
 			break
 		}
 	}
 
-	pw.pm.Telemetry = telemetryType
-	pw.pm.Keys, pw.pm.Values = pw.addLabels(lbls, pw.pm.Keys, pw.pm.Values)
-	pw.pm.ExemplarKeys, pw.pm.ExemplarValues = pw.addLabels(exemplarLabls, pw.pm.ExemplarKeys, pw.pm.ExemplarValues)
+	pm.Type = telemetryType
+	pm.Labels = pw.addLabels(lbls, pm.Labels)
+	pm.ExemplarLabels = pw.addLabels(exemplarLabls, pm.ExemplarLabels)
 	if telemetryType == tHistogram && histo != nil {
-		pw.pm.CounterResetHint = int32(histo.CounterResetHint)
-		pw.pm.Schema = histo.Schema
-		pw.pm.Value = histo.Sum
-		pw.pm.PositiveBuckets = histo.PositiveBuckets
-		pw.pm.NegativeBuckets = histo.NegativeBuckets
-		pw.pm.NegativeSpans = pw.histogramSpanToSpan(histo.NegativeSpans)
-		pw.pm.PositiveSpans = pw.histogramSpanToSpan(histo.PositiveSpans)
-		pw.pm.Count = histo.Count
-		pw.pm.ZeroCount = histo.ZeroCount
-		pw.pm.ZeroThreshold = histo.ZeroThreshold
+		pm.CounterResetHint = int32(histo.CounterResetHint)
+		pm.Schema = histo.Schema
+		pm.Value = histo.Sum
+		pm.PositiveBuckets = histo.PositiveBuckets
+		pm.NegativeBuckets = histo.NegativeBuckets
+		pm.NegativeSpans = pw.histogramSpanToSpan(histo.NegativeSpans)
+		pm.PositiveSpans = pw.histogramSpanToSpan(histo.PositiveSpans)
+		pm.Count = histo.Count
+		pm.ZeroCount = histo.ZeroCount
+		pm.ZeroThreshold = histo.ZeroThreshold
 	} else if telemetryType == tFloatHistogram && floatHisto != nil {
-		pw.pm.CounterResetHint = int32(floatHisto.CounterResetHint)
-		pw.pm.Schema = floatHisto.Schema
-		pw.pm.Value = floatHisto.Sum
-		pw.pm.ZeroThreshold = floatHisto.ZeroThreshold
-		pw.pm.NegativeSpans = pw.histogramSpanToSpan(floatHisto.NegativeSpans)
-		pw.pm.PositiveSpans = pw.histogramSpanToSpan(floatHisto.PositiveSpans)
-		pw.pm.FloatCount = floatHisto.Count
-		pw.pm.FloatZeroCount = floatHisto.ZeroCount
-		pw.pm.FloatNegativeBuckets = floatHisto.NegativeBuckets
-		pw.pm.FloatPositiveBuckets = floatHisto.PositiveBuckets
+		pm.CounterResetHint = int32(floatHisto.CounterResetHint)
+		pm.Schema = floatHisto.Schema
+		pm.Value = floatHisto.Sum
+		pm.ZeroThreshold = floatHisto.ZeroThreshold
+		pm.NegativeSpans = pw.histogramSpanToSpan(floatHisto.NegativeSpans)
+		pm.PositiveSpans = pw.histogramSpanToSpan(floatHisto.PositiveSpans)
+		pm.FloatCount = floatHisto.Count
+		pm.FloatZeroCount = floatHisto.ZeroCount
+		pm.FloatNegativeBuckets = floatHisto.NegativeBuckets
+		pm.FloatPositiveBuckets = floatHisto.PositiveBuckets
 	}
-
-	pw.buffer.Write([]*parquetmetric{pw.pm})
+	pw.writer.Write([]*parquetmetric{pm})
 	pw.totalSignals += 1
 
 	// We need to checkpoint
@@ -154,29 +167,58 @@ func (pw *parquetwrite) write() error {
 	if pw.totalSignals == 0 {
 		return nil
 	}
-	// We should always reset.
-	defer pw.bb.Reset()
-	err := pw.serialize()
+	bb, err := pw.serialize()
 	if err != nil {
 		return err
 	}
-	_, err = pw.fq.AddCommited(pw.bb.Bytes())
+	_, err = pw.fq.AddCommited(bb)
 	return err
 }
 
-func (pw *parquetwrite) serialize() error {
+func (pw *parquetwrite) serialize() ([]byte, error) {
 	// No matter the error we should reset everything.
 	defer func() {
-		level.Debug(pw.l).Log("msg", "clearing estimated size, total signals and buffer")
+		level.Debug(pw.l).Log("msg", "clearing estimated size, total signals and buffer", "estimated_size", pw.estimatedSize, "total_signal", pw.totalSignals)
 		pw.estimatedSize = 0
 		pw.totalSignals = 0
-		pw.buffer.Reset(pw.bb)
+		clear(pw.dictionary)
+		pw.bb.Reset()
+		pw.writer.Reset(pw.bb)
+		pw.index = 0
 	}()
-	err := pw.buffer.Close()
-	if err != nil {
-		return err
+	tb := make([]byte, 8)
+	pw.writer.Close()
+	wrappedBB := &bytes.Buffer{}
+	binary.BigEndian.PutUint64(tb, uint64(pw.bb.Len()))
+	wrappedBB.Write(tb)
+	wrappedBB.Write(pw.bb.Bytes())
+
+	// Rest the buffer
+	bb := &bytes.Buffer{}
+
+	// Write the strings dictionary.
+	strArr := make([]*stringMap, len(pw.dictionary))
+	index := 0
+	for k, v := range pw.dictionary {
+		strArr[index] = &stringMap{
+			ID:    v,
+			Value: k,
+		}
+		index++
 	}
-	return nil
+	writeStrings := parquet.NewGenericWriter[*stringMap](bb, parquet.Compression(&snappy.Codec{}))
+	_, err := writeStrings.Write(strArr)
+	if err != nil {
+		return nil, err
+	}
+	err = writeStrings.Close()
+	if err != nil {
+		return nil, err
+	}
+	binary.BigEndian.PutUint64(tb, uint64(bb.Len()))
+	wrappedBB.Write(tb)
+	wrappedBB.Write(bb.Bytes())
+	return wrappedBB.Bytes(), nil
 }
 
 func (pw *parquetwrite) addEstimatedSize(size int64) {
@@ -195,31 +237,44 @@ func (pw *parquetwrite) histogramSpanToSpan(histogramSpans []histogram.Span) []s
 	return spans
 }
 
-func (pw *parquetwrite) addLabels(input labels.Labels, keys, values []string) ([]string, []string) {
-	if cap(values) < len(input) {
-		values = make([]string, len(input))
-		keys = make([]string, len(input))
+func (pw *parquetwrite) addLabels(input labels.Labels, vals []label) []label {
+	if cap(vals) < len(input) {
+		vals = make([]label, len(input))
 	} else {
-		values = values[:len(input)]
-		keys = keys[:len(input)]
+		vals = vals[:len(input)]
 	}
 
 	for i, l := range input {
-		keys[i] = l.Name
-		values[i] = l.Value
-		pw.addEstimatedSize(int64(len(l.Name) + len(l.Value)))
+		id, found := pw.dictionary[l.Name]
+		if !found {
+			pw.dictionary[l.Name] = pw.index
+			id = pw.index
+			pw.addEstimatedSize(int64(len(l.Name)) + 4)
+			pw.index++
+		}
+		vals[i].Name = id
+		id, found = pw.dictionary[l.Value]
+		if !found {
+			pw.dictionary[l.Value] = pw.index
+			id = pw.index
+			pw.addEstimatedSize(int64(len(l.Name)) + 4)
+			pw.index++
+		}
+		vals[i].Value = id
+		pw.addEstimatedSize(8)
 	}
-	return keys, values
+	return vals
 }
 
 // StartTimer ensures that data is flushed to disk every :.
 func (pw *parquetwrite) StartTimer(ctx context.Context) {
-	t := time.NewTicker(30 * time.Second)
+	t := time.NewTicker(pw.flushTime)
 	for {
 		select {
 		case <-t.C:
 			pw.mut.Lock()
 			pw.write()
+			t.Reset(pw.flushTime)
 			pw.mut.Unlock()
 		case <-ctx.Done():
 			return
@@ -238,35 +293,49 @@ func spanToHistogramSpan(spans []span) []histogram.Span {
 	return returnSpans
 }
 
-func valuesAndKeysToLabels(keys, values []string) labels.Labels {
-	lbls := make([]labels.Label, len(keys))
-	for i, k := range keys {
-		lbls[i].Name = k
-		lbls[i].Value = values[i]
+func valuesAndKeysToLabels(values []label, dict map[int]string) labels.Labels {
+	lbls := make([]labels.Label, len(values))
+	for i, k := range values {
+		lbls[i].Name = dict[k.Name]
+		lbls[i].Value = dict[k.Value]
 	}
 	return lbls
 }
 
-func DeserializeParquet(buffer []byte, maxAgeSeconds int64) ([]*TimeSeries, error) {
-	reader := bytes.NewReader(buffer)
-	rows, err := parquet.Read[*parquetmetric](reader, int64(len(buffer)))
+func DeserializeParquet(buffer []byte, maxAgeSeconds int64) ([]TimeSeries, error) {
+	length := binary.BigEndian.Uint64(buffer[0:8])
+	metricBuffer := bytes.NewReader(buffer[8 : 8+length])
+	rows, err := parquet.Read[*parquetmetric](metricBuffer, int64(metricBuffer.Len()))
 	if err != nil {
 		return nil, err
 	}
-	timeSeriesArray := make([]*TimeSeries, 0)
+	// We write the length but we can skip another 8 to get the starting point
+	dictBuffer := bytes.NewReader(buffer[16+length:])
+	stringRows, err := parquet.Read[*stringMap](dictBuffer, int64(dictBuffer.Len()))
+	if err != nil {
+		return nil, err
+	}
+	dict := make(map[int]string)
+	for _, k := range stringRows {
+		dict[k.ID] = k.Value
+	}
+	if err != nil {
+		return nil, err
+	}
+	timeSeriesArray := make([]TimeSeries, 0)
 	for _, pm := range rows {
-		if pm.Timestamp < time.Now().Unix()-maxAgeSeconds && pm.Telemetry != tExemplar {
+		if pm.Timestamp < time.Now().Unix()-maxAgeSeconds && pm.Type != tExemplar {
 			// TODO add drop metric here.
 			continue
 		}
-		ts := &TimeSeries{}
-		ts.Timestamp = pm.Timestamp
-		ts.Value = pm.Value
-		ts.SeriesType = pm.Telemetry
-		ts.SeriesLabels = valuesAndKeysToLabels(pm.Keys, pm.Values)
-		ts.ExemplarLabels = valuesAndKeysToLabels(pm.ExemplarKeys, pm.ExemplarValues)
+		ts := TimeSeries{}
+		ts.timestamp = pm.Timestamp
+		ts.value = pm.Value
+		ts.sType = pm.Type
+		ts.seriesLabels = valuesAndKeysToLabels(pm.Labels, dict)
+		ts.exemplarLabels = valuesAndKeysToLabels(pm.ExemplarLabels, dict)
 
-		if ts.SeriesType == tHistogram {
+		if ts.sType == tHistogram {
 			h := &histogram.Histogram{}
 			h.CounterResetHint = histogram.CounterResetHint(pm.CounterResetHint)
 			h.Schema = pm.Schema
@@ -278,8 +347,8 @@ func DeserializeParquet(buffer []byte, maxAgeSeconds int64) ([]*TimeSeries, erro
 			h.NegativeSpans = spanToHistogramSpan(pm.NegativeSpans)
 			h.NegativeBuckets = pm.NegativeBuckets
 			h.Sum = pm.Value
-			ts.Histogram = h
-		} else if ts.SeriesType == tFloatHistogram {
+			ts.histogram = h
+		} else if ts.sType == tFloatHistogram {
 			h := &histogram.FloatHistogram{}
 			h.CounterResetHint = histogram.CounterResetHint(pm.CounterResetHint)
 			h.Schema = pm.Schema
@@ -291,7 +360,7 @@ func DeserializeParquet(buffer []byte, maxAgeSeconds int64) ([]*TimeSeries, erro
 			h.NegativeSpans = spanToHistogramSpan(pm.NegativeSpans)
 			h.NegativeBuckets = pm.FloatNegativeBuckets
 			h.Sum = pm.Value
-			ts.FloatHistogram = h
+			ts.floatHistogram = h
 		}
 		timeSeriesArray = append(timeSeriesArray, ts)
 	}

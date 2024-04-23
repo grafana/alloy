@@ -2,11 +2,13 @@ package batch
 
 import (
 	"context"
-	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/prometheus/prometheus/model/labels"
 	"net/url"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/grafana/alloy/internal/featuregate"
 
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
@@ -14,6 +16,7 @@ import (
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
+	"github.com/prometheus/prometheus/storage/remote"
 )
 
 func init() {
@@ -36,7 +39,7 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 	s := &Queue{
 		database: q,
 		opts:     opts,
-		b:        newParquetWrite(q, args.BatchSize, opts.Logger),
+		b:        newParquetWrite(q, args.BatchSize, args.FlushTime, opts.Logger),
 	}
 
 	return s, s.Update(args)
@@ -45,12 +48,11 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 // Queue is a queue based WAL used to send data to a remote_write endpoint. Queue supports replaying
 // sending and TTLs.
 type Queue struct {
-	mut        sync.RWMutex
-	database   *filequeue
-	args       Arguments
-	opts       component.Options
-	testClient WriteClient
-	b          *parquetwrite
+	mut      sync.RWMutex
+	database *filequeue
+	args     Arguments
+	opts     component.Options
+	b        *parquetwrite
 }
 
 // Run starts the component, blocking until ctx is canceled or the component
@@ -81,12 +83,15 @@ func (s *Queue) newQueueManagers() ([]*QueueManager, error) {
 			return nil, err
 		}
 		qm := NewQueueManager(
-			s.opts.Registerer,
+			newQueueManagerMetrics(s.opts.Registerer, ed.Name, ed.URL),
 			s.opts.Logger,
+			newEWMARate(ewmaWeight, shardUpdateDuration),
 			ed.QueueOptions,
 			ed.MetadataOptions,
+			labels.FromMap(s.args.ExternalLabels),
 			wr,
 			1*time.Minute,
+			newPool(),
 			&maxTimestamp{
 				Gauge: prometheus.NewGauge(prometheus.GaugeOpts{
 					Namespace: "prometheus",
@@ -102,10 +107,8 @@ func (s *Queue) newQueueManagers() ([]*QueueManager, error) {
 	}
 	return qms, nil
 }
-func (s *Queue) newWriteClient(ed EndpointOptions) (WriteClient, error) {
-	if s.testClient != nil {
-		return s.testClient, nil
-	}
+
+func (s *Queue) newWriteClient(ed EndpointOptions) (remote.WriteClient, error) {
 	endUrl, err := url.Parse(ed.URL)
 	if err != nil {
 		return nil, err
@@ -122,7 +125,7 @@ func (s *Queue) newWriteClient(ed EndpointOptions) (WriteClient, error) {
 		SigV4Config:      nil,
 		Headers:          ed.Headers,
 		RetryOnRateLimit: ed.QueueOptions.RetryOnHTTP429,
-	}, s.opts.Registerer)
+	})
 
 	return wr, err
 }
