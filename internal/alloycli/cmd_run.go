@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy"
@@ -138,6 +139,7 @@ depending on the nature of the reload error.
 		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
+	cmd.Flags().BoolVar(&r.enableAutoMemoryLimit, "memory.auto-limit", true, "Enable the automatic setting of memory limit.")
 	return cmd
 }
 
@@ -161,9 +163,16 @@ type alloyRun struct {
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
+	enableAutoMemoryLimit        bool
 }
 
 func (fr *alloyRun) Run(configPath string) error {
+	// Set the memory limit, this will honor GOMEMLIMIT if set
+	// If there is a cgroup will follow that
+	if fr.enableAutoMemoryLimit {
+		memlimit.SetGoMemLimitWithOpts()
+	}
+
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
