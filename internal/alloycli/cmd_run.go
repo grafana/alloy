@@ -139,7 +139,7 @@ depending on the nature of the reload error.
 		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
-	cmd.Flags().BoolVar(&r.enableAutoMemoryLimit, "memory.auto-limit", true, "Enable the automatic setting of memory limit.")
+	cmd.Flags().BoolVar(&r.enableAutoMemoryLimit, "memory.auto-limit", true, "Enables automatic memory limit configuration when using cgroups.")
 	return cmd
 }
 
