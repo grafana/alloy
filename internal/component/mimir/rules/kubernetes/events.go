@@ -72,7 +72,6 @@ func (e *eventProcessor) run(ctx context.Context) {
 				e.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
 				e.queue.AddRateLimited(evt)
 				level.Error(e.logger).Log(
-
 					"msg", "failed to process event, will retry",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,
