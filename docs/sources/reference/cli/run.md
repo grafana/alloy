@@ -55,7 +55,7 @@ The following flags are supported:
 * `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
 * `--stability.level`: The minimum permitted stability level of functionality to run. Supported values: `experimental`, `public-preview`, `generally-available` (default `"generally-available"`).
-* `--memory.auto-limit`: Enables the automatic setting of memory limit if using cgroups (default `true`).
+* `--memory.auto-limit`: Enables automatic memory limit configuration when using cgroups (default `true`).
 
 ## Update the configuration file
 
