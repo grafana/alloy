@@ -11,7 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package batch
+/*
+This mostly ported so we can expose retryAfter for recoverable error.
+TODO: @mattdurham make a PR to expose that upstream.
+*/
+
+package queue
 
 import (
 	"bufio"

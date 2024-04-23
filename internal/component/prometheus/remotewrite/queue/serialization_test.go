@@ -1,4 +1,4 @@
-package batch
+package queue
 
 import (
 	"bytes"
@@ -13,9 +13,7 @@ import (
 )
 
 func TestSerialization(t *testing.T) {
-	//writtenSchema := parquet.SchemaOf(&parquetmetric{})
-	//t.Log("Written schema:", writtenSchema.String())
-	l := newParquetWrite(nil, 512*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 512*1024*1024, 30*time.Second, log2.NewNopLogger())
 	for i := 0; i < 1_000_000; i++ {
 		m := make(map[string]string)
 		for j := 0; j < 10; j++ {

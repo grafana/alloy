@@ -1,6 +1,8 @@
-package batch
+package queue
 
 import (
+	"encoding/base64"
+	"fmt"
 	"sync"
 	"time"
 
@@ -61,6 +63,19 @@ func (rc *Arguments) SetToDefault() {
 	*rc = defaultArgs()
 }
 
+func (r *Arguments) Validate() error {
+	names := make(map[string]struct{})
+	for _, e := range r.Endpoints {
+		name := e.UniqueName()
+		_, found := names[name]
+		if found {
+			return fmt.Errorf("non-unique name found %s", name)
+		}
+		names[name] = struct{}{}
+	}
+	return nil
+}
+
 // EndpointOptions describes an individual location for where metrics in the WAL
 // should be delivered to using the remote_write protocol.
 type EndpointOptions struct {
@@ -92,6 +107,14 @@ func (r *EndpointOptions) Validate() error {
 		return r.HTTPClientConfig.Validate()
 	}
 	return nil
+}
+
+func (r *EndpointOptions) UniqueName() string {
+	if r.Name != "" {
+		return r.Name
+	}
+	enc := base64.Encoding{}
+	return enc.EncodeToString([]byte(r.URL))
 }
 
 // QueueOptions handles the low level queue config options for a remote_write

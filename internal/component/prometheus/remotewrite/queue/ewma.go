@@ -1,4 +1,4 @@
-package batch
+package queue
 
 import (
 	"strings"

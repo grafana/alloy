@@ -1,4 +1,4 @@
-package batch
+package queue
 
 import (
 	"math"
@@ -11,20 +11,18 @@ import (
 	"github.com/prometheus/prometheus/storage"
 )
 
-// appender is used to transfer from incoming samples to the PebbleDB.
+// appender is used to transfer from incoming samples to the underlying parquet interface.
 type appender struct {
-	parent         *Queue
-	ttl            time.Duration
-	l              *parquetwrite
-	externalLabels labels.Labels
+	parent *Queue
+	ttl    time.Duration
+	rs     *remotes
 }
 
-func newAppender(parent *Queue, ttl time.Duration, b *parquetwrite, externalLabels map[string]string) *appender {
+func newAppender(parent *Queue, ttl time.Duration, rs *remotes) *appender {
 	app := &appender{
-		parent:         parent,
-		ttl:            ttl,
-		l:              b,
-		externalLabels: labels.FromMap(externalLabels),
+		parent: parent,
+		ttl:    ttl,
+		rs:     rs,
 	}
 	return app
 }
@@ -36,19 +34,16 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 		return ref, nil
 	}
 
-	newLabels := labels.New(l...)
-	newLabels = append(newLabels, a.externalLabels...)
-
-	err := a.l.AddMetric(newLabels, nil, t, v, nil, nil, tSample)
+	err := a.rs.AddMetric(l, nil, t, v, nil, nil, tSample)
 	return ref, err
 }
 
-// Commit metrics to the DB
+// Commit is a no op since we always write.
 func (a *appender) Commit() (_ error) {
 	return nil
 }
 
-// Rollback does nothing.
+// Rollback is a no op since we always write.
 func (a *appender) Rollback() error {
 	return nil
 }
@@ -63,10 +58,7 @@ func (a *appender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exem
 	if e.HasTs {
 		ts = e.Ts
 	}
-
-	newLabels := labels.New(l...)
-	newLabels = append(newLabels, a.externalLabels...)
-	err := a.l.AddMetric(newLabels, e.Labels, ts, e.Value, nil, nil, tSample)
+	err := a.rs.AddMetric(l, e.Labels, ts, e.Value, nil, nil, tSample)
 	return ref, err
 }
 
@@ -77,13 +69,11 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 		return ref, nil
 	}
 
-	newLabels := labels.New(l...)
-	newLabels = append(newLabels, a.externalLabels...)
 	var err error
 	if h != nil {
-		err = a.l.AddMetric(newLabels, l, t, h.Sum, h, nil, tHistogram)
+		err = a.rs.AddMetric(l, l, t, h.Sum, h, nil, tHistogram)
 	} else if fh != nil {
-		err = a.l.AddMetric(newLabels, l, t, h.Sum, nil, fh, tFloatHistogram)
+		err = a.rs.AddMetric(l, l, t, h.Sum, nil, fh, tFloatHistogram)
 	}
 	return ref, err
 }

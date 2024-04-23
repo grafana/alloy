@@ -1,4 +1,4 @@
-package batch
+package queue
 
 import (
 	"fmt"
@@ -10,23 +10,24 @@ import (
 	"sync"
 )
 
-var bufPool = sync.Pool{New: func() any {
-	s := make([]byte, 0)
-	return &s
-}}
+type metricQueue interface {
+	Add(data []byte) (string, error)
+	Next(enc []byte) ([]byte, string, bool, bool)
+	Name() string
+}
 
 type filequeue struct {
 	mut       sync.RWMutex
 	directory string
 	maxindex  int
+	name      string
 }
 
-func newFileQueue(directory string) (*filequeue, error) {
+func newFileQueue(directory string, name string) (*filequeue, error) {
 	err := os.MkdirAll(directory, 0777)
 	if err != nil {
 		return nil, err
 	}
-	clearUncommitted(directory)
 
 	matches, _ := filepath.Glob(filepath.Join(directory, "*.committed"))
 	ids := make([]int, len(matches))
@@ -45,12 +46,13 @@ func newFileQueue(directory string) (*filequeue, error) {
 	q := &filequeue{
 		directory: directory,
 		maxindex:  currentindex,
+		name:      name,
 	}
 	return q, nil
 }
 
-// AddCommited an committed file to the queue.
-func (q *filequeue) AddCommited(data []byte) (string, error) {
+// Add a committed file to the queue.
+func (q *filequeue) Add(data []byte) (string, error) {
 	q.mut.Lock()
 	defer q.mut.Unlock()
 
@@ -60,30 +62,12 @@ func (q *filequeue) AddCommited(data []byte) (string, error) {
 	return name, err
 }
 
-// AddUncommited an uncommitted file to the queue.
-func (q *filequeue) AddUncommited(data []byte) (string, error) {
+// Name is a unique name for this file queue.
+func (q *filequeue) Name() string {
 	q.mut.Lock()
 	defer q.mut.Unlock()
 
-	q.maxindex++
-	name := filepath.Join(q.directory, fmt.Sprintf("%d.uncommitted", q.maxindex))
-	err := q.writeFile(name, data)
-	return name, err
-}
-
-func (q *filequeue) Commit(handles []string) error {
-	q.mut.Lock()
-	defer q.mut.Unlock()
-
-	for _, h := range handles {
-		newname := strings.Replace(h, "uncommitted", "committed", 1)
-		//TODO: @mattdurham add windows specific check here for renaming atomically.
-		err := os.Rename(h, newname)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return q.name
 }
 
 // Next retrieves the next file. If there are no files it will return false.
@@ -123,15 +107,6 @@ func (q *filequeue) Delete(name string) {
 	_ = os.Remove(name)
 }
 
-func clearUncommitted(directory string) {
-	matches, err := filepath.Glob(filepath.Join(directory, "*.uncommitted"))
-	if err != nil {
-		return
-	}
-	for _, x := range matches {
-		_ = os.Remove(x)
-	}
-}
 func (q *filequeue) writeFile(name string, data []byte) error {
 	return os.WriteFile(name, data, 0644)
 }

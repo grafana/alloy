@@ -50,7 +50,7 @@ prometheus.relabel "mutator" {
 	forward_to = [prometheus.remote.batch.agent_stats.receiver]
 }
 
-prometheus.remote.batch "agent_stats" {
+prometheus.remote.queue "agent_stats" {
 	endpoint {
 		url = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
@@ -67,7 +67,7 @@ prometheus.scrape "data" {
 	scrape_interval = "60s"
 }
 
-prometheus.remote.batch "empty" {
+prometheus.remote.queue "empty" {
 	endpoint {
 		url = "http://localhost:8888/post"
 		headers = {

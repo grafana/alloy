@@ -1,10 +1,11 @@
-package batch
+package queue
 
 import (
 	"bytes"
 	"context"
 	"encoding/binary"
 	"github.com/parquet-go/parquet-go/compress/snappy"
+	"github.com/prometheus/client_golang/prometheus"
 	"sync"
 	"time"
 
@@ -15,55 +16,10 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 )
 
-type parquetmetric struct {
-	Name      string     `parquet:"name"`
-	Type      seriesType `parquet:"telemetry,delta"`
-	Timestamp int64      `parquet:"timestamp,delta"`
-	Value     float64    `parquet:"value,split"`
-
-	Labels         []label `parquet:"labels"`
-	ExemplarLabels []label `parquet:"exemplar_labels,optional"`
-
-	// Shared Histogram
-	CounterResetHint int32 `parquet:"counter_reset_hint,optional,delta"`
-	Schema           int32 `parquet:"schema,optional,delta"`
-
-	// Histogram
-	ZeroThreshold   float64 `parquet:"zero_threshold,optional,split"`
-	ZeroCount       uint64  `parquet:"zero_count,optional,delta"`
-	Count           uint64  `parquet:"count,optional,delta"`
-	PositiveBuckets []int64 `parquet:"positive_buckets,optional"`
-	NegativeBuckets []int64 `parquet:"negative_buckets,optional"`
-	PositiveSpans   []span  `parquet:"positive_spans,optional"`
-	NegativeSpans   []span  `parquet:"negative_spans,optional"`
-
-	// FloatHistogram Fields
-	FloatZeroCount       float64   `parquet:"float_zero_count,optional,split"`
-	FloatCount           float64   `parquet:"float_count,optional,split"`
-	FloatPositiveBuckets []float64 `parquet:"float_positive_buckets,optional"`
-	FloatNegativeBuckets []float64 `parquet:"float_negative_buckets,optional"`
-}
-
-type span struct {
-	Offset int32
-	// Length of the span.
-	Length uint32
-}
-
-type label struct {
-	Name  int `parquet:"name,delta"`
-	Value int `parquet:"value,delta"`
-}
-
-type stringMap struct {
-	ID    int    `parquet:"id,delta"`
-	Value string `parquet:"value"`
-}
-
 // parquetwrite is the primary class for serializing and deserializing metrics.
 type parquetwrite struct {
 	mut            sync.Mutex
-	fq             *filequeue
+	fq             metricQueue
 	estimatedSize  int64
 	totalSignals   int64
 	checkpointSize int64
@@ -74,10 +30,11 @@ type parquetwrite struct {
 	index          int
 	l              log.Logger
 	flushTime      time.Duration
+	metricGauge    prometheus.Gauge
 }
 
 // newParquetWrite creates a new parquetwriter.
-func newParquetWrite(fq *filequeue, checkPointSize int64, flushTime time.Duration, l log.Logger) *parquetwrite {
+func newParquetWrite(fq metricQueue, checkPointSize int64, flushTime time.Duration, l log.Logger) *parquetwrite {
 	pw := &parquetwrite{
 		fq:             fq,
 		checkpointSize: checkPointSize,
@@ -88,6 +45,13 @@ func newParquetWrite(fq *filequeue, checkPointSize int64, flushTime time.Duratio
 		flushTime:      flushTime,
 		dictionary:     make(map[string]int),
 		bb:             &bytes.Buffer{},
+		metricGauge: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "alloy_batch_metrics_to_wal",
+			Help: "Number of metrics written to the wal directory",
+			ConstLabels: map[string]string{
+				"name": fq.Name(),
+			},
+		}),
 	}
 	pw.writer = parquet.NewGenericWriter[*parquetmetric](pw.bb, parquet.Compression(&snappy.Codec{}))
 
@@ -171,7 +135,7 @@ func (pw *parquetwrite) write() error {
 	if err != nil {
 		return err
 	}
-	_, err = pw.fq.AddCommited(bb)
+	_, err = pw.fq.Add(bb)
 	return err
 }
 
@@ -365,4 +329,49 @@ func DeserializeParquet(buffer []byte, maxAgeSeconds int64) ([]TimeSeries, error
 		timeSeriesArray = append(timeSeriesArray, ts)
 	}
 	return timeSeriesArray, nil
+}
+
+type parquetmetric struct {
+	Name      string     `parquet:"name"`
+	Type      seriesType `parquet:"telemetry,delta"`
+	Timestamp int64      `parquet:"timestamp,delta"`
+	Value     float64    `parquet:"value,split"`
+
+	Labels         []label `parquet:"labels"`
+	ExemplarLabels []label `parquet:"exemplar_labels,optional"`
+
+	// Shared Histogram
+	CounterResetHint int32 `parquet:"counter_reset_hint,optional,delta"`
+	Schema           int32 `parquet:"schema,optional,delta"`
+
+	// Histogram
+	ZeroThreshold   float64 `parquet:"zero_threshold,optional,split"`
+	ZeroCount       uint64  `parquet:"zero_count,optional,delta"`
+	Count           uint64  `parquet:"count,optional,delta"`
+	PositiveBuckets []int64 `parquet:"positive_buckets,optional"`
+	NegativeBuckets []int64 `parquet:"negative_buckets,optional"`
+	PositiveSpans   []span  `parquet:"positive_spans,optional"`
+	NegativeSpans   []span  `parquet:"negative_spans,optional"`
+
+	// FloatHistogram Fields
+	FloatZeroCount       float64   `parquet:"float_zero_count,optional,split"`
+	FloatCount           float64   `parquet:"float_count,optional,split"`
+	FloatPositiveBuckets []float64 `parquet:"float_positive_buckets,optional"`
+	FloatNegativeBuckets []float64 `parquet:"float_negative_buckets,optional"`
+}
+
+type span struct {
+	Offset int32
+	// Length of the span.
+	Length uint32
+}
+
+type label struct {
+	Name  int `parquet:"name,delta"`
+	Value int `parquet:"value,delta"`
+}
+
+type stringMap struct {
+	ID    int    `parquet:"id,delta"`
+	Value string `parquet:"value"`
 }

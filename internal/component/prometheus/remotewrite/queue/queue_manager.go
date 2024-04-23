@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package batch
+package queue
 
 import (
 	"context"
@@ -608,6 +608,7 @@ outer:
 			t.metrics.droppedSamplesTotal.WithLabelValues(reasonTooOld).Inc()
 			continue
 		}
+		s.seriesLabels = processExternalLabels(s.seriesLabels, t.externalLabels)
 		// Start with a very small backoff. This should not be t.cfg.MinBackoff
 		// as it can happen without errors, and we want to pickup work after
 		// filling a queue/resharding as quickly as possible.
