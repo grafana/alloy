@@ -25,7 +25,10 @@ in Kubernetes in order for {{< param "PRODUCT_NAME" >}} to access it via the Kub
 {{< /admonition >}}
 
 {{< admonition type="warning" >}}
-This component does not support [clustered mode][] and must be run in a separate single-instance deployment of {{< param "PRODUCT_NAME" >}}.
+This component does not support [clustered mode][]. Using this component as part of a cluster of 
+{{< param "PRODUCT_NAME" >}} instances will cause them to all attempt to update rules using the
+Mimir API, conflicting with each other. When using this component, it must be run in a separate
+single-instance deployment of {{< param "PRODUCT_NAME" >}}.
 
 [clustered mode]: ../../../concepts/clustering/
 {{< /admonition >}}
