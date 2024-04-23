@@ -39,6 +39,7 @@ Main (unreleased)
 - Update `alloy-mixin` to use more specific alert group names (for example,
   `alloy_clustering` instead of `clustering`) to avoid collision with installs
   of `agent-flow-mixin`. (@rfratto)
+- Upgrade Beyla from v1.4.1 to v1.5.1. (@marctc)
 
 - Add a description to Alloy DEB and RPM packages. (@rfratto)
 
