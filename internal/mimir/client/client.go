@@ -22,9 +22,7 @@ import (
 )
 
 var (
-	ErrNoConfig         = errors.New("no config exists for this user")
-	ErrResourceNotFound = errors.New("requested resource not found")
-	ErrUnrecoverable    = errors.New("unrecoverable error response")
+	ErrUnrecoverable = errors.New("unrecoverable error response")
 )
 
 // IsRecoverable returns true for errors from API requests that can be retried, false otherwise.
@@ -129,9 +127,7 @@ func checkResponse(r *http.Response) error {
 		errMsg = fmt.Sprintf("server returned HTTP status %s: %s", r.Status, msg)
 	}
 
-	if r.StatusCode == http.StatusNotFound {
-		return ErrResourceNotFound
-	} else if r.StatusCode/100 == 4 && r.StatusCode != http.StatusTooManyRequests {
+	if r.StatusCode/100 == 4 && r.StatusCode != http.StatusTooManyRequests {
 		return fmt.Errorf("%w: %s", ErrUnrecoverable, errMsg)
 	}
 

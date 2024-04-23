@@ -151,7 +151,7 @@ func TestCheckResponseErrors(t *testing.T) {
 			name:       "returns correct error for 404 response",
 			body:       "404 message!",
 			statusCode: 404,
-			canRetry:   true,
+			canRetry:   false,
 		},
 		{
 			name:       "returns correct error for 429 response",
