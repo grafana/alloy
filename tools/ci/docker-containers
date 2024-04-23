@@ -27,10 +27,14 @@ export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
 if [ -n "$DRONE_TAG" ]; then
   VERSION=$DRONE_TAG
 else
-  VERSION=$(./tools/image-tag-docker)
+  # NOTE(rfratto): Do not use ./tools/image-tag-docker here, which doesn't
+  # produce valid semver.
+  VERSION=$(./tools/image-tag)
 fi
 
-# The TAG_VERSION is the version to use for the Docker tag.
+# The TAG_VERSION is the version to use for the Docker tag. It is sanitized to
+# force it to be a valid Docker tag name (primarily by removing the +
+# characters that may have been emitted by ./tools/image-tag).
 TAG_VERSION=${VERSION//+/-}
 
 # We also need to know which "branch tag" to update. Branch tags are used as a
