@@ -125,7 +125,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/receive_http"                  // Import prometheus.receive_http
 	_ "github.com/grafana/alloy/internal/component/prometheus/relabel"                       // Import prometheus.relabel
 	_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite"                   // Import prometheus.remote_write
-	_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite/batch"             // Import prometheus.remote.batch
+	_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue"             // Import prometheus.remote.queue
 	_ "github.com/grafana/alloy/internal/component/prometheus/scrape"                        // Import prometheus.scrape
 	_ "github.com/grafana/alloy/internal/component/prometheus/test/metrics"                  // Import prometheus.test.metrics
 	_ "github.com/grafana/alloy/internal/component/pyroscope/ebpf"                           // Import pyroscope.ebpf

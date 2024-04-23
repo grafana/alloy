@@ -84,5 +84,5 @@ func (rs *remotes) AddMetric(lbls labels.Labels, exemplarLabls labels.Labels, ts
 			multierror.Append(multiErr, err)
 		}
 	}
-	return multiErr
+	return multiErr.ErrorOrNil()
 }

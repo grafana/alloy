@@ -113,8 +113,7 @@ func (r *EndpointOptions) UniqueName() string {
 	if r.Name != "" {
 		return r.Name
 	}
-	enc := base64.Encoding{}
-	return enc.EncodeToString([]byte(r.URL))
+	return base64.RawURLEncoding.EncodeToString([]byte(r.URL))
 }
 
 // QueueOptions handles the low level queue config options for a remote_write

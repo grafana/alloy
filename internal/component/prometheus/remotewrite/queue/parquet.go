@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"github.com/parquet-go/parquet-go/compress/snappy"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/atomic"
 	"sync"
 	"time"
 
@@ -31,10 +32,11 @@ type parquetwrite struct {
 	l              log.Logger
 	flushTime      time.Duration
 	metricGauge    prometheus.Gauge
+	stop           *atomic.Bool
 }
 
 // newParquetWrite creates a new parquetwriter.
-func newParquetWrite(fq metricQueue, checkPointSize int64, flushTime time.Duration, l log.Logger) *parquetwrite {
+func newParquetWrite(fq metricQueue, checkPointSize int64, flushTime time.Duration, l log.Logger, r prometheus.Registerer) *parquetwrite {
 	pw := &parquetwrite{
 		fq:             fq,
 		checkpointSize: checkPointSize,
@@ -46,13 +48,15 @@ func newParquetWrite(fq metricQueue, checkPointSize int64, flushTime time.Durati
 		dictionary:     make(map[string]int),
 		bb:             &bytes.Buffer{},
 		metricGauge: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "alloy_batch_metrics_to_wal",
-			Help: "Number of metrics written to the wal directory",
+			Name: "alloy_queue_samples_to_wal",
+			Help: "Number of samples written to the wal directory",
 			ConstLabels: map[string]string{
 				"name": fq.Name(),
 			},
 		}),
+		stop: atomic.NewBool(false),
 	}
+	r.Register(pw.metricGauge)
 	pw.writer = parquet.NewGenericWriter[*parquetmetric](pw.bb, parquet.Compression(&snappy.Codec{}))
 
 	return pw
@@ -182,6 +186,7 @@ func (pw *parquetwrite) serialize() ([]byte, error) {
 	binary.BigEndian.PutUint64(tb, uint64(bb.Len()))
 	wrappedBB.Write(tb)
 	wrappedBB.Write(bb.Bytes())
+	pw.metricGauge.Add(float64(pw.totalSignals))
 	return wrappedBB.Bytes(), nil
 }
 
@@ -234,6 +239,9 @@ func (pw *parquetwrite) addLabels(input labels.Labels, vals []label) []label {
 func (pw *parquetwrite) StartTimer(ctx context.Context) {
 	t := time.NewTicker(pw.flushTime)
 	for {
+		if pw.stop.Load() {
+			return
+		}
 		select {
 		case <-t.C:
 			pw.mut.Lock()
@@ -244,6 +252,10 @@ func (pw *parquetwrite) StartTimer(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func (pw *parquetwrite) Stop() {
+	pw.stop.Store(true)
 }
 
 func spanToHistogramSpan(spans []span) []histogram.Span {

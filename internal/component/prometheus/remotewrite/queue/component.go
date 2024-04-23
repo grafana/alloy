@@ -31,6 +31,7 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 		args:    args,
 		remotes: nr,
 	}
+	s.opts.OnStateChange(Exports{Receiver: s})
 	return s, nil
 }
 

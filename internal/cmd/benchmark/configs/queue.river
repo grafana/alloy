@@ -47,7 +47,7 @@ prometheus.relabel "mutator" {
 		regex         = "(alloy_wal_storage_active_series|alloy_resources_process_cpu_seconds_total|go_memstats_alloc_bytes|go_memstats_heap_inuse_bytes|go_gc_duration_seconds_sum|go_gc_duration_seconds_count)"
 	}
 
-	forward_to = [prometheus.remote.batch.agent_stats.receiver]
+	forward_to = [prometheus.remote.queue.agent_stats.receiver]
 }
 
 prometheus.remote.queue "agent_stats" {
@@ -63,7 +63,7 @@ prometheus.remote.queue "agent_stats" {
 
 prometheus.scrape "data" {
 	targets         = discovery.http.disco.targets
-	forward_to      = [prometheus.remote.batch.empty.receiver]
+	forward_to      = [prometheus.remote.queue.empty.receiver]
 	scrape_interval = "60s"
 }
 

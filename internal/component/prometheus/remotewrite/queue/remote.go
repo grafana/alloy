@@ -2,7 +2,6 @@ package queue
 
 import (
 	"context"
-	"encoding/base64"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,7 +20,7 @@ type remote struct {
 	database *filequeue
 	qm       *QueueManager
 	wr       WriteClient
-	writer   *fileQueueWriter
+	writer   *remoteWriter
 }
 
 func newRemote(ed EndpointOptions, registerer prometheus.Registerer, l log.Logger, args Arguments, opts component.Options) (*remote, error) {
@@ -55,8 +54,8 @@ func newRemote(ed EndpointOptions, registerer prometheus.Registerer, l log.Logge
 		return nil, err
 	}
 
-	write := newFileQueueWriter(wr.Name(), qm, q, l, args.TTL, registerer)
-	pw := newParquetWrite(q, args.BatchSize, args.FlushTime, l)
+	write := newRemoteWriter(wr.Name(), qm, q, l, args.TTL, registerer)
+	pw := newParquetWrite(q, args.BatchSize, args.FlushTime, l, registerer)
 	return &remote{
 		name:     wr.Name(),
 		b:        pw,
@@ -72,10 +71,12 @@ func (r *remote) start(ctx context.Context) {
 	go r.qm.Start(started)
 	<-started
 	go r.writer.Start(ctx)
+	go r.b.StartTimer(ctx)
 }
 
 func (r *remote) stop() {
 	r.qm.Stop()
+	r.b.Stop()
 }
 
 func newWriteClient(ed EndpointOptions) (WriteClient, error) {
@@ -87,13 +88,7 @@ func newWriteClient(ed EndpointOptions) (WriteClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	name := ed.Name
-	if len(ed.Name) == 0 {
-		enc := base64.Encoding{}
-		name = enc.EncodeToString([]byte(ed.URL))
-	}
-
-	wr, err := NewWriteClient(name, &ClientConfig{
+	wr, err := NewWriteClient(ed.UniqueName(), &ClientConfig{
 		URL:              cfgURL,
 		Timeout:          model.Duration(ed.RemoteTimeout),
 		HTTPClientConfig: *ed.HTTPClientConfig.Convert(),

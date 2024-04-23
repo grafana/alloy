@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"testing"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 
 func TestParquetSample(t *testing.T) {
 
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -31,7 +32,7 @@ func TestParquetSample(t *testing.T) {
 }
 
 func TestParquetSampleMultiple(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -58,7 +59,7 @@ func TestParquetSampleMultiple(t *testing.T) {
 }
 
 func TestParquetSampleMultipleDifferent(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 		"badlabel": "arrr",
@@ -87,7 +88,7 @@ func TestParquetSampleMultipleDifferent(t *testing.T) {
 }
 
 func TestParquetSampleTTL(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
@@ -105,7 +106,7 @@ func TestParquetSampleTTL(t *testing.T) {
 }
 
 func TestParquetExemplar(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -133,7 +134,7 @@ func TestParquetExemplar(t *testing.T) {
 }
 
 func TestParquetMultipleExemplar(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -172,7 +173,7 @@ func TestParquetMultipleExemplar(t *testing.T) {
 }
 
 func TestParquetExemplarNoTS(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -200,7 +201,7 @@ func TestParquetExemplarNoTS(t *testing.T) {
 }
 
 func TestParquetExemplarAndMetric(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
@@ -230,7 +231,7 @@ func TestParquetExemplarAndMetric(t *testing.T) {
 }
 
 func TestParquetHistogram(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -287,7 +288,7 @@ func TestParquetHistogram(t *testing.T) {
 }
 
 func TestParquetFloatHistogram(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})

@@ -5,6 +5,7 @@ import (
 	log2 "github.com/go-kit/log"
 	"github.com/parquet-go/parquet-go"
 	"github.com/parquet-go/parquet-go/compress/snappy"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 	"strconv"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestSerialization(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 512*1024*1024, 30*time.Second, log2.NewNopLogger())
+	l := newParquetWrite(fakeQueue{}, 512*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	for i := 0; i < 1_000_000; i++ {
 		m := make(map[string]string)
 		for j := 0; j < 10; j++ {
