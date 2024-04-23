@@ -168,7 +168,7 @@ Refer to [alloy convert][] for more details on how `extra-args` work.
 
 ## Memory
 
-* `-memory.auto-limit` This value automatically sets the memory limit if using cgroups. Does nothing if cgroups are not available.
+* `--memory.auto-limit` This value automatically sets the memory limit if using cgroups. Does nothing if cgroups are not available.
 Defaults to true.
 
 [alloy convert]: ../convert/
