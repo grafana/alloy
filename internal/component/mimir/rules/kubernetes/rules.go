@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -12,6 +13,8 @@ import (
 	commonK8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/featuregate"
 	mimirClient "github.com/grafana/alloy/internal/mimir/client"
+	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/ckit/shard"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/instrument"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
@@ -27,6 +30,11 @@ import (
 
 	promExternalVersions "github.com/prometheus-operator/prometheus-operator/pkg/client/informers/externalversions"
 	promVersioned "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+)
+
+const (
+	configurationUpdate = "configuration-update"
+	clusterUpdate       = "cluster-update"
 )
 
 func init() {
@@ -52,8 +60,12 @@ type Component struct {
 	namespaceSelector labels.Selector
 	ruleSelector      labels.Selector
 
+	cluster  cluster.Cluster
+	isLeader atomic.Bool
+
 	eventProcessor *eventProcessor
 	configUpdates  chan ConfigUpdate
+	clusterUpdates chan struct{}
 	ticker         *time.Ticker
 
 	metrics   *metrics
@@ -62,7 +74,8 @@ type Component struct {
 }
 
 type metrics struct {
-	configUpdatesTotal prometheus.Counter
+	configUpdatesTotal  prometheus.Counter
+	clusterUpdatesTotal prometheus.Counter
 
 	eventsTotal   *prometheus.CounterVec
 	eventsFailed  *prometheus.CounterVec
@@ -74,6 +87,7 @@ type metrics struct {
 func (m *metrics) Register(r prometheus.Registerer) error {
 	r.MustRegister(
 		m.configUpdatesTotal,
+		m.clusterUpdatesTotal,
 		m.eventsTotal,
 		m.eventsFailed,
 		m.eventsRetried,
@@ -88,6 +102,11 @@ func newMetrics() *metrics {
 			Subsystem: "mimir_rules",
 			Name:      "config_updates_total",
 			Help:      "Total number of times the configuration has been updated.",
+		}),
+		clusterUpdatesTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Subsystem: "mimir_rules",
+			Name:      "cluster_updates_total",
+			Help:      "Total number of times the cluster has changed.",
 		}),
 		eventsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Subsystem: "mimir_rules",
@@ -121,6 +140,7 @@ type ConfigUpdate struct {
 var _ component.Component = (*Component)(nil)
 var _ component.DebugComponent = (*Component)(nil)
 var _ component.HealthComponent = (*Component)(nil)
+var _ cluster.Component = (*Component)(nil)
 
 func New(o component.Options, args Arguments) (*Component, error) {
 	metrics := newMetrics()
@@ -129,13 +149,20 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, fmt.Errorf("registering metrics failed: %w", err)
 	}
 
+	clusterSvc, err := o.GetServiceData(cluster.ServiceName)
+	if err != nil {
+		return nil, fmt.Errorf("getting cluster service failed: %w", err)
+	}
+
 	c := &Component{
-		log:           o.Logger,
-		opts:          o,
-		args:          args,
-		configUpdates: make(chan ConfigUpdate),
-		ticker:        time.NewTicker(args.SyncInterval),
-		metrics:       metrics,
+		log:            o.Logger,
+		opts:           o,
+		args:           args,
+		cluster:        clusterSvc.(cluster.Cluster),
+		configUpdates:  make(chan ConfigUpdate),
+		clusterUpdates: make(chan struct{}),
+		ticker:         time.NewTicker(args.SyncInterval),
+		metrics:        metrics,
 	}
 
 	err = c.init()
@@ -169,37 +196,59 @@ func (c *Component) Run(ctx context.Context) error {
 		select {
 		case update := <-c.configUpdates:
 			c.metrics.configUpdatesTotal.Inc()
-			c.shutdown()
-
 			c.args = update.args
-			err := c.init()
-			if err != nil {
-				level.Error(c.log).Log("msg", "updating configuration failed", "err", err)
+
+			if err := c.restart(ctx); err != nil {
+				level.Error(c.log).Log("msg", "restarting component failed", "trigger", configurationUpdate, "err", err)
 				c.reportUnhealthy(err)
 				update.err <- err
+			} else {
+				update.err <- nil
+			}
+		case <-c.clusterUpdates:
+			c.metrics.clusterUpdatesTotal.Inc()
+
+			changed, err := c.leadershipChanged()
+			if err != nil {
+				level.Error(c.log).Log("msg", "checking leadership failed", "trigger", clusterUpdate, "err", err)
+				c.reportUnhealthy(err)
 				continue
 			}
 
-			err = c.startup(ctx)
-			if err != nil {
-				level.Error(c.log).Log("msg", "updating configuration failed", "err", err)
-				c.reportUnhealthy(err)
-				update.err <- err
+			if !changed {
+				level.Debug(c.log).Log("msg", "skipping restart since leadership has not changed")
 				continue
 			}
 
-			update.err <- nil
+			if err := c.restart(ctx); err != nil {
+				level.Error(c.log).Log("msg", "restarting component failed", "trigger", clusterUpdate, "err", err)
+				c.reportUnhealthy(err)
+			}
 		case <-ctx.Done():
 			c.shutdown()
 			return nil
 		case <-c.ticker.C:
-			c.eventProcessor.enqueueSyncMimir()
+			c.periodicSync()
 		}
 	}
 }
 
+func (c *Component) restart(ctx context.Context) error {
+	c.shutdown()
+	if err := c.init(); err != nil {
+		return err
+	}
+
+	return c.startup(ctx)
+}
+
 // startup launches the informers and starts the event loop.
 func (c *Component) startup(ctx context.Context) error {
+	if !c.isLeader.Load() {
+		level.Info(c.log).Log("msg", "skipping startup because we are not the leader")
+		return nil
+	}
+
 	cfg := workqueue.RateLimitingQueueConfig{Name: "mimir.rules.kubernetes"}
 	queue := workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), cfg)
 	informerStopChan := make(chan struct{})
@@ -230,6 +279,12 @@ func (c *Component) shutdown() {
 	}
 }
 
+func (c *Component) periodicSync() {
+	if c.eventProcessor != nil {
+		c.eventProcessor.enqueueSyncMimir()
+	}
+}
+
 func (c *Component) Update(newConfig component.Arguments) error {
 	errChan := make(chan error)
 	c.configUpdates <- ConfigUpdate{
@@ -237,6 +292,26 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		err:  errChan,
 	}
 	return <-errChan
+}
+
+func (c *Component) NotifyClusterChange() {
+	c.clusterUpdates <- struct{}{}
+}
+
+// leadershipChanged checks and sets the current leadership status and returns true if it has changed
+func (c *Component) leadershipChanged() (bool, error) {
+	peers, err := c.cluster.Lookup(shard.StringKey(c.opts.ID), 1, shard.OpReadWrite)
+	if err != nil {
+		return false, fmt.Errorf("unable to determine leader for %s: %w", c.opts.ID, err)
+	}
+
+	if len(peers) != 1 {
+		return false, fmt.Errorf("unexpected peers from leadership check: %+v", peers)
+	}
+
+	isLeader := peers[0].Self
+	level.Info(c.log).Log("msg", "checked leadership of component", "is_leader", isLeader)
+	return c.isLeader.Swap(isLeader) != isLeader, nil
 }
 
 func (c *Component) init() error {
