@@ -286,6 +286,8 @@ func (cn *ImportConfigNode) processImportBlock(stmt *ast.BlockStmt, fullName str
 	childGlobals := cn.globals
 	// Children have a special OnBlockNodeUpdate function which notifies the parent when its content changes.
 	childGlobals.OnBlockNodeUpdate = cn.onChildrenContentUpdate
+	// Children data paths are nested inside their parents to avoid collisions.
+	childGlobals.DataPath = filepath.Join(childGlobals.DataPath, cn.globalID)
 	cn.importConfigNodesChildren[stmt.Label] = NewImportConfigNode(stmt, childGlobals, sourceType)
 	return nil
 }

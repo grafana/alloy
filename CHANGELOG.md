@@ -34,6 +34,8 @@ Main (unreleased)
 
 - Fixed issue where text labels displayed outside of component node's boundary. (@hainenber)
 
+- Fix an issue where nested import.git config blocks could conflict if they had the same labels. (@wildum)
+
 ### Other changes
 
 - Update `alloy-mixin` to use more specific alert group names (for example,
