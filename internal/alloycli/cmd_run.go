@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/KimMachineGun/automemlimit/memlimit"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -15,7 +17,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy"
@@ -167,11 +168,6 @@ type alloyRun struct {
 }
 
 func (fr *alloyRun) Run(configPath string) error {
-	// Set the memory limit, this will honor GOMEMLIMIT if set
-	// If there is a cgroup will follow that
-	if fr.enableAutoMemoryLimit {
-		memlimit.SetGoMemLimitWithOpts()
-	}
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
@@ -200,6 +196,12 @@ func (fr *alloyRun) Run(configPath string) error {
 	otel.SetTracerProvider(t)
 
 	level.Info(l).Log("boringcrypto enabled", boringcrypto.Enabled)
+
+	// Set the memory limit, this will honor GOMEMLIMIT if set
+	// If there is a cgroup will follow that
+	if fr.enableAutoMemoryLimit {
+		memlimit.SetGoMemLimitWithOpts(memlimit.WithLogger(slog.Default()))
+	}
 
 	// Enable the profiling.
 	setMutexBlockProfiling(l)
