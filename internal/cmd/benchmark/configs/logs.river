@@ -1,0 +1,61 @@
+logging {
+	level = "debug"
+}
+
+prometheus.scrape "scraper" {
+	targets         = concat([{"__address__" = "localhost:12346"}])
+	forward_to      = [prometheus.relabel.mutator.receiver]
+	scrape_interval = "60s"
+}
+
+prometheus.relabel "mutator" {
+	rule {
+		source_labels = ["__name__"]
+		regex         = "(.+)"
+		replacement   = "normal"
+		target_label  = "runtype"
+	}
+
+	rule {
+		source_labels = ["__name__"]
+		regex         = "(.+)"
+		replacement   = env("NAME")
+		target_label  = "test_name"
+	}
+
+	rule {
+		source_labels = ["__name__"]
+		action        = "keep"
+		regex         = "(alloy_wal_storage_active_series|alloy_resources_process_cpu_seconds_total|go_memstats_alloc_bytes|go_gc_duration_seconds_sum|go_gc_duration_seconds_count|loki_source_file_files_active_total|loki_write_encoded_bytes_total|loki_write_sent_bytes_total|loki_sum_source_file_read_bytes_total)"
+	}
+
+	forward_to = [prometheus.remote_write.agent_stats.receiver]
+}
+
+prometheus.remote_write "agent_stats" {
+	endpoint {
+		url = "https://prometheus-us-central1.grafana.net/api/prom/push"
+
+		basic_auth {
+			username = env("PROM_USERNAME")
+			password = env("PROM_PASSWORD")
+		}
+	}
+}
+
+local.file_match "logs" {
+	path_targets = [
+		{__path__ = "./data/logs-gen/loki.test.logs.logs/*.log"},
+	]
+}
+
+loki.source.file "tmpfiles" {
+	targets    = local.file_match.logs.targets
+	forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+	endpoint {
+		url = "http://localhost:8888/post"
+	}
+}

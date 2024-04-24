@@ -1,0 +1,77 @@
+logging {
+	level = "debug"
+}
+
+discovery.http "disco" {
+	url = env("DISCOVERY")
+}
+
+prometheus.scrape "scraper" {
+	targets         = concat([{"__address__" = env("HOST")}])
+	forward_to      = [prometheus.relabel.mutator.receiver]
+	scrape_interval = "60s"
+}
+
+prometheus.relabel "mutator" {
+	rule {
+		source_labels = ["__name__"]
+		regex         = "(.+)"
+		replacement   = env("RUNTYPE")
+		target_label  = "runtype"
+	}
+
+	rule {
+		source_labels = ["__name__"]
+		regex         = "(.+)"
+		replacement   = env("NAME")
+		target_label  = "test_name"
+	}
+
+	rule {
+		source_labels = ["__name__"]
+		regex         = "(.+)"
+		replacement   = env("NETWORK_DOWN")
+		target_label  = "remote_write_enable"
+	}
+
+	rule {
+		source_labels = ["__name__"]
+		regex         = "(.+)"
+		replacement   = env("DISCOVERY")
+		target_label  = "discovery"
+	}
+
+	rule {
+		source_labels = ["__name__"]
+		action        = "keep"
+		regex         = "(alloy_wal_storage_active_series|alloy_resources_process_cpu_seconds_total|go_memstats_alloc_bytes|go_memstats_heap_inuse_bytes|go_gc_duration_seconds_sum|go_gc_duration_seconds_count)"
+	}
+
+	forward_to = [prometheus.remote.queue.agent_stats.receiver]
+}
+
+prometheus.remote.queue "agent_stats" {
+	endpoint {
+		url = "https://prometheus-us-central1.grafana.net/api/prom/push"
+
+		basic_auth {
+			username = env("PROM_USERNAME")
+			password = env("PROM_PASSWORD")
+		}
+	}
+}
+
+prometheus.scrape "data" {
+	targets         = discovery.http.disco.targets
+	forward_to      = [prometheus.remote.queue.empty.receiver]
+	scrape_interval = "60s"
+}
+
+prometheus.remote.queue "empty" {
+	endpoint {
+		url = "http://localhost:8888/post"
+		headers = {
+			from = env("RUNTYPE"),
+		}
+	}
+}
