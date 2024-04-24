@@ -39,7 +39,7 @@ VERSION_TAG=${VERSION//+/-}-nanoserver-1809
 # version. This effectively acts as a no-op because it will tag the same Docker
 # image twice.
 if [ -n "$DRONE_TAG" ] && [[ "$DRONE_TAG" != *"-rc."* ]]; then
-  BRANCH_TAG=latest-nanoserver-1809
+  BRANCH_TAG=nanoserver-1809
 else
   BRANCH_TAG=$VERSION_TAG
 fi
