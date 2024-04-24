@@ -260,6 +260,7 @@ require (
 require (
 	github.com/Shopify/sarama v1.38.1
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.96.0
 )
 
 require (
