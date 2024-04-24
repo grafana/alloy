@@ -140,7 +140,6 @@ depending on the nature of the reload error.
 		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
-	cmd.Flags().BoolVar(&r.enableAutoMemoryLimit, "memory.auto-limit", true, "Enables automatic memory limit configuration when using cgroups.")
 	return cmd
 }
 
@@ -164,7 +163,6 @@ type alloyRun struct {
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
-	enableAutoMemoryLimit        bool
 }
 
 func (fr *alloyRun) Run(configPath string) error {
@@ -199,7 +197,7 @@ func (fr *alloyRun) Run(configPath string) error {
 
 	// Set the memory limit, this will honor GOMEMLIMIT if set
 	// If there is a cgroup will follow that
-	if fr.enableAutoMemoryLimit {
+	if fr.minStability == featuregate.StabilityPublicPreview {
 		memlimit.SetGoMemLimitWithOpts(memlimit.WithLogger(slog.Default()))
 	}
 

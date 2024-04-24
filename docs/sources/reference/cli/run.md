@@ -55,7 +55,6 @@ The following flags are supported:
 * `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
 * `--stability.level`: The minimum permitted stability level of functionality to run. Supported values: `experimental`, `public-preview`, `generally-available` (default `"generally-available"`).
-* `--memory.auto-limit`: Enables automatic memory limit configuration when using cgroups (default `true`).
 
 ## Update the configuration file
 
@@ -165,11 +164,6 @@ original configuration.
 Include `--config.extra-args` to pass additional command line flags from the original format to the converter.
 Refer to [alloy convert][] for more details on how `extra-args` work.
 
-
-## Memory
-
-* `--memory.auto-limit` This value automatically sets the memory limit if using cgroups. Does nothing if cgroups are not available.
-Defaults to true.
 
 [alloy convert]: ../convert/
 [clustering]:  ../../../concepts/clustering/
