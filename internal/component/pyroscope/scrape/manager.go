@@ -14,10 +14,15 @@ import (
 
 var reloadInterval = 5 * time.Second
 
+type Options struct {
+	// Optional HTTP client options to use when scraping.
+	HTTPClientOptions []config_util.HTTPClientOption
+}
+
 type Manager struct {
 	logger log.Logger
 
-	httpClientOptions []config_util.HTTPClientOption
+	options Options
 
 	graceShut  chan struct{}
 	appendable pyroscope.Appendable
@@ -30,18 +35,18 @@ type Manager struct {
 	triggerReload chan struct{}
 }
 
-func NewManager(o []config_util.HTTPClientOption, appendable pyroscope.Appendable, logger log.Logger) *Manager {
+func NewManager(o Options, appendable pyroscope.Appendable, logger log.Logger) *Manager {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
 	return &Manager{
-		httpClientOptions: o,
-		logger:            logger,
-		appendable:        appendable,
-		graceShut:         make(chan struct{}),
-		triggerReload:     make(chan struct{}, 1),
-		targetsGroups:     make(map[string]*scrapePool),
-		targetSets:        make(map[string][]*targetgroup.Group),
+		options:       o,
+		logger:        logger,
+		appendable:    appendable,
+		graceShut:     make(chan struct{}),
+		triggerReload: make(chan struct{}, 1),
+		targetsGroups: make(map[string]*scrapePool),
+		targetSets:    make(map[string][]*targetgroup.Group),
 	}
 }
 
@@ -92,7 +97,7 @@ func (m *Manager) reload() {
 	var wg sync.WaitGroup
 	for setName, groups := range m.targetSets {
 		if _, ok := m.targetsGroups[setName]; !ok {
-			sp, err := newScrapePool(m.httpClientOptions, m.config, m.appendable, log.With(m.logger, "scrape_pool", setName))
+			sp, err := newScrapePool(m.options.HTTPClientOptions, m.config, m.appendable, log.With(m.logger, "scrape_pool", setName))
 			if err != nil {
 				level.Error(m.logger).Log("msg", "error creating new scrape pool", "err", err, "scrape_pool", setName)
 				continue

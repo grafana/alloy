@@ -256,8 +256,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	clusterData := data.(cluster.Cluster)
 
 	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, o.ID, o.Registerer)
-	scrapeHttpOptions := []config_util.HTTPClientOption{
-		config_util.WithDialContextFunc(httpData.DialFunc),
+	scrapeHttpOptions := Options{
+		HTTPClientOptions: []config_util.HTTPClientOption{
+			config_util.WithDialContextFunc(httpData.DialFunc),
+		},
 	}
 	scraper := NewManager(scrapeHttpOptions, alloyAppendable, o.Logger)
 	c := &Component{
