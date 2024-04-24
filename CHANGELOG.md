@@ -25,6 +25,9 @@ Main (unreleased)
 - In `prometheus.exporter.kafka`, the interpolation table used to compute estimated lag metrics is now pruned
   on `metadata_refresh_interval` instead of `prune_interval_seconds`. (@wildum)
 
+- Don't restart tailers in `loki.source.kubernetes` component by above-average
+  time deltas if K8s version is >= 1.29.1 (@hainenber)
+
 ### Bugfixes
 
 - Fixed issue with defaults for Beyla component not being applied correctly. (marctc)
