@@ -197,7 +197,7 @@ func (fr *alloyRun) Run(configPath string) error {
 
 	// Set the memory limit, this will honor GOMEMLIMIT if set
 	// If there is a cgroup will follow that
-	if fr.minStability.AtLeast(featuregate.StabilityPublicPreview) {
+	if fr.minStability.Permits(featuregate.StabilityPublicPreview) {
 		memlimit.SetGoMemLimitWithOpts(memlimit.WithLogger(slog.Default()))
 	}
 

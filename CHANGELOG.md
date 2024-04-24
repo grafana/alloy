@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
+
 ### Enhancements
 
 - Update `prometheus.exporter.kafka` with the following functionalities (@wildum):
@@ -27,9 +31,6 @@ Main (unreleased)
 
 - Don't restart tailers in `loki.source.kubernetes` component by above-average
   time deltas if K8s version is >= 1.29.1 (@hainenber)
-### Features
-
-- (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
 
 ### Bugfixes
 
