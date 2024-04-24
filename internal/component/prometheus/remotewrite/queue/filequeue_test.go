@@ -1,4 +1,4 @@
-package batch
+package queue
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ import (
 
 func TestFileQueue(t *testing.T) {
 	dir := t.TempDir()
-	q, err := newFileQueue(dir)
+	q, err := newFileQueue(dir, "test")
 	require.NoError(t, err)
-	handle, err := q.AddCommited([]byte("test"))
+	handle, err := q.Add([]byte("test"))
 	require.NoError(t, err)
 	require.True(t, handle != "")
 	data := make([]byte, 0)
@@ -32,10 +32,10 @@ func TestFileQueue(t *testing.T) {
 
 func TestFileQueueMultiple(t *testing.T) {
 	dir := t.TempDir()
-	q, err := newFileQueue(dir)
+	q, err := newFileQueue(dir, "test")
 	require.NoError(t, err)
 	for i := 0; i < 3; i++ {
-		handle, err := q.AddCommited([]byte(fmt.Sprintf("%d test", i)))
+		handle, err := q.Add([]byte(fmt.Sprintf("%d test", i)))
 		require.NoError(t, err)
 		require.True(t, handle != "")
 	}
@@ -46,27 +46,4 @@ func TestFileQueueMultiple(t *testing.T) {
 		require.True(t, string(data) == fmt.Sprintf("%d test", i))
 		q.Delete(name)
 	}
-}
-
-func TestFileQueueUncommitted(t *testing.T) {
-	dir := t.TempDir()
-	q, err := newFileQueue(dir)
-	require.NoError(t, err)
-	handle, err := q.AddUncommited([]byte("test"))
-	require.NoError(t, err)
-	require.True(t, handle != "")
-	data := make([]byte, 0)
-
-	data, _, found, more := q.Next(data)
-	require.False(t, found)
-	require.False(t, more)
-
-	err = q.Commit([]string{handle})
-	require.NoError(t, err)
-
-	// Now that we have a committed file we should find data.
-	data, _, found, more = q.Next(data)
-	require.True(t, found)
-	require.False(t, more)
-	require.True(t, string(data) == "test")
 }

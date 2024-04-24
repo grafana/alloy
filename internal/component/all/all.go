@@ -124,17 +124,17 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/servicemonitors"      // Import prometheus.operator.servicemonitors
 	_ "github.com/grafana/alloy/internal/component/prometheus/receive_http"                  // Import prometheus.receive_http
 	_ "github.com/grafana/alloy/internal/component/prometheus/relabel"                       // Import prometheus.relabel
-	//_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite"                   // Import prometheus.remote_write
-	_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite/batch" // Import prometheus.remote.batch
-	_ "github.com/grafana/alloy/internal/component/prometheus/scrape"            // Import prometheus.scrape
-	_ "github.com/grafana/alloy/internal/component/prometheus/test/metrics"      // Import prometheus.test.metrics
-	_ "github.com/grafana/alloy/internal/component/pyroscope/ebpf"               // Import pyroscope.ebpf
-	_ "github.com/grafana/alloy/internal/component/pyroscope/java"               // Import pyroscope.java
-	_ "github.com/grafana/alloy/internal/component/pyroscope/scrape"             // Import pyroscope.scrape
-	_ "github.com/grafana/alloy/internal/component/pyroscope/write"              // Import pyroscope.write
-	_ "github.com/grafana/alloy/internal/component/remote/http"                  // Import remote.http
-	_ "github.com/grafana/alloy/internal/component/remote/kubernetes/configmap"  // Import remote.kubernetes.configmap
-	_ "github.com/grafana/alloy/internal/component/remote/kubernetes/secret"     // Import remote.kubernetes.secret
-	_ "github.com/grafana/alloy/internal/component/remote/s3"                    // Import remote.s3
-	_ "github.com/grafana/alloy/internal/component/remote/vault"                 // Import remote.vault
+	_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite"                   // Import prometheus.remote_write
+	_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue"             // Import prometheus.remote.queue
+	_ "github.com/grafana/alloy/internal/component/prometheus/scrape"                        // Import prometheus.scrape
+	_ "github.com/grafana/alloy/internal/component/prometheus/test/metrics"                  // Import prometheus.test.metrics
+	_ "github.com/grafana/alloy/internal/component/pyroscope/ebpf"                           // Import pyroscope.ebpf
+	_ "github.com/grafana/alloy/internal/component/pyroscope/java"                           // Import pyroscope.java
+	_ "github.com/grafana/alloy/internal/component/pyroscope/scrape"                         // Import pyroscope.scrape
+	_ "github.com/grafana/alloy/internal/component/pyroscope/write"                          // Import pyroscope.write
+	_ "github.com/grafana/alloy/internal/component/remote/http"                              // Import remote.http
+	_ "github.com/grafana/alloy/internal/component/remote/kubernetes/configmap"              // Import remote.kubernetes.configmap
+	_ "github.com/grafana/alloy/internal/component/remote/kubernetes/secret"                 // Import remote.kubernetes.secret
+	_ "github.com/grafana/alloy/internal/component/remote/s3"                                // Import remote.s3
+	_ "github.com/grafana/alloy/internal/component/remote/vault"                             // Import remote.vault
 )

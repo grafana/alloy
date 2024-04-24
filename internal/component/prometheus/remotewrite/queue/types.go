@@ -1,8 +1,12 @@
-package batch
+package queue
 
 import (
+	"encoding/base64"
+	"fmt"
 	"sync"
 	"time"
+
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -17,7 +21,7 @@ var (
 		Capacity:          10000,
 		MaxShards:         50,
 		MinShards:         1,
-		MaxSamplesPerSend: 2000,
+		MaxSamplesPerSend: 5,
 		BatchSendDeadline: 5 * time.Second,
 		MinBackoff:        30 * time.Millisecond,
 		MaxBackoff:        5 * time.Second,
@@ -35,15 +39,19 @@ func defaultArgs() Arguments {
 	return Arguments{
 		TTL:       2 * time.Hour,
 		Evict:     1 * time.Hour,
-		BatchSize: 64 * 1024 * 1024,
+		BatchSize: 256 * 1024 * 1024,
+		FlushTime: 30 * time.Second,
 	}
 }
 
 type Arguments struct {
-	TTL       time.Duration      `alloy:"ttl,attr,optional"`
-	Evict     time.Duration      `alloy:"evict_interval,attr,optional"`
-	BatchSize int                `alloy:"batch_size,attr,optional"`
-	Endpoints []*EndpointOptions `alloy:"endpoint,block,optional"`
+	TTL            time.Duration          `alloy:"ttl,attr,optional"`
+	Evict          time.Duration          `alloy:"evict_interval,attr,optional"`
+	BatchSize      int64                  `alloy:"batch_size,attr,optional"`
+	Endpoints      []EndpointOptions      `alloy:"endpoint,block,optional"`
+	WALOptions     remotewrite.WALOptions `alloy:"wal,block,optional"`
+	ExternalLabels map[string]string      `alloy:"external_labels,attr,optional"`
+	FlushTime      time.Duration          `alloy:"flush_time,attr,optional"`
 }
 
 type Exports struct {
@@ -53,6 +61,19 @@ type Exports struct {
 // SetToDefault sets the default
 func (rc *Arguments) SetToDefault() {
 	*rc = defaultArgs()
+}
+
+func (r *Arguments) Validate() error {
+	names := make(map[string]struct{})
+	for _, e := range r.Endpoints {
+		name := e.UniqueName()
+		_, found := names[name]
+		if found {
+			return fmt.Errorf("non-unique name found %s", name)
+		}
+		names[name] = struct{}{}
+	}
+	return nil
 }
 
 // EndpointOptions describes an individual location for where metrics in the WAL
@@ -75,6 +96,8 @@ func (r *EndpointOptions) SetToDefault() {
 		RemoteTimeout:    30 * time.Second,
 		SendExemplars:    true,
 		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
+		QueueOptions:     DefaultQueueOptions,
+		MetadataOptions:  DefaultMetadataOptions,
 	}
 }
 
@@ -84,6 +107,13 @@ func (r *EndpointOptions) Validate() error {
 		return r.HTTPClientConfig.Validate()
 	}
 	return nil
+}
+
+func (r *EndpointOptions) UniqueName() string {
+	if r.Name != "" {
+		return r.Name
+	}
+	return base64.RawURLEncoding.EncodeToString([]byte(r.URL))
 }
 
 // QueueOptions handles the low level queue config options for a remote_write
@@ -96,10 +126,11 @@ type QueueOptions struct {
 	MinBackoff        time.Duration `alloy:"min_backoff,attr,optional"`
 	MaxBackoff        time.Duration `alloy:"max_backoff,attr,optional"`
 	RetryOnHTTP429    bool          `alloy:"retry_on_http_429,attr,optional"`
+	SampleAgeLimit    time.Duration `alloy:"sample_age_limit,attr,optional"`
 }
 
-// SetToDefaults allows injecting of default values
-func (r *QueueOptions) SetToDefaults() {
+// SetToDefault implements syntax.Defaulter.
+func (r *QueueOptions) SetToDefault() {
 	*r = DefaultQueueOptions
 }
 
@@ -111,8 +142,8 @@ type MetadataOptions struct {
 	MaxSamplesPerSend int           `alloy:"max_samples_per_send,attr,optional"`
 }
 
-// SetToDefaults set to defaults.
-func (o *MetadataOptions) SetToDefaults() {
+// SetToDefault set to defaults.
+func (o *MetadataOptions) SetToDefault() {
 	*o = DefaultMetadataOptions
 }
 
@@ -141,10 +172,6 @@ func (m *maxTimestamp) Collect(c chan<- prometheus.Metric) {
 	if m.Get() > 0 {
 		m.Gauge.Collect(c)
 	}
-}
-
-type Bookmark struct {
-	Key uint64
 }
 
 type TTLError struct {

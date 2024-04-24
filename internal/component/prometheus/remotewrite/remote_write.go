@@ -3,6 +3,7 @@ package remotewrite
 import (
 	"context"
 	"fmt"
+	"github.com/grafana/alloy/internal/featuregate"
 	"math"
 	"os"
 	"path/filepath"
@@ -35,7 +36,7 @@ var remoteFlushDeadline = 1 * time.Minute
 func init() {
 	remote.UserAgent = useragent.Get()
 
-	/*component.Register(component.Registration{
+	component.Register(component.Registration{
 		Name:      "prometheus.remote_write",
 		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
@@ -44,7 +45,7 @@ func init() {
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
 			return New(o, c.(Arguments))
 		},
-	})*/
+	})
 }
 
 // Component is the prometheus.remote_write component.
@@ -65,6 +66,7 @@ type Component struct {
 
 // New creates a new prometheus.remote_write component.
 func New(o component.Options, c Arguments) (*Component, error) {
+	labelstore.EnableGlobalStore.Store(true)
 	// Older versions of prometheus.remote_write used the subpath below, which
 	// added in too many extra unnecessary directories (since o.DataPath is
 	// already unique).

@@ -2,6 +2,7 @@ package labelstore
 
 import (
 	"context"
+	"go.uber.org/atomic"
 	"sync"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
 )
+
+var EnableGlobalStore = atomic.NewBool(false)
 
 const ServiceName = "labelstore"
 
@@ -164,6 +167,9 @@ func (s *service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
 	}
 
 	labelHash := l.Hash()
+	if !EnableGlobalStore.Load() {
+		return labelHash
+	}
 	globalID, found := s.labelsHashToGlobal[labelHash]
 	if found {
 		return globalID
@@ -200,6 +206,9 @@ func (s *service) GetLocalRefID(componentID string, globalRefID uint64) uint64 {
 }
 
 func (s *service) TrackStaleness(ids []StalenessTracker) {
+	if !EnableGlobalStore.Load() {
+		return
+	}
 	var (
 		toAdd    = make([]*staleMarker, 0)
 		toRemove = make([]uint64, 0)
@@ -236,6 +245,10 @@ var staleDuration = time.Minute * 10
 func (s *service) CheckAndRemoveStaleMarkers() {
 	s.mut.Lock()
 	defer s.mut.Unlock()
+
+	if !EnableGlobalStore.Load() {
+		return
+	}
 
 	s.lastStaleCheck.Set(float64(time.Now().Unix()))
 	level.Debug(s.log).Log("msg", "labelstore removing stale markers")

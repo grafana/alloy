@@ -1,4 +1,4 @@
-package batch
+package queue
 
 import (
 	"math"
@@ -11,18 +11,18 @@ import (
 	"github.com/prometheus/prometheus/storage"
 )
 
-// appender is used to transfer from incoming samples to the PebbleDB.
+// appender is used to transfer from incoming samples to the underlying parquet interface.
 type appender struct {
 	parent *Queue
 	ttl    time.Duration
-	l      *batch
+	rs     *remotes
 }
 
-func newAppender(parent *Queue, ttl time.Duration, b *batch) *appender {
+func newAppender(parent *Queue, ttl time.Duration, rs *remotes) *appender {
 	app := &appender{
 		parent: parent,
 		ttl:    ttl,
-		l:      b,
+		rs:     rs,
 	}
 	return app
 }
@@ -33,16 +33,17 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 	if t < endTime {
 		return ref, nil
 	}
-	a.l.AddMetric(l, nil, t, v, tSample)
-	return ref, nil
+
+	err := a.rs.AddMetric(l, nil, t, v, nil, nil, tSample)
+	return ref, err
 }
 
-// Commit metrics to the DB
+// Commit is a no op since we always write.
 func (a *appender) Commit() (_ error) {
 	return nil
 }
 
-// Rollback does nothing.
+// Rollback is a no op since we always write.
 func (a *appender) Rollback() error {
 	return nil
 }
@@ -57,36 +58,24 @@ func (a *appender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exem
 	if e.HasTs {
 		ts = e.Ts
 	}
-	a.l.AddMetric(l, e.Labels, ts, e.Value, tSample)
-	return ref, nil
+	err := a.rs.AddMetric(l, e.Labels, ts, e.Value, nil, nil, tSample)
+	return ref, err
 }
 
 // AppendHistogram appends histogram
 func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (_ storage.SeriesRef, _ error) {
-	/*endTiimport "github.com/iancmcc/bingo"import "github.com/iancmcc/bingo"me := time.Now().UnixMilli() - int64(a.ttl.Seconds())
+	endTime := time.Now().UTC().Unix() - int64(a.ttl.Seconds())
 	if t < endTime {
 		return ref, nil
 	}
 
-	lbls := labelPool.Get().([]prompb.Label)
+	var err error
 	if h != nil {
-		sample := prompb.TimeSeries{
-			Labels:     labelsToLabelsProto(l, lbls),
-			Samples:    nil,
-			Exemplars:  nil,
-			Histograms: []prompb.Histogram{remote.HistogramToHistogramProto(t, h)},
-		}
-		a.samples = append(a.samples, sample)
-	} else {
-		sample := prompb.TimeSeries{
-			Labels:     labelsToLabelsProto(l, lbls),
-			Samples:    nil,
-			Exemplars:  nil,
-			Histograms: []prompb.Histogram{remote.FloatHistogramToHistogramProto(t, fh)},
-		}
-		a.samples = append(a.samples, sample)
-	}*/
-	return 0, nil
+		err = a.rs.AddMetric(l, l, t, h.Sum, h, nil, tHistogram)
+	} else if fh != nil {
+		err = a.rs.AddMetric(l, l, t, h.Sum, nil, fh, tFloatHistogram)
+	}
+	return ref, err
 }
 
 // UpdateMetadata updates metadata.

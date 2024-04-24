@@ -1,10 +1,9 @@
-package batch
+package queue
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"math"
+	"github.com/prometheus/client_golang/prometheus"
 	"strings"
 	"sync"
 	"time"
@@ -14,27 +13,48 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 )
 
-type writer struct {
-	mut      sync.RWMutex
-	parentId string
-	to       *QueueManager
-	store    *filequeue
-	ctx      context.Context
-	l        log.Logger
+type remoteWriter struct {
+	mut          sync.RWMutex
+	parentId     string
+	to           *QueueManager
+	store        *filequeue
+	ctx          context.Context
+	l            log.Logger
+	ttl          time.Duration
+	writeByte    prometheus.Gauge
+	writeMetrics prometheus.Gauge
 }
 
-func newWriter(parent string, to *QueueManager, store *filequeue, l log.Logger) *writer {
+func newRemoteWriter(parent string, to *QueueManager, store *filequeue, l log.Logger, ttl time.Duration, register prometheus.Registerer) *remoteWriter {
 	name := fmt.Sprintf("metrics_write_to_%s_parent_%s", to.storeClient.Name(), parent)
-	w := &writer{
+	w := &remoteWriter{
 		parentId: parent,
 		to:       to,
 		store:    store,
 		l:        log.With(l, "name", name),
+		ttl:      ttl,
+		writeByte: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "alloy_remote_write_queue_send_bytes",
+			Help: "The number of bytes sent to the remote write.",
+			ConstLabels: map[string]string{
+				"remote": to.storeClient.Name(),
+			},
+		}),
+		writeMetrics: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "alloy_remote_write_queue_send_samples",
+			Help: "The number of samples sent to the remote write.",
+			ConstLabels: map[string]string{
+				"remote": to.storeClient.Name(),
+			},
+		}),
 	}
+	register.Register(w.writeByte)
+	register.Register(w.writeMetrics)
+
 	return w
 }
 
-func (w *writer) Start(ctx context.Context) {
+func (w *remoteWriter) Start(ctx context.Context) {
 	w.mut.Lock()
 	w.ctx = ctx
 	w.mut.Unlock()
@@ -78,23 +98,19 @@ var wrPool = sync.Pool{New: func() any {
 	return &prompb.WriteRequest{}
 }}
 
-func (w *writer) send(val []byte, ctx context.Context) (success bool, recoverableError bool) {
+func (w *remoteWriter) send(val []byte, ctx context.Context) (success bool, recoverableError bool) {
 	recoverableError = true
 
 	var err error
 	wr := wrPool.Get().(*prompb.WriteRequest)
 	defer wrPool.Put(wr)
 
-	// TODO add setting to handle wal age.
-	d, err := Deserialize(&buffer{
-		Buffer:       bytes.NewBuffer(val),
-		tb:           make([]byte, 4),
-		tb64:         make([]byte, 8),
-		stringbuffer: make([]byte, 0, 1024),
-	}, math.MaxInt64)
+	d, err := DeserializeParquet(val, int64(w.ttl.Seconds()))
 	if err != nil {
 		return false, false
 	}
+	w.writeByte.Add(float64(len(val)))
+	w.writeMetrics.Add(float64(len(d)))
 	success = w.to.Append(d)
 	if err != nil {
 		// Let's check if it's an `out of order sample`. Yes this is some hand waving going on here.

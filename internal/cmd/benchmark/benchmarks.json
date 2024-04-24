@@ -15,8 +15,8 @@
         "description": "This configuration uses a normal cache size for the relabeler."
     },
     {
-        "name":"batch",
-        "config" : "./configs/batch.river",
-        "description" : "Using batch remote write instead of prometheus."
+        "name":"queue",
+        "config" : "./configs/queue.river",
+        "description" : "Using queue remote write instead of prometheus."
     }
 ]
