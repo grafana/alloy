@@ -25,6 +25,9 @@ Main (unreleased)
 - In `prometheus.exporter.kafka`, the interpolation table used to compute estimated lag metrics is now pruned
   on `metadata_refresh_interval` instead of `prune_interval_seconds`. (@wildum)
 
+- Don't restart tailers in `loki.source.kubernetes` component by above-average
+  time deltas if K8s version is >= 1.29.1 (@hainenber)
+
 ### Bugfixes
 
 - Fixed issue with defaults for Beyla component not being applied correctly. (marctc)
@@ -34,6 +37,8 @@ Main (unreleased)
 
 - Fixed issue where text labels displayed outside of component node's boundary. (@hainenber)
 
+- In `mimir.rules.kubernetes`, fix an issue where unrecoverable errors from the Mimir API were retried. (@56quarters)
+
 - Flow: Fix an issue where `faro.receiver`'s `extra_log_labels` with empty value don't
   map existing value in log line. (@hainenber)
 
@@ -42,6 +47,9 @@ Main (unreleased)
 - Update `alloy-mixin` to use more specific alert group names (for example,
   `alloy_clustering` instead of `clustering`) to avoid collision with installs
   of `agent-flow-mixin`. (@rfratto)
+- Upgrade Beyla from v1.4.1 to v1.5.1. (@marctc)
+
+- Add a description to Alloy DEB and RPM packages. (@rfratto)
 
 v1.0.0 (2024-04-09)
 -------------------

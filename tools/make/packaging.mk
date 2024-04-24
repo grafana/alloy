@@ -120,6 +120,7 @@ define generate_alloy_fpm =
 		--license "Apache 2.0" \
 		--vendor "Grafana Labs" \
 		--url "https://github.com/grafana/alloy" \
+		--description "Grafana Alloy is an OpenTelemetry Collector distribution with programmable pipelines." \
 		--rpm-digest sha256 \
 		-t $(1) \
 		--after-install packaging/$(1)/control/postinst \
