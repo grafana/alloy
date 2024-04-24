@@ -48,6 +48,10 @@ Main (unreleased)
 
 - Add a description to Alloy DEB and RPM packages. (@rfratto)
 
+- The latest Windows Docker image is now pushed as `nanoserver-1809` instead of
+  `latest-nanoserver-1809`. The old tag will no longer be updated, and will be
+  removed in a future release. (@rfratto)
+
 v1.0.0 (2024-04-09)
 -------------------
 
