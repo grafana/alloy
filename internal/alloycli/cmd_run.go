@@ -71,7 +71,7 @@ func runCommand() *cobra.Command {
 is received.
 
 run must be provided an argument pointing at the Alloy configuration
-dirirectory or file path to use. If the configuration directory or file path
+directory or file path to use. If the configuration directory or file path
 wasn't specified, can't be loaded, or contains errors, run will exit
 immediately.
 

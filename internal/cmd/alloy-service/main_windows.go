@@ -9,6 +9,9 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"golang.org/x/sys/windows/svc"
+
+	// Embed application manifest for Windows builds
+	_ "github.com/grafana/alloy/internal/winmanifest"
 )
 
 const serviceName = "Alloy"

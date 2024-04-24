@@ -22,40 +22,32 @@ type DebugMimirNamespace struct {
 
 func (c *Component) DebugInfo() interface{} {
 	var output DebugInfo
-	for ns := range c.currentState {
-		if !isManagedMimirNamespace(c.args.MimirNameSpacePrefix, ns) {
+
+	currentState := c.eventProcessor.getMimirState()
+	for namespace := range currentState {
+		if !isManagedMimirNamespace(c.args.MimirNameSpacePrefix, namespace) {
 			continue
 		}
 
 		output.MimirRuleNamespaces = append(output.MimirRuleNamespaces, DebugMimirNamespace{
-			Name:          ns,
-			NumRuleGroups: len(c.currentState[ns]),
+			Name:          namespace,
+			NumRuleGroups: len(currentState[namespace]),
 		})
 	}
 
 	// This should load from the informer cache, so it shouldn't fail under normal circumstances.
-	managedK8sNamespaces, err := c.namespaceLister.List(c.namespaceSelector)
+	rulesByNamespace, err := c.eventProcessor.getKubernetesState()
 	if err != nil {
-		return DebugInfo{
-			Error: fmt.Sprintf("failed to list namespaces: %v", err),
-		}
+		return DebugInfo{Error: fmt.Sprintf("failed to list rules: %v", err)}
 	}
 
-	for _, n := range managedK8sNamespaces {
-		// This should load from the informer cache, so it shouldn't fail under normal circumstances.
-		rules, err := c.ruleLister.PrometheusRules(n.Name).List(c.ruleSelector)
-		if err != nil {
-			return DebugInfo{
-				Error: fmt.Sprintf("failed to list rules: %v", err),
-			}
-		}
-
-		for _, r := range rules {
+	for namespace, rules := range rulesByNamespace {
+		for _, rule := range rules {
 			output.PrometheusRules = append(output.PrometheusRules, DebugK8sPrometheusRule{
-				Namespace:     n.Name,
-				Name:          r.Name,
-				UID:           string(r.UID),
-				NumRuleGroups: len(r.Spec.Groups),
+				Namespace:     namespace,
+				Name:          rule.Name,
+				UID:           string(rule.UID),
+				NumRuleGroups: len(rule.Spec.Groups),
 			})
 		}
 	}

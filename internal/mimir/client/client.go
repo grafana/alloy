@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"strings"
 
-	log "github.com/go-kit/log"
+	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/mimir/client/internal"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/instrument"
@@ -22,9 +22,13 @@ import (
 )
 
 var (
-	ErrNoConfig         = errors.New("no config exists for this user")
-	ErrResourceNotFound = errors.New("requested resource not found")
+	ErrUnrecoverable = errors.New("unrecoverable error response")
 )
+
+// IsRecoverable returns true for errors from API requests that can be retried, false otherwise.
+func IsRecoverable(err error) bool {
+	return !errors.Is(err, ErrUnrecoverable)
+}
 
 // Config is used to configure a MimirClient.
 type Config struct {
@@ -123,8 +127,8 @@ func checkResponse(r *http.Response) error {
 		errMsg = fmt.Sprintf("server returned HTTP status %s: %s", r.Status, msg)
 	}
 
-	if r.StatusCode == http.StatusNotFound {
-		return ErrResourceNotFound
+	if r.StatusCode/100 == 4 && r.StatusCode != http.StatusTooManyRequests {
+		return fmt.Errorf("%w: %s", ErrUnrecoverable, errMsg)
 	}
 
 	return errors.New(errMsg)
