@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -19,7 +20,7 @@ import (
 func main() {
 	flags()
 }
-func buildAgent() {
+func buildAlloy() {
 	cmd := exec.Command("go", "build", "../../../")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = os.Stdout
@@ -54,25 +55,25 @@ func httpServer() {
 		handlePost(w, r)
 	})
 	r.HandleFunc("/allow", func(w http.ResponseWriter, r *http.Request) {
-		println("allowing")
+		slog.Info("allowing")
 		networkdown = true
 	})
 	r.HandleFunc("/block", func(w http.ResponseWriter, r *http.Request) {
-		println("blocking")
+		slog.Info("blocking")
 		networkdown = false
 	})
 	http.Handle("/metrics", promhttp.Handler())
 	http.Handle("/", r)
-	println("Starting server")
+	slog.Info("Starting  black hole server on 8888")
 	err := http.ListenAndServe(":8888", nil)
 	if err != nil {
-		println(err)
+		slog.Info("error", "err", err)
 	}
 }
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
 	if networkdown {
-		println("returning 500")
+		slog.Info("returning 500")
 		w.WriteHeader(500)
 		return
 	} else {

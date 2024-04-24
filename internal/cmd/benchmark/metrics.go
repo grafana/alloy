@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -45,9 +46,11 @@ func metricsCommand() *cobra.Command {
 			}
 
 			// Start the HTTP server, that can swallow requests.
+			slog.Info("starting black hold server")
 			go httpServer()
 			// Build the agent
-			buildAgent()
+			slog.Info("building alloy")
+			buildAlloy()
 
 			metricBytes, err := os.ReadFile("./benchmarks.json")
 			if err != nil {
@@ -64,7 +67,7 @@ func metricsCommand() *cobra.Command {
 			}
 
 			running := make(map[string]*exec.Cmd)
-			test := startMetricsAgent()
+			test := startMetricsAlloy()
 			defer cleanupPid(test, "./data/test-data")
 			networkdown = f.networkDown
 			benchmarks := strings.Split(f.benchmark, ",")
@@ -82,7 +85,7 @@ func metricsCommand() *cobra.Command {
 				_ = os.Setenv("RUNTYPE", met.Name)
 				_ = os.Setenv("NETWORK_DOWN", strconv.FormatBool(f.networkDown))
 				_ = os.Setenv("DISCOVERY", fmt.Sprintf("http://127.0.0.1:9001/api/v0/component/prometheus.test.metrics.%s/discovery", f.metricSource))
-				agent := startNormalAgent(met, port)
+				agent := startNormalAlloy(met, port)
 				running[met.Name] = agent
 			}
 			signalChannel := make(chan os.Signal, 1)
@@ -108,7 +111,7 @@ func metricsCommand() *cobra.Command {
 	return cmd
 }
 
-func startNormalAgent(met metric, port int) *exec.Cmd {
+func startNormalAlloy(met metric, port int) *exec.Cmd {
 	cmd := exec.Command("./alloy", "run", met.Config, fmt.Sprintf("--storage.path=./data/%s", met.Name), fmt.Sprintf("--server.http.listen-addr=127.0.0.1:%d", port), "--stability.level=experimental")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if met.Name != "batch" {
@@ -123,7 +126,7 @@ func startNormalAgent(met metric, port int) *exec.Cmd {
 	return cmd
 }
 
-func startMetricsAgent() *exec.Cmd {
+func startMetricsAlloy() *exec.Cmd {
 	cmd := exec.Command("./alloy", "run", "./configs/test.river", "--storage.path=./data/test-data", "--server.http.listen-addr=127.0.0.1:9001", "--stability.level=experimental")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	err := cmd.Start()
