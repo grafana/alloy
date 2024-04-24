@@ -6,11 +6,17 @@ local ghTokenFilename = '/drone/src/gh-token.txt';
 // job_names gets the list of job names for use in depends_on.
 local job_names = function(jobs) std.map(function(job) job.name, jobs);
 
-local linux_containers = ['alloy'];
-local windows_containers = ['alloy'];
+local linux_containers = [
+  { devel: 'alloy-devel', release: 'alloy' },
+  { devel: 'alloy-boringcrypto-devel', release: 'alloy-boringcrypto' },
+];
+local windows_containers = [
+  { devel: 'alloy-devel', release: 'alloy' },
+  { devel: 'alloy-cngcrypto-devel', release: 'alloy-cngcrypto' },
+];
 
 local linux_containers_dev_jobs = std.map(function(container) (
-  pipelines.linux('Publish development Linux %s container' % container) {
+  pipelines.linux('Publish Linux %s container' % container.devel) {
     trigger: {
       ref: ['refs/heads/main'],
     },
@@ -45,11 +51,11 @@ local linux_containers_dev_jobs = std.map(function(container) (
         'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
 
         // Create a buildx worker for our cross platform builds.
-        'docker buildx create --name multiarch-alloy-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container,
+        'docker buildx create --name multiarch-alloy-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container.devel,
 
-        './tools/ci/docker-containers %s-devel' % container,
+        './tools/ci/docker-containers %s' % container.devel,
 
-        'docker buildx rm multiarch-alloy-%s-${DRONE_COMMIT_SHA}' % container,
+        'docker buildx rm multiarch-alloy-%s-${DRONE_COMMIT_SHA}' % container.devel,
       ],
     }],
     volumes: [{
@@ -60,7 +66,7 @@ local linux_containers_dev_jobs = std.map(function(container) (
 ), linux_containers);
 
 local windows_containers_dev_jobs = std.map(function(container) (
-  pipelines.windows('Publish development Windows %s container' % container) {
+  pipelines.windows('Publish Windows %s container' % container.devel) {
     trigger: {
       ref: ['refs/heads/main'],
     },
@@ -80,7 +86,7 @@ local windows_containers_dev_jobs = std.map(function(container) (
         pipelines.windows_command('mkdir -p $HOME/.docker'),
         pipelines.windows_command('printenv GCR_CREDS > $HOME/.docker/config.json'),
         pipelines.windows_command('docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'),
-        pipelines.windows_command('./tools/ci/docker-containers-windows %s-devel' % container),
+        pipelines.windows_command('./tools/ci/docker-containers-windows %s' % container.devel),
       ],
     }],
     volumes: [{
@@ -91,7 +97,7 @@ local windows_containers_dev_jobs = std.map(function(container) (
 ), windows_containers);
 
 local linux_containers_jobs = std.map(function(container) (
-  pipelines.linux('Publish Linux %s container' % container) {
+  pipelines.linux('Publish Linux %s container' % container.release) {
     trigger: {
       ref: ['refs/tags/v*'],
     },
@@ -126,11 +132,11 @@ local linux_containers_jobs = std.map(function(container) (
         'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
 
         // Create a buildx worker for our cross platform builds.
-        'docker buildx create --name multiarch-alloy-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container,
+        'docker buildx create --name multiarch-alloy-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container.release,
 
-        './tools/ci/docker-containers %s' % container,
+        './tools/ci/docker-containers %s' % container.release,
 
-        'docker buildx rm multiarch-alloy-%s-${DRONE_COMMIT_SHA}' % container,
+        'docker buildx rm multiarch-alloy-%s-${DRONE_COMMIT_SHA}' % container.release,
       ],
     }],
     volumes: [{
@@ -142,7 +148,7 @@ local linux_containers_jobs = std.map(function(container) (
 
 
 local windows_containers_jobs = std.map(function(container) (
-  pipelines.windows('Publish Windows %s container' % container) {
+  pipelines.windows('Publish Windows %s container' % container.release) {
     trigger: {
       ref: ['refs/tags/v*'],
     },
@@ -162,7 +168,7 @@ local windows_containers_jobs = std.map(function(container) (
         pipelines.windows_command('mkdir -p $HOME/.docker'),
         pipelines.windows_command('printenv GCR_CREDS > $HOME/.docker/config.json'),
         pipelines.windows_command('docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'),
-        pipelines.windows_command('./tools/ci/docker-containers-windows %s' % container),
+        pipelines.windows_command('./tools/ci/docker-containers-windows %s' % container.release),
       ],
     }],
     volumes: [{
