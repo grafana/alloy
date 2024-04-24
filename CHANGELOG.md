@@ -27,7 +27,7 @@ Main (unreleased)
 
 ### Features
 
-- Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
+- (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
 
 ### Bugfixes
 
