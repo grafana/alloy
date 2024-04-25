@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/introduction/backward-compatability/
+canonical: https://grafana.com/docs/alloy/latest/introduction/backward-compatibility/
 description: Grafana Alloy backward compatibility
 menuTitle: Backward compatibility
 title: Grafana Alloy backward compatibility
