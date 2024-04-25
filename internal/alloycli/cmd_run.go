@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/KimMachineGun/automemlimit/memlimit"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy"
@@ -166,7 +166,6 @@ type alloyRun struct {
 }
 
 func (fr *alloyRun) Run(configPath string) error {
-
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
