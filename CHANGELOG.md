@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
+
 ### Enhancements
 
 - Update `prometheus.exporter.kafka` with the following functionalities (@wildum):
