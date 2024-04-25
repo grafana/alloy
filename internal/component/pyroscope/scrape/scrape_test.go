@@ -3,6 +3,7 @@ package scrape
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/scrape"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/service/cluster"
+	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
@@ -69,6 +71,13 @@ func getServiceData(name string) (interface{}, error) {
 	switch name {
 	case cluster.ServiceName:
 		return cluster.Mock(), nil
+	case http_service.ServiceName:
+		return http_service.Data{
+			HTTPListenAddr:   "localhost:12345",
+			MemoryListenAddr: "alloy.internal:1245",
+			BaseHTTPPath:     "/",
+			DialFunc:         (&net.Dialer{}).DialContext,
+		}, nil
 	default:
 		return nil, fmt.Errorf("unrecognized service name %q", name)
 	}

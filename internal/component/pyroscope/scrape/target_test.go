@@ -236,3 +236,50 @@ func Test_targetsFromGroup(t *testing.T) {
 	require.Equal(t, expected, active)
 	require.Empty(t, dropped)
 }
+
+// Test that the godeltaprof is not surfaced publicly
+func Test_NewTarget_godeltaprof(t *testing.T) {
+	withGodeltaprof := NewTarget(
+		labels.FromMap(map[string]string{
+			model.AddressLabel:    "localhost:9094",
+			serviceNameLabel:      "docker-container",
+			model.MetricNameLabel: pprofGoDeltaProfMemory,
+			ProfilePath:           "/debug/pprof/delta_heap",
+			model.SchemeLabel:     "http",
+			"foo":                 "bar",
+			"instance":            "localhost:9094",
+		}),
+		labels.FromMap(map[string]string{
+			model.AddressLabel:             "localhost:9094",
+			"__meta_docker_container_name": "docker-container",
+			model.MetricNameLabel:          pprofGoDeltaProfMemory,
+			ProfilePath:                    "/debug/pprof/delta_heap",
+			model.SchemeLabel:              "http",
+			"foo":                          "bar",
+		}),
+		url.Values{},
+	)
+	withoutGodeltaprof := NewTarget(
+		labels.FromMap(map[string]string{
+			model.AddressLabel:    "localhost:9094",
+			serviceNameLabel:      "docker-container",
+			model.MetricNameLabel: pprofMemory,
+			ProfilePath:           "/debug/pprof/heap",
+			model.SchemeLabel:     "http",
+			"foo":                 "bar",
+			"instance":            "localhost:9094",
+		}),
+		labels.FromMap(map[string]string{
+			model.AddressLabel:             "localhost:9094",
+			"__meta_docker_container_name": "docker-container",
+			model.MetricNameLabel:          pprofMemory,
+			ProfilePath:                    "/debug/pprof/heap",
+			model.SchemeLabel:              "http",
+			"foo":                          "bar",
+		}),
+		url.Values{},
+	)
+
+	require.NotEqual(t, withGodeltaprof.allLabels, withoutGodeltaprof.allLabels)
+	require.Equal(t, withGodeltaprof.publicLabels, withoutGodeltaprof.publicLabels)
+}
