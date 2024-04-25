@@ -254,7 +254,7 @@ func convertSessionOptions(args Arguments, ms *metrics) ebpfspy.SessionOptions {
 		},
 		Metrics:                  ms.ebpfMetrics,
 		SampleRate:               args.SampleRate,
-		VerifierLogSize:          0,
+		VerifierLogSize:          1024 * 1024 * 100,
 		PythonBPFErrorLogEnabled: false,
 		PythonBPFDebugLogEnabled: false,
 		PrintBPFLog:              false,
