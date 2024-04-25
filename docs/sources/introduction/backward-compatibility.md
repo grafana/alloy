@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/introduction/backward-compatability/
+canonical: https://grafana.com/docs/alloy/latest/introduction/backward-compatibility/
 description: Grafana Alloy backward compatibility
 menuTitle: Backward compatibility
 title: Grafana Alloy backward compatibility
@@ -22,7 +22,7 @@ Documented functionality that's released as _Generally available_ is covered by 
 ## Exceptions
 
 We strive to maintain backward compatibility, but there are situations that may arise that require a breaking change without a new major version:
-
+compatibility
 * **Security**: A security issue may arise that requires breaking compatibility.
 
 * **Legal requirements**: If we learn that exposed behavior violates a licensing or legal requirement, a breaking change may be required.
