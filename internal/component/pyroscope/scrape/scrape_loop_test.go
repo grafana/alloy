@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/util"
+	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
@@ -33,7 +34,7 @@ func TestScrapePool(t *testing.T) {
 	args.ProfilingConfig.Goroutine.Enabled = false
 	args.ProfilingConfig.Memory.Enabled = false
 
-	p, err := newScrapePool(args, pyroscope.AppendableFunc(
+	p, err := newScrapePool([]config_util.HTTPClientOption{}, args, pyroscope.AppendableFunc(
 		func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 			return nil
 		}),
@@ -213,7 +214,7 @@ func BenchmarkSync(b *testing.B) {
 	args := NewDefaultArguments()
 	args.Targets = []discovery.Target{}
 
-	p, err := newScrapePool(args, pyroscope.AppendableFunc(
+	p, err := newScrapePool([]config_util.HTTPClientOption{}, args, pyroscope.AppendableFunc(
 		func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 			return nil
 		}),
