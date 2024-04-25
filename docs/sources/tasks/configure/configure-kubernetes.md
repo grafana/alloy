@@ -134,7 +134,7 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
 1. Modify Helm Chart's configuration in your `values.yaml` to use the existing ConfigMap:
 
    ```yaml
-     alloy:
+   alloy:
      configMap:
        create: false
        name: alloy-config
