@@ -228,15 +228,11 @@ func targetsOptionFromArgs(args Arguments) sd.TargetsOptions {
 
 func convertSessionOptions(args Arguments, ms *metrics) ebpfspy.SessionOptions {
 	return ebpfspy.SessionOptions{
-		CollectUser:   args.CollectUserProfile,
-		CollectKernel: args.CollectKernelProfile,
-		SampleRate:    args.SampleRate,
-		PythonEnabled: args.PythonEnabled,
-		Metrics:       ms.ebpfMetrics,
-		SymbolOptions: symtab.SymbolOptions{
-			GoTableFallback: false,
-			DemangleOptions: demangle2.ConvertDemangleOptions(args.Demangle),
-		},
+		CollectUser:               args.CollectUserProfile,
+		CollectKernel:             args.CollectKernelProfile,
+		UnknownSymbolModuleOffset: false,
+		UnknownSymbolAddress:      false,
+		PythonEnabled:             args.PythonEnabled,
 		CacheOptions: symtab.CacheOptions{
 			PidCacheOptions: symtab.GCacheOptions{
 				Size:       args.PidCacheSize,
@@ -250,6 +246,21 @@ func convertSessionOptions(args Arguments, ms *metrics) ebpfspy.SessionOptions {
 				Size:       args.SameFileCacheSize,
 				KeepRounds: args.CacheRounds,
 			},
+		},
+		SymbolOptions: symtab.SymbolOptions{
+			GoTableFallback:    false,
+			PythonFullFilePath: false,
+			DemangleOptions:    demangle2.ConvertDemangleOptions(args.Demangle),
+		},
+		Metrics:                  ms.ebpfMetrics,
+		SampleRate:               args.SampleRate,
+		VerifierLogSize:          0,
+		PythonBPFErrorLogEnabled: false,
+		PythonBPFDebugLogEnabled: false,
+		PrintBPFLog:              false,
+		BPFMapsOptions: ebpfspy.BPFMapsOptions{
+			PIDMapSize:     0,
+			SymbolsMapSize: 0,
 		},
 	}
 }
