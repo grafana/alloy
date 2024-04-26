@@ -2,8 +2,11 @@
 package kafka
 
 import (
+	"strings"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
@@ -23,6 +26,7 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
+			checkOutput(args.(Arguments).Output, opts.Logger)
 			fact := kafkareceiver.NewFactory()
 			return receiver.New(opts, fact, args.(Arguments))
 		},
@@ -75,6 +79,23 @@ func (args *Arguments) SetToDefault() {
 	args.MessageMarking.SetToDefault()
 	args.HeaderExtraction.SetToDefault()
 	args.DebugMetrics.SetToDefault()
+}
+
+func checkOutput(output *otelcol.ConsumerArguments, logger log.Logger) {
+	var signals []string
+
+	if len(output.Logs) > 0 {
+		signals = append(signals, "logs")
+	}
+	if len(output.Metrics) > 0 {
+		signals = append(signals, "metrics")
+	}
+	if len(output.Traces) > 0 {
+		signals = append(signals, "traces")
+	}
+	if len(signals) > 1 {
+		level.Warn(logger).Log("msg", "only one output signal should be set", "signals", strings.Join(signals, ", "))
+	}
 }
 
 // Convert implements receiver.Arguments.
