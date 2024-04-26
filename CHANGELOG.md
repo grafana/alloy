@@ -58,6 +58,9 @@ Main (unreleased)
   `latest-nanoserver-1809`. The old tag will no longer be updated, and will be
   removed in a future release. (@rfratto)
 
+- The log level of `finished node evaluation` log lines has been decreased to
+  'debug'. (@tpaschalis)
+
 v1.0.0 (2024-04-09)
 -------------------
 
