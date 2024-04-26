@@ -36,7 +36,8 @@ func Test(t *testing.T) {
 	go func() {
 		err := ctrl.Run(ctx, Arguments{
 			LogLabels: map[string]string{
-				"foo": "bar",
+				"foo":  "bar",
+				"kind": "",
 			},
 
 			Server: ServerArguments{
@@ -100,7 +101,8 @@ func Test(t *testing.T) {
 
 	expect := loki.Entry{
 		Labels: model.LabelSet{
-			"foo": model.LabelValue("bar"),
+			"foo":  model.LabelValue("bar"),
+			"kind": model.LabelValue("log"),
 		},
 		Entry: logproto.Entry{
 			Line: `timestamp="2021-01-01 00:00:00 +0000 UTC" kind=log message="hello, world" level=info context_env=dev traceID=0 spanID=0 browser_mobile=false`,
