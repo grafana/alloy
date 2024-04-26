@@ -34,6 +34,8 @@ Main (unreleased)
 
 - Fixed issue where text labels displayed outside of component node's boundary. (@hainenber)
 
+- Fixed a bug where a topic was claimed by the wrong consumer type in `otelcol.receiver.kafka`. (@wildum)
+
 ### Other changes
 
 - Update `alloy-mixin` to use more specific alert group names (for example,
