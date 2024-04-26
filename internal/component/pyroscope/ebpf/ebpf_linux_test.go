@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
@@ -78,7 +79,7 @@ func TestShutdownOnError(t *testing.T) {
 	})
 	require.NoError(t, err)
 	session := &mockSession{}
-	arguments := defaultArguments()
+	arguments := NewDefaultArguments()
 	arguments.CollectInterval = time.Millisecond * 100
 	c := newTestComponent(
 		component.Options{
@@ -105,7 +106,7 @@ func TestContextShutdown(t *testing.T) {
 	})
 	require.NoError(t, err)
 	session := &mockSession{}
-	arguments := defaultArguments()
+	arguments := NewDefaultArguments()
 	arguments.CollectInterval = time.Millisecond * 100
 	c := newTestComponent(
 		component.Options{
@@ -150,8 +151,34 @@ func TestContextShutdown(t *testing.T) {
 }
 
 func TestUnmarshalConfig(t *testing.T) {
-	var arg Arguments
-	err := syntax.Unmarshal([]byte(`targets = [{"service_name" = "foo", "container_id"= "cid"}]
+	for _, tt := range []struct {
+		name        string
+		in          string
+		expected    func() Arguments
+		expectedErr string
+	}{
+		{
+			name: "required-params-only",
+			in: `
+targets = [{"service_name" = "foo", "container_id"= "cid"}]
+forward_to = []
+`,
+			expected: func() Arguments {
+				x := NewDefaultArguments()
+				x.Targets = []discovery.Target{
+					map[string]string{
+						"container_id": "cid",
+						"service_name": "foo",
+					},
+				}
+				x.ForwardTo = []pyroscope.Appendable{}
+				return x
+			},
+		},
+		{
+			name: "full-config",
+			in: `
+targets = [{"service_name" = "foo", "container_id"= "cid"}]
 forward_to = []
 collect_interval = "3s"
 sample_rate = 239
@@ -161,34 +188,60 @@ same_file_cache_size = 3000
 container_id_cache_size = 4000
 cache_rounds = 4
 collect_user_profile = true
-collect_kernel_profile = false`), &arg)
-	require.NoError(t, err)
-	require.Empty(t, arg.ForwardTo)
-	require.Equal(t, time.Second*3, arg.CollectInterval)
-	require.Equal(t, 239, arg.SampleRate)
-	require.Equal(t, 1000, arg.PidCacheSize)
-	require.Equal(t, 2000, arg.BuildIDCacheSize)
-	require.Equal(t, 3000, arg.SameFileCacheSize)
-	require.Equal(t, 4000, arg.ContainerIDCacheSize)
-	require.Equal(t, 4, arg.CacheRounds)
-	require.Equal(t, true, arg.CollectUserProfile)
-	require.Equal(t, false, arg.CollectKernelProfile)
-}
-
-func TestUnmarshalBadConfig(t *testing.T) {
-	var arg Arguments
-	err := syntax.Unmarshal([]byte(`targets = [{"service_name" = "foo", "container_id"= "cid"}]
+collect_kernel_profile = false`,
+			expected: func() Arguments {
+				x := NewDefaultArguments()
+				x.Targets = []discovery.Target{
+					map[string]string{
+						"container_id": "cid",
+						"service_name": "foo",
+					},
+				}
+				x.ForwardTo = []pyroscope.Appendable{}
+				x.CollectInterval = time.Second * 3
+				x.SampleRate = 239
+				x.PidCacheSize = 1000
+				x.BuildIDCacheSize = 2000
+				x.SameFileCacheSize = 3000
+				x.ContainerIDCacheSize = 4000
+				x.CacheRounds = 4
+				x.CollectUserProfile = true
+				x.CollectKernelProfile = false
+				return x
+			},
+		},
+		{
+			name: "syntax-problem",
+			in: `
+targets = [{"service_name" = "foo", "container_id"= "cid"}]
 forward_to = []
 collect_interval = 3s"
-sample_rate = 239
-pid_cache_size = 1000
-build_id_cache_size = 2000
-same_file_cache_size = 3000
-container_id_cache_size = 4000
-cache_rounds = 4
-collect_user_profile = true
-collect_kernel_profile = false`), &arg)
-	require.Error(t, err)
+`,
+			expectedErr: "4:21: expected TERMINATOR, got IDENT (and 1 more diagnostics)",
+		},
+		{
+			name: "incorrect-map-sizes",
+			in: `
+targets = [{"service_name" = "foo", "container_id"= "cid"}]
+forward_to = []
+symbols_map_size = -1
+pid_map_size = 0
+`,
+			expectedErr: "symbols_map_size must be greater than 0\npid_map_size must be greater than 0",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			arg := Arguments{}
+			if tt.expectedErr != "" {
+				err := syntax.Unmarshal([]byte(tt.in), &arg)
+				require.Error(t, err)
+				require.Equal(t, tt.expectedErr, err.Error())
+				return
+			}
+			require.NoError(t, syntax.Unmarshal([]byte(tt.in), &arg))
+			require.Equal(t, tt.expected(), arg)
+		})
+	}
 }
 
 func newTestComponent(opts component.Options, args Arguments, session *mockSession, targetFinder sd.TargetFinder, ms *metrics) *Component {
