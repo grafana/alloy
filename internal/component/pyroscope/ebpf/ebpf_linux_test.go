@@ -9,17 +9,20 @@ import (
 	"testing"
 	"time"
 
+	ebpfspy "github.com/grafana/pyroscope/ebpf"
+	"github.com/grafana/pyroscope/ebpf/pprof"
+	"github.com/grafana/pyroscope/ebpf/sd"
+	"github.com/grafana/pyroscope/ebpf/symtab"
+	"github.com/grafana/pyroscope/ebpf/symtab/elf"
+	"github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	ebpfspy "github.com/grafana/pyroscope/ebpf"
-	"github.com/grafana/pyroscope/ebpf/pprof"
-	"github.com/grafana/pyroscope/ebpf/sd"
-	"github.com/oklog/run"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/require"
 )
 
 type mockSession struct {
@@ -68,7 +71,36 @@ func (m *mockSession) CollectProfiles(f pprof.CollectProfilesCallback) error {
 }
 
 func (m *mockSession) DebugInfo() interface{} {
-	return nil
+	return ebpfspy.SessionDebugInfo{
+		ElfCache: symtab.ElfCacheDebugInfo{
+			BuildIDCache: symtab.GCacheDebugInfo[elf.SymTabDebugInfo]{},
+			SameFileCache: symtab.GCacheDebugInfo[elf.SymTabDebugInfo]{
+				LRUSize:      10,
+				RoundSize:    10,
+				CurrentRound: 1,
+				LRUDump: []elf.SymTabDebugInfo{
+					{
+						Name:          "X",
+						Size:          123,
+						LastUsedRound: 1,
+					},
+				},
+			},
+		},
+		PidCache: symtab.GCacheDebugInfo[symtab.ProcTableDebugInfo]{
+			LRUSize:      10,
+			RoundSize:    10,
+			CurrentRound: 1,
+			LRUDump: []symtab.ProcTableDebugInfo{
+				{
+					Pid:  666,
+					Size: 123,
+				},
+			},
+		},
+		Arch:   "my-arch",
+		Kernel: "my-kernel",
+	}
 }
 
 func TestShutdownOnError(t *testing.T) {
@@ -242,6 +274,77 @@ pid_map_size = 0
 			require.Equal(t, tt.expected(), arg)
 		})
 	}
+}
+
+type mockTargetFinder struct {
+	sd.TargetFinder
+}
+
+func (m *mockTargetFinder) DebugInfo() []map[string]string {
+	return []map[string]string{
+		{"__container_id__": "foo", "__name__": "process_cpu", "container": "kube-proxy"},
+		{"__container_id__": "baz", "__name__": "process_cpu", "container": "kube-proxy"},
+	}
+}
+
+func TestDebugInfo(t *testing.T) {
+	c := &Component{
+		session:      &mockSession{},
+		targetFinder: &mockTargetFinder{},
+	}
+
+	c.updateDebugInfo()
+	di := c.DebugInfo()
+
+	v, err := syntax.Marshal(di)
+	require.NoError(t, err)
+
+	require.Equal(t, `targets = [{
+	__container_id__ = "foo",
+	__name__         = "process_cpu",
+	container        = "kube-proxy",
+}, {
+	__container_id__ = "baz",
+	__name__         = "process_cpu",
+	container        = "kube-proxy",
+}]
+session = {
+	elf_cache = {
+		build_id_cache = {
+			lru_size      = 0,
+			round_size    = 0,
+			current_round = 0,
+			lru_dump      = [],
+			round_dump    = [],
+		},
+		same_file_cache = {
+			lru_size      = 10,
+			round_size    = 10,
+			current_round = 1,
+			lru_dump      = [{
+				name            = "X",
+				symbol_count    = 123,
+				file            = "",
+				last_used_round = 1,
+			}],
+			round_dump = [],
+		},
+	},
+	pid_cache = {
+		lru_size      = 10,
+		round_size    = 10,
+		current_round = 1,
+		lru_dump      = [{
+			elfs = {},
+			size            = 123,
+			pid             = 666,
+			last_used_round = 0,
+		}],
+		round_dump = [],
+	},
+	arch   = "my-arch",
+	kernel = "my-kernel",
+}`, string(v))
 }
 
 func newTestComponent(opts component.Options, args Arguments, session *mockSession, targetFinder sd.TargetFinder, ms *metrics) *Component {
