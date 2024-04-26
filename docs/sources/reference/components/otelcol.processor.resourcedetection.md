@@ -676,7 +676,7 @@ Block                                                  | Description            
 The `tls` block configures TLS settings used for the connection to the gRPC
 server.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 #### openshift > resource_attributes
 
