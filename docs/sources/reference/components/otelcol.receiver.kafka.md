@@ -279,7 +279,7 @@ Regular expressions are not allowed in the `headers` argument. Only exact matchi
 
 ### output block
 
-> **WARNING**: only one signal type shoud be set per `otelcol.receiver.kafka` component
+> **WARNING**: only one signal type should be set per `otelcol.receiver.kafka` component
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

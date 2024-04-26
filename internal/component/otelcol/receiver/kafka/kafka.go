@@ -26,7 +26,7 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			checkOutput(args.(Arguments).Output, opts.Logger)
+			checkOutputSignals(args.(Arguments).Output, opts.Logger)
 			fact := kafkareceiver.NewFactory()
 			return receiver.New(opts, fact, args.(Arguments))
 		},
@@ -81,7 +81,7 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-func checkOutput(output *otelcol.ConsumerArguments, logger log.Logger) {
+func checkOutputSignals(output *otelcol.ConsumerArguments, logger log.Logger) {
 	var signals []string
 
 	if len(output.Logs) > 0 {
