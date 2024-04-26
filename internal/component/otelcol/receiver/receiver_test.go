@@ -57,6 +57,22 @@ func TestReceiver(t *testing.T) {
 	require.NoError(t, waitTracesTrigger.Wait(time.Second), "consumer did not get invoked")
 }
 
+func TestReceiverNotStarted(t *testing.T) {
+	var (
+		waitConsumerTrigger = util.NewWaitTrigger()
+		onTracesConsumer    = func(t otelconsumer.Traces) {
+			waitConsumerTrigger.Trigger()
+		}
+	)
+	te := newTestEnvironment(t, onTracesConsumer)
+	te.Start(fakeReceiverArgs{
+		Output: &otelcol.ConsumerArguments{},
+	})
+
+	// Check that no trace receiver was started because it's not needed by the output.
+	require.ErrorContains(t, waitConsumerTrigger.Wait(time.Second), "context deadline exceeded")
+}
+
 type testEnvironment struct {
 	t *testing.T
 

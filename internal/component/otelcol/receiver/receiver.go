@@ -149,36 +149,40 @@ func (r *Receiver) Update(args component.Arguments) error {
 		return err
 	}
 
-	var (
-		next        = rargs.NextConsumers()
-		nextTraces  = fanoutconsumer.Traces(next.Traces)
-		nextMetrics = fanoutconsumer.Metrics(next.Metrics)
-		nextLogs    = fanoutconsumer.Logs(next.Logs)
-	)
+	next := rargs.NextConsumers()
 
 	// Create instances of the receiver from our factory for each of our
 	// supported telemetry signals.
 	var components []otelcomponent.Component
 
-	tracesReceiver, err := r.factory.CreateTracesReceiver(r.ctx, settings, receiverConfig, nextTraces)
-	if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
-		return err
-	} else if tracesReceiver != nil {
-		components = append(components, tracesReceiver)
+	if len(next.Traces) > 0 {
+		nextTraces := fanoutconsumer.Traces(next.Traces)
+		tracesReceiver, err := r.factory.CreateTracesReceiver(r.ctx, settings, receiverConfig, nextTraces)
+		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+			return err
+		} else if tracesReceiver != nil {
+			components = append(components, tracesReceiver)
+		}
 	}
 
-	metricsReceiver, err := r.factory.CreateMetricsReceiver(r.ctx, settings, receiverConfig, nextMetrics)
-	if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
-		return err
-	} else if metricsReceiver != nil {
-		components = append(components, metricsReceiver)
+	if len(next.Metrics) > 0 {
+		nextMetrics := fanoutconsumer.Metrics(next.Metrics)
+		metricsReceiver, err := r.factory.CreateMetricsReceiver(r.ctx, settings, receiverConfig, nextMetrics)
+		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+			return err
+		} else if metricsReceiver != nil {
+			components = append(components, metricsReceiver)
+		}
 	}
 
-	logsReceiver, err := r.factory.CreateLogsReceiver(r.ctx, settings, receiverConfig, nextLogs)
-	if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
-		return err
-	} else if logsReceiver != nil {
-		components = append(components, logsReceiver)
+	if len(next.Logs) > 0 {
+		nextLogs := fanoutconsumer.Logs(next.Logs)
+		logsReceiver, err := r.factory.CreateLogsReceiver(r.ctx, settings, receiverConfig, nextLogs)
+		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+			return err
+		} else if logsReceiver != nil {
+			components = append(components, logsReceiver)
+		}
 	}
 
 	// Schedule the components to run once our component is running.
