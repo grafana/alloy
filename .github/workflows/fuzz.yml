@@ -1,0 +1,24 @@
+name: Fuzz test
+on:
+  pull_request:
+jobs:
+  find-tests:
+    name: Find fuzz tests
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: set-matrix
+        run: |
+          echo '::set-output name=matrix::{"include": []}'
+
+  test:
+    name: "${{ matrix.package }} :: ${{ matrix.function }}"
+    runs-on: ubuntu-latest
+    if: needs.generate-matrix.outputs.matrix != ''
+    needs: [find-tests]
+    strategy:
+      matrix: ${{fromJson(needs.find-tests.outputs.matrix)}}
+    steps:
+      - run: echo "Run fuzz tests in ${{ matrix.package }} called ${{ matrix.function }}"
