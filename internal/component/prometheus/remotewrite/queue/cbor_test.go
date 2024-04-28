@@ -13,7 +13,7 @@ import (
 
 func TestParquetSample(t *testing.T) {
 
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -23,7 +23,7 @@ func TestParquetSample(t *testing.T) {
 	bb, err := l.serialize()
 	require.NoError(t, err)
 
-	metrics, err := DeserializeParquet(bb, 100)
+	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	require.Len(t, metrics[0].seriesLabels, 1)
@@ -32,7 +32,7 @@ func TestParquetSample(t *testing.T) {
 }
 
 func TestParquetSampleMultiple(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -50,7 +50,7 @@ func TestParquetSampleMultiple(t *testing.T) {
 
 	bb, err := l.serialize()
 	require.NoError(t, err)
-	metrics, err := DeserializeParquet(bb, 100)
+	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
 
@@ -59,7 +59,7 @@ func TestParquetSampleMultiple(t *testing.T) {
 }
 
 func TestParquetSampleMultipleDifferent(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 		"badlabel": "arrr",
@@ -79,7 +79,7 @@ func TestParquetSampleMultipleDifferent(t *testing.T) {
 
 	bb, err := l.serialize()
 	require.NoError(t, err)
-	metrics, err := DeserializeParquet(bb, 100)
+	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
 
@@ -88,7 +88,7 @@ func TestParquetSampleMultipleDifferent(t *testing.T) {
 }
 
 func TestParquetSampleTTL(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
@@ -100,13 +100,13 @@ func TestParquetSampleTTL(t *testing.T) {
 	bb, err := l.serialize()
 	require.NoError(t, err)
 	time.Sleep(2 * time.Second)
-	metrics, err := DeserializeParquet(bb, 1)
+	metrics, err := Deserialize(bb, 1)
 	require.NoError(t, err)
 	require.Len(t, metrics, 0)
 }
 
 func TestParquetExemplar(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -119,7 +119,7 @@ func TestParquetExemplar(t *testing.T) {
 
 	bb, err := l.serialize()
 	require.NoError(t, err)
-	metrics, err := DeserializeParquet(bb, 100)
+	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	require.True(t, metrics[0].sType == tExemplar)
@@ -134,7 +134,7 @@ func TestParquetExemplar(t *testing.T) {
 }
 
 func TestParquetMultipleExemplar(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -158,7 +158,7 @@ func TestParquetMultipleExemplar(t *testing.T) {
 
 	bb, err := l.serialize()
 	require.NoError(t, err)
-	metrics, err := DeserializeParquet(bb, 100)
+	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
 	require.True(t, metrics[0].sType == tExemplar)
@@ -173,7 +173,7 @@ func TestParquetMultipleExemplar(t *testing.T) {
 }
 
 func TestParquetExemplarNoTS(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -185,7 +185,7 @@ func TestParquetExemplarNoTS(t *testing.T) {
 
 	bb, err := l.serialize()
 	require.NoError(t, err)
-	metrics, err := DeserializeParquet(bb, 100)
+	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	require.True(t, metrics[0].timestamp == 0)
@@ -201,7 +201,7 @@ func TestParquetExemplarNoTS(t *testing.T) {
 }
 
 func TestParquetExemplarAndMetric(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
@@ -215,7 +215,7 @@ func TestParquetExemplarAndMetric(t *testing.T) {
 	bb, err := l.serialize()
 	require.NoError(t, err)
 
-	metrics, err := DeserializeParquet(bb, 100)
+	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	require.True(t, metrics[0].timestamp == 0)
@@ -231,7 +231,7 @@ func TestParquetExemplarAndMetric(t *testing.T) {
 }
 
 func TestParquetHistogram(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -278,7 +278,7 @@ func TestParquetHistogram(t *testing.T) {
 	bb, err := l.serialize()
 	require.NoError(t, err)
 
-	metrics, err := DeserializeParquet(bb, 100)
+	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	m := metrics[0]
@@ -288,7 +288,7 @@ func TestParquetHistogram(t *testing.T) {
 }
 
 func TestParquetFloatHistogram(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
@@ -334,7 +334,7 @@ func TestParquetFloatHistogram(t *testing.T) {
 
 	bb, err := l.serialize()
 	require.NoError(t, err)
-	metrics, err := DeserializeParquet(bb, 100)
+	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	m := metrics[0]
@@ -343,7 +343,7 @@ func TestParquetFloatHistogram(t *testing.T) {
 	require.True(t, h.Equals(m.floatHistogram))
 }
 
-func hasLabel(lbls labels.Labels, metrics []TimeSeries, ts int64, val float64) bool {
+func hasLabel(lbls labels.Labels, metrics []*TimeSeries, ts int64, val float64) bool {
 	for _, m := range metrics {
 		if labels.Compare(m.seriesLabels, lbls) == 0 {
 			return ts == m.timestamp && val == m.value
@@ -352,7 +352,7 @@ func hasLabel(lbls labels.Labels, metrics []TimeSeries, ts int64, val float64) b
 	return false
 }
 
-func hasLabelsExemplar(lbls labels.Labels, metrics []TimeSeries, ts int64, val float64) bool {
+func hasLabelsExemplar(lbls labels.Labels, metrics []*TimeSeries, ts int64, val float64) bool {
 	for _, m := range metrics {
 		if labels.Compare(m.exemplarLabels, lbls) == 0 {
 			return ts == m.timestamp && val == m.value

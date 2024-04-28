@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
-	"strings"
 	"sync"
 	"time"
 
@@ -70,10 +69,9 @@ func (w *remoteWriter) Start(ctx context.Context) {
 		timeOut := 1 * time.Second
 		valByte, handle, found, more = w.store.Next(valByte[:0])
 		if found {
-			var recoverableError bool
-			success, recoverableError = w.send(valByte, ctx)
+			success = w.send(valByte, ctx)
 			// We need to succeed or hit an unrecoverable error to move on.
-			if success || !recoverableError {
+			if success {
 				w.store.Delete(handle)
 			}
 		}
@@ -98,27 +96,20 @@ var wrPool = sync.Pool{New: func() any {
 	return &prompb.WriteRequest{}
 }}
 
-func (w *remoteWriter) send(val []byte, ctx context.Context) (success bool, recoverableError bool) {
-	recoverableError = true
-
+func (w *remoteWriter) send(val []byte, ctx context.Context) bool {
 	var err error
 	wr := wrPool.Get().(*prompb.WriteRequest)
 	defer wrPool.Put(wr)
 
-	d, err := DeserializeParquet(val, int64(w.ttl.Seconds()))
+	d, err := Deserialize(val, int64(w.ttl.Seconds()))
 	if err != nil {
-		return false, false
+		return false
 	}
 	w.writeByte.Add(float64(len(val)))
 	w.writeMetrics.Add(float64(len(d)))
-	success = w.to.Append(d)
+	success := w.to.Append(d)
 	if err != nil {
-		// Let's check if it's an `out of order sample`. Yes this is some hand waving going on here.
-		// TODO add metric for unrecoverable error
-		if strings.Contains(err.Error(), "the sample has been rejected") {
-			recoverableError = false
-		}
 		level.Error(w.l).Log("msg", "error sending samples", "err", err)
 	}
-	return success, recoverableError
+	return success
 }

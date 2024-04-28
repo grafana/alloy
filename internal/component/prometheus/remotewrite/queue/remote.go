@@ -16,7 +16,7 @@ import (
 
 type remote struct {
 	name     string
-	b        *parquetwrite
+	b        *cborwriter
 	database *filequeue
 	qm       *QueueManager
 	wr       WriteClient
@@ -55,7 +55,7 @@ func newRemote(ed EndpointOptions, registerer prometheus.Registerer, l log.Logge
 	}
 
 	write := newRemoteWriter(wr.Name(), qm, q, l, args.TTL, registerer)
-	pw := newParquetWrite(q, args.BatchSize, args.FlushTime, l, registerer)
+	pw := newCBORWrite(q, args.BatchSize, args.FlushTime, l, registerer)
 	return &remote{
 		name:     wr.Name(),
 		b:        pw,

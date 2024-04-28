@@ -186,11 +186,6 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 		span.SetAttributes(attribute.String("node_id", n.NodeID()))
 		defer span.End()
 
-		start := time.Now()
-		defer func() {
-			level.Info(logger).Log("msg", "finished node evaluation", "node_id", n.NodeID(), "duration", time.Since(start))
-		}()
-
 		var err error
 
 		switch n := n.(type) {
@@ -782,7 +777,7 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 	defer func() {
 		duration := time.Since(start)
 		l.cm.onComponentEvaluationDone(n.NodeID(), duration)
-		level.Info(l.log).Log("msg", "finished node evaluation", "node_id", n.NodeID(), "duration", duration)
+		//level.Info(l.log).Log("msg", "finished node evaluation", "node_id", n.NodeID(), "duration", duration)
 	}()
 
 	var err error

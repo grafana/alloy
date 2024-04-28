@@ -18,7 +18,7 @@ import (
 // Defaults for config blocks.
 var (
 	DefaultQueueOptions = QueueOptions{
-		Capacity:          10000,
+		Capacity:          10_000,
 		MaxShards:         50,
 		MinShards:         1,
 		MaxSamplesPerSend: 5,

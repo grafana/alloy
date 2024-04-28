@@ -8,26 +8,32 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
+	"math"
 	"strconv"
 	"testing"
 	"time"
 )
 
 func TestSerialization(t *testing.T) {
-	l := newParquetWrite(fakeQueue{}, 512*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	l := newCBORWrite(fakeQueue{}, 512*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
+	ts := time.Now().Unix()
+
 	for i := 0; i < 1_000_000; i++ {
 		m := make(map[string]string)
 		for j := 0; j < 10; j++ {
 			m["series_name_"+strconv.Itoa(j)] = "series_value" + strconv.Itoa(j)
 		}
 		lbls := labels.FromMap(m)
-		ts := time.Now().Unix()
 		err := l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
 		require.NoError(t, err)
 	}
 	bb, err := l.serialize()
 	require.NoError(t, err)
 	t.Log("size", len(bb))
+
+	tss, err := Deserialize(bb, math.MaxInt64)
+	require.NoError(t, err)
+	require.Len(t, tss, 1_000_000)
 }
 
 func TestSerializationSimple(t *testing.T) {

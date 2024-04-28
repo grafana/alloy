@@ -600,7 +600,7 @@ func isTimeSeriesOldFilter(metrics *queueManagerMetrics, baseTime time.Time, sam
 
 // Append queues a sample to be sent to the remote storage. Blocks until all samples are
 // enqueued on their shards or a shutdown signal is received.
-func (t *QueueManager) Append(samples []TimeSeries) bool {
+func (t *QueueManager) Append(samples []*TimeSeries) bool {
 	currentTime := time.Now()
 outer:
 	for _, s := range samples {
@@ -620,7 +620,7 @@ outer:
 				return false
 			default:
 			}
-			if t.shards.enqueue(s) {
+			if t.shards.enqueue(*s) {
 				continue outer
 			}
 
@@ -1118,7 +1118,7 @@ type TimeSeries struct {
 	sType seriesType
 }
 
-type seriesType int
+type seriesType int8
 
 const (
 	tSample seriesType = iota

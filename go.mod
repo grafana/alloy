@@ -259,9 +259,9 @@ require (
 
 require (
 	github.com/Shopify/sarama v1.38.1
+	github.com/fxamacker/cbor/v2 v2.6.0
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
 	github.com/parquet-go/parquet-go v0.20.1
-	github.com/tidwall/btree v1.7.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0
 )
 
@@ -642,6 +642,7 @@ require (
 	github.com/vultr/govultr/v2 v2.17.2 // indirect
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/willf/bloom v2.0.3+incompatible // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
