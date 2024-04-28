@@ -44,7 +44,11 @@ func main() {
 	}()
 	log.Printf("HTTP server on %s", listenAddress)
 
-	go func() { log.Fatal(server.ListenAndServe()) }()
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server Listening error: %v", err)
+		}
+	}()
 
 	labels := map[string]string{
 		"address": address,
