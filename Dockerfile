@@ -49,15 +49,14 @@ COPY --from=build /src/alloy/build/alloy /bin/alloy
 COPY example-config.alloy /etc/alloy/config.alloy
 
 # Create alloy user in container, but do not set it as default
-RUN groupadd --gid $UID $USERNAME
-RUN useradd -m -u $UID -g $UID $USERNAME
-RUN chown -R $USERNAME:$USERNAME /etc/alloy
-RUN chown -R $USERNAME:$USERNAME /bin/alloy
-RUN setcap 'cap_net_bind_service=+ep' /bin/alloy
-
-RUN mkdir -p /var/lib/alloy/data
-RUN chown -R $USERNAME:$USERNAME /var/lib/alloy
-RUN chmod -R 770 /var/lib/alloy
+RUN groupadd --gid $UID $USERNAME \
+  && useradd -m -u $UID -g $UID $USERNAME \
+  && chown -R $USERNAME:$USERNAME /etc/alloy \
+  && chown -R $USERNAME:$USERNAME /bin/alloy \
+  && setcap 'cap_net_bind_service=+ep' /bin/alloy \
+  && mkdir -p /var/lib/alloy/data \
+  && chown -R $USERNAME:$USERNAME /var/lib/alloy \
+  && chmod -R 770 /var/lib/alloy
 
 ENTRYPOINT ["/bin/alloy"]
 ENV ALLOY_DEPLOY_MODE=docker
