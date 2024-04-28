@@ -29,6 +29,8 @@ Main (unreleased)
 - In `prometheus.exporter.kafka`, the interpolation table used to compute estimated lag metrics is now pruned
   on `metadata_refresh_interval` instead of `prune_interval_seconds`. (@wildum)
 
+- Allow to define a custom HTTP header in all components that make HTTP requests. (@jkroepke)
+
 - Don't restart tailers in `loki.source.kubernetes` component by above-average
   time deltas if K8s version is >= 1.29.1 (@hainenber)
 
