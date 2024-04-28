@@ -75,61 +75,7 @@ func (h *handler) buildHandler() slog.Handler {
 
 		// Replace attributes with how they were represented in go-kit/log for
 		// consistency.
-		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-			if len(groups) > 0 {
-				return a
-			}
-
-			switch a.Key {
-			case slog.TimeKey:
-				return slog.Attr{
-					Key:   "ts",
-					Value: slog.StringValue(a.Value.Time().UTC().Format(time.RFC3339Nano)),
-				}
-
-			case slog.SourceKey:
-				source, ok := a.Value.Any().(*slog.Source)
-				if !ok {
-					// The attribute value doesn't match our expected type. This probably
-					// indicates it's from a usage of go-kit/log that happens to also
-					// have a field called [slog.SourceKey].
-					//
-					// Return the attribute unmodified.
-					return a
-				}
-
-				if source.File == "" && source.Line == 0 {
-					// Drop attributes with no source information.
-					return slog.Attr{}
-				}
-
-				return a
-
-			case slog.MessageKey:
-				if a.Value.String() == "" {
-					// Drop empty message keys.
-					return slog.Attr{}
-				}
-
-			case slog.LevelKey:
-				level := a.Value.Any().(slog.Level)
-
-				// Override the value names to match go-kit/log, which would otherwise
-				// print as all-caps DEBUG/INFO/WARN/ERROR.
-				switch level {
-				case slog.LevelDebug:
-					return slog.Attr{Key: "level", Value: slog.StringValue("debug")}
-				case slog.LevelInfo:
-					return slog.Attr{Key: "level", Value: slog.StringValue("info")}
-				case slog.LevelWarn:
-					return slog.Attr{Key: "level", Value: slog.StringValue("warn")}
-				case slog.LevelError:
-					return slog.Attr{Key: "level", Value: slog.StringValue("error")}
-				}
-			}
-
-			return a
-		},
+		ReplaceAttr: replace,
 	}
 
 	switch expectFormat {
@@ -141,7 +87,11 @@ func (h *handler) buildHandler() slog.Handler {
 		panic(fmt.Sprintf("unknown format %v", expectFormat))
 	}
 
-	newHandler = newHandler.WithAttrs(h.attrs)
+	if len(h.attrs) > 0 {
+		newHandler = newHandler.WithAttrs(h.attrs)
+	} else if len(h.group) > 0 {
+		newHandler = newHandler.WithGroup(h.group[0])
+	}
 
 	h.currentFormat = expectFormat
 	h.inner = newHandler
@@ -191,4 +141,60 @@ func (h *handler) WithGroup(name string) slog.Handler {
 		attrs: h.attrs,
 		group: append(slices.Clone(h.group), name),
 	}
+}
+
+func replace(groups []string, a slog.Attr) slog.Attr {
+	if len(groups) > 0 {
+		return a
+	}
+
+	switch a.Key {
+	case slog.TimeKey:
+		return slog.Attr{
+			Key:   "ts",
+			Value: slog.StringValue(a.Value.Time().UTC().Format(time.RFC3339Nano)),
+		}
+
+	case slog.SourceKey:
+		source, ok := a.Value.Any().(*slog.Source)
+		if !ok {
+			// The attribute value doesn't match our expected type. This probably
+			// indicates it's from a usage of go-kit/log that happens to also
+			// have a field called [slog.SourceKey].
+			//
+			// Return the attribute unmodified.
+			return a
+		}
+
+		if source.File == "" && source.Line == 0 {
+			// Drop attributes with no source information.
+			return slog.Attr{}
+		}
+
+		return a
+
+	case slog.MessageKey:
+		if a.Value.String() == "" {
+			// Drop empty message keys.
+			return slog.Attr{}
+		}
+
+	case slog.LevelKey:
+		level := a.Value.Any().(slog.Level)
+
+		// Override the value names to match go-kit/log, which would otherwise
+		// print as all-caps DEBUG/INFO/WARN/ERROR.
+		switch level {
+		case slog.LevelDebug:
+			return slog.Attr{Key: "level", Value: slog.StringValue("debug")}
+		case slog.LevelInfo:
+			return slog.Attr{Key: "level", Value: slog.StringValue("info")}
+		case slog.LevelWarn:
+			return slog.Attr{Key: "level", Value: slog.StringValue("warn")}
+		case slog.LevelError:
+			return slog.Attr{Key: "level", Value: slog.StringValue("error")}
+		}
+	}
+
+	return a
 }
