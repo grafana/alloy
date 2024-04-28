@@ -38,18 +38,19 @@ loki.rules.kubernetes "LABEL" {
 
 `loki.rules.kubernetes` supports the following arguments:
 
-Name                    | Type       | Description                                                                          | Default | Required
-------------------------|------------|--------------------------------------------------------------------------------------|---------|---------
-`address`               | `string`   | URL of the Loki ruler.                                                               |         | yes
-`tenant_id`             | `string`   | Loki tenant ID.                                                                      |         | no
-`use_legacy_routes`     | `bool`     | Whether to use deprecated ruler API endpoints.                                       | false   | no
-`sync_interval`         | `duration` | Amount of time between reconciliations with Loki.                                    | "30s"   | no
+Name                    | Type       | Description                                                                     | Default | Required
+------------------------|------------|---------------------------------------------------------------------------------|---------|---------
+`address`               | `string`   | URL of the Loki ruler.                                                          |         | yes
+`tenant_id`             | `string`   | Loki tenant ID.                                                                 |         | no
+`use_legacy_routes`     | `bool`     | Whether to use deprecated ruler API endpoints.                                  | false   | no
+`sync_interval`         | `duration` | Amount of time between reconciliations with Loki.                               | "30s"   | no
 `loki_namespace_prefix` | `string`   | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments. | "alloy" | no
-`bearer_token`          | `secret`   | Bearer token to authenticate with.                                                   |         | no
-`bearer_token_file`     | `string`   | File containing a bearer token to authenticate with.                                 |         | no
-`proxy_url`             | `string`   | HTTP proxy to proxy requests through.                                                |         | no
-`follow_redirects`      | `bool`     | Whether redirects returned by the server should be followed.                         | `true`  | no
-`enable_http2`          | `bool`     | Whether HTTP2 is supported for requests.                                             | `true`  | no
+`bearer_token`          | `secret`   | Bearer token to authenticate with.                                              |         | no
+`bearer_token_file`     | `string`   | File containing a bearer token to authenticate with.                            |         | no
+`proxy_url`             | `string`   | HTTP proxy to proxy requests through.                                           |         | no
+`follow_redirects`      | `bool`     | Whether redirects returned by the server should be followed.                    | `true`  | no
+`host`                  | `string`   | Override HTTP hostname                                                          |         | no
+`enable_http2`          | `bool`     | Whether HTTP2 is supported for requests.                                        | `true`  | no
 
  At most, one of the following can be provided:
  - [`bearer_token` argument](#arguments).
