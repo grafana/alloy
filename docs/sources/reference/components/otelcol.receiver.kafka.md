@@ -40,12 +40,20 @@ Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `brokers` | `array(string)` | Kafka brokers to connect to. | | yes
 `protocol_version` | `string` | Kafka protocol version to use. | | yes
-`topic` | `string` | Kafka topic to read from. | `"otlp_spans"` | no
+`topic` | `string` | Kafka topic to read from. | | no
 `encoding` | `string` | Encoding of payload read from Kafka. | `"otlp_proto"` | no
 `group_id` | `string` | Consumer group to consume messages from. | `"otel-collector"` | no
 `client_id` | `string` | Consumer client ID to use. | `"otel-collector"` | no
 `initial_offset` | `string` | Initial offset to use if no offset was previously committed. | `"latest"` | no
 `resolve_canonical_bootstrap_servers_only` | `bool` | Whether to resolve then reverse-lookup broker IPs during startup. | `"false"` | no
+
+If `topic` is not set, the `otelcol.receiver.kafka` will try to consume:
+
+* metrics from the topic `otlp_metrics`
+* traces from the topic `otlp_spans`
+* logs from the topic `otlp_logs`
+
+If `topic` is set to a specific value, then only the signal type that correspond to the data stored in the topic must be set in the output block.
 
 The `encoding` argument determines how to decode messages read from Kafka.
 `encoding` must be one of the following strings:
@@ -278,8 +286,6 @@ Regular expressions are not allowed in the `headers` argument. Only exact matchi
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### output block
-
-> **WARNING**: only one signal type should be set per `otelcol.receiver.kafka` component
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
