@@ -296,9 +296,8 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-c.reloadTargets:
 			c.mut.RLock()
 			var (
-				tgs        = c.args.Targets
-				jobName    = c.opts.ID
-				clustering = c.args.Clustering.Enabled
+				tgs     = c.args.Targets
+				jobName = c.opts.ID
 			)
 			if c.args.JobName != "" {
 				jobName = c.args.JobName
@@ -307,7 +306,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 			// NOTE(@tpaschalis) First approach, manually building the
 			// 'clustered' targets implementation every time.
-			ct := discovery.NewDistributedTargets(clustering, c.cluster, tgs)
+			ct := discovery.NewDistributedTargets(c.args.Clustering.Enabled, c.cluster, tgs)
 			promTargets := c.componentTargetsToProm(jobName, ct.Get())
 
 			select {

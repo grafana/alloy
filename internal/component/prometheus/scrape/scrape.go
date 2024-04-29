@@ -213,16 +213,15 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-c.reloadTargets:
 			c.mut.RLock()
 			var (
-				targets           = c.args.Targets
-				jobName           = c.opts.ID
-				clusteringEnabled = c.args.Clustering.Enabled
+				targets = c.args.Targets
+				jobName = c.opts.ID
 			)
 			if c.args.JobName != "" {
 				jobName = c.args.JobName
 			}
 			c.mut.RUnlock()
 
-			promTargets := c.distTargets(targets, jobName, clusteringEnabled)
+			promTargets := c.distTargets(c.args.Clustering.Enabled, targets, jobName)
 
 			select {
 			case targetSetsChan <- promTargets:
@@ -312,13 +311,13 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 }
 
 func (c *Component) distTargets(
+	clusteringEnabled bool,
 	targets []discovery.Target,
 	jobName string,
-	clustering bool,
 ) map[string][]*targetgroup.Group {
 	// NOTE(@tpaschalis) First approach, manually building the
 	// 'clustered' targets implementation every time.
-	dt := discovery.NewDistributedTargets(clustering, c.cluster, targets)
+	dt := discovery.NewDistributedTargets(clusteringEnabled, c.cluster, targets)
 	alloyTargets := dt.Get()
 	c.targetsGauge.Set(float64(len(alloyTargets)))
 	promTargets := c.componentTargetsToProm(jobName, alloyTargets)
