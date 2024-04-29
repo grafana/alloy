@@ -2,11 +2,10 @@
 package kafka
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
@@ -26,7 +25,6 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			checkOutputSignals(args.(Arguments).Output, opts.Logger)
 			fact := kafkareceiver.NewFactory()
 			return receiver.New(opts, fact, args.(Arguments))
 		},
@@ -81,21 +79,25 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-func checkOutputSignals(output *otelcol.ConsumerArguments, logger log.Logger) {
+// Validate implements syntax.Validator.
+func (args *Arguments) Validate() error {
 	var signals []string
 
-	if len(output.Logs) > 0 {
-		signals = append(signals, "logs")
+	if len(args.Topic) > 0 {
+		if len(args.Output.Logs) > 0 {
+			signals = append(signals, "logs")
+		}
+		if len(args.Output.Metrics) > 0 {
+			signals = append(signals, "metrics")
+		}
+		if len(args.Output.Traces) > 0 {
+			signals = append(signals, "traces")
+		}
+		if len(signals) > 1 {
+			return fmt.Errorf("if the argument topic is specified, only one signal can be set in the output block, current: %s", strings.Join(signals, ", "))
+		}
 	}
-	if len(output.Metrics) > 0 {
-		signals = append(signals, "metrics")
-	}
-	if len(output.Traces) > 0 {
-		signals = append(signals, "traces")
-	}
-	if len(signals) > 1 {
-		level.Warn(logger).Log("msg", "only one output signal should be set", "signals", strings.Join(signals, ", "))
-	}
+	return nil
 }
 
 // Convert implements receiver.Arguments.

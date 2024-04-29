@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
@@ -432,4 +433,33 @@ func TestDebugMetricsConfig(t *testing.T) {
 			require.Equal(t, tc.expected, args.DebugMetricsConfig())
 		})
 	}
+}
+
+func TestArguments_Validate(t *testing.T) {
+	cfg := `
+		brokers = ["10.10.10.10:9092"]
+		protocol_version = "2.0.0"
+		topic = "traces"
+		output {
+		}
+	`
+	var args kafka.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	// Adding two traces consumer, expect no error
+	tracesConsumer := fakeconsumer.Consumer{}
+	args.Output.Traces = append(args.Output.Traces, &tracesConsumer)
+	tracesConsumer2 := fakeconsumer.Consumer{}
+	args.Output.Traces = append(args.Output.Traces, &tracesConsumer2)
+	require.NoError(t, args.Validate())
+
+	// Adding another signal type
+	logsConsumer := fakeconsumer.Consumer{}
+	args.Output.Logs = append(args.Output.Logs, &logsConsumer)
+	require.ErrorContains(t, args.Validate(), "if the argument topic is specified, only one signal can be set in the output block, current: logs, traces")
+
+	// Adding another signal type
+	metricsConsumer := fakeconsumer.Consumer{}
+	args.Output.Metrics = append(args.Output.Metrics, &metricsConsumer)
+	require.ErrorContains(t, args.Validate(), "if the argument topic is specified, only one signal can be set in the output block, current: logs, metrics, traces")
 }
