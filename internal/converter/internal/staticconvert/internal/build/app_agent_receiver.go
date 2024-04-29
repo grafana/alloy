@@ -3,13 +3,13 @@ package build
 import (
 	"fmt"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/faro/receiver"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	app_agent_receiver_v2 "github.com/grafana/alloy/internal/static/integrations/v2/app_agent_receiver"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/scanner"
 )
@@ -52,7 +52,7 @@ func toAppAgentReceiverV2(config *app_agent_receiver_v2.Config) *receiver.Argume
 			Port:                  config.Server.Port,
 			CORSAllowedOrigins:    config.Server.CORSAllowedOrigins,
 			APIKey:                alloytypes.Secret(config.Server.APIKey),
-			MaxAllowedPayloadSize: units.Base2Bytes(config.Server.MaxAllowedPayloadSize),
+			MaxAllowedPayloadSize: units.Bytes(config.Server.MaxAllowedPayloadSize),
 			RateLimiting: receiver.RateLimitingArguments{
 				Enabled:   config.Server.RateLimiting.Enabled,
 				Rate:      config.Server.RateLimiting.RPS,

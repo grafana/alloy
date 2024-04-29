@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -245,8 +245,8 @@ type GRPCClientArguments struct {
 	TLS       otelcol.TLSClientArguments        `alloy:"tls,block,optional"`
 	Keepalive *otelcol.KeepaliveClientArguments `alloy:"keepalive,block,optional"`
 
-	ReadBufferSize  units.Base2Bytes  `alloy:"read_buffer_size,attr,optional"`
-	WriteBufferSize units.Base2Bytes  `alloy:"write_buffer_size,attr,optional"`
+	ReadBufferSize  units.Bytes       `alloy:"read_buffer_size,attr,optional"`
+	WriteBufferSize units.Bytes       `alloy:"write_buffer_size,attr,optional"`
 	WaitForReady    bool              `alloy:"wait_for_ready,attr,optional"`
 	Headers         map[string]string `alloy:"headers,attr,optional"`
 	BalancerName    string            `alloy:"balancer_name,attr,optional"`

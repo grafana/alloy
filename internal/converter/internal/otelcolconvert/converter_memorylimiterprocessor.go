@@ -3,11 +3,11 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/memorylimiter"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/units"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor/memorylimiterprocessor"
 )
@@ -52,8 +52,8 @@ func toMemoryLimiterProcessor(state *State, id component.InstanceID, cfg *memory
 
 	return &memorylimiter.Arguments{
 		CheckInterval:         cfg.CheckInterval,
-		MemoryLimit:           units.Base2Bytes(cfg.MemoryLimitMiB) * units.MiB,
-		MemorySpikeLimit:      units.Base2Bytes(cfg.MemorySpikeLimitMiB) * units.MiB,
+		MemoryLimit:           units.Bytes(cfg.MemoryLimitMiB) * units.Mebibyte,
+		MemorySpikeLimit:      units.Bytes(cfg.MemorySpikeLimitMiB) * units.Mebibyte,
 		MemoryLimitPercentage: cfg.MemoryLimitPercentage,
 		MemorySpikePercentage: cfg.MemorySpikePercentage,
 		Output: &otelcol.ConsumerArguments{

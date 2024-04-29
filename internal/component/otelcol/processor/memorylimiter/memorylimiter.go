@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/units"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/processor/memorylimiterprocessor"
@@ -31,11 +31,11 @@ func init() {
 
 // Arguments configures the otelcol.processor.memory_limiter component.
 type Arguments struct {
-	CheckInterval         time.Duration    `alloy:"check_interval,attr"`
-	MemoryLimit           units.Base2Bytes `alloy:"limit,attr,optional"`
-	MemorySpikeLimit      units.Base2Bytes `alloy:"spike_limit,attr,optional"`
-	MemoryLimitPercentage uint32           `alloy:"limit_percentage,attr,optional"`
-	MemorySpikePercentage uint32           `alloy:"spike_limit_percentage,attr,optional"`
+	CheckInterval         time.Duration `alloy:"check_interval,attr"`
+	MemoryLimit           units.Bytes   `alloy:"limit,attr,optional"`
+	MemorySpikeLimit      units.Bytes   `alloy:"spike_limit,attr,optional"`
+	MemoryLimitPercentage uint32        `alloy:"limit_percentage,attr,optional"`
+	MemorySpikePercentage uint32        `alloy:"spike_limit_percentage,attr,optional"`
 
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`

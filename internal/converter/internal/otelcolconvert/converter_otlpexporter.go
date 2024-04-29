@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/units"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -108,8 +108,8 @@ func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArgume
 		TLS:       toTLSClientArguments(cfg.TLSSetting),
 		Keepalive: toKeepaliveClientArguments(cfg.Keepalive),
 
-		ReadBufferSize:  units.Base2Bytes(cfg.ReadBufferSize),
-		WriteBufferSize: units.Base2Bytes(cfg.WriteBufferSize),
+		ReadBufferSize:  units.Bytes(cfg.ReadBufferSize),
+		WriteBufferSize: units.Bytes(cfg.WriteBufferSize),
 		WaitForReady:    cfg.WaitForReady,
 		Headers:         toHeadersMap(cfg.Headers),
 		BalancerName:    balancerName,

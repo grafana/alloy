@@ -4,11 +4,11 @@ package jaeger
 import (
 	"fmt"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfiggrpc "go.opentelemetry.io/collector/config/configgrpc"
@@ -144,11 +144,11 @@ func (args *ThriftHTTP) Convert() *otelconfighttp.ServerConfig {
 
 // ProtocolUDP configures a UDP server.
 type ProtocolUDP struct {
-	Endpoint         string           `alloy:"endpoint,attr,optional"`
-	QueueSize        int              `alloy:"queue_size,attr,optional"`
-	MaxPacketSize    units.Base2Bytes `alloy:"max_packet_size,attr,optional"`
-	Workers          int              `alloy:"workers,attr,optional"`
-	SocketBufferSize units.Base2Bytes `alloy:"socket_buffer_size,attr,optional"`
+	Endpoint         string      `alloy:"endpoint,attr,optional"`
+	QueueSize        int         `alloy:"queue_size,attr,optional"`
+	MaxPacketSize    units.Bytes `alloy:"max_packet_size,attr,optional"`
+	Workers          int         `alloy:"workers,attr,optional"`
+	SocketBufferSize units.Bytes `alloy:"socket_buffer_size,attr,optional"`
 }
 
 // Convert converts proto into the upstream type.
@@ -179,7 +179,7 @@ func (args *ThriftCompact) SetToDefault() {
 		ProtocolUDP: &ProtocolUDP{
 			Endpoint:      "0.0.0.0:6831",
 			QueueSize:     1_000,
-			MaxPacketSize: 65 * units.KiB,
+			MaxPacketSize: 65 * units.Kibibyte,
 			Workers:       10,
 		},
 	}
@@ -205,7 +205,7 @@ func (args *ThriftBinary) SetToDefault() {
 		ProtocolUDP: &ProtocolUDP{
 			Endpoint:      "0.0.0.0:6832",
 			QueueSize:     1_000,
-			MaxPacketSize: 65 * units.KiB,
+			MaxPacketSize: 65 * units.Kibibyte,
 			Workers:       10,
 		},
 	}

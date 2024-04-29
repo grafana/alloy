@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alecthomas/units"
+	alecthomas_units "github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	component_config "github.com/grafana/alloy/internal/component/common/config"
@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/grafana/alloy/internal/useragent"
 	client_prometheus "github.com/prometheus/client_golang/prometheus"
 	config_util "github.com/prometheus/common/config"
@@ -69,7 +70,7 @@ type Arguments struct {
 	Scheme string `alloy:"scheme,attr,optional"`
 	// An uncompressed response body larger than this many bytes will cause the
 	// scrape to fail. 0 means no limit.
-	BodySizeLimit units.Base2Bytes `alloy:"body_size_limit,attr,optional"`
+	BodySizeLimit units.Bytes `alloy:"body_size_limit,attr,optional"`
 	// More than this many samples post metric-relabeling will cause the scrape
 	// to fail.
 	SampleLimit uint `alloy:"sample_limit,attr,optional"`
@@ -299,7 +300,7 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.ScrapeTimeout = model.Duration(c.ScrapeTimeout)
 	dec.MetricsPath = c.MetricsPath
 	dec.Scheme = c.Scheme
-	dec.BodySizeLimit = c.BodySizeLimit
+	dec.BodySizeLimit = alecthomas_units.Base2Bytes(c.BodySizeLimit)
 	dec.SampleLimit = c.SampleLimit
 	dec.TargetLimit = c.TargetLimit
 	dec.LabelLimit = c.LabelLimit

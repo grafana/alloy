@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alecthomas/units"
 	promtailmetric "github.com/grafana/loki/clients/pkg/logentry/metric"
 	promtailstages "github.com/grafana/loki/clients/pkg/logentry/stages"
 	"github.com/grafana/loki/pkg/util/flagext"
@@ -15,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/units"
 )
 
 func convertStage(st interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
@@ -293,7 +293,7 @@ func convertDrop(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, 
 		olderThan = d
 	}
 
-	var longerThan units.Base2Bytes
+	var longerThan units.Bytes
 	if pDrop.LongerThan != nil {
 		var pLongerThan flagext.ByteSize
 		err := pLongerThan.Set(*pDrop.LongerThan)
@@ -301,7 +301,8 @@ func convertDrop(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, 
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("invalid pipeline_stages.drop.longer_than field: %v", err))
 			return stages.StageConfig{}, false
 		}
-		longerThan, err = units.ParseBase2Bytes(fmt.Sprintf("%dB", pLongerThan.Val()))
+
+		err = longerThan.UnmarshalText([]byte(fmt.Sprintf("%dB", pLongerThan.Val())))
 		if err != nil {
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("invalid pipeline_stages.drop.longer_than field: failed Alloy type conversion: %v", err))
 			return stages.StageConfig{}, false

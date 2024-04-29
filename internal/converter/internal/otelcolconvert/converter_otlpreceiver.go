@@ -3,11 +3,11 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/otlp"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -75,10 +75,10 @@ func toGRPCServerArguments(cfg *configgrpc.ServerConfig) *otelcol.GRPCServerArgu
 
 		TLS: toTLSServerArguments(cfg.TLSSetting),
 
-		MaxRecvMsgSize:       units.Base2Bytes(cfg.MaxRecvMsgSizeMiB) * units.MiB,
+		MaxRecvMsgSize:       units.Bytes(cfg.MaxRecvMsgSizeMiB) * units.Mebibyte,
 		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
-		ReadBufferSize:       units.Base2Bytes(cfg.ReadBufferSize),
-		WriteBufferSize:      units.Base2Bytes(cfg.WriteBufferSize),
+		ReadBufferSize:       units.Bytes(cfg.ReadBufferSize),
+		WriteBufferSize:      units.Bytes(cfg.WriteBufferSize),
 
 		Keepalive: toKeepaliveServerArguments(cfg.Keepalive),
 
@@ -177,7 +177,7 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 
 		CORS: toCORSArguments(cfg.CORS),
 
-		MaxRequestBodySize: units.Base2Bytes(cfg.MaxRequestBodySize),
+		MaxRequestBodySize: units.Bytes(cfg.MaxRequestBodySize),
 		IncludeMetadata:    cfg.IncludeMetadata,
 	}
 }

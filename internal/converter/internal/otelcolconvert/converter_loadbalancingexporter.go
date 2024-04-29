@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	"go.opentelemetry.io/collector/component"
 )
@@ -93,8 +93,8 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 				TLS:       toTLSClientArguments(cfg.OTLP.TLSSetting),
 				Keepalive: toKeepaliveClientArguments(cfg.OTLP.Keepalive),
 
-				ReadBufferSize:  units.Base2Bytes(cfg.OTLP.ReadBufferSize),
-				WriteBufferSize: units.Base2Bytes(cfg.OTLP.WriteBufferSize),
+				ReadBufferSize:  units.Bytes(cfg.OTLP.ReadBufferSize),
+				WriteBufferSize: units.Bytes(cfg.OTLP.WriteBufferSize),
 				WaitForReady:    cfg.OTLP.WaitForReady,
 				Headers:         toHeadersMap(cfg.OTLP.Headers),
 				BalancerName:    balancerName,

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -108,7 +108,7 @@ func TestPayloadWithinLimit(t *testing.T) {
 	)
 
 	h.Update(ServerArguments{
-		MaxAllowedPayloadSize: units.Base2Bytes(len(emptyPayload)),
+		MaxAllowedPayloadSize: units.Bytes(len(emptyPayload)),
 	})
 
 	req, err := http.NewRequest(http.MethodPost, "/collect", strings.NewReader(emptyPayload))
@@ -134,7 +134,7 @@ func TestPayloadTooLarge(t *testing.T) {
 	)
 
 	h.Update(ServerArguments{
-		MaxAllowedPayloadSize: units.Base2Bytes(len(emptyPayload) - 1),
+		MaxAllowedPayloadSize: units.Bytes(len(emptyPayload) - 1),
 	})
 
 	req, err := http.NewRequest(http.MethodPost, "/collect", strings.NewReader(emptyPayload))

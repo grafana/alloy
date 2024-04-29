@@ -5,11 +5,11 @@ otelcol.receiver.jaeger "default" {
 		thrift_http { }
 
 		thrift_binary {
-			max_packet_size = "63KiB488B"
+			max_packet_size = "65kB"
 		}
 
 		thrift_compact {
-			max_packet_size = "63KiB488B"
+			max_packet_size = "65kB"
 		}
 	}
 

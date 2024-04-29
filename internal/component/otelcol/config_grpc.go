@@ -3,8 +3,8 @@ package otelcol
 import (
 	"time"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/units"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	otelconfiggrpc "go.opentelemetry.io/collector/config/configgrpc"
@@ -23,10 +23,10 @@ type GRPCServerArguments struct {
 
 	TLS *TLSServerArguments `alloy:"tls,block,optional"`
 
-	MaxRecvMsgSize       units.Base2Bytes `alloy:"max_recv_msg_size,attr,optional"`
-	MaxConcurrentStreams uint32           `alloy:"max_concurrent_streams,attr,optional"`
-	ReadBufferSize       units.Base2Bytes `alloy:"read_buffer_size,attr,optional"`
-	WriteBufferSize      units.Base2Bytes `alloy:"write_buffer_size,attr,optional"`
+	MaxRecvMsgSize       units.Bytes `alloy:"max_recv_msg_size,attr,optional"`
+	MaxConcurrentStreams uint32      `alloy:"max_concurrent_streams,attr,optional"`
+	ReadBufferSize       units.Bytes `alloy:"read_buffer_size,attr,optional"`
+	WriteBufferSize      units.Bytes `alloy:"write_buffer_size,attr,optional"`
 
 	Keepalive *KeepaliveServerArguments `alloy:"keepalive,block,optional"`
 
@@ -141,8 +141,8 @@ type GRPCClientArguments struct {
 	TLS       TLSClientArguments        `alloy:"tls,block,optional"`
 	Keepalive *KeepaliveClientArguments `alloy:"keepalive,block,optional"`
 
-	ReadBufferSize  units.Base2Bytes  `alloy:"read_buffer_size,attr,optional"`
-	WriteBufferSize units.Base2Bytes  `alloy:"write_buffer_size,attr,optional"`
+	ReadBufferSize  units.Bytes       `alloy:"read_buffer_size,attr,optional"`
+	WriteBufferSize units.Bytes       `alloy:"write_buffer_size,attr,optional"`
 	WaitForReady    bool              `alloy:"wait_for_ready,attr,optional"`
 	Headers         map[string]string `alloy:"headers,attr,optional"`
 	BalancerName    string            `alloy:"balancer_name,attr,optional"`

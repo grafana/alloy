@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alecthomas/units"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/grafana/alloy/internal/util"
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/client_golang/prometheus"
@@ -48,7 +48,7 @@ func Test_dropStage_Process(t *testing.T) {
 	require.Nil(t, cfg.LogLevel.Set("debug"))
 	Debug = true
 
-	tenBytes, _ := units.ParseBase2Bytes("10B")
+	tenBytes := 10 * units.Byte
 	oneHour := 1 * time.Hour
 
 	tests := []struct {

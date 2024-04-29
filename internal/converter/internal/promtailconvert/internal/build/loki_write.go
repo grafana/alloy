@@ -3,11 +3,11 @@ package build
 import (
 	"fmt"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	lokiwrite "github.com/grafana/alloy/internal/component/loki/write"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/grafana/loki/clients/pkg/promtail/client"
 	lokiflag "github.com/grafana/loki/pkg/util/flagext"
@@ -29,8 +29,8 @@ func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, lab
 }
 
 func toLokiWriteArguments(config *client.Config, diags *diag.Diagnostics) *lokiwrite.Arguments {
-	batchSize, err := units.ParseBase2Bytes(fmt.Sprintf("%dB", config.BatchSize))
-	if err != nil {
+	var batchSize units.Bytes
+	if err := batchSize.UnmarshalText([]byte(fmt.Sprintf("%dB", config.BatchSize))); err != nil {
 		diags.Add(
 			diag.SeverityLevelError,
 			fmt.Sprintf("failed to parse BatchSize for client config %s: %s", config.Name, err.Error()),

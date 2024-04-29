@@ -3,8 +3,8 @@ package otelcol
 import (
 	"time"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/units"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	otelconfighttp "go.opentelemetry.io/collector/config/confighttp"
@@ -29,8 +29,8 @@ type HTTPServerArguments struct {
 	// We will need to generally figure out how we want to provide common
 	// authentication extensions to all of our components.
 
-	MaxRequestBodySize units.Base2Bytes `alloy:"max_request_body_size,attr,optional"`
-	IncludeMetadata    bool             `alloy:"include_metadata,attr,optional"`
+	MaxRequestBodySize units.Bytes `alloy:"max_request_body_size,attr,optional"`
+	IncludeMetadata    bool        `alloy:"include_metadata,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -80,8 +80,8 @@ type HTTPClientArguments struct {
 
 	TLS TLSClientArguments `alloy:"tls,block,optional"`
 
-	ReadBufferSize  units.Base2Bytes  `alloy:"read_buffer_size,attr,optional"`
-	WriteBufferSize units.Base2Bytes  `alloy:"write_buffer_size,attr,optional"`
+	ReadBufferSize  units.Bytes       `alloy:"read_buffer_size,attr,optional"`
+	WriteBufferSize units.Bytes       `alloy:"write_buffer_size,attr,optional"`
 	Timeout         time.Duration     `alloy:"timeout,attr,optional"`
 	Headers         map[string]string `alloy:"headers,attr,optional"`
 	// CustomRoundTripper  func(next http.RoundTripper) (http.RoundTripper, error) TODO (@tpaschalis)

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	net_url "net/url"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/units"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"

@@ -18,7 +18,7 @@ otelcol.extension.jaeger_remote_sampling "default_0" {
 		remote {
 			endpoint          = "jaeger-collector:14250"
 			compression       = ""
-			write_buffer_size = "0B"
+			write_buffer_size = "0"
 		}
 		reload_interval = "30s"
 	}
