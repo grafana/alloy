@@ -32,6 +32,7 @@ type handler struct {
 	mut           sync.RWMutex
 	currentFormat Format
 	inner         slog.Handler
+	replacer      func(groups []string, a slog.Attr) slog.Attr
 }
 
 type formatter interface {
@@ -75,7 +76,7 @@ func (h *handler) buildHandler() slog.Handler {
 
 		// Replace attributes with how they were represented in go-kit/log for
 		// consistency.
-		ReplaceAttr: replace,
+		ReplaceAttr: h.replacer,
 	}
 
 	switch expectFormat {
@@ -127,8 +128,9 @@ func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		leveler:   h.leveler,
 		formatter: h.formatter,
 
-		attrs: newAttrs,
-		group: h.group,
+		attrs:    newAttrs,
+		group:    h.group,
+		replacer: h.replacer,
 	}
 }
 
@@ -138,8 +140,9 @@ func (h *handler) WithGroup(name string) slog.Handler {
 		leveler:   h.leveler,
 		formatter: h.formatter,
 
-		attrs: h.attrs,
-		group: append(slices.Clone(h.group), name),
+		attrs:    h.attrs,
+		group:    append(slices.Clone(h.group), name),
+		replacer: h.replacer,
 	}
 }
 
@@ -197,4 +200,25 @@ func replace(groups []string, a slog.Attr) slog.Attr {
 	}
 
 	return a
+}
+
+// testReplace is used for unit tests so we can ensure the time and source fields are consistent.
+func testReplace(groups []string, a slog.Attr) slog.Attr {
+	ra := replace(groups, a)
+	switch a.Key {
+	case "ts":
+		fallthrough
+	case "time":
+		return slog.Attr{
+			Key:   "ts",
+			Value: slog.StringValue("2024-04-29T18:26:21.37723798Z"),
+		}
+	case "source":
+		return slog.Attr{
+			Key:   "source",
+			Value: slog.StringValue("test_source"),
+		}
+	default:
+		return ra
+	}
 }

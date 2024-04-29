@@ -62,6 +62,7 @@ func New(w io.Writer, o Options) (*Logger, error) {
 			w:         &writer,
 			leveler:   &leveler,
 			formatter: &format,
+			replacer:  replace,
 		},
 	}
 
@@ -94,9 +95,22 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 			w:         &writer,
 			leveler:   &leveler,
 			formatter: &format,
+			replacer:  replace,
 		},
 	}
 	l.DeferredSlog = NewDeferredHandler(l)
+
+	return l, nil
+}
+
+// newDeferredTest creates a new logger with the default log level and format. Used for tests.
+// The logger is not updated during initialization.
+func newDeferredTest(w io.Writer) (*Logger, error) {
+	l, err := NewDeferred(w)
+	if err != nil {
+		return nil, err
+	}
+	l.handler.replacer = testReplace
 
 	return l, nil
 }
@@ -127,7 +141,9 @@ func (l *Logger) Update(o Options) error {
 	l.writer.Set(newWriter)
 
 	// Build all our deferred handlers
-	l.DeferredSlog.buildHandlers(nil)
+	if l.DeferredSlog != nil {
+		l.DeferredSlog.buildHandlers(nil)
+	}
 	// Print out the buffered logs since we determined the log format already
 	for _, bufferedLogChunk := range l.buffer {
 		if len(bufferedLogChunk.kvps) > 0 {
