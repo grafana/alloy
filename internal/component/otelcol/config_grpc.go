@@ -50,7 +50,7 @@ func (args *GRPCServerArguments) Convert() *otelconfiggrpc.ServerConfig {
 	return &otelconfiggrpc.ServerConfig{
 		NetAddr: confignet.AddrConfig{
 			Endpoint:  args.Endpoint,
-			Transport: args.Transport,
+			Transport: confignet.TransportType(args.Transport),
 		},
 
 		TLSSetting: args.TLS.Convert(),

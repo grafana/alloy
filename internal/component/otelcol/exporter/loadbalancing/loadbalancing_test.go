@@ -221,6 +221,7 @@ func TestConfigConversion(t *testing.T) {
 					K8sSvc: &loadbalancingexporter.K8sSvcResolver{
 						Service: "lb-svc.lb-ns",
 						Ports:   []int32{4317},
+						Timeout: 1 * time.Second,
 					},
 				},
 				RoutingKey: "traceID",
@@ -234,6 +235,7 @@ func TestConfigConversion(t *testing.T) {
 				kubernetes {
 					service = "lb-svc.lb-ns"
 					ports = [55690, 55691]
+					timeout = "13s"
 				}
 			}
 			protocol {
@@ -248,6 +250,7 @@ func TestConfigConversion(t *testing.T) {
 					K8sSvc: &loadbalancingexporter.K8sSvcResolver{
 						Service: "lb-svc.lb-ns",
 						Ports:   []int32{55690, 55691},
+						Timeout: 13 * time.Second,
 					},
 				},
 				RoutingKey: "traceID",

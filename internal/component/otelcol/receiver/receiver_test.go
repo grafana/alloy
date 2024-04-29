@@ -142,7 +142,7 @@ func newTestEnvironment(t *testing.T, onTracesConsumer func(t otelconsumer.Trace
 			// Create a factory which always returns our instance of fakeReceiver
 			// defined above.
 			factory := otelreceiver.NewFactory(
-				"testcomponent",
+				otelcomponent.MustNewType("testcomponent"),
 				func() otelcomponent.Config { return nil },
 				otelreceiver.WithTraces(func(
 					_ context.Context,

@@ -46,8 +46,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxItems: 1000,
 					TTL:      2 * time.Second,
 				},
-				CacheLoop:           1 * time.Minute,
-				StoreExpirationLoop: 2 * time.Second,
+				CacheLoop:             1 * time.Minute,
+				StoreExpirationLoop:   2 * time.Second,
+				DatabaseNameAttribute: "db.name",
 				//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 				// the "processor.servicegraph.virtualNode" feature gate.
 				// VirtualNodePeerAttributes: []string{
@@ -87,8 +88,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxItems: 333,
 					TTL:      12 * time.Hour,
 				},
-				CacheLoop:           55 * time.Minute,
-				StoreExpirationLoop: 77 * time.Second,
+				CacheLoop:             55 * time.Minute,
+				StoreExpirationLoop:   77 * time.Second,
+				DatabaseNameAttribute: "db.name",
 				//TODO: Ad VirtualNodePeerAttributes when it's no longer controlled by
 				// the "processor.servicegraph.virtualNode" feature gate.
 				// VirtualNodePeerAttributes: []string{"attr1", "attr2"},
