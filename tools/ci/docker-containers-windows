@@ -22,12 +22,14 @@ export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
 if [ -n "$DRONE_TAG" ]; then
   VERSION=$DRONE_TAG
 else
+  # NOTE(rfratto): Do not use ./tools/image-tag-docker here, which doesn't
+  # produce valid semver.
   VERSION=$(./tools/image-tag)
 fi
 
 # The VERSION_TAG is the version to use for the Docker tag. It is sanitized to
-# force it to be a valid tag name; ./tools/image-tag can emit characters that
-# are valid for semver but invalid for Docker tags, such as +.
+# force it to be a valid Docker tag name (primarily by removing the +
+# characters that may have been emitted by ./tools/image-tag).
 VERSION_TAG=${VERSION//+/-}-nanoserver-1809
 
 # We also need to know which "branch tag" to update. Branch tags are used as a
@@ -38,8 +40,8 @@ VERSION_TAG=${VERSION//+/-}-nanoserver-1809
 # If we're not running from drone, we'll set the branch tag to match the
 # version. This effectively acts as a no-op because it will tag the same Docker
 # image twice.
-if [[ -n "$DRONE_TAG" && "$DRONE_TAG" != *"-rc."* ]] || [[ "$TARGET_CONTAINER" == *"-devel" ]]; then
-  BRANCH_TAG=latest-nanoserver-1809
+if [[ -n "$DRONE_TAG" && "$DRONE_TAG" != *"-rc."* ]] || [[ "$TARGET_CONTAINER" == *"-devel"* ]]; then
+  BRANCH_TAG=nanoserver-1809
 else
   BRANCH_TAG=$VERSION_TAG
 fi

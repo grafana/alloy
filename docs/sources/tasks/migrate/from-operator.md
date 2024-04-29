@@ -55,7 +55,7 @@ You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 
     This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular {{< param "PRODUCT_NAME" >}} configuration file.
 
-## Convert `MetricsIntances` to {{% param "PRODUCT_NAME" %}} components
+## Convert `MetricsInstance` to {{% param "PRODUCT_NAME" %}} components
 
 A `MetricsInstance` resource primarily defines:
 

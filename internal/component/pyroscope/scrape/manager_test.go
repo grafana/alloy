@@ -16,7 +16,7 @@ import (
 func TestManager(t *testing.T) {
 	reloadInterval = time.Millisecond
 
-	m := NewManager(pyroscope.AppendableFunc(func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
+	m := NewManager(Options{}, pyroscope.AppendableFunc(func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 		return nil
 	}), util.TestLogger(t))
 

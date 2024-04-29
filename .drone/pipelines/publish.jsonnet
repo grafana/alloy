@@ -174,63 +174,50 @@ local windows_containers_jobs = std.map(function(container) (
 
 linux_containers_dev_jobs + windows_containers_dev_jobs +
 linux_containers_jobs + windows_containers_jobs + [
-  // TODO(rfratto): Re-enable CD for development images.
-  /*
-    pipelines.linux('Deploy to deployment_tools') {
-      trigger: {
-        ref: ['refs/heads/main'],
-      },
-      image_pull_secrets: ['dockerconfigjson'],
-      steps: [
-        {
-          name: 'Create .image-tag',
-          image: 'alpine',
-          commands: [
-            'apk update && apk add git',
-            'echo "$(sh ./tools/image-tag)" > .tag-only',
-            'echo "grafana/agent:$(sh ./tools/image-tag)" > .image-tag',
-          ],
-        },
-        {
-          name: 'Update deployment_tools',
-          image: 'us.gcr.io/kubernetes-dev/drone/plugins/updater',
-          settings: {
-            config_json: |||
-              {
-                "git_committer_name": "updater-for-ci[bot]",
-                "git_author_name": "updater-for-ci[bot]",
-                "git_committer_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
-                "git_author_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
-                "destination_branch": "master",
-                "repo_name": "deployment_tools",
-                "update_jsonnet_attribute_configs": [
-                  {
-                    "file_path": "ksonnet/environments/kowalski/dev-us-central-0.kowalski-dev/main.jsonnet",
-                    "jsonnet_key": "agent_image",
-                    "jsonnet_value_file": ".image-tag"
-                  },
-                  {
-                    "file_path": "ksonnet/environments/grafana-agent/waves/agent.libsonnet",
-                    "jsonnet_key": "dev_canary",
-                    "jsonnet_value_file": ".image-tag"
-                  },
-                  {
-                    "file_path": "ksonnet/environments/pyroscope-ebpf/waves/ebpf.libsonnet",
-                    "jsonnet_key": "dev_canary",
-                    "jsonnet_value_file": ".image-tag"
-                  }
-                ]
-              }
-            |||,
-            github_app_id: secrets.updater_app_id.fromSecret,
-            github_app_installation_id: secrets.updater_app_installation_id.fromSecret,
-            github_app_private_key: secrets.updater_private_key.fromSecret,
-          },
-        },
-      ],
-      depends_on: job_names(linux_containers_dev_jobs),
+  pipelines.linux('Deploy to deployment_tools') {
+    trigger: {
+      ref: ['refs/heads/main'],
     },
-  */
+    image_pull_secrets: ['dockerconfigjson'],
+    steps: [
+      {
+        name: 'Create .image-tag',
+        image: 'alpine',
+        commands: [
+          'apk add --no-cache bash git',
+          'echo "$(bash ./tools/image-tag-docker)" > .tag-only',
+          'echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag',
+        ],
+      },
+      {
+        name: 'Update deployment_tools',
+        image: 'us.gcr.io/kubernetes-dev/drone/plugins/updater',
+        settings: {
+          config_json: |||
+            {
+              "git_committer_name": "updater-for-ci[bot]",
+              "git_author_name": "updater-for-ci[bot]",
+              "git_committer_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
+              "git_author_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
+              "destination_branch": "master",
+              "repo_name": "deployment_tools",
+              "update_jsonnet_attribute_configs": [
+                {
+                  "file_path": "ksonnet/environments/grafana-agent/waves/alloy.libsonnet",
+                  "jsonnet_key": "dev_canary",
+                  "jsonnet_value_file": ".image-tag"
+                }
+              ]
+            }
+          |||,
+          github_app_id: secrets.updater_app_id.fromSecret,
+          github_app_installation_id: secrets.updater_app_installation_id.fromSecret,
+          github_app_private_key: secrets.updater_private_key.fromSecret,
+        },
+      },
+    ],
+    depends_on: job_names(linux_containers_dev_jobs),
+  },
 
   pipelines.linux('Publish release') {
     trigger: {

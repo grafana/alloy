@@ -508,6 +508,52 @@ volumes:
   name: docker
 ---
 depends_on:
+- Publish development Linux alloy container
+image_pull_secrets:
+- dockerconfigjson
+kind: pipeline
+name: Deploy to deployment_tools
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - apk add --no-cache bash git
+  - echo "$(bash ./tools/image-tag-docker)" > .tag-only
+  - echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
+  image: alpine
+  name: Create .image-tag
+- image: us.gcr.io/kubernetes-dev/drone/plugins/updater
+  name: Update deployment_tools
+  settings:
+    config_json: |
+      {
+        "git_committer_name": "updater-for-ci[bot]",
+        "git_author_name": "updater-for-ci[bot]",
+        "git_committer_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
+        "git_author_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
+        "destination_branch": "master",
+        "repo_name": "deployment_tools",
+        "update_jsonnet_attribute_configs": [
+          {
+            "file_path": "ksonnet/environments/grafana-agent/waves/alloy.libsonnet",
+            "jsonnet_key": "dev_canary",
+            "jsonnet_value_file": ".image-tag"
+          }
+        ]
+      }
+    github_app_id:
+      from_secret: updater_app_id
+    github_app_installation_id:
+      from_secret: updater_app_installation_id
+    github_app_private_key:
+      from_secret: updater_private_key
+trigger:
+  ref:
+  - refs/heads/main
+type: docker
+---
+depends_on:
 - Publish Linux alloy container
 - Publish Windows alloy container
 image_pull_secrets:
@@ -667,6 +713,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 509bd7ed68a70f0e6930bd350dd71a7a3a48e199ac8e129b073ce32f08314c79
+hmac: eef3ddde1e027f6c8c113bf748036cb79961708262d651193c231096cda5260d
 
 ...

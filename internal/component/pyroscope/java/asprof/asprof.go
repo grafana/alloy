@@ -184,6 +184,9 @@ func isGlibcMapping(m *procfs.ProcMap) bool {
 	if strings.Contains(m.Pathname, "x86_64-linux-gnu/libc-") {
 		return true
 	}
+	if strings.Contains(m.Pathname, "aarch64-linux-gnu/libc-") {
+		return true
+	}
 	return false
 }
 

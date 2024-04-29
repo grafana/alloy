@@ -17,9 +17,6 @@ local locals = {
 };
 
 [
-  // TODO(rfratto): The following are temporarily diasbled as grafana/alloy
-  // gets set up.
-
   pipelines.linux('Create Linux build image') {
     trigger: locals.on_build_image_tag,
     steps: [{
