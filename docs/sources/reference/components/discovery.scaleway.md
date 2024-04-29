@@ -44,7 +44,7 @@ Name                     | Type                | Description                    
 `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`                      | no
 `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                              | no
 `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`                       | no
-`host`                   | `string`            | Override HTTP hostname                                                                           |                              | no
+`host`                   | `string`            | Override HTTP hostname.                                                                           |                              | no
 `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`                       | no
 
 The `role` argument determines what type of Scaleway machines to discover.
