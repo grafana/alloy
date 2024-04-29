@@ -6,12 +6,12 @@ title: loki.source.podlogs
 
 # loki.source.podlogs
 
-`loki.source.podlogs` discovers `PodLogs` resources on Kubernetes and, using
-the Kubernetes API, tails logs from Kubernetes containers of Pods specified by
-the discovered Pods.
+`loki.source.podlogs` discovers `PodLogs` resources on Kubernetes.
+The `PodLogs` resources provide rules for which Kubernetes Pods to discover on your cluster.
 
-`loki.source.podlogs` is similar to `loki.source.kubernetes`, but uses custom
-resources rather than being fed targets from another component.
+`loki.source.podlogs` uses the Kubernetes API to tail the logs from the discovered Kubernetes Pods.
+
+`loki.source.podlogs` is similar to `loki.source.kubernetes`, but uses custom resources rather than being fed targets from another component.
 
 {{< admonition type="note" >}}
 Because `loki.source.podlogs` uses the Kubernetes API to tail logs, it uses more network traffic and CPU consumption of Kubelets than `loki.source.file`.
