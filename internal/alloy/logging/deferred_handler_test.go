@@ -29,7 +29,6 @@ func TestDeferredHandlerWritingToBothLoggers(t *testing.T) {
 	require.True(t, firstIndex < secondIndex)
 }
 
-// All the following tests build a normal slog handler, and a deferred handler then run the same operations on both and compare.
 func TestSlogHandle(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
@@ -55,7 +54,6 @@ func TestSlogHandleWithDifferingLevelDeny(t *testing.T) {
 		WriteTo: nil,
 	})
 	require.NoError(t, err)
-	// Since we write logs at info, but change to error then our logInfo should be clean.
 	require.True(t, bb.Len() == 0)
 }
 
@@ -70,7 +68,6 @@ func TestSlogHandleWithDifferingLevelAllow(t *testing.T) {
 		WriteTo: nil,
 	})
 	require.NoError(t, err)
-	// Since we write logs at info, but change to error then our logInfo should be clean.
 	require.True(t, bb.Len() > 0)
 }
 
@@ -85,7 +82,6 @@ func TestNormalWithDifferingLevelDeny(t *testing.T) {
 		WriteTo: nil,
 	})
 	require.NoError(t, err)
-	// Since we write logs at info, but change to error then our logInfo should be clean.
 	require.True(t, bb.Len() == 0)
 }
 
