@@ -620,7 +620,7 @@ outer:
 				return false
 			default:
 			}
-			if t.shards.enqueue(*s) {
+			if t.shards.enqueue(s) {
 				continue outer
 			}
 
@@ -637,7 +637,7 @@ outer:
 	return true
 }
 
-func (t *QueueManager) AppendExemplars(exemplars []TimeSeries) bool {
+func (t *QueueManager) AppendExemplars(exemplars []*TimeSeries) bool {
 	if !t.sendExemplars {
 		return true
 	}
@@ -671,7 +671,7 @@ outer:
 	return true
 }
 
-func (t *QueueManager) AppendHistograms(histograms []TimeSeries) bool {
+func (t *QueueManager) AppendHistograms(histograms []*TimeSeries) bool {
 	if !t.sendNativeHistograms {
 		return true
 	}
@@ -705,7 +705,7 @@ outer:
 	return true
 }
 
-func (t *QueueManager) AppendFloatHistograms(floatHistograms []TimeSeries) bool {
+func (t *QueueManager) AppendFloatHistograms(floatHistograms []*TimeSeries) bool {
 	if !t.sendNativeHistograms {
 		return true
 	}
@@ -1066,7 +1066,7 @@ func (s *shards) stop() {
 // retry. A shard is full when its configured capacity has been reached,
 // specifically, when s.queues[shard] has filled its batchQueue channel and the
 // partial batch has also been filled.
-func (s *shards) enqueue(data TimeSeries) bool {
+func (s *shards) enqueue(data *TimeSeries) bool {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 
@@ -1097,14 +1097,14 @@ func (s *shards) enqueue(data TimeSeries) bool {
 type queue struct {
 	// batchMtx covers operations appending to or publishing the partial batch.
 	batchMtx   sync.Mutex
-	batch      []TimeSeries
-	batchQueue chan []TimeSeries
+	batch      []*TimeSeries
+	batchQueue chan []*TimeSeries
 
 	// Since we know there are a limited number of batches out, using a stack
 	// is easy and safe so a sync.Pool is not necessary.
 	// poolMtx covers adding and removing batches from the batchPool.
 	poolMtx   sync.Mutex
-	batchPool [][]TimeSeries
+	batchPool [][]*TimeSeries
 }
 
 type TimeSeries struct {
@@ -1135,17 +1135,17 @@ func newQueue(batchSize, capacity int) *queue {
 		batches = 1
 	}
 	return &queue{
-		batch:      make([]TimeSeries, 0, batchSize),
-		batchQueue: make(chan []TimeSeries, batches),
+		batch:      make([]*TimeSeries, 0, batchSize),
+		batchQueue: make(chan []*TimeSeries, batches),
 		// batchPool should have capacity for everything in the channel + 1 for
 		// the batch being processed.
-		batchPool: make([][]TimeSeries, 0, batches+1),
+		batchPool: make([][]*TimeSeries, 0, batches+1),
 	}
 }
 
 // Append the TimeSeries to the buffered batch. Returns false if it
 // cannot be added and must be retried.
-func (q *queue) Append(datum TimeSeries) bool {
+func (q *queue) Append(datum *TimeSeries) bool {
 	q.batchMtx.Lock()
 	defer q.batchMtx.Unlock()
 	q.batch = append(q.batch, datum)
@@ -1164,12 +1164,12 @@ func (q *queue) Append(datum TimeSeries) bool {
 	return true
 }
 
-func (q *queue) Chan() <-chan []TimeSeries {
+func (q *queue) Chan() <-chan []*TimeSeries {
 	return q.batchQueue
 }
 
 // Batch returns the current batch and allocates a new batch.
-func (q *queue) Batch() []TimeSeries {
+func (q *queue) Batch() []*TimeSeries {
 	q.batchMtx.Lock()
 	defer q.batchMtx.Unlock()
 
@@ -1184,9 +1184,18 @@ func (q *queue) Batch() []TimeSeries {
 }
 
 // ReturnForReuse adds the batch buffer back to the internal pool.
-func (q *queue) ReturnForReuse(batch []TimeSeries) {
+func (q *queue) ReturnForReuse(batch []*TimeSeries) {
 	q.poolMtx.Lock()
 	defer q.poolMtx.Unlock()
+	for _, ts := range batch {
+		ts.histogram = nil
+		ts.floatHistogram = nil
+		ts.value = 0
+		ts.timestamp = 0
+		ts.exemplarLabels = ts.exemplarLabels[:0]
+		ts.seriesLabels = ts.seriesLabels[:0]
+		tsPool.Put(ts)
+	}
 	if len(q.batchPool) < cap(q.batchPool) {
 		q.batchPool = append(q.batchPool, batch[:0])
 	}
@@ -1224,7 +1233,7 @@ func (q *queue) tryEnqueueingBatch(done <-chan struct{}) bool {
 	}
 }
 
-func (q *queue) newBatch(capacity int) []TimeSeries {
+func (q *queue) newBatch(capacity int) []*TimeSeries {
 	q.poolMtx.Lock()
 	defer q.poolMtx.Unlock()
 	batches := len(q.batchPool)
@@ -1233,7 +1242,7 @@ func (q *queue) newBatch(capacity int) []TimeSeries {
 		q.batchPool = q.batchPool[:batches-1]
 		return batch
 	}
-	return make([]TimeSeries, 0, capacity)
+	return make([]*TimeSeries, 0, capacity)
 }
 
 func (s *shards) runShard(ctx context.Context, shardID int, queue *queue) {
@@ -1323,7 +1332,7 @@ func (s *shards) runShard(ctx context.Context, shardID int, queue *queue) {
 	}
 }
 
-func (s *shards) populateTimeSeries(batch []TimeSeries, pendingData []prompb.TimeSeries) (int, int, int) {
+func (s *shards) populateTimeSeries(batch []*TimeSeries, pendingData []prompb.TimeSeries) (int, int, int) {
 	var nPendingSamples, nPendingExemplars, nPendingHistograms int
 	for nPending, d := range batch {
 		pendingData[nPending].Samples = pendingData[nPending].Samples[:0]

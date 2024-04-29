@@ -19,20 +19,21 @@ import (
 
 // cborwriter is the primary class for serializing and deserializing metrics.
 type cborwriter struct {
-	mut            sync.Mutex
-	fq             metricQueue
-	estimatedSize  int64
-	totalSignals   int64
-	checkpointSize int64
-	root           *cborroot
-	bb             []byte
-	dictionary     map[string]int
-	index          int
-	l              log.Logger
-	flushTime      time.Duration
-	metricGauge    prometheus.Gauge
-	stop           *atomic.Bool
-	em             cbor.EncMode
+	mut               sync.Mutex
+	fq                metricQueue
+	estimatedSize     int64
+	totalSignals      int64
+	checkpointSize    int64
+	root              *cborroot
+	bb                []byte
+	dictionary        map[string]int
+	index             int
+	l                 log.Logger
+	flushTime         time.Duration
+	metricGauge       prometheus.Gauge
+	bytesWrittenGauge prometheus.Gauge
+	stop              *atomic.Bool
+	em                cbor.EncMode
 }
 
 // newCBORWrite creates a new parquetwriter.
@@ -62,10 +63,18 @@ func newCBORWrite(fq metricQueue, checkPointSize int64, flushTime time.Duration,
 				"name": fq.Name(),
 			},
 		}),
+		bytesWrittenGauge: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "alloy_queue_bytes_written",
+			Help: "Number of bytes written to the wal directory",
+			ConstLabels: map[string]string{
+				"name": fq.Name(),
+			},
+		}),
 		stop: atomic.NewBool(false),
 		em:   em,
 	}
 	r.Register(pw.metricGauge)
+	r.Register(pw.bytesWrittenGauge)
 
 	return pw
 }
@@ -166,6 +175,7 @@ func (pw *cborwriter) write() error {
 	if err != nil {
 		return err
 	}
+	pw.bytesWrittenGauge.Add(float64(len(bb)))
 	_, err = pw.fq.Add(bb)
 	return err
 }
@@ -372,12 +382,16 @@ func Deserialize(buffer []byte, maxAgeSeconds int64) ([]*TimeSeries, error) {
 	return timeSeriesArray, nil
 }
 
+var tsPool = sync.Pool{New: func() any {
+	return &TimeSeries{}
+}}
+
 func makeTS(tsVal int64, maxAgeSeconds int64, pm *cborsmetric, metricType seriesType, dict []string) *TimeSeries {
 	if tsVal < time.Now().Unix()-maxAgeSeconds && metricType != tExemplar {
 		// TODO add drop metric here.
 		return nil
 	}
-	ts := &TimeSeries{}
+	ts := tsPool.Get().(*TimeSeries)
 	ts.sType = metricType
 	ts.timestamp = tsVal
 	ts.value = pm.Value
