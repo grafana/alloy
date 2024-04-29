@@ -8,13 +8,13 @@ title: loki.source.podlogs
 
 `loki.source.podlogs` discovers `PodLogs` resources on Kubernetes and, using
 the Kubernetes API, tails logs from Kubernetes containers of Pods specified by
-the discovered them.
+the discovered Pods.
 
 `loki.source.podlogs` is similar to `loki.source.kubernetes`, but uses custom
 resources rather than being fed targets from another component.
 
 {{< admonition type="note" >}}
-Unlike `loki.source.kubernetes`, it is not possible to distribute responsibility of collecting logs across multiple {{< param "PRODUCT_NAME" >}}s.
+Unlike `loki.source.kubernetes`, it's not possible to distribute responsibility of collecting logs across multiple {{< param "PRODUCT_NAME" >}} instances.
 To avoid collecting duplicate logs, only one {{< param "PRODUCT_NAME" >}} should be running a `loki.source.podlogs` component.
 {{< /admonition >}}
 
@@ -127,7 +127,7 @@ selector                              | [selector][]         | Label selector fo
 selector > match_expression           | [match_expression][] | Label selector expression for which `PodLogs` to discover.                                       | no
 namespace_selector                    | [selector][]         | Label selector for which namespaces to discover `PodLogs` in.                                    | no
 namespace_selector > match_expression | [match_expression][] | Label selector expression for which namespaces to discover `PodLogs` in.                         | no
-clustering                            | [clustering][]       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no
+clustering                            | [clustering][]       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode.      | no
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `client > basic_auth` refers to a `basic_auth` block defined inside a `client` block.
