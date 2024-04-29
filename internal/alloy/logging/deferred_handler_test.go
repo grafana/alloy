@@ -50,7 +50,7 @@ func TestSlogHandleWithDifferingLevelDeny(t *testing.T) {
 	sl, alloy, l := newLoggers(t, bb, bbSl)
 	logInfo(sl, alloy, "test")
 	err := l.Update(Options{
-		Level:   "error",
+		Level:   "warn",
 		Format:  "json",
 		WriteTo: nil,
 	})
@@ -65,7 +65,7 @@ func TestSlogHandleWithDifferingLevelAllow(t *testing.T) {
 	sl, alloy, l := newLoggers(t, bb, bbSl)
 	logError(sl, alloy, "test")
 	err := l.Update(Options{
-		Level:   "error",
+		Level:   "warn",
 		Format:  "json",
 		WriteTo: nil,
 	})
