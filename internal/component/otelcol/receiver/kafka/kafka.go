@@ -65,7 +65,6 @@ func (args *Arguments) SetToDefault() {
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
 
-		Topic:         "otlp_spans",
 		Encoding:      "otlp_proto",
 		Brokers:       []string{"localhost:9092"},
 		ClientID:      "otel-collector",
