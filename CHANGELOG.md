@@ -41,6 +41,8 @@ Main (unreleased)
 
 - Fixed issue where text labels displayed outside of component node's boundary. (@hainenber)
 
+- Fix an issue where nested import.git config blocks could conflict if they had the same labels. (@wildum)
+
 - In `mimir.rules.kubernetes`, fix an issue where unrecoverable errors from the Mimir API were retried. (@56quarters)
 
 - Flow: Fix an issue where `faro.receiver`'s `extra_log_labels` with empty value don't
