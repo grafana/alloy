@@ -318,7 +318,7 @@ func (c *Component) distTargets(
 	// NOTE(@tpaschalis) First approach, manually building the
 	// 'clustered' targets implementation every time.
 	dt := discovery.NewDistributedTargets(clusteringEnabled, c.cluster, targets)
-	alloyTargets := dt.Get()
+	alloyTargets := dt.LocalTargets()
 	c.targetsGauge.Set(float64(len(alloyTargets)))
 	promTargets := c.componentTargetsToProm(jobName, alloyTargets)
 	return promTargets

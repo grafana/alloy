@@ -8,48 +8,68 @@ import (
 // DistributedTargets uses the node's Lookup method to distribute discovery
 // targets when a component runs in a cluster.
 type DistributedTargets struct {
-	useClustering bool
-	cluster       cluster.Cluster
-	targets       []Target
+	localTargets     []Target
+	remoteTargetKeys map[shard.Key]struct{}
 }
 
 // NewDistributedTargets creates the abstraction that allows components to
 // dynamically shard targets between components.
-func NewDistributedTargets(e bool, n cluster.Cluster, t []Target) DistributedTargets {
-	return DistributedTargets{e, n, t}
+func NewDistributedTargets(clusteringEnabled bool, cluster cluster.Cluster, allTargets []Target) DistributedTargets {
+	// TODO(@tpaschalis): Make this into a single code-path to simplify logic.
+	if !clusteringEnabled || cluster == nil {
+		return DistributedTargets{
+			localTargets:     allTargets,
+			remoteTargetKeys: map[shard.Key]struct{}{},
+		}
+	}
+
+	peerCount := len(cluster.Peers())
+	localCap := len(allTargets) + 1
+	if peerCount != 0 {
+		localCap = (len(allTargets) + 1) / peerCount
+	}
+
+	localTargets := make([]Target, 0, localCap)
+	remoteTargetKeys := make(map[shard.Key]struct{})
+
+	for _, tgt := range allTargets {
+		targetKey := keyFor(tgt)
+		peers, err := cluster.Lookup(targetKey, 1, shard.OpReadWrite)
+		belongsToLocal := err != nil || len(peers) == 0 || peers[0].Self
+
+		if belongsToLocal {
+			localTargets = append(localTargets, tgt)
+		} else {
+			remoteTargetKeys[targetKey] = struct{}{}
+		}
+	}
+
+	return DistributedTargets{localTargets: localTargets, remoteTargetKeys: remoteTargetKeys}
 }
 
-// Get distributes discovery targets a clustered environment.
-//
-// If a cluster size is 1, then all targets will be returned.
-func (t *DistributedTargets) Get() []Target {
-	// TODO(@tpaschalis): Make this into a single code-path to simplify logic.
-	if !t.useClustering || t.cluster == nil {
-		return t.targets
+// LocalTargets returns the targets that belong to the local cluster node.
+func (dt *DistributedTargets) LocalTargets() []Target {
+	return dt.localTargets
+}
+
+// MovedAway returns targets that have been moved from this local node to another node, given the provided
+// previous targets distribution. Previous targets distribution can be nil, in which case no targets moved away.
+func (dt *DistributedTargets) MovedAway(prev *DistributedTargets) []Target {
+	if prev == nil {
+		return nil
 	}
-
-	peerCount := len(t.cluster.Peers())
-	resCap := (len(t.targets) + 1)
-	if peerCount != 0 {
-		resCap = (len(t.targets) + 1) / peerCount
-	}
-
-	res := make([]Target, 0, resCap)
-
-	for _, tgt := range t.targets {
-		//TODO(thampiotr): we use non meta labels and hash the string of it, instead of using hash of the labels
-		// 				   check if this can be improved by using Hash()
-		peers, err := t.cluster.Lookup(shard.StringKey(tgt.NonMetaLabels().String()), 1, shard.OpReadWrite)
-		if err != nil {
-			// This can only fail in case we ask for more owners than the
-			// available peers. This will never happen, but in any case we fall
-			// back to owning the target ourselves.
-			res = append(res, tgt)
-		}
-		if len(peers) == 0 || peers[0].Self {
-			res = append(res, tgt)
+	var movedAwayTargets []Target
+	for _, previousLocal := range prev.localTargets {
+		key := keyFor(previousLocal)
+		if _, exist := dt.remoteTargetKeys[key]; exist {
+			return append(movedAwayTargets, previousLocal)
 		}
 	}
+	return movedAwayTargets
+}
 
-	return res
+func keyFor(tgt Target) shard.Key {
+	//TODO(thampiotr): we use non meta labels and hash the string of it, instead of using hash of the labels
+	// 				   check if this can be improved by using Hash()
+	return shard.StringKey(tgt.NonMetaLabels().String())
 }

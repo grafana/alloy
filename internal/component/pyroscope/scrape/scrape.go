@@ -307,7 +307,7 @@ func (c *Component) Run(ctx context.Context) error {
 			// NOTE(@tpaschalis) First approach, manually building the
 			// 'clustered' targets implementation every time.
 			ct := discovery.NewDistributedTargets(c.args.Clustering.Enabled, c.cluster, tgs)
-			promTargets := c.componentTargetsToProm(jobName, ct.Get())
+			promTargets := c.componentTargetsToProm(jobName, ct.LocalTargets())
 
 			select {
 			case targetSetsChan <- promTargets:
