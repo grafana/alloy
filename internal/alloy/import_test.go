@@ -118,7 +118,11 @@ func TestImportGit(t *testing.T) {
 	// Make repo.git.tar with:
 	//   tar -C repo.git -cvf repo.git.tar .
 	require.NoError(t, util.Untar("./testdata/repo.git.tar", "./testdata/repo.git"))
-	t.Cleanup(func() { _ = os.RemoveAll("./testdata/repo.git") })
+	require.NoError(t, util.Untar("./testdata/repo2.git.tar", "./testdata/repo2.git"))
+	t.Cleanup(func() {
+		_ = os.RemoveAll("./testdata/repo.git")
+		_ = os.RemoveAll("./testdata/repo2.git")
+	})
 
 	directory := "./testdata/import_git"
 	for _, file := range getTestFiles(directory, t) {
