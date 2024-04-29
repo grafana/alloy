@@ -24,8 +24,8 @@ type Logger struct {
 	inner io.Writer // Writer passed to New.
 
 	bufferMut    sync.RWMutex
-	buffer       []*bufferedItem // Store logs before correctly determine the log format
-	hasLogFormat bool            // Confirmation whether log format has been determined
+	buffer       []*bufferedItem // Store logs before correctly determine the logInfo format
+	hasLogFormat bool            // Confirmation whether logInfo format has been determined
 
 	level        *slog.LevelVar       // Current configured level.
 	format       *formatVar           // Current configured format.
@@ -41,7 +41,7 @@ func (l *Logger) Enabled(ctx context.Context, level slog.Level) bool {
 	return l.handler.Enabled(ctx, level)
 }
 
-// New creates a New logger with the default log level and format.
+// New creates a New logger with the default logInfo level and format.
 func New(w io.Writer, o Options) (*Logger, error) {
 	var (
 		leveler slog.LevelVar
@@ -73,7 +73,7 @@ func New(w io.Writer, o Options) (*Logger, error) {
 	return l, nil
 }
 
-// NewDeferred creates a new logger with the default log level and format.
+// NewDeferred creates a new logger with the default logInfo level and format.
 // The logger is not updated during initialization.
 func NewDeferred(w io.Writer) (*Logger, error) {
 	var (
@@ -103,7 +103,7 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 	return l, nil
 }
 
-// newDeferredTest creates a new logger with the default log level and format. Used for tests.
+// newDeferredTest creates a new logger with the default logInfo level and format. Used for tests.
 // The logger is not updated during initialization.
 func newDeferredTest(w io.Writer) (*Logger, error) {
 	l, err := NewDeferred(w)
@@ -131,7 +131,7 @@ func (l *Logger) Update(o Options) error {
 	case FormatLogfmt, FormatJSON:
 		l.hasLogFormat = true
 	default:
-		return fmt.Errorf("unrecognized log format %q", o.Format)
+		return fmt.Errorf("unrecognized logInfo format %q", o.Format)
 	}
 
 	l.level.Set(slogLevel(o.Level).Level())
@@ -147,15 +147,18 @@ func (l *Logger) Update(o Options) error {
 	if l.deferredSlog != nil {
 		l.deferredSlog.buildHandlers(nil)
 	}
-	// Print out the buffered logs since we determined the log format already
+	// Print out the buffered logs since we determined the logInfo format already
 	for _, bufferedLogChunk := range l.buffer {
 		if len(bufferedLogChunk.kvps) > 0 {
 			// the buffered logs are currently only sent to the standard output
 			// because the components with the receivers are not running yet
 			slogadapter.GoKit(l.handler).Log(bufferedLogChunk.kvps...)
 		} else {
-			// These will always be valid due to the build handlers call above.
-			bufferedLogChunk.handler.handle.Handle(context.Background(), bufferedLogChunk.record)
+			// We now can check to see if if our buffered logInfo is at the right level.
+			if l.level.Level() <= bufferedLogChunk.record.Level {
+				// These will always be valid due to the build handlers call above.
+				bufferedLogChunk.handler.handle.Handle(context.Background(), bufferedLogChunk.record)
+			}
 		}
 	}
 	l.buffer = nil
@@ -163,9 +166,9 @@ func (l *Logger) Update(o Options) error {
 	return nil
 }
 
-// Log implements log.Logger.
+// Log implements logInfo.Logger.
 func (l *Logger) Log(kvps ...interface{}) error {
-	// Buffer logs before confirming log format is configured in `logging` block
+	// Buffer logs before confirming logInfo format is configured in `logging` block
 	l.bufferMut.RLock()
 	if !l.hasLogFormat {
 		l.bufferMut.RUnlock()
@@ -181,7 +184,7 @@ func (l *Logger) Log(kvps ...interface{}) error {
 		l.bufferMut.RUnlock()
 	}
 
-	// NOTE(rfratto): this method is a temporary shim while log/slog is still
+	// NOTE(rfratto): this method is a temporary shim while logInfo/slog is still
 	// being adopted throughout the codebase.
 	return slogadapter.GoKit(l.handler).Log(kvps...)
 }

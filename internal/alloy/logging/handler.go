@@ -74,7 +74,7 @@ func (h *handler) buildHandler() slog.Handler {
 		AddSource: true,
 		Level:     h.leveler,
 
-		// Replace attributes with how they were represented in go-kit/log for
+		// Replace attributes with how they were represented in go-kit/logInfo for
 		// consistency.
 		ReplaceAttr: h.replacer,
 	}
@@ -162,7 +162,7 @@ func replace(groups []string, a slog.Attr) slog.Attr {
 		source, ok := a.Value.Any().(*slog.Source)
 		if !ok {
 			// The attribute value doesn't match our expected type. This probably
-			// indicates it's from a usage of go-kit/log that happens to also
+			// indicates it's from a usage of go-kit/logInfo that happens to also
 			// have a field called [slog.SourceKey].
 			//
 			// Return the attribute unmodified.
@@ -185,7 +185,7 @@ func replace(groups []string, a slog.Attr) slog.Attr {
 	case slog.LevelKey:
 		level := a.Value.Any().(slog.Level)
 
-		// Override the value names to match go-kit/log, which would otherwise
+		// Override the value names to match go-kit/logInfo, which would otherwise
 		// print as all-caps DEBUG/INFO/WARN/ERROR.
 		switch level {
 		case slog.LevelDebug:

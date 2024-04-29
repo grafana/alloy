@@ -34,7 +34,7 @@ func (o *Options) SetToDefault() {
 // Level represents how verbose logging should be.
 type Level string
 
-// Supported log levels
+// Supported logInfo levels
 const (
 	LevelDebug Level = "debug"
 	LevelInfo  Level = "info"
@@ -62,7 +62,7 @@ func (ll *Level) UnmarshalText(text []byte) error {
 	case LevelDebug, LevelInfo, LevelWarn, LevelError:
 		*ll = Level(text)
 	default:
-		return fmt.Errorf("unrecognized log level %q", string(text))
+		return fmt.Errorf("unrecognized logInfo level %q", string(text))
 	}
 	return nil
 }
@@ -88,7 +88,7 @@ func (l slogLevel) Level() slog.Level {
 // Format represents a text format to use when writing logs.
 type Format string
 
-// Supported log formats.
+// Supported logInfo formats.
 const (
 	FormatLogfmt Format = "logfmt"
 	FormatJSON   Format = "json"
@@ -114,7 +114,7 @@ func (ll *Format) UnmarshalText(text []byte) error {
 	case FormatLogfmt, FormatJSON:
 		*ll = Format(text)
 	default:
-		return fmt.Errorf("unrecognized log format %q", string(text))
+		return fmt.Errorf("unrecognized logInfo format %q", string(text))
 	}
 	return nil
 }

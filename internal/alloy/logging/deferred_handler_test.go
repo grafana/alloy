@@ -3,6 +3,7 @@ package logging
 import (
 	"bytes"
 	"context"
+	"github.com/go-kit/log/level"
 	"github.com/stretchr/testify/require"
 	"log/slog"
 	"strings"
@@ -33,7 +34,7 @@ func TestSlogHandle(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
 	sl, alloy, l := newLoggers(t, bb, bbSl)
-	log(sl, alloy, "test")
+	logInfo(sl, alloy, "test")
 	err := l.Update(Options{
 		Level:   "debug",
 		Format:  "json",
@@ -43,54 +44,144 @@ func TestSlogHandle(t *testing.T) {
 	require.True(t, equal(bb, bbSl))
 }
 
-func TestSlogHandleWithAttr(t *testing.T) {
+func TestSlogHandleWithDifferingLevelDeny(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
 	sl, alloy, l := newLoggers(t, bb, bbSl)
-
-	sl, alloy = withAttrs(sl, alloy, "attr1", "value1")
-	log(sl, alloy, "test")
+	logInfo(sl, alloy, "test")
 	err := l.Update(Options{
-		Level:   "debug",
+		Level:   "error",
 		Format:  "json",
 		WriteTo: nil,
 	})
 	require.NoError(t, err)
-	require.True(t, equal(bb, bbSl))
+	// Since we write logs at info, but change to error then our logInfo should be clean.
+	require.True(t, bb.Len() == 0)
 }
 
-func TestSlogHandleWithAttrNested(t *testing.T) {
+func TestSlogHandleWithDifferingLevelAllow(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
 	sl, alloy, l := newLoggers(t, bb, bbSl)
-
-	sl, alloy = withAttrs(sl, alloy, "attr1", "value1")
-	sl, alloy = withAttrs(sl, alloy, "nestedattr1", "nestedvalue1")
-	log(sl, alloy, "test")
+	logError(sl, alloy, "test")
 	err := l.Update(Options{
-		Level:   "debug",
+		Level:   "error",
 		Format:  "json",
 		WriteTo: nil,
 	})
 	require.NoError(t, err)
-	require.True(t, equal(bb, bbSl))
+	// Since we write logs at info, but change to error then our logInfo should be clean.
+	require.True(t, bb.Len() > 0)
 }
 
-func TestSlogHandleWithGroup(t *testing.T) {
+func TestNormalWithDifferingLevelDeny(t *testing.T) {
 	bb := &bytes.Buffer{}
-	bbSl := &bytes.Buffer{}
-	sl, alloy, l := newLoggers(t, bb, bbSl)
-	sl, alloy = withGroup(sl, alloy, "gr1")
-	sl, alloy = withAttrs(sl, alloy, "nestedattr1", "nestedvalue1")
-	log(sl, alloy, "test")
-	err := l.Update(Options{
-		Level:   "debug",
+	l, err := newDeferredTest(bb)
+	require.NoError(t, err)
+	level.Debug(l).Log("msg", "this should not log")
+	err = l.Update(Options{
+		Level:   "error",
 		Format:  "json",
 		WriteTo: nil,
 	})
-
 	require.NoError(t, err)
-	require.True(t, equal(bb, bbSl))
+	// Since we write logs at info, but change to error then our logInfo should be clean.
+	require.True(t, bb.Len() == 0)
+}
+
+func TestNormalWithDifferingLevelAllow(t *testing.T) {
+	bb := &bytes.Buffer{}
+	l, err := newDeferredTest(bb)
+	require.NoError(t, err)
+	level.Error(l).Log("msg", "this should not log")
+	err = l.Update(Options{
+		Level:   "error",
+		Format:  "json",
+		WriteTo: nil,
+	})
+	require.NoError(t, err)
+	// Since we write logs at info, but change to error then our logInfo should be clean.
+	require.True(t, bb.Len() > 0)
+}
+
+func TestDeferredHandler(t *testing.T) {
+	type testCase struct {
+		name string
+		log  func(bb *bytes.Buffer, slBB *bytes.Buffer)
+	}
+
+	var testCases = []testCase{
+		{
+			name: "Single Attr",
+			log: func(bb *bytes.Buffer, bbSl *bytes.Buffer) {
+				sl, alloy, l := newLoggers(t, bb, bbSl)
+
+				sl, alloy = withAttrs(sl, alloy, "attr1", "value1")
+				logInfo(sl, alloy, "test")
+				err := l.Update(Options{
+					Level:   "debug",
+					Format:  "json",
+					WriteTo: nil,
+				})
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "Attrs Nested",
+			log: func(bb *bytes.Buffer, bbSl *bytes.Buffer) {
+				sl, alloy, l := newLoggers(t, bb, bbSl)
+				sl, alloy = withAttrs(sl, alloy, "attr1", "value1")
+				sl, alloy = withAttrs(sl, alloy, "nestedattr1", "nestedvalue1")
+				logInfo(sl, alloy, "test")
+				err := l.Update(Options{
+					Level:   "debug",
+					Format:  "json",
+					WriteTo: nil,
+				})
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "Group",
+			log: func(bb *bytes.Buffer, bbSl *bytes.Buffer) {
+				sl, alloy, l := newLoggers(t, bb, bbSl)
+				sl, alloy = withGroup(sl, alloy, "gr1")
+				sl, alloy = withAttrs(sl, alloy, "nestedattr1", "nestedvalue1")
+				logInfo(sl, alloy, "test")
+				err := l.Update(Options{
+					Level:   "debug",
+					Format:  "json",
+					WriteTo: nil,
+				})
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "Nested Group",
+			log: func(bb *bytes.Buffer, bbSl *bytes.Buffer) {
+				sl, alloy, l := newLoggers(t, bb, bbSl)
+				sl, alloy = withGroup(sl, alloy, "gr1")
+				sl, alloy = withGroup(sl, alloy, "gr2")
+				sl, alloy = withAttrs(sl, alloy, "nestedattr1", "nestedvalue1")
+				logInfo(sl, alloy, "test")
+				err := l.Update(Options{
+					Level:   "debug",
+					Format:  "json",
+					WriteTo: nil,
+				})
+				require.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			bb := &bytes.Buffer{}
+			bbSl := &bytes.Buffer{}
+			tc.log(bb, bbSl)
+			require.True(t, equal(bb, bbSl))
+		})
+	}
 }
 
 func newLoggers(t *testing.T, bb, bbSl *bytes.Buffer) (*slog.Logger, *slog.Logger, *Logger) {
@@ -119,16 +210,16 @@ func withGroup(sl *slog.Logger, alloyL *slog.Logger, group string) (*slog.Logger
 	return sl.WithGroup(group), alloyL.WithGroup(group)
 }
 
-func handle(sl slog.Handler, alloyL slog.Handler, r slog.Record) {
-	ctx := context.Background()
-	sl.Handle(ctx, r)
-	alloyL.Handle(ctx, r)
-}
-
-func log(sl *slog.Logger, alloyL *slog.Logger, msg string) {
+func logInfo(sl *slog.Logger, alloyL *slog.Logger, msg string) {
 	ctx := context.Background()
 	sl.Log(ctx, slog.LevelInfo, msg)
 	alloyL.Log(ctx, slog.LevelInfo, msg)
+}
+
+func logError(sl *slog.Logger, alloyL *slog.Logger, msg string) {
+	ctx := context.Background()
+	sl.Log(ctx, slog.LevelError, msg)
+	alloyL.Log(ctx, slog.LevelError, msg)
 }
 
 func equal(sl *bytes.Buffer, alloy *bytes.Buffer) bool {
