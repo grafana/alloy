@@ -103,5 +103,5 @@ We currently use GitHub issues assigned to 2.0 milestone to track the issues
 planned for the next release.
 
 [tracking-breaking-changes]: #tracking-work-that-needs-to-be-done-for-the-next-major-release
-[backwards-compatibility-doc]: https://grafana.com/docs/alloy/latest/introduction/backward-compatability/
+[backwards-compatibility-doc]: https://grafana.com/docs/alloy/latest/introduction/backward-compatibility/
 [communicating]: #communicating-the-breaking-changes
