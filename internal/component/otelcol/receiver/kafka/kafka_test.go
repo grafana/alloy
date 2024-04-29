@@ -30,7 +30,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: kafkareceiver.Config{
 				Brokers:         []string{"10.10.10.10:9092"},
 				ProtocolVersion: "2.0.0",
-				Topic:           "otlp_spans",
 				Encoding:        "otlp_proto",
 				GroupID:         "otel-collector",
 				ClientID:        "otel-collector",
@@ -154,7 +153,6 @@ func TestArguments_Auth(t *testing.T) {
 			expected: map[string]interface{}{
 				"brokers":          []string{"10.10.10.10:9092"},
 				"protocol_version": "2.0.0",
-				"topic":            "otlp_spans",
 				"encoding":         "otlp_proto",
 				"group_id":         "otel-collector",
 				"client_id":        "otel-collector",
@@ -206,7 +204,6 @@ func TestArguments_Auth(t *testing.T) {
 			expected: map[string]interface{}{
 				"brokers":          []string{"10.10.10.10:9092"},
 				"protocol_version": "2.0.0",
-				"topic":            "otlp_spans",
 				"encoding":         "otlp_proto",
 				"group_id":         "otel-collector",
 				"client_id":        "otel-collector",
@@ -264,7 +261,6 @@ func TestArguments_Auth(t *testing.T) {
 			expected: map[string]interface{}{
 				"brokers":          []string{"10.10.10.10:9092"},
 				"protocol_version": "2.0.0",
-				"topic":            "otlp_spans",
 				"encoding":         "otlp_proto",
 				"group_id":         "otel-collector",
 				"client_id":        "otel-collector",
@@ -321,7 +317,6 @@ func TestArguments_Auth(t *testing.T) {
 			expected: map[string]interface{}{
 				"brokers":          []string{"10.10.10.10:9092"},
 				"protocol_version": "2.0.0",
-				"topic":            "otlp_spans",
 				"encoding":         "otlp_proto",
 				"group_id":         "otel-collector",
 				"client_id":        "otel-collector",
