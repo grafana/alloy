@@ -31,7 +31,7 @@ type Logger struct {
 	format       *formatVar           // Current configured format.
 	writer       *writerVar           // Current configured multiwriter (inner + write_to).
 	handler      *handler             // Handler which handles logs.
-	DeferredSlog *deferredSlogHandler // This handles deferred logging for slog.
+	deferredSlog *deferredSlogHandler // This handles deferred logging for slog.
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -98,7 +98,7 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 			replacer:  replace,
 		},
 	}
-	l.DeferredSlog = newDeferredHandler(l)
+	l.deferredSlog = newDeferredHandler(l)
 
 	return l, nil
 }
@@ -118,6 +118,9 @@ func newDeferredTest(w io.Writer) (*Logger, error) {
 // Handler returns a [slog.Handler]. The returned Handler remains valid if l is
 // updated.
 func (l *Logger) Handler() slog.Handler { return l.handler }
+
+// DeferredHandler is to be used if you need to use the slog logger before it is instantiated.
+func (l *Logger) DeferredHandler() slog.Handler { return l.deferredSlog }
 
 // Update re-configures the options used for the logger.
 func (l *Logger) Update(o Options) error {
@@ -141,8 +144,8 @@ func (l *Logger) Update(o Options) error {
 	l.writer.Set(newWriter)
 
 	// Build all our deferred handlers
-	if l.DeferredSlog != nil {
-		l.DeferredSlog.buildHandlers(nil)
+	if l.deferredSlog != nil {
+		l.deferredSlog.buildHandlers(nil)
 	}
 	// Print out the buffered logs since we determined the log format already
 	for _, bufferedLogChunk := range l.buffer {

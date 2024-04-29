@@ -5,11 +5,30 @@ import (
 	"context"
 	"github.com/stretchr/testify/require"
 	"log/slog"
+	"strings"
 	"testing"
 )
 
-// All these tests build a normal slog handler, and a deferred handler then run the same operations on both and compare.
+func TestDeferredHandlerWritingToBothLoggers(t *testing.T) {
+	bb := &bytes.Buffer{}
+	l, err := NewDeferred(bb)
+	slogger := slog.New(l.deferredSlog)
+	require.NoError(t, err)
+	l.Log("msg", "this should happen before")
+	slogger.Log(context.Background(), slog.LevelInfo, "this should happen after)")
 
+	err = l.Update(Options{
+		Level:   "info",
+		Format:  "json",
+		WriteTo: nil,
+	})
+	require.NoError(t, err)
+	firstIndex := strings.Index(bb.String(), "this should happen before")
+	secondIndex := strings.Index(bb.String(), "this should happen after")
+	require.True(t, firstIndex < secondIndex)
+}
+
+// All the following tests build a normal slog handler, and a deferred handler then run the same operations on both and compare.
 func TestSlogHandle(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
@@ -84,7 +103,7 @@ func newLoggers(t *testing.T, bb, bbSl *bytes.Buffer) (*slog.Logger, *slog.Logge
 		ReplaceAttr: testReplace,
 	})
 	sl := slog.New(jsonH)
-	alloy := slog.New(l.DeferredSlog)
+	alloy := slog.New(l.deferredSlog)
 	return sl, alloy, l
 }
 
