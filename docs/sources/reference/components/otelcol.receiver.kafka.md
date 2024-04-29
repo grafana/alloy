@@ -53,7 +53,7 @@ If `topic` is not set, the `otelcol.receiver.kafka` will try to consume:
 * traces from the topic `otlp_spans`
 * logs from the topic `otlp_logs`
 
-If `topic` is set to a specific value, then only the signal type that correspond to the data stored in the topic must be set in the output block.
+If `topic` is set to a specific value, then only the signal type that corresponds to the data stored in the topic must be set in the output block.
 
 The `encoding` argument determines how to decode messages read from Kafka.
 `encoding` must be one of the following strings:
