@@ -14,11 +14,6 @@ the discovered Pods.
 resources rather than being fed targets from another component.
 
 {{< admonition type="note" >}}
-Unlike `loki.source.kubernetes`, it's not possible to distribute responsibility of collecting logs across multiple {{< param "PRODUCT_NAME" >}} instances.
-To avoid collecting duplicate logs, only one {{< param "PRODUCT_NAME" >}} should be running a `loki.source.podlogs` component.
-{{< /admonition >}}
-
-{{< admonition type="note" >}}
 Because `loki.source.podlogs` uses the Kubernetes API to tail logs, it uses more network traffic and CPU consumption of Kubelets than `loki.source.file`.
 {{< /admonition >}}
 
