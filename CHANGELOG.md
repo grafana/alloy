@@ -43,6 +43,8 @@ Main (unreleased)
 
 - In `mimir.rules.kubernetes`, fix an issue where unrecoverable errors from the Mimir API were retried. (@56quarters)
 
+- Imported code using `slog` logging will now work not panic and replay correctly when logged before the logging config block is initialized. (@mattdurham)
+
 ### Other changes
 
 - Update `alloy-mixin` to use more specific alert group names (for example,
