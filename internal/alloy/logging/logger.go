@@ -27,11 +27,11 @@ type Logger struct {
 	buffer       []*bufferedItem // Store logs before correctly determine the log format
 	hasLogFormat bool            // Confirmation whether log format has been determined
 
-	level        *slog.LevelVar   // Current configured level.
-	format       *formatVar       // Current configured format.
-	writer       *writerVar       // Current configured multiwriter (inner + write_to).
-	handler      *handler         // Handler which handles logs.
-	DeferredSlog *DeferredHandler // This handles deferred logging for slog.
+	level        *slog.LevelVar       // Current configured level.
+	format       *formatVar           // Current configured format.
+	writer       *writerVar           // Current configured multiwriter (inner + write_to).
+	handler      *handler             // Handler which handles logs.
+	DeferredSlog *deferredSlogHandler // This handles deferred logging for slog.
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -98,7 +98,7 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 			replacer:  replace,
 		},
 	}
-	l.DeferredSlog = NewDeferredHandler(l)
+	l.DeferredSlog = newDeferredHandler(l)
 
 	return l, nil
 }
@@ -183,7 +183,7 @@ func (l *Logger) Log(kvps ...interface{}) error {
 	return slogadapter.GoKit(l.handler).Log(kvps...)
 }
 
-func (l *Logger) addRecord(r slog.Record, df *DeferredHandler) {
+func (l *Logger) addRecord(r slog.Record, df *deferredSlogHandler) {
 	l.bufferMut.Lock()
 	defer l.bufferMut.Unlock()
 
@@ -264,6 +264,6 @@ func (w *writerVar) Write(p []byte) (n int, err error) {
 
 type bufferedItem struct {
 	kvps    []interface{}
-	handler *DeferredHandler
+	handler *deferredSlogHandler
 	record  slog.Record
 }
