@@ -47,8 +47,12 @@ Main (unreleased)
 
 - In `mimir.rules.kubernetes`, fix an issue where unrecoverable errors from the Mimir API were retried. (@56quarters)
 
-- Flow: Fix an issue where `faro.receiver`'s `extra_log_labels` with empty value don't
-  map existing value in log line. (@hainenber)
+- Fix an issue where `faro.receiver`'s `extra_log_labels` with empty value
+  don't map existing value in log line. (@hainenber)
+
+- Fix an issue where `prometheus.remote_write` only queued data for sending
+  every 15 seconds instead of as soon as data was written to the WAL.
+  (@rfratto)
 
 ### Other changes
 
