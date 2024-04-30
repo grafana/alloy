@@ -65,6 +65,9 @@ func New(w io.Writer, o Options) (*Logger, error) {
 			replacer:  replace,
 		},
 	}
+	// We always need to make a deferred handler since that is what is always exposed,
+	// that being said the Update command will immediately set its interior handler.
+	l.deferredSlog = newDeferredHandler(l)
 
 	if err := l.Update(o); err != nil {
 		return nil, err
@@ -117,10 +120,7 @@ func newDeferredTest(w io.Writer) (*Logger, error) {
 
 // Handler returns a [slog.Handler]. The returned Handler remains valid if l is
 // updated.
-func (l *Logger) Handler() slog.Handler { return l.handler }
-
-// DeferredHandler is to be used if you need to use the slog logger before it is instantiated.
-func (l *Logger) DeferredHandler() slog.Handler { return l.deferredSlog }
+func (l *Logger) Handler() slog.Handler { return l.deferredSlog }
 
 // Update re-configures the options used for the logger.
 func (l *Logger) Update(o Options) error {

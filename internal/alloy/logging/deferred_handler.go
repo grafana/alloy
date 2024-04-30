@@ -8,7 +8,7 @@ import (
 
 // deferredSlogHandler is used if you are using a slog handler before the logging config block is processed.
 type deferredSlogHandler struct {
-	mut      sync.Mutex
+	mut      sync.RWMutex
 	group    string
 	attrs    []slog.Attr
 	children []*deferredSlogHandler
@@ -25,6 +25,12 @@ func newDeferredHandler(l *Logger) *deferredSlogHandler {
 }
 
 func (d *deferredSlogHandler) Handle(_ context.Context, r slog.Record) error {
+	d.mut.RLock()
+	defer d.mut.RUnlock()
+
+	if d.handle != nil {
+		return d.handle.Handle(context.Background(), r)
+	}
 	d.l.addRecord(r, d)
 	return nil
 }
@@ -32,14 +38,24 @@ func (d *deferredSlogHandler) Handle(_ context.Context, r slog.Record) error {
 // Enabled reports whether the handler handles records at the given level.
 // The handler ignores records whose level is lower.
 func (d *deferredSlogHandler) Enabled(_ context.Context, level slog.Level) bool {
+	d.mut.RLock()
+	defer d.mut.RUnlock()
+
+	if d.handle != nil {
+		return d.handle.Enabled(context.Background(), level)
+	}
 	return true
 }
 
 // WithAttrs returns a new [TextHandler] whose attributes consists
 // of h's attributes followed by attrs.
 func (d *deferredSlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	d.mut.Lock()
-	defer d.mut.Unlock()
+	d.mut.RLock()
+	defer d.mut.RUnlock()
+
+	if d.handle != nil {
+		return d.handle.WithAttrs(attrs)
+	}
 
 	child := &deferredSlogHandler{
 		attrs:    attrs,
@@ -52,8 +68,12 @@ func (d *deferredSlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 }
 
 func (d *deferredSlogHandler) WithGroup(name string) slog.Handler {
-	d.mut.Lock()
-	defer d.mut.Unlock()
+	d.mut.RLock()
+	defer d.mut.RUnlock()
+
+	if d.handle != nil {
+		return d.handle.WithGroup(name)
+	}
 
 	child := &deferredSlogHandler{
 		children: make([]*deferredSlogHandler, 0),
@@ -68,6 +88,9 @@ func (d *deferredSlogHandler) WithGroup(name string) slog.Handler {
 // buildHandlers will recursively build actual handlers, this should only be called before replaying once the logging config
 // block is set.
 func (d *deferredSlogHandler) buildHandlers(parent slog.Handler) {
+	d.mut.Lock()
+	defer d.mut.Unlock()
+
 	// Root node will not have attrs or groups.
 	if parent == nil {
 		d.handle = d.l.handler
