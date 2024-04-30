@@ -74,12 +74,15 @@ func (rc *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 
 func defaultArguments() Arguments {
 	return Arguments{
+		ForwardTo:            nil,
+		Targets:              nil,
 		CollectInterval:      15 * time.Second,
 		SampleRate:           97,
+		VerifierLogSize:      0,
 		PidCacheSize:         32,
-		ContainerIDCacheSize: 1024,
 		BuildIDCacheSize:     64,
 		SameFileCacheSize:    8,
+		ContainerIDCacheSize: 1024,
 		CacheRounds:          3,
 		CollectUserProfile:   true,
 		CollectKernelProfile: true,
@@ -254,7 +257,7 @@ func convertSessionOptions(args Arguments, ms *metrics) ebpfspy.SessionOptions {
 		},
 		Metrics:                  ms.ebpfMetrics,
 		SampleRate:               args.SampleRate,
-		VerifierLogSize:          1024 * 1024 * 100,
+		VerifierLogSize:          args.VerifierLogSize,
 		PythonBPFErrorLogEnabled: false,
 		PythonBPFDebugLogEnabled: false,
 		PrintBPFLog:              false,

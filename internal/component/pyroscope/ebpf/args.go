@@ -12,6 +12,7 @@ type Arguments struct {
 	Targets              []discovery.Target     `alloy:"targets,attr,optional"`
 	CollectInterval      time.Duration          `alloy:"collect_interval,attr,optional"`
 	SampleRate           int                    `alloy:"sample_rate,attr,optional"`
+	VerifierLogSize      int                    `alloy:"verifier_log_size,attr,optional"`
 	PidCacheSize         int                    `alloy:"pid_cache_size,attr,optional"`
 	BuildIDCacheSize     int                    `alloy:"build_id_cache_size,attr,optional"`
 	SameFileCacheSize    int                    `alloy:"same_file_cache_size,attr,optional"`
