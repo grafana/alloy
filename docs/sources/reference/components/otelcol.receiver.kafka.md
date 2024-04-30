@@ -47,11 +47,11 @@ Name | Type | Description | Default | Required
 `initial_offset` | `string` | Initial offset to use if no offset was previously committed. | `"latest"` | no
 `resolve_canonical_bootstrap_servers_only` | `bool` | Whether to resolve then reverse-lookup broker IPs during startup. | `"false"` | no
 
-If `topic` is not set, the `otelcol.receiver.kafka` will try to consume:
+If `topic` is not set, different topics will be used for different telemetry signals:
 
-* metrics from the topic `otlp_metrics`
-* traces from the topic `otlp_spans`
-* logs from the topic `otlp_logs`
+* Metrics will be received from an `otlp_metrics` topic.
+* Traces will be received from an `otlp_spans` topic.
+* Logs will be received from an `otlp_logs` topic.
 
 If `topic` is set to a specific value, then only the signal type that corresponds to the data stored in the topic must be set in the output block.
 
