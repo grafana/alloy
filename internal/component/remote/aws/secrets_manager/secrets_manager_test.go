@@ -1,4 +1,5 @@
-// go:build !nodocker
+//go:build !nodocker
+
 package secrets_manager
 
 import (
