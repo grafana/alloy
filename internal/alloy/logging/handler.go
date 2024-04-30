@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"slices"
 	"sync"
 	"time"
 )
@@ -26,13 +25,18 @@ type handler struct {
 	leveler   slog.Leveler
 	formatter formatter
 
-	attrs []slog.Attr
-	group []string
+	nested []nesting
 
 	mut           sync.RWMutex
 	currentFormat Format
 	inner         slog.Handler
 	replacer      func(groups []string, a slog.Attr) slog.Attr
+}
+
+// nesting is used since attrs and groups need to be nested in the order they were entered.
+type nesting struct {
+	attrs []slog.Attr
+	group string
 }
 
 type formatter interface {
@@ -88,10 +92,13 @@ func (h *handler) buildHandler() slog.Handler {
 		panic(fmt.Sprintf("unknown format %v", expectFormat))
 	}
 
-	if len(h.attrs) > 0 {
-		newHandler = newHandler.WithAttrs(h.attrs)
-	} else if len(h.group) > 0 {
-		newHandler = newHandler.WithGroup(h.group[0])
+	// Need to replay our groups and attrs in the correct order.
+	for _, n := range h.nested {
+		if n.group != "" {
+			newHandler = newHandler.WithGroup(n.group)
+		} else {
+			newHandler = newHandler.WithAttrs(n.attrs)
+		}
 	}
 
 	h.currentFormat = expectFormat
@@ -100,48 +107,34 @@ func (h *handler) buildHandler() slog.Handler {
 }
 
 func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	newAttrs := slices.Clone(h.attrs)
-
-	if len(h.group) > 0 {
-		// Deeply nest the attributes under the appropriate group.
-		groupAttr := slog.Attr{
-			Key:   h.group[len(h.group)-1],
-			Value: slog.GroupValue(attrs...),
-		}
-		rem := h.group[:len(h.group)-1]
-
-		for len(rem) > 0 {
-			groupAttr = slog.Attr{
-				Key:   rem[len(rem)-1],
-				Value: slog.GroupValue(groupAttr),
-			}
-			rem = rem[:len(rem)-1]
-		}
-
-		newAttrs = append(newAttrs, groupAttr)
-	} else {
-		newAttrs = append(newAttrs, attrs...)
-	}
+	newNest := make([]nesting, len(h.nested)+1)
+	newNest = append(newNest, h.nested...)
+	newNest = append(newNest, nesting{
+		attrs: attrs,
+	})
 
 	return &handler{
 		w:         h.w,
 		leveler:   h.leveler,
 		formatter: h.formatter,
 
-		attrs:    newAttrs,
-		group:    h.group,
+		nested:   newNest,
 		replacer: h.replacer,
 	}
 }
 
 func (h *handler) WithGroup(name string) slog.Handler {
+	newNest := make([]nesting, len(h.nested)+1)
+	newNest = append(newNest, h.nested...)
+	newNest = append(newNest, nesting{
+		group: name,
+	})
 	return &handler{
 		w:         h.w,
 		leveler:   h.leveler,
 		formatter: h.formatter,
 
-		attrs:    h.attrs,
-		group:    append(slices.Clone(h.group), name),
+		nested:   newNest,
 		replacer: h.replacer,
 	}
 }

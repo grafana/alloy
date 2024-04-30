@@ -3,12 +3,37 @@ package logging
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"github.com/go-kit/log/level"
 	"github.com/stretchr/testify/require"
 	"log/slog"
 	"strings"
 	"testing"
 )
+
+func TestDefferredSlogTester(t *testing.T) {
+	buf := &bytes.Buffer{}
+	results := func(t *testing.T) map[string]any {
+		line := buf.Bytes()
+		if len(line) == 0 {
+			return nil
+		}
+		var m map[string]any
+		unmarshalErr := json.Unmarshal(line, &m)
+		require.NoError(t, unmarshalErr)
+		// Need to reset the buffer between each test
+		buf.Reset()
+		return m
+	}
+
+	// Had to add some custom logic to handle updated for the deferred tests.
+	// Also ignore anything that modifies the log line, which are two tests.
+	RunDeferredTests(t, func(t *testing.T) *Logger {
+		l, err := NewDeferred(buf)
+		require.NoError(t, err)
+		return l
+	}, results)
+}
 
 func TestDeferredHandlerWritingToBothLoggers(t *testing.T) {
 	bb := &bytes.Buffer{}

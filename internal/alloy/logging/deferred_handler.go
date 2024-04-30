@@ -31,54 +31,54 @@ func (d *deferredSlogHandler) Handle(_ context.Context, r slog.Record) error {
 
 // Enabled reports whether the handler handles records at the given level.
 // The handler ignores records whose level is lower.
-func (h *deferredSlogHandler) Enabled(_ context.Context, level slog.Level) bool {
+func (d *deferredSlogHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return true
 }
 
 // WithAttrs returns a new [TextHandler] whose attributes consists
 // of h's attributes followed by attrs.
-func (h *deferredSlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	h.mut.Lock()
-	defer h.mut.Unlock()
+func (d *deferredSlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	d.mut.Lock()
+	defer d.mut.Unlock()
 
 	child := &deferredSlogHandler{
 		attrs:    attrs,
 		children: make([]*deferredSlogHandler, 0),
-		l:        h.l,
-		parent:   h,
+		l:        d.l,
+		parent:   d,
 	}
-	h.children = append(h.children, child)
+	d.children = append(d.children, child)
 	return child
 }
 
-func (h *deferredSlogHandler) WithGroup(name string) slog.Handler {
-	h.mut.Lock()
-	defer h.mut.Unlock()
+func (d *deferredSlogHandler) WithGroup(name string) slog.Handler {
+	d.mut.Lock()
+	defer d.mut.Unlock()
 
 	child := &deferredSlogHandler{
 		children: make([]*deferredSlogHandler, 0),
 		group:    name,
-		l:        h.l,
-		parent:   h,
+		l:        d.l,
+		parent:   d,
 	}
-	h.children = append(h.children, child)
+	d.children = append(d.children, child)
 	return child
 }
 
 // buildHandlers will recursively build actual handlers, this should only be called before replaying once the logging config
 // block is set.
-func (h *deferredSlogHandler) buildHandlers(parent slog.Handler) {
+func (d *deferredSlogHandler) buildHandlers(parent slog.Handler) {
 	// Root node will not have attrs or groups.
 	if parent == nil {
-		h.handle = h.l.handler
+		d.handle = d.l.handler
 	} else {
-		if h.group != "" {
-			h.handle = parent.WithGroup(h.group)
+		if d.group != "" {
+			d.handle = parent.WithGroup(d.group)
 		} else {
-			h.handle = parent.WithAttrs(h.attrs)
+			d.handle = parent.WithAttrs(d.attrs)
 		}
 	}
-	for _, child := range h.children {
-		child.buildHandlers(h.handle)
+	for _, child := range d.children {
+		child.buildHandlers(d.handle)
 	}
 }
