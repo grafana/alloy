@@ -57,6 +57,74 @@ func TestReceiver(t *testing.T) {
 	require.NoError(t, waitTracesTrigger.Wait(time.Second), "consumer did not get invoked")
 }
 
+func TestReceiverNotStarted(t *testing.T) {
+	var (
+		waitConsumerTrigger = util.NewWaitTrigger()
+		onTracesConsumer    = func(t otelconsumer.Traces) {
+			waitConsumerTrigger.Trigger()
+		}
+	)
+	te := newTestEnvironment(t, onTracesConsumer)
+	te.Start(fakeReceiverArgs{
+		Output: &otelcol.ConsumerArguments{},
+	})
+
+	// Check that no trace receiver was started because it's not needed by the output.
+	require.ErrorContains(t, waitConsumerTrigger.Wait(time.Second), "context deadline exceeded")
+}
+
+func TestReceiverUpdate(t *testing.T) {
+	var (
+		consumer otelconsumer.Traces
+
+		waitConsumerTrigger = util.NewWaitTrigger()
+		onTracesConsumer    = func(t otelconsumer.Traces) {
+			consumer = t
+			waitConsumerTrigger.Trigger()
+		}
+
+		waitTracesTrigger = util.NewWaitTrigger()
+		nextConsumer      = &fakeconsumer.Consumer{
+			ConsumeTracesFunc: func(context.Context, ptrace.Traces) error {
+				waitTracesTrigger.Trigger()
+				return nil
+			},
+		}
+	)
+
+	te := newTestEnvironment(t, onTracesConsumer)
+	te.Start(fakeReceiverArgs{
+		Output: &otelcol.ConsumerArguments{},
+	})
+
+	// Check that no trace receiver was started because it's not needed by the output.
+	require.ErrorContains(t, waitConsumerTrigger.Wait(time.Second), "context deadline exceeded")
+
+	te.Controller.Update(fakeReceiverArgs{
+		Output: &otelcol.ConsumerArguments{
+			Traces: []otelcol.Consumer{nextConsumer},
+		},
+	})
+
+	// Now the trace receiver is started.
+	require.NoError(t, waitConsumerTrigger.Wait(time.Second), "no traces consumer sent")
+
+	err := consumer.ConsumeTraces(context.Background(), ptrace.NewTraces())
+	require.NoError(t, err)
+
+	require.NoError(t, waitTracesTrigger.Wait(time.Second), "consumer did not get invoked")
+
+	waitConsumerTrigger = util.NewWaitTrigger()
+
+	// Remove the trace receiver.
+	te.Controller.Update(fakeReceiverArgs{
+		Output: &otelcol.ConsumerArguments{},
+	})
+
+	// Check that after the update no trace receiver is started.
+	require.ErrorContains(t, waitConsumerTrigger.Wait(time.Second), "context deadline exceeded")
+}
+
 type testEnvironment struct {
 	t *testing.T
 
