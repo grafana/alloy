@@ -54,6 +54,8 @@ If `topic` is not set, different topics will be used for different telemetry sig
 * Logs will be received from an `otlp_logs` topic.
 
 If `topic` is set to a specific value, then only the signal type that corresponds to the data stored in the topic must be set in the output block.
+For example, if `topic` is set to `"my_telemetry"`, then the `"my_telemetry"` topic can only contain either metrics, logs, or traces. 
+If it contains only metrics, then `otelcol.receiver.kafka` should be configured to output only metrics.
 
 The `encoding` argument determines how to decode messages read from Kafka.
 `encoding` must be one of the following strings:
