@@ -442,19 +442,15 @@ func TestArguments_Validate(t *testing.T) {
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
 	// Adding two traces consumer, expect no error
-	tracesConsumer := fakeconsumer.Consumer{}
-	args.Output.Traces = append(args.Output.Traces, &tracesConsumer)
-	tracesConsumer2 := fakeconsumer.Consumer{}
-	args.Output.Traces = append(args.Output.Traces, &tracesConsumer2)
+	args.Output.Traces = append(args.Output.Traces, &fakeconsumer.Consumer{})
+	args.Output.Traces = append(args.Output.Traces, &fakeconsumer.Consumer{})
 	require.NoError(t, args.Validate())
 
 	// Adding another signal type
-	logsConsumer := fakeconsumer.Consumer{}
-	args.Output.Logs = append(args.Output.Logs, &logsConsumer)
+	args.Output.Logs = append(args.Output.Logs, &fakeconsumer.Consumer{})
 	require.ErrorContains(t, args.Validate(), "only one signal can be set in the output block when a Kafka topic is explicitly set; currently set signals: logs, traces")
 
 	// Adding another signal type
-	metricsConsumer := fakeconsumer.Consumer{}
-	args.Output.Metrics = append(args.Output.Metrics, &metricsConsumer)
+	args.Output.Metrics = append(args.Output.Metrics, &fakeconsumer.Consumer{})
 	require.ErrorContains(t, args.Validate(), "only one signal can be set in the output block when a Kafka topic is explicitly set; currently set signals: logs, metrics, traces")
 }
