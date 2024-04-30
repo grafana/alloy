@@ -117,6 +117,20 @@ image:
 rbac:
   # -- Whether to create RBAC resources for Alloy.
   create: true
+    # -- Grant rules to allow created RBAC resources to work with `discovery.kubernetes` component.
+  allowDiscoveryKubernetes: true
+  # -- Grant rules to allow created RBAC resources to work with `loki.source.kubernetes` and `loki.source.podlogs` component.
+  allowLokiSource: true
+  # -- Grant rules to allow created RBAC resources to work with `mimir.rules.kubernetes` component.
+  allowMimirRulesKubernetes: true
+  # -- Grant rules to allow created RBAC resources to work with `prometheus.kubernetes.*` components.
+  allowPrometheusKubernetes: true
+  # -- Grant rules to allow created RBAC resources to work with `eventhandler` integration.
+  allowEventHandler: true
+  # -- Grant rules to allow created RBAC resources to work with `remote.kubernetes.*` components.
+  allowRemoteKubernetes: true
+  # -- Grant rules to allow created RBAC resources to work with `otelcol.processor.k8sattributes` component.
+  allowOtelcolProcessorK8sAttributes: true
 
 serviceAccount:
   # -- Whether to create a service account for the Grafana Alloy deployment.

@@ -7,6 +7,7 @@ metadata:
     {{- include "alloy.labels" . | nindent 4 }}
 rules:
   # Rules which allow discovery.kubernetes to function.
+  {{- if .Values.rbac.allowDiscoveryKubernetes }}
   - apiGroups:
       - ""
       - "discovery.k8s.io"
@@ -24,7 +25,9 @@ rules:
       - get
       - list
       - watch
+  {{- end }}
   # Rules which allow loki.source.kubernetes and loki.source.podlogs to work.
+  {{- if .Values.rbac.allowLokiSource }}
   - apiGroups:
       - ""
     resources:
@@ -43,7 +46,9 @@ rules:
       - get
       - list
       - watch
+  {{- end }}
   # Rules which allow mimir.rules.kubernetes to work.
+  {{- if .Values.rbac.allowMimirRulesKubernetes }}
   - apiGroups: ["monitoring.coreos.com"]
     resources:
       - prometheusrules
@@ -55,7 +60,9 @@ rules:
       - /metrics
     verbs:
       - get
+  {{- end }}
   # Rules for prometheus.kubernetes.*
+  {{- if .Values.rbac.allowPrometheusKubernetes }}
   - apiGroups: ["monitoring.coreos.com"]
     resources:
       - podmonitors
@@ -65,7 +72,9 @@ rules:
       - get
       - list
       - watch
+  {{- end }}
   # Rules which allow eventhandler to work.
+  {{- if .Values.rbac.allowEventHandler }}
   - apiGroups:
       - ""
     resources:
@@ -74,7 +83,9 @@ rules:
       - get
       - list
       - watch
+  {{- end }}
   # needed for remote.kubernetes.*
+  {{- if .Values.rbac.allowRemoteKubernetes }}
   - apiGroups: [""]
     resources:
       - "configmaps"
@@ -83,13 +94,16 @@ rules:
       - get
       - list
       - watch
+  {{- end }}
   # needed for otelcol.processor.k8sattributes
+  {{- if .Values.rbac.allowOtelcolProcessorK8sAttributes }}
   - apiGroups: ["apps"]
     resources: ["replicasets"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["extensions"]
     resources: ["replicasets"]
     verbs: ["get", "list", "watch"]
+  {{- end }}
 
 ---
 

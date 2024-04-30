@@ -114,6 +114,13 @@ useful if just using the default DaemonSet isn't sufficient.
 | ingress.pathType | string | `"Prefix"` |  |
 | ingress.tls | list | `[]` |  |
 | nameOverride | string | `nil` | Overrides the chart's name. Used to change the infix in the resource names. |
+| rbac.allowDiscoveryKubernetes | bool | `true` | Grant rules to allow created RBAC resources to work with `discovery.kubernetes` component. |
+| rbac.allowEventHandler | bool | `true` | Grant rules to allow created RBAC resources to work with `eventhandler` integration. |
+| rbac.allowLokiSource | bool | `true` | Grant rules to allow created RBAC resources to work with `loki.source.kubernetes` and `loki.source.podlogs` component. |
+| rbac.allowMimirRulesKubernetes | bool | `true` | Grant rules to allow created RBAC resources to work with `mimir.rules.kubernetes` component. |
+| rbac.allowOtelcolProcessorK8sAttributes | bool | `true` | Grant rules to allow created RBAC resources to work with `otelcol.processor.k8sattributes` component. |
+| rbac.allowPrometheusKubernetes | bool | `true` | Grant rules to allow created RBAC resources to work with `prometheus.kubernetes.*` components. |
+| rbac.allowRemoteKubernetes | bool | `true` | Grant rules to allow created RBAC resources to work with `remote.kubernetes.*` components. |
 | rbac.create | bool | `true` | Whether to create RBAC resources for Alloy. |
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
