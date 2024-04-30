@@ -78,7 +78,7 @@ Look at the following simple pipeline:
 
 ```alloy
 local.file "example" {
-    path = env("HOME") + "file.txt"
+    filename = env("HOME") + "/file.txt"
 }
 
 prometheus.remote_write "local_prom" {
