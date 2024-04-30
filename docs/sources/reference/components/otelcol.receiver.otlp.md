@@ -78,7 +78,7 @@ Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:4317"` | no
 `transport` | `string` | Transport to use for the gRPC server. | `"tcp"` | no
-`max_recv_msg_size` | `string` | Maximum size of messages the server will accept. | `"4194304KiB`" | no
+`max_recv_msg_size` | `string` | Maximum size of messages the server will accept. | `"4MiB`" | no
 `max_concurrent_streams` | `number` | Limit the number of concurrent streaming RPC calls. | | no
 `read_buffer_size` | `string` | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"` | no
 `write_buffer_size` | `string` | Size of the write buffer the gRPC server will use for writing to clients. | | no
