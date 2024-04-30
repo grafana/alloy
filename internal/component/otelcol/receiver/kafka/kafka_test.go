@@ -451,10 +451,10 @@ func TestArguments_Validate(t *testing.T) {
 	// Adding another signal type
 	logsConsumer := fakeconsumer.Consumer{}
 	args.Output.Logs = append(args.Output.Logs, &logsConsumer)
-	require.ErrorContains(t, args.Validate(), "if the argument topic is specified, only one signal can be set in the output block, current: logs, traces")
+	require.ErrorContains(t, args.Validate(), "only one signal can be set in the output block when a Kafka topic is explicitly set; currently set signals: logs, traces")
 
 	// Adding another signal type
 	metricsConsumer := fakeconsumer.Consumer{}
 	args.Output.Metrics = append(args.Output.Metrics, &metricsConsumer)
-	require.ErrorContains(t, args.Validate(), "if the argument topic is specified, only one signal can be set in the output block, current: logs, metrics, traces")
+	require.ErrorContains(t, args.Validate(), "only one signal can be set in the output block when a Kafka topic is explicitly set; currently set signals: logs, metrics, traces")
 }
