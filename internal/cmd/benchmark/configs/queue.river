@@ -44,7 +44,7 @@ prometheus.relabel "mutator" {
 	rule {
 		source_labels = ["__name__"]
 		action        = "keep"
-		regex         = "(alloy_wal_storage_active_series|alloy_resources_process_cpu_seconds_total|go_memstats_alloc_bytes|go_memstats_heap_inuse_bytes|go_gc_duration_seconds_sum|go_gc_duration_seconds_count|alloy_queue_samples_to_wal|alloy_queue_bytes_written)"
+		regex         = "(alloy_wal_storage_active_series|alloy_resources_process_cpu_seconds_total|go_memstats_alloc_bytes|go_memstats_heap_inuse_bytes|go_gc_duration_seconds_sum|go_gc_duration_seconds_count|alloy_queue_samples_to_wal_total|alloy_queue_bytes_written_total)"
 	}
 
 	forward_to = [prometheus.remote.queue.agent_stats.receiver]

@@ -57,14 +57,14 @@ func newCBORWrite(fq metricQueue, checkPointSize int64, flushTime time.Duration,
 		dictionary: make(map[string]int),
 		bb:         make([]byte, 0),
 		metricGauge: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "alloy_queue_samples_to_wal",
+			Name: "alloy_queue_samples_to_wal_total",
 			Help: "Number of samples written to the wal directory",
 			ConstLabels: map[string]string{
 				"name": fq.Name(),
 			},
 		}),
 		bytesWrittenGauge: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "alloy_queue_bytes_written",
+			Name: "alloy_queue_bytes_written_total",
 			Help: "Number of bytes written to the wal directory",
 			ConstLabels: map[string]string{
 				"name": fq.Name(),
@@ -307,13 +307,17 @@ func spanToHistogramSpan(spans []span) []histogram.Span {
 	return returnSpans
 }
 
-func valuesAndKeysToLabels(values []label, dict []string) labels.Labels {
-	lbls := make([]labels.Label, len(values))
-	for i, k := range values {
-		lbls[i].Name = dict[k.Name]
-		lbls[i].Value = dict[k.Value]
+func valuesAndKeysToLabels(dst labels.Labels, values []label, dict []string) labels.Labels {
+	if cap(dst) < len(values) {
+		dst = make(labels.Labels, len(values))
+	} else {
+		dst = dst[:len(values)]
 	}
-	return lbls
+	for i, k := range values {
+		dst[i].Name = dict[k.Name]
+		dst[i].Value = dict[k.Value]
+	}
+	return dst
 }
 
 // buffer pool to reduce GC
@@ -395,8 +399,8 @@ func makeTS(tsVal int64, maxAgeSeconds int64, pm *cborsmetric, metricType series
 	ts.sType = metricType
 	ts.timestamp = tsVal
 	ts.value = pm.Value
-	ts.seriesLabels = valuesAndKeysToLabels(pm.Labels, dict)
-	ts.exemplarLabels = valuesAndKeysToLabels(pm.ExemplarLabels, dict)
+	ts.seriesLabels = valuesAndKeysToLabels(ts.seriesLabels, pm.Labels, dict)
+	ts.exemplarLabels = valuesAndKeysToLabels(ts.exemplarLabels, pm.ExemplarLabels, dict)
 
 	if ts.sType == tHistogram {
 		h := &histogram.Histogram{}
