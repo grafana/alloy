@@ -50,6 +50,19 @@ Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as s
 If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
 {{< /admonition >}}
 
+### Boringcrypto images
+
+> **Note**: `boringcrypto` support is in _Public preview_ and is only available
+> on AMD64 and ARM64 platforms.
+
+`boringcrypto` images are published with every release starting with version
+1.1:
+
+* The latest `boringcrypto` image is published as `grafana/alloy:boringcrypto`.
+* A specific version of the `boringcrypto` image is published as
+  `grafana/alloy:<VERSION>-boringcrypto`, such as
+  `grafana/alloy:v1.1.0-boringcrypto`.
+
 ## Run a Windows Docker container
 
 To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the following command in a terminal window:
@@ -74,6 +87,20 @@ Refer to the documentation for [run][] for more information about the options av
 Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as shown in the example above.
 If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
 {{< /admonition >}}
+
+### Cngcrypto images
+
+> **Note**: `cngcrypto` support is in _Public preview_ and is only available
+> on AMD64 platforms.
+
+`cngcrypto` images are published with every release starting with version
+1.1:
+
+* The latest `cngcrypto` image is published as `grafana/alloy:nanoserver-1809-cngcrypto`.
+* A specific version of the `cngcrypto` image is published as
+  `grafana/alloy:<VERSION>-nanoserver-1809-cngcrypto`, such as
+  `grafana/alloy:v1.1.0-nanoserver-1809-cngcrypto`.
+
 
 ## Verify
 
