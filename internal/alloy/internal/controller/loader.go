@@ -782,7 +782,7 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 	defer func() {
 		duration := time.Since(start)
 		l.cm.onComponentEvaluationDone(n.NodeID(), duration)
-		level.Info(l.log).Log("msg", "finished node evaluation", "node_id", n.NodeID(), "duration", duration)
+		level.Debug(l.log).Log("msg", "finished node evaluation", "node_id", n.NodeID(), "duration", duration)
 	}()
 
 	var err error

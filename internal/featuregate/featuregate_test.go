@@ -63,3 +63,70 @@ func TestCheckAllowed(t *testing.T) {
 		})
 	}
 }
+
+func TestAllow(t *testing.T) {
+	type args struct {
+		current  Stability
+		required Stability
+		result   bool
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "Experimental to Experimental",
+			args: args{
+				current:  StabilityExperimental,
+				required: StabilityExperimental,
+				result:   true,
+			},
+		},
+		{
+			name: "Experimental to Public Preview",
+			args: args{
+				current:  StabilityExperimental,
+				required: StabilityPublicPreview,
+				result:   true,
+			},
+		},
+		{
+			name: "Experimental to GA",
+			args: args{
+				current:  StabilityExperimental,
+				required: StabilityPublicPreview,
+				result:   true,
+			},
+		},
+		{
+			name: "GA to GA",
+			args: args{
+				current:  StabilityGenerallyAvailable,
+				required: StabilityGenerallyAvailable,
+				result:   true,
+			},
+		},
+		{
+			name: "GA to Experimental",
+			args: args{
+				current:  StabilityGenerallyAvailable,
+				required: StabilityExperimental,
+				result:   false,
+			},
+		},
+		{
+			name: "GA to Public Preview",
+			args: args{
+				current:  StabilityGenerallyAvailable,
+				required: StabilityPublicPreview,
+				result:   false,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.args.current.Permits(tt.args.required)
+			require.True(t, result == tt.args.result)
+		})
+	}
+}

@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
+
 ### Enhancements
 
 - Update `prometheus.exporter.kafka` with the following functionalities (@wildum):
@@ -37,7 +41,12 @@ Main (unreleased)
 
 - Fixed issue where text labels displayed outside of component node's boundary. (@hainenber)
 
+- Fix an issue where nested import.git config blocks could conflict if they had the same labels. (@wildum)
+
 - In `mimir.rules.kubernetes`, fix an issue where unrecoverable errors from the Mimir API were retried. (@56quarters)
+
+- Flow: Fix an issue where `faro.receiver`'s `extra_log_labels` with empty value don't
+  map existing value in log line. (@hainenber)
 
 ### Other changes
 
@@ -53,6 +62,9 @@ Main (unreleased)
 - The latest Windows Docker image is now pushed as `nanoserver-1809` instead of
   `latest-nanoserver-1809`. The old tag will no longer be updated, and will be
   removed in a future release. (@rfratto)
+
+- The log level of `finished node evaluation` log lines has been decreased to
+  'debug'. (@tpaschalis)
 
 v1.0.0 (2024-04-09)
 -------------------
