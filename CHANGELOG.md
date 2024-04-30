@@ -72,6 +72,10 @@ Main (unreleased)
 - The log level of `finished node evaluation` log lines has been decreased to
   'debug'. (@tpaschalis)
 
+- Update post-installation scripts for DEB/RPM packages to ensure
+  `/var/lib/alloy` exists before configuring its permissions and ownership.
+  (@rfratto)
+
 v1.0.0 (2024-04-09)
 -------------------
 
