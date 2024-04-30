@@ -52,8 +52,9 @@ If you don't pass this argument, the [debugging UI][UI] won't be available outsi
 
 ### Boringcrypto images
 
-> **Note**: `boringcrypto` support is in _Public preview_ and is only available
-> on AMD64 and ARM64 platforms.
+{{< admonition type="note" >}}
+`boringcrypto` support is in _Public preview_ and is only available on AMD64 and ARM64 platforms.
+{{< /admonition >}}
 
 `boringcrypto` images are published with every release starting with version
 1.1:
@@ -90,8 +91,9 @@ If you don't pass this argument, the [debugging UI][UI] won't be available outsi
 
 ### Cngcrypto images
 
-> **Note**: `cngcrypto` support is in _Public preview_ and is only available
-> on AMD64 platforms.
+{{< admonition type="note" >}}
+`cngcrypto` support is in _Public preview_ and is only available on AMD64 platforms.
+{{< /admonition >}}
 
 `cngcrypto` images are published with every release starting with version
 1.1:
@@ -100,7 +102,6 @@ If you don't pass this argument, the [debugging UI][UI] won't be available outsi
 * A specific version of the `cngcrypto` image is published as
   `grafana/alloy:<VERSION>-nanoserver-1809-cngcrypto`, such as
   `grafana/alloy:v1.1.0-nanoserver-1809-cngcrypto`.
-
 
 ## Verify
 
