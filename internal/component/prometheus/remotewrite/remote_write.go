@@ -84,6 +84,8 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	remoteLogger := log.With(o.Logger, "subcomponent", "rw")
 	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
 
+	walStorage.SetNotifier(remoteStore)
+
 	service, err := o.GetServiceData(labelstore.ServiceName)
 	if err != nil {
 		return nil, err
