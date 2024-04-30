@@ -93,7 +93,7 @@ func (args *Arguments) Validate() error {
 			signals = append(signals, "traces")
 		}
 		if len(signals) > 1 {
-			return fmt.Errorf("if the argument topic is specified, only one signal can be set in the output block, current: %s", strings.Join(signals, ", "))
+			return fmt.Errorf("only one signal can be set in the output block when a Kafka topic is explicitly set; currently set signals: %s", strings.Join(signals, ", "))
 		}
 	}
 	return nil
