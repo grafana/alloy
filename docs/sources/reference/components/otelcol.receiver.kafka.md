@@ -40,7 +40,7 @@ Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `brokers` | `array(string)` | Kafka brokers to connect to. | | yes
 `protocol_version` | `string` | Kafka protocol version to use. | | yes
-`topic` | `string` | Kafka topic to read from. | | no
+`topic` | `string` | Kafka topic to read from. | _See below_ | no
 `encoding` | `string` | Encoding of payload read from Kafka. | `"otlp_proto"` | no
 `group_id` | `string` | Consumer group to consume messages from. | `"otel-collector"` | no
 `client_id` | `string` | Consumer client ID to use. | `"otel-collector"` | no

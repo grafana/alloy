@@ -67,6 +67,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/servicegraph"           // Import otelcol.connector.servicegraph
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/spanlogs"               // Import otelcol.connector.spanlogs
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/spanmetrics"            // Import otelcol.connector.spanmetrics
+	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"                   // Import otelcol.exporter.kafka
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"           // Import otelcol.exporter.loadbalancing
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/logging"                 // Import otelcol.exporter.logging
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/loki"                    // Import otelcol.exporter.loki
