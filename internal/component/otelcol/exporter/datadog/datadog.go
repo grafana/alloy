@@ -8,7 +8,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
-	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
@@ -32,7 +31,7 @@ func init() {
 
 // Arguments configures the otelcol.exporter.datadog component.
 type Arguments struct {
-	Client  HTTPClientArguments    `alloy:"client,block,optional"`
+	Client  HTTPClientArguments    `alloy:"client,block"`
 	Timeout time.Duration          `alloy:"timeout,attr,optional"`
 	Queue   otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
 	Retry   otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
@@ -46,7 +45,7 @@ type Arguments struct {
 	Hostname     string                               `alloy:"hostname,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 // DatadogAPISettings holds the configuration settings for the Datadog API.
@@ -86,7 +85,7 @@ func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.I
 	return nil
 }
 
-func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
 	return args.DebugMetrics
 }
 
@@ -97,6 +96,11 @@ func (args *Arguments) Validate() error {
 		return errors.New("missing API key")
 	}
 
+	// Return an error if an endpoint is explicitly set to ""
+	if args.Metrics.Endpoint == "" || args.Traces.Endpoint == "" {
+		return errors.New("endpoint cannot be empty")
+	}
+
 	return nil
 }
 
@@ -104,13 +108,25 @@ func (args *Arguments) Validate() error {
 // component-specific defaults.
 type HTTPClientArguments otelcol.HTTPClientArguments
 
+// Default server settings.
+var (
+	DefaultMaxIdleConns    = 100
+	DefaultIdleConnTimeout = 90 * time.Second
+)
+
 // SetToDefault implements syntax.Defaulter.
 func (args *HTTPClientArguments) SetToDefault() {
+	maxIdleConns := DefaultMaxIdleConns
+	idleConnTimeout := DefaultIdleConnTimeout
 	*args = HTTPClientArguments{
-		Timeout:         5 * time.Second,
-		Headers:         map[string]string{},
-		Compression:     otelcol.CompressionTypeGzip,
-		ReadBufferSize:  0,
-		WriteBufferSize: 512 * 1024,
+		MaxIdleConns:    &maxIdleConns,
+		IdleConnTimeout: &idleConnTimeout,
+
+		Timeout:          30 * time.Second,
+		Headers:          map[string]string{},
+		Compression:      otelcol.CompressionTypeGzip,
+		ReadBufferSize:   0,
+		WriteBufferSize:  512 * 1024,
+		HTTP2PingTimeout: 15 * time.Second,
 	}
 }

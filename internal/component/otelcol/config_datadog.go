@@ -50,15 +50,14 @@ func (args *DatadogHostMetadataArguments) Convert() *datadogexporter.HostMetadat
 // TracesConfig holds the configuration settings for the Datadog trace exporter
 // See https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter#TracesConfig for more
 type DatadogTracesArguments struct {
-	Endpoint                  string            `alloy:"endpoint,attr,optional"`
-	IgnoreResources           []string          `alloy:"ignore_resources,attr,optional"`
-	SpanNameRemappings        map[string]string `alloy:"span_name_remappings,attr,optional"`
-	SpanNameAsResourceName    bool              `alloy:"span_name_as_resource_name,attr,optional"`
-	ComputeStatsBySpanKind    bool              `alloy:"compute_stats_by_span_kind,attr,optional"`
-	ComputeTopLevelBySpanKind bool              `alloy:"compute_top_level_by_span_kind,attr,optional"`
-	PeerTagsAggregation       bool              `alloy:"peer_tags_aggregation,attr,optional"`
-	PeerTags                  []string          `alloy:"peer_tags,attr,optional"`
-	TraceBuffer               int               `alloy:"trace_buffer,attr,optional"`
+	Endpoint               string            `alloy:"endpoint,attr,optional"`
+	IgnoreResources        []string          `alloy:"ignore_resources,attr,optional"`
+	SpanNameRemappings     map[string]string `alloy:"span_name_remappings,attr,optional"`
+	SpanNameAsResourceName bool              `alloy:"span_name_as_resource_name,attr,optional"`
+	ComputeStatsBySpanKind bool              `alloy:"compute_stats_by_span_kind,attr,optional"`
+	PeerTagsAggregation    bool              `alloy:"peer_tags_aggregation,attr,optional"`
+	PeerTags               []string          `alloy:"peer_tags,attr,optional"`
+	TraceBuffer            int               `alloy:"trace_buffer,attr,optional"`
 }
 
 func (args *DatadogTracesArguments) Convert() *datadogexporter.TracesConfig {
@@ -67,15 +66,14 @@ func (args *DatadogTracesArguments) Convert() *datadogexporter.TracesConfig {
 	}
 
 	return &datadogexporter.TracesConfig{
-		TCPAddrConfig:             confignet.TCPAddrConfig{Endpoint: args.Endpoint},
-		IgnoreResources:           args.IgnoreResources,
-		SpanNameRemappings:        args.SpanNameRemappings,
-		SpanNameAsResourceName:    args.SpanNameAsResourceName,
-		ComputeStatsBySpanKind:    args.ComputeStatsBySpanKind,
-		ComputeTopLevelBySpanKind: args.ComputeTopLevelBySpanKind,
-		PeerTagsAggregation:       args.PeerTagsAggregation,
-		PeerTags:                  args.PeerTags,
-		TraceBuffer:               args.TraceBuffer,
+		TCPAddrConfig:          confignet.TCPAddrConfig{Endpoint: args.Endpoint},
+		IgnoreResources:        args.IgnoreResources,
+		SpanNameRemappings:     args.SpanNameRemappings,
+		SpanNameAsResourceName: args.SpanNameAsResourceName,
+		ComputeStatsBySpanKind: args.ComputeStatsBySpanKind,
+		PeerTagsAggregation:    args.PeerTagsAggregation,
+		PeerTags:               args.PeerTags,
+		TraceBuffer:            args.TraceBuffer,
 	}
 }
 
