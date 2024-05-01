@@ -4,7 +4,7 @@ loki.test.logs "logs" {
 	file_refresh       = "1m"
 	write_cadence      = "1s"
 	writes_per_cadence = 100
-	labels = {
+	f = {
 		"instance" = "localhost",
 	}
 }

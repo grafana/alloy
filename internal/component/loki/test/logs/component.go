@@ -5,13 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/grafana/alloy/internal/featuregate"
 	"math/rand"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
@@ -91,6 +95,37 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
+// Handler should return a valid HTTP handler for the component.
+// All requests to the component will have the path trimmed such that the component is at the root.
+func (c *Component) Handler() http.Handler {
+	r := mux.NewRouter()
+	r.HandleFunc("/discovery", c.discovery)
+	return r
+}
+
+func (c *Component) discovery(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	instances := make([]discovery.Target, 0)
+	for _, f := range c.files {
+		d := discovery.Target{}
+		d["__path__"] = f
+		for k, v := range c.args.Labels {
+			d[k] = v
+		}
+
+	}
+	marshalledBytes, err := json.Marshal(instances)
+	if err != nil {
+		level.Error(c.o.Logger).Log("msg", "error marshalling discovery", "err", err)
+		return
+	}
+	_, err = w.Write(marshalledBytes)
+	if err != nil {
+		level.Error(c.o.Logger).Log("msg", "error writing discovery", "err", err)
+		return
+	}
+}
+
 func (c *Component) writeFiles() {
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -108,7 +143,7 @@ func (c *Component) writeFiles() {
 				msgLen = rand.Intn(c.args.MessageMaxLength-c.args.MessageMinLength) + c.args.MessageMinLength
 			}
 			attributes["msg"] = RandStringBytes(msgLen)
-			for k, v := range c.args.Labels {
+			for k, v := range c.args.Fields {
 				attributes[k] = v
 			}
 			data, err := json.Marshal(attributes)
@@ -168,6 +203,7 @@ type Arguments struct {
 	WriteCadence     time.Duration     `alloy:"write_cadence,attr,optional"`
 	WritesPerCadence int               `alloy:"writes_per_cadence,attr,optional"`
 	NumberOfFiles    int               `alloy:"number_of_files,attr,optional"`
+	Fields           map[string]string `alloy:"fields,attr,optional"`
 	Labels           map[string]string `alloy:"labels,attr,optional"`
 	MessageMaxLength int               `alloy:"message_max_length,attr,optional"`
 	MessageMinLength int               `alloy:"message_min_length,attr,optional"`

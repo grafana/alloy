@@ -47,7 +47,7 @@ local.file_match "logs" {
 	path_targets = [
 		{
 		__path__ = "./data/logs-gen/loki.test.logs.logs/*.log",
-		"key_0" = "value_0",
+		"__meta_kubernetes_pod_label_component" = "value_0",
     "key_1" = "value_1",
     "key_2" = "value_2",
     "key_3" = "value_3",
@@ -146,13 +146,97 @@ local.file_match "logs" {
     "key_96" = "value_96",
     "key_97" = "value_97",
     "key_98" = "value_98",
-    "key_99" = "value_99",
+    "__meta_kubernetes_pod_node_name" = "value_99",
 		},
 	]
 }
 
 discovery.relabel "relabeller" {
 	targets    = local.file_match.logs.targets
+	 rule {
+      source_labels = ["__meta_kubernetes_pod_annotation_kubernetes_io_config_mirror"]
+      regex         = ""
+      action        = "drop"
+    }
+
+    rule {
+      source_labels = ["__meta_kubernetes_pod_label_component"]
+      target_label  = "__service__"
+    }
+
+    rule {
+      source_labels = ["__meta_kubernetes_pod_node_name"]
+      target_label  = "__host__"
+    }
+
+    rule {
+      source_labels = ["__meta_kubernetes_pod_label_name"]
+      target_label  = "name"
+    }
+
+    rule {
+      regex        = "__meta_kubernetes_pod_label_app_kubernetes_io_(.+)"
+      target_label = "$1"
+      action       = "labelmap"
+    }
+
+    rule {
+      regex        = "__meta_kubernetes_pod_label_app_acbdefhgijklmn_com_(.+)"
+      target_label = "$1"
+      action       = "labelmap"
+    }
+
+    rule {
+      regex        = "__meta_kubernetes_node_label_node_kubernetes_io_(.+)"
+      target_label = "$1"
+      action       = "labelmap"
+    }
+
+    rule {
+      regex        = "__meta_kubernetes_node_label_topology_kubernetes_io_(.+)"
+      target_label = "$1"
+      action       = "labelmap"
+    }
+
+    rule {
+      source_labels = ["__meta_kubernetes_node_label_workload"]
+      target_label  = "node_workload"
+    }
+
+    rule {
+      source_labels = ["__meta_kubernetes_node_label_node_asg"]
+      target_label  = "node_asg"
+    }
+
+    rule {
+      regex  = "__meta_kubernetes_pod_label_(.+)"
+      action = "labeldrop"
+    }
+
+    rule {
+      source_labels = ["__meta_kubernetes_namespace"]
+      target_label  = "namespace"
+    }
+
+    rule {
+      source_labels = ["__meta_kubernetes_pod_name"]
+      target_label  = "pod"
+    }
+
+    rule {
+      source_labels = ["__meta_kubernetes_pod_container_name"]
+      target_label  = "container"
+    }
+
+    rule {
+      source_labels = ["__meta_kubernetes_pod_node_name"]
+      target_label  = "instance"
+    }
+
+    rule {
+      source_labels = ["__meta_kubernetes_pod_controller_kind"]
+      target_label  = "workload_type"
+    }
 }
 
 loki.source.file "tmpfiles" {
