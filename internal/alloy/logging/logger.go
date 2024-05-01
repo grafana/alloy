@@ -43,33 +43,11 @@ func (l *Logger) Enabled(ctx context.Context, level slog.Level) bool {
 
 // New creates a New logger with the default log level and format.
 func New(w io.Writer, o Options) (*Logger, error) {
-	var (
-		leveler slog.LevelVar
-		format  formatVar
-		writer  writerVar
-	)
-
-	l := &Logger{
-		inner: w,
-
-		buffer:       make([]*bufferedItem, 0),
-		hasLogFormat: false,
-
-		level:  &leveler,
-		format: &format,
-		writer: &writer,
-		handler: &handler{
-			w:         &writer,
-			leveler:   &leveler,
-			formatter: &format,
-			replacer:  replace,
-		},
+	l, err := NewDeferred(w)
+	if err != nil {
+		return nil, err
 	}
-	// We always need to make a deferred handler since that is what is always exposed,
-	// that being said the Update command will immediately set its interior handler.
-	l.deferredSlog = newDeferredHandler(l)
-
-	if err := l.Update(o); err != nil {
+	if err = l.Update(o); err != nil {
 		return nil, err
 	}
 
@@ -102,18 +80,6 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		},
 	}
 	l.deferredSlog = newDeferredHandler(l)
-
-	return l, nil
-}
-
-// newDeferredTest creates a new logger with the default log level and format. Used for tests.
-// The logger is not updated during initialization.
-func newDeferredTest(w io.Writer) (*Logger, error) {
-	l, err := NewDeferred(w)
-	if err != nil {
-		return nil, err
-	}
-	l.handler.replacer = testReplace
 
 	return l, nil
 }
@@ -155,7 +121,7 @@ func (l *Logger) Update(o Options) error {
 			slogadapter.GoKit(l.handler).Log(bufferedLogChunk.kvps...)
 		} else {
 			// We now can check to see if if our buffered log is at the right level.
-			if l.level.Level() <= bufferedLogChunk.record.Level {
+			if bufferedLogChunk.handler.handle.Enabled(context.Background(), bufferedLogChunk.record.Level) {
 				// These will always be valid due to the build handlers call above.
 				bufferedLogChunk.handler.handle.Handle(context.Background(), bufferedLogChunk.record)
 			}

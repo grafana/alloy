@@ -107,7 +107,7 @@ func (h *handler) buildHandler() slog.Handler {
 }
 
 func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	newNest := make([]nesting, len(h.nested)+1)
+	newNest := make([]nesting, 0, len(h.nested)+1)
 	newNest = append(newNest, h.nested...)
 	newNest = append(newNest, nesting{
 		attrs: attrs,
@@ -124,7 +124,7 @@ func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 }
 
 func (h *handler) WithGroup(name string) slog.Handler {
-	newNest := make([]nesting, len(h.nested)+1)
+	newNest := make([]nesting, 0, len(h.nested)+1)
 	newNest = append(newNest, h.nested...)
 	newNest = append(newNest, nesting{
 		group: name,
@@ -193,25 +193,4 @@ func replace(groups []string, a slog.Attr) slog.Attr {
 	}
 
 	return a
-}
-
-// testReplace is used for unit tests so we can ensure the time and source fields are consistent.
-func testReplace(groups []string, a slog.Attr) slog.Attr {
-	ra := replace(groups, a)
-	switch a.Key {
-	case "ts":
-		fallthrough
-	case "time":
-		return slog.Attr{
-			Key:   "ts",
-			Value: slog.StringValue("2024-04-29T18:26:21.37723798Z"),
-		}
-	case "source":
-		return slog.Attr{
-			Key:   "source",
-			Value: slog.StringValue("test_source"),
-		}
-	default:
-		return ra
-	}
 }

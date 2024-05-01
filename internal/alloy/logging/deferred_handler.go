@@ -12,7 +12,6 @@ type deferredSlogHandler struct {
 	group    string
 	attrs    []slog.Attr
 	children []*deferredSlogHandler
-	parent   *deferredSlogHandler
 	handle   slog.Handler
 	l        *Logger
 }
@@ -24,12 +23,12 @@ func newDeferredHandler(l *Logger) *deferredSlogHandler {
 	}
 }
 
-func (d *deferredSlogHandler) Handle(_ context.Context, r slog.Record) error {
+func (d *deferredSlogHandler) Handle(ctx context.Context, r slog.Record) error {
 	d.mut.RLock()
 	defer d.mut.RUnlock()
 
 	if d.handle != nil {
-		return d.handle.Handle(context.Background(), r)
+		return d.handle.Handle(ctx, r)
 	}
 	d.l.addRecord(r, d)
 	return nil
@@ -37,12 +36,12 @@ func (d *deferredSlogHandler) Handle(_ context.Context, r slog.Record) error {
 
 // Enabled reports whether the handler handles records at the given level.
 // The handler ignores records whose level is lower.
-func (d *deferredSlogHandler) Enabled(_ context.Context, level slog.Level) bool {
+func (d *deferredSlogHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	d.mut.RLock()
 	defer d.mut.RUnlock()
 
 	if d.handle != nil {
-		return d.handle.Enabled(context.Background(), level)
+		return d.handle.Enabled(ctx, level)
 	}
 	return true
 }
@@ -61,7 +60,6 @@ func (d *deferredSlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		attrs:    attrs,
 		children: make([]*deferredSlogHandler, 0),
 		l:        d.l,
-		parent:   d,
 	}
 	d.children = append(d.children, child)
 	return child
@@ -79,7 +77,6 @@ func (d *deferredSlogHandler) WithGroup(name string) slog.Handler {
 		children: make([]*deferredSlogHandler, 0),
 		group:    name,
 		l:        d.l,
-		parent:   d,
 	}
 	d.children = append(d.children, child)
 	return child
@@ -104,4 +101,5 @@ func (d *deferredSlogHandler) buildHandlers(parent slog.Handler) {
 	for _, child := range d.children {
 		child.buildHandlers(d.handle)
 	}
+	d.children = nil
 }

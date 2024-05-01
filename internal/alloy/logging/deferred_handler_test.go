@@ -9,11 +9,23 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"testing/slogtest"
 )
 
 func TestDefferredSlogTester(t *testing.T) {
 	buf := &bytes.Buffer{}
+	var l *Logger
 	results := func(t *testing.T) map[string]any {
+		// Nothing has been written to the byte stream, it only exists in the internal logger buffer
+		// We need to call l.Update to flush it to the byte stream.
+		// This does something a bit ugly where it DEPENDS on the var in slogtest.Run, if the behavior of slogtest.Run
+		// changes this may break the tests.
+		updateErr := l.Update(Options{
+			Level:   "debug",
+			Format:  "json",
+			WriteTo: nil,
+		})
+		require.NoError(t, updateErr)
 		line := buf.Bytes()
 		if len(line) == 0 {
 			return nil
@@ -21,17 +33,24 @@ func TestDefferredSlogTester(t *testing.T) {
 		var m map[string]any
 		unmarshalErr := json.Unmarshal(line, &m)
 		require.NoError(t, unmarshalErr)
-		// Need to reset the buffer between each test
+		// The tests expect time field and not ts.
+		if _, found := m["ts"]; found {
+			m[slog.TimeKey] = m["ts"]
+			delete(m, "ts")
+		}
+		// Need to reset the buffer and logger between each test.
+		l = nil
 		buf.Reset()
 		return m
 	}
 
 	// Had to add some custom logic to handle updated for the deferred tests.
 	// Also ignore anything that modifies the log line, which are two tests.
-	RunDeferredTests(t, func(t *testing.T) *Logger {
-		l, err := NewDeferred(buf)
+	slogtest.Run(t, func(t *testing.T) slog.Handler {
+		var err error
+		l, err = NewDeferred(buf)
 		require.NoError(t, err)
-		return l
+		return l.Handler()
 	}, results)
 }
 
