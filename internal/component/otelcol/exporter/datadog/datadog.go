@@ -44,8 +44,6 @@ type Arguments struct {
 	OnlyMetadata bool   `alloy:"only_metadata,attr,optional"`
 	Hostname     string `alloy:"hostname,attr,optional"`
 
-	Traces
-
 	// Datadog specific configuration settings
 	APISettings DatadogAPISettings `alloy:"api,block"`
 }
