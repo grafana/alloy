@@ -76,6 +76,9 @@ Main (unreleased)
   `/var/lib/alloy` exists before configuring its permissions and ownership.
   (@rfratto)
 
+- Remove setcap for `cap_net_bind_service` to allow alloy to run in restricted environments.
+  Modern container runtimes allow binding to unprivileged ports as non-root. (@BlackDex)
+
 v1.0.0 (2024-04-09)
 -------------------
 
