@@ -48,9 +48,6 @@ s3_uploader            | [s3_uploader][]      | Configures the AWS S3 bucket det
 marshaler              | [marshaler][]        | Marshaler used to produce output data.                                               | no
 debug_metrics          | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state.           | no
 
-The `>` symbol indicates deeper levels of nesting. For example, `client > tls`
-refers to a `tls` block defined inside a `client` block.
-
 [s3_uploader]: #s3_uploader-block
 [marshaler]: #marshaler-block
 [debug_metrics]: #debug_metrics-block
@@ -127,7 +124,3 @@ information.
 * `rpc_client_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
 * `rpc_client_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
 * `rpc_client_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
-
-## Examples
-
-The following examples show you how to create an exporter to send data to different destinations.
