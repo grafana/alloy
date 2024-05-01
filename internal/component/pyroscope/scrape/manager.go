@@ -8,13 +8,21 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 )
 
 var reloadInterval = 5 * time.Second
 
+type Options struct {
+	// Optional HTTP client options to use when scraping.
+	HTTPClientOptions []config_util.HTTPClientOption
+}
+
 type Manager struct {
 	logger log.Logger
+
+	options Options
 
 	graceShut  chan struct{}
 	appendable pyroscope.Appendable
@@ -27,11 +35,12 @@ type Manager struct {
 	triggerReload chan struct{}
 }
 
-func NewManager(appendable pyroscope.Appendable, logger log.Logger) *Manager {
+func NewManager(o Options, appendable pyroscope.Appendable, logger log.Logger) *Manager {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
 	return &Manager{
+		options:       o,
 		logger:        logger,
 		appendable:    appendable,
 		graceShut:     make(chan struct{}),
@@ -88,7 +97,7 @@ func (m *Manager) reload() {
 	var wg sync.WaitGroup
 	for setName, groups := range m.targetSets {
 		if _, ok := m.targetsGroups[setName]; !ok {
-			sp, err := newScrapePool(m.config, m.appendable, log.With(m.logger, "scrape_pool", setName))
+			sp, err := newScrapePool(m.options.HTTPClientOptions, m.config, m.appendable, log.With(m.logger, "scrape_pool", setName))
 			if err != nil {
 				level.Error(m.logger).Log("msg", "error creating new scrape pool", "err", err, "scrape_pool", setName)
 				continue

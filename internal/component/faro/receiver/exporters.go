@@ -3,6 +3,7 @@ package receiver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -158,7 +159,7 @@ func (exp *logsExporter) sendKeyValsToLogsPipeline(ctx context.Context, kv *payl
 	}
 
 	ent := loki.Entry{
-		Labels: exp.labelSet(),
+		Labels: exp.labelSet(kv),
 		Entry: logproto.Entry{
 			Timestamp: time.Now(),
 			Line:      string(line),
@@ -180,10 +181,23 @@ func (exp *logsExporter) sendKeyValsToLogsPipeline(ctx context.Context, kv *payl
 	return nil
 }
 
-func (exp *logsExporter) labelSet() model.LabelSet {
+func (exp *logsExporter) labelSet(kv *payload.KeyVal) model.LabelSet {
 	exp.labelsMut.RLock()
 	defer exp.labelsMut.RUnlock()
-	return exp.labels
+
+	// Attach extra label to log lines
+	set := make(model.LabelSet, len(exp.labels))
+	for k, v := range exp.labels {
+		if len(v) > 0 {
+			set[k] = v
+		} else {
+			if val, ok := kv.Get(string(k)); ok {
+				set[k] = model.LabelValue(fmt.Sprint(val))
+			}
+		}
+	}
+
+	return set
 }
 
 func (exp *logsExporter) SetLabels(newLabels map[string]string) {
