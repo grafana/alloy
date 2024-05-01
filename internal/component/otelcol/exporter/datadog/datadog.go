@@ -13,8 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/confignet"
-	"go.opentelemetry.io/collector/config/configopaque"
 	otelpexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
 	otelextension "go.opentelemetry.io/collector/extension"
 )
@@ -35,49 +33,19 @@ func init() {
 
 // Arguments configures the otelcol.exporter.datadog component.
 type Arguments struct {
+	Client  HTTPClientArguments    `alloy:"client,block"`
 	Timeout time.Duration          `alloy:"timeout,attr,optional"`
 	Queue   otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
 	Retry   otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
 
-	// v0.96 of dd exporter doesn't support full http client yet
-	SkipTLS      bool   `alloy:"insecure_skip_verify,attr,optional"`
-	OnlyMetadata bool   `alloy:"only_metadata,attr,optional"`
-	Hostname     string `alloy:"hostname,attr,optional"`
-
 	// Datadog specific configuration settings
-	APISettings DatadogAPISettings `alloy:"api,block"`
-}
-
-type TracesConfig struct {
-	// TCPAddr.Endpoint is the host of the Datadog intake server to send traces to.
-	// If unset, the value is obtained from the Site.
-	confignet.TCPAddrConfig `alloy:",squash"`
-
-	IgnoreResources []string `alloy:"ignore_resources"`
-
-	SpanNameRemappings map[string]string `alloy:"span_name_remappings"`
-
-	SpanNameAsResourceName bool `alloy:"span_name_as_resource_name"`
-
-	ComputeStatsBySpanKind bool `mapstructure:"compute_stats_by_span_kind"`
-
-	PeerServiceAggregation bool `mapstructure:"peer_service_aggregation"`
-
-	PeerTagsAggregation bool `mapstructure:"peer_tags_aggregation"`
-
-	PeerTags []string `mapstructure:"peer_tags"`
-
-	TraceBuffer int `mapstructure:"trace_buffer"`
-
-	flushInterval float64
+	APISettings        otelcol.DatadogAPISettings        `alloy:"api,block"`
+	Traces             otelcol.DatadogTracesConfig       `alloy:"traces,block,optional"`
+	Metrics            otelcol.DatadogMetricsConfig      `alloy:"metrics,block,optional"`
+	HostMetadataConfig otelcol.DatadogHostMetadataConfig `alloy:"host_metadata,block,optional"`
 }
 
 // DatadogAPISettings holds the configuration settings for the Datadog API.
-type DatadogAPISettings struct {
-	Key              configopaque.String `alloy:"api_key,attr"`
-	Site             string              `alloy:"site,attr,optional"` // Default value of exporter is "datadoghq.com"
-	FailOnInvalidKey bool                `alloy:"fail_on_invalid_key,attr,optional"`
-}
 
 var _ exporter.Arguments = Arguments{}
 
