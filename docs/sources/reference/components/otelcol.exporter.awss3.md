@@ -91,6 +91,10 @@ Name                    | Type       | Description                              
 ------------------------|------------|--------------------------------------------------------------------------------------------|---------|---------
 `type`                  | `string`   | Marshaler used to produce output data                                                      | `"otlp_json"`   | no
 
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ### Encoding
 
 Encoding overrides marshaler if present and sets to use an encoding extension defined in the collector configuration.
