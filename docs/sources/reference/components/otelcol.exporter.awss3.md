@@ -4,11 +4,11 @@ description: Learn about otelcol.exporter.awss3
 title: otelcol.exporter.awss3
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
 # otelcol.exporter.awss3
 
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.exporter.awss3` accepts telemetry data from other `otelcol` components
 and writes them to an AWS S3 Bucket.
@@ -139,6 +139,40 @@ information.
 * `rpc_client_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
 * `rpc_client_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
 * `rpc_client_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+
+## Example
+
+This example forwards scrape logs to an AWS S3 Bucket:
+
+```alloy
+local.file_match "logs" {
+  path_targets = [{
+    __address__ = "localhost",
+    __path__    = "/var/log/{syslog,messages,*.log}",
+    instance    = constants.hostname,
+    job         = "integrations/node_exporter",
+  }]
+}
+
+loki.source.file "logs" {
+  targets    = local.file_match.logs.targets
+  forward_to = [otelcol.receiver.loki.default.receiver]
+}
+
+otelcol.receiver.loki "default" {
+  output {
+    logs = [otelcol.exporter.awss3.logs.input]
+  }
+}
+
+otelcol.exporter.awss3 "logs" {
+  s3_uploader {
+    region = "us-east-1"
+    s3_bucket = "logs_bucket"
+    s3_prefix = "logs"
+  }
+}
+```
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

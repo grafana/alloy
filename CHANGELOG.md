@@ -13,6 +13,7 @@ Main (unreleased)
 ### Features
 
 - (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
+- (_Experimental_) A new `otelcol.exporter.awss3` component for sending telemetry data to a S3 bucket. (@Imshelledin21)
 
 ### Enhancements
 

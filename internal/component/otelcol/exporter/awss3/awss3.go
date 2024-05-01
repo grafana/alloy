@@ -41,13 +41,11 @@ type Arguments struct {
 var _ exporter.Arguments = Arguments{}
 
 func (args *Arguments) SetToDefault() {
-
 	args.MarshalerName.SetToDefault()
 	args.S3Uploader.SetToDefault()
 }
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-
 	var result awss3exporter.Config
 
 	result.S3Uploader = args.S3Uploader.Convert()
