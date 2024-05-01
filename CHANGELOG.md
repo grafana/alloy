@@ -64,6 +64,9 @@ Main (unreleased)
   every 15 seconds instead of as soon as data was written to the WAL.
   (@rfratto)
 
+- Imported code using `slog` logging will now not panic and replay correctly when logged before the logging 
+  config block is initialized. (@mattdurham)
+
 ### Other changes
 
 - Update `alloy-mixin` to use more specific alert group names (for example,
