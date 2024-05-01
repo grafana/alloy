@@ -121,9 +121,9 @@ func (l *Logger) Update(o Options) error {
 			slogadapter.GoKit(l.handler).Log(bufferedLogChunk.kvps...)
 		} else {
 			// We now can check to see if if our buffered log is at the right level.
-			if bufferedLogChunk.handler.handle.Enabled(context.Background(), bufferedLogChunk.record.Level) {
+			if bufferedLogChunk.handler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
 				// These will always be valid due to the build handlers call above.
-				bufferedLogChunk.handler.handle.Handle(context.Background(), bufferedLogChunk.record)
+				bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
 			}
 		}
 	}
