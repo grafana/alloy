@@ -23,9 +23,10 @@ import (
 
 func Test_GetSecrets(t *testing.T) {
 	var (
-		ctx = componenttest.TestContext(t)
-		ep  = runTestLocalSecretManager(t)
-		l   = util.TestLogger(t)
+		secretId = "foo"
+		ctx      = componenttest.TestContext(t)
+		ep, _    = runTestLocalSecretManager(t, secretId)
+		l        = util.TestLogger(t)
 	)
 
 	cfg := fmt.Sprintf(`
@@ -34,8 +35,8 @@ func Test_GetSecrets(t *testing.T) {
 		key = "test"
 		secret = "test"
 	}
-	id = "foo"
-`, ep)
+	id = "%s"
+`, ep, secretId)
 
 	var args Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
@@ -53,7 +54,7 @@ func Test_GetSecrets(t *testing.T) {
 	var (
 		expectExports = Exports{
 			Data: map[string]alloytypes.Secret{
-				"foo": alloytypes.Secret("bar"),
+				secretId: alloytypes.Secret("bar"),
 			},
 		}
 		actualExports = ctrl.Exports().(Exports)
@@ -64,7 +65,71 @@ func Test_GetSecrets(t *testing.T) {
 	require.Equal(t, innerComponent.CurrentHealth().Health, component.HealthTypeHealthy)
 }
 
-func runTestLocalSecretManager(t *testing.T) string {
+func Test_PollSecrets(t *testing.T) {
+	var (
+		secretId   = "foo_poll"
+		ctx        = componenttest.TestContext(t)
+		ep, client = runTestLocalSecretManager(t, secretId)
+		l          = util.TestLogger(t)
+	)
+
+	cfg := fmt.Sprintf(`
+	client {
+		endpoint = "%s"
+		key = "test"
+		secret = "test"
+	}
+
+	poll_frequency = "1s"
+
+	id = "%s"
+`, ep, secretId)
+
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	ctrl, err := componenttest.NewControllerFromID(l, "remote.aws.secrets_manager")
+	require.NoError(t, err)
+
+	go func() {
+		require.NoError(t, ctrl.Run(ctx, args))
+	}()
+
+	require.NoError(t, ctrl.WaitRunning(time.Minute))
+	require.NoError(t, ctrl.WaitExports(time.Minute))
+
+	var (
+		expectExports = Exports{
+			Data: map[string]alloytypes.Secret{
+				secretId: alloytypes.Secret("bar"),
+			},
+		}
+		actualExports = ctrl.Exports().(Exports)
+	)
+	require.Equal(t, expectExports, actualExports)
+
+	// Updated the secret to something else
+	updatedSecretString := "bar_poll"
+	result, err := client.UpdateSecret(context.TODO(), &secretsmanager.UpdateSecretInput{
+		SecretId:     &secretId,
+		SecretString: &updatedSecretString,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	require.NoError(t, ctrl.WaitExports(time.Minute))
+
+	expectExports = Exports{
+		Data: map[string]alloytypes.Secret{
+			secretId: alloytypes.Secret(updatedSecretString),
+		},
+	}
+	actualExports = ctrl.Exports().(Exports)
+	require.Equal(t, expectExports, actualExports)
+
+}
+
+func runTestLocalSecretManager(t *testing.T, secretId string) (string, *secretsmanager.Client) {
 	ctx := componenttest.TestContext(t)
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
@@ -96,14 +161,13 @@ func runTestLocalSecretManager(t *testing.T) string {
 
 	svc := secretsmanager.NewFromConfig(*awsCfg)
 
-	secretName := "foo"
 	secretString := "bar"
 	result, err := svc.CreateSecret(context.TODO(), &secretsmanager.CreateSecretInput{
-		Name:         &secretName,
+		Name:         &secretId,
 		SecretString: &secretString,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	return ep
+	return ep, svc
 }

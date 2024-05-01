@@ -7,8 +7,9 @@ title: remote.aws.secrets_manager
 # remote.aws.secret_manager
 
 `remote.aws.secrets_manager` securely exposes value of secrets located in [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) to other components.
-The secret would be fetched one time only at startup. Restart Alloy if you have updated to new value and would like 
-the component to fetch the latest version.
+By default, the secret would be fetched one time only at startup. If configured, the secret will be polled for changes so that the most recent value is always available. 
+
+Beware that this could incur cost due to frequent API calls.
 
 Multiple `remote.aws.secrets_manager` components can be specified using different name
 labels. By default, [AWS environment variables](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html) are used to authenticate against AWS. The `key` and `secret` arguments inside `client` blocks can be used to provide custom authentication.
@@ -28,6 +29,7 @@ The following arguments are supported:
 Name             | Type       | Description                                                              | Default | Required
 -----------------|------------|--------------------------------------------------------------------------|---------|---------
 `id`             | `string`   | Secret ID.                                                               |         | yes
+`poll_frequency` | `duration` | How often to poll the API for changes.                                   |         | no
 
 ## Blocks
 

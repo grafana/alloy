@@ -2,11 +2,9 @@ package secrets_manager
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/grafana/alloy/internal/component"
 	aws_common_config "github.com/grafana/alloy/internal/component/common/config/aws"
@@ -28,11 +26,14 @@ func init() {
 }
 
 type Component struct {
-	opts         component.Options
-	mut          sync.Mutex
-	health       component.Health
-	errors       prometheus.Counter
-	lastAccessed prometheus.Gauge
+	opts          component.Options
+	mut           sync.Mutex
+	health        component.Health
+	pollFrequency time.Duration
+	watcher       *watcher
+	updateChan    chan result
+	errors        prometheus.Counter
+	lastAccessed  prometheus.Gauge
 }
 
 var (
@@ -45,6 +46,7 @@ type Arguments struct {
 	Options       aws_common_config.Client `alloy:"client,block,optional"`
 	SecretId      string                   `alloy:"id,attr"`
 	SecretVersion string                   `alloy:"version,attr,optional"`
+	PollFrequency time.Duration            `alloy:"poll_frequency,attr,optional"`
 }
 
 // DefaultArguments holds default settings for Arguments.
@@ -63,9 +65,18 @@ type Exports struct {
 
 // New initializes a new component
 func New(o component.Options, args Arguments) (*Component, error) {
+	// Create AWS and AWS's Secrets Manager client
+	awsCfg, err := aws_common_config.GenerateAWSConfig(args.Options)
+	if err != nil {
+		return nil, err
+	}
+	client := secretsmanager.NewFromConfig(*awsCfg)
+
 	s := &Component{
-		opts:   o,
-		health: component.Health{},
+		opts:          o,
+		pollFrequency: args.PollFrequency,
+		health:        component.Health{},
+		updateChan:    make(chan result),
 		errors: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "remote_aws_secrets_manager_errors_total",
 			Help: "Total number of errors when accessing AWS Secrets Manager",
@@ -76,6 +87,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		}),
 	}
 
+	w := newWatcher(args.SecretId, args.SecretVersion, s.updateChan, args.PollFrequency, client)
+	s.watcher = w
+
 	if err := o.Registerer.Register(s.errors); err != nil {
 		return nil, err
 	}
@@ -83,59 +97,74 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
-	if err := s.Update(args); err != nil {
-		return nil, err
+	res := w.getSecret(context.TODO())
+	if res.err != nil {
+		return nil, res.err
 	}
+
+	s.handlePolledSecret(res)
 
 	return s, nil
 }
 
-func (c *Component) Run(ctx context.Context) error {
+func (s *Component) Run(ctx context.Context) error {
+	if s.pollFrequency > 0 {
+		go s.handleSecretUpdate(ctx)
+		go s.watcher.run(ctx)
+	}
 	<-ctx.Done()
 	return nil
 }
 
 // Update is called whenever the arguments have changed.
-func (c *Component) Update(args component.Arguments) (err error) {
-	defer c.updateHealth(err)
+func (s *Component) Update(args component.Arguments) (err error) {
+	defer s.updateHealth(err)
 	newArgs := args.(Arguments)
 
+	// Create AWS and AWS's Secrets Manager client
 	awsCfg, err := aws_common_config.GenerateAWSConfig(newArgs.Options)
 	if err != nil {
 		return err
 	}
+	client := secretsmanager.NewFromConfig(*awsCfg)
 
-	// Create Secrets Manager client
-	svc := secretsmanager.NewFromConfig(*awsCfg)
-
-	result, err := svc.GetSecretValue(context.TODO(), &secretsmanager.GetSecretValueInput{
-		SecretId:     aws.String(newArgs.SecretId),
-		VersionStage: aws.String(newArgs.SecretVersion),
-	})
-	if err != nil {
-		return err
-	}
-
-	if result == nil {
-		err = fmt.Errorf("unable to retrieve secret at path %s", newArgs.SecretId)
-		return err
-	}
-
-	c.exportSecret(result)
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	s.pollFrequency = newArgs.PollFrequency
+	s.watcher.updateValues(newArgs.SecretId, newArgs.SecretVersion, newArgs.PollFrequency, client)
 
 	return nil
 }
 
-// exportSecret converts the secret into exports and exports it to the
-// controller.
-func (c *Component) exportSecret(secret *secretsmanager.GetSecretValueOutput) {
-	if secret != nil {
-		newExports := Exports{
-			Data: make(map[string]alloytypes.Secret),
+// handleSecretUpdate reads from update and error channels, setting as approriate
+func (s *Component) handleSecretUpdate(ctx context.Context) {
+	for {
+		select {
+		case r := <-s.updateChan:
+			s.handlePolledSecret(r)
+		case <-ctx.Done():
+			return
 		}
-		newExports.Data[*secret.Name] = alloytypes.Secret(*secret.SecretString)
-		c.opts.OnStateChange(newExports)
 	}
+}
+
+// handledPolledSecret converts the secret into exports and exports it to the
+// controller.
+func (s *Component) handlePolledSecret(res result) {
+	var err error
+	if validated := res.Validate(); validated {
+		s.opts.OnStateChange(Exports{
+			Data: map[string]alloytypes.Secret{
+				res.secretId: alloytypes.Secret(res.secret),
+			},
+		})
+		s.lastAccessed.SetToCurrentTime()
+	} else {
+		s.errors.Inc()
+		err = res.err
+	}
+
+	s.updateHealth(err)
 }
 
 // CurrentHealth returns the health of the component.
