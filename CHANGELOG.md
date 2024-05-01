@@ -20,6 +20,10 @@ Main (unreleased)
   on AMD64 and ARM64, while `cngcrypto` support is only available on AMD64.
   (@rfratto, @mattdurham)
 
+- (_Public preview_) Introduce `boringcrypto` release assets. BoringCrypto
+  builds are publshed for Linux on AMD64 and ARM64 platforms. (@rfratto,
+  @mattdurham)
+
 ### Enhancements
 
 - Update `prometheus.exporter.kafka` with the following functionalities (@wildum):
