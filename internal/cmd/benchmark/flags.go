@@ -23,6 +23,7 @@ func flags() {
 
 	cmd.AddCommand(
 		metricsCommand(),
+		logsCommand(),
 	)
 
 	if err := cmd.Execute(); err != nil {

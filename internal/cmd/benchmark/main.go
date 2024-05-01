@@ -54,6 +54,9 @@ func httpServer() {
 	r.HandleFunc("/post", func(w http.ResponseWriter, r *http.Request) {
 		handlePost(w, r)
 	})
+	r.HandleFunc("/logs", func(w http.ResponseWriter, r *http.Request) {
+		return
+	})
 	r.HandleFunc("/allow", func(w http.ResponseWriter, r *http.Request) {
 		slog.Info("allowing")
 		networkdown = true

@@ -56,6 +56,6 @@ loki.source.file "tmpfiles" {
 
 loki.write "local" {
 	endpoint {
-		url = "http://localhost:8888/post"
+		url = "http://localhost:8888/logs"
 	}
 }

@@ -112,6 +112,7 @@ func metricsCommand() *cobra.Command {
 }
 
 func startNormalAlloy(met metric, port int) *exec.Cmd {
+	slog.Info("starting alloy", "name", met.Name)
 	cmd := exec.Command("./alloy", "run", met.Config, fmt.Sprintf("--storage.path=./data/%s", met.Name), fmt.Sprintf("--server.http.listen-addr=127.0.0.1:%d", port), "--stability.level=experimental")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if met.Name != "batch" {
