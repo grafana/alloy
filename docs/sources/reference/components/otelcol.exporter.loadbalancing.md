@@ -213,7 +213,7 @@ able to handle and proxy HTTP/2 traffic.
 
 The `tls` block configures TLS settings used for the connection to the gRPC server.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### keepalive block
 
@@ -264,7 +264,7 @@ Name    | Type               | Description
 Different {{< param "PRODUCT_NAME" >}} components require different load-balancing strategies.
 The use of `otelcol.exporter.loadbalancing` is only necessary for [stateful components][stateful-and-stateless-components].
 
-[stateful-and-stateless-components]: ../../../get-started/deploy-alloy/#stateful-and-stateless-components
+[stateful-and-stateless-components]: ../../../get-started/deploy/#stateful-and-stateless-components
 
 ### otelcol.processor.tail_sampling
 <!-- TODO: Add a picture of the architecture?  -->

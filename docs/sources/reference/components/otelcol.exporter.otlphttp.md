@@ -104,7 +104,7 @@ If `http2_read_idle_timeout` is unset or set to `0s`, then no health check will 
 The `tls` block configures TLS settings used for the connection to the HTTP
 server.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### sending_queue block
 

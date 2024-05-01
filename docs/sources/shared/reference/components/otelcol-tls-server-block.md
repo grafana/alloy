@@ -1,6 +1,6 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/otelcol-tls-config-block/
-description: Shared content, otelcol tls config block
+canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/otelcol-tls-server-block/
+description: Shared content, otelcol tls server block
 headless: true
 ---
 
@@ -12,20 +12,14 @@ Name                           | Type           | Description                   
 `ca_pem`                       | `string`       | CA PEM-encoded text to validate the server with.                                             |             | no
 `cert_file`                    | `string`       | Path to the TLS certificate.                                                                 |             | no
 `cert_pem`                     | `string`       | Certificate PEM-encoded text for client authentication.                                      |             | no
-`insecure_skip_verify`         | `boolean`      | Ignores insecure server TLS certificates.                                                    |             | no
 `include_system_ca_certs_pool` | `boolean`      | Whether to load the system certificate authorities pool alongside the certificate authority. | `false`     | no
-`insecure`                     | `boolean`      | Disables TLS when connecting to the configured server.                                       |             | no
 `key_file`                     | `string`       | Path to the TLS certificate key.                                                             |             | no
 `key_pem`                      | `secret`       | Key PEM-encoded text for client authentication.                                              |             | no
 `max_version`                  | `string`       | Maximum acceptable TLS version for connections.                                              | `"TLS 1.3"` | no
 `min_version`                  | `string`       | Minimum acceptable TLS version for connections.                                              | `"TLS 1.2"` | no
 `cipher_suites`                | `list(string)` | A list of TLS cipher suites that the TLS transport can use.                                  | `[]`        | no
 `reload_interval`              | `duration`     | The duration after which the certificate is reloaded.                                        | `"0s"`      | no
-`server_name`                  | `string`       | Verifies the hostname of server certificates when set.                                       |             | no
-
-If the server doesn't support TLS, you must set the `insecure` argument to `true`.
-
-To disable `tls` for connections to the server, set the `insecure` argument to `true`.
+`client_ca_file`               | `string`       | Path to the TLS cert to use by the server to verify a client certificate.                    |             | no
 
 If `reload_interval` is set to `"0s"`, the certificate never reloaded.
 
@@ -36,6 +30,10 @@ The following pairs of arguments are mutually exclusive and can't both be set si
 * `key_pem` and `key_file`
 
 If `cipher_suites` is left blank, a safe default list is used.
-See the [Go TLS documentation][golang-tls] for a list of supported cipher suites.
+Refer to the [Go Cipher Suites documentation][golang-cipher-suites] for a list of supported cipher suites.
 
-[golang-tls]: https://go.dev/src/crypto/tls/cipher_suites.go
+`client_ca_file` sets the `ClientCA` and `ClientAuth` to `RequireAndVerifyClientCert` in the `TLSConfig`. 
+Refer to the [Go TLS documentation][golang-tls] for more information.
+
+[golang-tls]: https://godoc.org/crypto/tls#Config
+[golang-cipher-suites]: https://go.dev/src/crypto/tls/cipher_suites.go

@@ -11,6 +11,8 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/http"
+	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 
@@ -254,6 +256,12 @@ var _ component.Component = (*Component)(nil)
 
 // New creates a new pprof.scrape component.
 func New(o component.Options, args Arguments) (*Component, error) {
+	serviceData, err := o.GetServiceData(http.ServiceName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get information about HTTP server: %w", err)
+	}
+	httpData := serviceData.(http.Data)
+
 	data, err := o.GetServiceData(cluster.ServiceName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get info about cluster service: %w", err)
@@ -261,7 +269,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	clusterData := data.(cluster.Cluster)
 
 	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, o.ID, o.Registerer)
-	scraper := NewManager(alloyAppendable, o.Logger)
+	scrapeHttpOptions := Options{
+		HTTPClientOptions: []config_util.HTTPClientOption{
+			config_util.WithDialContextFunc(httpData.DialFunc),
+		},
+	}
+	scraper := NewManager(scrapeHttpOptions, alloyAppendable, o.Logger)
 	c := &Component{
 		opts:          o,
 		cluster:       clusterData,

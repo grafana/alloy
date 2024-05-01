@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy"
@@ -69,7 +71,7 @@ func runCommand() *cobra.Command {
 is received.
 
 run must be provided an argument pointing at the Alloy configuration
-dirirectory or file path to use. If the configuration directory or file path
+directory or file path to use. If the configuration directory or file path
 wasn't specified, can't be loaded, or contains errors, run will exit
 immediately.
 
@@ -191,6 +193,12 @@ func (fr *alloyRun) Run(configPath string) error {
 	otel.SetTracerProvider(t)
 
 	level.Info(l).Log("boringcrypto enabled", boringcrypto.Enabled)
+
+	// Set the memory limit, this will honor GOMEMLIMIT if set
+	// If there is a cgroup will follow that
+	if fr.minStability.Permits(featuregate.StabilityPublicPreview) {
+		memlimit.SetGoMemLimitWithOpts(memlimit.WithLogger(slog.Default()))
+	}
 
 	// Enable the profiling.
 	setMutexBlockProfiling(l)

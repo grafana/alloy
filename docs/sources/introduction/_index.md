@@ -9,7 +9,7 @@ weight: 10
 # Introduction to {{% param "FULL_PRODUCT_NAME" %}}
 
 {{< param "PRODUCT_NAME" >}} is a flexible, high performance, vendor-neutral distribution of the [OpenTelemetry][] (OTel) Collector.
-It's fully compatible with the most popular open source observability standards such as OpenTelemetry (OTel), Prometheus, and .
+It's fully compatible with the most popular open source observability standards such as OpenTelemetry (OTel) and Prometheus.
 
 {{< param "PRODUCT_NAME" >}} focuses on ease-of-use and the ability to adapt to the needs of power users.
 

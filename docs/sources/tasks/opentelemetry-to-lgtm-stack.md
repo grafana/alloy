@@ -97,6 +97,7 @@ otelcol.exporter.loki "default" {
 loki.write "default" {
 	endpoint {
 		url = "http://loki-endpoint:8080/loki/api/v1/push"
+        }
 }
 ```
 

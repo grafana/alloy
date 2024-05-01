@@ -28,10 +28,9 @@ In addition to the preceding types, the [component reference][] documentation us
   The key type of an object is always a string or an identifier converted into a string.
 * `list(T)`: an `array` with the value type`T`.
   For example, `list(string)` is an array where all the values are strings.
-* `duration`: a `string` denoting a duration of time, such as `"1d"`, `"1h30m"`, `"10s"`.
+* `duration`: a `string` denoting a duration of time, such as `"100ms"`, `"1h30m"`, `"10s"`.
   Valid units are:
 
-  * `d` for days.
   * `h` for hours.
   * `m` for minutes.
   * `s` for seconds.

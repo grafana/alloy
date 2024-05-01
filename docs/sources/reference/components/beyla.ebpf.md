@@ -127,13 +127,13 @@ Name         | Type     | Description                                           
 `name `      | `string` | The name of the service to match.                                               |         | no
 `namespace`  | `string` | The namespace of the service to match.                                          |         | no
 `open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF. |         | no
-`path`       | `string` | The path of the running service for Beyla automatically instrumented with eBPF. |         | no
+`exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF. |         | no
 
 `name` defines a name for the matching instrumented service.
 It is used to populate the `service.name` OTEL property and/or the `service_name` Prometheus property in the exported metrics/traces.
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it is considered to match the selection criteria.
-`path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
+`exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
 ### output block
 
@@ -182,7 +182,7 @@ beyla.ebpf "default" {
 
 prometheus.scrape "beyla" {
   targets = beyla.ebpf.default.targets
-  forward_to = [prometheus.remote_write.mimir.receiver]
+  forward_to = [prometheus.remote_write.demo.receiver]
 }
 
 prometheus.remote_write "demo" {

@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/monitor/controller_metrics/
+canonical: https://grafana.com/docs/alloy/latest/tasks/monitor/controller_metrics/
 description: Learn how to monitor controller metrics
 title: Monitor the Grafana Alloy component controller
 menuTitle: Monitor the controller

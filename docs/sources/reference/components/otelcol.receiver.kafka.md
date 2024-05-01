@@ -40,12 +40,22 @@ Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `brokers` | `array(string)` | Kafka brokers to connect to. | | yes
 `protocol_version` | `string` | Kafka protocol version to use. | | yes
-`topic` | `string` | Kafka topic to read from. | `"otlp_spans"` | no
+`topic` | `string` | Kafka topic to read from. | | no
 `encoding` | `string` | Encoding of payload read from Kafka. | `"otlp_proto"` | no
 `group_id` | `string` | Consumer group to consume messages from. | `"otel-collector"` | no
 `client_id` | `string` | Consumer client ID to use. | `"otel-collector"` | no
 `initial_offset` | `string` | Initial offset to use if no offset was previously committed. | `"latest"` | no
 `resolve_canonical_bootstrap_servers_only` | `bool` | Whether to resolve then reverse-lookup broker IPs during startup. | `"false"` | no
+
+If `topic` is not set, different topics will be used for different telemetry signals:
+
+* Metrics will be received from an `otlp_metrics` topic.
+* Traces will be received from an `otlp_spans` topic.
+* Logs will be received from an `otlp_logs` topic.
+
+If `topic` is set to a specific value, then only the signal type that corresponds to the data stored in the topic must be set in the output block.
+For example, if `topic` is set to `"my_telemetry"`, then the `"my_telemetry"` topic can only contain either metrics, logs, or traces. 
+If it contains only metrics, then `otelcol.receiver.kafka` should be configured to output only metrics.
 
 The `encoding` argument determines how to decode messages read from Kafka.
 `encoding` must be one of the following strings:
@@ -165,7 +175,7 @@ The `tls` block configures TLS settings used for connecting to the Kafka
 brokers. If the `tls` block isn't provided, TLS won't be used for
 communication.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### kerberos block
 
