@@ -24,6 +24,14 @@ in Kubernetes in order for {{< param "PRODUCT_NAME" >}} to access it via the Kub
 [Role-based access control (RBAC)]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 {{< /admonition >}}
 
+{{< admonition type="note" >}}
+Since version 1.1, this component supports [clustered mode][]. When using this component as part
+of a cluster of {{< param "PRODUCT_NAME" >}} instances, only a single instance from the cluster
+will update rules using the Mimir API.
+
+[clustered mode]: ../../../concepts/clustering/
+{{< /admonition >}}
+
 [Kubernetes label selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
 [prometheus-operator]: https://prometheus-operator.dev/
 [within a Pod]: https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/

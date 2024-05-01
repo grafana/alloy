@@ -87,17 +87,6 @@ type metrics struct {
 	mimirClientTiming *prometheus.HistogramVec
 }
 
-func (m *metrics) mustRegister(r prometheus.Registerer) {
-	r.MustRegister(
-		m.configUpdatesTotal,
-		m.clusterUpdatesTotal,
-		m.eventsTotal,
-		m.eventsFailed,
-		m.eventsRetried,
-		m.mimirClientTiming,
-	)
-}
-
 func newMetrics() *metrics {
 	return &metrics{
 		configUpdatesTotal: prometheus.NewCounter(prometheus.CounterOpts{
@@ -134,9 +123,25 @@ func newMetrics() *metrics {
 	}
 }
 
+func (m *metrics) register(r prometheus.Registerer) error {
+	for _, c := range []prometheus.Collector{
+		m.configUpdatesTotal,
+		m.clusterUpdatesTotal,
+		m.eventsTotal,
+		m.eventsFailed,
+		m.eventsRetried,
+		m.mimirClientTiming,
+	} {
+		if err := r.Register(c); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type ConfigUpdate struct {
 	args Arguments
-	err  chan error
 }
 
 var _ component.Component = (*Component)(nil)
@@ -161,7 +166,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 func newNoInit(o component.Options, args Arguments) (*Component, error) {
 	m := newMetrics()
-	m.mustRegister(o.Registerer)
+	if err := m.register(o.Registerer); err != nil {
+		return nil, fmt.Errorf("registering metrics failed: %w", err)
+	}
 
 	clusterSvc, err := o.GetServiceData(cluster.ServiceName)
 	if err != nil {
@@ -174,7 +181,7 @@ func newNoInit(o component.Options, args Arguments) (*Component, error) {
 		args:           args,
 		leader:         newComponentLeadership(o.ID, o.Logger, clusterSvc.(cluster.Cluster)),
 		configUpdates:  make(chan ConfigUpdate),
-		clusterUpdates: make(chan struct{}),
+		clusterUpdates: make(chan struct{}, 1),
 		ticker:         time.NewTicker(args.SyncInterval),
 		metrics:        m,
 	}
@@ -188,8 +195,12 @@ func (c *Component) Run(ctx context.Context) error {
 	for {
 		// iteration only returns a sentinel error to indicate shutdown, otherwise it handles
 		// any errors encountered itself by logging and marking the component as unhealthy.
-		if err := c.iteration(ctx, c.leader, c, c); err != nil {
+		err := c.iteration(ctx, c.leader, c, c)
+		if errors.Is(err, errShutdown) {
 			break
+		} else if err != nil {
+			level.Error(c.log).Log("msg", "unexpected error from iteration loop; this is a bug", "err", err)
+			c.reportUnhealthy(err)
 		}
 	}
 
@@ -197,19 +208,20 @@ func (c *Component) Run(ctx context.Context) error {
 }
 
 func (c *Component) Update(newConfig component.Arguments) error {
-	errChan := make(chan error)
 	c.configUpdates <- ConfigUpdate{
 		args: newConfig.(Arguments),
-		err:  errChan,
 	}
-	return <-errChan
+	return nil
 }
 
 func (c *Component) NotifyClusterChange() {
 	// NOTE that we use cluster updates and ownership of a particular key to implement our
 	// own leadership election. Once per-component scheduling is introduced to Alloy, this
 	// leadership election logic should be removed in favor of per-component scheduling.
-	c.clusterUpdates <- struct{}{}
+	select {
+	case c.clusterUpdates <- struct{}{}:
+	default: // update already scheduled
+	}
 }
 
 func (c *Component) startupWithRetries(ctx context.Context, leader leadership, state lifecycle, health healthReporter) {
@@ -243,12 +255,10 @@ func (c *Component) iteration(ctx context.Context, leader leadership, state life
 		c.metrics.configUpdatesTotal.Inc()
 		state.update(update.args)
 
-		err := state.restart(ctx)
-		if err != nil {
+		if err := state.restart(ctx); err != nil {
 			level.Error(c.log).Log("msg", "restarting component failed", "trigger", configurationUpdate, "err", err)
 			health.reportUnhealthy(err)
 		}
-		update.err <- err
 	case <-c.clusterUpdates:
 		c.metrics.clusterUpdatesTotal.Inc()
 
