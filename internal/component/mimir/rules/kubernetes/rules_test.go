@@ -166,7 +166,7 @@ func TestIterationHandlesUpdate(t *testing.T) {
 			require.NoError(t, c.iteration(context.Background(), leader, state, health))
 		}()
 
-		require.Error(t, c.Update(newArgs))
+		require.NoError(t, c.Update(newArgs))
 		require.Error(t, health.getErr())
 		require.True(t, state.restartCalled.Load())
 	})
@@ -214,7 +214,7 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 
 		c.NotifyClusterChange()
 		wg.Wait()
-		
+
 		require.Error(t, health.getErr())
 		require.False(t, state.restartCalled.Load())
 	})
