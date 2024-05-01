@@ -53,7 +53,6 @@ RUN groupadd --gid $UID $USERNAME
 RUN useradd -m -u $UID -g $UID $USERNAME
 RUN chown -R $USERNAME:$USERNAME /etc/alloy
 RUN chown -R $USERNAME:$USERNAME /bin/alloy
-RUN setcap 'cap_net_bind_service=+ep' /bin/alloy
 
 RUN mkdir -p /var/lib/alloy/data
 RUN chown -R $USERNAME:$USERNAME /var/lib/alloy
