@@ -151,25 +151,25 @@ func TestUnmarshalConfig(t *testing.T) {
 			`,
 			expectedErr: "scrape_interval must be at least 2 seconds when using delta profiling",
 		},
-		"invalid cpu profiling_duration": {
+		"invalid cpu delta_profiling_duration": {
 			in: `
 			targets    = []
 			forward_to = null
 			scrape_timeout = "1s"
 			scrape_interval = "10s"
-			profiling_duration = "1s"
+			delta_profiling_duration = "1s"
 			`,
-			expectedErr: "profiling_duration must be larger than 1 second when using delta profiling",
+			expectedErr: "delta_profiling_duration must be larger than 1 second when using delta profiling",
 		},
-		"erroneous cpu profiling_duration": {
+		"erroneous cpu delta_profiling_duration": {
 			in: `
 			targets    = []
 			forward_to = null
 			scrape_timeout = "1s"
 			scrape_interval = "10s"
-			profiling_duration = "12s"
+			delta_profiling_duration = "12s"
 			`,
-			expectedErr: "profiling_duration must be smaller than scrape_interval when using delta profiling",
+			expectedErr: "delta_profiling_duration must be at least 1 second smaller than scrape_interval when using delta profiling",
 		},
 		"allow short scrape_intervals without delta": {
 			in: `
@@ -196,7 +196,7 @@ func TestUnmarshalConfig(t *testing.T) {
 			forward_to = null
 			scrape_timeout = "5s"
 			scrape_interval = "3s"
-			profiling_duration = "2s"
+			delta_profiling_duration = "2s"
 			bearer_token = "token"
 			bearer_token_file = "/path/to/file.token"
 			`,

@@ -407,8 +407,8 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 
 				if pcfg, found := targetTypes[profType]; found && pcfg.Delta {
 					seconds := (cfg.ScrapeInterval)/time.Second - 1
-					if cfg.ProfilingDuration != defaultProfilingDuration {
-						seconds = (cfg.ProfilingDuration) / time.Second
+					if cfg.DeltaProfilingDuration != defaultProfilingDuration {
+						seconds = (cfg.DeltaProfilingDuration) / time.Second
 					}
 					params.Add("seconds", strconv.Itoa(int(seconds)))
 				}
