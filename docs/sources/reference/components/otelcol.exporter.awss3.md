@@ -4,7 +4,11 @@ description: Learn about otelcol.exporter.awss3
 title: otelcol.exporter.awss3
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # otelcol.exporter.awss3
+
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.exporter.awss3` accepts telemetry data from other `otelcol` components
 and writes them to an AWS S3 Bucket.
@@ -103,6 +107,17 @@ See [https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main
 - `none` (default): No compression will be applied
 - `gzip`: Files will be compressed with gzip. **This does not support `sumo_ic`marshaler.**
 
+## Exported fields
+
+The following fields are exported and can be referenced by other components:
+
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
+`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+
+`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,
+logs, or traces).
+
 ## Component health
 
 `otelcol.exporter.awss3` is only reported as unhealthy if given an invalid
@@ -124,3 +139,18 @@ information.
 * `rpc_client_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
 * `rpc_client_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
 * `rpc_client_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+
+<!-- START GENERATED COMPATIBLE COMPONENTS -->
+
+## Compatible components
+
+`otelcol.exporter.otlp` has exports that can be consumed by the following components:
+
+- Components that consume [OpenTelemetry `otelcol.Consumer`](../../compatibility/#opentelemetry-otelcolconsumer-consumers)
+
+{{< admonition type="note" >}}
+Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
+Refer to the linked documentation for more details.
+{{< /admonition >}}
+
+<!-- END GENERATED COMPATIBLE COMPONENTS -->
