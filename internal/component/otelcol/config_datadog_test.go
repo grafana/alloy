@@ -26,7 +26,6 @@ func TestUnmarshalDatadogTraceConfig(t *testing.T) {
 					"go.opentelemetry.io_contrib_instrumentation_net_http_otelhttp.client" = "http.client",
 				}
 				span_name_as_resource_name = true
-				compute_top_level_by_span_kind = true
 				peer_tags = ["tag"]
 			`,
 		},
