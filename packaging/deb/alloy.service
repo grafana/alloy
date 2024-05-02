@@ -15,6 +15,7 @@ ExecStart=/usr/bin/alloy run $CUSTOM_ARGS --storage.path=/var/lib/alloy/data $CO
 ExecReload=/usr/bin/env kill -HUP $MAINPID
 TimeoutStopSec=20s
 SendSIGKILL=no
+Nice=-5
 
 [Install]
 WantedBy=multi-user.target
