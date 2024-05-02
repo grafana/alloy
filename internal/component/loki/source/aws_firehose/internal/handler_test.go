@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/assert"
+
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -21,6 +24,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
@@ -466,5 +470,200 @@ func keepLabelRule(src, dst string) *relabel.Config {
 		Replacement:  "$1",
 		TargetLabel:  dst,
 		Action:       relabel.Replace,
+	}
+}
+
+func TestHandlerWithStaticConfigsLabels(t *testing.T) {
+	type testcase struct {
+		// TenantID configures the X-Scope-OrgID header in the test request when present.
+		TenantID string
+
+		// Body is the payload of the request.
+		Body string
+
+		// Assert is the main assertion function ran after the request is successful.
+		Assert func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry)
+
+		// AssertMetrics is an optional assertion over the collected metrics
+		AssertMetrics      func(t *testing.T, m []*dto.MetricFamily)
+		StaticLabelsConfig string
+	}
+
+	tests := map[string]testcase{
+		"direct put data, static labels": {
+			Body: readTestData(t, "testdata/direct_put.json"),
+			StaticLabelsConfig: `---
+"mylabel1": "myvalue1"
+"mylabel2": myvalue2
+`,
+			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
+				r := response{}
+				require.NoError(t, json.Unmarshal(res.Body.Bytes(), &r))
+
+				require.Equal(t, 200, res.Code)
+				require.Len(t, entries, 3)
+
+				for _, e := range entries {
+					require.Equal(t, "myvalue1", string(e.Labels["mylabel1"]))
+					require.Equal(t, "myvalue2", string(e.Labels["mylabel2"]))
+				}
+			},
+		},
+		"cloudwatch logs-subscription data, static labels": {
+			Body: readTestData(t, "testdata/cw_logs_with_only_control_messages.json"),
+			StaticLabelsConfig: `---
+"mylabel1": "myvalue1"
+"mylabel2": myvalue2
+`,
+			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
+				r := response{}
+				require.NoError(t, json.Unmarshal(res.Body.Bytes(), &r))
+
+				require.Len(t, entries, 1)
+				// assert that all expected lines were seen
+				assertCloudwatchDataContents(t, res, entries, cwLambdaControlMessage)
+
+				require.Equal(t, "myvalue1", string(entries[0].Labels["mylabel1"]))
+				require.Equal(t, "myvalue2", string(entries[0].Labels["mylabel2"]))
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			w := log.NewSyncWriter(os.Stderr)
+			logger := log.NewLogfmtLogger(w)
+
+			testReceiver := &receiver{entries: make([]loki.Entry, 0)}
+			registry := prometheus.NewRegistry()
+			accessKey := ""
+			handler := NewHandler(testReceiver, logger, NewMetrics(registry), nil, false, accessKey)
+
+			var bodyReader io.Reader = strings.NewReader(tc.Body)
+
+			encodedConfig := base64.StdEncoding.EncodeToString([]byte(tc.StaticLabelsConfig))
+
+			req, err := http.NewRequest("POST", "http://test?static_configs_labels="+encodedConfig, bodyReader)
+			req.Header.Set("X-Amz-Firehose-Request-Id", testRequestID)
+			req.Header.Set("X-Amz-Firehose-Source-Arn", testSourceARN)
+			req.Header.Set("X-Amz-Firehose-Protocol-Version", "1.0")
+			req.Header.Set("User-Agent", "Amazon Kinesis Data Firehose Agent/1.0")
+			if tc.TenantID != "" {
+				req.Header.Set("X-Scope-OrgID", tc.TenantID)
+			}
+			require.NoError(t, err)
+
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, req)
+
+			// delegate assertions
+			tc.Assert(t, recorder, testReceiver.entries)
+
+			if tc.AssertMetrics != nil {
+				gatheredMetrics, err := registry.Gather()
+				require.NoError(t, err)
+				tc.AssertMetrics(t, gatheredMetrics)
+			}
+		})
+	}
+}
+
+func TestGetStaticLabelsFromRequest(t *testing.T) {
+	tests := []struct {
+		name   string
+		config string
+		want   model.LabelSet
+	}{
+		{
+			name:   "single label",
+			config: `label1: "value1"`,
+			want: model.LabelSet{
+				"label1": "value1",
+			},
+		},
+		{
+			name: "multiple labels",
+			config: `---
+label1: "value1"
+label2: "value2"
+`,
+			want: model.LabelSet{
+				"label1": "value1",
+				"label2": "value2",
+			},
+		},
+		{
+			name:   "empty config",
+			config: ``,
+			want:   model.LabelSet{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := &Handler{}
+
+			encodedConfig := base64.StdEncoding.EncodeToString([]byte(tt.config))
+			req := httptest.NewRequest(http.MethodGet, "https://example.com?static_configs_labels="+encodedConfig, nil)
+			got, err := handler.getStaticLabelsFromRequest(req)
+			assert.NoError(t, err)
+
+			receivedConfig, err := yaml.Marshal(got)
+			assert.NoError(t, err)
+			expectedConfig, err := yaml.Marshal(tt.want)
+			assert.NoError(t, err)
+
+			assert.YAMLEq(t, string(expectedConfig), string(receivedConfig))
+		})
+	}
+}
+
+func TestGetStaticLabelsFromRequest_UnmarshalError(t *testing.T) {
+	tests := []struct {
+		name   string
+		config string
+	}{
+		{
+			name:   "invalid config",
+			config: `!@#$%^&*()_`,
+		},
+		{
+			name:   "invalid label name",
+			config: `l@bel: "value"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := &Handler{}
+
+			encodedConfig := base64.StdEncoding.EncodeToString([]byte(tt.config))
+			req := httptest.NewRequest(http.MethodGet, "https://example.com?static_configs_labels="+encodedConfig, nil)
+			_, err := handler.getStaticLabelsFromRequest(req)
+			assert.Error(t, err)
+		})
+	}
+}
+
+func TestGetStaticLabelsFromRequest_InvalidBase64Value(t *testing.T) {
+	tests := []struct {
+		name          string
+		relabelConfig string
+	}{
+		{
+			name: "invalid encoded config",
+			// From prometheus/config/testdata/conf.good.yml.
+			relabelConfig: `XYZ`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := &Handler{}
+
+			req := httptest.NewRequest(http.MethodGet, "https://example.com?static_configs_labels="+tt.relabelConfig, nil)
+			_, err := handler.getStaticLabelsFromRequest(req)
+			assert.Error(t, err)
+		})
 	}
 }

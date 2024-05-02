@@ -20,6 +20,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
+	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	lokiClient "github.com/grafana/alloy/internal/component/common/loki/client"
@@ -113,6 +114,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// common labels contains all record-wide labels
 	commonLabels := labels.NewBuilder(nil)
+
+	requestStaticLabels, err := h.getStaticLabelsFromRequest(req)
+	if err != nil {
+		level.Error(h.logger).Log("msg", "failed to get static labels from the request", "err", err.Error())
+		http.Error(w, "Failed to get static labels from the static_configs_labels", http.StatusBadRequest)
+	}
+
+	for l, v := range requestStaticLabels {
+		commonLabels.Set(string(l), string(v))
+	}
+
 	commonLabels.Set("__aws_firehose_request_id", req.Header.Get("X-Amz-Firehose-Request-Id"))
 	commonLabels.Set("__aws_firehose_source_arn", req.Header.Get("X-Amz-Firehose-Source-Arn"))
 
@@ -141,7 +153,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		h.metrics.recordsReceived.WithLabelValues(string(recordType)).Inc()
-
 		switch recordType {
 		case OriginDirectPUT:
 			h.sender.Send(req.Context(), loki.Entry{
@@ -269,4 +280,23 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 	}
 
 	return nil
+}
+
+func (h *Handler) getStaticLabelsFromRequest(req *http.Request) (model.LabelSet, error) {
+	var staticLabels model.LabelSet
+	encoderRelabelConfig := req.URL.Query().Get("static_configs_labels")
+	if len(encoderRelabelConfig) == 0 {
+		return staticLabels, nil
+	}
+
+	decodedRelabelConfig, err := base64.StdEncoding.DecodeString(encoderRelabelConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding static_configs_labels: %w", err)
+	}
+
+	if err := yaml.UnmarshalStrict(decodedRelabelConfig, &staticLabels); err != nil {
+		return nil, fmt.Errorf("error unmarshaling static_configs_labels: %w", err)
+	}
+
+	return staticLabels, staticLabels.Validate()
 }
