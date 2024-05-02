@@ -38,7 +38,7 @@ loki.source.api "listener" {
         listen_port    = 9999
     }
 
-    labels = { "source": "api" }
+    labels = { source = "api" }
 
     forward_to = [loki.process.process_logs.receiver]
 }
@@ -342,16 +342,10 @@ Replace the following:
 
 * _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
-To get the current time in `RFC3339` format, you can run:
+Try executing the following which will insert the current timestamp:
 
 ```bash
-date -u +"%Y-%m-%dT%H:%M:%SZ"
-```
-
-Try executing the following, replacing the `"timestamp"` value:
-
-```bash
-curl localhost:9999/loki/api/v1/raw -XPOST -H "Content-Type: application/json" -d '{"log": {"is_secret": "false", "level": "debug", "message": "This is a debug message!"}, "timestamp": <YOUR TIMESTAMP HERE>}'
+curl localhost:9999/loki/api/v1/raw -XPOST -H "Content-Type: application/json" -d '{"log": {"is_secret": "false", "level": "debug", "message": "This is a debug message!"}, "timestamp":  "'"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'"}'
 ```
 
 Now that you have sent some logs, its time to see how they look in Grafana.
