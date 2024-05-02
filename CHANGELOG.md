@@ -42,6 +42,10 @@ Main (unreleased)
 - Don't restart tailers in `loki.source.kubernetes` component by above-average
   time deltas if K8s version is >= 1.29.1 (@hainenber)
 
+- In `mimir.rules.kubernetes`, add support for running in a cluster of Alloy instances
+  by electing a single instance as the leader for the `mimir.rules.kubernetes` component
+  to avoid conflicts when making calls to the Mimir API. (@56quarters)
+
 ### Bugfixes
 
 - Fixed issue with defaults for Beyla component not being applied correctly. (marctc)
