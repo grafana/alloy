@@ -5,8 +5,8 @@ package docker
 import (
 	"context"
 	"sync"
+	"time"
 
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy/logging/level"
@@ -52,6 +52,9 @@ type options struct {
 
 	// positions interface so tailers can save/restore offsets in log files.
 	positions positions.Positions
+
+	// taskRestartInterval to restart task that has stopped running.
+	taskRestartInterval time.Duration
 }
 
 // tailerTask is the payload used to create tailers. It implements runner.Task.
@@ -95,23 +98,24 @@ func newTailer(l log.Logger, task *tailerTask) *tailer {
 }
 
 func (t *tailer) Run(ctx context.Context) {
-	ch, chErr := t.opts.client.ContainerWait(ctx, t.target.Name(), container.WaitConditionNextExit)
+	ticker := time.NewTicker(t.opts.taskRestartInterval)
+	tickerC := ticker.C
 
-	t.target.StartIfNotRunning()
-
-	select {
-	case err := <-chErr:
-		// Error setting up the Wait request from the client; either failed to
-		// read from /containers/{containerID}/wait, or couldn't parse the
-		// response. Stop the target and exit the task after logging; if it was
-		// a transient error, the target will be retried on the next discovery
-		// refresh.
-		level.Error(t.log).Log("msg", "could not set up a wait request to the Docker client", "error", err)
-		t.target.Stop()
-		return
-	case <-ch:
-		t.target.Stop()
-		return
+	for {
+		select {
+		case <-tickerC:
+			res, err := t.opts.client.ContainerInspect(ctx, t.target.Name())
+			if err != nil {
+				level.Error(t.log).Log("msg", "error inspecting Docker container", "id", t.target.Name(), "error", err)
+				continue
+			}
+			if res.State.Running {
+				t.target.StartIfNotRunning()
+			}
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		}
 	}
 }
 

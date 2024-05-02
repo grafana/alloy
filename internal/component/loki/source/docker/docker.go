@@ -305,9 +305,10 @@ func (c *Component) getManagerOptions(args Arguments) (*options, error) {
 	}
 
 	return &options{
-		client:    client,
-		handler:   loki.NewEntryHandler(c.handler.Chan(), func() {}),
-		positions: c.posFile,
+		client:              client,
+		handler:             loki.NewEntryHandler(c.handler.Chan(), func() {}),
+		positions:           c.posFile,
+		taskRestartInterval: 5 * time.Second,
 	}, nil
 }
 
