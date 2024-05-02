@@ -2,27 +2,54 @@ package otelcol
 
 import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
 )
 
 // DatadogAPISettings holds the configuration settings for the Datadog API.
-type DatadogAPISettings struct {
-	Key              configopaque.String `alloy:"api_key,attr"`
-	Site             string              `alloy:"site,attr,optional"` // Default value of exporter is "datadoghq.com"
-	FailOnInvalidKey bool                `alloy:"fail_on_invalid_key,attr,optional"`
+type DatadogAPIArguments struct {
+	Key              string `alloy:"api_key,attr"`
+	Site             string `alloy:"site,attr,optional"` // Default value of exporter is "datadoghq.com"
+	FailOnInvalidKey bool   `alloy:"fail_on_invalid_key,attr,optional"`
+}
+
+// Convert converts args into the upstream type.
+func (args *DatadogAPIArguments) Convert() *datadogexporter.APIConfig {
+	if args == nil {
+		return nil
+	}
+
+	return &datadogexporter.APIConfig{
+		Key:              configopaque.String(args.Key),
+		Site:             args.Site,
+		FailOnInvalidKey: args.FailOnInvalidKey,
+	}
 }
 
 // HostMetadataConfig holds information used for populating the infrastructure list,
 // the host map and providing host tags functionality within the Datadog app.
-type DatadogHostMetadataConfig struct {
+type DatadogHostMetadataArguments struct {
 	Enabled        bool                           `alloy:"enabled,attr,optional"`
 	HostnameSource datadogexporter.HostnameSource `alloy:"hostname_source,attr,optional"`
 	Tags           []string                       `alloy:"tags,attr,optional"`
 }
 
+// Convert converts args into the upstream type.
+func (args *DatadogHostMetadataArguments) Convert() *datadogexporter.HostMetadataConfig {
+	if args == nil {
+		return nil
+	}
+
+	return &datadogexporter.HostMetadataConfig{
+		Enabled:        args.Enabled,
+		HostnameSource: args.HostnameSource,
+		Tags:           args.Tags,
+	}
+}
+
 // TracesConfig holds the configuration settings for the Datadog trace exporter
 // See https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter#TracesConfig for more
-type DatadogTracesConfig struct {
+type DatadogTracesArguments struct {
 	Endpoint               string            `alloy:"endpoint,attr,optional"`
 	IgnoreResources        []string          `alloy:"ignore_resources,attr,optional"`
 	SpanNameRemappings     map[string]string `alloy:"span_name_remappings,attr,optional"`
@@ -33,31 +60,99 @@ type DatadogTracesConfig struct {
 	TraceBuffer            int               `alloy:"trace_buffer,attr,optional"`
 }
 
+func (args *DatadogTracesArguments) Convert() *datadogexporter.TracesConfig {
+	if args == nil {
+		return nil
+	}
+
+	return &datadogexporter.TracesConfig{
+		TCPAddrConfig:          confignet.TCPAddrConfig{Endpoint: args.Endpoint},
+		IgnoreResources:        args.IgnoreResources,
+		SpanNameRemappings:     args.SpanNameRemappings,
+		SpanNameAsResourceName: args.SpanNameAsResourceName,
+		ComputeStatsBySpanKind: args.ComputeStatsBySpanKind,
+		PeerTagsAggregation:    args.PeerTagsAggregation,
+		PeerTags:               args.PeerTags,
+		TraceBuffer:            args.TraceBuffer,
+	}
+}
+
 // MetricsExporterConfig holds the configuration settings for the Datadog metrics exporter
-type DatadogMetricsConfig struct {
-	DeltaTTL                           int64                  `alloy:"delta_ttl,attr,optional"`
-	Endpoint                           string                 `alloy:"endpoint,attr,optional"`
-	ResourceAttributesAsTags           bool                   `alloy:"resource_attributes_as_tags,attr,optional"`
-	InstrumentationScopeMetadataAsTags bool                   `alloy:"instrumentation_scope_metadata_as_tags,attr,optional"`
-	HistConfig                         DatadogHistogramConfig `alloy:"histograms,block,optional"`
-	SumConfig                          DatadogSumConfig       `alloy:"sums,block,optional"`
-	SummaryConfig                      DatadogSummaryConfig   `alloy:"summaries,block,optional"`
+type DatadogMetricsArguments struct {
+	DeltaTTL                           int64                     `alloy:"delta_ttl,attr,optional"`
+	Endpoint                           string                    `alloy:"endpoint,attr,optional"`
+	ResourceAttributesAsTags           bool                      `alloy:"resource_attributes_as_tags,attr,optional"`
+	InstrumentationScopeMetadataAsTags bool                      `alloy:"instrumentation_scope_metadata_as_tags,attr,optional"`
+	HistConfig                         DatadogHistogramArguments `alloy:"histograms,block,optional"`
+	SumConfig                          DatadogSumArguments       `alloy:"sums,block,optional"`
+	SummaryConfig                      DatadogSummaryArguments   `alloy:"summaries,block,optional"`
+}
+
+func (args *DatadogMetricsArguments) Convert() *datadogexporter.MetricsConfig {
+	if args == nil {
+		return nil
+	}
+
+	return &datadogexporter.MetricsConfig{
+		DeltaTTL:      args.DeltaTTL,
+		TCPAddrConfig: confignet.TCPAddrConfig{Endpoint: args.Endpoint},
+		ExporterConfig: datadogexporter.MetricsExporterConfig{
+			ResourceAttributesAsTags:           args.ResourceAttributesAsTags,
+			InstrumentationScopeMetadataAsTags: args.InstrumentationScopeMetadataAsTags,
+		},
+		HistConfig:    *args.HistConfig.Convert(),
+		SumConfig:     *args.SumConfig.Convert(),
+		SummaryConfig: *args.SummaryConfig.Convert(),
+	}
 }
 
 // HistogramConfig holds Histogram specific configuration settings
-type DatadogHistogramConfig struct {
+type DatadogHistogramArguments struct {
 	Mode             datadogexporter.HistogramMode `alloy:"mode,attr,optional"`
 	SendAggregations bool                          `alloy:"send_aggregation_metrics,attr,optional"`
 }
 
-// SumConfig holds Sum specific configuration settings
+func (args *DatadogHistogramArguments) Convert() *datadogexporter.HistogramConfig {
+	if args == nil {
+		return nil
+	}
 
-type DatadogSumConfig struct {
+	return &datadogexporter.HistogramConfig{
+		Mode:             args.Mode,
+		SendAggregations: args.SendAggregations,
+	}
+}
+
+// SumConfig holds Sum specific configuration settings
+type DatadogSumArguments struct {
 	CumulativeMonotonicMode        datadogexporter.CumulativeMonotonicSumMode `alloy:"cumulative_monotonic_mode,attr,optional"`
 	InitialCumulativeMonotonicMode datadogexporter.InitialValueMode           `alloy:"initial_cumulative_monotonic_value,attr,optional"`
 }
 
+// Convert converts args into the upstream type.
+func (args *DatadogSumArguments) Convert() *datadogexporter.SumConfig {
+	if args == nil {
+		return nil
+	}
+
+	return &datadogexporter.SumConfig{
+		CumulativeMonotonicMode:        args.CumulativeMonotonicMode,
+		InitialCumulativeMonotonicMode: args.InitialCumulativeMonotonicMode,
+	}
+}
+
 // SummaryConfig holds Summary specific configuration settings
-type DatadogSummaryConfig struct {
+type DatadogSummaryArguments struct {
 	Mode datadogexporter.SummaryMode `alloy:"mode,attr,optional"`
+}
+
+// Convert converts args into the upstream type.
+func (args *DatadogSummaryArguments) Convert() *datadogexporter.SummaryConfig {
+	if args == nil {
+		return nil
+	}
+
+	return &datadogexporter.SummaryConfig{
+		Mode: args.Mode,
+	}
 }
