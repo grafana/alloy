@@ -397,7 +397,7 @@ volumes:
   name: docker
 ---
 kind: pipeline
-name: Publish Linux alloy-boringcrypto-devel container
+name: Publish Linux alloy-devel-boringcrypto container
 platform:
   arch: amd64
   os: linux
@@ -414,10 +414,10 @@ steps:
   - mkdir -p $HOME/.docker
   - printenv GCR_CREDS > $HOME/.docker/config.json
   - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
-  - docker buildx create --name multiarch-alloy-alloy-boringcrypto-devel-${DRONE_COMMIT_SHA}
+  - docker buildx create --name multiarch-alloy-alloy-devel-boringcrypto-${DRONE_COMMIT_SHA}
     --driver docker-container --use
-  - ./tools/ci/docker-containers alloy-boringcrypto-devel
-  - docker buildx rm multiarch-alloy-alloy-boringcrypto-devel-${DRONE_COMMIT_SHA}
+  - ./tools/ci/docker-containers alloy-devel-boringcrypto
+  - docker buildx rm multiarch-alloy-alloy-devel-boringcrypto-${DRONE_COMMIT_SHA}
   environment:
     DOCKER_LOGIN:
       from_secret: docker_login
@@ -474,7 +474,7 @@ volumes:
   name: docker
 ---
 kind: pipeline
-name: Publish Windows alloy-cngcrypto-devel container
+name: Publish Windows alloy-devel-cngcrypto container
 platform:
   arch: amd64
   os: windows
@@ -485,7 +485,7 @@ steps:
   - '& "C:/Program Files/git/bin/bash.exe" -c ''printenv GCR_CREDS > $HOME/.docker/config.json'''
   - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
   - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
-    alloy-cngcrypto-devel'''
+    alloy-devel-cngcrypto'''
   environment:
     DOCKER_LOGIN:
       from_secret: docker_login
@@ -663,7 +663,7 @@ volumes:
 ---
 depends_on:
 - Publish Linux alloy-devel container
-- Publish Linux alloy-boringcrypto-devel container
+- Publish Linux alloy-devel-boringcrypto container
 image_pull_secrets:
 - dockerconfigjson
 kind: pipeline
@@ -870,6 +870,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 883a9a5afd22cd78dd7b0cbe53b2523ebc4afe148272c9d0df2754d036d17319
+hmac: 8470d1cd1b7ab512b3adff1fc61af6576e427d81225f7b83ae228a3dad326aa9
 
 ...

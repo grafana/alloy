@@ -8,11 +8,11 @@ local job_names = function(jobs) std.map(function(job) job.name, jobs);
 
 local linux_containers = [
   { devel: 'alloy-devel', release: 'alloy' },
-  { devel: 'alloy-boringcrypto-devel', release: 'alloy-boringcrypto' },
+  { devel: 'alloy-devel-boringcrypto', release: 'alloy-boringcrypto' },
 ];
 local windows_containers = [
   { devel: 'alloy-devel', release: 'alloy' },
-  { devel: 'alloy-cngcrypto-devel', release: 'alloy-cngcrypto' },
+  { devel: 'alloy-devel-cngcrypto', release: 'alloy-cngcrypto' },
 ];
 
 local linux_containers_dev_jobs = std.map(function(container) (
