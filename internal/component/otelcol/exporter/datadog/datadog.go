@@ -4,7 +4,6 @@ package datadog
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -13,7 +12,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelpexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
 	otelextension "go.opentelemetry.io/collector/extension"
 )
 
@@ -39,45 +37,41 @@ type Arguments struct {
 	Retry   otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
 
 	// Datadog specific configuration settings
-	APISettings        otelcol.DatadogAPISettings        `alloy:"api,block"`
-	Traces             otelcol.DatadogTracesConfig       `alloy:"traces,block,optional"`
-	Metrics            otelcol.DatadogMetricsConfig      `alloy:"metrics,block,optional"`
-	HostMetadataConfig otelcol.DatadogHostMetadataConfig `alloy:"host_metadata,block,optional"`
+	APISettings  otelcol.DatadogAPIArguments          `alloy:"api,block"`
+	Traces       otelcol.DatadogTracesArguments       `alloy:"traces,block,optional"`
+	Metrics      otelcol.DatadogMetricsArguments      `alloy:"metrics,block,optional"`
+	HostMetadata otelcol.DatadogHostMetadataArguments `alloy:"host_metadata,block,optional"`
+	OnlyMetadata bool                                 `alloy:"only_metadata,attr,optional"`
+	Hostname     string                               `alloy:"hostname,attr,optional"`
+
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 // DatadogAPISettings holds the configuration settings for the Datadog API.
 
 var _ exporter.Arguments = Arguments{}
 
-const (
-	EncodingProto string = "proto"
-	EncodingJSON  string = "json"
-)
-
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = Arguments{
-		Encoding: EncodingProto,
-	}
 	args.Queue.SetToDefault()
 	args.Retry.SetToDefault()
 	args.Client.SetToDefault()
-	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &datadogexporter.Config{
-		TimeoutSettings: otelpexporterhelper.TimeoutSettings{
-			Timeout: args.Timeout,
-		},
+		ClientConfig:  *(*otelcol.HTTPClientArguments)(&args.Client).Convert(),
 		QueueSettings: *args.Queue.Convert(),
 		BackOffConfig: *args.Retry.Convert(),
-		API: datadogexporter.APIConfig{
-			Key:              args.Key,
-			Site:             args.Site,
-			FailOnInvalidKey: args.FailOnInvalidKey,
-		},
+		TagsConfig: datadogexporter.TagsConfig{
+			Hostname: args.Hostname},
+		API:          *args.APISettings.Convert(),
+		Traces:       *args.Traces.Convert(),
+		Metrics:      *args.Metrics.Convert(),
+		HostMetadata: *args.HostMetadata.Convert(),
+		OnlyMetadata: args.OnlyMetadata,
 	}, nil
 }
 
@@ -91,19 +85,22 @@ func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.I
 	return nil
 }
 
-// DebugMetricsConfig implements receiver.Arguments.
 func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
 	return args.DebugMetrics
 }
 
 // Validate implements syntax.Validator.
+// Checks taken from upstream
 func (args *Arguments) Validate() error {
-	if args.Client.Endpoint == "" && args.TracesEndpoint == "" && args.MetricsEndpoint == "" && args.LogsEndpoint == "" {
-		return errors.New("at least one endpoint must be specified")
+	if args.APISettings.Key == "" {
+		return errors.New("missing API key")
 	}
-	if args.Encoding != EncodingProto && args.Encoding != EncodingJSON {
-		return fmt.Errorf("invalid encoding type %s", args.Encoding)
+
+	// Return an error if an endpoint is explicitly set to ""
+	if args.Metrics.Endpoint == "" || args.Traces.Endpoint == "" {
+		return errors.New("endpoint cannot be empty")
 	}
+
 	return nil
 }
 
