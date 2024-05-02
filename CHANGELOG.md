@@ -91,6 +91,58 @@ Main (unreleased)
 
 - Remove setcap for `cap_net_bind_service` to allow alloy to run in restricted environments.
   Modern container runtimes allow binding to unprivileged ports as non-root. (@BlackDex)
+  
+- Upgrading from OpenTelemetry v0.96.0 to v0.99.0.
+  - `otelcol.processor.batch`: Prevent starting unnecessary goroutines.
+    https://github.com/open-telemetry/opentelemetry-collector/issues/9739
+  - `otelcol.exporter.otlp`: Checks for port in the config validation for the otlpexporter.
+    https://github.com/open-telemetry/opentelemetry-collector/issues/9505
+  - `otelcol.receiver.otlp`: Fix bug where the otlp receiver did not properly respond 
+    with a retryable error code when possible for http.
+    https://github.com/open-telemetry/opentelemetry-collector/pull/9357
+  - `otelcol.receiver.vcenter`: Fixed the resource attribute model to more accurately support multi-cluster deployments.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/30879
+    For more information on impacts please refer to:
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/31113
+    The main impact is that `vcenter.resource_pool.name`, `vcenter.resource_pool.inventory_path`, 
+    and `vcenter.cluster.name` are reported with more accuracy on VM metrics.
+  - `otelcol.receiver.vcenter`: Remove the `vcenter.cluster.name` resource attribute from Host resources if the Host is standalone (no cluster).
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/32548
+  - `otelcol.receiver.vcenter`: Changes process for collecting VMs & VM perf metrics to be more efficient (one call now for all VMs).
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31837
+  - `otelcol.connector.servicegraph`: Added a new `database_name_attribute` config argument to allow users to 
+    specify a custom attribute name for identifying the database name in span attributes.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/30726
+  - `otelcol.connector.servicegraph`: Fix 'failed to find dimensions for key' error from race condition in metrics cleanup.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31701
+  - `otelcol.connector.spanmetrics`: Add `metrics_expiration` option to enable expiration of metrics if spans are not received within a certain time frame.
+    By default, the expiration is disabled (set to 0).
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/30559
+  - `otelcol.connector.spanmetrics`: Change default value of `metrics_flush_interval` from 15s to 60s.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31776
+  - `otelcol.connector.spanmetrics`: Discard counter span metric exemplars after each flush interval to avoid unbounded memory growth.
+    This aligns exemplar discarding for counter span metrics with the existing logic for histogram span metrics.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31683
+  - `otelcol.exporter.loadbalancing`: Fix panic when a sub-exporter is shut down while still handling requests.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31410
+  - `otelcol.exporter.loadbalancing`: Fix memory leaks on shutdown.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/31050
+  - `otelcol.exporter.loadbalancing`: Support the timeout period of k8s resolver list watch can be configured.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31757
+  - `otelcol.processor.transform`: Change metric unit for metrics extracted with `extract_count_metric()` to be the default unit (`1`).
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31575
+  - `otelcol.receiver.opencensus`: Refactor the receiver to pass lifecycle tests and avoid leaking gRPC connections.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31643
+  - `otelcol.extension.jaeger_remote_sampling`: Fix leaking goroutine on shutdown.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31157
+  - `otelcol.receiver.kafka`: Fix panic on shutdown.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31926
+  - `otelcol.processor.resourcedetection`: Only attempt to detect Kubernetes node resource attributes when they're enabled.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31941
+  - `otelcol.processor.resourcedetection`: Fix memory leak on AKS.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/32574
+  - `otelcol.processor.resourcedetection`: Update to ec2 scraper so that core attributes are not dropped if describeTags returns an error (likely due to permissions).
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/30672
 
 v1.0.0 (2024-04-09)
 -------------------
