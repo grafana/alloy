@@ -13,8 +13,8 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
-	agentv1 "github.com/grafana/agent-remote-config/api/gen/proto/go/agent/v1"
-	"github.com/grafana/agent-remote-config/api/gen/proto/go/agent/v1/agentv1connect"
+	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
+	"github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1/collectorv1connect"
 	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component/common/config"
@@ -43,7 +43,7 @@ type Service struct {
 	ctrl service.Controller
 
 	mut               sync.RWMutex
-	asClient          agentv1connect.AgentServiceClient
+	asClient          collectorv1connect.CollectorServiceClient
 	ch                <-chan time.Time
 	ticker            *time.Ticker
 	dataPath          string
@@ -193,7 +193,7 @@ func (s *Service) Update(newConfig any) error {
 		if err != nil {
 			return err
 		}
-		s.asClient = agentv1connect.NewAgentServiceClient(
+		s.asClient = collectorv1connect.NewCollectorServiceClient(
 			httpClient,
 			newArgs.URL,
 		)
@@ -260,7 +260,7 @@ func (s *Service) fetchLocal() {
 
 func (s *Service) getAPIConfig() ([]byte, error) {
 	s.mut.RLock()
-	req := connect.NewRequest(&agentv1.GetConfigRequest{
+	req := connect.NewRequest(&collectorv1.GetConfigRequest{
 		Id:       s.args.ID,
 		Metadata: s.args.Metadata,
 	})
