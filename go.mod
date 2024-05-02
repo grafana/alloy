@@ -256,7 +256,7 @@ require (
 require (
 	github.com/KimMachineGun/automemlimit v0.6.0
 	github.com/Shopify/sarama v1.38.1
-	github.com/grafana/alloy-remote-config v0.0.3-0.20240502184643-354a9033abf0
+	github.com/grafana/alloy-remote-config v0.0.3
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
 )
 
