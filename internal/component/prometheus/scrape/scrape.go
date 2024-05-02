@@ -8,6 +8,15 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
+	client_prometheus "github.com/prometheus/client_golang/prometheus"
+	config_util "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
+	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/scrape"
+	"github.com/prometheus/prometheus/storage"
+
 	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	component_config "github.com/grafana/alloy/internal/component/common/config"
@@ -18,14 +27,6 @@ import (
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/useragent"
-	client_prometheus "github.com/prometheus/client_golang/prometheus"
-	config_util "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/config"
-	"github.com/prometheus/prometheus/discovery/targetgroup"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/scrape"
-	"github.com/prometheus/prometheus/storage"
 )
 
 func init() {
@@ -239,7 +240,10 @@ func (c *Component) Run(ctx context.Context) error {
 
 			newTargetGroups, movedTargets := c.distributeTargets(targets, jobName, args)
 
-			// Make sure the targets that moved to another instance are not marked as stale.
+			// Make sure the targets that moved to another instance are NOT marked as stale. This is specific to how
+			// Prometheus handles marking series as stale: it is the client's responsibility to inject the
+			// staleness markers. In our case, for targets that moved to another instance in the cluster, we hand
+			// over this responsibility to the new owning instance. We must not inject staleness marker here.
 			c.scraper.DisableEndOfRunStalenessMarkers(jobName, movedTargets)
 
 			select {

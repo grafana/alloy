@@ -2,12 +2,14 @@ package discovery
 
 import (
 	"fmt"
-	"github.com/grafana/alloy/internal/service/cluster"
+	"math/rand"
+	"testing"
+
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/stretchr/testify/require"
-	"math/rand"
-	"testing"
+
+	"github.com/grafana/alloy/internal/service/cluster"
 )
 
 var (
@@ -126,13 +128,13 @@ var movedToRemoteInstanceTestCases = []struct {
 	expectedMovedTargets []Target
 }{
 	{
-		name: "no previous targets distribution",
+		name:     "no previous targets distribution",
+		previous: nil,
 		current: testDistTargets(map[shard.Key][]peer.Peer{
 			keyFor(target1): {peer1Self},
 			keyFor(target2): {peer2},
 			keyFor(target3): {peer1Self},
 		}),
-		previous:             nil,
 		expectedMovedTargets: nil,
 	},
 	{
@@ -290,16 +292,16 @@ func mkTarget(kv ...string) Target {
 	return target
 }
 
-type fakeCluster struct {
-	lookupMap map[shard.Key][]peer.Peer
-	peers     []peer.Peer
-}
-
 func testDistTargets(lookupMap map[shard.Key][]peer.Peer) *DistributedTargets {
 	return NewDistributedTargets(true, &fakeCluster{
 		peers:     allTestPeers,
 		lookupMap: lookupMap,
 	}, allTestTargets)
+}
+
+type fakeCluster struct {
+	lookupMap map[shard.Key][]peer.Peer
+	peers     []peer.Peer
 }
 
 func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {

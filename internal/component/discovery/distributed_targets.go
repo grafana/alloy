@@ -1,8 +1,10 @@
 package discovery
 
 import (
-	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
+
+	"github.com/grafana/alloy/internal/service/cluster"
 )
 
 // DistributedTargets uses the node's Lookup method to distribute discovery
@@ -17,17 +19,12 @@ type DistributedTargets struct {
 // NewDistributedTargets creates the abstraction that allows components to
 // dynamically shard targets between components.
 func NewDistributedTargets(clusteringEnabled bool, cluster cluster.Cluster, allTargets []Target) *DistributedTargets {
-	// TODO(@tpaschalis): Make this into a single code-path to simplify logic.
 	if !clusteringEnabled || cluster == nil {
-		return &DistributedTargets{
-			localTargets:     allTargets,
-			remoteTargetKeys: map[shard.Key]struct{}{},
-		}
+		cluster = disabledCluster{}
 	}
 
-	peerCount := len(cluster.Peers())
 	localCap := len(allTargets) + 1
-	if peerCount != 0 {
+	if peerCount := len(cluster.Peers()); peerCount != 0 {
 		localCap = (len(allTargets) + 1) / peerCount
 	}
 
@@ -79,4 +76,16 @@ func (dt *DistributedTargets) MovedToRemoteInstance(prev *DistributedTargets) []
 
 func keyFor(tgt Target) shard.Key {
 	return shard.Key(tgt.NonMetaLabels().Hash())
+}
+
+type disabledCluster struct{}
+
+var _ cluster.Cluster = disabledCluster{}
+
+func (l disabledCluster) Lookup(key shard.Key, replicationFactor int, op shard.Op) ([]peer.Peer, error) {
+	return nil, nil
+}
+
+func (l disabledCluster) Peers() []peer.Peer {
+	return nil
 }
