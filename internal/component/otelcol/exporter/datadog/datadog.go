@@ -31,7 +31,7 @@ func init() {
 
 // Arguments configures the otelcol.exporter.datadog component.
 type Arguments struct {
-	Client  HTTPClientArguments    `alloy:"client,block"`
+	Client  HTTPClientArguments    `alloy:"client,block,optional"`
 	Timeout time.Duration          `alloy:"timeout,attr,optional"`
 	Queue   otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
 	Retry   otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
@@ -96,11 +96,6 @@ func (args *Arguments) Validate() error {
 		return errors.New("missing API key")
 	}
 
-	// Return an error if an endpoint is explicitly set to ""
-	if args.Metrics.Endpoint == "" || args.Traces.Endpoint == "" {
-		return errors.New("endpoint cannot be empty")
-	}
-
 	return nil
 }
 
@@ -108,25 +103,13 @@ func (args *Arguments) Validate() error {
 // component-specific defaults.
 type HTTPClientArguments otelcol.HTTPClientArguments
 
-// Default server settings.
-var (
-	DefaultMaxIdleConns    = 100
-	DefaultIdleConnTimeout = 90 * time.Second
-)
-
 // SetToDefault implements syntax.Defaulter.
 func (args *HTTPClientArguments) SetToDefault() {
-	maxIdleConns := DefaultMaxIdleConns
-	idleConnTimeout := DefaultIdleConnTimeout
 	*args = HTTPClientArguments{
-		MaxIdleConns:    &maxIdleConns,
-		IdleConnTimeout: &idleConnTimeout,
-
-		Timeout:          30 * time.Second,
-		Headers:          map[string]string{},
-		Compression:      otelcol.CompressionTypeGzip,
-		ReadBufferSize:   0,
-		WriteBufferSize:  512 * 1024,
-		HTTP2PingTimeout: 15 * time.Second,
+		Timeout:         5 * time.Second,
+		Headers:         map[string]string{},
+		Compression:     otelcol.CompressionTypeGzip,
+		ReadBufferSize:  0,
+		WriteBufferSize: 512 * 1024,
 	}
 }
