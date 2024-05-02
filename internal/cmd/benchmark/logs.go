@@ -115,7 +115,7 @@ func startLogsAgent(l logs, port int) *exec.Cmd {
 }
 
 func startLogsGenAgent() *exec.Cmd {
-	cmd := exec.Command("./alloy", "run", "./configs/logsgen.river", "--storage.path=./data/logs-gen", "--server.http.listen-addr=127.0.0.1:12349", "--stability.level=experimental")
+	cmd := exec.Command("./alloy", "run", "./configs/logsgen.river", "--storage.path=./data/logs-gen", "--server.http.listen-addr=127.0.0.1:9001", "--stability.level=experimental")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

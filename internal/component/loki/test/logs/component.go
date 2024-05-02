@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 
 	"github.com/go-kit/log/level"
@@ -50,11 +49,12 @@ func NewComponent(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 	entries, _ := os.ReadDir(o.DataPath)
+	dir, _ := os.Getwd()
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
 		}
-		_ = os.Remove(filepath.Join(o.DataPath, e.Name()))
+		_ = os.Remove(filepath.Join(dir, o.DataPath, e.Name()))
 	}
 	comp := &Component{
 		args:        c,
@@ -103,16 +103,28 @@ func (c *Component) Handler() http.Handler {
 	return r
 }
 
-func (c *Component) discovery(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	instances := make([]discovery.Target, 0)
-	for _, f := range c.files {
-		d := discovery.Target{}
-		d["__path__"] = f
-		for k, v := range c.args.Labels {
-			d[k] = v
-		}
+type target struct {
+	Host   []string          `json:"targets"`
+	Labels map[string]string `json:"labels"`
+}
 
+func (c *Component) discovery(w http.ResponseWriter, r *http.Request) {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	instances := make([]target, 0)
+	for _, f := range c.files {
+		lbls := make(map[string]string, 0)
+		lbls["__path__"] = f
+		for k, v := range c.args.Labels {
+			lbls[k] = v
+		}
+		t := target{
+			Host:   []string{f},
+			Labels: lbls,
+		}
+		instances = append(instances, t)
 	}
 	marshalledBytes, err := json.Marshal(instances)
 	if err != nil {
@@ -154,6 +166,7 @@ func (c *Component) writeFiles() {
 			bb.WriteString("\n")
 		}
 		fh, err := os.OpenFile(f, os.O_APPEND|os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0644)
+
 		if err != nil {
 			level.Error(c.o.Logger).Log("msg", "error opening file", "file", f, "err", err)
 			_ = fh.Close()
@@ -168,9 +181,10 @@ func (c *Component) writeFiles() {
 }
 
 func (c *Component) createFiles() {
+	dir, _ := os.Getwd()
 	for {
 		if c.args.NumberOfFiles > len(c.files) {
-			fullpath := filepath.Join(c.o.DataPath, strconv.Itoa(c.index)+".log")
+			fullpath := filepath.Join(dir, c.o.DataPath, strconv.Itoa(c.index)+".log")
 			c.files = append(c.files, fullpath)
 			c.index++
 		} else if c.args.NumberOfFiles < len(c.files) {
@@ -187,11 +201,13 @@ func (c *Component) churnFiles() {
 	defer c.mut.Unlock()
 
 	c.createFiles()
+	dir, _ := os.Getwd()
 
 	churn := int(float64(c.args.NumberOfFiles) * c.args.FileChurnPercent)
+
 	for i := 0; i < churn; i++ {
 		candidate := rand.Intn(len(c.files))
-		fullpath := filepath.Join(c.o.DataPath, strconv.Itoa(c.index)+".log")
+		fullpath := filepath.Join(dir, c.o.DataPath, strconv.Itoa(c.index)+".log")
 		c.files = append(c.files, fullpath)
 		c.index++
 		c.files[candidate] = fullpath
