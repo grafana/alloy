@@ -54,7 +54,7 @@ func (w *watcher) updateValues(secretId, secretVersion string, frequency time.Du
 	defer w.mut.Unlock()
 	w.secretId = secretId
 	w.secretVersion = secretVersion
-	if frequency > 0 {
+	if w.pollTicker != nil && frequency > 0 {
 		w.pollTicker.Reset(frequency)
 	}
 	w.client = client
