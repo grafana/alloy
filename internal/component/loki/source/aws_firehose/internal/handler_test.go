@@ -7,8 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -606,14 +604,14 @@ label2: "value2"
 			encodedConfig := base64.StdEncoding.EncodeToString([]byte(tt.config))
 			req := httptest.NewRequest(http.MethodGet, "https://example.com?static_configs_labels="+encodedConfig, nil)
 			got, err := handler.getStaticLabelsFromRequest(req)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			receivedConfig, err := yaml.Marshal(got)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			expectedConfig, err := yaml.Marshal(tt.want)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			assert.YAMLEq(t, string(expectedConfig), string(receivedConfig))
+			require.YAMLEq(t, string(expectedConfig), string(receivedConfig))
 		})
 	}
 }
@@ -640,7 +638,7 @@ func TestGetStaticLabelsFromRequest_UnmarshalError(t *testing.T) {
 			encodedConfig := base64.StdEncoding.EncodeToString([]byte(tt.config))
 			req := httptest.NewRequest(http.MethodGet, "https://example.com?static_configs_labels="+encodedConfig, nil)
 			_, err := handler.getStaticLabelsFromRequest(req)
-			assert.Error(t, err)
+			require.Error(t, err)
 		})
 	}
 }
@@ -663,7 +661,7 @@ func TestGetStaticLabelsFromRequest_InvalidBase64Value(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodGet, "https://example.com?static_configs_labels="+tt.relabelConfig, nil)
 			_, err := handler.getStaticLabelsFromRequest(req)
-			assert.Error(t, err)
+			require.Error(t, err)
 		})
 	}
 }
