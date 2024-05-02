@@ -25,7 +25,7 @@ in Kubernetes in order for {{< param "PRODUCT_NAME" >}} to access it via the Kub
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-Since version 1.1, this component supports [clustered mode][]. When using this component as part
+{{< param "PRODUCT_NAME" >}} version 1.1 and higher supports [clustered mode][] in this component. When you use this component as part
 of a cluster of {{< param "PRODUCT_NAME" >}} instances, only a single instance from the cluster
 will update rules using the Mimir API.
 
