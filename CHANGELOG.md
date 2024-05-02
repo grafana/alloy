@@ -71,6 +71,11 @@ Main (unreleased)
 - Imported code using `slog` logging will now not panic and replay correctly when logged before the logging 
   config block is initialized. (@mattdurham)
 
+### Breaking changes
+
+- Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
+  API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
+
 ### Other changes
 
 - Update `alloy-mixin` to use more specific alert group names (for example,
