@@ -64,7 +64,7 @@ require (
 	github.com/grafana/loki/pkg/push v0.0.0-20231212100434-384e5c2dc872 // k180 branch
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.7
 	github.com/grafana/pyroscope/api v0.4.0
-	github.com/grafana/pyroscope/ebpf v0.4.5-0.20240503112837-783dbf38a0f5
+	github.com/grafana/pyroscope/ebpf v0.4.7-0.20240503113404-7cf10e7307a0
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20221213150626-862cad8e9538
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
@@ -787,10 +787,4 @@ exclude github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.194
 exclude (
 	k8s.io/client-go v8.0.0+incompatible
 	k8s.io/client-go v12.0.0+incompatible
-)
-
-replace (
-	github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
-	github.com/prometheus/common => github.com/prometheus/common v0.49.0
-	github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 )
