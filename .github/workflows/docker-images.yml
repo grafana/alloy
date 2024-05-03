@@ -22,16 +22,20 @@ jobs:
           docker build -t alloy-test:latest -f Dockerfile .
 
   windows:
-    runs-on: windows-2019
+    runs-on: windows-latest
     steps:
+      - run: Set-MpPreference -DisableRealtimeMonitoring $true
+        shell: powershell
       - uses: actions/checkout@v4
       - name: Build image
         run: |
           docker build -t alloy-test:latest -f Dockerfile.windows .
 
   windows-test:
-    runs-on: windows-2019
+    runs-on: windows-latest
     steps:
+      - run: Set-MpPreference -DisableRealtimeMonitoring $true
+        shell: powershell
       - uses: actions/checkout@v4
       - uses: mr-smithers-excellent/docker-build-push@v6
         with:
