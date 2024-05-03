@@ -28,3 +28,15 @@ jobs:
       - name: Build image
         run: |
           docker build -t alloy-test:latest -f Dockerfile.windows .
+
+  windows-test:
+    runs-on: windows-2019
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mr-smithers-excellent/docker-build-push@v6
+        with:
+          registry: docker.io
+          image: grafana/alloy
+          tags: latest
+          dockerfile: ./Dockerfile.windows
+          pushImage: false
