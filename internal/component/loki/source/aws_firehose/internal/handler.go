@@ -286,12 +286,12 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 
 func (h *Handler) getStaticLabelsFromRequest(req *http.Request) (model.LabelSet, error) {
 	var staticLabels model.LabelSet
-	encodedStaticLablelConfig := req.URL.Query().Get(staticConfigsLabelsParameter)
-	if len(encodedStaticLablelConfig) == 0 {
+	encodedStaticLabelConfig := req.URL.Query().Get(staticConfigsLabelsParameter)
+	if len(encodedStaticLabelConfig) == 0 {
 		return staticLabels, nil
 	}
 
-	decodedRelabelConfig, err := base64.StdEncoding.DecodeString(encodedStaticLablelConfig)
+	decodedRelabelConfig, err := base64.StdEncoding.DecodeString(encodedStaticLabelConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding %s: %w", staticConfigsLabelsParameter, err)
 	}
