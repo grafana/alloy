@@ -67,6 +67,11 @@ tls_config          | [tls_config][]    | Configure TLS settings for connecting 
 [authorization]: #authorization-block
 [oauth2]: #oauth2-block
 [tls_config]: #tls_config-block
+[basic_auth]: #basic_auth-block
+
+### basic_auth block
+
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### authorization block
 
