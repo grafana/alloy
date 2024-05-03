@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,6 +35,11 @@ var (
 	peer1Self = peer.Peer{Name: "peer1", Addr: "peer1", Self: true, State: peer.StateParticipant}
 	peer2     = peer.Peer{Name: "peer2", Addr: "peer2", Self: false, State: peer.StateParticipant}
 	peer3     = peer.Peer{Name: "peer3", Addr: "peer3", Self: false, State: peer.StateParticipant}
+
+	// There is a race condition in prometheus where calls to NewManager can race over a package-global variable when
+	// calling targetMetadataCache.registerManager(m). This is a workaround to prevent this for now.
+	//TODO(thampiotr): Open an issue in prometheus to fix this?
+	promManagerMutex sync.Mutex
 )
 
 type testCase struct {
@@ -141,7 +147,10 @@ func TestDetectingMovedTargets(t *testing.T) {
 			setUpClusterLookup(fakeCluster, tc.initialTargetsAssignment, testTargets)
 
 			// Create and start the component
+			promManagerMutex.Lock()
 			s, err := New(opts, args)
+			promManagerMutex.Unlock()
+			
 			require.NoError(t, err)
 			ctx, cancelRun := context.WithTimeout(context.Background(), testTimeout)
 			runErr := make(chan error)
