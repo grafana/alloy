@@ -1690,6 +1690,8 @@ github.com/grafana/pyroscope/ebpf v0.4.5-0.20240425211810-c29120c596d5 h1:NHwoXi
 github.com/grafana/pyroscope/ebpf v0.4.5-0.20240425211810-c29120c596d5/go.mod h1:0iOWpGm2M6KXiP2nGa4wf02knSSjEtu11vpUOdQT5AY=
 github.com/grafana/pyroscope/ebpf v0.4.5-0.20240430113725-d3b7d61f2560 h1:h5Xl3on9lA4cvTk9PnJEaIkaogacAUz225dtp0vB7DI=
 github.com/grafana/pyroscope/ebpf v0.4.5-0.20240430113725-d3b7d61f2560/go.mod h1:0iOWpGm2M6KXiP2nGa4wf02knSSjEtu11vpUOdQT5AY=
+github.com/grafana/pyroscope/ebpf v0.4.5-0.20240503112837-783dbf38a0f5 h1:E0xJADbPkzt7IXDfRCE9/xufhMJO+jw0Gms7ZwWkIk0=
+github.com/grafana/pyroscope/ebpf v0.4.5-0.20240503112837-783dbf38a0f5/go.mod h1:0iOWpGm2M6KXiP2nGa4wf02knSSjEtu11vpUOdQT5AY=
 github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db h1:7aN5cccjIqCLTzedH7MZzRZt5/lsAHch6Z3L2ZGn5FA=
 github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db/go.mod h1:M5qHK+eWfAv8VR/265dIuEpL3fNfeC21tXXp9itM24A=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3 h1:UPkAxuhlAcRmJT3/qd34OMTl+ZU7BLLfOO2+NXBlJpY=
