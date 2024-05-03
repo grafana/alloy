@@ -30,7 +30,7 @@ otelcol.connector.servicegraph "default" {
 	}
 	cache_loop              = "2m0s"
 	store_expiration_loop   = "5s"
-	database_name_attribute = ""
+	database_name_attribute = "db_name3"
 
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]
