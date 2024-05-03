@@ -35,6 +35,8 @@ const (
 	errorResponseTemplate   = `{"requestId": "%s", "timestamp": %d, "errorMessage": "%s"}`
 
 	millisecondsPerSecond = 1000
+
+	staticConfigsLabelsParameter = "static_configs_labels"
 )
 
 // RecordOrigin is a type that tells from which origin the data received from AWS Firehose comes.
@@ -118,7 +120,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	requestStaticLabels, err := h.getStaticLabelsFromRequest(req)
 	if err != nil {
 		level.Error(h.logger).Log("msg", "failed to get static labels from the request", "err", err.Error())
-		http.Error(w, "Failed to get static labels from the static_configs_labels", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Failed to get static labels from the %s", staticConfigsLabelsParameter), http.StatusBadRequest)
 	}
 
 	for l, v := range requestStaticLabels {
@@ -284,18 +286,18 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 
 func (h *Handler) getStaticLabelsFromRequest(req *http.Request) (model.LabelSet, error) {
 	var staticLabels model.LabelSet
-	encoderRelabelConfig := req.URL.Query().Get("static_configs_labels")
-	if len(encoderRelabelConfig) == 0 {
+	encodedStaticLablelConfig := req.URL.Query().Get(staticConfigsLabelsParameter)
+	if len(encodedStaticLablelConfig) == 0 {
 		return staticLabels, nil
 	}
 
-	decodedRelabelConfig, err := base64.StdEncoding.DecodeString(encoderRelabelConfig)
+	decodedRelabelConfig, err := base64.StdEncoding.DecodeString(encodedStaticLablelConfig)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding static_configs_labels: %w", err)
+		return nil, fmt.Errorf("error decoding %s: %w", staticConfigsLabelsParameter, err)
 	}
 
 	if err := yaml.UnmarshalStrict(decodedRelabelConfig, &staticLabels); err != nil {
-		return nil, fmt.Errorf("error unmarshaling static_configs_labels: %w", err)
+		return nil, fmt.Errorf("error unmarshaling %s: %w", staticConfigsLabelsParameter, err)
 	}
 
 	return staticLabels, staticLabels.Validate()

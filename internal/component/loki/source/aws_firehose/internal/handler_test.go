@@ -541,7 +541,7 @@ func TestHandlerWithStaticConfigsLabels(t *testing.T) {
 
 			encodedConfig := base64.StdEncoding.EncodeToString([]byte(tc.StaticLabelsConfig))
 
-			req, err := http.NewRequest("POST", "http://test?static_configs_labels="+encodedConfig, bodyReader)
+			req, err := http.NewRequest("POST", fmt.Sprintf("https://example/com?%s=%s", staticConfigsLabelsParameter, encodedConfig), bodyReader)
 			req.Header.Set("X-Amz-Firehose-Request-Id", testRequestID)
 			req.Header.Set("X-Amz-Firehose-Source-Arn", testSourceARN)
 			req.Header.Set("X-Amz-Firehose-Protocol-Version", "1.0")
@@ -636,7 +636,7 @@ func TestGetStaticLabelsFromRequest_UnmarshalError(t *testing.T) {
 			handler := &Handler{}
 
 			encodedConfig := base64.StdEncoding.EncodeToString([]byte(tt.config))
-			req := httptest.NewRequest(http.MethodGet, "https://example.com?static_configs_labels="+encodedConfig, nil)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("https://example.com?%s=%s", staticConfigsLabelsParameter, encodedConfig), nil)
 			_, err := handler.getStaticLabelsFromRequest(req)
 			require.Error(t, err)
 		})
