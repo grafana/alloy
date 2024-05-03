@@ -32,6 +32,10 @@ else
   VERSION=$(./tools/image-tag)
 fi
 
+# DEFAULT_LATEST is the default tag to use for the "latest" tag.
+DEFAULT_LATEST=latest
+BORINGCRYPTO_LATEST=boringcrypto
+
 # The TAG_VERSION is the version to use for the Docker tag. It is sanitized to
 # force it to be a valid Docker tag name (primarily by removing the +
 # characters that may have been emitted by ./tools/image-tag).
@@ -45,7 +49,7 @@ TAG_VERSION=${VERSION//+/-}
 # If we're not running from drone, we'll set the branch tag to match the
 # version. This effectively acts as a no-op because it will tag the same Docker
 # image twice.
-if [[ -n "$DRONE_TAG" && "$DRONE_TAG" != *"-rc."* ]] || [[ "$TARGET_CONTAINER" == *"-devel" ]]; then
+if [[ -n "$DRONE_TAG" && "$DRONE_TAG" != *"-rc."* ]] || [[ "$TARGET_CONTAINER" == *"-devel"* ]]; then
   BRANCH_TAG=latest
 else
   BRANCH_TAG=$TAG_VERSION
@@ -54,6 +58,7 @@ fi
 # Build all of our images.
 
 export BUILD_PLATFORMS=linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+export BUILD_PLATFORMS_BORINGCRYPTO=linux/amd64,linux/arm64
 
 case "$TARGET_CONTAINER" in
   alloy)
@@ -64,6 +69,22 @@ case "$TARGET_CONTAINER" in
       -t "$RELEASE_ALLOY_IMAGE:$TAG_VERSION" \
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"  \
       -f Dockerfile                          \
+      .
+    ;;
+
+  alloy-boringcrypto)
+    if [[ "$BRANCH_TAG" == "$DEFAULT_LATEST" ]]; then
+      BRANCH_TAG=$BORINGCRYPTO_LATEST
+    fi
+
+    docker buildx build --push                            \
+      --platform $BUILD_PLATFORMS_BORINGCRYPTO            \
+      --build-arg RELEASE_BUILD=1                         \
+      --build-arg VERSION="$VERSION"                      \
+      --build-arg GOEXPERIMENT=boringcrypto               \
+      -t "$RELEASE_ALLOY_IMAGE:$TAG_VERSION-boringcrypto" \
+      -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"               \
+      -f Dockerfile                                       \
       .
     ;;
 
@@ -78,8 +99,24 @@ case "$TARGET_CONTAINER" in
       .
     ;;
 
+  alloy-devel-boringcrypto)
+    if [[ "$BRANCH_TAG" == "$DEFAULT_LATEST" ]]; then
+      BRANCH_TAG=$BORINGCRYPTO_LATEST
+    fi
+
+    docker buildx build --push                          \
+      --platform $BUILD_PLATFORMS_BORINGCRYPTO          \
+      --build-arg RELEASE_BUILD=1                       \
+      --build-arg VERSION="$VERSION"                    \
+      --build-arg GOEXPERIMENT=boringcrypto             \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION-boringcrypto" \
+      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"               \
+      -f Dockerfile                                     \
+      .
+    ;;
+
   *)
-    echo "Usage: $0 alloy|alloy-devel"
+    echo "Usage: $0 alloy|alloy-boringcrypto|alloy-devel|alloy-devel-boringcrypto"
     exit 1
     ;;
 esac

@@ -66,7 +66,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
-				MetricsFlushInterval: 15 * time.Second,
+				MetricsFlushInterval: 60 * time.Second,
 				Namespace:            "",
 				Exemplars: spanmetricsconnector.ExemplarsConfig{
 					Enabled: false,
@@ -98,7 +98,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Exponential: &spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 160},
 					Explicit:    nil,
 				},
-				MetricsFlushInterval: 15 * time.Second,
+				MetricsFlushInterval: 60 * time.Second,
 				Namespace:            "",
 				Events: spanmetricsconnector.EventsConfig{
 					Enabled:    false,
@@ -128,6 +128,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				}
 			}
 			metrics_flush_interval = "33s"
+			metrics_expiration = "44s"
 			namespace = "test.namespace"
 			exemplars {
 				enabled = true
@@ -162,6 +163,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					},
 				},
 				MetricsFlushInterval: 33 * time.Second,
+				MetricsExpiration:    44 * time.Second,
 				Namespace:            "test.namespace",
 				Exemplars: spanmetricsconnector.ExemplarsConfig{
 					Enabled: true,
@@ -196,7 +198,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Exponential: &spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 123},
 					Explicit:    nil,
 				},
-				MetricsFlushInterval: 15 * time.Second,
+				MetricsFlushInterval: 60 * time.Second,
 				Namespace:            "",
 				Events: spanmetricsconnector.EventsConfig{
 					Enabled:    false,

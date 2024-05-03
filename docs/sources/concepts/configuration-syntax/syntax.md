@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/syntax/
-description: Learn about the {{< param "PRODUCT_NAME" >}} syntax
+description: Learn about the Alloy syntax
 title: Syntax
 weight: 200
 ---

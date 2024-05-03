@@ -2,12 +2,12 @@ package spanlogs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
 
 	"github.com/go-logfmt/logfmt"
-	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -55,7 +55,7 @@ func (c *consumer) UpdateOptions(args Arguments, nextConsumer otelconsumer.Logs)
 	defer c.optsMut.Unlock()
 
 	if nextConsumer == nil {
-		return otelcomponent.ErrNilNextConsumer
+		return errors.New("nil next Consumer")
 	}
 
 	labels := make(map[string]struct{}, len(args.Labels))

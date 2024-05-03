@@ -106,7 +106,7 @@ const (
 // NewFactory returns a new factory for the Attributes processor.
 func NewFactory() processor.Factory {
 	return processor.NewFactory(
-		TypeStr,
+		component.MustNewType(TypeStr),
 		createDefaultConfig,
 		processor.WithTraces(createTraceProcessor, component.StabilityLevelUndefined),
 	)

@@ -34,12 +34,12 @@ func (args *ScraperControllerArguments) SetToDefault() {
 }
 
 // Convert converts args into the upstream type.
-func (args *ScraperControllerArguments) Convert() *scraperhelper.ScraperControllerSettings {
+func (args *ScraperControllerArguments) Convert() *scraperhelper.ControllerConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &scraperhelper.ScraperControllerSettings{
+	return &scraperhelper.ControllerConfig{
 		CollectionInterval: args.CollectionInterval,
 		InitialDelay:       args.InitialDelay,
 		Timeout:            args.Timeout,

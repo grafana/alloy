@@ -64,11 +64,15 @@ func TestStorage_InvalidSeries(t *testing.T) {
 func TestStorage(t *testing.T) {
 	walDir := t.TempDir()
 
+	onNotify := util.NewWaitTrigger()
+	notifier := &fakeNotifier{NotitfyFunc: onNotify.Trigger}
+
 	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, s.Close())
 	}()
+	s.SetNotifier(notifier)
 
 	app := s.Appender(context.Background())
 
@@ -99,6 +103,8 @@ func TestStorage(t *testing.T) {
 	actualExemplars := collector.exemplars
 	sort.Sort(byRefExemplar(actualExemplars))
 	require.Equal(t, expectedExemplars, actualExemplars)
+
+	require.NoError(t, onNotify.Wait(time.Minute), "Expected Notify to be called")
 }
 
 func TestStorage_Rollback(t *testing.T) {
@@ -663,4 +669,14 @@ func (b byRefExemplar) Less(i, j int) bool {
 		return b[i].T < b[j].T
 	}
 	return b[i].Ref < b[j].Ref
+}
+
+type fakeNotifier struct {
+	NotitfyFunc func()
+}
+
+func (fn *fakeNotifier) Notify() {
+	if fn.NotitfyFunc != nil {
+		fn.NotitfyFunc()
+	}
 }

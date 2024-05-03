@@ -37,11 +37,11 @@ func (b *ConfigBuilder) appendTraces() {
 		}
 
 		// Remove the push receiver which is an implementation detail for static mode and unnecessary for the otel config.
-		removeReceiver(otelCfg, "traces", "push_receiver")
+		removeReceiver(otelCfg, otel_component.MustNewType("traces"), otel_component.MustNewType("push_receiver"))
 
 		// Remove the service_graphs processor which is an implementation detail for static mode and unnecessary for the otel config.
-		if _, ok := otelCfg.Processors[otel_component.NewID("service_graphs")]; ok {
-			removeProcessor(otelCfg, "traces", "service_graphs")
+		if _, ok := otelCfg.Processors[otel_component.NewID(otel_component.MustNewType("service_graphs"))]; ok {
+			removeProcessor(otelCfg, otel_component.MustNewType("traces"), otel_component.MustNewType("service_graphs"))
 			b.diags.Add(diag.SeverityLevelError, "The service_graphs processor for traces has no direct Alloy equivalent. "+
 				"This configuration appends metrics to the /metrics endpoint of the agent which is not possible in Alloy. "+
 				"Alternatively, you can use the otelcol.connector.servicegraph component to build a pipeline which generates "+
@@ -56,7 +56,7 @@ func (b *ConfigBuilder) appendTraces() {
 }
 
 func (b *ConfigBuilder) translateAutomaticLogging(otelCfg *otelcol.Config, cfg traces.InstanceConfig) {
-	if _, ok := otelCfg.Processors[otel_component.NewID("automatic_logging")]; !ok {
+	if _, ok := otelCfg.Processors[otel_component.NewID(otel_component.MustNewType("automatic_logging"))]; !ok {
 		return
 	}
 
@@ -69,27 +69,27 @@ func (b *ConfigBuilder) translateAutomaticLogging(otelCfg *otelcol.Config, cfg t
 	}
 
 	// Add the logging exporter to the otel config with default values
-	otelCfg.Exporters[otel_component.NewID("logging")] = loggingexporter.NewFactory().CreateDefaultConfig()
+	otelCfg.Exporters[otel_component.NewID(otel_component.MustNewType("logging"))] = loggingexporter.NewFactory().CreateDefaultConfig()
 
 	// Add the logging exporter to all pipelines
 	for _, pipeline := range otelCfg.Service.Pipelines {
-		pipeline.Exporters = append(pipeline.Exporters, otel_component.NewID("logging"))
+		pipeline.Exporters = append(pipeline.Exporters, otel_component.NewID(otel_component.MustNewType("logging")))
 	}
 
 	// Remove the custom automatic_logging processor
-	removeProcessor(otelCfg, "traces", "automatic_logging")
+	removeProcessor(otelCfg, otel_component.MustNewType("traces"), otel_component.MustNewType("automatic_logging"))
 }
 
 func (b *ConfigBuilder) translateSpanMetrics(otelCfg *otelcol.Config, cfg traces.InstanceConfig) {
-	if _, ok := otelCfg.Processors[otel_component.NewID("spanmetrics")]; !ok {
+	if _, ok := otelCfg.Processors[otel_component.NewID(otel_component.MustNewType("spanmetrics"))]; !ok {
 		return
 	}
 
 	// Remove the custom otel components and delete the custom metrics pipeline
-	removeProcessor(otelCfg, "traces", "spanmetrics")
-	removeReceiver(otelCfg, "metrics", "noop")
-	removeExporter(otelCfg, "metrics", "prometheus")
-	removePipeline(otelCfg, "metrics", "spanmetrics")
+	removeProcessor(otelCfg, otel_component.MustNewType("traces"), otel_component.MustNewType("spanmetrics"))
+	removeReceiver(otelCfg, otel_component.MustNewType("metrics"), otel_component.MustNewType("noop"))
+	removeExporter(otelCfg, otel_component.MustNewType("metrics"), otel_component.MustNewType("prometheus"))
+	removePipeline(otelCfg, otel_component.MustNewType("metrics"), "spanmetrics")
 
 	// If the spanmetrics configuration includes a handler_endpoint, we cannot convert it.
 	// This is intentionally after the section above which removes the custom spanmetrics processor
@@ -104,19 +104,19 @@ func (b *ConfigBuilder) translateSpanMetrics(otelCfg *otelcol.Config, cfg traces
 	if otelCfg.Connectors == nil {
 		otelCfg.Connectors = map[otel_component.ID]otel_component.Config{}
 	}
-	otelCfg.Connectors[otel_component.NewID("spanmetrics")] = toSpanmetricsConnector(cfg.SpanMetrics)
+	otelCfg.Connectors[otel_component.NewID(otel_component.MustNewType("spanmetrics"))] = toSpanmetricsConnector(cfg.SpanMetrics)
 
 	// Add the spanmetrics connector to each traces pipelines as an exporter and create metrics pipelines.
 	// The processing ordering for the span metrics connector differs from the static pipelines since tail sampling
 	// in static mode processes after the custom span metrics processor. This is ok because the tail sampling
 	// processor is not processing metrics.
-	spanmetricsID := otel_component.NewID("spanmetrics")
-	remoteWriteID := otel_component.NewID("remote_write")
+	spanmetricsID := otel_component.NewID(otel_component.MustNewType("spanmetrics"))
+	remoteWriteID := otel_component.NewID(otel_component.MustNewType("remote_write"))
 	for ix, pipeline := range otelCfg.Service.Pipelines {
-		if ix.Type() == "traces" {
+		if ix.Type() == otel_component.MustNewType("traces") {
 			pipeline.Exporters = append(pipeline.Exporters, spanmetricsID)
 
-			metricsId := otel_component.NewIDWithName("metrics", ix.Name())
+			metricsId := otel_component.NewIDWithName(otel_component.MustNewType("metrics"), ix.Name())
 			otelCfg.Service.Pipelines[metricsId] = &pipelines.PipelineConfig{}
 			otelCfg.Service.Pipelines[metricsId].Receivers = append(otelCfg.Service.Pipelines[metricsId].Receivers, spanmetricsID)
 			otelCfg.Service.Pipelines[metricsId].Exporters = append(otelCfg.Service.Pipelines[metricsId].Exporters, remoteWriteID)

@@ -39,7 +39,7 @@ type successCodes struct {
 // NewFactory returns a new factory for the Prometheus service graph processor.
 func NewFactory() otelprocessor.Factory {
 	return otelprocessor.NewFactory(
-		TypeStr,
+		component.MustNewType(TypeStr),
 		createDefaultConfig,
 		otelprocessor.WithTraces(createTracesProcessor, component.StabilityLevelUndefined),
 	)

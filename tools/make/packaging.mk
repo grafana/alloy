@@ -3,7 +3,10 @@
 PARENT_MAKEFILE := $(firstword $(MAKEFILE_LIST))
 
 .PHONY: dist clean-dist
-dist: dist-alloy-binaries dist-alloy-packages dist-alloy-installer-windows
+dist: dist-alloy-binaries              \
+      dist-alloy-boringcrypto-binaries \
+      dist-alloy-packages              \
+      dist-alloy-installer-windows
 
 clean-dist:
 	rm -rf ./dist/* ./dist.temp/*
@@ -85,6 +88,27 @@ dist/alloy-freebsd-amd64: GO_TAGS += netgo builtinassets
 dist/alloy-freebsd-amd64: GOOS    := freebsd
 dist/alloy-freebsd-amd64: GOARCH  := amd64
 dist/alloy-freebsd-amd64: generate-ui
+	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
+
+#
+# Alloy boringcrypto release binaries
+#
+
+dist-alloy-boringcrypto-binaries: dist/alloy-boringcrypto-linux-amd64 \
+                                  dist/alloy-boringcrypto-linux-arm64
+
+dist/alloy-boringcrypto-linux-amd64: GO_TAGS      += netgo builtinassets promtail_journal_enabled
+dist/alloy-boringcrypto-linux-amd64: GOEXPERIMENT := boringcrypto
+dist/alloy-boringcrypto-linux-amd64: GOOS         := linux
+dist/alloy-boringcrypto-linux-amd64: GOARCH       := amd64
+dist/alloy-boringcrypto-linux-amd64: generate-ui
+	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
+
+dist/alloy-boringcrypto-linux-arm64: GO_TAGS      += netgo builtinassets promtail_journal_enabled
+dist/alloy-boringcrypto-linux-arm64: GOEXPERIMENT := boringcrypto
+dist/alloy-boringcrypto-linux-arm64: GOOS         := linux
+dist/alloy-boringcrypto-linux-arm64: GOARCH       := arm64
+dist/alloy-boringcrypto-linux-arm64: generate-ui
 	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
 
 #

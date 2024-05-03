@@ -113,7 +113,7 @@ func newTestEnvironment(
 			// Create a factory which always returns our instance of fakeProcessor
 			// defined above.
 			factory := otelprocessor.NewFactory(
-				"testcomponent",
+				otelcomponent.MustNewType("testcomponent"),
 				func() otelcomponent.Config {
 					res, err := fakeProcessorArgs{}.Convert()
 					require.NoError(t, err)

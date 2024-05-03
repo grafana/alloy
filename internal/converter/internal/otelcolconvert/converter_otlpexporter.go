@@ -119,9 +119,9 @@ func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArgume
 	}
 }
 
-func toTLSClientArguments(cfg configtls.TLSClientSetting) otelcol.TLSClientArguments {
+func toTLSClientArguments(cfg configtls.ClientConfig) otelcol.TLSClientArguments {
 	return otelcol.TLSClientArguments{
-		TLSSetting: toTLSSetting(cfg.TLSSetting),
+		TLSSetting: toTLSSetting(cfg.Config),
 
 		Insecure:           cfg.Insecure,
 		InsecureSkipVerify: cfg.InsecureSkipVerify,

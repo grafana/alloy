@@ -50,6 +50,8 @@ Name                      | Type                     | Description              
 `collect_kernel_profile`  | `bool`                   | A flag to enable/disable collection of kernelspace profiles                         | true    | no
 `demangle`                | `string`                 | C++ demangle mode. Available options are: `none`, `simplified`, `templates`, `full` | `none`  | no
 `python_enabled`          | `bool`                   | A flag to enable/disable python profiling                                           | true    | no
+`symbols_map_size`        | `int`                    | The size of eBPF symbols map                                                        | 16384   | no
+`pid_map_size`            | `int`                    | The size of eBPF PID map                                                            | 2048    | no
 
 ## Exported fields
 

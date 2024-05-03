@@ -46,9 +46,9 @@ Name         | Type                 | Description                               
 
 The `PodLogs` resource describes a set of Pods to collect logs from.
 
-> **NOTE**: `loki.source.podlogs` looks for `PodLogs` of
-> `monitoring.grafana.com/v1alpha2`, and is not compatible with `PodLogs` from
-> the {{< param "PRODUCT_NAME" >}} Operator, which are version `v1alpha1`.
+{{< admonition type="note" >}}
+`loki.source.podlogs` looks for `PodLogs` of `monitoring.grafana.com/v1alpha2`, and is not compatible with `PodLogs` from the Agent Operator, which are version `v1alpha1`.
+{{< /admonition >}}
 
 Field        | Type            | Description
 -------------|-----------------|----------------------------------------------

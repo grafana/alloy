@@ -15,7 +15,7 @@ const (
 
 // Type returns the receiver type that PushReceiverFactory produces
 func (f Factory) Type() component.Type {
-	return TypeStr
+	return component.MustNewType(TypeStr)
 }
 
 // NewFactory creates a new push receiver factory.

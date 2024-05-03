@@ -42,7 +42,7 @@ func newTraceProcessor(nextConsumer consumer.Traces, cfg *AutomaticLoggingConfig
 	logger := log.With(util_log.Logger, "component", "traces automatic logging")
 
 	if nextConsumer == nil {
-		return nil, component.ErrNilNextConsumer
+		return nil, errors.New("nil next Consumer")
 	}
 
 	if !cfg.Roots && !cfg.Processes && !cfg.Spans {

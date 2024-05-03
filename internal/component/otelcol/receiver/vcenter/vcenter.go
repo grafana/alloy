@@ -298,8 +298,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.Endpoint = args.Endpoint
 	result.Username = args.Username
 	result.Password = configopaque.String(args.Password)
-	result.TLSClientSetting = *args.TLS.Convert()
-	result.ScraperControllerSettings = *args.ScraperControllerArguments.Convert()
+	result.ClientConfig = *args.TLS.Convert()
+	result.ControllerConfig = *args.ScraperControllerArguments.Convert()
 
 	return &result, nil
 }

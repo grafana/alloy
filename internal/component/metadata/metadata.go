@@ -176,8 +176,12 @@ func hasFieldOfType(obj interface{}, fieldType reflect.Type) bool {
 
 		// If the field is a struct, recursively check its fields
 		if fv.Kind() == reflect.Struct {
-			if hasFieldOfType(fv.Interface(), fieldType) {
-				return true
+			if fv.CanInterface() {
+				if hasFieldOfType(fv.Interface(), fieldType) {
+					return true
+				}
+			} else {
+				return false
 			}
 		}
 

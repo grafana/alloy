@@ -16,7 +16,7 @@ const (
 // NewFactory creates noop receiver factory.
 func NewFactory() receiver.Factory {
 	return receiver.NewFactory(
-		TypeStr,
+		component.MustNewType(TypeStr),
 		createDefaultConfig,
 		receiver.WithMetrics(createMetricsReceiver, component.StabilityLevelUndefined),
 	)

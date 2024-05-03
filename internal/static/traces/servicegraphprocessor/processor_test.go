@@ -79,7 +79,7 @@ func TestConsumeMetrics(t *testing.T) {
 			reg := prometheus.NewRegistry()
 
 			processorSettings := otelprocessor.CreateSettings{
-				ID: component.NewID("FakeID"),
+				ID: component.NewID(component.MustNewType("FakeID")),
 				TelemetrySettings: component.TelemetrySettings{
 					MeterProvider: getTestMeterProvider(t, reg),
 

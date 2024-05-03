@@ -177,7 +177,7 @@ func (s *server) stop() error {
 
 func newFuncProcessorFactory(callback func(ptrace.Traces)) processor.Factory {
 	return processor.NewFactory(
-		"func_processor",
+		component.MustNewType("func_processor"),
 		func() component.Config {
 			return &struct{}{}
 		},
@@ -217,7 +217,7 @@ func (p *funcProcessor) Shutdown(context.Context) error              { return ni
 
 func newNoopExporterFactory() exporter.Factory {
 	return exporter.NewFactory(
-		"noop",
+		component.MustNewType("noop"),
 		func() component.Config {
 			return &struct{}{}
 		},

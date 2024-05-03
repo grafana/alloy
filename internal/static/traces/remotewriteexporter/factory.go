@@ -30,7 +30,7 @@ type Config struct {
 // NewFactory returns a new factory for the Prometheus remote write processor.
 func NewFactory() exporter.Factory {
 	return exporter.NewFactory(
-		TypeStr,
+		component.MustNewType(TypeStr),
 		createDefaultConfig,
 		exporter.WithMetrics(createMetricsExporter, component.StabilityLevelUndefined),
 	)

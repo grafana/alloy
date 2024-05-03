@@ -354,7 +354,7 @@ func TestAppendExemplarWithEmptyLabelArray(t *testing.T) {
 
 func nopObsRecv(t *testing.T) *receiverhelper.ObsReport {
 	obsrecv, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{
-		ReceiverID:             component.NewID("prometheus"),
+		ReceiverID:             component.NewID(component.MustNewType("prometheus")),
 		Transport:              transport,
 		ReceiverCreateSettings: receivertest.NewNopCreateSettings(),
 	})

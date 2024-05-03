@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/expressions/types_and_values/
-description: Learn about the {{< param "PRODUCT_NAME" >}} syntax types and values
+description: Learn about the Alloy syntax types and values
 title: Types and values
 weight: 100
 ---

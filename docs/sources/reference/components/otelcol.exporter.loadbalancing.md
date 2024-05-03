@@ -145,6 +145,7 @@ Name      | Type           | Description                                        
 ----------|----------------|-------------------------------------------------------------|----------|---------
 `service` | `string`       | Kubernetes service to resolve.                              |          | yes
 `ports`   | `list(number)` | Ports to use with the IP addresses resolved from `service`. | `[4317]` | no
+`timeout` | `duration`     | Resolver timeout.                                           | `"1s"`   | no
 
 If no namespace is specified inside `service`, an attempt will be made to infer the namespace for this {{< param "PRODUCT_NAME" >}}.
 If this fails, the `default` namespace will be used.

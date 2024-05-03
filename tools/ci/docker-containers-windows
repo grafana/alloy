@@ -27,6 +27,10 @@ else
   VERSION=$(./tools/image-tag)
 fi
 
+# DEFAULT_LATEST is the default tag to use for the "latest" tag.
+DEFAULT_LATEST=nanoserver-1809
+CNGCRYPTO_LATEST=nanoserver-1809-cngcrypto
+
 # The VERSION_TAG is the version to use for the Docker tag. It is sanitized to
 # force it to be a valid Docker tag name (primarily by removing the +
 # characters that may have been emitted by ./tools/image-tag).
@@ -41,7 +45,7 @@ VERSION_TAG=${VERSION//+/-}-nanoserver-1809
 # version. This effectively acts as a no-op because it will tag the same Docker
 # image twice.
 if [[ -n "$DRONE_TAG" && "$DRONE_TAG" != *"-rc."* ]] || [[ "$TARGET_CONTAINER" == *"-devel"* ]]; then
-  BRANCH_TAG=nanoserver-1809
+  BRANCH_TAG=$DEFAULT_LATEST
 else
   BRANCH_TAG=$VERSION_TAG
 fi
@@ -53,6 +57,25 @@ case "$TARGET_CONTAINER" in
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"  \
       --build-arg VERSION="$VERSION"         \
       --build-arg RELEASE_BUILD=1            \
+      -f ./Dockerfile.windows                \
+      .
+
+    docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
+    docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+    ;;
+
+  alloy-cngcrypto)
+    if [[ "$BRANCH_TAG" == "$DEFAULT_LATEST" ]]; then
+      BRANCH_TAG=$CNGCRYPTO_LATEST
+    fi
+
+    docker build                             \
+      -t "$RELEASE_ALLOY_IMAGE:$VERSION_TAG-cngcrypto" \
+      -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"  \
+      --build-arg VERSION="$VERSION"         \
+      --build-arg RELEASE_BUILD=1            \
+      --build-arg GOEXPERIMENT=cngcrypto     \
+      --build-arg GO_TAGS=cngcrypto          \
       -f ./Dockerfile.windows                \
       .
 
@@ -73,8 +96,27 @@ case "$TARGET_CONTAINER" in
     docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
     ;;
 
+  alloy-devel-cngcrypto)
+    if [[ "$BRANCH_TAG" == "$DEFAULT_LATEST" ]]; then
+      BRANCH_TAG=$CNGCRYPTO_LATEST
+    fi
+
+    docker build                           \
+      -t "$DEVEL_ALLOY_IMAGE:$VERSION_TAG-cngcrypto" \
+      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"  \
+      --build-arg VERSION="$VERSION"       \
+      --build-arg RELEASE_BUILD=1          \
+      --build-arg GOEXPERIMENT=cngcrypto   \
+      --build-arg GO_TAGS=cngcrypto        \
+      -f ./Dockerfile.windows              \
+      .
+
+    docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
+    docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
+    ;;
+
   *)
-    echo "Usage: $0 alloy|alloy-devel"
+    echo "Usage: $0 alloy|alloy-cngcrypto|alloy-devel|alloy-devel-cngcrypto"
     exit 1
     ;;
 esac

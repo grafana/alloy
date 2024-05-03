@@ -4,7 +4,6 @@ Alloy depends on various OpenTelemetry (Otel) modules such as these:
 ```
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension
-github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanmetricsprocessor
 go.opentelemetry.io/collector
 go.opentelemetry.io/collector/component
 go.opentelemetry.io/otel
@@ -24,7 +23,7 @@ Unfortunately, updating Otel dependencies is not straightforward:
   * This is mostly so that we can include metrics of Collector components with the metrics shown under Alloy's `/metrics` endpoint.
 * All Collector and Collector-Contrib dependencies should be updated at the same time, because they
   are kept in sync on the same version.
-  * E.g. if we use `v0.85.0` of `go.opentelemetry.io/collector`, we also use `v0.85.0` of `spanmetricsprocessor`.
+  * E.g. if we use `v0.85.0` of `go.opentelemetry.io/collector`, we also use `v0.85.0` of `spanmetricsconnector`.
   * This is in line with how the Collector itself imports dependencies.
   * It helps us avoid bugs.
   * It makes it easier to communicate to customers the version of Collector which we use in Alloy.

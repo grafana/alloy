@@ -354,7 +354,7 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Publish development Linux alloy container
+name: Publish Linux alloy-devel container
 platform:
   arch: amd64
   os: linux
@@ -371,10 +371,10 @@ steps:
   - mkdir -p $HOME/.docker
   - printenv GCR_CREDS > $HOME/.docker/config.json
   - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
-  - docker buildx create --name multiarch-alloy-alloy-${DRONE_COMMIT_SHA} --driver
+  - docker buildx create --name multiarch-alloy-alloy-devel-${DRONE_COMMIT_SHA} --driver
     docker-container --use
   - ./tools/ci/docker-containers alloy-devel
-  - docker buildx rm multiarch-alloy-alloy-${DRONE_COMMIT_SHA}
+  - docker buildx rm multiarch-alloy-alloy-devel-${DRONE_COMMIT_SHA}
   environment:
     DOCKER_LOGIN:
       from_secret: docker_login
@@ -397,7 +397,50 @@ volumes:
   name: docker
 ---
 kind: pipeline
-name: Publish development Windows alloy container
+name: Publish Linux alloy-devel-boringcrypto container
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  failure: ignore
+  image: grafana/alloy-build-image:v0.1.0
+  name: Configure QEMU
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+- commands:
+  - mkdir -p $HOME/.docker
+  - printenv GCR_CREDS > $HOME/.docker/config.json
+  - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
+  - docker buildx create --name multiarch-alloy-alloy-devel-boringcrypto-${DRONE_COMMIT_SHA}
+    --driver docker-container --use
+  - ./tools/ci/docker-containers alloy-devel-boringcrypto
+  - docker buildx rm multiarch-alloy-alloy-devel-boringcrypto-${DRONE_COMMIT_SHA}
+  environment:
+    DOCKER_LOGIN:
+      from_secret: docker_login
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+    GCR_CREDS:
+      from_secret: gcr_admin
+  image: grafana/alloy-build-image:v0.1.0
+  name: Publish container
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+trigger:
+  ref:
+  - refs/heads/main
+type: docker
+volumes:
+- host:
+    path: /var/run/docker.sock
+  name: docker
+---
+kind: pipeline
+name: Publish Windows alloy-devel container
 platform:
   arch: amd64
   os: windows
@@ -409,6 +452,40 @@ steps:
   - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
   - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
     alloy-devel'''
+  environment:
+    DOCKER_LOGIN:
+      from_secret: docker_login
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+    GCR_CREDS:
+      from_secret: gcr_admin
+  image: grafana/alloy-build-image:v0.1.0-windows
+  name: Build containers
+  volumes:
+  - name: docker
+    path: //./pipe/docker_engine/
+trigger:
+  ref:
+  - refs/heads/main
+type: docker
+volumes:
+- host:
+    path: //./pipe/docker_engine/
+  name: docker
+---
+kind: pipeline
+name: Publish Windows alloy-devel-cngcrypto container
+platform:
+  arch: amd64
+  os: windows
+  version: "1809"
+steps:
+- commands:
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''mkdir -p $HOME/.docker'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''printenv GCR_CREDS > $HOME/.docker/config.json'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
+    alloy-devel-cngcrypto'''
   environment:
     DOCKER_LOGIN:
       from_secret: docker_login
@@ -474,6 +551,49 @@ volumes:
   name: docker
 ---
 kind: pipeline
+name: Publish Linux alloy-boringcrypto container
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  failure: ignore
+  image: grafana/alloy-build-image:v0.1.0
+  name: Configure QEMU
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+- commands:
+  - mkdir -p $HOME/.docker
+  - printenv GCR_CREDS > $HOME/.docker/config.json
+  - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
+  - docker buildx create --name multiarch-alloy-alloy-boringcrypto-${DRONE_COMMIT_SHA}
+    --driver docker-container --use
+  - ./tools/ci/docker-containers alloy-boringcrypto
+  - docker buildx rm multiarch-alloy-alloy-boringcrypto-${DRONE_COMMIT_SHA}
+  environment:
+    DOCKER_LOGIN:
+      from_secret: docker_login
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+    GCR_CREDS:
+      from_secret: gcr_admin
+  image: grafana/alloy-build-image:v0.1.0
+  name: Publish container
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+trigger:
+  ref:
+  - refs/tags/v*
+type: docker
+volumes:
+- host:
+    path: /var/run/docker.sock
+  name: docker
+---
+kind: pipeline
 name: Publish Windows alloy container
 platform:
   arch: amd64
@@ -507,8 +627,43 @@ volumes:
     path: //./pipe/docker_engine/
   name: docker
 ---
+kind: pipeline
+name: Publish Windows alloy-cngcrypto container
+platform:
+  arch: amd64
+  os: windows
+  version: "1809"
+steps:
+- commands:
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''mkdir -p $HOME/.docker'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''printenv GCR_CREDS > $HOME/.docker/config.json'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
+    alloy-cngcrypto'''
+  environment:
+    DOCKER_LOGIN:
+      from_secret: docker_login
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+    GCR_CREDS:
+      from_secret: gcr_admin
+  image: grafana/alloy-build-image:v0.1.0-windows
+  name: Build containers
+  volumes:
+  - name: docker
+    path: //./pipe/docker_engine/
+trigger:
+  ref:
+  - refs/tags/v*
+type: docker
+volumes:
+- host:
+    path: //./pipe/docker_engine/
+  name: docker
+---
 depends_on:
-- Publish development Linux alloy container
+- Publish Linux alloy-devel container
+- Publish Linux alloy-devel-boringcrypto container
 image_pull_secrets:
 - dockerconfigjson
 kind: pipeline
@@ -555,7 +710,9 @@ type: docker
 ---
 depends_on:
 - Publish Linux alloy container
+- Publish Linux alloy-boringcrypto container
 - Publish Windows alloy container
+- Publish Windows alloy-cngcrypto container
 image_pull_secrets:
 - dockerconfigjson
 kind: pipeline
@@ -713,6 +870,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: eef3ddde1e027f6c8c113bf748036cb79961708262d651193c231096cda5260d
+hmac: 8470d1cd1b7ab512b3adff1fc61af6576e427d81225f7b83ae228a3dad326aa9
 
 ...

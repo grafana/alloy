@@ -33,8 +33,9 @@ type Fanout struct {
 // NewFanout creates a fanout appendable.
 func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name: "prometheus_fanout_latency",
-		Help: "Write latency for sending to direct and indirect components",
+		Name:    "prometheus_fanout_latency",
+		Help:    "Write latency for sending to direct and indirect components",
+		Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60},
 	})
 	_ = register.Register(wl)
 

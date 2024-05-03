@@ -24,11 +24,10 @@ in Kubernetes in order for {{< param "PRODUCT_NAME" >}} to access it via the Kub
 [Role-based access control (RBAC)]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 {{< /admonition >}}
 
-{{< admonition type="warning" >}}
-This component does not support [clustered mode][]. Using this component as part of a cluster of 
-{{< param "PRODUCT_NAME" >}} instances will cause them to all attempt to update rules using the
-Mimir API, conflicting with each other. When using this component, it must be run in a separate
-single-instance deployment of {{< param "PRODUCT_NAME" >}}.
+{{< admonition type="note" >}}
+{{< param "PRODUCT_NAME" >}} version 1.1 and higher supports [clustered mode][] in this component. When you use this component as part
+of a cluster of {{< param "PRODUCT_NAME" >}} instances, only a single instance from the cluster
+will update rules using the Mimir API.
 
 [clustered mode]: ../../../concepts/clustering/
 {{< /admonition >}}
