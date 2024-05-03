@@ -145,5 +145,6 @@ func toKubernetesResolver(cfg *loadbalancingexporter.K8sSvcResolver) *loadbalanc
 	return &loadbalancing.KubernetesResolver{
 		Service: cfg.Service,
 		Ports:   cfg.Ports,
+		Timeout: cfg.Timeout,
 	}
 }
