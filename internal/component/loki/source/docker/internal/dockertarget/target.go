@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	docker_types "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-kit/log"
@@ -94,7 +94,7 @@ func (t *Target) processLoop(ctx context.Context) {
 	t.wg.Add(1)
 	defer t.wg.Done()
 
-	opts := docker_types.ContainerLogsOptions{
+	opts := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,

@@ -61,11 +61,11 @@ traces:
             grpc:
             http:
       remote_write:
-        - endpoint: http://localhost:1234/write
+        - endpoint: http://localhost:1234
       automatic_logging:
         backend: "something else"
       spanmetrics:
-        handler_endpoint: http://localhost:1234/write
+        handler_endpoint: http://localhost:1234
       service_graphs:
         enabled: true
 

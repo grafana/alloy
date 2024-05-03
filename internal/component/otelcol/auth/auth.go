@@ -8,6 +8,7 @@ package auth
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
@@ -165,10 +166,12 @@ func (a *Auth) Update(args component.Arguments) error {
 		components = append(components, ext)
 	}
 
+	cTypeStr := strings.ReplaceAll(a.opts.ID, ".", "_")
+
 	// Inform listeners that our handler changed.
 	a.opts.OnStateChange(Exports{
 		Handler: Handler{
-			ID:        otelcomponent.NewID(otelcomponent.Type(a.opts.ID)),
+			ID:        otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
 			Extension: ext,
 		},
 	})

@@ -63,7 +63,8 @@ otelcol.connector.spanmetrics "LABEL" {
 | `aggregation_temporality`         | `string`       | Configures whether to reset the metrics after flushing.                                    | `"CUMULATIVE"` | no       |
 | `dimensions_cache_size`           | `number`       | How many dimensions to cache.                                                              | `1000`         | no       |
 | `exclude_dimensions`              | `list(string)` | List of dimensions to be excluded from the default set of dimensions.                      | `[]`           | no       |
-| `metrics_flush_interval`          | `duration`     | How often to flush generated metrics.                                                      | `"15s"`        | no       |
+| `metrics_flush_interval`          | `duration`     | How often to flush generated metrics.                                                      | `"60s"`        | no       |
+| `metrics_expiration`              | `duration`     | Time period after which metrics are considered stale and are removed from the cache.       | `"0s"`         | no       |
 | `namespace`                       | `string`       | Metric namespace.                                                                          | `""`           | no       |
 | `resource_metrics_cache_size`     | `number`       | The size of the cache holding metrics for a service.                                       | `1000`         | no       |
 | `resource_metrics_key_attributes` | `list(string)` | Limits the resource attributes used to create the metrics.                                 | `[]`           | no       |
@@ -76,6 +77,8 @@ The supported values for `aggregation_temporality` are:
 - `"DELTA"`: The metrics will be reset after they are flushed.
 
 If `namespace` is set, the generated metric name will be added a `namespace.` prefix.
+
+Setting `metrics_expiration` to `"0s"` means that the metrics will never expire.
 
 `resource_metrics_cache_size` is mostly relevant for cumulative temporality. It helps avoid issues with increasing memory and with incorrect metric timestamp resets.
 
