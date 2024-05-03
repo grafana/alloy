@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alecthomas/units"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -25,18 +25,18 @@ var (
 	defaultDropReason = "drop_stage"
 	defaultSeparator  = ";"
 	emptyDuration     time.Duration
-	emptySize         units.Base2Bytes
+	emptySize         units.Bytes
 )
 
 // DropConfig contains the configuration for a dropStage
 type DropConfig struct {
-	DropReason string           `alloy:"drop_counter_reason,attr,optional"`
-	Source     string           `alloy:"source,attr,optional"`
-	Value      string           `alloy:"value,attr,optional"`
-	Separator  string           `alloy:"separator,attr,optional"`
-	Expression string           `alloy:"expression,attr,optional"`
-	OlderThan  time.Duration    `alloy:"older_than,attr,optional"`
-	LongerThan units.Base2Bytes `alloy:"longer_than,attr,optional"`
+	DropReason string        `alloy:"drop_counter_reason,attr,optional"`
+	Source     string        `alloy:"source,attr,optional"`
+	Value      string        `alloy:"value,attr,optional"`
+	Separator  string        `alloy:"separator,attr,optional"`
+	Expression string        `alloy:"expression,attr,optional"`
+	OlderThan  time.Duration `alloy:"older_than,attr,optional"`
+	LongerThan units.Bytes   `alloy:"longer_than,attr,optional"`
 	regex      *regexp.Regexp
 }
 

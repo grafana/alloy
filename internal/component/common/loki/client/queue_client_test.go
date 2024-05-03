@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alecthomas/units"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
 	"github.com/prometheus/client_golang/prometheus"
@@ -80,10 +80,10 @@ func TestQueueClient(t *testing.T) {
 		"many lines and series, delivery because of batch age": {
 			numLines:  100,
 			numSeries: 10,
-			batchSize: int(1 * units.MiB), // make batch size big enough so that all batches should be delivered because of batch age
+			batchSize: int(1 * units.Mebibyte), // make batch size big enough so that all batches should be delivered because of batch age
 			batchWait: time.Millisecond * 50,
 			queueConfig: QueueConfig{
-				Capacity:     int(100 * units.MiB), // keep buffered channel size on 100
+				Capacity:     int(100 * units.Mebibyte), // keep buffered channel size on 100
 				DrainTimeout: 10 * time.Second,
 			},
 			expectedRWReqsCount: 1, // expect all entries to be sent in a single batch (100 * < 10B per line) < 1MiB
@@ -196,10 +196,10 @@ func BenchmarkClientImplementations(b *testing.B) {
 		"100k entries, 100 series, default batching": {
 			numLines:  100_000,
 			numSeries: 100,
-			batchSize: int(1 * units.MiB),
+			batchSize: int(1 * units.Mebibyte),
 			batchWait: time.Second,
 			queueConfig: QueueConfig{
-				Capacity:     int(10 * units.MiB), // buffer size 100
+				Capacity:     int(10 * units.Mebibyte), // buffer size 100
 				DrainTimeout: 5 * time.Second,
 			},
 		},

@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
 	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/units"
 	prom_config "github.com/prometheus/prometheus/config"
 	prom_discovery "github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/storage"
@@ -59,7 +60,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		ScrapeTimeout:             time.Duration(scrapeConfig.ScrapeTimeout),
 		MetricsPath:               scrapeConfig.MetricsPath,
 		Scheme:                    scrapeConfig.Scheme,
-		BodySizeLimit:             scrapeConfig.BodySizeLimit,
+		BodySizeLimit:             units.Bytes(scrapeConfig.BodySizeLimit),
 		SampleLimit:               scrapeConfig.SampleLimit,
 		TargetLimit:               scrapeConfig.TargetLimit,
 		LabelLimit:                scrapeConfig.LabelLimit,

@@ -22,7 +22,7 @@ faro.receiver "integrations_app_agent_receiver" {
 	server {
 		listen_address           = "localhost"
 		listen_port              = 55678
-		max_allowed_payload_size = "4MiB786KiB832B"
+		max_allowed_payload_size = "5MB"
 
 		rate_limiting {
 			rate       = 100

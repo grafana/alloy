@@ -3,9 +3,9 @@ package receiver
 import (
 	"time"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
@@ -34,7 +34,7 @@ type ServerArguments struct {
 	Port                  int               `alloy:"listen_port,attr,optional"`
 	CORSAllowedOrigins    []string          `alloy:"cors_allowed_origins,attr,optional"`
 	APIKey                alloytypes.Secret `alloy:"api_key,attr,optional"`
-	MaxAllowedPayloadSize units.Base2Bytes  `alloy:"max_allowed_payload_size,attr,optional"`
+	MaxAllowedPayloadSize units.Bytes       `alloy:"max_allowed_payload_size,attr,optional"`
 
 	RateLimiting    RateLimitingArguments `alloy:"rate_limiting,block,optional"`
 	IncludeMetadata bool                  `alloy:"include_metadata,attr,optional"`
@@ -44,7 +44,7 @@ func (s *ServerArguments) SetToDefault() {
 	*s = ServerArguments{
 		Host:                  "127.0.0.1",
 		Port:                  12347,
-		MaxAllowedPayloadSize: 5 * units.MiB,
+		MaxAllowedPayloadSize: 5 * units.Mebibyte,
 	}
 	s.RateLimiting.SetToDefault()
 }

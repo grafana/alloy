@@ -3,11 +3,11 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/jaeger"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/units"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -91,9 +91,9 @@ func toJaegerProtocolUDPArguments(cfg *jaegerreceiver.ProtocolUDP) *jaeger.Proto
 	return &jaeger.ProtocolUDP{
 		Endpoint:         cfg.Endpoint,
 		QueueSize:        cfg.QueueSize,
-		MaxPacketSize:    units.Base2Bytes(cfg.MaxPacketSize),
+		MaxPacketSize:    units.Bytes(cfg.MaxPacketSize),
 		Workers:          cfg.Workers,
-		SocketBufferSize: units.Base2Bytes(cfg.SocketBufferSize),
+		SocketBufferSize: units.Bytes(cfg.SocketBufferSize),
 	}
 }
 

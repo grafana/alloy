@@ -7,8 +7,8 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki/client"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
+	"github.com/grafana/alloy/internal/units"
 
-	"github.com/alecthomas/units"
 	types "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
@@ -20,7 +20,7 @@ type EndpointOptions struct {
 	Name              string                  `alloy:"name,attr,optional"`
 	URL               string                  `alloy:"url,attr"`
 	BatchWait         time.Duration           `alloy:"batch_wait,attr,optional"`
-	BatchSize         units.Base2Bytes        `alloy:"batch_size,attr,optional"`
+	BatchSize         units.Bytes             `alloy:"batch_size,attr,optional"`
 	RemoteTimeout     time.Duration           `alloy:"remote_timeout,attr,optional"`
 	Headers           map[string]string       `alloy:"headers,attr,optional"`
 	MinBackoff        time.Duration           `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
@@ -40,7 +40,7 @@ type EndpointOptions struct {
 func GetDefaultEndpointOptions() EndpointOptions {
 	var defaultEndpointOptions = EndpointOptions{
 		BatchWait:         1 * time.Second,
-		BatchSize:         1 * units.MiB,
+		BatchSize:         1 * units.Mebibyte,
 		RemoteTimeout:     10 * time.Second,
 		MinBackoff:        500 * time.Millisecond,
 		MaxBackoff:        5 * time.Minute,
@@ -74,14 +74,14 @@ func (r *EndpointOptions) Validate() error {
 // QueueConfig controls how the queue logs remote write client is configured. Note that this client is only used when the
 // loki.write component has WAL support enabled.
 type QueueConfig struct {
-	Capacity     units.Base2Bytes `alloy:"capacity,attr,optional"`
-	DrainTimeout time.Duration    `alloy:"drain_timeout,attr,optional"`
+	Capacity     units.Bytes   `alloy:"capacity,attr,optional"`
+	DrainTimeout time.Duration `alloy:"drain_timeout,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (q *QueueConfig) SetToDefault() {
 	*q = QueueConfig{
-		Capacity:     10 * units.MiB, // considering the default BatchSize of 1MiB, this gives us a default buffered channel of size 10
+		Capacity:     10 * units.Mebibyte, // considering the default BatchSize of 1MiB, this gives us a default buffered channel of size 10
 		DrainTimeout: 15 * time.Second,
 	}
 }

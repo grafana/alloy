@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/units"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
@@ -84,8 +84,8 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 		Endpoint:        cfg.Endpoint,
 		Compression:     otelcol.CompressionType(cfg.Compression),
 		TLS:             toTLSClientArguments(cfg.TLSSetting),
-		ReadBufferSize:  units.Base2Bytes(cfg.ReadBufferSize),
-		WriteBufferSize: units.Base2Bytes(cfg.WriteBufferSize),
+		ReadBufferSize:  units.Bytes(cfg.ReadBufferSize),
+		WriteBufferSize: units.Bytes(cfg.WriteBufferSize),
 
 		Timeout:              cfg.Timeout,
 		Headers:              toHeadersMap(cfg.Headers),
