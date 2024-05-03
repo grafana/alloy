@@ -32,6 +32,9 @@ Main (unreleased)
 - Don't restart tailers in `loki.source.kubernetes` component by above-average
   time deltas if K8s version is >= 1.29.1 (@hainenber)
 
+- Add `static_configs_labels` query parameter for the `loki.source.awsfirehose` http handler. It allows 
+  to set custom static labels to the AWS Firehose logs (@andriikushch)
+
 ### Bugfixes
 
 - Fixed issue with defaults for Beyla component not being applied correctly. (marctc)
