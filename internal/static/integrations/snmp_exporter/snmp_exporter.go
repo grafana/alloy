@@ -100,7 +100,7 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 func LoadSNMPConfig(snmpConfigFile string, snmpCfg *snmp_config.Config) (*snmp_config.Config, error) {
 	var err error
 	if snmpConfigFile != "" {
-		snmpCfg, err = snmp_config.LoadFile([]string{snmpConfigFile})
+		snmpCfg, err = snmp_config.LoadFile([]string{snmpConfigFile}, false)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load snmp config from file %v: %w", snmpConfigFile, err)
 		}
