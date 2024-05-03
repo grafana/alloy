@@ -24,6 +24,8 @@ Main (unreleased)
   builds are publshed for Linux on AMD64 and ARM64 platforms. (@rfratto,
   @mattdurham)
 
+- `otelcol.exporter.loadbalancing`: Add a new `aws_cloud_map` resolver. (@ptodev)
+
 ### Enhancements
 
 - Update `prometheus.exporter.kafka` with the following functionalities (@wildum):
