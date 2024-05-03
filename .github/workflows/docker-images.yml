@@ -1,12 +1,13 @@
 name: Check Docker images
 
 on:
-  pull_request:
-    paths:
-      - Dockerfile
-      - Dockerfile.windows
-      - Makefile
-      - 'tools/make/*'
+  pull_request: {}
+    #  pull_request:
+    #    paths:
+    #      - Dockerfile
+    #      - Dockerfile.windows
+    #      - Makefile
+    #      - 'tools/make/*'
 
 jobs:
   # NOTE(rfratto): We only test building the Docker images for the host
@@ -27,5 +28,3 @@ jobs:
       - name: Build image
         run: |
           docker build -t alloy-test:latest -f Dockerfile.windows .
-
-
