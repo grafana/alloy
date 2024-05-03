@@ -69,7 +69,8 @@ func (h *strategyStore) GetSamplingStrategy(_ context.Context, serviceName strin
 }
 
 // Close stops updating the strategies
-func (h *strategyStore) Close() {
+func (h *strategyStore) Close() error {
+	return nil
 }
 
 // TODO good candidate for a global util function

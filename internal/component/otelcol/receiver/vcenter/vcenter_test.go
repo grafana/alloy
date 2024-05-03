@@ -172,9 +172,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.Equal(t, "pass", string(otelArgs.Password))
 	require.Equal(t, "http://localhost:1234", otelArgs.Endpoint)
 
-	require.Equal(t, 2*time.Minute, otelArgs.ScraperControllerSettings.CollectionInterval)
-	require.Equal(t, time.Second, otelArgs.ScraperControllerSettings.InitialDelay)
-	require.Equal(t, 0*time.Second, otelArgs.ScraperControllerSettings.Timeout)
+	require.Equal(t, 2*time.Minute, otelArgs.ControllerConfig.CollectionInterval)
+	require.Equal(t, time.Second, otelArgs.ControllerConfig.InitialDelay)
+	require.Equal(t, 0*time.Second, otelArgs.ControllerConfig.Timeout)
 
 	// Verify ResourceAttributesConfig fields
 	require.True(t, otelArgs.ResourceAttributes.VcenterClusterName.Enabled)

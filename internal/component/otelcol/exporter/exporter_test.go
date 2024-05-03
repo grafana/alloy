@@ -92,7 +92,7 @@ func newTestEnvironment(t *testing.T, fe *fakeExporter) *testEnvironment {
 			// Create a factory which always returns our instance of fakeExporter
 			// defined above.
 			factory := otelexporter.NewFactory(
-				"testcomponent",
+				otelcomponent.MustNewType("testcomponent"),
 				func() otelcomponent.Config {
 					res, err := fakeExporterArgs{}.Convert()
 					require.NoError(t, err)

@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/first-components-and-stdlib/
-description: Learn about the basics of the {{< param "PRODUCT_NAME" >}} configuration syntax
+description: Learn about the basics of the Alloy configuration syntax
 title: First components and the standard library
 weight: 20
 ---
@@ -78,7 +78,7 @@ Look at the following simple pipeline:
 
 ```alloy
 local.file "example" {
-    path = env("HOME") + "file.txt"
+    filename = env("HOME") + "/file.txt"
 }
 
 prometheus.remote_write "local_prom" {

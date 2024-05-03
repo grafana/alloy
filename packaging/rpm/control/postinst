@@ -29,8 +29,11 @@ if [ "$1" -eq 1 ] ; then
 
     add_to_logging_groups
 
-    chown $ALLOY_USER:$ALLOY_GROUP /var/lib/alloy
-    chmod 770 /var/lib/alloy
+    if [ ! -d /var/lib/alloy ]; then
+      mkdir /var/lib/alloy
+      chown $ALLOY_USER:$ALLOY_GROUP /var/lib/alloy
+      chmod 770 /var/lib/alloy
+    fi
 
     if [ ! -d /var/lib/alloy/data ]; then
       mkdir /var/lib/alloy/data

@@ -127,7 +127,7 @@ func toKafkaTLSClientArguments(cfg map[string]any) *otelcol.TLSClientArguments {
 	}
 
 	// Convert cfg to configtls.TLSClientSetting
-	var tlsSettings configtls.TLSClientSetting
+	var tlsSettings configtls.ClientConfig
 	if err := mapstructure.Decode(cfg, &tlsSettings); err != nil {
 		panic(err)
 	}
