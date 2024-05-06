@@ -17,8 +17,7 @@ title: otelcol.exporter.awss3
 Bug reports or feature requests will be redirected to the upstream repository if necessary.
 {{< /admonition >}}
 
-Multiple `otelcol.exporter.awss3` components can be specified by giving them
-different labels.
+You can specify multiple `otelcol.exporter.awss3` components by giving them different labels.
 
 ## Usage
 
