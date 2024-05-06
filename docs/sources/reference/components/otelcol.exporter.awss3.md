@@ -124,7 +124,7 @@ configuration.
 
 ## Debug information
 
-`otelcol.exporter.awss3` does not expose any component-specific debug
+`otelcol.exporter.awss3` doesn't expose any component-specific debug
 information.
 
 ## Debug metrics
