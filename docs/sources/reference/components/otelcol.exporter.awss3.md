@@ -104,7 +104,7 @@ See [https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main
 ### Compression
 
 - `none` (default): No compression will be applied
-- `gzip`: Files will be compressed with gzip. **This does not support `sumo_ic`marshaler.**
+- `gzip`: Files will be compressed with gzip. **This doesn't support `sumo_ic`marshaler.**
 
 ## Exported fields
 
