@@ -51,3 +51,16 @@ type ConvertibleIntoCapsule interface {
 	// available.
 	ConvertInto(dst interface{}) error
 }
+
+// ConvertibleFromArrayCapsule is a Capsule which supports custom conversion rules
+// from any Go type which is not the same as the capsule type.
+type ConvertibleFromArrayCapsule interface {
+	Capsule
+
+	// ConvertFromItem should modify the ConvertibleCapsule value based on the value
+	// of src.
+	//
+	// ConvertFromItem should return ErrNoConversion if no conversion is available
+	// from src.
+	ConvertFromItem(src interface{}) error
+}

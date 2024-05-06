@@ -102,7 +102,7 @@ func AppendAllNested(f *builder.File, promConfig *prom_config.Config, jobNameToC
 
 		promDiscoveryRelabelExports := component.AppendDiscoveryRelabel(pb, scrapeConfig.RelabelConfigs, scrapeTargets, label)
 		if promDiscoveryRelabelExports != nil {
-			scrapeTargets = promDiscoveryRelabelExports.Output
+			//  scrapeTargets = promDiscoveryRelabelExports.Output
 		}
 
 		component.AppendPrometheusScrape(pb, scrapeConfig, scrapeForwardTo, scrapeTargets, label)

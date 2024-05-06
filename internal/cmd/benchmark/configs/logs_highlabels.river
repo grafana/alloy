@@ -1,5 +1,5 @@
 logging {
-	level = "debug"
+	level = "info"
 }
 
 prometheus.scrape "scraper" {
@@ -141,23 +141,4 @@ loki.write "local" {
 	}
 }
 
-
-prometheus.exporter.process "integrations_process_exporter" {
-  matcher {
-    name    = "" // MRD slightly different
-    cmdline = [".+"]
-  }
-}
-
-discovery.relabel "integrations_process_exporter" {
-  targets = prometheus.exporter.process.integrations_process_exporter.targets
-
-  rule {
-    target_label = "job"
-    replacement  = "integrations/process_exporter"
-  }
-}
-
-prometheus.exporter.self "alloy" {
-}
 

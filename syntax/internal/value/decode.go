@@ -372,6 +372,18 @@ func tryCapsuleConvert(from Value, into reflect.Value, intoType Type) (ok bool, 
 		}
 	}
 
+	if intoType == TypeCapsule && from.Type() == TypeArray {
+		cc, ok := into.Addr().Interface().(ConvertibleFromArrayCapsule)
+		if ok {
+			err := cc.ConvertFromItem(from.Interface())
+			if err == nil {
+				return true, nil
+			} else if err != nil && !errors.Is(err, ErrNoConversion) {
+				return false, Error{Value: from, Inner: err}
+			}
+		}
+	}
+
 	if intoType == TypeCapsule {
 		cc, ok := into.Addr().Interface().(ConvertibleFromCapsule)
 		if ok {

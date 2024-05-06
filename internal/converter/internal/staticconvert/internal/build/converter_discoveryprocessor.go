@@ -84,7 +84,7 @@ func toDiscoveryProcessor(state *otelcolconvert.State, id component.InstanceID, 
 		scrapeTargets := prometheusconvert.AppendServiceDiscoveryConfigs(pb, scrapeConfig.ServiceDiscoveryConfigs, label)
 		promDiscoveryRelabelExports := prometheus_component.AppendDiscoveryRelabel(pb, scrapeConfig.RelabelConfigs, scrapeTargets, label)
 		if promDiscoveryRelabelExports != nil {
-			scrapeTargets = promDiscoveryRelabelExports.Output
+			// scrapeTargets = promDiscoveryRelabelExports.Output
 		}
 		targets = append(targets, scrapeTargets...)
 	}

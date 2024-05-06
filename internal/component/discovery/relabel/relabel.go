@@ -30,14 +30,17 @@ type Arguments struct {
 	// Targets contains the input 'targets' passed by a service discovery component.
 	Targets []discovery.Target `alloy:"targets,attr"`
 
+	TargetsArray *discovery.LabelArray `alloy:"targets_array,attr"`
+
 	// The relabelling rules to apply to each target's label set.
 	RelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 }
 
 // Exports holds values which are exported by the discovery.relabel component.
 type Exports struct {
-	Output []discovery.Target  `alloy:"output,attr"`
-	Rules  alloy_relabel.Rules `alloy:"rules,attr"`
+	Output     []discovery.Target    `alloy:"output,attr"`
+	Rules      alloy_relabel.Rules   `alloy:"rules,attr"`
+	OutputArry *discovery.LabelArray `alloy:"output_array,attr"`
 }
 
 // Component implements the discovery.relabel component.
@@ -74,7 +77,34 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
+	if newArgs.TargetsArray == nil {
+		c.handleTargets(newArgs)
+	} else {
+		c.handleTargetsArray(newArgs)
+	}
 
+	return nil
+}
+
+func (c *Component) handleTargetsArray(newArgs Arguments) {
+	targets := &discovery.LabelArray{Lbls: make([]*discovery.Labels, 0)}
+	relabelConfigs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
+	c.rcs = relabelConfigs
+
+	for _, t := range newArgs.TargetsArray.Lbls {
+		lset, keep := relabel.Process(t.LabelsCopy(), relabelConfigs...)
+		if keep {
+			targets.Lbls = append(targets.Lbls, discovery.CapsulePool.FromLabels(lset))
+		}
+	}
+
+	c.opts.OnStateChange(Exports{
+		OutputArry: targets,
+		Rules:      newArgs.RelabelConfigs,
+	})
+}
+
+func (c *Component) handleTargets(newArgs Arguments) {
 	targets := make([]discovery.Target, 0, len(newArgs.Targets))
 	relabelConfigs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
 	c.rcs = relabelConfigs
@@ -91,8 +121,6 @@ func (c *Component) Update(args component.Arguments) error {
 		Output: targets,
 		Rules:  newArgs.RelabelConfigs,
 	})
-
-	return nil
 }
 
 func componentMapToPromLabels(ls discovery.Target) labels.Labels {

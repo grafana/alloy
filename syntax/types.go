@@ -83,6 +83,19 @@ type ConvertibleFromCapsule interface {
 	ConvertFrom(src interface{}) error
 }
 
+// ConvertibleFromArrayCapsule is a Capsule which supports custom conversion from
+// any Go type which is not the same as the capsule type.
+type ConvertibleFromArrayCapsule interface {
+	Capsule
+
+	// ConvertFromItem updates the ConvertibleFromCapsule value based on the value of
+	// src. src may be any Go value, not just other capsules.
+	//
+	// ConvertFromItem should return ErrNoConversion if no conversion is available
+	// from src. Other errors are treated as an Alloy decoding error.
+	ConvertFromItem(src interface{}) error
+}
+
 // ConvertibleIntoCapsule is a Capsule which supports custom conversion into
 // any Go type which is not the same as the capsule type.
 type ConvertibleIntoCapsule interface {

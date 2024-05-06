@@ -51,7 +51,7 @@ func AppendDiscoveryRelabel(pb *build.PrometheusBlocks, relabelConfigs []*prom_r
 	pb.DiscoveryRelabelBlocks = append(pb.DiscoveryRelabelBlocks, build.NewPrometheusBlock(block, name, label, "", ""))
 
 	return &disc_relabel.Exports{
-		Output: common.NewDiscoveryTargets(fmt.Sprintf("discovery.relabel.%s.output", label)),
+		//Output: common.NewDiscoveryTargets(fmt.Sprintf("discovery.relabel.%s.output", label)),
 	}
 }
 
