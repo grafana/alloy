@@ -261,6 +261,38 @@ func TestDeclare(t *testing.T) {
 			`,
 			expected: -10,
 		},
+		{
+			name: "ShadowStdlib",
+			config: `
+			declare "constants" {
+				argument "input" {
+					optional = false
+				}
+			
+				testcomponents.passthrough "pt" {
+					input = argument.input.value
+					lag = "1ms"
+				}
+			
+				export "output" {
+					value = testcomponents.passthrough.pt.output
+				}
+			}
+			testcomponents.count "inc" {
+				frequency = "10ms"
+				max = 10
+			}
+		
+			constants "myModule" {
+				input = testcomponents.count.inc.count
+			}
+		
+			testcomponents.summation "sum" {
+				input = constants.myModule.output
+			}
+			`,
+			expected: 10,
+		},
 	}
 
 	for _, tc := range tt {
