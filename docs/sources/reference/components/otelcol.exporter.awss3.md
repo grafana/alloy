@@ -38,7 +38,7 @@ otelcol.exporter.awss3 "LABEL" {
 Name       | Type       | Description                                      | Default | Required
 -----------|------------|--------------------------------------------------|---------|---------
 `encoding` | `string`   | Encoding extension to use to marshal data. Overrides the `marshaler` configuration option if set. | `""`  | no
-`encoding_file_ext` | `string` | file format extension suffix when using the `encoding` configuration option. May be left empty for no suffix to be appended. | `""` | no
+`encoding_file_ext` | `string` | File format extension suffix when using the `encoding` configuration option. It can be left empty if a suffix shouldn't be appended. | `""` | no
 
 ## Blocks
 
