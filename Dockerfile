@@ -39,11 +39,10 @@ ARG USERNAME="alloy"
 LABEL org.opencontainers.image.source="https://github.com/grafana/alloy"
 
 # Install dependencies needed at runtime.
-RUN <<EOF
-  apt-get update
-  apt-get install -qy libsystemd-dev tzdata ca-certificates
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-EOF
+RUN  apt-get update \
+ &&  apt-get install -qy libsystemd-dev tzdata ca-certificates \
+ &&  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 
 COPY --from=build /src/alloy/build/alloy /bin/alloy
 COPY example-config.alloy /etc/alloy/config.alloy
