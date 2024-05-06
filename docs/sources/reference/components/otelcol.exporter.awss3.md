@@ -89,7 +89,7 @@ The following arguments are supported:
 
 Name                    | Type       | Description                                                                                | Default | Required
 ------------------------|------------|--------------------------------------------------------------------------------------------|---------|---------
-`type`                  | `string`   | Marshaler used to produce output data                                                      | `"otlp_json"`   | no
+`type`                  | `string`   | Marshaler used to produce output data.                                                      | `"otlp_json"`   | no
 
 ### debug_metrics block
 
