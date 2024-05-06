@@ -12,9 +12,10 @@ title: otelcol.exporter.awss3
 
 `otelcol.exporter.awss3` accepts telemetry data from other `otelcol` components and writes them to an AWS S3 bucket.
 
-> **NOTE**: `otelcol.exporter.awss3` is a wrapper over the upstream
-> OpenTelemetry Collector Contrib `awss3` exporter. Bug reports or feature requests will
-> be redirected to the upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.exporter.awss3` is a wrapper over the upstream OpenTelemetry Collector Contrib `awss3` exporter.
+Bug reports or feature requests will be redirected to the upstream repository if necessary.
+{{< /admonition >}}
 
 Multiple `otelcol.exporter.awss3` components can be specified by giving them
 different labels.
