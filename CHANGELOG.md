@@ -10,8 +10,8 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-v1.1.0-rc.0 (2024-05-03)
-------------------------
+v1.1.0-rc.0
+-----------
 
 ### Features
 
@@ -76,7 +76,7 @@ v1.1.0-rc.0 (2024-05-03)
 - Imported code using `slog` logging will now not panic and replay correctly when logged before the logging
   config block is initialized. (@mattdurham)
 
-- Fix a bug where custom components would not shadow the stdlib. If you have a module whose name conflicts with an stdlib function 
+- Fix a bug where custom components would not shadow the stdlib. If you have a module whose name conflicts with an stdlib function
   and if you use this exact function in your config, then you will need to rename your module. (@wildum)
 
 ### Other changes
@@ -156,8 +156,8 @@ v1.1.0-rc.0 (2024-05-03)
   - `otelcol.processor.resourcedetection`: Update to ec2 scraper so that core attributes are not dropped if describeTags returns an error (likely due to permissions).
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/30672
 
-v1.0.0 (2024-04-09)
--------------------
+v1.0.0
+------
 
 ### Features
 
