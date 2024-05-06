@@ -64,9 +64,10 @@ loki.source.awsfirehose "LABEL" {
 The component will start an HTTP server on the configured port and address with the following endpoints:
 
 - `/awsfirehose/api/v1/push` - accepting `POST` requests compatible with [AWS Firehose HTTP Specifications](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html).
-- `static_configs_labels` - query parameter can be used to set extra static labels. It should contain base64 encoded YAML with labels values. For example:
 
-    Generate base64 encoded string from the labels list:
+You can use the `static_configs_labels` query parameter to set extra static labels. It must contain base64 encoded YAML with labels values.
+
+    For example, you can generate a base64 encoded string from the labels list:
     ```bash
     cat << EOF | base64
     ---
