@@ -66,11 +66,11 @@ FROM rfratto/viceroy:v0.4.0
 # platform.
 # Source: https://github.com/nodesource/distributions#installation-instructions
 
-RUN  apt-get update && apt-get install -qy ca-certificates curl gnupg && mkdir -p /etc/apt/keyrings
-RUN  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-RUN  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_16.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
-RUN  apt-get update && apt-get install -qy nodejs
-RUN  rm -rf /var/lib/apt/lists/*
+RUN  apt-get update && apt-get install -qy ca-certificates curl gnupg && mkdir -p /etc/apt/keyrings  \
+ &&  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+ &&  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_16.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+ &&  apt-get update && apt-get install -qy nodejs \
+ &&  rm -rf /var/lib/apt/lists/*
 
 # Install Yarn.
 #
