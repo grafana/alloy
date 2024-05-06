@@ -10,8 +10,7 @@ title: otelcol.exporter.awss3
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.exporter.awss3` accepts telemetry data from other `otelcol` components
-and writes them to an AWS S3 Bucket.
+`otelcol.exporter.awss3` accepts telemetry data from other `otelcol` components and writes them to an AWS S3 bucket.
 
 > **NOTE**: `otelcol.exporter.awss3` is a wrapper over the upstream
 > OpenTelemetry Collector Contrib `awss3` exporter. Bug reports or feature requests will
