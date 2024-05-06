@@ -77,7 +77,7 @@ You can use the `static_configs_labels` query parameter to set extra static labe
     LS0tCmxhYmVsMTogInZhbHVlMSIKbGFiZWwyOiAidmFsdWUyIgo=
     ```
   
-    Add query parameter to the url `/awsfirehose/api/v1/push?static_configs_labels=LS0tCmxhYmVsMTogInZhbHVlMSIKbGFiZWwyOiAidmFsdWUyIgo=`
+    Add the query parameter with the base64 encoded value to the URL `/awsfirehose/api/v1/push?static_configs_labels=LS0tCmxhYmVsMTogInZhbHVlMSIKbGFiZWwyOiAidmFsdWUyIgo=`
 
 ## Arguments
 
