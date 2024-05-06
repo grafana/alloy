@@ -389,12 +389,12 @@ local remoteWritePanels(y_offset) = [
 
 {
   [filename]:
-    dashboard.new(name='Alloy / Prometheus Components') +
+    dashboard.new(name='Alloy / Prometheus Components', tag=$._config.dashboardTag) +
     dashboard.withDocsLink(
       url='https://grafana.com/docs/alloy/latest/reference/components/prometheus.remote_write/',
       desc='Component documentation',
     ) +
-    dashboard.withDashboardsLink() +
+    dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
     dashboard.withUID(std.md5(filename)) +
     dashboard.withTemplateVariablesMixin([
       dashboard.newTemplateVariable('cluster', |||

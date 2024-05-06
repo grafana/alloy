@@ -1,9 +1,12 @@
 {
   prometheusAlerts+: {
     groups+: [
-      (import './alerts/clustering.libsonnet'),
-      (import './alerts/controller.libsonnet'),
-      (import './alerts/opentelemetry.libsonnet'),
+      if $._config.enableK8sCluster then 
+        (import './alerts/clustering.libsonnet') 
+      else 
+        {}
+      + (import './alerts/controller.libsonnet')
+      + (import './alerts/opentelemetry.libsonnet')
     ],
   },
 }

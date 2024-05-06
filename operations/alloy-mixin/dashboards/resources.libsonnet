@@ -28,8 +28,8 @@ local stackedPanelMixin = {
 
 {
   [filename]:
-    dashboard.new(name='Alloy / Resources') +
-    dashboard.withDashboardsLink() +
+    dashboard.new(name='Alloy / Resources', tag=$._config.dashboardTag) +
+    dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
     dashboard.withUID(std.md5(filename)) +
     dashboard.withTemplateVariablesMixin([
       dashboard.newTemplateVariable('cluster', |||

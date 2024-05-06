@@ -2,13 +2,13 @@
 // schemaVersion present in Grafana 9.
 
 {
-  new(name=''):: {
+  new(name='', tag='alloy-mixin'):: {
     title: name,
     timezone: 'utc',
     refresh: '10s',
     schemaVersion: 36,
     graphTooltip: 1,  // shared crosshair for all graphs
-    tags: ['alloy-mixin'],
+    tags: [tag],
     templating: {
       list: [{
         name: 'datasource',
@@ -114,7 +114,7 @@
     }],
   },
 
-  withDashboardsLink():: {
+  withDashboardsLink(tag='alloy-mixin'):: {
     links+: [{
       title: 'Dashboards',
       type: 'dashboards',
@@ -122,7 +122,7 @@
       icon: 'external link',
       includeVars: true,
       keepTime: true,
-      tags: ['alloy-mixin'],
+      tags: [tag],
       targetBlank: false,
     }],
   },
