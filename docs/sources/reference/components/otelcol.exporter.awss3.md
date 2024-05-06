@@ -63,16 +63,18 @@ The following arguments are supported:
 
 Name                  | Type                       | Description                                                                      | Default      | Required
 ----------------------|----------------------------|----------------------------------------------------------------------------------|--------------|---------
-`region`              | `string`                   | AWS region.                                                                      | `"us-east-1"`| no
-`s3_bucket`           | `string`                   | S3 bucket                                                                        |              | yes
-`s3_prefix`           | `string`                   | Prefix for the S3 key (root directory inside bucket).                            |              | yes
-`s3_partition`        | `string`                   | Time granularity of S3 key: hour or minute                                       | `"minute"`   | no
-`role_arn`            | `string`                   | The Role ARN to be assumed                                                       |              | no
-`file_prefix`         | `string`                   | File prefix defined by user                                                      |              | no
-`endpoint`            | `string`                   | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket` |      | no
-`s3_force_path_style` | `boolean`                  | [Set this to `true` to force the request to use path-style addressing](http://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html) | `false`             | no
-`disable_ssl`         | `boolean`                  | Set this to `true` to disable SSL when sending requests           |              | `false`
+`region`              | `string`                   | The AWS region.                                                                      | `"us-east-1"`| no
+`s3_bucket`           | `string`                   | The S3 bucket.                                                                        |              | yes
+`s3_prefix`           | `string`                   | Prefix for the S3 key (root directory inside the bucket).                            |              | yes
+`s3_partition`        | `string`                   | Time granularity of S3 key: hour or minute.                                       | `"minute"`   | no
+`role_arn`            | `string`                   | The Role ARN to be assumed.                                                       |              | no
+`file_prefix`         | `string`                   | The file prefix defined by the user.                                                      |              | no
+`endpoint`            | `string`                   | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |      | no
+`s3_force_path_style` | `boolean`                  |  Set this to `true` to force the request to use [path-style requests](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access) | `false`             | no
+`disable_ssl`         | `boolean`                  |  Set this to `true` to disable SSL when sending requests           |              | `false`
 `compression`         | `string`                   | should the file be compressed                                                    | `none`      | no
+
+[path-style requests]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access
 
 ### marshaler block
 
