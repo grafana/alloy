@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.awss3",
-		Stability: featuregate.StabilityGenerallyAvailable,
+		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 

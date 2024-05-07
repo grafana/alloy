@@ -71,8 +71,8 @@ Name                  | Type                       | Description                
 `file_prefix`         | `string`                   | The file prefix defined by the user.                                                      |              | no
 `endpoint`            | `string`                   | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |      | no
 `s3_force_path_style` | `boolean`                  |  Set this to `true` to force the request to use [path-style requests](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access) | `false`             | no
-`disable_ssl`         | `boolean`                  |  Set this to `true` to disable SSL when sending requests           |              | `false`
-`compression`         | `string`                   | should the file be compressed                                                    | `none`      | no
+`disable_ssl`         | `boolean`                  |  Set this to `true` to disable SSL when sending requests.           |              | `false`
+`compression`         | `string`                   | How should the file be compressed? `none`, `gzip`                                                    | `none`      | no
 
 [path-style requests]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access
 
