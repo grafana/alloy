@@ -1,0 +1,31 @@
+name: Check Docker images
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - Dockerfile.windows
+      - Makefile
+      - 'tools/make/*'
+
+jobs:
+  # NOTE(rfratto): We only test building the Docker images for the host
+  # platform, but we're really only looking for issues that are
+  # architecture-independent.
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: |
+          docker build -t alloy-test:latest -f Dockerfile .
+
+  windows:
+    runs-on: windows-2019
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: |
+          docker build -t alloy-test:latest -f Dockerfile.windows .
+
+

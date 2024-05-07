@@ -71,7 +71,7 @@ func toGRPCServerArguments(cfg *configgrpc.ServerConfig) *otelcol.GRPCServerArgu
 
 	return &otelcol.GRPCServerArguments{
 		Endpoint:  cfg.NetAddr.Endpoint,
-		Transport: cfg.NetAddr.Transport,
+		Transport: string(cfg.NetAddr.Transport),
 
 		TLS: toTLSServerArguments(cfg.TLSSetting),
 
@@ -86,19 +86,19 @@ func toGRPCServerArguments(cfg *configgrpc.ServerConfig) *otelcol.GRPCServerArgu
 	}
 }
 
-func toTLSServerArguments(cfg *configtls.TLSServerSetting) *otelcol.TLSServerArguments {
+func toTLSServerArguments(cfg *configtls.ServerConfig) *otelcol.TLSServerArguments {
 	if cfg == nil {
 		return nil
 	}
 
 	return &otelcol.TLSServerArguments{
-		TLSSetting: toTLSSetting(cfg.TLSSetting),
+		TLSSetting: toTLSSetting(cfg.Config),
 
 		ClientCAFile: cfg.ClientCAFile,
 	}
 }
 
-func toTLSSetting(cfg configtls.TLSSetting) otelcol.TLSSetting {
+func toTLSSetting(cfg configtls.Config) otelcol.TLSSetting {
 	return otelcol.TLSSetting{
 		CA:                       string(cfg.CAPem),
 		CAFile:                   cfg.CAFile,

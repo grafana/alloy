@@ -7,7 +7,7 @@ traces:
             grpc:
             http:
       remote_write:
-        - endpoint: http://localhost:1234/write
+        - endpoint: http://localhost:1234
       attributes:
         actions:
           - key: db.table
@@ -19,7 +19,7 @@ traces:
             grpc:
             http:
       remote_write:
-        - endpoint: http://localhost:1234/write
+        - endpoint: http://localhost:1234
       attributes:
         actions:
           - key: redacted_span

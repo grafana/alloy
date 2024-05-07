@@ -18,13 +18,13 @@ type TLSServerArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *TLSServerArguments) Convert() *otelconfigtls.TLSServerSetting {
+func (args *TLSServerArguments) Convert() *otelconfigtls.ServerConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &otelconfigtls.TLSServerSetting{
-		TLSSetting:   *args.TLSSetting.Convert(),
+	return &otelconfigtls.ServerConfig{
+		Config:       *args.TLSSetting.Convert(),
 		ClientCAFile: args.ClientCAFile,
 	}
 }
@@ -40,13 +40,13 @@ type TLSClientArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *TLSClientArguments) Convert() *otelconfigtls.TLSClientSetting {
+func (args *TLSClientArguments) Convert() *otelconfigtls.ClientConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &otelconfigtls.TLSClientSetting{
-		TLSSetting:         *args.TLSSetting.Convert(),
+	return &otelconfigtls.ClientConfig{
+		Config:             *args.TLSSetting.Convert(),
 		Insecure:           args.Insecure,
 		InsecureSkipVerify: args.InsecureSkipVerify,
 		ServerName:         args.ServerName,
@@ -67,12 +67,12 @@ type TLSSetting struct {
 	IncludeSystemCACertsPool bool              `alloy:"include_system_ca_certs_pool,attr,optional"`
 }
 
-func (args *TLSSetting) Convert() *otelconfigtls.TLSSetting {
+func (args *TLSSetting) Convert() *otelconfigtls.Config {
 	if args == nil {
 		return nil
 	}
 
-	return &otelconfigtls.TLSSetting{
+	return &otelconfigtls.Config{
 		CAPem:                    configopaque.String(args.CA),
 		CAFile:                   args.CAFile,
 		CertPem:                  configopaque.String(args.Cert),
