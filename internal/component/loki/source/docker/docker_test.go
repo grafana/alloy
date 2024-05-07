@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const taskRestartInterval = 20 * time.Millisecond
+const targetRestartInterval = 20 * time.Millisecond
 
 func Test(t *testing.T) {
 	// Use host that works on all platforms (including Windows).
@@ -110,9 +110,9 @@ func TestRestart(t *testing.T) {
 
 	// Stops the container.
 	runningState = false
-	time.Sleep(taskRestartInterval + 10*time.Millisecond) // Sleep for a duration greater than taskRestartInterval to make sure it stops sending log lines.
+	time.Sleep(targetRestartInterval + 10*time.Millisecond) // Sleep for a duration greater than targetRestartInterval to make sure it stops sending log lines.
 	entryHandler.Clear()
-	time.Sleep(taskRestartInterval + 10*time.Millisecond)
+	time.Sleep(targetRestartInterval + 10*time.Millisecond)
 	assert.Empty(t, entryHandler.Received()) // No log lines because the container was not running.
 
 	// Restart the container and expect log lines.
@@ -149,8 +149,8 @@ func setupTailer(t *testing.T, client clientMock) (tailer *tailer, entryHandler 
 	require.NoError(t, err)
 	tailerTask := &tailerTask{
 		options: &options{
-			client:              client,
-			taskRestartInterval: taskRestartInterval,
+			client:                client,
+			targetRestartInterval: targetRestartInterval,
 		},
 		target: tgt,
 	}

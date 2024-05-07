@@ -53,8 +53,8 @@ type options struct {
 	// positions interface so tailers can save/restore offsets in log files.
 	positions positions.Positions
 
-	// taskRestartInterval to restart task that has stopped running.
-	taskRestartInterval time.Duration
+	// targetRestartInterval to restart task that has stopped running.
+	targetRestartInterval time.Duration
 }
 
 // tailerTask is the payload used to create tailers. It implements runner.Task.
@@ -98,7 +98,7 @@ func newTailer(l log.Logger, task *tailerTask) *tailer {
 }
 
 func (t *tailer) Run(ctx context.Context) {
-	ticker := time.NewTicker(t.opts.taskRestartInterval)
+	ticker := time.NewTicker(t.opts.targetRestartInterval)
 	tickerC := ticker.C
 
 	for {
