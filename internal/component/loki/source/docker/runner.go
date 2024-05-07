@@ -113,6 +113,7 @@ func (t *tailer) Run(ctx context.Context) {
 				t.target.StartIfNotRunning()
 			}
 		case <-ctx.Done():
+			t.target.Stop()
 			ticker.Stop()
 			return
 		}
