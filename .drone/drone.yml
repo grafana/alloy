@@ -870,6 +870,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 8470d1cd1b7ab512b3adff1fc61af6576e427d81225f7b83ae228a3dad326aa9
+hmac: 90256fa94151ede8f87febe3f321163c743775ccef301a37bec5a8a7ca5376f9
 
 ...
