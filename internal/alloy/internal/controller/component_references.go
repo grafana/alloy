@@ -42,19 +42,17 @@ func ComponentReferences(cn dag.Node, g *dag.Graph) ([]Reference, diag.Diagnosti
 
 	refs := make([]Reference, 0, len(traversals))
 	for _, t := range traversals {
-		// We use an empty scope to determine if a reference refers to something in
-		// the stdlib, since vm.Scope.Lookup will search the scope tree + the
-		// stdlib.
-		//
-		// Any call to an stdlib function is ignored.
-		var emptyScope vm.Scope
-		if _, ok := emptyScope.Lookup(t[0].Name); ok {
-			continue
-		}
-
 		ref, resolveDiags := resolveTraversal(t, g)
-		diags = append(diags, resolveDiags...)
 		if resolveDiags.HasErrors() {
+			// We use an empty scope to determine if a reference refers to something in
+			// the stdlib, since vm.Scope.Lookup will search the scope tree + the
+			// stdlib.
+			//
+			// Any call to an stdlib function is ignored.
+			var emptyScope vm.Scope
+			if _, exist := emptyScope.Lookup(t[0].Name); !exist {
+				diags = append(diags, resolveDiags...)
+			}
 			continue
 		}
 		refs = append(refs, ref)
