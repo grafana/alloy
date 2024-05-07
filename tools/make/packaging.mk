@@ -30,7 +30,9 @@ dist-alloy-binaries: dist/alloy-linux-amd64                    \
                      dist/alloy-darwin-amd64                   \
                      dist/alloy-darwin-arm64                   \
                      dist/alloy-windows-amd64.exe              \
-                     dist/alloy-freebsd-amd64
+                     dist/alloy-freebsd-amd64                  \
+                     dist-alloy-boringcrypto-binaries          \
+                     dist/alloy-cngcrypto-windows-amd64.exe
 
 dist/alloy-linux-amd64: GO_TAGS += netgo builtinassets promtail_journal_enabled
 dist/alloy-linux-amd64: GOOS    := linux
@@ -73,10 +75,24 @@ dist/alloy-darwin-arm64: generate-ui
 #
 # TODO(rfratto): add netgo back to Windows builds if a version of Go is
 # released which natively supports resolving DNS short names on Windows.
+dist/alloy-windows-amd64.exe: generate-ui generate-winmanifest
 dist/alloy-windows-amd64.exe: GO_TAGS += builtinassets
 dist/alloy-windows-amd64.exe: GOOS    := windows
 dist/alloy-windows-amd64.exe: GOARCH  := amd64
-dist/alloy-windows-amd64.exe: generate-ui generate-winmanifest
+dist/alloy-windows-amd64.exe:
+	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
+
+# NOTE(rfratto): do not use netgo when building Windows binaries, which
+# prevents DNS short names from being resovable. See grafana/agent#4665.
+#
+# TODO(rfratto): add netgo back to Windows builds if a version of Go is
+# released which natively supports resolving DNS short names on Windows.
+dist/alloy-cngcrypto-windows-amd64.exe: generate-ui generate-winmanifest
+dist/alloy-cngcrypto-windows-amd64.exe: GO_TAGS       += builtinassets
+dist/alloy-cngcrypto-windows-amd64.exe: GOOS          := windows
+dist/alloy-cngcrypto-windows-amd64.exe: GOARCH        := amd64
+dist/alloy-cngcrypto-windows-amd64.exe: GOEXPERIMENT  := cngcrypto
+dist/alloy-cngcrypto-windows-amd64.exe:
 	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
 
 # NOTE(rfratto): do not use netgo when building Windows binaries, which
@@ -123,10 +139,11 @@ dist/alloy-boringcrypto-linux-arm64: generate-ui
 
 dist-alloy-service-binaries: dist.temp/alloy-service-windows-amd64.exe
 
+dist.temp/alloy-service-windows-amd64.exe: generate-ui generate-winmanifest
 dist.temp/alloy-service-windows-amd64.exe: GO_TAGS += builtinassets
 dist.temp/alloy-service-windows-amd64.exe: GOOS    := windows
 dist.temp/alloy-service-windows-amd64.exe: GOARCH  := amd64
-dist.temp/alloy-service-windows-amd64.exe: generate-ui generate-winmanifest
+dist.temp/alloy-service-windows-amd64.exe:
 	$(PACKAGING_VARS) SERVICE_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy-service
 
 #

@@ -328,7 +328,7 @@ platform:
   os: linux
 steps:
 - commands:
-  - make generate-ui
+  - make generate-ui generate-winmanifest
   - GO_TAGS="builtinassets" GOOS=windows GOARCH=amd64 GOARM= make alloy
   image: grafana/alloy-build-image:v0.1.0
   name: Build
@@ -347,6 +347,57 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets" GOOS=freebsd GOARCH=amd64 GOARM= make alloy
   image: grafana/alloy-build-image:v0.1.0
+  name: Build
+trigger:
+  event:
+  - pull_request
+type: docker
+---
+kind: pipeline
+name: Build alloy (Linux amd64 boringcrypto)
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - make generate-ui
+  - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=amd64 GOARM=
+    GOEXPERIMENT=boringcrypto make alloy
+  image: grafana/alloy-build-image:v0.1.0-boringcrypto
+  name: Build
+trigger:
+  event:
+  - pull_request
+type: docker
+---
+kind: pipeline
+name: Build alloy (Linux arm64 boringcrypto)
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - make generate-ui
+  - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=arm64 GOARM=
+    GOEXPERIMENT=boringcrypto make alloy
+  image: grafana/alloy-build-image:v0.1.0-boringcrypto
+  name: Build
+trigger:
+  event:
+  - pull_request
+type: docker
+---
+kind: pipeline
+name: Build alloy (Windows amd64 cngcrypto)
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - make generate-ui generate-winmanifest
+  - GO_TAGS="builtinassets" GOOS=windows GOARCH=amd64 GOARM= GOEXPERIMENT=cngcrypto
+    make alloy
+  image: grafana/alloy-build-image:v0.1.0-boringcrypto
   name: Build
 trigger:
   event:
@@ -681,22 +732,13 @@ steps:
 - image: us.gcr.io/kubernetes-dev/drone/plugins/updater
   name: Update deployment_tools
   settings:
-    config_json: |
-      {
-        "git_committer_name": "updater-for-ci[bot]",
-        "git_author_name": "updater-for-ci[bot]",
-        "git_committer_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
-        "git_author_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
-        "destination_branch": "master",
-        "repo_name": "deployment_tools",
-        "update_jsonnet_attribute_configs": [
-          {
-            "file_path": "ksonnet/environments/grafana-agent/waves/alloy.libsonnet",
-            "jsonnet_key": "dev_canary",
-            "jsonnet_value_file": ".image-tag"
-          }
-        ]
-      }
+    config_json: "{\r\n  \"git_committer_name\": \"updater-for-ci[bot]\",\r\n  \"git_author_name\":
+      \"updater-for-ci[bot]\",\r\n  \"git_committer_email\": \"119986603+updater-for-ci[bot]@users.noreply.github.com\",\r\n
+      \ \"git_author_email\": \"119986603+updater-for-ci[bot]@users.noreply.github.com\",\r\n
+      \ \"destination_branch\": \"master\",\r\n  \"repo_name\": \"deployment_tools\",\r\n
+      \ \"update_jsonnet_attribute_configs\": [\r\n    {\r\n      \"file_path\": \"ksonnet/environments/grafana-agent/waves/alloy.libsonnet\",\r\n
+      \     \"jsonnet_key\": \"dev_canary\",\r\n      \"jsonnet_value_file\": \".image-tag\"\r\n
+      \   }\r\n  ]\r\n}\r\n"
     github_app_id:
       from_secret: updater_app_id
     github_app_installation_id:
@@ -736,8 +778,8 @@ steps:
   - export GITHUB_TOKEN=$(cat /drone/src/gh-token.txt)
   - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
   - RELEASE_BUILD=1 VERSION="${DRONE_TAG}" make -j4 dist
-  - |
-    VERSION="${DRONE_TAG}" RELEASE_DOC_TAG=$(echo "${DRONE_TAG}" | awk -F '.' '{print $1"."$2}') ./tools/release
+  - "VERSION=\"${DRONE_TAG}\" RELEASE_DOC_TAG=$(echo \"${DRONE_TAG}\" | awk -F '.'
+    '{print $1\".\"$2}') ./tools/release\r\n"
   environment:
     DOCKER_LOGIN:
       from_secret: docker_login
@@ -870,6 +912,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 8470d1cd1b7ab512b3adff1fc61af6576e427d81225f7b83ae228a3dad326aa9
+hmac: 85b2cfc0ebf296a83f4b67df69462921b75574e770f9db2d6d4976cb561d5c99
 
 ...

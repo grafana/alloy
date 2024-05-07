@@ -31,6 +31,23 @@ local os_arch_tuples = [
 local targets = [
   'alloy',
 ];
+local targets_boringcrypto = [
+  'alloy',
+];
+local targets_boringcrypto_windows = [
+  'alloy',
+];
+
+
+local os_arch_types_boringcrypto = [
+  // Linux boringcrypto
+  { name: 'Linux amd64 boringcrypto', os: 'linux', arch: 'amd64', experiment: 'boringcrypto' },
+  { name: 'Linux arm64 boringcrypto', os: 'linux', arch: 'arm64', experiment: 'boringcrypto' },
+];
+local windows_os_arch_types_boringcrypto = [
+  // Windows boringcrypto
+  { name: 'Windows amd64 cngcrypto', os: 'windows', arch: 'amd64', experiment: 'cngcrypto' },
+];
 
 local build_environments(targets, tuples, image) = std.flatMap(function(target) (
   std.map(function(platform) (
@@ -53,7 +70,10 @@ local build_environments(targets, tuples, image) = std.flatMap(function(target) 
         name: 'Build',
         image: image,
         commands: [
-          'make generate-ui',
+          'make generate-ui' +
+          (if env.GOOS == 'windows'
+           then ' generate-winmanifest'
+           else ""),
           (if 'GOEXPERIMENT' in env
            then 'GO_TAGS="%(tags)s" GOOS=%(GOOS)s GOARCH=%(GOARCH)s GOARM=%(GOARM)s GOEXPERIMENT=%(GOEXPERIMENT)s make %(target)s' % env
            else 'GO_TAGS="%(tags)s" GOOS=%(GOOS)s GOARCH=%(GOARCH)s GOARM=%(GOARM)s make %(target)s') % env,
@@ -63,4 +83,7 @@ local build_environments(targets, tuples, image) = std.flatMap(function(target) 
   ), tuples)
 ), targets);
 
-build_environments(targets, os_arch_tuples, build_image.linux)
+build_environments(targets, os_arch_tuples, build_image.linux) +
+build_environments(targets_boringcrypto, os_arch_types_boringcrypto, build_image.boringcrypto) +
+build_environments(targets_boringcrypto_windows, windows_os_arch_types_boringcrypto, build_image.boringcrypto)
+
