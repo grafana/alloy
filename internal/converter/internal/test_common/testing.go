@@ -207,7 +207,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 			labelstore.New(nil, prometheus.DefaultRegisterer),
 		},
 	})
-	err = f.LoadSource(cfg, nil)
+	err = f.LoadSource(cfg, nil, "")
 
 	// Many components will fail to build as e.g. the cert files are missing, so we ignore these errors.
 	// This is not ideal, but we still validate for other potential issues.

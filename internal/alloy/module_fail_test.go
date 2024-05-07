@@ -16,7 +16,7 @@ func TestIDRemovalIfFailedToLoad(t *testing.T) {
 	fullContent := "test.fail.module \"t1\" { content = \"\" }"
 	fl, err := ParseSource("test", []byte(fullContent))
 	require.NoError(t, err)
-	err = f.LoadSource(fl, nil)
+	err = f.LoadSource(fl, nil, "")
 	require.NoError(t, err)
 	ctx := context.Background()
 	ctx, cnc := context.WithTimeout(ctx, 600*time.Second)
