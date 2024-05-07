@@ -296,7 +296,12 @@ func (cn *ImportConfigNode) processImportBlock(stmt *ast.BlockStmt, fullName str
 func (cn *ImportConfigNode) evaluateChildren() error {
 	for _, child := range cn.importConfigNodesChildren {
 		err := child.Evaluate(&vm.Scope{
-			Parent:    nil,
+			Parent: &vm.Scope{
+				Parent: nil,
+				Variables: map[string]interface{}{
+					"module_path": cn.source.ModulePath(),
+				},
+			},
 			Variables: make(map[string]interface{}),
 		})
 		if err != nil {
@@ -424,6 +429,15 @@ func (cn *ImportConfigNode) ImportedDeclares() map[string]ast.Body {
 	cn.mut.RLock()
 	defer cn.mut.RUnlock()
 	return cn.importedDeclares
+}
+
+// Scope returns the scope associated with the import source.
+func (cn *ImportConfigNode) Scope() *vm.Scope {
+	return &vm.Scope{
+		Variables: map[string]interface{}{
+			"module_path": cn.source.ModulePath(),
+		},
+	}
 }
 
 // ImportConfigNodesChildren returns the ImportConfigNodesChildren of this ImportConfigNode.
