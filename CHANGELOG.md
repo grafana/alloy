@@ -162,6 +162,8 @@ v1.1.0-rc.0
   - `otelcol.processor.resourcedetection`: Update to ec2 scraper so that core attributes are not dropped if describeTags returns an error (likely due to permissions).
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/30672
 
+- Use Go 1.22.3 for builds. (@kminehart)
+
 v1.0.0
 ------
 
