@@ -46,7 +46,7 @@ local os_arch_types_boringcrypto = [
 ];
 local windows_os_arch_types_boringcrypto = [
   // Windows boringcrypto
-  { name: 'Windows amd64 cngcrypto', os: 'windows', arch: 'amd64', experiment: 'cngcrypto' },
+  { name: 'Windows amd64 cngcrypto', os: 'windows', arch: 'amd64', experiment: 'cngcrypto', additional_tags: 'cngcrypto' },
 ];
 
 local build_environments(targets, tuples, image) = std.flatMap(function(target) (
@@ -59,7 +59,7 @@ local build_environments(targets, tuples, image) = std.flatMap(function(target) 
 
         target: target,
 
-        tags: go_tags[platform.os],
+        tags: go_tags[platform.os] + (if 'additional_tags' in platform then ' '+platform.additional_tags else '') ,
       } + (if 'experiment' in platform then { GOEXPERIMENT: platform.experiment } else {}),
 
       trigger: {

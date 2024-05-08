@@ -31,8 +31,7 @@ dist-alloy-binaries: dist/alloy-linux-amd64                    \
                      dist/alloy-darwin-arm64                   \
                      dist/alloy-windows-amd64.exe              \
                      dist/alloy-freebsd-amd64                  \
-                     dist-alloy-boringcrypto-binaries          \
-                     dist/alloy-cngcrypto-windows-amd64.exe
+                     dist-alloy-boringcrypto-binaries
 
 dist/alloy-linux-amd64: GO_TAGS += netgo builtinassets promtail_journal_enabled
 dist/alloy-linux-amd64: GOOS    := linux
@@ -87,8 +86,12 @@ dist/alloy-windows-amd64.exe:
 #
 # TODO(rfratto): add netgo back to Windows builds if a version of Go is
 # released which natively supports resolving DNS short names on Windows.
+# generate winmanifest needs to be called BEFORE we set the GOOS GOARCH,
+# this is because if we end up calling it before the cross compile it needs
+# be the version usable from linux and NOT the version from windows.
 dist/alloy-cngcrypto-windows-amd64.exe: generate-ui generate-winmanifest
-dist/alloy-cngcrypto-windows-amd64.exe: GO_TAGS       += builtinassets
+# We have to specify both GOEXPERIMENT and cngcrypto tags for it to build properly
+dist/alloy-cngcrypto-windows-amd64.exe: GO_TAGS       += builtinassets cngcrypto
 dist/alloy-cngcrypto-windows-amd64.exe: GOOS          := windows
 dist/alloy-cngcrypto-windows-amd64.exe: GOARCH        := amd64
 dist/alloy-cngcrypto-windows-amd64.exe: GOEXPERIMENT  := cngcrypto
@@ -111,7 +114,8 @@ dist/alloy-freebsd-amd64: generate-ui
 #
 
 dist-alloy-boringcrypto-binaries: dist/alloy-boringcrypto-linux-amd64 \
-                                  dist/alloy-boringcrypto-linux-arm64
+                                  dist/alloy-boringcrypto-linux-arm64 \
+                                  dist/alloy-cngcrypto-windows-amd64.exe
 
 dist/alloy-boringcrypto-linux-amd64: GO_TAGS      += netgo builtinassets promtail_journal_enabled
 dist/alloy-boringcrypto-linux-amd64: GOEXPERIMENT := boringcrypto

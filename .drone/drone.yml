@@ -395,7 +395,7 @@ platform:
 steps:
 - commands:
   - make generate-ui generate-winmanifest
-  - GO_TAGS="builtinassets" GOOS=windows GOARCH=amd64 GOARM= GOEXPERIMENT=cngcrypto
+  - GO_TAGS="builtinassets cngcrypto" GOOS=windows GOARCH=amd64 GOARM= GOEXPERIMENT=cngcrypto
     make alloy
   image: grafana/alloy-build-image:v0.1.0-boringcrypto
   name: Build
@@ -732,13 +732,22 @@ steps:
 - image: us.gcr.io/kubernetes-dev/drone/plugins/updater
   name: Update deployment_tools
   settings:
-    config_json: "{\r\n  \"git_committer_name\": \"updater-for-ci[bot]\",\r\n  \"git_author_name\":
-      \"updater-for-ci[bot]\",\r\n  \"git_committer_email\": \"119986603+updater-for-ci[bot]@users.noreply.github.com\",\r\n
-      \ \"git_author_email\": \"119986603+updater-for-ci[bot]@users.noreply.github.com\",\r\n
-      \ \"destination_branch\": \"master\",\r\n  \"repo_name\": \"deployment_tools\",\r\n
-      \ \"update_jsonnet_attribute_configs\": [\r\n    {\r\n      \"file_path\": \"ksonnet/environments/grafana-agent/waves/alloy.libsonnet\",\r\n
-      \     \"jsonnet_key\": \"dev_canary\",\r\n      \"jsonnet_value_file\": \".image-tag\"\r\n
-      \   }\r\n  ]\r\n}\r\n"
+    config_json: |
+      {
+        "git_committer_name": "updater-for-ci[bot]",
+        "git_author_name": "updater-for-ci[bot]",
+        "git_committer_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
+        "git_author_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
+        "destination_branch": "master",
+        "repo_name": "deployment_tools",
+        "update_jsonnet_attribute_configs": [
+          {
+            "file_path": "ksonnet/environments/grafana-agent/waves/alloy.libsonnet",
+            "jsonnet_key": "dev_canary",
+            "jsonnet_value_file": ".image-tag"
+          }
+        ]
+      }
     github_app_id:
       from_secret: updater_app_id
     github_app_installation_id:
@@ -778,8 +787,8 @@ steps:
   - export GITHUB_TOKEN=$(cat /drone/src/gh-token.txt)
   - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
   - RELEASE_BUILD=1 VERSION="${DRONE_TAG}" make -j4 dist
-  - "VERSION=\"${DRONE_TAG}\" RELEASE_DOC_TAG=$(echo \"${DRONE_TAG}\" | awk -F '.'
-    '{print $1\".\"$2}') ./tools/release\r\n"
+  - |
+    VERSION="${DRONE_TAG}" RELEASE_DOC_TAG=$(echo "${DRONE_TAG}" | awk -F '.' '{print $1"."$2}') ./tools/release
   environment:
     DOCKER_LOGIN:
       from_secret: docker_login
@@ -912,6 +921,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 85b2cfc0ebf296a83f4b67df69462921b75574e770f9db2d6d4976cb561d5c99
+hmac: 50d4b653f619b22b57abead97c426b044fd05a1600a40acf8b4432bcb619d76b
 
 ...
