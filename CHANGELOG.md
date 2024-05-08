@@ -10,12 +10,6 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-### Bugfixes
-
-- Upgrading `pyroscope/ebpf` from 0.4.6 to 0.4.7 (@korniltsev):
-  * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
-  * treat elf files with short build id (8 bytes) properly
-
 v1.1.0-rc.0
 -----------
 
@@ -86,6 +80,10 @@ v1.1.0-rc.0
   and if you use this exact function in your config, then you will need to rename your module. (@wildum)
 
 - Fix an issue where `loki.source.docker` stops collecting logs after a container restart. (@wildum)
+
+- Upgrading `pyroscope/ebpf` from 0.4.6 to 0.4.7 (@korniltsev):
+  * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
+  * treat elf files with short build id (8 bytes) properly
 
 ### Other changes
 
