@@ -81,8 +81,6 @@ v1.1.0-rc.0
 
 ### Other changes
 
-- Support all [Kubernetes recommended labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/) (@nlamirault)
-
 - Update `alloy-mixin` to use more specific alert group names (for example,
   `alloy_clustering` instead of `clustering`) to avoid collision with installs
   of `agent-flow-mixin`. (@rfratto)
