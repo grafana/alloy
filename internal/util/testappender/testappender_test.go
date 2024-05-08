@@ -4,19 +4,20 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/grafana/alloy/internal/util/testappender"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
-	"github.com/prometheus/prometheus/model/textparse"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util/testappender"
 )
 
 func Example() {
 	var app testappender.Appender
 	app.Append(0, labels.FromStrings("__name__", "example_metric", "foo", "bar"), 60, 1234)
 	app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric"), metadata.Metadata{
-		Type: textparse.MetricTypeGauge,
+		Type: model.MetricTypeGauge,
 	})
 
 	expect := `
@@ -58,7 +59,7 @@ func TestAppender_Metadata(t *testing.T) {
 		var app testappender.Appender
 		app.Append(0, labels.FromStrings("__name__", "example_metric", "foo", "bar"), 60, 1234)
 		app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric"), metadata.Metadata{
-			Type: textparse.MetricTypeGauge,
+			Type: model.MetricTypeGauge,
 			Help: "example metric",
 		})
 
@@ -74,7 +75,7 @@ func TestAppender_Metadata(t *testing.T) {
 		var app testappender.Appender
 		app.Append(0, labels.FromStrings("__name__", "example_metric", "foo", "bar"), 60, 1234)
 		app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric"), metadata.Metadata{
-			Type: textparse.MetricTypeGauge,
+			Type: model.MetricTypeGauge,
 		})
 
 		expect := `
@@ -90,7 +91,7 @@ func TestAppender_Types(t *testing.T) {
 		var app testappender.Appender
 		app.Append(0, labels.FromStrings("__name__", "example_metric", "foo", "bar"), 60, 1234)
 		app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric"), metadata.Metadata{
-			Type: textparse.MetricTypeUnknown,
+			Type: model.MetricTypeUnknown,
 		})
 
 		expect := `
@@ -104,7 +105,7 @@ func TestAppender_Types(t *testing.T) {
 		var app testappender.Appender
 		app.Append(0, labels.FromStrings("__name__", "example_metric", "foo", "bar"), 60, 1234)
 		app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric"), metadata.Metadata{
-			Type: textparse.MetricTypeCounter,
+			Type: model.MetricTypeCounter,
 		})
 
 		expect := `
@@ -118,7 +119,7 @@ func TestAppender_Types(t *testing.T) {
 		var app testappender.Appender
 		app.Append(0, labels.FromStrings("__name__", "example_metric", "foo", "bar"), 60, 1234)
 		app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric"), metadata.Metadata{
-			Type: textparse.MetricTypeGauge,
+			Type: model.MetricTypeGauge,
 		})
 
 		expect := `
@@ -134,7 +135,7 @@ func TestAppender_Types(t *testing.T) {
 		// Summaries have quantiles from 0 to 1, counts, and sums. Append the
 		// metadata first and then append all the various samples.
 		app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric"), metadata.Metadata{
-			Type: textparse.MetricTypeSummary,
+			Type: model.MetricTypeSummary,
 		})
 
 		app.Append(0, labels.FromStrings("__name__", "example_metric", "foo", "bar", "quantile", "0"), 10, 10)
@@ -164,7 +165,7 @@ func TestAppender_Types(t *testing.T) {
 		// Histograms have buckets, counts, and sums. Append the metadata first and
 		// then append all the various samples.
 		app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric"), metadata.Metadata{
-			Type: textparse.MetricTypeHistogram,
+			Type: model.MetricTypeHistogram,
 		})
 
 		app.Append(0, labels.FromStrings("__name__", "example_metric_bucket", "foo", "bar", "le", "0.5"), 10, 10)
@@ -196,7 +197,7 @@ func TestAppender_Exemplars(t *testing.T) {
 		var app testappender.Appender
 		app.Append(0, labels.FromStrings("__name__", "example_metric_total", "foo", "bar"), 60, 1234)
 		app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric_total"), metadata.Metadata{
-			Type: textparse.MetricTypeCounter,
+			Type: model.MetricTypeCounter,
 		})
 		app.AppendExemplar(0, labels.FromStrings("__name__", "example_metric_total", "foo", "bar"), exemplar.Exemplar{
 			Labels: labels.FromStrings("hello", "world"),
@@ -218,7 +219,7 @@ func TestAppender_Exemplars(t *testing.T) {
 		// Histograms have buckets, counts, and sums. Append the metadata first and
 		// then append all the various samples.
 		app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric"), metadata.Metadata{
-			Type: textparse.MetricTypeHistogram,
+			Type: model.MetricTypeHistogram,
 		})
 
 		app.Append(0, labels.FromStrings("__name__", "example_metric_bucket", "foo", "bar", "le", "0.5"), 10, 10)
@@ -255,10 +256,10 @@ func TestAppender_MultipleMetrics(t *testing.T) {
 	var app testappender.Appender
 
 	app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric_a"), metadata.Metadata{
-		Type: textparse.MetricTypeCounter,
+		Type: model.MetricTypeCounter,
 	})
 	app.UpdateMetadata(0, labels.FromStrings("__name__", "example_metric_b"), metadata.Metadata{
-		Type: textparse.MetricTypeGauge,
+		Type: model.MetricTypeGauge,
 	})
 
 	app.Append(0, labels.FromStrings("__name__", "example_metric_a", "foo", "bar"), 10, 10)

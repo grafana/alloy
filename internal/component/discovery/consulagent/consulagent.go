@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"time"
 
+	promcfg "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	promcfg "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
 )
 
 func init() {
@@ -80,8 +81,8 @@ func (args *Arguments) Convert() *SDConfig {
 
 // New returns a new instance of a discovery.consulagent component.
 func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
+	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
 		newArgs := args.(Arguments)
-		return NewDiscovery(newArgs.Convert(), opts.Logger)
+		return newArgs.Convert(), nil
 	})
 }

@@ -4,11 +4,12 @@ package gce
 import (
 	"time"
 
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/discovery/gce"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/discovery/gce"
 )
 
 func init() {
@@ -60,8 +61,8 @@ func (args Arguments) Convert() gce.SDConfig {
 
 // New returns a new instance of a discovery.gce component.
 func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
+	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
 		conf := args.(Arguments).Convert()
-		return gce.NewDiscovery(conf, opts.Logger)
+		return &conf, nil
 	})
 }

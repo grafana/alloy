@@ -3,13 +3,13 @@ package http
 import (
 	"time"
 
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/discovery/http"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	promcfg "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/discovery/http"
 )
 
 func init() {
@@ -56,8 +56,8 @@ func (args Arguments) Convert() *http.SDConfig {
 }
 
 func New(opts component.Options, args Arguments) (component.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
+	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
 		conf := args.(Arguments).Convert()
-		return http.NewDiscovery(conf, opts.Logger, []promcfg.HTTPClientOption{})
+		return conf, nil
 	})
 }

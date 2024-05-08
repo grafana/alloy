@@ -2,11 +2,12 @@
 package kubernetes
 
 import (
+	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 )
 
 func init() {
@@ -106,8 +107,8 @@ func (am *AttachMetadataConfig) convert() *promk8s.AttachMetadataConfig {
 
 // New returns a new instance of a discovery.kubernetes component.
 func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
+	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
 		newArgs := args.(Arguments)
-		return promk8s.New(opts.Logger, newArgs.Convert())
+		return newArgs.Convert(), nil
 	})
 }

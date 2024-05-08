@@ -9,14 +9,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/common/config"
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/syntax"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"gotest.tools/assert"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestAlloyConfig(t *testing.T) {
@@ -91,6 +93,7 @@ func TestComponent(t *testing.T) {
 				assert.Equal(t, 8, len(args.Targets))
 				cancel()
 			},
+			Registerer: prometheus.NewRegistry(),
 		},
 		Arguments{
 			RefreshInterval:  time.Second,

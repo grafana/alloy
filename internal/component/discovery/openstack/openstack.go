@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"time"
 
+	config_util "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/openstack"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	config_util "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	prom_discovery "github.com/prometheus/prometheus/discovery/openstack"
 )
 
 func init() {
@@ -102,8 +103,8 @@ func (args *Arguments) Convert() *prom_discovery.SDConfig {
 
 // New returns a new instance of a discovery.openstack component.
 func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
+	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
 		newArgs := args.(Arguments)
-		return prom_discovery.NewDiscovery(newArgs.Convert(), opts.Logger)
+		return newArgs.Convert(), nil
 	})
 }

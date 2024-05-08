@@ -7,14 +7,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage/remote"
 	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/useragent"
 )
 
 func init() {
@@ -132,6 +134,12 @@ func (c *Config) ApplyDefaults(global GlobalConfig) error {
 				sc.ScrapeTimeout = c.global.Prometheus.ScrapeTimeout
 			}
 		}
+		if sc.ScrapeProtocols == nil {
+			sc.ScrapeProtocols = c.global.Prometheus.ScrapeProtocols
+		}
+		if err := validateScrapeProtocols(sc.ScrapeProtocols); err != nil {
+			return fmt.Errorf("invalid scrape protocols provided: %w", err)
+		}
 
 		if _, exists := jobNames[sc.JobName]; exists {
 			return fmt.Errorf("found multiple scrape configs with job name %q", sc.JobName)
@@ -183,4 +191,22 @@ func getHash(data interface{}) (string, error) {
 	}
 	hash := md5.Sum(bytes)
 	return hex.EncodeToString(hash[:]), nil
+}
+
+// validateScrapeProtocols return errors if we see problems with accept scrape protocols option.
+func validateScrapeProtocols(sps []config.ScrapeProtocol) error {
+	if len(sps) == 0 {
+		return errors.New("scrape_protocols cannot be empty")
+	}
+	dups := map[string]struct{}{}
+	for _, sp := range sps {
+		if _, ok := dups[strings.ToLower(string(sp))]; ok {
+			return fmt.Errorf("duplicated protocol in scrape_protocols, got %v", sps)
+		}
+		if err := sp.Validate(); err != nil {
+			return fmt.Errorf("scrape_protocols: %w", err)
+		}
+		dups[strings.ToLower(string(sp))] = struct{}{}
+	}
+	return nil
 }

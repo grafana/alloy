@@ -6,11 +6,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/discovery/dns"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/discovery/dns"
 )
 
 func init() {
@@ -70,8 +71,8 @@ func (args Arguments) Convert() dns.SDConfig {
 
 // New returns a new instance of a discovery.dns component.
 func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
+	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
 		conf := args.(Arguments).Convert()
-		return dns.NewDiscovery(conf, opts.Logger), nil
+		return &conf, nil
 	})
 }

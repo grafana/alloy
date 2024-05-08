@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/ionos"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/common/model"
-	prom_discovery "github.com/prometheus/prometheus/discovery/ionos"
 )
 
 func init() {
@@ -66,8 +67,8 @@ func (a *Arguments) Convert() *prom_discovery.SDConfig {
 
 // New returns a new instance of a discovery.ionos component,
 func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
+	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
 		newArgs := args.(Arguments)
-		return prom_discovery.NewDiscovery(newArgs.Convert(), opts.Logger)
+		return newArgs.Convert(), nil
 	})
 }

@@ -6,9 +6,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/component/discovery"
-	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
-	util "github.com/grafana/alloy/internal/util/log"
 	"github.com/prometheus/prometheus/config"
 	promdiscovery "github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
@@ -18,6 +15,11 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
+
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/static/promglobalmetrics"
+	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
+	util "github.com/grafana/alloy/internal/util/log"
 )
 
 type promServiceDiscoProcessor struct {
@@ -36,7 +38,13 @@ func newTraceProcessor(nextConsumer consumer.Traces, operationType string, podAs
 	ctx, cancel := context.WithCancel(context.Background())
 
 	logger := log.With(util.Logger, "component", "traces service disco")
-	mgr := promdiscovery.NewManager(ctx, logger, promdiscovery.Name("traces service disco"))
+	mgr := promdiscovery.NewManager(
+		ctx,
+		logger,
+		promglobalmetrics.PromDiscoveryManagerRegistry,
+		promglobalmetrics.PromSdMetrics,
+		promdiscovery.Name("traces service disco"),
+	)
 
 	relabelConfigs := map[string][]*relabel.Config{}
 	managerConfig := map[string]promdiscovery.Configs{}

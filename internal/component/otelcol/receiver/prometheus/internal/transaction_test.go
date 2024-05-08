@@ -1626,7 +1626,6 @@ func TestMetricBuilderSummary(t *testing.T) {
 			})
 		}
 	}
-
 }
 
 func TestMetricBuilderNativeHistogram(t *testing.T) {
@@ -1885,5 +1884,4 @@ func assertEquivalentMetrics(t *testing.T, want, got pmetric.Metrics) {
 			assert.EqualValues(t, wmap, gmap)
 		}
 	}
-
 }
