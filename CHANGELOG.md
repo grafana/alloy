@@ -16,6 +16,10 @@ Main (unreleased)
   * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
   * treat elf files with short build id (8 bytes) properly
 
+### Other changes
+
+- Use Go 1.22.3 for builds. (@kminehart)
+
 v1.1.0-rc.0
 -----------
 
