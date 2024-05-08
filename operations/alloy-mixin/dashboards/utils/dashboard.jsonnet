@@ -77,6 +77,8 @@
     datasource: '${datasource}',
     refresh: 2,
     sort: 2,
+    allValue: '.*',
+    includeAll: true,
   },
 
   newLokiAnnotation(name, expression, color):: {
@@ -90,8 +92,6 @@
   },
 
   newMultiTemplateVariable(name, query):: $.newTemplateVariable(name, query) {
-    allValue: '.*',
-    includeAll: true,
     multi: true,
   },
 

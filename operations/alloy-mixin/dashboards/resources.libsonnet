@@ -27,21 +27,25 @@ local stackedPanelMixin = {
 };
 
 {
+  local templateVariables = 
+    if $._config.enableK8sCluster then
+      [
+        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
+        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components{job=~"$job"}, cluster)'),
+        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{job=~"$job", cluster=~"$cluster"}, namespace)'),
+        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{job=~"$job", cluster=~"$cluster", namespace=~"$namespace"}, instance)'),
+      ]
+    else
+      [
+        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
+        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{job=~"$job"}, instance)'),        
+      ],
+
   [filename]:
     dashboard.new(name='Alloy / Resources', tag=$._config.dashboardTag) +
     dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
     dashboard.withUID(std.md5(filename)) +
-    dashboard.withTemplateVariablesMixin([
-      dashboard.newTemplateVariable('cluster', |||
-        label_values(alloy_component_controller_running_components, cluster)
-      |||),
-      dashboard.newTemplateVariable('namespace', |||
-        label_values(alloy_component_controller_running_components{cluster="$cluster"}, namespace)
-      |||),
-      dashboard.newMultiTemplateVariable('instance', |||
-        label_values(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace"}, instance)
-      |||),
-    ]) +
+    dashboard.withTemplateVariablesMixin(templateVariables) +
     // TODO(@tpaschalis) Make the annotation optional.
     dashboard.withAnnotations([
       dashboard.newLokiAnnotation('Deployments', '{cluster="$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
@@ -59,7 +63,7 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 0, y: 0, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='rate(alloy_resources_process_cpu_seconds_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])',
+            expr='rate(alloy_resources_process_cpu_seconds_total{' + $._config.instanceSelector + '}[$__rate_interval])',
             legendFormat='{{instance}}'
           ),
         ])
@@ -75,7 +79,7 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 12, y: 0, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='alloy_resources_process_resident_memory_bytes{cluster="$cluster",namespace="$namespace",instance=~"$instance"}',
+            expr='alloy_resources_process_resident_memory_bytes{' + $._config.instanceSelector + '}',
             legendFormat='{{instance}}'
           ),
         ])
@@ -95,11 +99,11 @@ local stackedPanelMixin = {
             // Lots of programs export go_goroutines so we ignore anything that
             // doesn't also have an Alloy-specific metric (i.e.,
             // alloy_build_info).
-            expr=|||
-              rate(go_gc_duration_seconds_count{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[5m])
+            expr=
+              'rate(go_gc_duration_seconds_count{' + $._config.instanceSelector + '}[5m])
               and on(instance)
-              alloy_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
-            |||,
+              alloy_build_info{' + $._config.instanceSelector + '}'
+            ,
             legendFormat='{{instance}}'
           ),
         ])
@@ -119,11 +123,11 @@ local stackedPanelMixin = {
             // Lots of programs export go_goroutines so we ignore anything that
             // doesn't also have an Alloy-specific metric (i.e.,
             // alloy_build_info).
-            expr=|||
-              go_goroutines{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
+            expr=
+              'go_goroutines{' + $._config.instanceSelector + '}
               and on(instance)
-              alloy_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
-            |||,
+              alloy_build_info{' + $._config.instanceSelector + '}'
+            ,
             legendFormat='{{instance}}'
           ),
         ])
@@ -142,11 +146,11 @@ local stackedPanelMixin = {
             // Lots of programs export go_memstats_heap_inuse_bytes so we ignore
             // anything that doesn't also have an Alloy-specific metric
             // (i.e., alloy_build_info).
-            expr=|||
-              go_memstats_heap_inuse_bytes{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
+            expr=
+              'go_memstats_heap_inuse_bytes{' + $._config.instanceSelector + '}
               and on(instance)
-              alloy_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
-            |||,
+              alloy_build_info{' + $._config.instanceSelector + '}'
+            ,
             legendFormat='{{instance}}'
           ),
         ])
@@ -167,9 +171,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 0, y: 16, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              rate(alloy_resources_machine_rx_bytes_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])
-            |||,
+            expr=
+              'rate(alloy_resources_machine_rx_bytes_total{' + $._config.instanceSelector + '}[$__rate_interval])'
+            ,
             legendFormat='{{instance}}'
           ),
         ])
@@ -190,9 +194,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 12, y: 16, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              rate(alloy_resources_machine_tx_bytes_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])
-            |||,
+            expr=
+              'rate(alloy_resources_machine_tx_bytes_total{' + $._config.instanceSelector + '}[$__rate_interval])'
+            ,
             legendFormat='{{instance}}'
           ),
         ])

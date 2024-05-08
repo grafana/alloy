@@ -15,24 +15,25 @@ local stackedPanelMixin = {
 };
 
 {
+  local templateVariables = 
+    if $._config.enableK8sCluster then
+      [
+        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
+        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components{job=~"$job"}, cluster)'),
+        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{job=~"$job", cluster=~"$cluster"}, namespace)'),
+        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{job=~"$job", cluster=~"$cluster", namespace=~"$namespace"}, instance)'),
+      ]
+    else
+      [
+        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
+        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{job=~"$job"}, instance)'),
+      ],
+
   [filename]:
     dashboard.new(name='Alloy / OpenTelemetry', tag=$._config.dashboardTag) +
     dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
     dashboard.withUID(std.md5(filename)) +
-    dashboard.withTemplateVariablesMixin([
-      dashboard.newTemplateVariable('job',
-        'label_values(alloy_component_controller_running_components, job)'
-      ),
-     dashboard.newTemplateVariable('cluster', 
-        'label_values(alloy_component_controller_running_components{' + $._config.filterSelector + '}, cluster)'
-        ),
-      dashboard.newTemplateVariable('namespace', 
-        'label_values(alloy_component_controller_running_components{' + $._config.filterSelector + ', cluster="$cluster"}, namespace)'
-      ),
-     dashboard.newTemplateVariable('instance', 
-        'label_values(alloy_component_controller_running_components{' + $._config.filterSelector + ', cluster="$cluster", namespace="$namespace"}, instance)'
-      ),
-    ]) +
+    dashboard.withTemplateVariablesMixin(templateVariables) +
     dashboard.withPanelsMixin([
       // "Receivers for traces" row
       (

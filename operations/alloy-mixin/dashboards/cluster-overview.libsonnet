@@ -4,6 +4,18 @@ local filename = 'alloy-cluster-overview.json';
 local cluster_node_filename = 'alloy-cluster-node.json';
 
 {
+  local templateVariables = 
+    if $._config.enableK8sCluster then
+      [
+        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
+        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components{job=~"$job"}, cluster)'),
+        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{job=~"$job", cluster=~"$cluster"}, namespace)'),
+      ]
+    else
+      [
+        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),        
+      ],
+
   [filename]:
     dashboard.new(name='Alloy / Cluster Overview', tag=$._config.dashboardTag) +
     dashboard.withDocsLink(
@@ -12,17 +24,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
     ) +
     dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
     dashboard.withUID(std.md5(filename)) +
-    dashboard.withTemplateVariablesMixin([
-      dashboard.newTemplateVariable('job',
-        'label_values(alloy_component_controller_running_components, job)'
-      ),
-      dashboard.newTemplateVariable('cluster',
-        'label_values(alloy_component_controller_running_components{' + $._config.filterSelector + '}, cluster)'
-      ),
-      dashboard.newTemplateVariable('namespace', 
-        'label_values(alloy_component_controller_running_components{' + $._config.filterSelector + ', cluster="$cluster"}, namespace)'
-      ),
-    ]) +
+    dashboard.withTemplateVariablesMixin(templateVariables) +
     // TODO(@tpaschalis) Make the annotation optional.
     dashboard.withAnnotations([
       dashboard.newLokiAnnotation('Deployments', '{cluster="$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
