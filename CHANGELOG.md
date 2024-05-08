@@ -16,10 +16,6 @@ Main (unreleased)
   * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
   * treat elf files with short build id (8 bytes) properly
 
-### Other changes
-
-- Use Go 1.22.3 for builds. (@kminehart)
-
 v1.1.0-rc.0
 -----------
 
@@ -165,6 +161,8 @@ v1.1.0-rc.0
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/32574
   - `otelcol.processor.resourcedetection`: Update to ec2 scraper so that core attributes are not dropped if describeTags returns an error (likely due to permissions).
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/30672
+
+- Use Go 1.22.3 for builds. (@kminehart)
 
 v1.0.0
 ------
