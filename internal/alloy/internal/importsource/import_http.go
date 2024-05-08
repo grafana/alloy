@@ -106,3 +106,8 @@ func (im *ImportHTTP) CurrentHealth() component.Health {
 func (im *ImportHTTP) SetEval(eval *vm.Evaluator) {
 	im.eval = eval
 }
+
+func (im *ImportHTTP) ModulePath() string {
+	//TODO
+	return ""
+}
