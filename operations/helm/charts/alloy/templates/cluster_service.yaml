@@ -18,7 +18,7 @@ spec:
     #
     # This service should only be used for clustering, and not metric
     # collection.
-    - name: http
+    - name: {{ coalesce $values.clustering.portName "http" }}
       port: {{ $values.listenPort }}
       targetPort: {{ $values.listenPort }}
       protocol: "TCP"
