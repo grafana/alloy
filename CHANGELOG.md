@@ -85,6 +85,8 @@ v1.1.0-rc.0
 - Fix a bug where custom components would not shadow the stdlib. If you have a module whose name conflicts with an stdlib function
   and if you use this exact function in your config, then you will need to rename your module. (@wildum)
 
+- Fix an issue where `loki.source.docker` stops collecting logs after a container restart. (@wildum)
+
 ### Other changes
 
 - Update `alloy-mixin` to use more specific alert group names (for example,

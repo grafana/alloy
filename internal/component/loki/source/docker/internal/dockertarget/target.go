@@ -230,8 +230,6 @@ func (t *Target) StartIfNotRunning() {
 		ctx, cancel := context.WithCancel(context.Background())
 		t.cancel = cancel
 		go t.processLoop(ctx)
-	} else {
-		level.Debug(t.logger).Log("msg", "attempted to start process loop but it's already running", "container", t.containerName)
 	}
 }
 
