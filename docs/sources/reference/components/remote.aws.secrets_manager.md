@@ -6,13 +6,18 @@ title: remote.aws.secrets_manager
 
 # remote.aws.secret_manager
 
-`remote.aws.secrets_manager` securely exposes value of secrets located in [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) to other components.
-By default, the secret would be fetched one time only at startup. If configured, the secret will be polled for changes so that the most recent value is always available. 
+`remote.aws.secrets_manager` securely exposes the secrets located in [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) to other components.
+By default, the secret is fetched once only at startup. If configured, the secret is polled for changes so that the most recent value is always available. 
 
-Beware that this could incur cost due to frequent API calls.
+{{< admonition type="note" >}}
+The polling for changes could incur costs due to frequent API calls.
+{{< /admonition >}}
 
-Multiple `remote.aws.secrets_manager` components can be specified using different name
-labels. By default, [AWS environment variables](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html) are used to authenticate against AWS. The `key` and `secret` arguments inside `client` blocks can be used to provide custom authentication.
+You can specify multiple `remote.aws.secrets_manager` components by giving them different labels.
+By default, [AWS environment variables][] are used to authenticate against AWS.
+For custom authentication, you can use the `key` and `secret` arguments inside `client` blocks.
+
+ [AWS environment variables]: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
 
 ## Usage
 
@@ -35,7 +40,7 @@ Name             | Type       | Description                                     
 
 Hierarchy | Name       | Description                                        | Required
 ----------|------------|----------------------------------------------------|---------
-client    | [client][] | Additional options for configuring the AWS client. | no
+client    | [client][] | Additional AWS client configuration options. | no
 
 [client]: #client-block
 
@@ -64,7 +69,7 @@ The `data` field contains a mapping from data field names to values.
 
 ## Component health
 
-Instances of `remote.aws.secrets_manager` report as healthy if most recent fetch of stored secrets was successful.
+Instances of `remote.aws.secrets_manager` report as healthy if the most recent fetch of stored secrets was successful.
 
 ## Debug information
 
