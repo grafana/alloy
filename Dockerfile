@@ -48,6 +48,9 @@ COPY --from=build /src/alloy/build/alloy /bin/alloy
 COPY example-config.alloy /etc/alloy/config.alloy
 
 # Create alloy user in container, but do not set it as default
+#
+# NOTE(rfratto): non-root support in Docker containers is an experimental,
+# undocumented feature; use at your own risk.
 RUN groupadd --gid $UID $USERNAME
 RUN useradd -m -u $UID -g $UID $USERNAME
 RUN chown -R $USERNAME:$USERNAME /etc/alloy
