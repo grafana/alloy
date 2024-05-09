@@ -69,7 +69,7 @@ jobs:
           app-id: ${{ secrets.ALLOYBOT_APP_ID }}
           private-key: ${{ secrets.ALLOYBOT_PRIVATE_KEY }}
           owner: grafana
-          repositories: helm-charts
+          repositories: alloy,helm-charts
 
       - name: Checkout
         uses: actions/checkout@v4
