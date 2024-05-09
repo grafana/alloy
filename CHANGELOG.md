@@ -18,7 +18,7 @@ v1.1.0-rc.0
 - (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
 
 - (_Public preview_) Introduce BoringCrypto Docker images.
-  The BoringCrypto image is tagged with the `-boringcrypto` suffix and 
+  The BoringCrypto image is tagged with the `-boringcrypto` suffix and
   is only available on AMD64 and ARM64 Linux containers.
   (@rfratto, @mattdurham)
 
@@ -27,6 +27,9 @@ v1.1.0-rc.0
   @mattdurham)
 
 - `otelcol.exporter.loadbalancing`: Add a new `aws_cloud_map` resolver. (@ptodev)
+
+- Introduce a `otelcol.receiver.file_stats` component from the upstream
+  OpenTelemetry `filestatsreceiver` component. (@rfratto)
 
 ### Enhancements
 
