@@ -388,23 +388,6 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Build alloy (Windows amd64 cngcrypto)
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - make generate-ui generate-winmanifest
-  - GO_TAGS="builtinassets cngcrypto" GOOS=windows GOARCH=amd64 GOARM= GOEXPERIMENT=cngcrypto
-    make alloy
-  image: grafana/alloy-build-image:v0.1.0-boringcrypto
-  name: Build
-trigger:
-  event:
-  - pull_request
-type: docker
----
-kind: pipeline
 name: Publish Linux alloy-devel container
 platform:
   arch: amd64
@@ -503,40 +486,6 @@ steps:
   - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
   - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
     alloy-devel'''
-  environment:
-    DOCKER_LOGIN:
-      from_secret: docker_login
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-    GCR_CREDS:
-      from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.0-windows
-  name: Build containers
-  volumes:
-  - name: docker
-    path: //./pipe/docker_engine/
-trigger:
-  ref:
-  - refs/heads/main
-type: docker
-volumes:
-- host:
-    path: //./pipe/docker_engine/
-  name: docker
----
-kind: pipeline
-name: Publish Windows alloy-devel-cngcrypto container
-platform:
-  arch: amd64
-  os: windows
-  version: "1809"
-steps:
-- commands:
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''mkdir -p $HOME/.docker'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''printenv GCR_CREDS > $HOME/.docker/config.json'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
-    alloy-devel-cngcrypto'''
   environment:
     DOCKER_LOGIN:
       from_secret: docker_login
@@ -678,40 +627,6 @@ volumes:
     path: //./pipe/docker_engine/
   name: docker
 ---
-kind: pipeline
-name: Publish Windows alloy-cngcrypto container
-platform:
-  arch: amd64
-  os: windows
-  version: "1809"
-steps:
-- commands:
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''mkdir -p $HOME/.docker'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''printenv GCR_CREDS > $HOME/.docker/config.json'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
-    alloy-cngcrypto'''
-  environment:
-    DOCKER_LOGIN:
-      from_secret: docker_login
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-    GCR_CREDS:
-      from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.0-windows
-  name: Build containers
-  volumes:
-  - name: docker
-    path: //./pipe/docker_engine/
-trigger:
-  ref:
-  - refs/tags/v*
-type: docker
-volumes:
-- host:
-    path: //./pipe/docker_engine/
-  name: docker
----
 depends_on:
 - Publish Linux alloy-devel container
 - Publish Linux alloy-devel-boringcrypto container
@@ -763,7 +678,6 @@ depends_on:
 - Publish Linux alloy container
 - Publish Linux alloy-boringcrypto container
 - Publish Windows alloy container
-- Publish Windows alloy-cngcrypto container
 image_pull_secrets:
 - dockerconfigjson
 kind: pipeline
@@ -921,6 +835,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 50d4b653f619b22b57abead97c426b044fd05a1600a40acf8b4432bcb619d76b
+hmac: bd691f9d71a09a85ea0d9cc72a5103c9a7d0dbefc6fa5b8b5d4369f517fd2dd5
 
 ...
