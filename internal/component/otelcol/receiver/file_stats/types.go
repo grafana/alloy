@@ -31,6 +31,7 @@ var (
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{}
 	args.Controller.SetToDefault()
+	args.MetricsBuilder.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 }
 

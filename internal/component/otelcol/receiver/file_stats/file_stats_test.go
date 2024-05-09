@@ -1,3 +1,5 @@
+//go:build linux || darwin || windows
+
 package file_stats_test
 
 import (
@@ -66,4 +68,49 @@ func TestArguments(t *testing.T) {
 	assert.Equal(t, "foobar", out.ResourceAttributes.FileName.MetricsInclude[0].Strict)
 	assert.Equal(t, "foobar2", out.ResourceAttributes.FileName.MetricsInclude[1].Strict)
 	assert.Equal(t, "fizz.*", out.ResourceAttributes.FileName.MetricsExclude[0].Regex)
+}
+
+func TestArguments_NoFilters(t *testing.T) {
+	in := `
+		include = "/var/log/*"
+
+	  metrics {
+			file.atime {
+				enabled = true
+			}
+			file.count {
+				enabled = true
+			}
+		} 
+
+		resource_attributes {
+			file.name {
+				enabled = true 
+			}
+		}
+
+		output {
+			// no-op
+		}
+	`
+
+	var args file_stats.Arguments
+	err := syntax.Unmarshal([]byte(in), &args)
+	require.NoError(t, err, "arguments should unmarshal without error")
+
+	outAny, err := args.Convert()
+	require.NoError(t, err, "Arguments should not fail to convert")
+
+	out := outAny.(*filestatsreceiver.Config)
+
+	// NOTE(rfratto): filestatsreceiver 0.99 creates a filter if MetricsInclude
+	// and MetricsExclude are non-nil, even if they are completely empty; this
+	// means we _must_ set them to nil if they are empty otherwise everything
+	// will be filtered out.
+	if assert.Len(t, out.ResourceAttributes.FileName.MetricsInclude, 0, "Expected MetricsInclude to be len 0") {
+		assert.Nil(t, out.ResourceAttributes.FileName.MetricsInclude, "MetricsInclude must be nil when empty")
+	}
+	if assert.Len(t, out.ResourceAttributes.FileName.MetricsExclude, 0, "Expected MetricsExclude to be len 0") {
+		assert.Nil(t, out.ResourceAttributes.FileName.MetricsExclude, "MetricsExclude must be nil when empty")
+	}
 }

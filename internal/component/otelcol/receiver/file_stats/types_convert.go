@@ -94,6 +94,15 @@ func (args *ResourceAttributeArguments) toMap() map[string]any {
 		excludes = append(excludes, exclude.toMap())
 	}
 
+	// NOTE(rfratto): these **must** be nil if empty, otherwise the upstream
+	// component will filter out all metrics.
+	if len(includes) == 0 {
+		includes = nil
+	}
+	if len(excludes) == 0 {
+		excludes = nil
+	}
+
 	return map[string]any{
 		"enabled":         args.Enabled,
 		"metrics_include": includes,
