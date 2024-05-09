@@ -1,4 +1,8 @@
+//go:build linux || darwin || windows
+
 package otelcolconvert
+
+// TODO(rfratto): Remove build directive above once FreeBSD is supported.
 
 import (
 	"fmt"

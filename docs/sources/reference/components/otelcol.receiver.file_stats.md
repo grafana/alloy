@@ -15,6 +15,10 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 
 Multiple `otelcol.receiver.file_stats` components can be specified by giving them different labels.
 
+{{< admonition type="warning" >}}
+`otelcol.receiver.file_stats` only works on macOS, Linux, and Windows.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
@@ -222,7 +226,10 @@ If a given metric matches all the `metrics_include` blocks and none of the `metr
 
 ## Component health
 
-`otelcol.receiver.file_stats` is only reported as unhealthy if given an invalid configuration.
+`otelcol.receiver.file_stats` is reported as unhealthy when:
+
+* It is given an invalid configuration.
+* It runs on an unsupported operating system.
 
 ## Debug information
 
