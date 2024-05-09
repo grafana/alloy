@@ -36,12 +36,15 @@ Name | Type | Description | Default | Required
 `include` | `string` | Glob path for files to collect stats from. | | yes
 `collection_interval` | `duration` | How often to collect file information. | `"1m"` | no
 `initial_delay` | `duration` | Initial time to wait before collecting file information. | `"1s"` | no
-`timeout` | `duration` | Timeout for collecting file information; `0s` means no timeout. | `"0s"` | no
+`timeout` | `duration` | Timeout for a collection; `0s` means no timeout. | `"0s"` | no
 
 `include` is a glob pattern that specifies which files and folders to collect
 stats from. A `*` character matches files in a directory, while `**` includes
 matches files. For example, `/var/log/**/*.log` matches all `.log` files in
 `/var/log` and its subdirectories.
+
+The `timeout` argument controls the timeout for each collection specified by the `collection_interval`.
+The timeout applies to the entire collection process across all files matched by the `include` argument.
 
 ## Blocks
 
