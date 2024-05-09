@@ -18,6 +18,7 @@ metadata:
   name: {{ include "alloy.fullname" . }}
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: availability
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

@@ -78,6 +78,12 @@ v1.1.0-rc.0
 - Fix a bug where custom components would not shadow the stdlib. If you have a module whose name conflicts with an stdlib function
   and if you use this exact function in your config, then you will need to rename your module. (@wildum)
 
+- Fix an issue where `loki.source.docker` stops collecting logs after a container restart. (@wildum)
+
+- Upgrading `pyroscope/ebpf` from 0.4.6 to 0.4.7 (@korniltsev):
+  * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
+  * treat elf files with short build id (8 bytes) properly
+
 ### Other changes
 
 - Update `alloy-mixin` to use more specific alert group names (for example,
@@ -154,6 +160,8 @@ v1.1.0-rc.0
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/32574
   - `otelcol.processor.resourcedetection`: Update to ec2 scraper so that core attributes are not dropped if describeTags returns an error (likely due to permissions).
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/30672
+
+- Use Go 1.22.3 for builds. (@kminehart)
 
 v1.0.0
 ------
