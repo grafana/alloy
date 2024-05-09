@@ -17,10 +17,9 @@ v1.1.0-rc.0
 
 - (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
 
-- (_Public preview_) Introduce `boringcrypto` and `cngcrypto` Docker images.
-  These Docker images are tagged with the `-boringcrypto` (for Linux) and
-  `-cngcrypto` (for Windows) suffixes. `boringcrypto` support is only available
-  on AMD64 and ARM64, while `cngcrypto` support is only available on AMD64.
+- (_Public preview_) Introduce BoringCrypto Docker images.
+  The BoringCrypto image is tagged with the `-boringcrypto` suffix and 
+  is only available on AMD64 and ARM64 Linux containers.
   (@rfratto, @mattdurham)
 
 - (_Public preview_) Introduce `boringcrypto` release assets. BoringCrypto
