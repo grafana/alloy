@@ -12,7 +12,6 @@ local linux_containers = [
 ];
 local windows_containers = [
   { devel: 'alloy-devel', release: 'alloy' },
-  { devel: 'alloy-devel-cngcrypto', release: 'alloy-cngcrypto' },
 ];
 
 local linux_containers_dev_jobs = std.map(function(container) (
