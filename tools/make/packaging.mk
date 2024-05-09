@@ -78,7 +78,6 @@ dist/alloy-windows-amd64.exe: GO_TAGS += builtinassets
 dist/alloy-windows-amd64.exe: GOOS    := windows
 dist/alloy-windows-amd64.exe: GOARCH  := amd64
 dist/alloy-windows-amd64.exe: generate-ui generate-winmanifest
-dist/alloy-windows-amd64.exe:
 	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
 
 # NOTE(rfratto): do not use netgo when building Windows binaries, which
@@ -129,7 +128,6 @@ dist.temp/alloy-service-windows-amd64.exe: GO_TAGS += builtinassets
 dist.temp/alloy-service-windows-amd64.exe: GOOS    := windows
 dist.temp/alloy-service-windows-amd64.exe: GOARCH  := amd64
 dist.temp/alloy-service-windows-amd64.exe: generate-ui generate-winmanifest
-dist.temp/alloy-service-windows-amd64.exe:
 	$(PACKAGING_VARS) SERVICE_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy-service
 
 #
