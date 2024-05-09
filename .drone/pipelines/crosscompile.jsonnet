@@ -52,7 +52,7 @@ local build_environments(targets, tuples, image) = std.flatMap(function(target) 
 
         target: target,
 
-        tags: go_tags[platform.os] + (if 'additional_tags' in platform then ' '+platform.additional_tags else '') ,
+        tags: go_tags[platform.os],
       } + (if 'experiment' in platform then { GOEXPERIMENT: platform.experiment } else {}),
 
       trigger: {
