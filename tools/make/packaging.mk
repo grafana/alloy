@@ -30,8 +30,7 @@ dist-alloy-binaries: dist/alloy-linux-amd64                    \
                      dist/alloy-darwin-amd64                   \
                      dist/alloy-darwin-arm64                   \
                      dist/alloy-windows-amd64.exe              \
-                     dist/alloy-freebsd-amd64                  \
-                     dist-alloy-boringcrypto-binaries
+                     dist/alloy-freebsd-amd64
 
 dist/alloy-linux-amd64: GO_TAGS += netgo builtinassets promtail_journal_enabled
 dist/alloy-linux-amd64: GOOS    := linux
