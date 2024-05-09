@@ -76,13 +76,11 @@ jobs:
         with:
           fetch-depth: 0
           path: source
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Configure Git
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           cd source
-          gh auth setup-git
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
@@ -160,8 +158,6 @@ jobs:
             ${{ env.CR_PACKAGE_PATH }}/${{ steps.parse-chart.outputs.packagename }}.tgz
 
       - name: Push release tag on origin
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           cd source
           echo "Pushing tag ${{ steps.parse-chart.outputs.tagname }}"
