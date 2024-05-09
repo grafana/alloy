@@ -69,7 +69,7 @@ jobs:
           app-id: ${{ secrets.ALLOYBOT_APP_ID }}
           private-key: ${{ secrets.ALLOYBOT_PRIVATE_KEY }}
           owner: grafana
-          repositories: helm-charts
+          repositories: alloy,helm-charts
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -78,8 +78,11 @@ jobs:
           path: source
 
       - name: Configure Git
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           cd source
+          gh auth setup-git
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
@@ -157,6 +160,8 @@ jobs:
             ${{ env.CR_PACKAGE_PATH }}/${{ steps.parse-chart.outputs.packagename }}.tgz
 
       - name: Push release tag on origin
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           cd source
           echo "Pushing tag ${{ steps.parse-chart.outputs.tagname }}"
