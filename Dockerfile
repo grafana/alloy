@@ -17,18 +17,12 @@ ARG GOEXPERIMENT
 COPY . /src/alloy
 WORKDIR /src/alloy
 
-# Build the UI before building Alloy, which will then bake the final UI into
-# the binary.
-RUN --mount=type=cache,target=/src/alloy/web/ui/node_modules,sharing=locked \
-   make generate-ui
 
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
-    GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=${TARGETVARIANT#v} \
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=${TARGETVARIANT#v} \
     RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
     GO_TAGS="netgo builtinassets promtail_journal_enabled" \
     GOEXPERIMENT=${GOEXPERIMENT} \
-    make alloy
+    ./build-linux-amd64 alloyLinuxAmd64
 
 FROM public.ecr.aws/ubuntu/ubuntu:mantic
 

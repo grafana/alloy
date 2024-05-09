@@ -257,7 +257,10 @@ require (
 require (
 	github.com/KimMachineGun/automemlimit v0.6.0
 	github.com/Shopify/sarama v1.38.1
+	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.29.5
+	github.com/ettle/strcase v0.2.0
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
+	github.com/magefile/mage v1.15.0
 )
 
 require (
@@ -330,7 +333,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.17.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.27.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.29.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/shield v1.24.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.20.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.23.4 // indirect
@@ -656,7 +658,6 @@ require (
 	go.opentelemetry.io/collector/confmap/provider/httpprovider v0.99.0 // indirect
 	go.opentelemetry.io/collector/confmap/provider/httpsprovider v0.99.0 // indirect
 	go.opentelemetry.io/collector/filter v0.99.0 // indirect
-	go.opentelemetry.io/collector/pdata/testdata v0.99.0 // indirect
 	go.opentelemetry.io/contrib/config v0.5.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.50.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.50.0 // indirect

@@ -4,7 +4,6 @@ PARENT_MAKEFILE := $(firstword $(MAKEFILE_LIST))
 
 .PHONY: dist clean-dist
 dist: dist-alloy-binaries              \
-      dist-alloy-boringcrypto-binaries \
       dist-alloy-packages              \
       dist-alloy-installer-windows
 
@@ -30,8 +29,7 @@ dist-alloy-binaries: dist/alloy-linux-amd64                    \
                      dist/alloy-darwin-amd64                   \
                      dist/alloy-darwin-arm64                   \
                      dist/alloy-windows-amd64.exe              \
-                     dist/alloy-freebsd-amd64                  \
-                     dist-alloy-boringcrypto-binaries
+                     dist/alloy-freebsd-amd64
 
 dist/alloy-linux-amd64: GO_TAGS += netgo builtinassets promtail_journal_enabled
 dist/alloy-linux-amd64: GOOS    := linux
@@ -89,6 +87,7 @@ dist/alloy-windows-amd64.exe:
 # generate winmanifest needs to be called BEFORE we set the GOOS GOARCH,
 # this is because if we end up calling it before the cross compile it needs
 # be the version usable from linux and NOT the version from windows.
+dist/alloy-cngcrypto-windows-amd64.exe: BUILD_IMAGE_VERSION := v0.1.0-boringcrypto
 dist/alloy-cngcrypto-windows-amd64.exe: generate-ui generate-winmanifest
 # We have to specify both GOEXPERIMENT and cngcrypto tags for it to build properly
 dist/alloy-cngcrypto-windows-amd64.exe: GO_TAGS       += builtinassets cngcrypto
@@ -112,10 +111,7 @@ dist/alloy-freebsd-amd64: generate-ui
 #
 # Alloy boringcrypto release binaries
 #
-
-dist-alloy-boringcrypto-binaries: dist/alloy-boringcrypto-linux-amd64 \
-                                  dist/alloy-boringcrypto-linux-arm64 \
-                                  dist/alloy-cngcrypto-windows-amd64.exe
+dist-alloy-boringcrypto-binaries: dist/alloy-cngcrypto-windows-amd64.exe
 
 dist/alloy-boringcrypto-linux-amd64: GO_TAGS      += netgo builtinassets promtail_journal_enabled
 dist/alloy-boringcrypto-linux-amd64: GOEXPERIMENT := boringcrypto
@@ -129,7 +125,7 @@ dist/alloy-boringcrypto-linux-arm64: GOEXPERIMENT := boringcrypto
 dist/alloy-boringcrypto-linux-arm64: GOOS         := linux
 dist/alloy-boringcrypto-linux-arm64: GOARCH       := arm64
 dist/alloy-boringcrypto-linux-arm64: generate-ui
-	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
+	$(PACKAGING_VARS)  ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
 
 #
 # alloy-service release binaries.
