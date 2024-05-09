@@ -6,7 +6,7 @@ description: Learn about otelcol.receiver.file_stats
 
 # otelcol.receiver.file_stats
 
-`otelcol.receiver.file_stats` collects metrics from files specified with a glob pattern.
+`otelcol.receiver.file_stats` collects metrics from files and folders specified with a glob pattern.
 
 {{< admonition type="note" >}}
 `otelcol.receiver.file_stats` is a wrapper over the upstream OpenTelemetry Collector `filestats` receiver from the `otelcol-contrib` distribution.
@@ -33,18 +33,17 @@ otelcol.receiver.file_stats "LABEL" {
 
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
-`include` | `string` | Glob path for files to collect stats from. | | yes
-`collection_interval` | `duration` | How often to collect file information. | `"1m"` | no
-`initial_delay` | `duration` | Initial time to wait before collecting file information. | `"1s"` | no
+`include` | `string` | Glob path for paths to collect stats from. | | yes
+`collection_interval` | `duration` | How often to collect statistics. | `"1m"` | no
+`initial_delay` | `duration` | Initial time to wait before collecting statistics. | `"1s"` | no
 `timeout` | `duration` | Timeout for a collection; `0s` means no timeout. | `"0s"` | no
 
-`include` is a glob pattern that specifies which files and folders to collect
-stats from. A `*` character matches files in a directory, while `**` includes
-matches files. For example, `/var/log/**/*.log` matches all `.log` files in
-`/var/log` and its subdirectories.
+`include` is a glob pattern that specifies which paths (files and folders) to collect stats from.
+A `*` character matches entries in a directory, while `**` includes subdirectories.
+For example, `/var/log/**/*.log` matches all files and directories ending in `.log` recursively inside `/var/log`.
 
 The `timeout` argument controls the timeout for each collection specified by the `collection_interval`.
-The timeout applies to the entire collection process across all files matched by the `include` argument.
+The timeout applies to the entire collection process across all paths matched by the `include` argument.
 
 ## Blocks
 
@@ -231,7 +230,7 @@ If a given metric matches all the `metrics_include` blocks and none of the `metr
 
 ## Example
 
-This example forwards file stats of files with the `.log` extension in `/var/log` through a batch processor before finally sending it to an OTLP-capable endpoint:
+This example forwards file stats of files and folders with the `.log` extension in `/var/log` through a batch processor before finally sending it to an OTLP-capable endpoint:
 
 ```alloy
 otelcol.receiver.file_stats "default" {
