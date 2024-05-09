@@ -74,10 +74,10 @@ dist/alloy-darwin-arm64: generate-ui
 #
 # TODO(rfratto): add netgo back to Windows builds if a version of Go is
 # released which natively supports resolving DNS short names on Windows.
-dist/alloy-windows-amd64.exe: generate-ui generate-winmanifest
 dist/alloy-windows-amd64.exe: GO_TAGS += builtinassets
 dist/alloy-windows-amd64.exe: GOOS    := windows
 dist/alloy-windows-amd64.exe: GOARCH  := amd64
+dist/alloy-windows-amd64.exe: generate-ui generate-winmanifest
 dist/alloy-windows-amd64.exe:
 	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
 
@@ -125,10 +125,10 @@ dist/alloy-boringcrypto-linux-arm64: generate-ui
 
 dist-alloy-service-binaries: dist.temp/alloy-service-windows-amd64.exe
 
-dist.temp/alloy-service-windows-amd64.exe: generate-ui generate-winmanifest
 dist.temp/alloy-service-windows-amd64.exe: GO_TAGS += builtinassets
 dist.temp/alloy-service-windows-amd64.exe: GOOS    := windows
 dist.temp/alloy-service-windows-amd64.exe: GOARCH  := amd64
+dist.temp/alloy-service-windows-amd64.exe: generate-ui generate-winmanifest
 dist.temp/alloy-service-windows-amd64.exe:
 	$(PACKAGING_VARS) SERVICE_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy-service
 

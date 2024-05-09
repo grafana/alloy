@@ -256,7 +256,7 @@ generate-winmanifest:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	GOOS=linux GOARCH=amd64 go generate ./internal/winmanifest
+	go generate ./internal/winmanifest
 endif
 #
 # Other targets
