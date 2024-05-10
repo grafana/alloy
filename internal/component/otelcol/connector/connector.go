@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelconnector "go.opentelemetry.io/collector/connector"
 	otelextension "go.opentelemetry.io/collector/extension"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
@@ -57,6 +56,9 @@ type Arguments interface {
 	NextConsumers() *otelcol.ConsumerArguments
 
 	ConnectorType() int
+
+	// DebugMetricsConfig returns the configuration for debug metrics
+	DebugMetricsConfig() otelcol.DebugMetricsArguments
 }
 
 // Connector is an Alloy component shim which manages an OpenTelemetry
@@ -150,7 +152,7 @@ func (p *Connector) Update(args component.Arguments) error {
 
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
-			MetricsLevel:   configtelemetry.LevelDetailed,
+			MetricsLevel:   pargs.DebugMetricsConfig().Level.ToLevel(),
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},

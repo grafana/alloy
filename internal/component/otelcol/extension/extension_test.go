@@ -93,3 +93,9 @@ func (fa fakeExtensionArgs) Extensions() map[otelcomponent.ID]otelextension.Exte
 func (fa fakeExtensionArgs) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
+
+func (fa fakeExtensionArgs) DebugMetricsConfig() otelcol.DebugMetricsArguments {
+	var dma otelcol.DebugMetricsArguments
+	dma.SetToDefault()
+	return dma
+}

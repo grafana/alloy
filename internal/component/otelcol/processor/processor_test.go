@@ -171,6 +171,12 @@ func (fa fakeProcessorArgs) NextConsumers() *otelcol.ConsumerArguments {
 	return fa.Output
 }
 
+func (fa fakeProcessorArgs) DebugMetricsConfig() otelcol.DebugMetricsArguments {
+	var dma otelcol.DebugMetricsArguments
+	dma.SetToDefault()
+	return dma
+}
+
 type fakeProcessor struct {
 	StartFunc         func(ctx context.Context, host otelcomponent.Host) error
 	ShutdownFunc      func(ctx context.Context) error

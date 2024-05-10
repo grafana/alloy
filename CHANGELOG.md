@@ -30,6 +30,8 @@ Main (unreleased)
 
 - Add `yaml_decode` to standard library. (@mattdurham, @djcode)
 
+- Allow override debug metrics level for `otelcol.*` components. (@hainenber)
+
 ### Bugfixes
 
 - Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)

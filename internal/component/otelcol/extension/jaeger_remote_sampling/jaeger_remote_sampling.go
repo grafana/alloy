@@ -43,6 +43,9 @@ type Arguments struct {
 	HTTP *HTTPServerArguments `alloy:"http,block,optional"`
 
 	Source ArgumentsSource `alloy:"source,block"`
+
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 type ArgumentsSource struct {
@@ -78,6 +81,11 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 // Exporters implements extension.Arguments.
 func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
+}
+
+// DebugMetricsConfig implements extension.Arguments.
+func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
+	return args.DebugMetrics
 }
 
 // Validate implements syntax.Validator.

@@ -19,7 +19,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 	metricNoop "go.opentelemetry.io/otel/metric/noop"
 	traceNoop "go.opentelemetry.io/otel/trace/noop"
@@ -42,6 +41,8 @@ func init() {
 type Arguments struct {
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 // Exports are the set of fields exposed by the otelcol.receiver.prometheus
@@ -123,7 +124,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 			// TODO(tpaschalis): expose tracing and logging statistics.
 			TracerProvider: traceNoop.NewTracerProvider(),
 			MeterProvider:  metricNoop.NewMeterProvider(),
-			MetricsLevel:   configtelemetry.LevelDetailed,
+			MetricsLevel:   cfg.DebugMetrics.Level.ToLevel(),
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},

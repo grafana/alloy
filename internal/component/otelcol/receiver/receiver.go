@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/extension"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
@@ -123,8 +122,9 @@ func (r *Receiver) Update(args component.Arguments) error {
 		return err
 	}
 
+	debugMetricsCfg := rargs.DebugMetricsConfig()
 	metricOpts := []metric.Option{metric.WithReader(promExporter)}
-	if rargs.DebugMetricsConfig().DisableHighCardinalityMetrics {
+	if debugMetricsCfg.DisableHighCardinalityMetrics {
 		metricOpts = append(metricOpts, metric.WithView(views.DropHighCardinalityServerAttributes()...))
 	}
 
@@ -134,7 +134,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 
 			TracerProvider: r.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metricOpts...),
-			MetricsLevel:   configtelemetry.LevelDetailed,
+			MetricsLevel:   debugMetricsCfg.Level.ToLevel(),
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},
