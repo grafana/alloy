@@ -288,6 +288,11 @@ func (cn *ImportConfigNode) processImportBlock(stmt *ast.BlockStmt, fullName str
 	childGlobals.OnBlockNodeUpdate = cn.onChildrenContentUpdate
 	// Children data paths are nested inside their parents to avoid collisions.
 	childGlobals.DataPath = filepath.Join(childGlobals.DataPath, cn.globalID)
+
+	if importsource.GetSourceType(cn.block.GetBlockName()) == importsource.HTTP && sourceType == importsource.File {
+		return fmt.Errorf("importing a module via import.http (nodeID: %s) that contains an import.file block is not supported", cn.nodeID)
+	}
+
 	cn.importConfigNodesChildren[stmt.Label] = NewImportConfigNode(stmt, childGlobals, sourceType)
 	return nil
 }

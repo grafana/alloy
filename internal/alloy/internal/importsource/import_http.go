@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path"
 	"reflect"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 // ImportHTTP imports a module from a HTTP server via the remote.http component.
 type ImportHTTP struct {
 	managedRemoteHTTP *remote_http.Component
-	arguments         component.Arguments
+	arguments         HTTPArguments
 	managedOpts       component.Options
 	eval              *vm.Evaluator
 }
@@ -108,6 +109,6 @@ func (im *ImportHTTP) SetEval(eval *vm.Evaluator) {
 }
 
 func (im *ImportHTTP) ModulePath() string {
-	//TODO
-	return ""
+	dir, _ := path.Split(im.arguments.URL)
+	return dir
 }
