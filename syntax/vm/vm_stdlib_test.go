@@ -163,6 +163,7 @@ func TestStdlib_StringFunc(t *testing.T) {
 		{"trim2", `trim("   hello! world.!  ", "! ")`, "hello! world."},
 		{"trim_prefix", `trim_prefix("helloworld", "hello")`, "world"},
 		{"trim_suffix", `trim_suffix("helloworld", "world")`, "hello"},
+		{"path_join", `path_join("this/is", "a/path")`, "this/is/a/path"},
 	}
 
 	for _, tc := range tt {
