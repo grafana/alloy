@@ -112,12 +112,12 @@ The `curve_preferences` argument determines the set of elliptic curves to prefer
 If not provided, a default list is used.
 The set of elliptic curves specified may be from the following:
 
-| Curve       | Allowed in BoringCrypto /CNGCrypto builds |
-| ----------- |-------------------------------------------|
-| `CurveP256` | yes                                       |
-| `CurveP384` | yes                                       |
-| `CurveP521` | yes                                       |
-| `X25519`    | no                                        |
+| Curve       | Allowed in BoringCrypto/CNGCrypto builds |
+| ----------- |------------------------------------------|
+| `CurveP256` | yes                                      |
+| `CurveP384` | yes                                      |
+| `CurveP521` | yes                                      |
+| `X25519`    | no                                       |
 
 The `min_version` and `max_version` arguments determine the oldest and newest TLS version that's acceptable from clients.
 If you don't provide the min and max TLS version, a default value is used.
