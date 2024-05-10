@@ -96,3 +96,15 @@ define RERUN_IN_CONTAINER
 		$(foreach var, $(PROPAGATE_VARS), -e "$(var)=$(subst ",\",$($(var)))") \
 		$(BUILD_IMAGE) make -f $(PARENT_MAKEFILE) $@
 endef
+
+# This changes the build image to boringcrypto, which can handle both boringcrypto and cngcrypto but we only use it for cngcrypto at the moment.
+# This image uses the windows fork of golang. The regular golang can handle boringcrypto on linux so no need to use this one.
+define RERUN_IN_CONTAINER_BORINGCRYPTO
+	docker run $(DOCKER_OPTS) --init --rm $(DOCKER_OPTS)       \
+		-e "CC=viceroycc"                                        \
+		-v "$(shell pwd):/src"                                   \
+		-w "/src"                                                \
+		-v "/var/run/docker.sock:/var/run/docker.sock"           \
+		$(foreach var, $(PROPAGATE_VARS), -e "$(var)=$(subst ",\",$($(var)))") \
+		$(BUILD_IMAGE)-boringcrypto make -f $(PARENT_MAKEFILE) $@
+endef

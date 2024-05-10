@@ -165,7 +165,11 @@ binaries: alloy
 
 alloy:
 ifeq ($(USE_CONTAINER),1)
+ifeq ($(GOEXPERIMENT),cngcrypto)
+	$(RERUN_IN_CONTAINER_BORINGCRYPTO)
+else
 	$(RERUN_IN_CONTAINER)
+endif
 else
 	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
 endif
@@ -256,7 +260,9 @@ generate-winmanifest:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	go generate ./internal/winmanifest
+	# This is used for windows, but since we cross compile on linux amd64, we need to ensure this is ran
+	# under that goos and goarch.
+	GOOS=linux GOARCH=amd64 GOEXPERIMENT= go generate ./internal/winmanifest
 endif
 #
 # Other targets
