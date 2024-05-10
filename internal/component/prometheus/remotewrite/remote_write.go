@@ -53,10 +53,11 @@ type Component struct {
 	log  log.Logger
 	opts component.Options
 
-	walStore    *wal.Storage
-	remoteStore *remote.Storage
-	storage     storage.Storage
-	exited      atomic.Bool
+	walStore      *wal.Storage
+	remoteStore   *remote.Storage
+	storage       storage.Storage
+	exited        atomic.Bool
+	statusWatcher *statusWatcher
 
 	mut sync.RWMutex
 	cfg Arguments
@@ -80,9 +81,9 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	remoteLogger := log.With(o.Logger, "subcomponent", "rw")
-	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
+	statusWatcher := &statusWatcher{logger: remoteLogger}
+	remoteStore := remote.NewStorage(statusWatcher, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
 
 	walStorage.SetNotifier(remoteStore)
 
@@ -93,11 +94,12 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	ls := service.(labelstore.LabelStore)
 
 	res := &Component{
-		log:         o.Logger,
-		opts:        o,
-		walStore:    walStorage,
-		remoteStore: remoteStore,
-		storage:     storage.NewFanout(o.Logger, walStorage, remoteStore),
+		log:           o.Logger,
+		opts:          o,
+		walStore:      walStorage,
+		remoteStore:   remoteStore,
+		storage:       storage.NewFanout(o.Logger, walStorage, remoteStore),
+		statusWatcher: statusWatcher,
 	}
 	res.receiver = prometheus.NewInterceptor(
 		res.storage,
@@ -251,7 +253,7 @@ func (c *Component) truncateFrequency() time.Duration {
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
 	cfg := newConfig.(Arguments)
-
+	c.statusWatcher.reset()
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
@@ -274,4 +276,8 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 	c.cfg = cfg
 	return nil
+}
+
+func (c *Component) CurrentHealth() component.Health {
+	return c.statusWatcher.CurrentHealth()
 }
