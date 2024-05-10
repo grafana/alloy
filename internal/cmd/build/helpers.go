@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func runContainer(goos, goarch, tags, command string) error {
+func runContainer(goos, goarch, tags, experiments, command string) error {
 	fmt.Println("running in a container")
 	// Check to see if volume exists
 	_, err := sh.Output("docker", "volume", "inspect", "alloy-build-container-gocache")
@@ -30,24 +30,30 @@ func runContainer(goos, goarch, tags, command string) error {
 	if err != nil {
 		return err
 	}
-	args := make([]string, 0)
-	args = append(args, "run")
-	args = append(args, "-it")
-	args = append(args, "--init")
-	args = append(args, "--rm")
-	args = append(args, "-e", "CC=viceroycc")
-	args = append(args, "-v", wd+":/src")
-	args = append(args, "-w", "/src")
-	//args = append(args, "-v", "\"alloy-build-container-gocache:/root/.cache/go-build\"")
-	//args = append(args, "-v", "\"alloy-build-container-gomodcache:/go/pkg/mod\"")
-	args = append(args, "-v", "/var/run/docker.sock:/var/run/docker.sock")
-	args = append(args, "-e", "GOOS="+goos+"")
-	args = append(args, "-e", "GOARCH="+goarch+"")
-	args = append(args, "-e", "GO_TAGS=\""+tags+"\"")
-	args = append(args, "grafana/alloy-build-image:v0.1.0")
-	args = append(args, "./build-linux-amd64", "-v", command)
+	image := buildImage
+	if strings.Contains(experiments, "boringcrypto") {
+		image = image + "-boringcrypto"
+	}
+	args := []string{
+		"run",
+		"-it",
+		"--init",
+		"--rm",
+		"-e", "CC=viceroycc",
+		"-v", wd + ":/src",
+		"-w", "/src",
+		// "-v", "\"alloy-build-container-gocache:/root/.cache/go-build\"",
+		//"-v", "\"alloy-build-container-gomodcache:/go/pkg/mod\"",
+		"-v", "/var/run/docker.sock:/var/run/docker.sock",
+		"-e", "GOOS=" + goos + "",
+		"-e", "GOARCH=" + goarch + "",
+		"-e", "GO_TAGS=\"" + tags + "\"",
+		"-e", "GOEXPERIMENT=" + experiments,
+		image,
+		"./build-linux-amd64", "-v", command,
+	}
 
-	return sh.RunV("docker", args...)
+	return ExecNoEnv("run container", "docker", args...)
 }
 
 func buildFlags() ([]string, error) {
@@ -99,35 +105,100 @@ func generateUI() error {
 	}
 	return os.Chdir(wd)
 }
-
-func buildAlloy(goos, goarch, tags string) error {
+func buildAlloy(goos, goarch, tags, name string) error {
+	return buildAlloyFull(goos, goarch, tags, name, "")
+}
+func buildAlloyFull(goos, goarch, tags, name, experiments string) error {
 	if os.Getenv("USE_CONTAINER") == "1" {
-		return runContainer(goos, goarch, tags, "alloy"+strcase.ToPascal(goos)+strcase.ToPascal(goarch))
+		return runContainer(goos, goarch, tags, experiments, generateMageName(goos, goarch, tags, experiments))
 	}
 	err := generateUI()
 	if err != nil {
 		return err
 	}
 
-	args := map[string]string{
+	env := map[string]string{
 		"GOOS":        goos,
 		"GOARCH":      goarch,
 		"GO_TAGS":     tags,
 		"CGO_ENABLED": "1",
 	}
-	name := "dist/alloy" + "-" + goos + "-" + goarch
-	// If windows make it an exe file type.
+	// If not specified use the parent env.
+	if env["GOOS"] == "" {
+		env["GOOS"] = os.Getenv("GOOS")
+	}
+	if env["GOARCH"] == "" {
+		env["GOARCH"] = os.Getenv("GOARCH")
+	}
+	if env["GO_TAGS"] == "" {
+		env["GO_TAGS"] = "netgo builtinassets promtail_journal_enabled"
+	}
+	if experiments != "" {
+		env["GOEXPERIMENT"] = experiments
+	}
+	err = alloyGoMod(goos, goarch)
+	if err != nil {
+		return err
+	}
+	if name == "" {
+		name = generateName(goos, goarch, tags, experiments)
+	}
+	// If this is a windows build then ensure we build the manifest.
 	if goos == "windows" {
-		name = "dist/alloy-" + goos + "-" + goarch + ".exe"
-		err = sh.RunV("go", "generate", "./internal/winmanifest")
+		err = ExecNoEnv("build "+name, "go", "generate", "./internal/winmanifest")
 		if err != nil {
 			return err
 		}
 	}
+
 	flags, err := buildFlags()
 	if err != nil {
 		return err
 	}
 	combinedFlags := strings.Join(flags, " ")
-	return sh.RunWithV(args, "go", "build", "-v", "-ldflags", combinedFlags, "-tags", tags, "-o", name, ".")
+	return Exec("build "+name, env, "go", "build", "-ldflags", combinedFlags, "-tags", tags, "-o", name, ".")
+}
+
+func generateName(goos, goarch, tags, experiments string) string {
+	name := "dist/alloy" + "-" + goos + "-" + goarch
+	// If windows make it an exe file type.
+	if goos == "windows" {
+		name = "dist/alloy-" + goos + "-" + goarch + ".exe"
+	}
+	if strings.Contains(experiments, "boringcrypto") {
+		name = name + "-boringcrypto"
+	}
+	return name
+}
+
+func generateMageName(goos, goarch, tags, experiments string) string {
+	name := "alloy" + strcase.ToPascal(goos) + strcase.ToPascal(goarch)
+	if experiments != "" {
+		name = name + "BoringCrypto"
+	}
+	return name
+}
+
+func alloyGoMod(goos, goarch string) error {
+	env := map[string]string{
+		"GOOS":        goos,
+		"GOARCH":      goarch,
+		"CGO_ENABLED": "1",
+	}
+	// If not specified use the parent env.
+	if env["GOOS"] == "" {
+		env["GOOS"] = os.Getenv("GOOS")
+	}
+	if env["GOARCH"] == "" {
+		env["GOARCH"] = os.Getenv("GOARCH")
+	}
+	return Exec("update go mod", env, "go", "mod", "vendor")
+}
+
+func mapToString(env map[string]string) string {
+	arr := make([]string, 0)
+	for k, v := range env {
+		arr = append(arr, k+"="+v)
+	}
+	return strings.Join(arr, " ")
 }

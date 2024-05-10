@@ -18,11 +18,7 @@ COPY . /src/alloy
 WORKDIR /src/alloy
 
 
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=${TARGETVARIANT#v} \
-    RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
-    GO_TAGS="netgo builtinassets promtail_journal_enabled" \
-    GOEXPERIMENT=${GOEXPERIMENT} \
-    ./build-linux-amd64 alloyLinuxAmd64
+RUN ./build-linux-amd64 alloy
 
 FROM public.ecr.aws/ubuntu/ubuntu:mantic
 
