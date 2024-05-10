@@ -57,9 +57,10 @@ func (dt *DistributedTargets) LocalTargets() []Target {
 	return dt.localTargets
 }
 
-// MovedToRemoteInstance returns targets that have been moved from this local node to another node, given the provided
-// previous targets distribution. If a target has simply disappeared, it will not be returned. Previous targets
-// distribution can be nil, in which case no targets will be returned.
+// MovedToRemoteInstance returns the set of local targets from prev
+// that are no longer local in dt, indicating an active target has moved.
+// Only targets which exist in both prev and dt are returned. If prev
+// contains an empty list of targets, no targets are returned.
 func (dt *DistributedTargets) MovedToRemoteInstance(prev *DistributedTargets) []Target {
 	if prev == nil {
 		return nil

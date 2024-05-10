@@ -126,14 +126,14 @@ type Component struct {
 	opts    component.Options
 	cluster cluster.Cluster
 
-	reloadTargets chan struct{}
-
-	mut                 sync.RWMutex
-	args                Arguments
-	scraper             *scrape.Manager
-	appendable          *prometheus.Fanout
+	reloadTargets       chan struct{}
 	targetsGauge        client_prometheus.Gauge
 	movedTargetsCounter client_prometheus.Counter
+
+	mut        sync.RWMutex
+	args       Arguments
+	scraper    *scrape.Manager
+	appendable *prometheus.Fanout
 
 	dtMutex            sync.Mutex
 	distributedTargets *discovery.DistributedTargets
