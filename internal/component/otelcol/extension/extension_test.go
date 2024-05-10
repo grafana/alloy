@@ -7,6 +7,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
@@ -94,8 +95,8 @@ func (fa fakeExtensionArgs) Exporters() map[otelcomponent.DataType]map[otelcompo
 	return nil
 }
 
-func (fa fakeExtensionArgs) DebugMetricsConfig() otelcol.DebugMetricsArguments {
-	var dma otelcol.DebugMetricsArguments
+func (fa fakeExtensionArgs) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	var dma otelcolCfg.DebugMetricsArguments
 	dma.SetToDefault()
 	return dma
 }

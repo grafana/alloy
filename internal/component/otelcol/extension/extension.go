@@ -11,7 +11,7 @@ import (
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/util/zapadapter"
@@ -40,7 +40,7 @@ type Arguments interface {
 	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
 
 	// DebugMetricsConfig returns the configuration for debug metrics
-	DebugMetricsConfig() otelcol.DebugMetricsArguments
+	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
 }
 
 // Extension is an Alloy component shim which manages an OpenTelemetry

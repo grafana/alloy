@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling/internal/jaegerremotesampling"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -45,7 +46,7 @@ type Arguments struct {
 	Source ArgumentsSource `alloy:"source,block"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 type ArgumentsSource struct {
@@ -84,7 +85,7 @@ func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.I
 }
 
 // DebugMetricsConfig implements extension.Arguments.
-func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
 }
 

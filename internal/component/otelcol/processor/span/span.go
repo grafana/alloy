@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/mitchellh/mapstructure"
@@ -43,7 +44,7 @@ type Arguments struct {
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 var (
@@ -124,7 +125,7 @@ func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
 }
 
 // DebugMetricsConfig implements processor.Arguments.
-func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
 }
 

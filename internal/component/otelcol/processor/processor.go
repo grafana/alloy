@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
@@ -44,7 +45,7 @@ type Arguments interface {
 	NextConsumers() *otelcol.ConsumerArguments
 
 	// DebugMetricsConfig returns the configuration for debug metrics
-	DebugMetricsConfig() otelcol.DebugMetricsArguments
+	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
 }
 
 // Processor is an Alloy component shim which manages an OpenTelemetry
