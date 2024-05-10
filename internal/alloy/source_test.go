@@ -89,7 +89,7 @@ func TestParseSources_DuplicateComponent(t *testing.T) {
 	require.NoError(t, err)
 	ctrl := New(testOptions(t))
 	defer cleanUpController(ctrl)
-	err = ctrl.LoadSource(s, nil)
+	err = ctrl.LoadSource(s, nil, "")
 	diagErrs, ok := err.(diag.Diagnostics)
 	require.True(t, ok)
 	require.Len(t, diagErrs, 2)
@@ -120,7 +120,7 @@ func TestParseSources_UniqueComponent(t *testing.T) {
 	require.NoError(t, err)
 	ctrl := New(testOptions(t))
 	defer cleanUpController(ctrl)
-	err = ctrl.LoadSource(s, nil)
+	err = ctrl.LoadSource(s, nil, "")
 	require.NoError(t, err)
 }
 

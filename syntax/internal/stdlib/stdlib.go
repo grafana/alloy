@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -129,4 +130,5 @@ var Identifiers = map[string]interface{}{
 	"trim_prefix": strings.TrimPrefix,
 	"trim_suffix": strings.TrimSuffix,
 	"trim_space":  strings.TrimSpace,
+	"path_join":   path.Join,
 }

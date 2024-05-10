@@ -34,6 +34,8 @@ type ImportSource interface {
 	CurrentHealth() component.Health
 	// Update evaluator
 	SetEval(eval *vm.Evaluator)
+	// ModulePath is the path where the module is stored locally.
+	ModulePath() string
 }
 
 // NewImportSource creates a new ImportSource depending on the type.

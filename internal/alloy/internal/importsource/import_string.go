@@ -15,6 +15,7 @@ type ImportString struct {
 	arguments       component.Arguments
 	eval            *vm.Evaluator
 	onContentChange func(map[string]string)
+	modulePath      string
 }
 
 var _ ImportSource = (*ImportString)(nil)
@@ -41,6 +42,8 @@ func (im *ImportString) Evaluate(scope *vm.Scope) error {
 	}
 	im.arguments = arguments
 
+	im.modulePath, _ = scope.Variables["module_path"].(string)
+
 	// notifies that the content has changed
 	im.onContentChange(map[string]string{"import_string": arguments.Content.Value})
 
@@ -62,4 +65,8 @@ func (im *ImportString) CurrentHealth() component.Health {
 // Update the evaluator.
 func (im *ImportString) SetEval(eval *vm.Evaluator) {
 	im.eval = eval
+}
+
+func (im *ImportString) ModulePath() string {
+	return im.modulePath
 }

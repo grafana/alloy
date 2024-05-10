@@ -26,7 +26,7 @@ type Reference struct {
 
 // ComponentReferences returns the list of references a component is making to
 // other components.
-func ComponentReferences(cn dag.Node, g *dag.Graph) ([]Reference, diag.Diagnostics) {
+func ComponentReferences(cn dag.Node, g *dag.Graph, scope *vm.Scope) ([]Reference, diag.Diagnostics) {
 	var (
 		traversals []Traversal
 
@@ -49,8 +49,7 @@ func ComponentReferences(cn dag.Node, g *dag.Graph) ([]Reference, diag.Diagnosti
 			// stdlib.
 			//
 			// Any call to an stdlib function is ignored.
-			var emptyScope vm.Scope
-			if _, exist := emptyScope.Lookup(t[0].Name); !exist {
+			if _, exist := scope.Lookup(t[0].Name); !exist {
 				diags = append(diags, resolveDiags...)
 			}
 			continue
