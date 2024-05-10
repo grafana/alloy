@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- (_Public preview_) Introduce `cngcrypto` for Windows AMD64 asset. (@mattdurham)   
+
 v1.1.0-rc.0
 -----------
 
