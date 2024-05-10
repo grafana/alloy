@@ -328,7 +328,7 @@ platform:
   os: linux
 steps:
 - commands:
-  - make generate-ui
+  - make generate-ui generate-winmanifest
   - GO_TAGS="builtinassets" GOOS=windows GOARCH=amd64 GOARM= make alloy
   image: grafana/alloy-build-image:v0.1.1
   name: Build
@@ -380,6 +380,23 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=arm64 GOARM=
     GOEXPERIMENT=boringcrypto make alloy
+  image: grafana/alloy-build-image:v0.1.1-boringcrypto
+  name: Build
+trigger:
+  event:
+  - pull_request
+type: docker
+---
+kind: pipeline
+name: Build alloy (Windows amd64 cngcrypto)
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - make generate-ui generate-winmanifest
+  - GO_TAGS="builtinassets cngcrypto" GOOS=windows GOARCH=amd64 GOARM= GOEXPERIMENT=cngcrypto
+    make alloy
   image: grafana/alloy-build-image:v0.1.1-boringcrypto
   name: Build
 trigger:
@@ -835,6 +852,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: edfc9eabaa8e7af503b548fca203b5e7491258cbf778e172db3fc0cdd23ac3d4
+hmac: 3493e2c2bedc85fd77eacc325eda97553ca2da3a00a8a5f9acde3c058562d0e6
 
 ...
