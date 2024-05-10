@@ -10,6 +10,12 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Bugfixes
+
+- Fixed an issue with `prometheus.scrape` in which targets that move from one
+  cluster instance to another could have a staleness marker inserted and result
+  in a gap in metrics (@thampiotr)
+
 v1.1.0-rc.0
 -----------
 
@@ -86,10 +92,6 @@ v1.1.0-rc.0
 - Upgrading `pyroscope/ebpf` from 0.4.6 to 0.4.7 (@korniltsev):
   * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
   * treat elf files with short build id (8 bytes) properly
-
-- Fixed an issue with `prometheus.scrape` in which targets that move from one
-  cluster instance to another could have a staleness marker inserted and result
-  in a gap in metrics (@thampiotr)
 
 ### Other changes
 
