@@ -10,6 +10,11 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add support for relative paths to `import.file`. This new functionality allows users to use `import.file` blocks in modules
+  imported via `import.git` and other `import.file`.
+
 v1.1.0-rc.0 (2024-05-03)
 ------------------------
 
