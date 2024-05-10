@@ -5,6 +5,7 @@ package main
 import (
 	"github.com/magefile/mage/sh"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -51,12 +52,16 @@ func Test() error {
 		return err
 	}
 	// Test for race conditions in sub projects
-	otherProjects, err := sh.Output("find", ".", "-name", "go.mod", "-not", "-path", "./go.mod")
+	matches, err := filepath.Glob("./**/go.mod")
 	if err != nil {
 		return err
 	}
 	wd, _ := os.Getwd()
-	for _, op := range strings.Split(otherProjects, "\n") {
+	for _, op := range matches {
+		// We dont want to test alloy itself here.
+		if wd == filepath.Base(op) {
+			continue
+		}
 		os.Chdir(op)
 		err = ExecNoEnv("other project test "+op, "go", "test", "-race")
 		if err != nil {

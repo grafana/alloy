@@ -48,6 +48,8 @@ func newIOBuffer(name string) *iobuffer {
 	return iob
 }
 
+// iowriter should write the output with a colored prefix of the name, but alas I get a pipe broken when
+// calling into docker so its disabled.
 type iowriter struct {
 	mut     sync.Mutex
 	name    string

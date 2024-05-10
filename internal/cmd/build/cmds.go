@@ -7,6 +7,7 @@ import (
 	"github.com/magefile/mage/sh"
 )
 
+// AlloyBuildAll builds the all the dist targets.
 func AlloyBuildAll() {
 	mg.SerialDeps(
 		AlloyDarwinArm64,
@@ -24,10 +25,13 @@ func AlloyBuildAll() {
 func Alloy() error {
 	return buildAlloy("", "", "", "build/alloy")
 }
+
+// AlloyGoMod runs `go mod vendor` in the current directory.
 func AlloyGoMod() error {
-	return alloyGoMod("", "")
+	return runGoMod("", "")
 }
 
+// AlloyImage builds the linux amd64 docker image for alloy.
 func AlloyImage() error {
 	args := map[string]string{
 		"DOCKER_BUILDKIT": "1",
@@ -55,6 +59,7 @@ func AlloyImage() error {
 	)
 }
 
+// AlloyImageBoringCrypto builds the linux amd64 docker image for alloy with boring crypto.
 func AlloyImageBoringCrypto() error {
 	args := map[string]string{
 		"DOCKER_BUILDKIT": "1",
@@ -83,6 +88,7 @@ func AlloyImageBoringCrypto() error {
 	)
 }
 
+// AlloyImageWindows builds the windows amd64 docker image for alloy.
 func AlloyImageWindows() error {
 	args := map[string]string{
 		"DOCKER_BUILDKIT": "1",
