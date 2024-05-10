@@ -15,6 +15,8 @@ Main (unreleased)
 - Upgrading `pyroscope/ebpf` from 0.4.6 to 0.4.7 (@korniltsev):
   * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
   * treat elf files with short build id (8 bytes) properly
+ 
+- Fix clustering on instances running within Istio mesh by allowing to change the name of the clustering port
 
 v1.1.0-rc.0
 -----------
