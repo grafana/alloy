@@ -8,6 +8,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -33,6 +34,9 @@ func init() {
 // Arguments configures the otelcol.auth.headers component.
 type Arguments struct {
 	Headers []Header `alloy:"header,block,optional"`
+
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 var _ auth.Arguments = Arguments{}
@@ -73,6 +77,11 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 // Exporters implements auth.Arguments.
 func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
+}
+
+// DebugMetricsConfig implements auth.Arguments.
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	return args.DebugMetrics
 }
 
 type Action string
