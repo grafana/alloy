@@ -17,9 +17,9 @@ v1.1.0-rc.0
 
 - (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
 
-- (_Public preview_) Introduce `boringcrypto` Docker image.
-  This Docker image is tagged with the `-boringcrypto` and is 
-  only available on AMD64 and ARM64.
+- (_Public preview_) Introduce BoringCrypto Docker images.
+  The BoringCrypto image is tagged with the `-boringcrypto` suffix and
+  is only available on AMD64 and ARM64 Linux containers.
   (@rfratto, @mattdurham)
 
 - (_Public preview_) Introduce `boringcrypto` release assets. BoringCrypto
@@ -27,6 +27,9 @@ v1.1.0-rc.0
   @mattdurham)
 
 - `otelcol.exporter.loadbalancing`: Add a new `aws_cloud_map` resolver. (@ptodev)
+
+- Introduce a `otelcol.receiver.file_stats` component from the upstream
+  OpenTelemetry `filestatsreceiver` component. (@rfratto)
 
 ### Enhancements
 
@@ -77,6 +80,12 @@ v1.1.0-rc.0
 
 - Fix a bug where custom components would not shadow the stdlib. If you have a module whose name conflicts with an stdlib function
   and if you use this exact function in your config, then you will need to rename your module. (@wildum)
+
+- Fix an issue where `loki.source.docker` stops collecting logs after a container restart. (@wildum)
+
+- Upgrading `pyroscope/ebpf` from 0.4.6 to 0.4.7 (@korniltsev):
+  * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
+  * treat elf files with short build id (8 bytes) properly
 
 ### Other changes
 
@@ -154,6 +163,8 @@ v1.1.0-rc.0
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/32574
   - `otelcol.processor.resourcedetection`: Update to ec2 scraper so that core attributes are not dropped if describeTags returns an error (likely due to permissions).
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/30672
+
+- Use Go 1.22.3 for builds. (@kminehart)
 
 v1.0.0
 ------

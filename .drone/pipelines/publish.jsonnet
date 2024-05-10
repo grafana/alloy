@@ -12,8 +12,6 @@ local linux_containers = [
 ];
 local windows_containers = [
   { devel: 'alloy-devel', release: 'alloy' },
-  // Disable building windows boring crypto until we can get a build image with the right settings.
-  // { devel: 'alloy-devel-cngcrypto', release: 'alloy-cngcrypto' },
 ];
 
 local linux_containers_dev_jobs = std.map(function(container) (
