@@ -6,6 +6,7 @@ metadata:
   name: {{ include "alloy.fullname" . }}-cluster
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: networking
 spec:
   type: ClusterIP
   clusterIP: 'None'
