@@ -4,7 +4,7 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.0 as build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.1 as build
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
 ARG TARGETOS
@@ -48,7 +48,9 @@ COPY --from=build /src/alloy/build/alloy /bin/alloy
 COPY example-config.alloy /etc/alloy/config.alloy
 
 # Create alloy user in container, but do not set it as default
-
+#
+# NOTE(rfratto): non-root support in Docker containers is an experimental,
+# undocumented feature; use at your own risk.
 RUN groupadd --gid $UID $USERNAME \
   && useradd -m -u $UID -g $UID $USERNAME \
   && chown -R $USERNAME:$USERNAME /etc/alloy \
@@ -57,6 +59,7 @@ RUN groupadd --gid $UID $USERNAME \
   && mkdir -p /var/lib/alloy/data \
   && chown -R $USERNAME:$USERNAME /var/lib/alloy \
   && chmod -R 770 /var/lib/alloy
+
 
 ENTRYPOINT ["/bin/alloy"]
 ENV ALLOY_DEPLOY_MODE=docker
