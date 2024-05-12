@@ -259,6 +259,8 @@ present.
 
 ## Example
 
+### Setting up scrape jobs of `blackbox exporter` targets  
+
 The following example sets up the scrape job with certain attributes (scrape
 endpoint, scrape interval, query parameters) and lets it scrape two instances
 of the [blackbox exporter](https://github.com/prometheus/blackbox_exporter/).
@@ -284,6 +286,23 @@ Here are the endpoints that are being scraped every 10 seconds:
 ```
 http://blackbox-exporter:9115/probe?target=grafana.com&module=http_2xx
 http://blackbox-exporter:9116/probe?target=grafana.com&module=http_2xx
+```
+
+### Authentication with K8s API server
+
+For `prometheus.scrape` installed in K8s environment, following example allows for succesful
+authentication with K8s API.
+
+```alloy
+prometheus.scrape "kubelet" {
+        scheme = "https"
+        tls_config {
+            server_name = "kubernetes"
+            ca_file = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+            insecure_skip_verify = false
+        }
+        bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+}
 ```
 
 ### Technical details
