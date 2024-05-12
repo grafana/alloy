@@ -17,4 +17,8 @@ Name                               | Type      | Description                    
 It removes attributes that could cause high cardinality metrics.
 For example, attributes with IP addresses and port numbers in metrics about HTTP and gRPC connections are removed.
 
+{{< admonition type="note" >}}
+If configured, `disable_high_cardinality_metrics` only applies for `otelcol.exporter.*` and `otelcol.receiver.*` components.
+{{< /admonition >}}
+
 `level` is the Grafana Alloy equivalent to the `telemetry.metrics.level` feature gate in the OpenTelemetry Collector.

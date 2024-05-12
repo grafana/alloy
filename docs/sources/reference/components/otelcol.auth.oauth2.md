@@ -60,14 +60,20 @@ The following blocks are supported inside the definition of
 Hierarchy | Block   | Description                        | Required
 ----------|---------|------------------------------------|---------
 tls       | [tls][] | TLS settings for the token client. | no
+debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [tls]: #tls-block
+[debug_metrics]: #debug_metrics-block
 
 ### tls block
 
 The `tls` block configures TLS settings used for connecting to the token client. If the `tls` block isn't provided, TLS won't be used for communication.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
