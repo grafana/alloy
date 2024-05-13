@@ -52,7 +52,7 @@ require (
 	github.com/google/renameio/v2 v2.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/grafana/alloy-remote-config v0.0.3
+	github.com/grafana/alloy-remote-config v0.0.4
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/beyla v1.5.1
 	github.com/grafana/ckit v0.0.0-20230906125525-c046c99a5c04
@@ -125,6 +125,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor v0.99.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor v0.99.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.99.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.99.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.99.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.99.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver v0.99.0
@@ -246,8 +247,6 @@ require (
 	sigs.k8s.io/controller-runtime v0.17.3
 	sigs.k8s.io/yaml v1.4.0
 )
-
-require github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.99.0
 
 require (
 	cloud.google.com/go v0.112.0 // indirect
