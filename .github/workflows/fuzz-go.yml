@@ -1,0 +1,175 @@
+name: Run Go fuzz tests
+
+on:
+  workflow_call:
+    inputs:
+      directory:
+        description: "Directory to search for Go fuzz tests in."
+        default: '.'
+        required: false
+        type: string
+      fuzz-time:
+        description: "Time to run the Fuzz test for. (for example, 5m)"
+        required: true
+        type: string
+      create-issue:
+        description: "Whether an issue should be created for new failures."
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  find-tests:
+    runs-on: ubuntu-latest
+    outputs:
+      tests: ${{ steps.find-tests.outputs.tests }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find fuzz tests
+        id: find-tests
+        run: |
+          TEST_FILES=$(find "${{ inputs.directory }}" -name '*_test.go' -not -path './vendor/*')
+
+          RESULTS=()
+
+          for FILE in $TEST_FILES; do
+            FUZZ_FUNC=$(grep -E 'func Fuzz\w*' $FILE | sed 's/func //' | sed 's/(.*$//')
+            if [ -z "$FUZZ_FUNC" ]; then
+              continue
+            fi
+
+            PACKAGE_PATH=$(dirname ${FILE#${{ inputs.directory }}/})
+            RESULTS+=("{\"package\":\"$PACKAGE_PATH\",\"function\":\"$FUZZ_FUNC\"}")
+
+            echo "Found $FUZZ_FUNC in $PACKAGE_PATH"
+          done
+
+          NUM_RESULTS=${#RESULTS[@]}
+          INCLUDE_STRING=""
+          for (( i=0; i<$NUM_RESULTS; i++ )); do
+            INCLUDE_STRING+="${RESULTS[$i]}"
+
+            if [[ $i -lt $(($NUM_RESULTS-1)) ]]; then
+              INCLUDE_STRING+=","
+            fi
+          done
+
+          echo 'tests=['$INCLUDE_STRING']' >> $GITHUB_OUTPUT
+
+  fuzz:
+    name: "${{ matrix.package }}: ${{ matrix.function }}"
+    runs-on: ubuntu-latest
+    needs: [find-tests]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.find-tests.outputs.tests) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: false
+
+      - name: Find cache location
+        run:
+          echo "FUZZ_CACHE=$(go env GOCACHE)/fuzz" >> $GITHUB_ENV
+
+      - name: Restore fuzz cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.FUZZ_CACHE }}
+          key: fuzz-${{ matrix.package }}-${{ matrix.function }}-${{ github.sha }}
+          restore-keys: |
+            fuzz-${{ matrix.package }}-${{ matrix.function }}-
+
+      - name: Fuzz
+        run: |
+          # Change directory to the package first, since go test doesn't
+          # support cross-module testing, and the provided directory may be in
+          # a different module.
+          cd "${{ matrix.package }}"
+          go test -fuzz="${{ matrix.function }}\$" -run="${{ matrix.function }}\$" -fuzztime="${{ inputs.fuzz-time }}" .
+
+      # Fuzzing may have failed because of an existing bug, or it may have
+      # found a new one and written a new test case file in testdata/ relative
+      # to the package.
+      #
+      # If that file was written, we should save it as an artifact and then
+      # create an issue.
+
+      - name: Check for new fuzz failure
+        id: new-failure
+        if: ${{ failure() }}
+        run: |
+          UNTRACKED=$(git ls-files . --exclude-standard --others)
+          if [ -z "$UNTRACKED" ]; then
+            exit 0
+          fi
+          echo "Found new fuzz failure: $UNTRACKED"
+          echo "file=$UNTRACKED" >> $GITHUB_OUTPUT
+          echo "name=$(basename $UNTRACKED)" >> $GITHUB_OUTPUT
+          echo "package=$(echo ${{ matrix.package }} | sed 's/\//_/g')" >> $GITHUB_OUTPUT
+          echo "function=${{ matrix.function }}" >> $GITHUB_OUTPUT
+
+      - name: Upload fuzz failure as artifact
+        id: artifact
+        if: ${{ failure() && steps.new-failure.outputs.file != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }}
+          path: ${{ steps.new-failure.outputs.file }}
+
+      - name: Generate reproduction instructions
+        if: ${{ failure() && steps.new-failure.outputs.file != '' }}
+        run: |
+          cat >>$GITHUB_STEP_SUMMARY <<EOF
+          ## Fuzz test failed
+
+          A new fuzz test failure was found in ${{ matrix.package }}.
+
+          To reproduce the failure locally, run the following command using the GitHub CLI to download the failed test case:
+
+          <pre lang="bash">gh run download --repo ${{ github.repository }} ${{ github.run_id }} -n failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }} --dir ${{ matrix.package }}/testdata/fuzz/${{ matrix.function }}</pre>
+
+          When opening a PR with the fix, please include the test case file in your PR to prevent regressions.
+          EOF
+
+      - name: Create new issue
+        if: ${{ failure() && steps.new-failure.outputs.file != '' && inputs.create-issue }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const failureName = "${{ steps.new-failure.outputs.name }}";
+            const issueTitle = `${{ matrix.package }}: ${{ matrix.function }} failed (${failureName})`;
+
+            // Look for existing issue first with the same title.
+            const issues = await github.rest.search.issuesAndPullRequests({
+              q: `is:issue is:open repo:${{ github.repository }} in:title "${failureName}"`
+            })
+            const issue = issues.data.items.find((issue) => issue.title === issue.title);
+            if (issue) {
+              return;
+            }
+
+            // Create a new issue.
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: `
+            A new fuzz test failure was found in <code>${{ matrix.package }}</code>.
+
+            To reproduce the failure locally, run the following command using the GitHub CLI to download the failed test case:
+
+            <pre lang="bash">gh run download --repo ${{ github.repository }} ${{ github.run_id }} -n failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }} --dir ${{ matrix.package }}/testdata/fuzz/${{ matrix.function }}</pre>
+
+            When opening a PR with the fix, please include the test case file in your PR to prevent regressions.
+
+            [Link to failed run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `,
+
+              labels: ['bug'],
+            })

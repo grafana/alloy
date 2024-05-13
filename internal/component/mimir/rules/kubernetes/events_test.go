@@ -37,7 +37,7 @@ func newFakeMimirClient() *fakeMimirClient {
 	}
 }
 
-func (m *fakeMimirClient) CreateRuleGroup(ctx context.Context, namespace string, rule rulefmt.RuleGroup) error {
+func (m *fakeMimirClient) CreateRuleGroup(_ context.Context, namespace string, rule rulefmt.RuleGroup) error {
 	m.rulesMut.Lock()
 	defer m.rulesMut.Unlock()
 	m.deleteLocked(namespace, rule.Name)
@@ -45,7 +45,7 @@ func (m *fakeMimirClient) CreateRuleGroup(ctx context.Context, namespace string,
 	return nil
 }
 
-func (m *fakeMimirClient) DeleteRuleGroup(ctx context.Context, namespace, group string) error {
+func (m *fakeMimirClient) DeleteRuleGroup(_ context.Context, namespace, group string) error {
 	m.rulesMut.Lock()
 	defer m.rulesMut.Unlock()
 	m.deleteLocked(namespace, group)
@@ -71,7 +71,7 @@ func (m *fakeMimirClient) deleteLocked(namespace, group string) {
 	}
 }
 
-func (m *fakeMimirClient) ListRules(ctx context.Context, namespace string) (map[string][]rulefmt.RuleGroup, error) {
+func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[string][]rulefmt.RuleGroup, error) {
 	m.rulesMut.RLock()
 	defer m.rulesMut.RUnlock()
 	output := make(map[string][]rulefmt.RuleGroup)
@@ -83,12 +83,6 @@ func (m *fakeMimirClient) ListRules(ctx context.Context, namespace string) (map[
 	}
 	return output, nil
 }
-
-type fakeHealthReporter struct{}
-
-func (f fakeHealthReporter) reportUnhealthy(error) {}
-
-func (f fakeHealthReporter) reportHealthy() {}
 
 func TestEventLoop(t *testing.T) {
 	nsIndexer := cache.NewIndexer(

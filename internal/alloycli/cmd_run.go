@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy"
@@ -30,6 +32,7 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	otel_service "github.com/grafana/alloy/internal/service/otel"
 	remotecfgservice "github.com/grafana/alloy/internal/service/remotecfg"
 	uiservice "github.com/grafana/alloy/internal/service/ui"
@@ -192,6 +195,12 @@ func (fr *alloyRun) Run(configPath string) error {
 
 	level.Info(l).Log("boringcrypto enabled", boringcrypto.Enabled)
 
+	// Set the memory limit, this will honor GOMEMLIMIT if set
+	// If there is a cgroup will follow that
+	if fr.minStability.Permits(featuregate.StabilityPublicPreview) {
+		memlimit.SetGoMemLimitWithOpts(memlimit.WithLogger(slog.New(l.Handler())))
+	}
+
 	// Enable the profiling.
 	setMutexBlockProfiling(l)
 
@@ -264,8 +273,11 @@ func (fr *alloyRun) Run(configPath string) error {
 		return fmt.Errorf("failed to create the remotecfg service: %w", err)
 	}
 
+	liveDebuggingService := livedebugging.New()
+
 	uiService := uiservice.New(uiservice.Options{
-		UIPrefix: fr.uiPrefix,
+		UIPrefix:               fr.uiPrefix,
+		DebuggingStreamHandler: liveDebuggingService.Data().(livedebugging.DebugStreamHandler),
 	})
 
 	otelService := otel_service.New(l)
@@ -284,6 +296,7 @@ func (fr *alloyRun) Run(configPath string) error {
 		MinStability: fr.minStability,
 		Services: []service.Service{
 			httpService,
+			liveDebuggingService,
 			uiService,
 			clusterService,
 			otelService,

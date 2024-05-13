@@ -164,6 +164,7 @@ original configuration.
 Include `--config.extra-args` to pass additional command line flags from the original format to the converter.
 Refer to [alloy convert][] for more details on how `extra-args` work.
 
+
 [alloy convert]: ../convert/
 [clustering]:  ../../../concepts/clustering/
 [go-discover]: https://github.com/hashicorp/go-discover

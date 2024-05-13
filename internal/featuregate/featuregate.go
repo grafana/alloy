@@ -97,3 +97,8 @@ func (s *Stability) Set(str string) error {
 func (s Stability) Type() string {
 	return "<stability_level>"
 }
+
+// Permits will check if the stability level is allowed. For instance experimental would allow public preview, experimental and ga. Whereas ga would only allow ga.
+func (s Stability) Permits(stability Stability) bool {
+	return s <= stability
+}

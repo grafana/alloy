@@ -50,6 +50,20 @@ Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as s
 If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
 {{< /admonition >}}
 
+### BoringCrypto images
+
+{{< admonition type="note" >}}
+BoringCrypto support is in _Public preview_ and is only available on AMD64 and ARM64 platforms.
+{{< /admonition >}}
+
+BoringCrypto images are published with every release starting with version
+1.1:
+
+* The latest BoringCrypto image is published as `grafana/alloy:boringcrypto`.
+* A specific version of the BoringCrypto image is published as
+  `grafana/alloy:<VERSION>-boringcrypto`, such as
+  `grafana/alloy:v1.1.0-boringcrypto`.
+
 ## Run a Windows Docker container
 
 To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the following command in a terminal window:
@@ -58,7 +72,7 @@ To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the follo
 docker run \
   -v "<CONFIG_FILE_PATH>:C:\Program Files\GrafanaLabs\Alloy\config.alloy" \
   -p 12345:12345 \
-  grafana/alloy:latest-nanoserver-1809 \
+  grafana/alloy:nanoserver-1809 \
     run --server.http.listen-addr=0.0.0.0:12345 "--storage.path=C:\ProgramData\GrafanaLabs\Alloy\data" \
     "C:\Program Files\GrafanaLabs\Alloy\config.alloy"
 ```
@@ -74,6 +88,20 @@ Refer to the documentation for [run][] for more information about the options av
 Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as shown in the example above.
 If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
 {{< /admonition >}}
+
+### CNGCrypto images
+
+{{< admonition type="note" >}}
+CNGCrypto support is in _Public preview_ and is only available on AMD64 platforms.
+{{< /admonition >}}
+
+CNGCrypto images are published with every release starting with version
+1.1:
+
+* The latest CNGCrypto image is published as `grafana/alloy:nanoserver-1809-cngcrypto`.
+* A specific version of the CNGCrypto image is published as
+  `grafana/alloy:<VERSION>-nanoserver-1809-cngcrypto`, such as
+  `grafana/alloy:v1.1.0-nanoserver-1809-cngcrypto`.
 
 ## Verify
 

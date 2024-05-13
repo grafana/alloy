@@ -6,24 +6,29 @@ package api
 
 import (
 	"encoding/json"
+	"math/rand"
 	"net/http"
 	"path"
+	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/prometheus/prometheus/util/httputil"
 )
 
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
-	alloy service.Host
+	alloy                  service.Host
+	debuggingStreamHandler livedebugging.DebugStreamHandler
 }
 
 // NewAlloyAPI instantiates a new Alloy API.
-func NewAlloyAPI(alloy service.Host) *AlloyAPI {
-	return &AlloyAPI{alloy: alloy}
+func NewAlloyAPI(alloy service.Host, debuggingStreamHandler livedebugging.DebugStreamHandler) *AlloyAPI {
+	return &AlloyAPI{alloy: alloy, debuggingStreamHandler: debuggingStreamHandler}
 }
 
 // RegisterRoutes registers all the API's routes.
@@ -36,6 +41,7 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
 	r.Handle(path.Join(urlPrefix, "/components/{id:.+}"), httputil.CompressionHandler{Handler: a.getComponentHandler()})
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: a.getClusteringPeersHandler()})
+	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), a.startDebugStream())
 }
 
 func (a *AlloyAPI) listComponentsHandler() http.HandlerFunc {
@@ -106,4 +112,71 @@ func (a *AlloyAPI) getClusteringPeersHandler() http.HandlerFunc {
 		}
 		_, _ = w.Write(bb)
 	}
+}
+
+func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		componentID := vars["id"]
+
+		// Buffer of 1000 entries to handle load spikes and prevent this functionality from eating up too much memory.
+		dataCh := make(chan string, 1000)
+		ctx := r.Context()
+
+		sampleProb := setSampleProb(w, r.URL.Query().Get("sampleProb"))
+
+		a.debuggingStreamHandler.SetStream(componentID, func(data string) {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				if sampleProb < 1 && rand.Float64() > sampleProb {
+					return
+				}
+				// Avoid blocking the channel when the channel is full
+				select {
+				case dataCh <- data:
+				default:
+				}
+			}
+		})
+
+		stopStreaming := func() {
+			close(dataCh)
+			a.debuggingStreamHandler.DeleteStream(componentID)
+		}
+
+		for {
+			select {
+			case data := <-dataCh:
+				var builder strings.Builder
+				builder.WriteString(data)
+				// |;| delimiter is added at the end of every chunk
+				builder.WriteString("|;|")
+				_, writeErr := w.Write([]byte(builder.String()))
+				if writeErr != nil {
+					stopStreaming()
+					return
+				}
+				// TODO: flushing at a regular interval might be better performance wise
+				w.(http.Flusher).Flush()
+			case <-ctx.Done():
+				stopStreaming()
+				return
+			}
+		}
+	}
+}
+
+func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb float64) {
+	sampleProb = 1.0
+	if sampleProbParam != "" {
+		var err error
+		sampleProb, err = strconv.ParseFloat(sampleProbParam, 64)
+		if err != nil || sampleProb < 0 || sampleProb > 1 {
+			http.Error(w, "Invalid sample probability", http.StatusBadRequest)
+			return 1.0
+		}
+	}
+	return sampleProb
 }

@@ -47,6 +47,7 @@
 ##   generate-helm-tests       Generate Helm chart tests.
 ##   generate-ui               Generate the UI assets.
 ##   generate-versioned-files  Generate versioned files.
+##   generate-winmanifest      Generate the Windows application manifest.
 ##
 ## Other targets:
 ##
@@ -78,7 +79,7 @@
 include tools/make/*.mk
 
 ALLOY_IMAGE          ?= grafana/alloy:latest
-ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:latest-nanoserver-1809
+ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:nanoserver-1809
 ALLOY_BINARY         ?= build/alloy
 SERVICE_BINARY       ?= build/alloy-service
 ALLOYLINT_BINARY     ?= build/alloylint
@@ -101,7 +102,7 @@ PROPAGATE_VARS := \
 # Constants for targets
 #
 
-GO_ENV := GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
+GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
 VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
@@ -210,8 +211,8 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files
-generate: generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-docs
+.PHONY: generate generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-winmanifest
+generate: generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-docs generate-winmanifest
 
 generate-drone:
 	drone jsonnet -V BUILD_IMAGE_VERSION=$(BUILD_IMAGE_VERSION) --stream --format --source .drone/drone.jsonnet --target .drone/drone.yml
@@ -249,6 +250,13 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	go generate ./docs
+endif
+
+generate-winmanifest:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	go generate ./internal/winmanifest
 endif
 #
 # Other targets

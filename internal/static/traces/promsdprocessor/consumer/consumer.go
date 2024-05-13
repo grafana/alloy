@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -12,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/collector/client"
-	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -103,7 +103,7 @@ func (c *Consumer) UpdateOptions(opts Options) error {
 	defer c.optsMut.Unlock()
 
 	if opts.NextConsumer == nil {
-		return otelcomponent.ErrNilNextConsumer
+		return errors.New("nil next Consumer")
 	}
 
 	err := ValidateOperationType(opts.OperationType)

@@ -108,9 +108,10 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 
 func toResolver(cfg loadbalancingexporter.ResolverSettings) loadbalancing.ResolverSettings {
 	return loadbalancing.ResolverSettings{
-		Static:     toStaticResolver(cfg.Static),
-		DNS:        toDNSResolver(cfg.DNS),
-		Kubernetes: toKubernetesResolver(cfg.K8sSvc),
+		Static:      toStaticResolver(cfg.Static),
+		DNS:         toDNSResolver(cfg.DNS),
+		Kubernetes:  toKubernetesResolver(cfg.K8sSvc),
+		AWSCloudMap: toAWSCloudMap(cfg.AWSCloudMap),
 	}
 }
 
@@ -145,5 +146,21 @@ func toKubernetesResolver(cfg *loadbalancingexporter.K8sSvcResolver) *loadbalanc
 	return &loadbalancing.KubernetesResolver{
 		Service: cfg.Service,
 		Ports:   cfg.Ports,
+		Timeout: cfg.Timeout,
+	}
+}
+
+func toAWSCloudMap(cfg *loadbalancingexporter.AWSCloudMapResolver) *loadbalancing.AWSCloudMapResolver {
+	if cfg == nil {
+		return nil
+	}
+
+	return &loadbalancing.AWSCloudMapResolver{
+		NamespaceName: cfg.NamespaceName,
+		ServiceName:   cfg.ServiceName,
+		HealthStatus:  string(cfg.HealthStatus),
+		Interval:      cfg.Interval,
+		Timeout:       cfg.Timeout,
+		Port:          cfg.Port,
 	}
 }

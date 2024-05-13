@@ -46,7 +46,7 @@ func newTestEnvironment(t *testing.T, onCreated func()) *testEnvironment {
 		Exports: otelcol.ConsumerExports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			factory := otelextension.NewFactory(
-				"testcomponent",
+				otelcomponent.MustNewType("testcomponent"),
 				func() otelcomponent.Config { return nil },
 				func(
 					_ context.Context,

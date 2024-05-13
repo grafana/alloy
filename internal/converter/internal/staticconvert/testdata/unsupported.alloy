@@ -72,7 +72,7 @@ otelcol.exporter.otlp "default_0" {
 	}
 
 	client {
-		endpoint = "http://localhost:1234/write"
+		endpoint = "http://localhost:1234"
 	}
 }
 

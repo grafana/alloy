@@ -24,13 +24,14 @@ type Logger struct {
 	inner io.Writer // Writer passed to New.
 
 	bufferMut    sync.RWMutex
-	buffer       [][]interface{} // Store logs before correctly determine the log format
+	buffer       []*bufferedItem // Store logs before correctly determine the log format
 	hasLogFormat bool            // Confirmation whether log format has been determined
 
-	level   *slog.LevelVar // Current configured level.
-	format  *formatVar     // Current configured format.
-	writer  *writerVar     // Current configured multiwriter (inner + write_to).
-	handler *handler       // Handler which handles logs.
+	level        *slog.LevelVar       // Current configured level.
+	format       *formatVar           // Current configured format.
+	writer       *writerVar           // Current configured multiwriter (inner + write_to).
+	handler      *handler             // Handler which handles logs.
+	deferredSlog *deferredSlogHandler // This handles deferred logging for slog.
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -42,29 +43,11 @@ func (l *Logger) Enabled(ctx context.Context, level slog.Level) bool {
 
 // New creates a New logger with the default log level and format.
 func New(w io.Writer, o Options) (*Logger, error) {
-	var (
-		leveler slog.LevelVar
-		format  formatVar
-		writer  writerVar
-	)
-
-	l := &Logger{
-		inner: w,
-
-		buffer:       [][]interface{}{},
-		hasLogFormat: false,
-
-		level:  &leveler,
-		format: &format,
-		writer: &writer,
-		handler: &handler{
-			w:         &writer,
-			leveler:   &leveler,
-			formatter: &format,
-		},
+	l, err := NewDeferred(w)
+	if err != nil {
+		return nil, err
 	}
-
-	if err := l.Update(o); err != nil {
+	if err = l.Update(o); err != nil {
 		return nil, err
 	}
 
@@ -83,7 +66,7 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 	l := &Logger{
 		inner: w,
 
-		buffer:       [][]interface{}{},
+		buffer:       []*bufferedItem{},
 		hasLogFormat: false,
 
 		level:  &leveler,
@@ -93,15 +76,17 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 			w:         &writer,
 			leveler:   &leveler,
 			formatter: &format,
+			replacer:  replace,
 		},
 	}
+	l.deferredSlog = newDeferredHandler(l)
 
 	return l, nil
 }
 
 // Handler returns a [slog.Handler]. The returned Handler remains valid if l is
 // updated.
-func (l *Logger) Handler() slog.Handler { return l.handler }
+func (l *Logger) Handler() slog.Handler { return l.deferredSlog }
 
 // Update re-configures the options used for the logger.
 func (l *Logger) Update(o Options) error {
@@ -124,11 +109,23 @@ func (l *Logger) Update(o Options) error {
 	}
 	l.writer.Set(newWriter)
 
+	// Build all our deferred handlers
+	if l.deferredSlog != nil {
+		l.deferredSlog.buildHandlers(nil)
+	}
 	// Print out the buffered logs since we determined the log format already
 	for _, bufferedLogChunk := range l.buffer {
-		// the buffered logs are currently only sent to the standard output
-		// because the components with the receivers are not running yet
-		slogadapter.GoKit(l.handler).Log(bufferedLogChunk...)
+		if len(bufferedLogChunk.kvps) > 0 {
+			// the buffered logs are currently only sent to the standard output
+			// because the components with the receivers are not running yet
+			slogadapter.GoKit(l.handler).Log(bufferedLogChunk.kvps...)
+		} else {
+			// We now can check to see if if our buffered log is at the right level.
+			if bufferedLogChunk.handler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
+				// These will always be valid due to the build handlers call above.
+				bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
+			}
+		}
 	}
 	l.buffer = nil
 
@@ -144,7 +141,7 @@ func (l *Logger) Log(kvps ...interface{}) error {
 		l.bufferMut.Lock()
 		// Check hasLogFormat again; could have changed since the unlock.
 		if !l.hasLogFormat {
-			l.buffer = append(l.buffer, kvps)
+			l.buffer = append(l.buffer, &bufferedItem{kvps: kvps})
 			l.bufferMut.Unlock()
 			return nil
 		}
@@ -156,6 +153,16 @@ func (l *Logger) Log(kvps ...interface{}) error {
 	// NOTE(rfratto): this method is a temporary shim while log/slog is still
 	// being adopted throughout the codebase.
 	return slogadapter.GoKit(l.handler).Log(kvps...)
+}
+
+func (l *Logger) addRecord(r slog.Record, df *deferredSlogHandler) {
+	l.bufferMut.Lock()
+	defer l.bufferMut.Unlock()
+
+	l.buffer = append(l.buffer, &bufferedItem{
+		record:  r,
+		handler: df,
+	})
 }
 
 type lokiWriter struct {
@@ -225,4 +232,10 @@ func (w *writerVar) Write(p []byte) (n int, err error) {
 	}
 
 	return w.w.Write(p)
+}
+
+type bufferedItem struct {
+	kvps    []interface{}
+	handler *deferredSlogHandler
+	record  slog.Record
 }

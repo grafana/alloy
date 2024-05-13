@@ -15,6 +15,7 @@ connectors:
       max_items: 10
     cache_loop: 2m
     store_expiration_loop: 5s
+    database_name_attribute: db_name3
 
 exporters:
   otlp:

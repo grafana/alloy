@@ -60,7 +60,7 @@ func toVcenterReceiver(state *State, id component.InstanceID, cfg *vcenterreceiv
 			Timeout:            cfg.Timeout,
 		},
 
-		TLS: toTLSClientArguments(cfg.TLSClientSetting),
+		TLS: toTLSClientArguments(cfg.ClientConfig),
 
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),

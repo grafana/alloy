@@ -15,7 +15,7 @@ const (
 
 func NewFactory() connector.Factory {
 	return connector.NewFactory(
-		typeStr,
+		component.MustNewType(typeStr),
 		createDefaultConfig,
 		connector.WithTracesToMetrics(createTracesToMetricsConnector, component.StabilityLevelAlpha),
 	)
