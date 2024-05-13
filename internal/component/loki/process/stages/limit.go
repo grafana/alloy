@@ -130,6 +130,11 @@ func (m *limitStage) Name() string {
 	return StageTypeLimit
 }
 
+// Cleanup implements Stage.
+func (*limitStage) Cleanup() {
+	// no-op
+}
+
 func getDropCountByLabelMetric(registerer prometheus.Registerer) *prometheus.CounterVec {
 	return registerCounterVec(registerer, "loki_process", "dropped_lines_by_label_total",
 		"A count of all log lines dropped as a result of a pipeline stage",
