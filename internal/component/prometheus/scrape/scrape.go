@@ -8,6 +8,15 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
+	client_prometheus "github.com/prometheus/client_golang/prometheus"
+	config_util "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
+	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/scrape"
+	"github.com/prometheus/prometheus/storage"
+
 	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	component_config "github.com/grafana/alloy/internal/component/common/config"
@@ -18,13 +27,6 @@ import (
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/useragent"
-	client_prometheus "github.com/prometheus/client_golang/prometheus"
-	config_util "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/config"
-	"github.com/prometheus/prometheus/discovery/targetgroup"
-	"github.com/prometheus/prometheus/scrape"
-	"github.com/prometheus/prometheus/storage"
 )
 
 func init() {
@@ -124,13 +126,17 @@ type Component struct {
 	opts    component.Options
 	cluster cluster.Cluster
 
-	reloadTargets chan struct{}
+	reloadTargets       chan struct{}
+	targetsGauge        client_prometheus.Gauge
+	movedTargetsCounter client_prometheus.Counter
 
-	mut          sync.RWMutex
-	args         Arguments
-	scraper      *scrape.Manager
-	appendable   *prometheus.Fanout
-	targetsGauge client_prometheus.Gauge
+	mut        sync.RWMutex
+	args       Arguments
+	scraper    *scrape.Manager
+	appendable *prometheus.Fanout
+
+	dtMutex            sync.Mutex
+	distributedTargets *discovery.DistributedTargets
 }
 
 var (
@@ -175,13 +181,22 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	movedTargetsCounter := client_prometheus.NewCounter(client_prometheus.CounterOpts{
+		Name: "prometheus_scrape_targets_moved_total",
+		Help: "Number of targets that have moved from this cluster node to another one"})
+	err = o.Registerer.Register(movedTargetsCounter)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
-		opts:          o,
-		cluster:       clusterData,
-		reloadTargets: make(chan struct{}, 1),
-		scraper:       scraper,
-		appendable:    alloyAppendable,
-		targetsGauge:  targetsGauge,
+		opts:                o,
+		cluster:             clusterData,
+		reloadTargets:       make(chan struct{}, 1),
+		scraper:             scraper,
+		appendable:          alloyAppendable,
+		targetsGauge:        targetsGauge,
+		movedTargetsCounter: movedTargetsCounter,
 	}
 
 	// Call to Update() to set the receivers and targets once at the start.
@@ -213,24 +228,59 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-c.reloadTargets:
 			c.mut.RLock()
 			var (
-				targets           = c.args.Targets
-				jobName           = c.opts.ID
-				clusteringEnabled = c.args.Clustering.Enabled
+				targets = c.args.Targets
+				jobName = c.opts.ID
+				args    = c.args
 			)
-			if c.args.JobName != "" {
-				jobName = c.args.JobName
-			}
 			c.mut.RUnlock()
 
-			promTargets := c.distTargets(targets, jobName, clusteringEnabled)
+			if args.JobName != "" {
+				jobName = c.args.JobName
+			}
+
+			newTargetGroups, movedTargets := c.distributeTargets(targets, jobName, args)
+
+			// Make sure the targets that moved to another instance are NOT marked as stale. This is specific to how
+			// Prometheus handles marking series as stale: it is the client's responsibility to inject the
+			// staleness markers. In our case, for targets that moved to another instance in the cluster, we hand
+			// over this responsibility to the new owning instance. We must not inject staleness marker here.
+			c.scraper.DisableEndOfRunStalenessMarkers(jobName, movedTargets)
 
 			select {
-			case targetSetsChan <- promTargets:
+			case targetSetsChan <- newTargetGroups:
 				level.Debug(c.opts.Logger).Log("msg", "passed new targets to scrape manager")
 			case <-ctx.Done():
 			}
 		}
 	}
+}
+
+func (c *Component) distributeTargets(
+	targets []discovery.Target,
+	jobName string,
+	args Arguments,
+) (map[string][]*targetgroup.Group, []*scrape.Target) {
+	var (
+		newDistTargets        = discovery.NewDistributedTargets(args.Clustering.Enabled, c.cluster, targets)
+		oldDistributedTargets *discovery.DistributedTargets
+	)
+
+	c.dtMutex.Lock()
+	oldDistributedTargets, c.distributedTargets = c.distributedTargets, newDistTargets
+	c.dtMutex.Unlock()
+
+	newLocalTargets := newDistTargets.LocalTargets()
+	c.targetsGauge.Set(float64(len(newLocalTargets)))
+	promNewTargets := c.componentTargetsToPromTargetGroups(jobName, newLocalTargets)
+
+	movedTargets := newDistTargets.MovedToRemoteInstance(oldDistributedTargets)
+	c.movedTargetsCounter.Add(float64(len(movedTargets)))
+	// For moved targets, we need to populate prom labels in the same way as the scraper does, so that they match
+	// the currently running scrape loop's targets. This is not needed for new targets, as they will be populated
+	// by the scrape loop itself during the sync.
+	promMovedTargets := c.populatePromLabels(movedTargets, jobName, args)
+
+	return promNewTargets, promMovedTargets
 }
 
 // Update implements component.Component.
@@ -311,20 +361,6 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	return &dec
 }
 
-func (c *Component) distTargets(
-	targets []discovery.Target,
-	jobName string,
-	clustering bool,
-) map[string][]*targetgroup.Group {
-	// NOTE(@tpaschalis) First approach, manually building the
-	// 'clustered' targets implementation every time.
-	dt := discovery.NewDistributedTargets(clustering, c.cluster, targets)
-	alloyTargets := dt.Get()
-	c.targetsGauge.Set(float64(len(alloyTargets)))
-	promTargets := c.componentTargetsToProm(jobName, alloyTargets)
-	return promTargets
-}
-
 // ScraperStatus reports the status of the scraper's jobs.
 type ScraperStatus struct {
 	TargetStatus []TargetStatus `alloy:"target,block,optional"`
@@ -374,13 +410,28 @@ func (c *Component) DebugInfo() interface{} {
 	}
 }
 
-func (c *Component) componentTargetsToProm(jobName string, tgs []discovery.Target) map[string][]*targetgroup.Group {
+func (c *Component) componentTargetsToPromTargetGroups(jobName string, tgs []discovery.Target) map[string][]*targetgroup.Group {
 	promGroup := &targetgroup.Group{Source: jobName}
 	for _, tg := range tgs {
 		promGroup.Targets = append(promGroup.Targets, convertLabelSet(tg))
 	}
 
 	return map[string][]*targetgroup.Group{jobName: {promGroup}}
+}
+
+func (c *Component) populatePromLabels(targets []discovery.Target, jobName string, args Arguments) []*scrape.Target {
+	lb := labels.NewBuilder(labels.EmptyLabels())
+	promTargets, errs := scrape.TargetsFromGroup(
+		c.componentTargetsToPromTargetGroups(jobName, targets)[jobName][0],
+		getPromScrapeConfigs(c.opts.ID, args),
+		false,                                /* noDefaultScrapePort - always false in this component */
+		make([]*scrape.Target, len(targets)), /* targets slice to reuse */
+		lb,
+	)
+	for _, err := range errs {
+		level.Warn(c.opts.Logger).Log("msg", "error while populating labels of targets using prom config", "err", err)
+	}
+	return promTargets
 }
 
 func convertLabelSet(tg discovery.Target) model.LabelSet {

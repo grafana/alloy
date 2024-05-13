@@ -10,6 +10,12 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Bugfixes
+
+- Fixed an issue with `prometheus.scrape` in which targets that move from one
+  cluster instance to another could have a staleness marker inserted and result
+  in a gap in metrics (@thampiotr)
+
 v1.1.0-rc.0
 -----------
 

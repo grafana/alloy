@@ -188,7 +188,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 func (c *Component) resyncTargets(targets []discovery.Target) {
 	distTargets := discovery.NewDistributedTargets(c.args.Clustering.Enabled, c.cluster, targets)
-	targets = distTargets.Get()
+	targets = distTargets.LocalTargets()
 
 	tailTargets := make([]*kubetail.Target, 0, len(targets))
 	for _, target := range targets {
