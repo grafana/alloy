@@ -60,6 +60,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
     For digests, we crop the string to a 7-char (short) sha. */}}
 app.kubernetes.io/version: {{ (include "alloy.imageId" .) | trunc 15 | trimPrefix "@sha256" | trimPrefix ":" | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/part-of: alloy
 {{- end }}
 {{- end }}
 

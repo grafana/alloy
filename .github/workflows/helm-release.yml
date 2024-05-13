@@ -68,12 +68,15 @@ jobs:
         with:
           app-id: ${{ secrets.ALLOYBOT_APP_ID }}
           private-key: ${{ secrets.ALLOYBOT_PRIVATE_KEY }}
+          owner: grafana
+          repositories: alloy,helm-charts
 
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           path: source
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Configure Git
         run: |

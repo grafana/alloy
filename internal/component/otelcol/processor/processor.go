@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelextension "go.opentelemetry.io/collector/extension"
 	otelprocessor "go.opentelemetry.io/collector/processor"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
@@ -135,6 +136,7 @@ func (p *Processor) Update(args component.Arguments) error {
 
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
+			MetricsLevel:   configtelemetry.LevelDetailed,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},

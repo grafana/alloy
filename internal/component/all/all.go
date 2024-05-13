@@ -85,6 +85,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/span"                   // Import otelcol.processor.span
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/tail_sampling"          // Import otelcol.processor.tail_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/transform"              // Import otelcol.processor.transform
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/file_stats"              // Import otelcol.receiver.file_stats
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/jaeger"                  // Import otelcol.receiver.jaeger
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"                   // Import otelcol.receiver.kafka
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/loki"                    // Import otelcol.receiver.loki

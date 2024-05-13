@@ -1,6 +1,6 @@
 module github.com/grafana/alloy
 
-go 1.22.1
+go 1.22.3
 
 require (
 	cloud.google.com/go/pubsub v1.36.1
@@ -20,6 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.11
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.49.0
+	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.29.5
 	github.com/blang/semver/v4 v4.0.0
 	github.com/bmatcuk/doublestar v1.3.4
 	github.com/boynux/squid-exporter v1.10.5-0.20230618153315-c1fae094e18e
@@ -65,7 +66,7 @@ require (
 	github.com/grafana/loki/pkg/push v0.0.0-20231212100434-384e5c2dc872 // k180 branch
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.7
 	github.com/grafana/pyroscope/api v0.4.0
-	github.com/grafana/pyroscope/ebpf v0.4.6
+	github.com/grafana/pyroscope/ebpf v0.4.7
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20221213150626-862cad8e9538
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
@@ -246,6 +247,8 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
+require github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.99.0
+
 require (
 	cloud.google.com/go v0.112.0 // indirect
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
@@ -317,7 +320,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.17.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.27.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.29.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/shield v1.24.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.20.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.23.4 // indirect
@@ -327,6 +329,7 @@ require (
 	github.com/axiomhq/hyperloglog v0.0.0-20240124082744-24bca3a5b39b // indirect
 	github.com/beevik/ntp v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b // indirect
 	github.com/caarlos0/env/v9 v9.0.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
@@ -711,9 +714,10 @@ replace (
 // * There is a release of Prometheus which contains
 // prometheus/prometheus#13002
 // and prometheus/prometheus#13497
+// and https://github.com/grafana/prometheus/pull/34
 // We use the last v1-related tag as the replace statement does not work for v2
 // tags without the v2 suffix to the module root.
-replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20240130142130-51b39f24d406 // cmp_header_order branch
+replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20240513094155-793c8c9fe88e // cmp_header_order_and_staleness_disabling branch
 
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
 
