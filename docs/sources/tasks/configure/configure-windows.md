@@ -46,6 +46,7 @@ To change the set of command-line arguments passed to the {{< param "PRODUCT_NAM
 1. Double-click on the value called **Arguments***.
 
 1. In the dialog box, enter the new set of arguments to pass to the {{< param "PRODUCT_NAME" >}} binary.
+   Make sure that the `storage.path` argument is last in the set of arguments.
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
 
