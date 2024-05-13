@@ -14,7 +14,7 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
 
-## v1.1
+## v1.2
 
 ### Breaking change: `remotecfg` API (Public preview) using the term `collector` over `agent`
 
