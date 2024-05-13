@@ -15,6 +15,10 @@ Main (unreleased)
 - Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
   API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
 
+### Enhancements
+
+- Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
