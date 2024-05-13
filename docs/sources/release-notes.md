@@ -16,7 +16,15 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 ## v1.2
 
-### Breaking change: `remotecfg` API (Public preview) using the term `collector` over `agent`
+### Breaking change: `remotecfg` block updated for Agent rename
 
-The API has been updated to use `alloy-remote-config` over `agent-remote-config`. This change
-aligns `remotecfg` API terminology with Alloy.
+{{< admonition type="note" >}}
+This feature is in [Public preview][] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
+
+[Public preview]: https://grafana.com/docs/release-life-cycle/
+[backward compatibility]: ../introduction/backward-compatibility/
+{{< /admonition >}}
+
+The `remotecfg` block has been updated to use [alloy-remote-config](https://github.com/grafana/alloy-remote-config)
+over [agent-remote-config](https://github.com/grafana/agent-remote-config). This change
+aligns `remotecfg` API terminology with Alloy and includes updated endpoints.
