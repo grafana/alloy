@@ -10,6 +10,11 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes to non-GA functionality
+
+- Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
+  API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
