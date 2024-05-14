@@ -145,21 +145,26 @@ func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
 			close(dataCh)
 			a.debuggingStreamHandler.DeleteStream(componentID)
 		}
+		var builder strings.Builder
 
 		for {
 			select {
 			case data := <-dataCh:
-				var builder strings.Builder
+
 				builder.WriteString(data)
 				// |;| delimiter is added at the end of every chunk
 				builder.WriteString("|;|")
-				_, writeErr := w.Write([]byte(builder.String()))
-				if writeErr != nil {
-					stopStreaming()
-					return
+				println(builder.Len())
+				if builder.Len() > 1*1024*1024 {
+					_, writeErr := w.Write([]byte(builder.String()))
+					if writeErr != nil {
+						stopStreaming()
+						return
+					}
+					// TODO: flushing at a regular interval might be better performance wise
+					w.(http.Flusher).Flush()
+					builder.Reset()
 				}
-				// TODO: flushing at a regular interval might be better performance wise
-				w.(http.Flusher).Flush()
 			case <-ctx.Done():
 				stopStreaming()
 				return

@@ -1,9 +1,9 @@
 debug.test "mutator" {
-	number_of_concurrent_streams = 10000
+	number_of_concurrent_streams = 1
 }
 
 prometheus.scrape "scraper" {
-	targets         = concat([{"__address__" = "localhost:12345"}])
+	targets         = concat([{"__address__" = "localhost:12347","__path__"="/api/v0/component/prometheus.test.metrics.large/instance/0/metrics"}])
 	forward_to      = [prometheus.relabel.mutator.receiver]
 	scrape_interval = "10s"
 }

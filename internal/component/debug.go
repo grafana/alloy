@@ -67,6 +67,7 @@ func (i *instance) start(ctx context.Context, url string) error {
 	if err != nil {
 		return err
 	}
+	totalBytes := 0
 	buf := make([]byte, 1024)
 	// Read the response body
 	t := time.NewTicker(100 * time.Millisecond)
@@ -86,7 +87,8 @@ func (i *instance) start(ctx context.Context, url string) error {
 				println(fmt.Sprintf("%d err %s", i.id, err))
 				return err
 			}
-			println(fmt.Sprintf("%d read %d bytes", i.id, len(buf)))
+			totalBytes += len(buf)
+			println(fmt.Sprintf("%d read %d bytes", i.id, totalBytes))
 		}
 	}
 }
