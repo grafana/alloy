@@ -23,6 +23,12 @@ func TestStream(t *testing.T) {
 	require.Equal(t, "test data", receivedData)
 }
 
+func TestStreamEmpty(t *testing.T) {
+	manager := NewDebugStreamManager()
+	componentID := "component1"
+	require.NotPanics(t, func() { manager.Stream(componentID, "test data") })
+}
+
 func TestMultipleStreams(t *testing.T) {
 	manager := NewDebugStreamManager()
 	componentID := "component1"
@@ -55,9 +61,9 @@ func TestDeleteStream(t *testing.T) {
 
 	callback := func(data string) {}
 
-	// Deleting wrong stream should not panic
-	manager.DeleteStream(streamID, "fakeComponentID")
-	manager.DeleteStream("fakeStreamID", componentID)
+	// Deleting streams that don't exist should not panic
+	require.NotPanics(t, func() { manager.DeleteStream(streamID, "fakeComponentID") })
+	require.NotPanics(t, func() { manager.DeleteStream("fakeStreamID", componentID) })
 
 	manager.SetStream(streamID, componentID, callback)
 	manager.DeleteStream(streamID, componentID)
