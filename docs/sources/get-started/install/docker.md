@@ -89,20 +89,6 @@ Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as s
 If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
 {{< /admonition >}}
 
-### CNGCrypto images
-
-{{< admonition type="note" >}}
-CNGCrypto support is in _Public preview_ and is only available on AMD64 platforms.
-{{< /admonition >}}
-
-CNGCrypto images are published with every release starting with version
-1.1:
-
-* The latest CNGCrypto image is published as `grafana/alloy:nanoserver-1809-cngcrypto`.
-* A specific version of the CNGCrypto image is published as
-  `grafana/alloy:<VERSION>-nanoserver-1809-cngcrypto`, such as
-  `grafana/alloy:v1.1.0-nanoserver-1809-cngcrypto`.
-
 ## Verify
 
 To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to <http://localhost:12345> and make sure the {{< param "PRODUCT_NAME" >}} [UI][] loads without error.

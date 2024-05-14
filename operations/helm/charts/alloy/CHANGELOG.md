@@ -7,6 +7,16 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+Unreleased
+----------
+
+0.2.0 (2024-05-08)
+------------------
+
+### Other changes
+
+- Support all [Kubernetes recommended labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/) (@nlamirault)
+
 0.1.1 (2024-04-11)
 ------------------
 
