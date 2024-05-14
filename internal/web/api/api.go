@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service"
@@ -125,7 +126,9 @@ func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
 
 		sampleProb := setSampleProb(w, r.URL.Query().Get("sampleProb"))
 
-		a.debuggingStreamHandler.SetStream(componentID, func(data string) {
+		id := uuid.New().String()
+
+		a.debuggingStreamHandler.SetStream(id, componentID, func(data string) {
 			select {
 			case <-ctx.Done():
 				return
@@ -143,7 +146,7 @@ func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
 
 		defer func() {
 			close(dataCh)
-			a.debuggingStreamHandler.DeleteStream(componentID)
+			a.debuggingStreamHandler.DeleteStream(id, componentID)
 		}()
 
 		for {

@@ -270,9 +270,7 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	// TODO(@mattdurham): Instead of setting this each time could collect on demand for better performance.
 	c.cacheSize.Set(float64(c.cache.Len()))
 
-	if ds := c.debuggingStreamHandler.GetStream(c.opts.ID); ds != nil {
-		ds(fmt.Sprintf("%s => %s", lbls.String(), relabelled.String()))
-	}
+	c.debuggingStreamHandler.Stream(c.opts.ID, fmt.Sprintf("%s => %s", lbls.String(), relabelled.String()))
 
 	return relabelled
 }
