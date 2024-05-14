@@ -48,6 +48,8 @@ type Service struct {
 	ticker            *time.Ticker
 	dataPath          string
 	currentConfigHash string
+
+	initializedStorage bool
 }
 
 // ServiceName defines the name used for the remotecfg service.
@@ -106,12 +108,6 @@ func (a *Arguments) Hash() (string, error) {
 
 // New returns a new instance of the remotecfg service.
 func New(opts Options) (*Service, error) {
-	basePath := filepath.Join(opts.StoragePath, ServiceName)
-	err := os.MkdirAll(basePath, 0750)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Service{
 		opts:   opts,
 		ticker: time.NewTicker(math.MaxInt64),
@@ -134,6 +130,20 @@ func (s *Service) Definition() service.Definition {
 }
 
 var _ service.Service = (*Service)(nil)
+
+func (s *Service) initializeStorage() error {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	if !s.initializedStorage {
+		basePath := filepath.Join(s.opts.StoragePath, ServiceName)
+		err := os.MkdirAll(basePath, 0750)
+		if err == nil {
+			s.initializedStorage = true
+		}
+		return err
+	}
+	return nil
+}
 
 // Run implements [service.Service] and starts the remotecfg service. It will
 // run until the provided context is canceled or there is a fatal error.
@@ -221,7 +231,9 @@ func (s *Service) fetchRemote() error {
 	if !s.isEnabled() {
 		return nil
 	}
-
+	if err := s.initializeStorage(); err != nil {
+		level.Error(s.opts.Logger).Log("msg", "initializing remotecfg storage", "err", err)
+	}
 	b, err := s.getAPIConfig()
 	if err != nil {
 		return err
