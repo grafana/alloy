@@ -21,6 +21,9 @@ Main (unreleased)
   cluster instance to another could have a staleness marker inserted and result
   in a gap in metrics (@thampiotr)
 
+- If the port defined in `--server.http.listen-addr` or using the default listen address`127.0.0.1:12345` 
+  is not available then exit Alloy immediately. (@mattdurham)
+
 v1.1.0-rc.0
 -----------
 
