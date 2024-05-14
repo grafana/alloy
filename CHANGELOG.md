@@ -7,11 +7,8 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-Main (unreleased)
------------------
-
-v1.1.0-rc.0
------------
+v1.1.0
+------
 
 ### Features
 
