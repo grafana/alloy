@@ -90,8 +90,8 @@ To use all of the integration features, use the following AWS IAM Policy:
 
 ```alloy
 prometheus.exporter.cloudwatch "queues" {
-    sts_region = "us-east-2"
-
+    sts_region      = "us-east-2"
+    aws_sdk_version = "v2"
     discovery {
         type        = "sqs"
         regions     = ["us-east-2"]
@@ -122,6 +122,7 @@ Omitted fields take their default values.
 | Name                      | Type                | Description                                                                                                                                                                                                                             | Default | Required |
 | ------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `sts_region`              | `string`            | AWS region to use when calling [STS][] for retrieving account information.                                                                                                                                                              |         | yes      |
+| `aws_sdk_version`         | `string`            | AWS SDK version.                                                                                                                                                                                                                        | `v2`    | no       |
 | `fips_disabled`           | `bool`              | Disable use of FIPS endpoints. Set 'true' when running outside of USA regions.                                                                                                                                                          | `true`  | no       |
 | `debug`                   | `bool`              | Enable debug logging on CloudWatch exporter internals.                                                                                                                                                                                  | `false` | no       |
 | `discovery_exported_tags` | `map(list(string))` | List of tags (value) per service (key) to export in all metrics. For example, defining the `["name", "type"]` under `"AWS/EC2"` will export the name and type tags and its values as labels in all metrics. Affects all discovery jobs. | `{}`    | no       |
@@ -364,7 +365,7 @@ See the examples described under each [discovery][] and [static] sections.
 ## Supported services in discovery jobs
 
 The following is a list of AWS services that are supported in `cloudwatch_exporter` discovery jobs. When configuring a
-discovery job, the `type` field of each `discovery_job` must match either the desired job namespace or alias.
+discovery job, the `type` field of each `discovery_job` must match the desired job namespace.
 
 - Namespace: `CWAgent` or Alias: `cwagent`
 - Namespace: `AWS/Usage` or Alias: `usage`
