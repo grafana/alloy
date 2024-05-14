@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof" // Register pprof handlers
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -151,7 +152,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	netLis, err := net.Listen("tcp", s.opts.HTTPListenAddr)
 	if err != nil {
-		return fmt.Errorf("failed to listen on %s: %w", s.opts.HTTPListenAddr, err)
+		// There is no recovering from failing to listen on the port.
+		level.Error(s.log).Log("failed to listen on %s: %w", s.opts.HTTPListenAddr, err)
+		os.Exit(1)
 	}
 	if err := s.tcpLis.SetInner(netLis); err != nil {
 		return fmt.Errorf("failed to use listener: %w", err)
