@@ -10,8 +10,21 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes to non-GA functionality
+
+- Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
+  API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
+
 ### Bugfixes
- 
+
+- Fixed an issue with `prometheus.scrape` in which targets that move from one
+  cluster instance to another could have a staleness marker inserted and result
+  in a gap in metrics (@thampiotr)
+
+- Exit Alloy immediately if the port it runs on is not available. 
+  This port can be configured with `--server.http.listen-addr` or using
+  the default listen address`127.0.0.1:12345`. (@mattdurham) 
+
 - Fix clustering on instances running within Istio mesh by allowing to change the name of the clustering port
 
 v1.1.0-rc.0

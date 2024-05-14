@@ -121,6 +121,13 @@ func TestMetricsPipeline(t *testing.T) {
 		strings.NewReader(expectedMetrics)); err != nil {
 		t.Fatalf("mismatch metrics: %v", err)
 	}
+
+	pl.Cleanup()
+
+	if err := testutil.GatherAndCompare(registry,
+		strings.NewReader("")); err != nil {
+		t.Fatalf("mismatch metrics: %v", err)
+	}
 }
 
 func TestNegativeGauge(t *testing.T) {
