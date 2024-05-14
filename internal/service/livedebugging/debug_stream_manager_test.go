@@ -57,15 +57,26 @@ func TestMultipleStreams(t *testing.T) {
 func TestDeleteStream(t *testing.T) {
 	manager := NewDebugStreamManager()
 	componentID := "component1"
-	streamID := "stream1"
+	streamID1 := "stream1"
+	streamID2 := "stream2"
 
-	callback := func(data string) {}
+	callback1 := func(data string) {}
+	callback2 := func(data string) {}
+
+	manager.SetStream(streamID1, componentID, callback1)
+	manager.SetStream(streamID2, componentID, callback2)
+	require.Len(t, manager.streams[componentID], 2)
 
 	// Deleting streams that don't exist should not panic
-	require.NotPanics(t, func() { manager.DeleteStream(streamID, "fakeComponentID") })
+	require.NotPanics(t, func() { manager.DeleteStream(streamID1, "fakeComponentID") })
 	require.NotPanics(t, func() { manager.DeleteStream("fakeStreamID", componentID) })
 
-	manager.SetStream(streamID, componentID, callback)
-	manager.DeleteStream(streamID, componentID)
+	manager.SetStream(streamID1, componentID, callback1)
+	manager.SetStream(streamID2, componentID, callback2)
+
+	manager.DeleteStream(streamID1, componentID)
+	require.Len(t, manager.streams[componentID], 1)
+
+	manager.DeleteStream(streamID2, componentID)
 	require.Empty(t, manager.streams[componentID])
 }
