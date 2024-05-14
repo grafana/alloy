@@ -288,10 +288,9 @@ http://blackbox-exporter:9115/probe?target=grafana.com&module=http_2xx
 http://blackbox-exporter:9116/probe?target=grafana.com&module=http_2xx
 ```
 
-### Authentication with K8s API server
+### Authentication with the Kubernetes API server
 
-For `prometheus.scrape` installed in K8s environment, following example allows for succesful
-authentication with K8s API.
+The following example shows you how to authenticate with the Kubernetes API server.
 
 ```alloy
 prometheus.scrape "kubelet" {
