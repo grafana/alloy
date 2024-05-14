@@ -105,6 +105,9 @@ type Options struct {
 	// The result of GetServiceData may be cached as the value will not change at
 	// runtime.
 	GetServiceData func(name string) (interface{}, error)
+
+	// Minimum allowed stability level for features
+	MinStability featuregate.Stability
 }
 
 // Registration describes a single component.
