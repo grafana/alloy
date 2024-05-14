@@ -15,6 +15,14 @@ Main (unreleased)
 - Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
   API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
 
+### Breaking changes
+
+- Cloudwatch exporter is not allowing aliases for the namespaces as `type` value. For example: "s3" is not allowed, "AWS/S3" should be used. (@kgeckhart, @andriikushch)
+
+### Features
+
+- A new parameter `aws_sdk_version` is added for the cloudwatch exporters configuration. It enables the use of aws sdk v2 which is expected to come with performance benefits. (@kgeckhart, @andriikushch)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
