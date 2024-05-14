@@ -17,7 +17,7 @@ Main (unreleased)
 
 ### Enhancements
 
-- Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
+- (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
 
 ### Bugfixes
 
