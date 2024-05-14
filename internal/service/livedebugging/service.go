@@ -13,7 +13,7 @@ import (
 const ServiceName = "livedebugging"
 
 type Service struct {
-	debugStreamManager DebugStreamHandler
+	debugStreamManager DebugStreamManager
 }
 
 var _ service.Service = (*Service)(nil)

@@ -23,7 +23,7 @@ const ServiceName = "ui"
 // lifetime of the UI service.
 type Options struct {
 	UIPrefix               string                           // Path prefix to host the UI at.
-	DebuggingStreamHandler livedebugging.DebugStreamHandler // Debugging stream handler used for live debugging in the UI.
+	DebuggingStreamHandler livedebugging.DebugStreamManager // Debugging stream handler used for live debugging in the UI.
 }
 
 // Service implements the UI service.

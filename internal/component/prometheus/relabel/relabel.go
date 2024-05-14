@@ -86,7 +86,7 @@ type Component struct {
 	exited           atomic.Bool
 	ls               labelstore.LabelStore
 
-	debuggingStreamHandler livedebugging.DebugStreamHandler
+	debuggingStreamHandler livedebugging.DebugStreamManager
 
 	cacheMut sync.RWMutex
 	cache    *lru.Cache[uint64, *labelAndID]
@@ -116,7 +116,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:                   o,
 		cache:                  cache,
 		ls:                     data.(labelstore.LabelStore),
-		debuggingStreamHandler: debuggingStreamHandler.(livedebugging.DebugStreamHandler),
+		debuggingStreamHandler: debuggingStreamHandler.(livedebugging.DebugStreamManager),
 	}
 	c.metricsProcessed = prometheus_client.NewCounter(prometheus_client.CounterOpts{
 		Name: "alloy_prometheus_relabel_metrics_processed",

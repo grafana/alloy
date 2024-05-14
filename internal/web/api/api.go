@@ -23,11 +23,11 @@ import (
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
 	alloy                  service.Host
-	debuggingStreamHandler livedebugging.DebugStreamHandler
+	debuggingStreamHandler livedebugging.DebugStreamManager
 }
 
 // NewAlloyAPI instantiates a new Alloy API.
-func NewAlloyAPI(alloy service.Host, debuggingStreamHandler livedebugging.DebugStreamHandler) *AlloyAPI {
+func NewAlloyAPI(alloy service.Host, debuggingStreamHandler livedebugging.DebugStreamManager) *AlloyAPI {
 	return &AlloyAPI{alloy: alloy, debuggingStreamHandler: debuggingStreamHandler}
 }
 
