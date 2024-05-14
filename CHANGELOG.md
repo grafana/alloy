@@ -14,6 +14,10 @@ Main (unreleased)
 
 - Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
 
+- Exit Alloy immediately if the port it runs on is not available.
+  This port can be configured with `--server.http.listen-addr` or using
+  the default listen address`127.0.0.1:12345`. (@mattdurham)
+
 v1.1.0
 ------
 
