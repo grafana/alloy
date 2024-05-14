@@ -8,51 +8,81 @@ weight: 10
 
 # {{% param "PRODUCT_NAME" %}} configuration syntax
 
-{{< param "FULL_PRODUCT_NAME" >}} dynamically configures and connects components with the {{< param "PRODUCT_NAME" >}} configuration syntax.
+{{< param "FULL_PRODUCT_NAME" >}} dynamically configures and connects components with the {{< param "PRODUCT_NAME" >}} configuration syntax. Overall, {{< param "FULL_PRODUCT_NAME" >}} handles the collection, transformation, and delivery of telemetry data, and so each component in the configuration handles one of those tasks, or specifies how data flows (for example from collection to transformation), and so how the components are bound together.
+
+{{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
+
+Here is a simple example of a fully worked configuration, showing the basic concepts, and how an Alloy config comes together into a pipeline.
+
+```alloy
+// Collection: mount a local directory with a certain path spec
+local.file_match "applogs" {
+    path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+}
+
+// Collection: Take the file match as input, and scrape those mounted log files
+loki.source.file "local_files" {
+    targets    = local.file_match.applogs.targets
+
+    // This specifies which component should process the logs next, the "link in the chain"
+    forward_to = [loki.process.add_new_label.receiver]
+}
+
+// Transformation: pull some data out of the log message, and turn it into a label
+loki.process "add_new_label" {
+    stage.logfmt {
+        mapping = {
+            "extracted_level" = "level",
+        }
+    }
+
+    // Add the value of "extracted_level" from the extracted map as a "level" label
+    stage.labels {
+        values = {
+            "level" = "extracted_level",
+        }
+    }
+
+    // The next link in the chain is the local_loki "receiver" (receives the telemetry)
+    forward_to = [loki.write.local_loki.receiver]
+}
+
+// Anything that comes into this component gets written to the loki remote API
+loki.write "local_loki" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}
+```
 
 The {{< param "PRODUCT_NAME" >}} syntax aims to reduce errors in configuration files by making configurations easier to read and write.
 {{< param "PRODUCT_NAME" >}} configurations use blocks that can be easily copied and pasted from the documentation to help you get started as quickly as possible.
 
-An {{< param "PRODUCT_NAME" >}} configuration file tells {{< param "PRODUCT_NAME" >}} which components to launch and how to bind them together into a pipeline.
+The {{< param "PRODUCT_NAME" >}} syntax is declarative, so ordering components, blocks, and attributes does not matter.
+The relationship between components determines the order of operations in the pipeline.
 
-The {{< param "PRODUCT_NAME" >}} syntax uses blocks, attributes, and expressions.
+The {{< param "PRODUCT_NAME" >}} syntax uses blocks, attributes, and expressions, which are now explained, with examples.
+
+## Blocks
+
+You use _Blocks_ to configure components and groups of attributes.
+Each block can contain any number of attributes or nested blocks. 
+Blocks are steps in the overall pipeline expressed by the configuration.
 
 ```alloy
-// Create a local.file component labeled my_file.
-// This can be referenced by other components as local.file.my_file.
-local.file "my_file" {
-  filename = "/tmp/my-file.txt"
-}
-
-// Pattern for creating a labeled block, which the above block follows:
-BLOCK_NAME "BLOCK_LABEL" {
-  // Block body
-  IDENTIFIER = EXPRESSION // Attribute
-}
-
-// Pattern for creating an unlabeled block:
-BLOCK_NAME {
-  // Block body
-  IDENTIFIER = EXPRESSION // Attribute
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://localhost:9009/api/prom/push"
+  }
 }
 ```
 
-{{< param "PRODUCT_NAME" >}} is designed with the following requirements in mind:
+The preceding example has two blocks:
 
-* _Fast_: The configuration language must be fast so the component controller can quickly evaluate changes.
-* _Simple_: The configuration language must be easy to read and write to minimize the learning curve.
-* _Debuggable_: The configuration language must give detailed information when there's a mistake in the configuration file.
-
-The {{< param "PRODUCT_NAME" >}} configuration syntax is a distinct language with custom syntax and features, such as first-class functions.
-
-* Blocks are a group of related settings and usually represent creating a component.
-  Blocks have a name that consists of zero or more identifiers separated by `.`, an optional user label, and a body containing attributes and nested blocks.
-* Attributes appear within blocks and assign a value to a name.
-* Expressions represent a value, either literally or by referencing and combining other values.
-  You use expressions to compute a value for an attribute.
-
-The {{< param "PRODUCT_NAME" >}} syntax is declarative, so ordering components, blocks, and attributes within a block isn't significant.
-The relationship between components determines the order of operations.
+* `prometheus.remote_write "default"`: A labeled block which instantiates a `prometheus.remote_write` component.
+  The label is the string `"default"`.
+* `endpoint`: An unlabeled block inside the component that configures an endpoint to send metrics to.
+  This block sets the `url` attribute to specify the endpoint.
 
 ## Attributes
 
@@ -84,26 +114,21 @@ The most common expression is to reference the exports of a component, for examp
 You form a reference to a component's exports by merging the component's name (for example, `local.file`),
 label (for example, `password_file`), and export name (for example, `content`), delimited by a period.
 
-## Blocks
+## Configuration syntax design goals
 
-You use _Blocks_ to configure components and groups of attributes.
-Each block can contain any number of attributes or nested blocks.
+{{< param "PRODUCT_NAME" >}} is designed with the following requirements in mind:
 
-```alloy
-prometheus.remote_write "default" {
-  endpoint {
-    url = "http://localhost:9009/api/prom/push"
-  }
-}
-```
+* _Fast_: The configuration language must be fast so the component controller can quickly evaluate changes.
+* _Simple_: The configuration language must be easy to read and write to minimize the learning curve.
+* _Debuggable_: The configuration language must give detailed information when there's a mistake in the configuration file.
 
-The preceding example has two blocks:
+The {{< param "PRODUCT_NAME" >}} configuration syntax is a distinct language with custom syntax and features, such as first-class functions.
 
-* `prometheus.remote_write "default"`: A labeled block which instantiates a `prometheus.remote_write` component.
-  The label is the string `"default"`.
-* `endpoint`: An unlabeled block inside the component that configures an endpoint to send metrics to.
-  This block sets the `url` attribute to specify the endpoint.
-
+* Blocks are a group of related settings and usually represent creating a component.
+  Blocks have a name that consists of zero or more identifiers separated by `.`, an optional user label, and a body containing attributes and nested blocks.
+* Attributes appear within blocks and assign a value to a name.
+* Expressions represent a value, either literally or by referencing and combining other values.
+  You use expressions to compute a value for an attribute.
 
 ## Tooling
 
