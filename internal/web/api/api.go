@@ -121,6 +121,7 @@ func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
 		componentID := vars["id"]
 
 		// Buffer of 1000 entries to handle load spikes and prevent this functionality from eating up too much memory.
+		// TODO: in the future we may want to make this value configurable to handle heavy load
 		dataCh := make(chan string, 1000)
 		ctx := r.Context()
 
