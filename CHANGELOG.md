@@ -33,8 +33,8 @@ Main (unreleased)
 
 - `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0.
 
-v1.1.0-rc.0
------------
+v1.1.0
+------
 
 ### Features
 
