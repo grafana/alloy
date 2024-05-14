@@ -141,10 +141,10 @@ func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
 			}
 		})
 
-		stopStreaming := func() {
+		defer func() {
 			close(dataCh)
 			a.debuggingStreamHandler.DeleteStream(componentID)
-		}
+		}()
 
 		for {
 			select {
@@ -155,13 +155,11 @@ func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
 				builder.WriteString("|;|")
 				_, writeErr := w.Write([]byte(builder.String()))
 				if writeErr != nil {
-					stopStreaming()
 					return
 				}
 				// TODO: flushing at a regular interval might be better performance wise
 				w.(http.Flusher).Flush()
 			case <-ctx.Done():
-				stopStreaming()
 				return
 			}
 		}
