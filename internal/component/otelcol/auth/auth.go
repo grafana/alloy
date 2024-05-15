@@ -168,7 +168,7 @@ func (a *Auth) Update(args component.Arguments) error {
 		components = append(components, ext)
 	}
 
-	cTypeStr := strings.ReplaceAll(a.opts.ID, ".", "_")
+	cTypeStr := strings.ReplaceAll(strings.ReplaceAll(a.opts.ID, ".", "_"), "/", "_")
 
 	// Inform listeners that our handler changed.
 	a.opts.OnStateChange(Exports{
