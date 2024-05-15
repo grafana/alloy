@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/featuregate"
-	alloyRuntime "github.com/grafana/alloy/internal/runtime"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
@@ -298,7 +298,7 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 	}
 
 	if reloadConfig != "" {
-		f, err = alloyRuntime.ParseSource(t.Name(), []byte(reloadConfig))
+		f, err = alloy_runtime.ParseSource(t.Name(), []byte(reloadConfig))
 		require.NoError(t, err)
 		require.NotNil(t, f)
 
@@ -333,17 +333,17 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 	}()
 }
 
-func setup(t *testing.T, config string) (*alloyRuntime.Runtime, *alloyRuntime.Source) {
+func setup(t *testing.T, config string) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
 	s, err := logging.New(os.Stderr, logging.DefaultOptions)
 	require.NoError(t, err)
-	ctrl := alloyRuntime.New(alloyRuntime.Options{
+	ctrl := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       s,
 		DataPath:     t.TempDir(),
 		MinStability: featuregate.StabilityPublicPreview,
 		Reg:          nil,
 		Services:     []service.Service{},
 	})
-	f, err := alloyRuntime.ParseSource(t.Name(), []byte(config))
+	f, err := alloy_runtime.ParseSource(t.Name(), []byte(config))
 	require.NoError(t, err)
 	require.NotNil(t, f)
 	return ctrl, f

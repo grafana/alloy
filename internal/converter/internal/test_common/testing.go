@@ -14,7 +14,7 @@ import (
 
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
-	alloyRuntime "github.com/grafana/alloy/internal/runtime"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	cluster_service "github.com/grafana/alloy/internal/service/cluster"
@@ -174,7 +174,7 @@ func validateAlloy(t *testing.T, expectedAlloy []byte, actualAlloy []byte, loadA
 
 // attemptLoadingAlloyConfig will attempt to load the Alloy config and report any errors.
 func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
-	cfg, err := alloyRuntime.ParseSource(t.Name(), bb)
+	cfg, err := alloy_runtime.ParseSource(t.Name(), bb)
 	require.NoError(t, err, "the output Alloy config failed to parse: %s", string(normalizeLineEndings(bb)))
 
 	// The below check suffers from test race conditions on Windows. Our goal here is to verify config conversions,
@@ -194,7 +194,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 	})
 	require.NoError(t, err)
 
-	f := alloyRuntime.New(alloyRuntime.Options{
+	f := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       logger,
 		DataPath:     t.TempDir(),
 		MinStability: featuregate.StabilityExperimental,

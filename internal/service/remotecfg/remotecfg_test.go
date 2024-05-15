@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	_ "github.com/grafana/alloy/internal/component/loki/process"
 	"github.com/grafana/alloy/internal/featuregate"
-	alloyRuntime "github.com/grafana/alloy/internal/runtime"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
@@ -165,7 +165,7 @@ func (fakeHost) GetService(_ string) (service.Service, bool)     { return nil, f
 
 func (f fakeHost) NewController(id string) service.Controller {
 	logger, _ := logging.New(io.Discard, logging.DefaultOptions)
-	ctrl := alloyRuntime.New(alloyRuntime.Options{
+	ctrl := alloy_runtime.New(alloy_runtime.Options{
 		ControllerID:    ServiceName,
 		Logger:          logger,
 		Tracer:          nil,
@@ -211,12 +211,12 @@ func (ag *collectorClient) ListCollectors(context.Context, *connect.Request[coll
 }
 
 type serviceController struct {
-	f *alloyRuntime.Runtime
+	f *alloy_runtime.Runtime
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
 func (sc serviceController) LoadSource(b []byte, args map[string]any) error {
-	source, err := alloyRuntime.ParseSource("", b)
+	source, err := alloy_runtime.ParseSource("", b)
 	if err != nil {
 		return err
 	}
