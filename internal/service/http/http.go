@@ -16,10 +16,10 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/alloy"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	alloyRuntime "github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/static/server"
 	"github.com/grafana/ckit/memconn"
@@ -44,7 +44,7 @@ type Options struct {
 	Gatherer prometheus.Gatherer  // Where to collect metrics from.
 
 	ReadyFunc  func() bool
-	ReloadFunc func() (*alloy.Source, error)
+	ReloadFunc func() (*alloyRuntime.Source, error)
 
 	HTTPListenAddr   string // Address to listen for HTTP traffic on.
 	MemoryListenAddr string // Address to accept in-memory traffic on.

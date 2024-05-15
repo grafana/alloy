@@ -10,8 +10,8 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/loki/clients/pkg/promtail/targets/target"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"

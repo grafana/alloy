@@ -10,7 +10,7 @@ import (
 
 	"github.com/alecthomas/units"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

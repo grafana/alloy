@@ -8,9 +8,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-sourcemap/sourcemap"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
