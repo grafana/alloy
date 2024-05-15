@@ -78,8 +78,7 @@ v1.1.0
   by electing a single instance as the leader for the `mimir.rules.kubernetes` component
   to avoid conflicts when making calls to the Mimir API. (@56quarters)
 
-- Add `static_configs_labels` query parameter for the `loki.source.awsfirehose` http handler. It allows
-  to set custom static labels to the AWS Firehose logs (@andriikushch)
+- Add the possibility of setting custom labels for the AWS Firehose logs via `X-Amz-Firehose-Common-Attributes` header. (@andriikushch)
 
 ### Bugfixes
 
