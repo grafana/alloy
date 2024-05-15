@@ -183,6 +183,8 @@ func getManagedOptions(globals ComponentGlobals, cn *BuiltinComponentNode) compo
 		GetServiceData: func(name string) (interface{}, error) {
 			return globals.GetServiceData(name)
 		},
+
+		MinStability: globals.MinStability,
 	}
 }
 

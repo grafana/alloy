@@ -15,6 +15,10 @@ Main (unreleased)
 - Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
   API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
 
+### Enhancements
+
+- (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
@@ -29,6 +33,13 @@ Main (unreleased)
 
 v1.1.0-rc.0
 -----------
+
+### Other changes
+
+- `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0.
+
+v1.1.0
+------
 
 ### Features
 
