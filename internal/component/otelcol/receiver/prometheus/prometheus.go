@@ -118,6 +118,11 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		gcInterval = 5 * time.Minute
 	)
 
+	metricsLevel, err := cfg.DebugMetrics.Level.Convert()
+	if err != nil {
+		return err
+	}
+
 	settings := otelreceiver.CreateSettings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
@@ -125,7 +130,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 			// TODO(tpaschalis): expose tracing and logging statistics.
 			TracerProvider: traceNoop.NewTracerProvider(),
 			MeterProvider:  metricNoop.NewMeterProvider(),
-			MetricsLevel:   cfg.DebugMetrics.Level.ToLevel(),
+			MetricsLevel:   metricsLevel,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},

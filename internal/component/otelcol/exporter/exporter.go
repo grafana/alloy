@@ -170,13 +170,18 @@ func (e *Exporter) Update(args component.Arguments) error {
 		metricOpts = append(metricOpts, metric.WithView(views.DropHighCardinalityServerAttributes()...))
 	}
 
+	metricsLevel, err := debugMetricsConfig.Level.Convert()
+	if err != nil {
+		return err
+	}
+
 	settings := otelexporter.CreateSettings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metricOpts...),
-			MetricsLevel:   debugMetricsConfig.Level.ToLevel(),
+			MetricsLevel:   metricsLevel,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},

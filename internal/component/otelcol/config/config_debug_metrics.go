@@ -1,6 +1,10 @@
 package otelcol
 
-import "go.opentelemetry.io/collector/config/configtelemetry"
+import (
+	"fmt"
+
+	"go.opentelemetry.io/collector/config/configtelemetry"
+)
 
 type Level string
 
@@ -15,16 +19,18 @@ const (
 	LevelDetailed = "detailed"
 )
 
-func (l Level) Convert() configtelemetry.Level {
+func (l Level) Convert() (configtelemetry.Level, error) {
 	switch l {
 	case LevelNone:
-		return configtelemetry.LevelNone
+		return configtelemetry.LevelNone, nil
 	case LevelNormal:
-		return configtelemetry.LevelNormal
+		return configtelemetry.LevelNormal, nil
 	case LevelBasic:
-		return configtelemetry.LevelBasic
+		return configtelemetry.LevelBasic, nil
+	case LevelDetailed:
+		return configtelemetry.LevelDetailed, nil
 	default:
-		return configtelemetry.LevelDetailed
+		return configtelemetry.LevelBasic, fmt.Errorf("unrecognized debug metric level: %s", l)
 	}
 }
 

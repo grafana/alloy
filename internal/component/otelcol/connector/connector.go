@@ -147,13 +147,18 @@ func (p *Connector) Update(args component.Arguments) error {
 		return err
 	}
 
+	metricsLevel, err := pargs.DebugMetricsConfig().Level.Convert()
+	if err != nil {
+		return err
+	}
+
 	settings := otelconnector.CreateSettings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(p.opts.Logger),
 
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
-			MetricsLevel:   pargs.DebugMetricsConfig().Level.ToLevel(),
+			MetricsLevel:   metricsLevel,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},

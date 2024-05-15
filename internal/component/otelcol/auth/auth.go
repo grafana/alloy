@@ -140,13 +140,18 @@ func (a *Auth) Update(args component.Arguments) error {
 		return err
 	}
 
+	metricsLevel, err := rargs.DebugMetricsConfig().Level.Convert()
+	if err != nil {
+		return err
+	}
+
 	settings := otelextension.CreateSettings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(a.opts.Logger),
 
 			TracerProvider: a.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
-			MetricsLevel:   rargs.DebugMetricsConfig().Level.ToLevel(),
+			MetricsLevel:   metricsLevel,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},
