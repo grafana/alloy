@@ -62,7 +62,7 @@ require (
 	github.com/grafana/jfr-parser/pprof v0.0.0-20240126072739-986e71dc0361
 	github.com/grafana/jsonparser v0.0.0-20240209175146-098958973a2d
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
-	github.com/grafana/loki v1.6.2-0.20240221085104-f9d188620153 // k190 branch
+	github.com/grafana/loki v1.6.2-0.20240510183741-cef4c2826b4b // k190 branch
 	github.com/grafana/loki/pkg/push v0.0.0-20231212100434-384e5c2dc872 // k180 branch
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.7
 	github.com/grafana/pyroscope/api v0.4.0
@@ -156,7 +156,7 @@ require (
 	github.com/prometheus/node_exporter v1.6.0
 	github.com/prometheus/procfs v0.12.0
 	github.com/prometheus/prometheus v1.99.0
-	github.com/prometheus/snmp_exporter v0.24.1
+	github.com/prometheus/snmp_exporter v0.26.0
 	github.com/prometheus/statsd_exporter v0.22.8
 	github.com/richardartoul/molecule v1.0.1-0.20221107223329-32cfee06a052
 	github.com/rs/cors v1.10.1
@@ -432,7 +432,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.12.2 // indirect
 	github.com/gophercloud/gophercloud v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/gosnmp/gosnmp v1.36.0 // indirect
+	github.com/gosnmp/gosnmp v1.37.0 // indirect
 	github.com/grafana/go-offsets-tracker v0.1.7 // indirect
 	github.com/grafana/gomemcache v0.0.0-20231204155601-7de47a8c3cb0 // indirect
 	github.com/grafana/jfr-parser v0.8.0 // indirect
