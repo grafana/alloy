@@ -46,6 +46,11 @@ type Arguments struct {
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	args.DebugMetrics.SetToDefault()
+}
+
 // Exports are the set of fields exposed by the otelcol.receiver.prometheus
 // component.
 type Exports struct {

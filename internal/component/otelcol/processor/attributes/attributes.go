@@ -49,6 +49,11 @@ var (
 	_ processor.Arguments = Arguments{}
 )
 
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	args.DebugMetrics.SetToDefault()
+}
+
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input := make(map[string]interface{})

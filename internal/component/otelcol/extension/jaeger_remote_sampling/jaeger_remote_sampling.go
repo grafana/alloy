@@ -60,6 +60,11 @@ var (
 	_ extension.Arguments = Arguments{}
 )
 
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	args.DebugMetrics.SetToDefault()
+}
+
 // Convert implements extension.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &jaegerremotesampling.Config{

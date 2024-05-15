@@ -40,6 +40,11 @@ type Arguments struct {
 
 var _ auth.Arguments = Arguments{}
 
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	args.DebugMetrics.SetToDefault()
+}
+
 // Convert implements auth.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &basicauthextension.Config{

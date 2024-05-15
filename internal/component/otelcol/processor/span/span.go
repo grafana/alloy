@@ -51,6 +51,11 @@ var (
 	_ processor.Arguments = Arguments{}
 )
 
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	args.DebugMetrics.SetToDefault()
+}
+
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args == nil {
