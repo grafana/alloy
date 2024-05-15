@@ -39,6 +39,9 @@ Main (unreleased)
 
 - Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
 
+- Fix error on boot when using IPv6 advertise addresses without explicitly
+  specifying a port. (@matthewpi)
+
 ### Other changes
 
 - `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0.
