@@ -115,7 +115,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		gcInterval = 5 * time.Minute
 	)
 
-	cTypeStr := strings.ReplaceAll(c.opts.ID, ".", "_")
+	cTypeStr := strings.ReplaceAll(strings.ReplaceAll(c.opts.ID, ".", "_"), "/", "_")
 
 	settings := otelreceiver.CreateSettings{
 
