@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"embed"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,15 +15,14 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
-
-	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 const (
@@ -490,10 +488,14 @@ func TestHandlerWithStaticConfigsLabels(t *testing.T) {
 	tests := map[string]testcase{
 		"direct put data, static labels": {
 			Body: readTestData(t, "testdata/direct_put.json"),
-			StaticLabelsConfig: `---
-"mylabel1": "myvalue1"
-"mylabel2": myvalue2
-`,
+			StaticLabelsConfig: `
+				{
+				  "commonAttributes": {
+					"lbl_mylabel1": "myvalue1",
+					"lbl_mylabel2": "myvalue2"
+				  }
+				}
+			`,
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
 				r := response{}
 				require.NoError(t, json.Unmarshal(res.Body.Bytes(), &r))
@@ -509,10 +511,14 @@ func TestHandlerWithStaticConfigsLabels(t *testing.T) {
 		},
 		"cloudwatch logs-subscription data, static labels": {
 			Body: readTestData(t, "testdata/cw_logs_with_only_control_messages.json"),
-			StaticLabelsConfig: `---
-"mylabel1": "myvalue1"
-"mylabel2": myvalue2
-`,
+			StaticLabelsConfig: `
+				{
+				  "commonAttributes": {
+					"lbl_mylabel1": "myvalue1",
+					"lbl_mylabel2": "myvalue2"
+				  }
+				}
+			`,
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
 				r := response{}
 				require.NoError(t, json.Unmarshal(res.Body.Bytes(), &r))
@@ -539,12 +545,11 @@ func TestHandlerWithStaticConfigsLabels(t *testing.T) {
 
 			var bodyReader io.Reader = strings.NewReader(tc.Body)
 
-			encodedConfig := base64.StdEncoding.EncodeToString([]byte(tc.StaticLabelsConfig))
-
-			req, err := http.NewRequest("POST", fmt.Sprintf("https://example/com?%s=%s", staticConfigsLabelsParameter, encodedConfig), bodyReader)
+			req, err := http.NewRequest("POST", "https://example.com", bodyReader)
 			req.Header.Set("X-Amz-Firehose-Request-Id", testRequestID)
 			req.Header.Set("X-Amz-Firehose-Source-Arn", testSourceARN)
 			req.Header.Set("X-Amz-Firehose-Protocol-Version", "1.0")
+			req.Header.Set(commonAttributesHeader, tc.StaticLabelsConfig)
 			req.Header.Set("User-Agent", "Amazon Kinesis Data Firehose Agent/1.0")
 			if tc.TenantID != "" {
 				req.Header.Set("X-Scope-OrgID", tc.TenantID)
@@ -573,18 +578,28 @@ func TestGetStaticLabelsFromRequest(t *testing.T) {
 		want   model.LabelSet
 	}{
 		{
-			name:   "single label",
-			config: `label1: "value1"`,
+			name: "single label",
+			config: `
+				{
+				  "commonAttributes": {
+					"lbl_label1": "value1"
+				  }
+				}
+			`,
 			want: model.LabelSet{
 				"label1": "value1",
 			},
 		},
 		{
 			name: "multiple labels",
-			config: `---
-label1: "value1"
-label2: "value2"
-`,
+			config: `
+				{
+				  "commonAttributes": {
+					"lbl_label1": "value1",
+					"lbl_label2": "value2"
+				  }
+				}
+			`,
 			want: model.LabelSet{
 				"label1": "value1",
 				"label2": "value2",
@@ -593,7 +608,7 @@ label2: "value2"
 		{
 			name:   "empty config",
 			config: ``,
-			want:   model.LabelSet{},
+			want:   nil,
 		},
 	}
 
@@ -601,67 +616,128 @@ label2: "value2"
 		t.Run(tt.name, func(t *testing.T) {
 			handler := &Handler{}
 
-			encodedConfig := base64.StdEncoding.EncodeToString([]byte(tt.config))
-			req := httptest.NewRequest(http.MethodGet, "https://example.com?static_configs_labels="+encodedConfig, nil)
-			got, err := handler.getStaticLabelsFromRequest(req)
-			require.NoError(t, err)
+			req := httptest.NewRequest(http.MethodGet, "https://example.com", nil)
+			req.Header.Set(commonAttributesHeader, tt.config)
+			got := handler.tryToGetStaticLabelsFromRequest(req)
 
-			receivedConfig, err := yaml.Marshal(got)
-			require.NoError(t, err)
-			expectedConfig, err := yaml.Marshal(tt.want)
-			require.NoError(t, err)
-
-			require.YAMLEq(t, string(expectedConfig), string(receivedConfig))
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
 
-func TestGetStaticLabelsFromRequest_UnmarshalError(t *testing.T) {
+func TestGetStaticLabelsFromRequest_NoError_InvalidData(t *testing.T) {
 	tests := []struct {
-		name   string
-		config string
+		name            string
+		config          string
+		want            model.LabelSet
+		expectedMetrics string
 	}{
 		{
 			name:   "invalid config",
 			config: `!@#$%^&*()_`,
+			expectedMetrics: `
+				# HELP loki_source_awsfirehose_invalid_static_labels_errors Number of errors while processing AWS Firehose static labels
+				# TYPE loki_source_awsfirehose_invalid_static_labels_errors counter
+				loki_source_awsfirehose_invalid_static_labels_errors{reason="invalid_json_format",tenant_id="001"} 1
+			`,
+			want: model.LabelSet(nil),
 		},
 		{
-			name:   "invalid label name",
-			config: `l@bel: "value"`,
+			name: "invalid label name",
+			config: `
+				{
+				  "commonAttributes": {
+					"lbl_l@bel1": "value1"
+				  }
+				}
+			`,
+
+			want: model.LabelSet{
+				"l_bel1": "value1",
+			},
+		},
+		{
+			name: "invalid label name, mixed case",
+			config: `
+				{
+				  "commonAttributes": {
+					"lbl_L@bEl1%": "value1"
+				  }
+				}
+			`,
+			want: model.LabelSet{
+				"l_b_el1_percent": "value1",
+			},
+		},
+		{
+			name: "invalid label name",
+			config: `
+				{
+				  "commonAttributes": {
+					"\xed\xa0\x80\x80": "value1"
+				  }
+				}
+			`,
+			expectedMetrics: `
+				# HELP loki_source_awsfirehose_invalid_static_labels_errors Number of errors while processing AWS Firehose static labels
+				# TYPE loki_source_awsfirehose_invalid_static_labels_errors counter
+				loki_source_awsfirehose_invalid_static_labels_errors{reason="invalid_json_format",tenant_id="001"} 1
+			`,
+			want: model.LabelSet(nil),
+		},
+		{
+			name: "invalid label value, invalid JSON",
+			config: `
+				{
+				  "commonAttributes": {
+					"label1": "\xed\xa0\x80\x80"
+				  }
+				}
+			`,
+			expectedMetrics: `
+				# HELP loki_source_awsfirehose_invalid_static_labels_errors Number of errors while processing AWS Firehose static labels
+				# TYPE loki_source_awsfirehose_invalid_static_labels_errors counter
+				loki_source_awsfirehose_invalid_static_labels_errors{reason="invalid_json_format",tenant_id="001"} 1
+			`,
+			want: model.LabelSet(nil),
+		},
+		{
+			name: "invalid label",
+			config: `
+				{
+				  "commonAttributes": {
+					"lbl_0mylable": "value"
+				  }
+				}
+			`,
+			expectedMetrics: `
+				# HELP loki_source_awsfirehose_invalid_static_labels_errors Number of errors while processing AWS Firehose static labels
+				# TYPE loki_source_awsfirehose_invalid_static_labels_errors counter
+				loki_source_awsfirehose_invalid_static_labels_errors{reason="invalid_label_name",tenant_id="001"} 1
+			`,
+			want: model.LabelSet{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := &Handler{}
+			w := log.NewSyncWriter(os.Stderr)
+			logger := log.NewLogfmtLogger(w)
 
-			encodedConfig := base64.StdEncoding.EncodeToString([]byte(tt.config))
-			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("https://example.com?%s=%s", staticConfigsLabelsParameter, encodedConfig), nil)
-			_, err := handler.getStaticLabelsFromRequest(req)
-			require.Error(t, err)
-		})
-	}
-}
+			testReceiver := &receiver{entries: make([]loki.Entry, 0)}
+			registry := prometheus.NewRegistry()
+			accessKey := ""
+			handler := NewHandler(testReceiver, logger, NewMetrics(registry), nil, false, accessKey)
 
-func TestGetStaticLabelsFromRequest_InvalidBase64Value(t *testing.T) {
-	tests := []struct {
-		name          string
-		relabelConfig string
-	}{
-		{
-			name: "invalid encoded config",
-			// From prometheus/config/testdata/conf.good.yml.
-			relabelConfig: `XYZ`,
-		},
-	}
+			req := httptest.NewRequest(http.MethodGet, "https://example.com", nil)
+			req.Header.Set(commonAttributesHeader, tt.config)
+			req.Header.Set("X-Scope-OrgID", "001")
+			got := handler.tryToGetStaticLabelsFromRequest(req)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			handler := &Handler{}
+			require.Equal(t, tt.want, got)
 
-			req := httptest.NewRequest(http.MethodGet, "https://example.com?static_configs_labels="+tt.relabelConfig, nil)
-			_, err := handler.getStaticLabelsFromRequest(req)
-			require.Error(t, err)
+			err := testutil.GatherAndCompare(registry, strings.NewReader(tt.expectedMetrics), "loki_source_awsfirehose_invalid_static_labels_errors")
+			require.NoError(t, err)
 		})
 	}
 }

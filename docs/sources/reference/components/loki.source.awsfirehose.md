@@ -136,6 +136,7 @@ The metrics include labels  such as `status_code` where relevant, which you can 
 - `loki_source_awsfirehose_record_errors` (counter): Count of errors while decoding an individual record.
 - `loki_source_awsfirehose_records_received` (counter): Count of records received.
 - `loki_source_awsfirehose_batch_size` (histogram): Size (in units) of the number of records received per request.
+- `loki_source_awsfirehose_invalid_static_labels_errors` (counter): Count number of errors while processing AWS Firehose static labels.
 
 ## Example
 

@@ -11,16 +11,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/loki/pkg/logproto"
+	yacepromutil "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/promutil"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
-	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	lokiClient "github.com/grafana/alloy/internal/component/common/loki/client"
@@ -36,7 +37,8 @@ const (
 
 	millisecondsPerSecond = 1000
 
-	staticConfigsLabelsParameter = "static_configs_labels"
+	commonAttributesHeader      = "X-Amz-Firehose-Common-Attributes"
+	commonAttributesLabelPrefix = "lbl_"
 )
 
 // RecordOrigin is a type that tells from which origin the data received from AWS Firehose comes.
@@ -47,6 +49,12 @@ const (
 	OriginDirectPUT      RecordOrigin = "direct-put"
 	OriginUnknown        RecordOrigin = "unknown"
 )
+
+// commonAttributes is a struct to Unmarshal value from the "X-Amz-Firehose-Common-Attributes" header.
+// Specification of the value: https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html#:~:text=HTTP%20Headers%20%2D%20X%2DAmz%2DFirehose%2DCommon%2DAttributes
+type commonAttributes struct {
+	CommonAttributes map[string]string `json:"commonAttributes"`
+}
 
 // Sender is an interface that decouples the Firehose request handler from the destination where read loki entries
 // should be written to.
@@ -117,10 +125,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// common labels contains all record-wide labels
 	commonLabels := labels.NewBuilder(nil)
 
-	requestStaticLabels, err := h.getStaticLabelsFromRequest(req)
-	if err != nil {
-		level.Error(h.logger).Log("msg", "failed to get static labels from the request", "err", err.Error())
-		http.Error(w, fmt.Sprintf("Failed to get static labels from the %s", staticConfigsLabelsParameter), http.StatusBadRequest)
+	requestStaticLabels := h.tryToGetStaticLabelsFromRequest(req)
+	for l, v := range requestStaticLabels {
+		commonLabels.Set(string(l), string(v))
 	}
 
 	for l, v := range requestStaticLabels {
@@ -131,9 +138,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	commonLabels.Set("__aws_firehose_source_arn", req.Header.Get("X-Amz-Firehose-Source-Arn"))
 
 	// if present, use the tenantID header
-	tenantHeader := req.Header.Get("X-Scope-OrgID")
-	if tenantHeader != "" {
-		commonLabels.Set(lokiClient.ReservedLabelTenantID, tenantHeader)
+	tenantID := h.tryToGetTenantIDFromRequest(req)
+	if tenantID != "" {
+		commonLabels.Set(lokiClient.ReservedLabelTenantID, tenantID)
 	}
 
 	h.metrics.batchSize.WithLabelValues().Observe(float64(len(firehoseReq.Records)))
@@ -284,21 +291,79 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 	return nil
 }
 
-func (h *Handler) getStaticLabelsFromRequest(req *http.Request) (model.LabelSet, error) {
+func (h *Handler) tryToGetStaticLabelsFromRequest(req *http.Request) model.LabelSet {
 	var staticLabels model.LabelSet
-	encodedStaticLabelConfig := req.URL.Query().Get(staticConfigsLabelsParameter)
-	if len(encodedStaticLabelConfig) == 0 {
-		return staticLabels, nil
+	commonAttributesHeaderValue := req.Header.Get(commonAttributesHeader)
+	if len(commonAttributesHeaderValue) == 0 {
+		return staticLabels
 	}
 
-	decodedRelabelConfig, err := base64.StdEncoding.DecodeString(encodedStaticLabelConfig)
+	ca := commonAttributes{
+		CommonAttributes: make(map[string]string),
+	}
+
+	tenantID := h.tryToGetTenantIDFromRequest(req)
+
+	err := json.Unmarshal([]byte(commonAttributesHeaderValue), &ca)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding %s: %w", staticConfigsLabelsParameter, err)
+		// log error, increase metric value and ignore the header values
+		level.Debug(h.logger).Log(fmt.Sprintf("error decoding %s: %s", commonAttributesHeader, err.Error()))
+		h.metrics.invalidLabelsCount.WithLabelValues(reasonInvalidJsonFormat, tenantID).Inc()
+		return nil
 	}
 
-	if err := yaml.UnmarshalStrict(decodedRelabelConfig, &staticLabels); err != nil {
-		return nil, fmt.Errorf("error unmarshaling %s: %w", staticConfigsLabelsParameter, err)
+	staticLabels = make(model.LabelSet)
+	for name, value := range ca.CommonAttributes {
+		// check if the value is suppose to be a label name
+		if !strings.HasPrefix(name, commonAttributesLabelPrefix) {
+			continue
+		}
+
+		// construct model.LabelName from the header value, if the raw data is not valid label name, try to fix it and use
+		rawLabelName := strings.TrimPrefix(name, commonAttributesLabelPrefix)
+		labelName := model.LabelName(rawLabelName)
+		if !labelName.IsValid() {
+			level.Debug(h.logger).Log(fmt.Sprintf("label name is not valid, trying to fix: %s", rawLabelName))
+
+			// try to sanitize label name
+			sanitizedLabelName := yacepromutil.PromString(rawLabelName)
+			labelName = model.LabelName(sanitizedLabelName)
+			if !labelName.IsValid() {
+				// This situation can happen when:
+				// - the header with label information is a valid JSON
+				// - the label name is not valid and can not be sanitized
+				//
+				// For example:
+				// {
+				//  "commonAttributes": {
+				//   "lbl_0mylabel": "value"
+				//  }
+				// }
+				h.metrics.invalidLabelsCount.WithLabelValues(reasonInvalidLabelName, tenantID).Inc()
+				level.Debug(h.logger).Log(fmt.Sprintf("label name is not valid, can not create a prom string from: %s", rawLabelName))
+				continue
+			}
+		}
+
+		labelValue := model.LabelValue(value)
+		if !labelValue.IsValid() {
+			h.metrics.invalidLabelsCount.WithLabelValues(reasonInvalidLabelValue, tenantID).Inc()
+			level.Debug(h.logger).Log(fmt.Sprintf("label %s has invalid value: %s", labelName, value))
+			continue
+		}
+
+		staticLabels[labelName] = labelValue
 	}
 
-	return staticLabels, staticLabels.Validate()
+	return staticLabels
+}
+
+func (h *Handler) tryToGetTenantIDFromRequest(req *http.Request) string {
+	tenantID := req.Header.Get("X-Scope-OrgID")
+	_, err := strconv.Atoi(tenantID)
+	if err == nil {
+		return tenantID
+	}
+
+	return ""
 }
