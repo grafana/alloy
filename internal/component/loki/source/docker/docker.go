@@ -15,7 +15,6 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	types "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -24,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"

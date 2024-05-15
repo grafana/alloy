@@ -3,8 +3,8 @@ package build
 import (
 	"reflect"
 
-	"github.com/grafana/alloy/internal/alloy/logging"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/server"
 )
 
