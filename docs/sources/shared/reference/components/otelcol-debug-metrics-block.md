@@ -21,4 +21,4 @@ For example, attributes with IP addresses and port numbers in metrics about HTTP
 If configured, `disable_high_cardinality_metrics` only applies to `otelcol.exporter.*` and `otelcol.receiver.*` components.
 {{< /admonition >}}
 
-`level` is the Grafana Alloy equivalent to the `telemetry.metrics.level` feature gate in the OpenTelemetry Collector.
+`level` is the {{< param "PRODUCT_NAME" >}} equivalent to the `telemetry.metrics.level` feature gate in the OpenTelemetry Collector.

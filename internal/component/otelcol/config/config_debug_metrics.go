@@ -15,7 +15,7 @@ const (
 	LevelDetailed = "detailed"
 )
 
-func (l Level) ToLevel() configtelemetry.Level {
+func (l Level) Convert() configtelemetry.Level {
 	switch l {
 	case LevelNone:
 		return configtelemetry.LevelNone
