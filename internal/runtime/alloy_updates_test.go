@@ -1,4 +1,4 @@
-package alloy
+package runtime
 
 import (
 	"context"
@@ -370,7 +370,7 @@ func TestController_Updates_WithLaggingComponent(t *testing.T) {
 	require.Equal(t, 10, in.(testcomponents.SummationConfig).Input)
 }
 
-func newTestController(t *testing.T) *Alloy {
+func newTestController(t *testing.T) *Runtime {
 	return newController(controllerOptions{
 		Options:        testOptions(t),
 		ModuleRegistry: newModuleRegistry(),

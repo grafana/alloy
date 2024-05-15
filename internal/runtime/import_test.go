@@ -1,4 +1,4 @@
-package alloy_test
+package runtime_test
 
 import (
 	"context"
@@ -333,7 +333,7 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 	}()
 }
 
-func setup(t *testing.T, config string) (*alloyRuntime.Alloy, *alloyRuntime.Source) {
+func setup(t *testing.T, config string) (*alloyRuntime.Runtime, *alloyRuntime.Source) {
 	s, err := logging.New(os.Stderr, logging.DefaultOptions)
 	require.NoError(t, err)
 	ctrl := alloyRuntime.New(alloyRuntime.Options{

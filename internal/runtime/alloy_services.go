@@ -1,4 +1,4 @@
-package alloy
+package runtime
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 // GetServiceConsumers implements [service.Host]. It returns a slice of
 // [component.Component] and [service.Service]s which declared a dependency on
 // the named service.
-func (f *Alloy) GetServiceConsumers(serviceName string) []service.Consumer {
+func (f *Runtime) GetServiceConsumers(serviceName string) []service.Consumer {
 	consumers := serviceConsumersForGraph(f.loader.OriginalGraph(), serviceName, true)
 
 	// Iterate through all modules to find other components that depend on the
@@ -28,7 +28,7 @@ func (f *Alloy) GetServiceConsumers(serviceName string) []service.Consumer {
 
 // GetService implements [service.Host]. It looks up a [service.Service] by
 // name.
-func (f *Alloy) GetService(name string) (service.Service, bool) {
+func (f *Runtime) GetService(name string) (service.Service, bool) {
 	for _, svc := range f.opts.Services {
 		if svc.Definition().Name == name {
 			return svc, true
@@ -69,7 +69,7 @@ func serviceConsumersForGraph(graph *dag.Graph, serviceName string, includePeerS
 
 // NewController returns a new, unstarted, isolated Alloy controller so that
 // services can instantiate their own components.
-func (f *Alloy) NewController(id string) service.Controller {
+func (f *Runtime) NewController(id string) service.Controller {
 	return serviceController{
 		f: newController(controllerOptions{
 			Options: Options{
@@ -90,7 +90,7 @@ func (f *Alloy) NewController(id string) service.Controller {
 }
 
 type serviceController struct {
-	f *Alloy
+	f *Runtime
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }

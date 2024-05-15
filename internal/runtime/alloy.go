@@ -1,4 +1,4 @@
-// Package alloy implements the Alloy component graph system. Alloy configuration
+// Package runtime implements the Alloy component graph system. Alloy configuration
 // sources are parsed from Alloy syntax, which contain a listing of components to run.
 //
 // # Components
@@ -43,7 +43,7 @@
 // state if a node shuts down or is given an invalid config. This prevents
 // a domino effect of a single failed node taking down other node
 // which are otherwise healthy.
-package alloy
+package runtime
 
 import (
 	"context"
@@ -108,8 +108,8 @@ type Options struct {
 	Services []service.Service
 }
 
-// Alloy is the Alloy system.
-type Alloy struct {
+// Runtime is the Alloy system.
+type Runtime struct {
 	log    *logging.Logger
 	tracer *tracing.Tracer
 	opts   controllerOptions
@@ -126,7 +126,7 @@ type Alloy struct {
 }
 
 // New creates a new, unstarted Alloy controller. Call Run to run the controller.
-func New(o Options) *Alloy {
+func New(o Options) *Runtime {
 	return newController(controllerOptions{
 		Options:        o,
 		ModuleRegistry: newModuleRegistry(),
@@ -150,7 +150,7 @@ type controllerOptions struct {
 // newController creates a new, unstarted Alloy controller with a specific
 // moduleRegistry. Modules created by the controller will be passed to the
 // given modReg.
-func newController(o controllerOptions) *Alloy {
+func newController(o controllerOptions) *Runtime {
 	var (
 		log        = o.Logger
 		tracer     = o.Tracer
@@ -171,7 +171,7 @@ func newController(o controllerOptions) *Alloy {
 		workerPool = worker.NewDefaultWorkerPool()
 	}
 
-	f := &Alloy{
+	f := &Runtime{
 		log:    log,
 		tracer: tracer,
 		opts:   o,
@@ -233,7 +233,7 @@ func newController(o controllerOptions) *Alloy {
 
 // Run starts the Alloy controller, blocking until the provided context is
 // canceled. Run must only be called once.
-func (f *Alloy) Run(ctx context.Context) {
+func (f *Runtime) Run(ctx context.Context) {
 	defer func() { _ = f.sched.Close() }()
 	defer f.loader.Cleanup(!f.opts.IsModule)
 	defer level.Debug(f.log).Log("msg", "Alloy controller exiting")
@@ -290,12 +290,12 @@ func (f *Alloy) Run(ctx context.Context) {
 // The controller will only start running components after Load is called once
 // without any configuration errors.
 // LoadSource uses default loader configuration.
-func (f *Alloy) LoadSource(source *Source, args map[string]any) error {
+func (f *Runtime) LoadSource(source *Source, args map[string]any) error {
 	return f.loadSource(source, args, nil)
 }
 
 // Same as above but with a customComponentRegistry that provides custom component definitions.
-func (f *Alloy) loadSource(source *Source, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
+func (f *Runtime) loadSource(source *Source, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
 	f.loadMut.Lock()
 	defer f.loadMut.Unlock()
 
@@ -324,6 +324,6 @@ func (f *Alloy) loadSource(source *Source, args map[string]any, customComponentR
 }
 
 // Ready returns whether the Alloy controller has finished its initial load.
-func (f *Alloy) Ready() bool {
+func (f *Runtime) Ready() bool {
 	return f.loadedOnce.Load()
 }

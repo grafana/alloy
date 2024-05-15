@@ -1,4 +1,4 @@
-package alloy
+package runtime
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 )
 
 // GetComponent implements [component.Provider].
-func (f *Alloy) GetComponent(id component.ID, opts component.InfoOptions) (*component.Info, error) {
+func (f *Runtime) GetComponent(id component.ID, opts component.InfoOptions) (*component.Info, error) {
 	f.loadMut.RLock()
 	defer f.loadMut.RUnlock()
 
@@ -38,7 +38,7 @@ func (f *Alloy) GetComponent(id component.ID, opts component.InfoOptions) (*comp
 }
 
 // ListComponents implements [component.Provider].
-func (f *Alloy) ListComponents(moduleID string, opts component.InfoOptions) ([]*component.Info, error) {
+func (f *Runtime) ListComponents(moduleID string, opts component.InfoOptions) ([]*component.Info, error) {
 	f.loadMut.RLock()
 	defer f.loadMut.RUnlock()
 
@@ -63,7 +63,7 @@ func (f *Alloy) ListComponents(moduleID string, opts component.InfoOptions) ([]*
 	return detail, nil
 }
 
-func (f *Alloy) getComponentDetail(cn controller.ComponentNode, graph *dag.Graph, opts component.InfoOptions) *component.Info {
+func (f *Runtime) getComponentDetail(cn controller.ComponentNode, graph *dag.Graph, opts component.InfoOptions) *component.Info {
 	var references, referencedBy []string
 
 	// Skip over any edge which isn't between two component nodes. This is a

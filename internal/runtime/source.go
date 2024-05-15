@@ -1,4 +1,4 @@
-package alloy
+package runtime
 
 import (
 	"crypto/sha256"

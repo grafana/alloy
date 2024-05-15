@@ -211,7 +211,7 @@ func (ag *collectorClient) ListCollectors(context.Context, *connect.Request[coll
 }
 
 type serviceController struct {
-	f *alloyRuntime.Alloy
+	f *alloyRuntime.Runtime
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }

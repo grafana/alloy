@@ -1,6 +1,6 @@
 //go:build linux
 
-package alloy_test
+package runtime_test
 
 import (
 	"bufio"

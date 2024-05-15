@@ -1,4 +1,4 @@
-package alloy
+package runtime
 
 import (
 	"context"
@@ -111,7 +111,7 @@ func (m *moduleController) ModuleIDs() []string {
 }
 
 type module struct {
-	f *Alloy
+	f *Runtime
 	o *moduleOptions
 }
 

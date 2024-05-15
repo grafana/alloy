@@ -1,4 +1,4 @@
-package alloy_test
+package runtime_test
 
 // This file contains tests which verify that the Alloy controller correctly
 // evaluates and updates modules, including the module's arguments and exports.
@@ -345,7 +345,7 @@ func testOptions(t *testing.T) runtime.Options {
 	}
 }
 
-func getExport[T any](t *testing.T, ctrl *runtime.Alloy, moduleId string, nodeId string) T {
+func getExport[T any](t *testing.T, ctrl *runtime.Runtime, moduleId string, nodeId string) T {
 	t.Helper()
 	info, err := ctrl.GetComponent(component.ID{
 		ModuleID: moduleId,

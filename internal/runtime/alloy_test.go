@@ -1,4 +1,4 @@
-package alloy
+package runtime
 
 import (
 	"context"
@@ -78,7 +78,7 @@ func testOptions(t *testing.T) Options {
 	}
 }
 
-func cleanUpController(ctrl *Alloy) {
+func cleanUpController(ctrl *Runtime) {
 	// To avoid leaking goroutines and clean-up, we need to run and shut down the controller.
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
