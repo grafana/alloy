@@ -8,11 +8,13 @@ weight: 10
 
 # {{% param "PRODUCT_NAME" %}} configuration syntax
 
-{{< param "FULL_PRODUCT_NAME" >}} dynamically configures and connects components with the {{< param "PRODUCT_NAME" >}} configuration syntax. Overall, {{< param "FULL_PRODUCT_NAME" >}} handles the collection, transformation, and delivery of telemetry data, and so each component in the configuration handles one of those tasks, or specifies how data flows (for example from collection to transformation), and so how the components are bound together.
+{{< param "FULL_PRODUCT_NAME" >}} dynamically configures and connects components with the {{< param "PRODUCT_NAME" >}} configuration syntax.
+{{< param "PRODUCT_NAME" >}} handles the collection, transformation, and delivery of telemetry data.
+Each component in the configuration handles one of those tasks or specifies how data flows and how the components are bound together.
 
 {{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
 
-Here is a simple example of a fully worked configuration, showing the basic concepts, and how an Alloy config comes together into a pipeline.
+The following simple example shows the basic concepts and how an {{< param "PRODUCT_NAME" >}} configuration comes together into a pipeline.
 
 ```alloy
 // Collection: mount a local directory with a certain path spec
@@ -56,12 +58,11 @@ loki.write "local_loki" {
 ```
 
 The {{< param "PRODUCT_NAME" >}} syntax aims to reduce errors in configuration files by making configurations easier to read and write.
-{{< param "PRODUCT_NAME" >}} configurations use blocks that can be easily copied and pasted from the documentation to help you get started as quickly as possible.
+The {{< param "PRODUCT_NAME" >}} syntax uses blocks, attributes, and expressions.
+The blocks can be copied and pasted from the documentation to help you get started as quickly as possible.
 
 The {{< param "PRODUCT_NAME" >}} syntax is declarative, so ordering components, blocks, and attributes does not matter.
 The relationship between components determines the order of operations in the pipeline.
-
-The {{< param "PRODUCT_NAME" >}} syntax uses blocks, attributes, and expressions, which are now explained, with examples.
 
 ## Blocks
 
@@ -116,11 +117,11 @@ label (for example, `password_file`), and export name (for example, `content`), 
 
 ## Configuration syntax design goals
 
-{{< param "PRODUCT_NAME" >}} is designed with the following requirements in mind:
+{{< param "PRODUCT_NAME" >}} is:
 
-* _Fast_: The configuration language must be fast so the component controller can quickly evaluate changes.
-* _Simple_: The configuration language must be easy to read and write to minimize the learning curve.
-* _Debuggable_: The configuration language must give detailed information when there's a mistake in the configuration file.
+* _Fast_: The configuration language is fast, so the component controller can quickly evaluate changes.
+* _Simple_: The configuration language is easy to read and write to minimize the learning curve.
+* _Easy to debug_: The configuration language gives detailed information when there's a mistake in the configuration file.
 
 The {{< param "PRODUCT_NAME" >}} configuration syntax is a distinct language with custom syntax and features, such as first-class functions.
 
