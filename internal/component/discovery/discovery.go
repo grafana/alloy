@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Target refers to a singular discovered endpoint found by a discovery
