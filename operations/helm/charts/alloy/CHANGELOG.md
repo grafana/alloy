@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Bugfixes
+
+- Fix clustering on instances running within Istio mesh by allowing to change the name of the clustering port
+
 0.3.0 (2024-05-14)
 ------------------
 
