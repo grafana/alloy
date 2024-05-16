@@ -36,7 +36,7 @@ func cleanupPid(pid *exec.Cmd, dir string) {
 	_ = pid.Process.Release()
 	_ = pid.Wait()
 	_ = syscall.Kill(-pid.Process.Pid, syscall.SIGKILL)
-	_ = os.RemoveAll(dir)
+	//_ = os.RemoveAll(dir)
 }
 
 var networkdown = true
