@@ -73,13 +73,13 @@ type Arguments struct {
 	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
 	// The timeout for scraping targets of this config.
 	ScrapeTimeout time.Duration `alloy:"scrape_timeout,attr,optional"`
-	// The HTTP resource path on which to fetch metrics from targets.
 	// The protocols to negotiate during a scrape. It tells clients what
 	// protocol are accepted by Prometheus and with what order of preference.
 	// Supported values (case sensitive): PrometheusProto, OpenMetricsText0.0.1,
 	// OpenMetricsText1.0.0, PrometheusText0.0.4.
 	ScrapeProtocols []string `alloy:"scrape_protocols,attr,optional"`
-	MetricsPath     string   `alloy:"metrics_path,attr,optional"`
+	// The HTTP resource path on which to fetch metrics from targets.
+	MetricsPath string `alloy:"metrics_path,attr,optional"`
 	// The URL scheme with which to fetch metrics from targets.
 	Scheme string `alloy:"scheme,attr,optional"`
 	// An uncompressed response body larger than this many bytes will cause the
@@ -108,6 +108,7 @@ type Arguments struct {
 	// Deprecated: Use ScrapeProtocols instead. For backwards-compatibility, if this option is set to true, the
 	// ScrapeProtocols will be set to [PrometheusProto, OpenMetricsText1.0.0, OpenMetricsText0.0.1, PrometheusText0.0.4].
 	// It is invalid to set both EnableProtobufNegotiation and ScrapeProtocols.
+	// TODO: https://github.com/grafana/alloy/issues/878: Remove this option.
 	EnableProtobufNegotiation bool `alloy:"enable_protobuf_negotiation,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
