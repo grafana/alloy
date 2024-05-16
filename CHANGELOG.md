@@ -18,6 +18,8 @@ Main (unreleased)
   This port can be configured with `--server.http.listen-addr` or using
   the default listen address`127.0.0.1:12345`. (@mattdurham)
 
+- Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
+
 v1.1.0
 ------
 
