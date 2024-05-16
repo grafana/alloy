@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/loki/pkg/logproto"
 	yacepromutil "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/promutil"
 	"github.com/prometheus/common/model"

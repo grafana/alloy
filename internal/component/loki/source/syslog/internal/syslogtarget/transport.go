@@ -21,7 +21,7 @@ import (
 	"github.com/mwitkow/go-conntrack"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/influxdata/go-syslog/v3"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/model/labels"
