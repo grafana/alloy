@@ -260,6 +260,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	if args.EnableProtobufNegotiation {
+		level.Warn(o.Logger).Log("msg", "enable_protobuf_negotiation is deprecated and will be removed in a future major release, use scrape_protocols instead")
+	}
+
 	return c, nil
 }
 

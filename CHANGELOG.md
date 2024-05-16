@@ -19,6 +19,9 @@ Main (unreleased)
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
 
+- Added `scrape_protocols` option to `prometheus.scrape`, which allows to
+  control the preferred order of scrape protocols. (@thampiotr)
+
 ### Bugfixes
 
 - Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
@@ -36,6 +39,14 @@ Main (unreleased)
 ### Other changes
 
 - `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0.
+
+- `prometheus.scrape` component's `enable_protobuf_negotiation` argument is now
+  deprecated and will be removed in a future major release.
+  Use `scrape_protocols` instead and refer to `prometheus.scrape` reference
+  documentation for further details. (@thampiotr)
+
+- Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
+
 
 v1.1.0
 ------
