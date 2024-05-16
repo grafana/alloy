@@ -28,9 +28,10 @@ otelcol.connector.servicegraph "default" {
 		max_items = 10
 		ttl       = "1s"
 	}
-	cache_loop              = "2m0s"
-	store_expiration_loop   = "5s"
-	database_name_attribute = "db_name3"
+	cache_loop                   = "2m0s"
+	store_expiration_loop        = "5s"
+	virtual_node_peer_attributes = ["db.connection_string", "db.user", "net.sock.peer.name"]
+	database_name_attribute      = "db_name3"
 
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]
