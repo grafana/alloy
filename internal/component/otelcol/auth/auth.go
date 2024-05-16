@@ -8,7 +8,6 @@ package auth
 import (
 	"context"
 	"os"
-	"strings"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
@@ -78,6 +77,8 @@ var (
 	_ component.Component       = (*Auth)(nil)
 	_ component.HealthComponent = (*Auth)(nil)
 )
+
+const typeStr = "otelcol_auth"
 
 // New creates a new Alloy component which encapsulates an OpenTelemetry
 // Collector authentication extension. args must hold a value of the argument
@@ -168,12 +169,10 @@ func (a *Auth) Update(args component.Arguments) error {
 		components = append(components, ext)
 	}
 
-	cTypeStr := strings.ReplaceAll(strings.ReplaceAll(a.opts.ID, ".", "_"), "/", "_")
-
 	// Inform listeners that our handler changed.
 	a.opts.OnStateChange(Exports{
 		Handler: Handler{
-			ID:        otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
+			ID:        otelcomponent.NewID(otelcomponent.MustNewType(typeStr)),
 			Extension: ext,
 		},
 	})

@@ -5,7 +5,6 @@ import (
 	"context"
 	"os"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -38,6 +37,8 @@ func init() {
 		},
 	})
 }
+
+const typeStr = "otelcol_prometheus_receiver"
 
 // Arguments configures the otelcol.receiver.prometheus component.
 type Arguments struct {
@@ -117,11 +118,9 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		gcInterval = 5 * time.Minute
 	)
 
-	cTypeStr := strings.ReplaceAll(strings.ReplaceAll(c.opts.ID, ".", "_"), "/", "_")
-
 	settings := otelreceiver.CreateSettings{
 
-		ID: otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
+		ID: otelcomponent.NewID(otelcomponent.MustNewType(typeStr)),
 
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
