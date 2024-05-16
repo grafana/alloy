@@ -29,8 +29,6 @@ Main (unreleased)
   This port can be configured with `--server.http.listen-addr` or using
   the default listen address`127.0.0.1:12345`. (@mattdurham) 
 
-- Fix clustering on instances running within Istio mesh by allowing to change the name of the clustering port
-
 v1.1.0-rc.0
 -----------
 
