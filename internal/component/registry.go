@@ -105,6 +105,16 @@ type Options struct {
 	// The result of GetServiceData may be cached as the value will not change at
 	// runtime.
 	GetServiceData func(name string) (interface{}, error)
+
+	// MinStability tracks the minimum stability level of behavior that components should
+	// use. This allows components to optionally enable less-stable functionality.
+	//
+	// For example, if MinStability was [featuregate.StabilityGenerallyAvailable], only GA
+	// behavior should be used. If MinStability was [featuregate.StabilityPublicPreview], then
+	// Public Preview and GA behavior can be used.
+	//
+	// The value of MinStability is static for the process lifetime.
+	MinStability featuregate.Stability
 }
 
 // Registration describes a single component.

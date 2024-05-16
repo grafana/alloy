@@ -15,22 +15,28 @@ Main (unreleased)
 - Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
   API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
 
-### Breaking changes
+### Enhancements
 
-- Cloudwatch exporter is not allowing aliases for the namespaces as `type` value. For example: "s3" is not allowed, "AWS/S3" should be used. (@kgeckhart, @andriikushch)
-
-### Features
-
-- A new parameter `aws_sdk_version` is added for the cloudwatch exporters configuration. It enables the use of aws sdk v2 which is expected to come with performance benefits. (@kgeckhart, @andriikushch)
+- (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
 
 ### Bugfixes
+
+- Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
   cluster instance to another could have a staleness marker inserted and result
   in a gap in metrics (@thampiotr)
 
-v1.1.0-rc.0
------------
+- Exit Alloy immediately if the port it runs on is not available. 
+  This port can be configured with `--server.http.listen-addr` or using
+  the default listen address`127.0.0.1:12345`. (@mattdurham) 
+
+### Other changes
+
+- `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0.
+
+v1.1.0
+------
 
 ### Features
 

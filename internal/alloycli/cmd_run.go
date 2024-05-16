@@ -19,16 +19,16 @@ import (
 	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy"
-	"github.com/grafana/alloy/internal/alloy/logging"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
-	"github.com/grafana/alloy/internal/alloy/tracing"
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/converter"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
@@ -227,7 +227,7 @@ func (fr *alloyRun) Run(configPath string) error {
 	// To work around this, we lazily create variables for the functions the HTTP
 	// service needs and set them after the Alloy controller exists.
 	var (
-		reload func() (*alloy.Source, error)
+		reload func() (*alloy_runtime.Source, error)
 		ready  func() bool
 	)
 
@@ -257,7 +257,7 @@ func (fr *alloyRun) Run(configPath string) error {
 		Gatherer: prometheus.DefaultGatherer,
 
 		ReadyFunc:  func() bool { return ready() },
-		ReloadFunc: func() (*alloy.Source, error) { return reload() },
+		ReloadFunc: func() (*alloy_runtime.Source, error) { return reload() },
 
 		HTTPListenAddr:   fr.httpListenAddr,
 		MemoryListenAddr: fr.inMemoryAddr,
@@ -284,7 +284,7 @@ func (fr *alloyRun) Run(configPath string) error {
 	labelService := labelstore.New(l, reg)
 	alloyseed.Init(fr.storagePath, l)
 
-	f := alloy.New(alloy.Options{
+	f := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       l,
 		Tracer:       t,
 		DataPath:     fr.storagePath,
@@ -301,7 +301,7 @@ func (fr *alloyRun) Run(configPath string) error {
 	})
 
 	ready = f.Ready
-	reload = func() (*alloy.Source, error) {
+	reload = func() (*alloy_runtime.Source, error) {
 		alloySource, err := loadAlloySource(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
 		defer instrumentation.InstrumentSHA256(alloySource.SHA256())
 		defer instrumentation.InstrumentLoad(err == nil)
@@ -390,7 +390,7 @@ func (fr *alloyRun) Run(configPath string) error {
 }
 
 // getEnabledComponentsFunc returns a function that gets the current enabled components
-func getEnabledComponentsFunc(f *alloy.Alloy) func() map[string]interface{} {
+func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interface{} {
 	return func() map[string]interface{} {
 		components := component.GetAllComponents(f, component.InfoOptions{})
 		componentNames := map[string]struct{}{}
@@ -404,7 +404,7 @@ func getEnabledComponentsFunc(f *alloy.Alloy) func() map[string]interface{} {
 	}
 }
 
-func loadAlloySource(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (*alloy.Source, error) {
+func loadAlloySource(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (*alloy_runtime.Source, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -436,7 +436,7 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 			return nil, err
 		}
 
-		return alloy.ParseSources(sources)
+		return alloy_runtime.ParseSources(sources)
 	}
 
 	bb, err := os.ReadFile(path)
@@ -460,7 +460,7 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 
 	instrumentation.InstrumentConfig(bb)
 
-	return alloy.ParseSource(path, bb)
+	return alloy_runtime.ParseSource(path, bb)
 }
 
 func interruptContext() (context.Context, context.CancelFunc) {

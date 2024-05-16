@@ -26,7 +26,7 @@ package internal_test
 
 // 	// 1. Setup the server that sends series that intermittently appear and disappear.
 // 	n := &atomic.Uint64{}
-// 	scrapeServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+// 	scrapeServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 // 		// Increment the scrape count atomically per scrape.
 // 		i := n.Add(1)
 
@@ -57,7 +57,7 @@ package internal_test
 
 // 	// 2. Set up the Prometheus RemoteWrite endpoint.
 // 	prweUploads := make(chan *prompb.WriteRequest)
-// 	prweServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+// 	prweServer := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 // 		// Snappy decode the uploads.
 // 		payload, rerr := io.ReadAll(req.Body)
 // 		require.NoError(t, rerr)
@@ -104,17 +104,17 @@ package internal_test
 //       exporters: [prometheusremotewrite]`, serverURL.Host, prweServer.URL)
 
 // 	confFile, err := os.CreateTemp(os.TempDir(), "conf-")
-// 	require.Nil(t, err)
+// 	require.NoError(t, err)
 // 	defer os.Remove(confFile.Name())
 // 	_, err = confFile.Write([]byte(cfg))
-// 	require.Nil(t, err)
+// 	require.NoError(t, err)
 // 	// 4. Run the OpenTelemetry Collector.
 // 	receivers, err := receiver.MakeFactoryMap(prometheusreceiver.NewFactory())
-// 	require.Nil(t, err)
+// 	require.NoError(t, err)
 // 	exporters, err := exporter.MakeFactoryMap(prometheusremotewriteexporter.NewFactory())
-// 	require.Nil(t, err)
+// 	require.NoError(t, err)
 // 	processors, err := processor.MakeFactoryMap(batchprocessor.NewFactory())
-// 	require.Nil(t, err)
+// 	require.NoError(t, err)
 
 // 	factories := otelcol.Factories{
 // 		Receivers:  receivers,
@@ -149,7 +149,7 @@ package internal_test
 // 	}
 
 // 	app, err := otelcol.NewCollector(appSettings)
-// 	require.Nil(t, err)
+// 	require.NoError(t, err)
 
 // 	go func() {
 // 		assert.NoError(t, app.Run(context.Background()))

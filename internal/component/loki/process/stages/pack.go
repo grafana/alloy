@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/loki/pkg/logqlmodel"
 	json "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -196,4 +196,9 @@ func (m *packStage) pack(e Entry) Entry {
 // Name implements Stage
 func (m *packStage) Name() string {
 	return StageTypePack
+}
+
+// Cleanup implements Stage.
+func (*packStage) Cleanup() {
+	// no-op
 }
