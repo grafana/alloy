@@ -19,7 +19,7 @@ spec:
     #
     # This service should only be used for clustering, and not metric
     # collection.
-    - name: {{ coalesce $values.clustering.portName "http" }}
+    - name: {{ $values.clustering.portName }}
       port: {{ $values.listenPort }}
       targetPort: {{ $values.listenPort }}
       protocol: "TCP"
