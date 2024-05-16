@@ -29,9 +29,6 @@ Main (unreleased)
   This port can be configured with `--server.http.listen-addr` or using
   the default listen address`127.0.0.1:12345`. (@mattdurham) 
 
-v1.1.0-rc.0
------------
-
 ### Other changes
 
 - `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0.
