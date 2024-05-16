@@ -49,18 +49,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				CacheLoop:             1 * time.Minute,
 				StoreExpirationLoop:   2 * time.Second,
 				DatabaseNameAttribute: "db.name",
-				//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
-				// the "processor.servicegraph.virtualNode" feature gate.
-				// VirtualNodePeerAttributes: []string{
-				// 				"db.name",
-				// 				"net.sock.peer.addr",
-				// 				"net.peer.name",
-				// 				"rpc.service",
-				// 				"net.sock.peer.name",
-				// 				"net.peer.name",
-				// 				"http.url",
-				// 				"http.target",
-				// 			},
+				VirtualNodePeerAttributes: []string{
+								"peer.service",
+								"db.name",
+								"db.system",
+							},
 			},
 		},
 		{
@@ -74,6 +67,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					}
 					cache_loop = "55m"
 					store_expiration_loop = "77s"
+					virtual_node_peer_attributes = ["peer.service", "db.name"]
 
 					output {}
 				`,
@@ -91,9 +85,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				CacheLoop:             55 * time.Minute,
 				StoreExpirationLoop:   77 * time.Second,
 				DatabaseNameAttribute: "db.name",
-				//TODO: Ad VirtualNodePeerAttributes when it's no longer controlled by
-				// the "processor.servicegraph.virtualNode" feature gate.
-				// VirtualNodePeerAttributes: []string{"attr1", "attr2"},
+				VirtualNodePeerAttributes: []string{"peer.service", "db.name"},
 			},
 		},
 		{

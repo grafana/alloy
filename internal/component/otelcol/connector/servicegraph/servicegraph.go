@@ -12,6 +12,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	semconv "go.opentelemetry.io/collector/semconv/v1.22.0"
 )
 
 func init() {
@@ -49,9 +50,7 @@ type Arguments struct {
 	// StoreExpirationLoop defines how often to expire old entries from the store.
 	StoreExpirationLoop time.Duration `alloy:"store_expiration_loop,attr,optional"`
 	// VirtualNodePeerAttributes the list of attributes need to match, the higher the front, the higher the priority.
-	//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
-	// the "processor.servicegraph.virtualNode" feature gate.
-	// VirtualNodePeerAttributes []string `alloy:"virtual_node_peer_attributes,attr,optional"`
+	VirtualNodePeerAttributes []string `alloy:"virtual_node_peer_attributes,attr,optional"`
 
 	// MetricsFlushInterval is the interval at which metrics are flushed to the exporter.
 	// If set to 0, metrics are flushed on every received batch of traces.
@@ -109,18 +108,11 @@ func (args *Arguments) SetToDefault() {
 		CacheLoop:             1 * time.Minute,
 		StoreExpirationLoop:   2 * time.Second,
 		DatabaseNameAttribute: "db.name",
-		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
-		// the "processor.servicegraph.virtualNode" feature gate.
-		// VirtualNodePeerAttributes: []string{
-		// 	semconv.AttributeDBName,
-		// 	semconv.AttributeNetSockPeerAddr,
-		// 	semconv.AttributeNetPeerName,
-		// 	semconv.AttributeRPCService,
-		// 	semconv.AttributeNetSockPeerName,
-		// 	semconv.AttributeNetPeerName,
-		// 	semconv.AttributeHTTPURL,
-		// 	semconv.AttributeHTTPTarget,
-		// },
+		VirtualNodePeerAttributes: []string{
+			semconv.AttributePeerService,
+			semconv.AttributeDBName,
+			semconv.AttributeDBSystem,
+		},
 	}
 	args.Store.SetToDefault()
 }
@@ -163,9 +155,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		StoreExpirationLoop:   args.StoreExpirationLoop,
 		MetricsFlushInterval:  args.MetricsFlushInterval,
 		DatabaseNameAttribute: args.DatabaseNameAttribute,
-		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
-		// the "processor.servicegraph.virtualNode" feature gate.
-		// VirtualNodePeerAttributes: args.VirtualNodePeerAttributes,
+		VirtualNodePeerAttributes: args.VirtualNodePeerAttributes,
 	}, nil
 }
 

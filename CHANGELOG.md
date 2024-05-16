@@ -36,6 +36,9 @@ Main (unreleased)
 ### Other changes
 
 - `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0.
+- In `otelcol.connector.spanmetrics`, support the `virtual_node_peer_attributes` option to allow users to specify
+  a custom list of attributes that will result in the creation of a virtual server node.
+  https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/31735
 
 v1.1.0
 ------

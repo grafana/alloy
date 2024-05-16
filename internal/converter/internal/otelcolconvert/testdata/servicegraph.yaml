@@ -15,6 +15,9 @@ connectors:
       max_items: 10
     cache_loop: 2m
     store_expiration_loop: 5s
+    virtual_node_peer_attributes:
+      - peer.service
+      - db.name
     database_name_attribute: db_name3
 
 exporters:

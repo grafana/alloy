@@ -55,12 +55,13 @@ otelcol.connector.servicegraph "LABEL" {
 
 Name                        | Type             | Description                                                         | Default | Required
 ----------------------------|------------------|-------------------------------------------------------------------- |---------|---------
-`latency_histogram_buckets` | `list(duration)` | Buckets for latency histogram metrics.                              | `["2ms", "4ms", "6ms", "8ms", "10ms", "50ms", "100ms", "200ms", "400ms", "800ms", "1s", "1400ms", "2s", "5s", "10s", "15s"]` | no
-`dimensions`                | `list(string)`   | A list of dimensions to add with the default dimensions.            | `[]`         | no
-`cache_loop`                | `duration`       | Configures how often to delete series which have not been updated.  | `"1m"`       | no
-`store_expiration_loop`     | `duration`       | The time to expire old entries from the store periodically.         | `"2s"`       | no
-`metrics_flush_interval`    | `duration`       | The interval at which metrics are flushed to downstream components. | `"0s"`       | no
-`database_name_attribute`   | `string`         | The attribute name used to identify the database name from span attributes. | `"db.name"`  | no
+`latency_histogram_buckets`    | `list(duration)` | Buckets for latency histogram metrics.                              | `["2ms", "4ms", "6ms", "8ms", "10ms", "50ms", "100ms", "200ms", "400ms", "800ms", "1s", "1400ms", "2s", "5s", "10s", "15s"]` | no
+`dimensions`                   | `list(string)`   | A list of dimensions to add with the default dimensions.            | `[]`         | no
+`cache_loop`                   | `duration`       | Configures how often to delete series which have not been updated.  | `"1m"`       | no
+`store_expiration_loop`        | `duration`       | The time to expire old entries from the store periodically.         | `"2s"`       | no
+`metrics_flush_interval`       | `duration`       | The interval at which metrics are flushed to downstream components. | `"0s"`       | no
+`database_name_attribute`      | `string`         | The attribute name used to identify the database name from span attributes. | `"db.name"`  | no
+`virtual_node_peer_attributes` | `list(string)`   | The list of attributes, ordered by priority, whose presence in a client span will result in the creation of a virtual server node. An empty list disables virtual node creation. | `["peer.service", "db.name", "db.system"]` | no
 
 Service graphs work by inspecting traces and looking for spans with parent-children relationship that represent a request.
 `otelcol.connector.servicegraph` uses OpenTelemetry semantic conventions to detect a myriad of requests.
