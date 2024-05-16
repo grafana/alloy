@@ -142,7 +142,7 @@ This example is the same above with using an embedded configuration (with secret
 
 ```alloy
 local.file "snmp_config" {
-    path      = "snmp_modules.yml"
+    filename      = "snmp_modules.yml"
     is_secret = true
 }
 
