@@ -125,6 +125,22 @@ func TestRestart(t *testing.T) {
 	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit after restart.")
 }
 
+func TestTargetNeverStarted(t *testing.T) {
+	runningState := false
+	client := clientMock{
+		logLine: "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
+		running: func() bool { return runningState },
+	}
+
+	tailer, _ := setupTailer(t, client)
+	ctx, cancel := context.WithCancel(context.Background())
+	go tailer.Run(ctx)
+
+	time.Sleep(20 * time.Millisecond)
+
+	require.NotPanics(t, func() { cancel() })
+}
+
 func setupTailer(t *testing.T, client clientMock) (tailer *tailer, entryHandler *fake.Client) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
