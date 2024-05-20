@@ -7,7 +7,10 @@ package auth
 
 import (
 	"context"
+	"fmt"
+	"hash/fnv"
 	"os"
+	"strings"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
@@ -77,8 +80,6 @@ var (
 	_ component.Component       = (*Auth)(nil)
 	_ component.HealthComponent = (*Auth)(nil)
 )
-
-const typeStr = "otelcol_auth"
 
 // New creates a new Alloy component which encapsulates an OpenTelemetry
 // Collector authentication extension. args must hold a value of the argument
@@ -169,10 +170,12 @@ func (a *Auth) Update(args component.Arguments) error {
 		components = append(components, ext)
 	}
 
+	cTypeStr := NormalizeType(a.opts.ID)
+
 	// Inform listeners that our handler changed.
 	a.opts.OnStateChange(Exports{
 		Handler: Handler{
-			ID:        otelcomponent.NewID(otelcomponent.MustNewType(typeStr)),
+			ID:        otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
 			Extension: ext,
 		},
 	})
@@ -185,4 +188,20 @@ func (a *Auth) Update(args component.Arguments) error {
 // CurrentHealth implements component.HealthComponent.
 func (a *Auth) CurrentHealth() component.Health {
 	return a.sched.CurrentHealth()
+}
+
+func getHash(in string) string {
+	fnvHash := fnv.New32()
+	fnvHash.Write([]byte(in))
+	return fmt.Sprintf("%x", fnvHash.Sum(nil))
+}
+
+func NormalizeType(in string) string {
+	res := strings.ReplaceAll(strings.ReplaceAll(in, ".", "_"), "/", "_")
+
+	if len(res) > 63 {
+		res = res[:40] + getHash(res)
+	}
+
+	return res
 }

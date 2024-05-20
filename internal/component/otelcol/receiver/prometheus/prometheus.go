@@ -38,8 +38,6 @@ func init() {
 	})
 }
 
-const typeStr = "otelcol_prometheus_receiver"
-
 // Arguments configures the otelcol.receiver.prometheus component.
 type Arguments struct {
 	// Output configures where to send received data. Required.
@@ -119,9 +117,6 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	)
 
 	settings := otelreceiver.CreateSettings{
-
-		ID: otelcomponent.NewID(otelcomponent.MustNewType(typeStr)),
-
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
 
