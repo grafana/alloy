@@ -12,13 +12,13 @@ import (
 
 func TestAlloyUnmarshal(t *testing.T) {
 	alloyConfig := `
-	account_name = "some_account"
-	username     = "some_user"
-	password     = "some_password"
-	private_key_path = "some/path/rsa_key.p8"
-	private_key_password = "some-password"
-	role         = "some_role"
-	warehouse    = "some_warehouse"
+	account_name 				 = "some_account"
+	username     				 = "some_user"
+	password     				 = "some_password"
+	private_key_path 		 = "/some/path/rsa_key.p8"
+	private_key_password = "some_password"
+	role         				 = "some_role"
+	warehouse    				 = "some_warehouse"
 	`
 
 	var args Arguments
@@ -43,8 +43,8 @@ func TestConvert(t *testing.T) {
 	account_name         = "some_account"
 	username             = "some_user"
 	password             = "some_password"
-	private_key_path     = "some/path/rsa_key.p8"
-	private_key_password = "some-password"
+	private_key_path     = "/some/path/rsa_key.p8"
+	private_key_password = "some_password"
 	warehouse            = "some_warehouse"
 	`
 	var args Arguments
