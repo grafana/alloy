@@ -7,8 +7,7 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-Main (unreleased)
------------------
+## Main (unreleased)
 
 ### Breaking changes to non-GA functionality
 
@@ -22,11 +21,14 @@ Main (unreleased)
 
 - Added `scrape_protocols` option to `prometheus.scrape`, which allows to
   control the preferred order of scrape protocols. (@thampiotr)
-  
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
 
+- `prometheus.exporter.snowflake`: Add support for RSA key-pair authentication. (@Caleb-Hurshman)
+
+- `prometheus.exporter.snowflake`: Add support for RSA key-pair authentication. (@Caleb-Hurshman)
+
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
-  which removes some false-positive error log messages on Windows (@thampiotr) 
+  which removes some false-positive error log messages on Windows (@thampiotr)
 
 ### Bugfixes
 
@@ -36,7 +38,7 @@ Main (unreleased)
   cluster instance to another could have a staleness marker inserted and result
   in a gap in metrics (@thampiotr)
 
-- Exit Alloy immediately if the port it runs on is not available. 
+- Exit Alloy immediately if the port it runs on is not available.
   This port can be configured with `--server.http.listen-addr` or using
   the default listen address`127.0.0.1:12345`. (@mattdurham)
 
@@ -44,7 +46,6 @@ Main (unreleased)
 
 - Fix error on boot when using IPv6 advertise addresses without explicitly
   specifying a port. (@matthewpi)
-  
 - Fix an issue where having long component labels (>63 chars) on otelcol.auth
   components lead to a panic. (@tpaschalis)
 
@@ -61,9 +62,7 @@ Main (unreleased)
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
 
-
-v1.1.0
-------
+## v1.1.0
 
 ### Features
 
@@ -86,14 +85,15 @@ v1.1.0
 ### Enhancements
 
 - Update `prometheus.exporter.kafka` with the following functionalities (@wildum):
-  * GSSAPI config
-  * enable/disable PA_FX_FAST
-  * set a TLS server name
-  * show the offset/lag for all consumer group or only the connected ones
-  * set the minimum number of topics to monitor
-  * enable/disable auto-creation of requested topics if they don't already exist
-  * regex to exclude topics / groups
-  * added metric kafka_broker_info
+
+  - GSSAPI config
+  - enable/disable PA_FX_FAST
+  - set a TLS server name
+  - show the offset/lag for all consumer group or only the connected ones
+  - set the minimum number of topics to monitor
+  - enable/disable auto-creation of requested topics if they don't already exist
+  - regex to exclude topics / groups
+  - added metric kafka_broker_info
 
 - In `prometheus.exporter.kafka`, the interpolation table used to compute estimated lag metrics is now pruned
   on `metadata_refresh_interval` instead of `prune_interval_seconds`. (@wildum)
@@ -136,8 +136,8 @@ v1.1.0
 - Fix an issue where `loki.source.docker` stops collecting logs after a container restart. (@wildum)
 
 - Upgrading `pyroscope/ebpf` from 0.4.6 to 0.4.7 (@korniltsev):
-  * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
-  * treat elf files with short build id (8 bytes) properly
+  - detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
+  - treat elf files with short build id (8 bytes) properly
 
 ### Other changes
 
@@ -165,6 +165,7 @@ v1.1.0
   Modern container runtimes allow binding to unprivileged ports as non-root. (@BlackDex)
 
 - Upgrading from OpenTelemetry v0.96.0 to v0.99.0.
+
   - `otelcol.processor.batch`: Prevent starting unnecessary goroutines.
     https://github.com/open-telemetry/opentelemetry-collector/issues/9739
   - `otelcol.exporter.otlp`: Checks for port in the config validation for the otlpexporter.
@@ -218,8 +219,7 @@ v1.1.0
 
 - Use Go 1.22.3 for builds. (@kminehart)
 
-v1.0.0
-------
+## v1.0.0
 
 ### Features
 
