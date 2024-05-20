@@ -78,38 +78,48 @@ func New(o component.Options, args component.Arguments, creator Creator) (*Compo
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	var stopFn func() = nil
+	var (
+		runFn                func() = nil
+		stopFn               func() = nil
+		stopCurrentIfRunning        = func() {
+			if stopFn != nil {
+				stopFn()
+			}
+		}
+	)
+	defer stopCurrentIfRunning()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-c.newDiscoverer:
-			// stop any previously running discovery
-			if stopFn != nil {
-				stopFn()
-			}
+			// stop the current discovery (blocking, unregisters metrics etc.)
+			stopCurrentIfRunning()
 
 			// grab the latest discovery
 			c.discMut.Lock()
 			disc := c.latestDisc
 			c.discMut.Unlock()
 
-			// run the new discovery
-			var runFn func()
+			// run the new discovery and grab the new stop function
 			runFn, stopFn = c.newRunAndStopForDisc(ctx, disc)
 			go runFn()
 		}
 	}
 }
 
-func (c *Component) newRunAndStopForDisc(ctx context.Context, disc DiscovererWithMetrics) (func(), func()) {
+// newRunAndStopForDisc creates a new runFn and stopFn functions for a given DiscovererWithMetrics. The run function will
+// register the metrics and run discoverer until stopFn is called. After that it will unregister the metrics. The stop
+// function will block until run function is finished cleaning up.
+func (c *Component) newRunAndStopForDisc(ctx context.Context, disc DiscovererWithMetrics) (runFn func(), stopFn func()) {
 	// create new context, so we can cancel it if we get any future updates
 	// since it is derived from the main run context, it only needs to be
 	// canceled directly if we receive new updates
 	newCtx, cancelCtx := context.WithCancel(ctx)
 
 	doneRunning := make(chan struct{})
-	runFn := func() {
+	runFn = func() {
 		// DiscovererWithMetrics needs to have its metrics registered before running.
 		err := disc.Register()
 		if err != nil {
@@ -124,12 +134,13 @@ func (c *Component) newRunAndStopForDisc(ctx context.Context, disc DiscovererWit
 		doneRunning <- struct{}{}
 	}
 
-	stopCurrent := func() {
+	stopFn = func() {
 		cancelCtx()
+		// Wait till the runFn is done and cleaned up / unregistered the metrics.
 		<-doneRunning
 	}
 
-	return runFn, stopCurrent
+	return runFn, stopFn
 }
 
 // Update implements component.Component.
