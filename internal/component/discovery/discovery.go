@@ -76,6 +76,19 @@ func New(o component.Options, args component.Arguments, creator Creator) (*Compo
 	return c, c.Update(args)
 }
 
+// ConvertibleConfig is used to more conveniently convert a configuration struct into a DiscovererConfig.
+type ConvertibleConfig interface {
+	// Convert converts the struct into a DiscovererConfig.
+	Convert() DiscovererConfig
+}
+
+// NewFromConvertibleConfig creates a discovery component given a ConvertibleConfig. Convenience function for New.
+func NewFromConvertibleConfig[T ConvertibleConfig](opts component.Options, conf T) (component.Component, error) {
+	return New(opts, conf, func(args component.Arguments) (DiscovererConfig, error) {
+		return args.(T).Convert(), nil
+	})
+}
+
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	var (
@@ -219,7 +232,7 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 			return
 		case groups := <-ch:
 			for _, group := range groups {
-				// DiscovererConfig will send an empty target set to indicate the group (keyed by Source field)
+				// Discoverer will send an empty target set to indicate the group (keyed by Source field)
 				// should be removed
 				if len(group.Targets) == 0 {
 					delete(cache, group.Source)

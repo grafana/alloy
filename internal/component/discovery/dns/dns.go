@@ -22,7 +22,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -59,20 +59,11 @@ func (args *Arguments) Validate() error {
 	return nil
 }
 
-// Convert converts Arguments to the upstream Prometheus SD type.
-func (args Arguments) Convert() dns.SDConfig {
-	return dns.SDConfig{
+func (args Arguments) Convert() discovery.DiscovererConfig {
+	return &dns.SDConfig{
 		Names:           args.Names,
 		RefreshInterval: model.Duration(args.RefreshInterval),
 		Type:            args.Type,
 		Port:            args.Port,
 	}
-}
-
-// New returns a new instance of a discovery.dns component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
-		conf := args.(Arguments).Convert()
-		return &conf, nil
-	})
 }

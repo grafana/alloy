@@ -4,10 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/hetzner"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestAlloyUnmarshal(t *testing.T) {
@@ -40,7 +42,7 @@ func TestConvert(t *testing.T) {
 		RefreshInterval: 60 * time.Second,
 		Port:            80,
 	}
-	converted := args.Convert()
+	converted := args.Convert().(*prom_discovery.SDConfig)
 	assert.Equal(t, 80, converted.Port)
 	assert.Equal(t, model.Duration(60*time.Second), converted.RefreshInterval)
 	assert.Equal(t, "robot", string(converted.Role))

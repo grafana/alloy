@@ -11,6 +11,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	promhttp "github.com/prometheus/prometheus/discovery/http"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"gotest.tools/assert"
@@ -42,7 +43,7 @@ func TestConvert(t *testing.T) {
 	require.NoError(t, err)
 	args.URL = config.URL{URL: u}
 
-	sd := args.Convert()
+	sd := args.Convert().(*promhttp.SDConfig)
 	assert.Equal(t, "https://www.example.com:12345/foo", sd.URL)
 	assert.Equal(t, model.Duration(60*time.Second), sd.RefreshInterval)
 	assert.Equal(t, true, sd.HTTPClientConfig.EnableHTTP2)
@@ -84,7 +85,7 @@ func TestComponent(t *testing.T) {
 	defer srv.Close()
 	u, _ := url.Parse(srv.URL)
 	var cancel func()
-	component, err := New(
+	component, err := discovery.NewFromConvertibleConfig(
 		component.Options{
 			OnStateChange: func(e component.Exports) {
 				stateChanged.Store(true)

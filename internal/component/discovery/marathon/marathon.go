@@ -23,7 +23,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -70,8 +70,7 @@ func (a *Arguments) Validate() error {
 	return a.HTTPClientConfig.Validate()
 }
 
-// Convert converts Arguments into the SDConfig type.
-func (a *Arguments) Convert() *prom_discovery.SDConfig {
+func (a Arguments) Convert() discovery.DiscovererConfig {
 	return &prom_discovery.SDConfig{
 		Servers:          a.Servers,
 		RefreshInterval:  model.Duration(a.RefreshInterval),
@@ -79,12 +78,4 @@ func (a *Arguments) Convert() *prom_discovery.SDConfig {
 		AuthTokenFile:    a.AuthTokenFile,
 		HTTPClientConfig: *a.HTTPClientConfig.Convert(),
 	}
-}
-
-// New returns a new instance of discovery.marathon component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
-		newArgs := args.(Arguments)
-		return newArgs.Convert(), nil
-	})
 }

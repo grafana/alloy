@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/config"
 	promdiscovery "github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
@@ -17,7 +18,6 @@ import (
 	"go.opentelemetry.io/collector/processor"
 
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/static/promglobalmetrics"
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	util "github.com/grafana/alloy/internal/util/log"
 )
@@ -38,11 +38,20 @@ func newTraceProcessor(nextConsumer consumer.Traces, operationType string, podAs
 	ctx, cancel := context.WithCancel(context.Background())
 
 	logger := log.With(util.Logger, "component", "traces service disco")
+
+	// NOTE: Since this static mode code path is only used for converter code, we can safely use the default registerer.
+	discoveryManagerRegistry := prometheus.DefaultRegisterer
+	sdMetrics, err := promdiscovery.CreateAndRegisterSDMetrics(prometheus.DefaultRegisterer)
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("failed to create prometheus service discovery metrics %w", err)
+	}
+
 	mgr := promdiscovery.NewManager(
 		ctx,
 		logger,
-		promglobalmetrics.PromDiscoveryManagerRegistry,
-		promglobalmetrics.PromSdMetrics,
+		discoveryManagerRegistry,
+		sdMetrics,
 		promdiscovery.Name("traces service disco"),
 	)
 
@@ -53,7 +62,7 @@ func newTraceProcessor(nextConsumer consumer.Traces, operationType string, podAs
 		relabelConfigs[v.JobName] = v.RelabelConfigs
 	}
 
-	err := mgr.ApplyConfig(managerConfig)
+	err = mgr.ApplyConfig(managerConfig)
 	if err != nil {
 		cancel()
 		return nil, err

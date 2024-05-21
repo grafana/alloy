@@ -19,7 +19,7 @@ func init() {
 		Args:      Arguments{},
 		Exports:   discovery.Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -46,18 +46,11 @@ func (args *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 	return nil
 }
 
-func (args Arguments) Convert() *http.SDConfig {
+func (args Arguments) Convert() discovery.DiscovererConfig {
 	cfg := &http.SDConfig{
 		HTTPClientConfig: *args.HTTPClientConfig.Convert(),
 		URL:              args.URL.String(),
 		RefreshInterval:  model.Duration(args.RefreshInterval),
 	}
 	return cfg
-}
-
-func New(opts component.Options, args Arguments) (component.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
-		conf := args.(Arguments).Convert()
-		return conf, nil
-	})
 }

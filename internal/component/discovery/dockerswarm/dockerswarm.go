@@ -22,7 +22,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -68,8 +68,7 @@ func (a *Arguments) Validate() error {
 	return a.HTTPClientConfig.Validate()
 }
 
-// Convert converts Arguments into the SDConfig type.
-func (a *Arguments) Convert() *prom_discovery.DockerSwarmSDConfig {
+func (a Arguments) Convert() discovery.DiscovererConfig {
 	return &prom_discovery.DockerSwarmSDConfig{
 		Host:             a.Host,
 		Role:             a.Role,
@@ -96,12 +95,4 @@ func (f *Filter) convert() prom_discovery.Filter {
 		Name:   f.Name,
 		Values: values,
 	}
-}
-
-// New returns a new instance of discovery.dockerswarm component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
-		newArgs := args.(Arguments)
-		return newArgs.Convert(), nil
-	})
 }

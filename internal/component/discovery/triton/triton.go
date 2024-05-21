@@ -21,7 +21,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -59,7 +59,7 @@ func (args *Arguments) Validate() error {
 	return nil
 }
 
-func (args *Arguments) Convert() *prom_discovery.SDConfig {
+func (args Arguments) Convert() discovery.DiscovererConfig {
 	return &prom_discovery.SDConfig{
 		Account:         args.Account,
 		Role:            args.Role,
@@ -71,12 +71,4 @@ func (args *Arguments) Convert() *prom_discovery.SDConfig {
 		TLSConfig:       *args.TLSConfig.Convert(),
 		Version:         args.Version,
 	}
-}
-
-// New returns a new instance of a discovery.triton component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
-		newArgs := args.(Arguments)
-		return newArgs.Convert(), nil
-	})
 }

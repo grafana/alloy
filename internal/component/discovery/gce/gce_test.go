@@ -4,8 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
+	"github.com/prometheus/prometheus/discovery/gce"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestUnmarshalAlloy(t *testing.T) {
@@ -48,7 +50,7 @@ func TestConvert(t *testing.T) {
 		TagSeparator:    ",",
 	}
 
-	sdConfig := args.Convert()
+	sdConfig := args.Convert().(*gce.SDConfig)
 	require.Equal(t, args.Project, sdConfig.Project)
 	require.Equal(t, args.Zone, sdConfig.Zone)
 	require.Equal(t, args.Filter, sdConfig.Filter)

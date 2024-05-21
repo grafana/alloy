@@ -23,7 +23,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -70,7 +70,7 @@ func (args *Arguments) Validate() error {
 	return args.HTTPClientConfig.Validate()
 }
 
-func (args *Arguments) Convert() *prom_discovery.SDConfig {
+func (args Arguments) Convert() discovery.DiscovererConfig {
 	httpClient := &args.HTTPClientConfig
 
 	return &prom_discovery.SDConfig{
@@ -90,12 +90,4 @@ func (args *Arguments) Convert() *prom_discovery.SDConfig {
 		ServiceTags:      args.ServiceTags,
 		NodeMeta:         args.NodeMeta,
 	}
-}
-
-// New returns a new instance of a discovery.consul component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
-		newArgs := args.(Arguments)
-		return newArgs.Convert(), nil
-	})
 }
