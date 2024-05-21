@@ -56,6 +56,7 @@ type Service struct {
 	configHash           *prometheus.GaugeVec
 	lastFetchSuccessTime prometheus.Gauge
 	totalAttempts        prometheus.Counter
+	getConfigTime        prometheus.Histogram
 }
 
 // ServiceName defines the name used for the remotecfg service.
@@ -153,6 +154,12 @@ func New(opts Options) (*Service, error) {
 			prometheus.GaugeOpts{
 				Name: "remotecfg_last_load_success_timestamp_seconds",
 				Help: "Timestamp of the last successful remote configuration load",
+			},
+		),
+		getConfigTime: prom.NewHistogram(
+			prometheus.HistogramOpts{
+				Name: "remotecfg_request_duration_seconds",
+				Help: "Duration of remote configuration requests.",
 			},
 		),
 	}, nil
@@ -314,11 +321,12 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 	client := s.asClient
 	s.mut.RUnlock()
 
+	start := time.Now()
 	gcr, err := client.GetConfig(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}
-
+	s.getConfigTime.Observe(time.Since(start).Seconds())
 	return []byte(gcr.Msg.GetContent()), nil
 }
 
