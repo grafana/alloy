@@ -119,30 +119,30 @@ func New(opts Options) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	prom := promauto.With(opts.Metrics)
 	return &Service{
 		opts:   opts,
 		ticker: time.NewTicker(math.MaxInt64),
-		configHash: promauto.NewGaugeVec(
+		configHash: prom.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name: "remotecfg_hash",
 				Help: "Hash of the currently active remote configuration.",
 			},
 			[]string{"hash"},
 		),
-		lastFetchSuccess: promauto.NewGauge(
+		lastFetchSuccess: prom.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "remotecfg_last_load_successful",
 				Help: "Remote config loaded successfully",
 			},
 		),
-		totalFailures: promauto.NewCounter(
+		totalFailures: prom.NewCounter(
 			prometheus.CounterOpts{
 				Name: "remotecfg_load_failures_total",
 				Help: "Remote configuration load failures",
 			},
 		),
-		lastFetchSuccessTime: promauto.NewGauge(
+		lastFetchSuccessTime: prom.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "remotecfg_last_load_success_timestamp_seconds",
 				Help: "Timestamp of the last successful remote configuration load",
