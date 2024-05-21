@@ -17,8 +17,6 @@ v1.1.1
 
 - Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
 
-- Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
-
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
   cluster instance to another could have a staleness marker inserted and result
   in a gap in metrics (@thampiotr)
