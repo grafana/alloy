@@ -55,6 +55,7 @@ type Service struct {
 	totalFailures        prometheus.Counter
 	configHash           *prometheus.GaugeVec
 	lastFetchSuccessTime prometheus.Gauge
+	totalAttempts        prometheus.Counter
 }
 
 // ServiceName defines the name used for the remotecfg service.
@@ -140,6 +141,12 @@ func New(opts Options) (*Service, error) {
 			prometheus.CounterOpts{
 				Name: "remotecfg_load_failures_total",
 				Help: "Remote configuration load failures",
+			},
+		),
+		totalAttempts: prom.NewCounter(
+			prometheus.CounterOpts{
+				Name: "remotecfg_load_attempts_total",
+				Help: "Attempts to load remote configuration",
 			},
 		),
 		lastFetchSuccessTime: prom.NewGauge(
@@ -246,13 +253,15 @@ func (s *Service) Update(newConfig any) error {
 // fetch attempts to read configuration from the API and the local cache
 // and then parse/load their contents in order of preference.
 func (s *Service) fetch() {
-	if err := s.fetchRemote(); err != nil {
+	err := s.fetchRemote()
+	s.totalAttempts.Add(1)
+	if err == nil {
+		s.lastFetchSuccess.Set(1)
+		s.lastFetchSuccessTime.SetToCurrentTime()
+	} else {
 		s.totalFailures.Add(1)
 		s.lastFetchSuccess.Set(0)
 		s.fetchLocal()
-	} else {
-		s.lastFetchSuccess.Set(1)
-		s.lastFetchSuccessTime.SetToCurrentTime()
 	}
 }
 func (s *Service) fetchRemote() error {
