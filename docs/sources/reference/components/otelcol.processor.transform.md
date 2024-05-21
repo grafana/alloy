@@ -118,7 +118,7 @@ trace_statements | [trace_statements][] | Statements which transform traces. | n
 metric_statements | [metric_statements][] | Statements which transform metrics. | no
 log_statements | [log_statements][] | Statements which transform logs. | no
 output | [output][] | Configures where to send received telemetry data. | yes
-debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [trace_statements]: #trace_statements-block
 [metric_statements]: #metric_statements-block

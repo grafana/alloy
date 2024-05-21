@@ -118,7 +118,7 @@ Hierarchy | Block      | Description                               | Required
 ----------|------------|-------------------------------------------|---------
 store     | [store][]  | Configures the in-memory store for spans. | no
 output    | [output][] | Configures where to send telemetry data.  | yes
-debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [store]: #store-block
 [output]: #output-block

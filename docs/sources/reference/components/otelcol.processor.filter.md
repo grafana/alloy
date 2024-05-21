@@ -89,7 +89,7 @@ traces    | [traces][]  | Statements which filter traces.                   | no
 metrics   | [metrics][] | Statements which filter metrics.                  | no
 logs      | [logs][]    | Statements which filter logs.                     | no
 output    | [output][]  | Configures where to send received telemetry data. | yes
-debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [traces]: #traces-block
 [metrics]: #metrics-block

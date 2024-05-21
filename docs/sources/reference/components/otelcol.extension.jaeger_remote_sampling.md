@@ -47,7 +47,7 @@ source                                | [source][]             | Configures the 
 source > remote                       | [remote][]             | Configures the gRPC client used to retrieve the Jaeger remote sampling document. | no
 source > remote > tls                 | [tls_client][]                | Configures TLS for the gRPC client.                                              | no
 source > remote > keepalive           | [keepalive][]          | Configures keepalive settings for the gRPC client.                               | no
-debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `grpc > tls`
 refers to a `tls` block defined inside a `grpc` block.

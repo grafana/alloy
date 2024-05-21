@@ -102,7 +102,7 @@ The following blocks are supported inside the definition of
 | histogram > explicit    | [explicit][]    | Configuration for a histogram with explicit buckets.                                                                                                       | no       |
 | histogram > exponential | [exponential][] | Configuration for a histogram with exponential buckets.                                                                                                    | no       |
 | output                  | [output][]      | Configures where to send telemetry data.                                                                                                                   | yes      |
-debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 It is necessary to specify either a "[exponential][]" or an "[explicit][]" block:
 

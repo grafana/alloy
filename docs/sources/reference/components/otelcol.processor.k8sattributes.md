@@ -72,7 +72,7 @@ pod_association          | [pod_association][] | Rules to associate pod metadata
 pod_association > source | [source][]          | Source information to identify a pod.                     | no
 exclude                  | [exclude][]         | Exclude pods from being processed.                        | no
 exclude > pod            | [pod][]             | Pod information.                                          | no
-debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 
 The `>` symbol indicates deeper levels of nesting. For example, `extract > annotation`
