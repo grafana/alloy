@@ -82,6 +82,10 @@ func (c *collectingAppender) UpdateMetadata(ref storage.SeriesRef, l labels.Labe
 	panic("not implemented yet")
 }
 
+func (c *collectingAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+	panic("not implemented yet for this test appender")
+}
+
 type ConstantAppendable struct {
 	Inner CollectingAppender
 }

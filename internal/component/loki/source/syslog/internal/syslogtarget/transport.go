@@ -17,17 +17,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/dskit/backoff"
-	"github.com/mwitkow/go-conntrack"
-
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/syslog/syslogparser"
 	"github.com/influxdata/go-syslog/v3"
+	"github.com/mwitkow/go-conntrack"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/model/labels"
 
-	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/clients/pkg/promtail/targets/syslog/syslogparser"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var (

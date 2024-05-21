@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"reflect"
+	"slices"
 	"sync"
 	"time"
 
@@ -27,6 +29,7 @@ import (
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/useragent"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func init() {
@@ -42,6 +45,11 @@ func init() {
 		},
 	})
 }
+
+var (
+	defaultScrapeProtocols                = convertScrapeProtocols(config.DefaultScrapeProtocols)
+	defaultNativeHistogramScrapeProtocols = convertScrapeProtocols(config.DefaultProtoFirstScrapeProtocols)
+)
 
 // Arguments holds values which are used to configure the prometheus.scrape
 // component.
@@ -65,6 +73,11 @@ type Arguments struct {
 	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
 	// The timeout for scraping targets of this config.
 	ScrapeTimeout time.Duration `alloy:"scrape_timeout,attr,optional"`
+	// The protocols to negotiate during a scrape. It tells clients what
+	// protocol are accepted by Prometheus and with what order of preference.
+	// Supported values (case sensitive): PrometheusProto, OpenMetricsText0.0.1,
+	// OpenMetricsText1.0.0, PrometheusText0.0.4.
+	ScrapeProtocols []string `alloy:"scrape_protocols,attr,optional"`
 	// The HTTP resource path on which to fetch metrics from targets.
 	MetricsPath string `alloy:"metrics_path,attr,optional"`
 	// The URL scheme with which to fetch metrics from targets.
@@ -91,7 +104,11 @@ type Arguments struct {
 	HTTPClientConfig component_config.HTTPClientConfig `alloy:",squash"`
 
 	// Scrape Options
-	ExtraMetrics              bool `alloy:"extra_metrics,attr,optional"`
+	ExtraMetrics bool `alloy:"extra_metrics,attr,optional"`
+	// Deprecated: Use ScrapeProtocols instead. For backwards-compatibility, if this option is set to true, the
+	// ScrapeProtocols will be set to [PrometheusProto, OpenMetricsText1.0.0, OpenMetricsText0.0.1, PrometheusText0.0.4].
+	// It is invalid to set both EnableProtobufNegotiation and ScrapeProtocols.
+	// TODO: https://github.com/grafana/alloy/issues/878: Remove this option.
 	EnableProtobufNegotiation bool `alloy:"enable_protobuf_negotiation,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
@@ -108,6 +125,7 @@ func (arg *Arguments) SetToDefault() {
 		HTTPClientConfig:         component_config.DefaultHTTPClientConfig,
 		ScrapeInterval:           1 * time.Minute,  // From config.DefaultGlobalConfig
 		ScrapeTimeout:            10 * time.Second, // From config.DefaultGlobalConfig
+		ScrapeProtocols:          slices.Clone(defaultScrapeProtocols),
 	}
 }
 
@@ -117,8 +135,40 @@ func (arg *Arguments) Validate() error {
 		return fmt.Errorf("scrape_timeout (%s) greater than scrape_interval (%s) for scrape config with job name %q", arg.ScrapeTimeout, arg.ScrapeInterval, arg.JobName)
 	}
 
+	if arg.EnableProtobufNegotiation {
+		// Check if scrape_protocols is set to anything other than default and error if it is. We do not allow combining
+		// the enable_protobuf_negotiation and scrape_protocols options.
+		if !reflect.DeepEqual(arg.ScrapeProtocols, defaultScrapeProtocols) {
+			return fmt.Errorf("both enable_protobuf_negotiation and scrape_protocols are set, only one can be set at a time")
+		}
+		// For backwards-compatibility, if EnableProtobufNegotiation is set to true, the ScrapeProtocols are set to
+		// [PrometheusProto, OpenMetricsText1.0.0, OpenMetricsText0.0.1, PrometheusText0.0.4].
+		arg.ScrapeProtocols = slices.Clone(defaultNativeHistogramScrapeProtocols)
+	}
+
+	// Validate scrape protocols
+	existing := make(map[string]struct{})
+	for _, p := range arg.ScrapeProtocols {
+		if _, ok := existing[p]; ok {
+			return fmt.Errorf("duplicate scrape protocol %q: make sure the scrape protocols provided are unique", p)
+		}
+		promSP := config.ScrapeProtocol(p)
+		if err := promSP.Validate(); err != nil {
+			return fmt.Errorf("invalid scrape protocol %q: %w", p, err)
+		}
+		existing[p] = struct{}{}
+	}
+
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	return arg.HTTPClientConfig.Validate()
+}
+
+func convertScrapeProtocols(promProtocols []config.ScrapeProtocol) []string {
+	protocols := make([]string, 0, len(promProtocols))
+	for _, p := range promProtocols {
+		protocols = append(protocols, string(p))
+	}
+	return protocols
 }
 
 // Component implements the prometheus.scrape component.
@@ -129,6 +179,7 @@ type Component struct {
 	reloadTargets       chan struct{}
 	targetsGauge        client_prometheus.Gauge
 	movedTargetsCounter client_prometheus.Counter
+	unregisterer        util.Unregisterer
 
 	mut        sync.RWMutex
 	args       Arguments
@@ -169,9 +220,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
-		EnableProtobufNegotiation: args.EnableProtobufNegotiation,
 	}
-	scraper := scrape.NewManager(scrapeOptions, o.Logger, alloyAppendable)
+
+	unregisterer := util.WrapWithUnregisterer(o.Registerer)
+	scraper, err := scrape.NewManager(scrapeOptions, o.Logger, alloyAppendable, unregisterer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scrape manager: %w", err)
+	}
 
 	targetsGauge := client_prometheus.NewGauge(client_prometheus.GaugeOpts{
 		Name: "prometheus_scrape_targets_gauge",
@@ -197,11 +252,16 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		appendable:          alloyAppendable,
 		targetsGauge:        targetsGauge,
 		movedTargetsCounter: movedTargetsCounter,
+		unregisterer:        unregisterer,
 	}
 
 	// Call to Update() to set the receivers and targets once at the start.
 	if err := c.Update(args); err != nil {
 		return nil, err
+	}
+
+	if args.EnableProtobufNegotiation {
+		level.Warn(o.Logger).Log("msg", "enable_protobuf_negotiation is deprecated and will be removed in a future major release, use scrape_protocols instead")
 	}
 
 	return c, nil
@@ -210,6 +270,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer c.scraper.Stop()
+	defer c.unregisterer.UnregisterAll()
 
 	targetSetsChan := make(chan map[string][]*targetgroup.Group)
 
@@ -356,6 +417,13 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.LabelNameLengthLimit = c.LabelNameLengthLimit
 	dec.LabelValueLengthLimit = c.LabelValueLengthLimit
 
+	// Scrape protocols
+	scrapeProtocols := make([]config.ScrapeProtocol, 0, len(c.ScrapeProtocols))
+	for _, p := range c.ScrapeProtocols {
+		scrapeProtocols = append(scrapeProtocols, config.ScrapeProtocol(p))
+	}
+	dec.ScrapeProtocols = scrapeProtocols
+
 	// HTTP scrape client settings
 	dec.HTTPClientConfig = *c.HTTPClientConfig.Convert()
 	return &dec
@@ -388,11 +456,12 @@ func BuildTargetStatuses(targets map[string][]*scrape.Target) []TargetStatus {
 				lastError = st.LastError().Error()
 			}
 			if st != nil {
+				lb := labels.NewScratchBuilder(0)
 				res = append(res, TargetStatus{
 					JobName:            job,
 					URL:                st.URL().String(),
 					Health:             string(st.Health()),
-					Labels:             st.Labels().Map(),
+					Labels:             st.Labels(&lb).Map(),
 					LastError:          lastError,
 					LastScrape:         st.LastScrape(),
 					LastScrapeDuration: st.LastScrapeDuration(),

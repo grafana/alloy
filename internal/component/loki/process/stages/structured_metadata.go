@@ -4,7 +4,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/loki/pkg/logproto"
+	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
 func newStructuredMetadataStage(logger log.Logger, configs LabelsConfig) (Stage, error) {
