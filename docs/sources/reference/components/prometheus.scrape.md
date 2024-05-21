@@ -84,6 +84,9 @@ a scrape. The following values are supported:
 - `PrometheusProto`
 - `PrometheusText0.0.4`
 
+If you were using the now deprecated `enable_protobuf_negotiation` argument, switch 
+to using `scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]` instead.
+
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `track_timestamps_staleness` controls whether Prometheus tracks [staleness][prom-staleness] of metrics with an explicit timestamp present in scraped data.
