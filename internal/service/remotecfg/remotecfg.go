@@ -386,8 +386,10 @@ func (s *Service) getCfgHash() string {
 func (s *Service) setCfgHash(h string) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
-	s.metrics.configHash.Reset()
-	s.metrics.configHash.WithLabelValues(h).Set(1)
+	if s.metrics != nil {
+		s.metrics.configHash.Reset()
+		s.metrics.configHash.WithLabelValues(h).Set(1)
+	}
 	s.currentConfigHash = h
 }
 
