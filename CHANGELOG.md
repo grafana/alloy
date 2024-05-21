@@ -18,6 +18,7 @@ Main (unreleased)
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
+- (_Public preview_) Add metrics to report status of `remotecfg` service. (@captncraig)
 
 ### Bugfixes
 
