@@ -24,6 +24,9 @@ Main (unreleased)
 
 ### Bugfixes
 
+- Fix panic for `prometheus.exporter.snmp` introduced in v1.1 with a version upgrade.
+  This was due to an uninitialized new metric for the exporter. (@erikbaranowski)
+
 - Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
