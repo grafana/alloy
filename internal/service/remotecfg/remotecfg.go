@@ -21,6 +21,8 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/syntax"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	commonconfig "github.com/prometheus/common/config"
 )
 
@@ -48,6 +50,11 @@ type Service struct {
 	ticker            *time.Ticker
 	dataPath          string
 	currentConfigHash string
+
+	lastFetchSuccess     prometheus.Gauge
+	totalFailures        prometheus.Counter
+	configHash           *prometheus.GaugeVec
+	lastFetchSuccessTime prometheus.Gauge
 }
 
 // ServiceName defines the name used for the remotecfg service.
@@ -56,8 +63,9 @@ const ServiceName = "remotecfg"
 // Options are used to configure the remotecfg service. Options are
 // constant for the lifetime of the remotecfg service.
 type Options struct {
-	Logger      log.Logger // Where to send logs.
-	StoragePath string     // Where to cache configuration on-disk.
+	Logger      log.Logger            // Where to send logs.
+	StoragePath string                // Where to cache configuration on-disk.
+	Metrics     prometheus.Registerer // Where to send metrics to.
 }
 
 // Arguments holds runtime settings for the remotecfg service.
@@ -115,6 +123,31 @@ func New(opts Options) (*Service, error) {
 	return &Service{
 		opts:   opts,
 		ticker: time.NewTicker(math.MaxInt64),
+		configHash: promauto.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "remotecfg_hash",
+				Help: "Hash of the currently active remote configuration.",
+			},
+			[]string{"hash"},
+		),
+		lastFetchSuccess: promauto.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "remotecfg_last_load_successful",
+				Help: "Remote config loaded successfully",
+			},
+		),
+		totalFailures: promauto.NewCounter(
+			prometheus.CounterOpts{
+				Name: "remotecfg_load_failures_total",
+				Help: "Remote configuration load failures",
+			},
+		),
+		lastFetchSuccessTime: promauto.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "remotecfg_last_load_success_timestamp_seconds",
+				Help: "Timestamp of the last successful remote configuration load",
+			},
+		),
 	}, nil
 }
 
@@ -214,7 +247,12 @@ func (s *Service) Update(newConfig any) error {
 // and then parse/load their contents in order of preference.
 func (s *Service) fetch() {
 	if err := s.fetchRemote(); err != nil {
+		s.totalFailures.Add(1)
+		s.lastFetchSuccess.Set(0)
 		s.fetchLocal()
+	} else {
+		s.lastFetchSuccess.Set(1)
+		s.lastFetchSuccessTime.SetToCurrentTime()
 	}
 }
 func (s *Service) fetchRemote() error {
@@ -322,7 +360,8 @@ func (s *Service) getCfgHash() string {
 func (s *Service) setCfgHash(h string) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
-
+	s.configHash.Reset()
+	s.configHash.WithLabelValues(h).Set(1)
 	s.currentConfigHash = h
 }
 
