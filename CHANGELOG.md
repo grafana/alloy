@@ -7,6 +7,26 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.1.1
+-----------------
+
+### Bugfixes
+
+- Fix panic for `prometheus.exporter.snmp` introduced in v1.1 with a version upgrade.
+  This was due to an uninitialized new metric for the exporter. (@erikbaranowski)
+
+- Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
+
+- Fixed an issue with `prometheus.scrape` in which targets that move from one
+  cluster instance to another could have a staleness marker inserted and result
+  in a gap in metrics (@thampiotr)
+
+- Exit Alloy immediately if the port it runs on is not available. 
+  This port can be configured with `--server.http.listen-addr` or using
+  the default listen address`127.0.0.1:12345`. (@mattdurham)
+
+- Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
+
 v1.1.0
 ------
 
