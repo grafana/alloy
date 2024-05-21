@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/prometheus/prometheus/storage"
+
 	"github.com/grafana/alloy/internal/component"
 	_ "github.com/grafana/alloy/internal/component/all"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/prometheus/prometheus/storage"
 )
 
 //TODO(thampiotr): Instead of metadata package reaching into registry, we'll migrate to using a YAML schema file that

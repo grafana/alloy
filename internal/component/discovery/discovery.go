@@ -92,7 +92,7 @@ func NewFromConvertibleConfig[T ConvertibleConfig](opts component.Options, conf 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	var (
-		runFn                func() = nil
+		runFn                func()
 		stopFn               func() = nil
 		stopCurrentIfRunning        = func() {
 			if stopFn != nil {

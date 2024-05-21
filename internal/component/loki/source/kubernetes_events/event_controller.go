@@ -24,6 +24,7 @@ import (
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
+
 const (
 	logFormatJson = "json"
 	logFormatFmt  = "logfmt"
