@@ -50,7 +50,10 @@ type Service struct {
 	ticker            *time.Ticker
 	dataPath          string
 	currentConfigHash string
+	metrics           *metrics
+}
 
+type metrics struct {
 	lastFetchSuccess     prometheus.Gauge
 	totalFailures        prometheus.Counter
 	configHash           *prometheus.GaugeVec
@@ -121,10 +124,16 @@ func New(opts Options) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	prom := promauto.With(opts.Metrics)
+
 	return &Service{
 		opts:   opts,
 		ticker: time.NewTicker(math.MaxInt64),
+	}, nil
+}
+
+func (s *Service) registerMetrics() {
+	prom := promauto.With(s.opts.Metrics)
+	mets := &metrics{
 		configHash: prom.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name: "remotecfg_hash",
@@ -162,7 +171,8 @@ func New(opts Options) (*Service, error) {
 				Help: "Duration of remote configuration requests.",
 			},
 		),
-	}, nil
+	}
+	s.metrics = mets
 }
 
 // Data is a no-op for the remotecfg service.
@@ -260,14 +270,8 @@ func (s *Service) Update(newConfig any) error {
 // fetch attempts to read configuration from the API and the local cache
 // and then parse/load their contents in order of preference.
 func (s *Service) fetch() {
-	err := s.fetchRemote()
-	s.totalAttempts.Add(1)
-	if err == nil {
-		s.lastFetchSuccess.Set(1)
-		s.lastFetchSuccessTime.SetToCurrentTime()
-	} else {
-		s.totalFailures.Add(1)
-		s.lastFetchSuccess.Set(0)
+	if err := s.fetchRemote(); err != nil {
+		level.Error(s.opts.Logger).Log("msg", "failed to fetch remote config", "err", err)
 		s.fetchLocal()
 	}
 }
@@ -277,9 +281,14 @@ func (s *Service) fetchRemote() error {
 	}
 
 	b, err := s.getAPIConfig()
+	s.metrics.totalAttempts.Add(1)
 	if err != nil {
+		s.metrics.totalFailures.Add(1)
+		s.metrics.lastFetchSuccess.Set(0)
 		return err
 	}
+	s.metrics.lastFetchSuccess.Set(1)
+	s.metrics.lastFetchSuccessTime.SetToCurrentTime()
 
 	// API return the same configuration, no need to reload.
 	newConfigHash := getHash(b)
@@ -326,7 +335,7 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.getConfigTime.Observe(time.Since(start).Seconds())
+	s.metrics.getConfigTime.Observe(time.Since(start).Seconds())
 	return []byte(gcr.Msg.GetContent()), nil
 }
 
@@ -377,14 +386,17 @@ func (s *Service) getCfgHash() string {
 func (s *Service) setCfgHash(h string) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
-	s.configHash.Reset()
-	s.configHash.WithLabelValues(h).Set(1)
+	s.metrics.configHash.Reset()
+	s.metrics.configHash.WithLabelValues(h).Set(1)
 	s.currentConfigHash = h
 }
 
 func (s *Service) isEnabled() bool {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
-
-	return s.args.URL != "" && s.asClient != nil
+	enabled := s.args.URL != "" && s.asClient != nil
+	if enabled && s.metrics == nil {
+		s.registerMetrics()
+	}
+	return enabled
 }
