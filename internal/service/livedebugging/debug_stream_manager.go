@@ -4,6 +4,10 @@ import "sync"
 
 // DebugStreamManager defines the operations for managing debug streams.
 type DebugStreamManager interface {
+	// Register a component by name
+	Register(componentName string)
+	// IsRegistered returns true if the component name was registered
+	IsRegistered(componentName string) bool
 	// Stream streams data for a given componentID.
 	Stream(componentID string, data string)
 	// SetStream assigns a debug stream callback to a componentID.
@@ -13,14 +17,16 @@ type DebugStreamManager interface {
 }
 
 type debugStreamManager struct {
-	loadMut sync.RWMutex
-	streams map[string]map[string]func(string)
+	loadMut              sync.RWMutex
+	streams              map[string]map[string]func(string)
+	registeredComponents map[string]struct{}
 }
 
 // NewDebugStreamManager creates a new instance of DebugStreamManager.
 func NewDebugStreamManager() *debugStreamManager {
 	return &debugStreamManager{
-		streams: make(map[string]map[string]func(string)),
+		streams:              make(map[string]map[string]func(string)),
+		registeredComponents: make(map[string]struct{}),
 	}
 }
 
@@ -47,4 +53,13 @@ func (s *debugStreamManager) DeleteStream(streamID string, componentID string) {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 	delete(s.streams[componentID], streamID)
+}
+
+func (s *debugStreamManager) Register(componentName string) {
+	s.registeredComponents[componentName] = struct{}{}
+}
+
+func (s *debugStreamManager) IsRegistered(componentName string) bool {
+	_, exist := s.registeredComponents[componentName]
+	return exist
 }

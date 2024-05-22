@@ -6,6 +6,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRegister(t *testing.T) {
+	manager := NewDebugStreamManager()
+	require.False(t, manager.IsRegistered("type1"))
+	manager.Register("type1")
+	require.True(t, manager.IsRegistered("type1"))
+	// registering a component name that has already been registered does not do anything
+	require.NotPanics(t, func() { manager.Register("type1") })
+}
+
 func TestStream(t *testing.T) {
 	manager := NewDebugStreamManager()
 	componentID := "component1"

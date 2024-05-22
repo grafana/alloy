@@ -23,9 +23,11 @@ import (
 	"go.uber.org/atomic"
 )
 
+const name = "prometheus.relabel"
+
 func init() {
 	component.Register(component.Registration{
-		Name:      "prometheus.relabel",
+		Name:      name,
 		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
@@ -107,6 +109,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil {
 		return nil, err
 	}
+	debuggingStreamHandler.(livedebugging.DebugStreamManager).Register(name)
 
 	data, err := o.GetServiceData(labelstore.ServiceName)
 	if err != nil {

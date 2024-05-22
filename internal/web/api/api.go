@@ -6,6 +6,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"path"
@@ -119,6 +120,18 @@ func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		componentID := vars["id"]
+		requestedComponent := component.ParseID(componentID)
+
+		component, err := a.alloy.GetComponent(requestedComponent, component.InfoOptions{})
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		if !a.debuggingStreamHandler.IsRegistered(component.ComponentName) {
+			http.Error(w, fmt.Sprintf("Live debugging is not supported for the component \"%s\"", component.ComponentName), http.StatusInternalServerError)
+			return
+		}
 
 		// Buffer of 1000 entries to handle load spikes and prevent this functionality from eating up too much memory.
 		// TODO: in the future we may want to make this value configurable to handle heavy load
