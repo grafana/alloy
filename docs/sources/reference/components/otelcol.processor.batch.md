@@ -128,6 +128,7 @@ information.
 
 ## Debug metrics
 
+* `processor_batch_batch_send_size_bytes` (histogram): Number of bytes in batch that was sent.
 * `processor_batch_batch_send_size_ratio` (histogram): Number of units in the batch.
 * `processor_batch_metadata_cardinality_ratio` (gauge): Number of distinct metadata value combinations being processed.
 * `processor_batch_timeout_trigger_send_ratio_total` (counter): Number of times the batch was sent due to a timeout trigger.

@@ -144,6 +144,13 @@ func (p *Pipeline) Name() string {
 	return StageTypePipeline
 }
 
+// Cleanup implements Stage.
+func (p *Pipeline) Cleanup() {
+	for _, s := range p.stages {
+		s.Cleanup()
+	}
+}
+
 // Wrap implements EntryMiddleware
 func (p *Pipeline) Wrap(next loki.EntryHandler) loki.EntryHandler {
 	handlerIn := make(chan loki.Entry)
@@ -181,6 +188,7 @@ func (p *Pipeline) Wrap(next loki.EntryHandler) loki.EntryHandler {
 	return loki.NewEntryHandler(handlerIn, func() {
 		once.Do(func() { close(handlerIn) })
 		wg.Wait()
+		p.Cleanup()
 	})
 }
 

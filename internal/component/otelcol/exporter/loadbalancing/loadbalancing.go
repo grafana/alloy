@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
+	"github.com/aws/aws-sdk-go-v2/service/servicediscovery/types"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
@@ -77,6 +78,11 @@ func (args *Arguments) Validate() error {
 	default:
 		return fmt.Errorf("invalid routing key %q", args.RoutingKey)
 	}
+
+	if err := args.Resolver.AWSCloudMap.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -132,28 +138,19 @@ func (oc OtlpConfig) Convert() otlpexporter.Config {
 
 // ResolverSettings defines the configurations for the backend resolver
 type ResolverSettings struct {
-	Static     *StaticResolver     `alloy:"static,block,optional"`
-	DNS        *DNSResolver        `alloy:"dns,block,optional"`
-	Kubernetes *KubernetesResolver `alloy:"kubernetes,block,optional"`
+	Static      *StaticResolver      `alloy:"static,block,optional"`
+	DNS         *DNSResolver         `alloy:"dns,block,optional"`
+	Kubernetes  *KubernetesResolver  `alloy:"kubernetes,block,optional"`
+	AWSCloudMap *AWSCloudMapResolver `alloy:"aws_cloud_map,block,optional"`
 }
 
 func (resolverSettings ResolverSettings) Convert() loadbalancingexporter.ResolverSettings {
 	res := loadbalancingexporter.ResolverSettings{}
 
-	if resolverSettings.Static != nil {
-		staticResolver := resolverSettings.Static.Convert()
-		res.Static = &staticResolver
-	}
-
-	if resolverSettings.DNS != nil {
-		dnsResolver := resolverSettings.DNS.Convert()
-		res.DNS = &dnsResolver
-	}
-
-	if resolverSettings.Kubernetes != nil {
-		kubernetesResolver := resolverSettings.Kubernetes.Convert()
-		res.K8sSvc = &kubernetesResolver
-	}
+	res.Static = resolverSettings.Static.Convert()
+	res.DNS = resolverSettings.DNS.Convert()
+	res.K8sSvc = resolverSettings.Kubernetes.Convert()
+	res.AWSCloudMap = resolverSettings.AWSCloudMap.Convert()
 
 	return res
 }
@@ -163,9 +160,13 @@ type StaticResolver struct {
 	Hostnames []string `alloy:"hostnames,attr"`
 }
 
-func (staticResolver StaticResolver) Convert() loadbalancingexporter.StaticResolver {
-	return loadbalancingexporter.StaticResolver{
-		Hostnames: staticResolver.Hostnames,
+func (r *StaticResolver) Convert() *loadbalancingexporter.StaticResolver {
+	if r == nil {
+		return nil
+	}
+
+	return &loadbalancingexporter.StaticResolver{
+		Hostnames: r.Hostnames,
 	}
 }
 
@@ -179,47 +180,122 @@ type DNSResolver struct {
 
 var _ syntax.Defaulter = &DNSResolver{}
 
-// DefaultDNSResolver holds default values for DNSResolver.
-var DefaultDNSResolver = DNSResolver{
-	Port:     "4317",
-	Interval: 5 * time.Second,
-	Timeout:  1 * time.Second,
-}
-
 // SetToDefault implements syntax.Defaulter.
-func (args *DNSResolver) SetToDefault() {
-	*args = DefaultDNSResolver
+func (r *DNSResolver) SetToDefault() {
+	*r = DNSResolver{
+		Port:     "4317",
+		Interval: 5 * time.Second,
+		Timeout:  1 * time.Second,
+	}
 }
 
-func (dnsResolver *DNSResolver) Convert() loadbalancingexporter.DNSResolver {
-	return loadbalancingexporter.DNSResolver{
-		Hostname: dnsResolver.Hostname,
-		Port:     dnsResolver.Port,
-		Interval: dnsResolver.Interval,
-		Timeout:  dnsResolver.Timeout,
+func (r *DNSResolver) Convert() *loadbalancingexporter.DNSResolver {
+	if r == nil {
+		return nil
+	}
+
+	return &loadbalancingexporter.DNSResolver{
+		Hostname: r.Hostname,
+		Port:     r.Port,
+		Interval: r.Interval,
+		Timeout:  r.Timeout,
 	}
 }
 
 // KubernetesResolver defines the configuration for the k8s resolver
 type KubernetesResolver struct {
-	Service string  `alloy:"service,attr"`
-	Ports   []int32 `alloy:"ports,attr,optional"`
+	Service string        `alloy:"service,attr"`
+	Ports   []int32       `alloy:"ports,attr,optional"`
+	Timeout time.Duration `alloy:"timeout,attr,optional"`
 }
 
 var _ syntax.Defaulter = &KubernetesResolver{}
 
 // SetToDefault implements syntax.Defaulter.
-func (args *KubernetesResolver) SetToDefault() {
-	if args == nil {
-		args = &KubernetesResolver{}
+func (r *KubernetesResolver) SetToDefault() {
+	*r = KubernetesResolver{
+		Ports:   []int32{4317},
+		Timeout: 1 * time.Second,
 	}
-	args.Ports = []int32{4317}
 }
 
-func (k8sSvcResolver *KubernetesResolver) Convert() loadbalancingexporter.K8sSvcResolver {
-	return loadbalancingexporter.K8sSvcResolver{
-		Service: k8sSvcResolver.Service,
-		Ports:   append([]int32{}, k8sSvcResolver.Ports...),
+func (r *KubernetesResolver) Convert() *loadbalancingexporter.K8sSvcResolver {
+	if r == nil {
+		return nil
+	}
+
+	return &loadbalancingexporter.K8sSvcResolver{
+		Service: r.Service,
+		Ports:   append([]int32{}, r.Ports...),
+		Timeout: r.Timeout,
+	}
+}
+
+// Possible values for "health_status"
+const (
+	HealthStatusFilterHealthy          string = "HEALTHY"
+	HealthStatusFilterUnhealthy        string = "UNHEALTHY"
+	HealthStatusFilterAll              string = "ALL"
+	HealthStatusFilterHealthyOrElseAll string = "HEALTHY_OR_ELSE_ALL"
+)
+
+// AWSCloudMapResolver allows users to use this exporter when
+// using ECS over EKS in an AWS infrastructure.
+type AWSCloudMapResolver struct {
+	NamespaceName string        `alloy:"namespace,attr"`
+	ServiceName   string        `alloy:"service_name,attr"`
+	HealthStatus  string        `alloy:"health_status,attr,optional"`
+	Interval      time.Duration `alloy:"interval,attr,optional"`
+	Timeout       time.Duration `alloy:"timeout,attr,optional"`
+	Port          *uint16       `alloy:"port,attr,optional"`
+}
+
+var _ syntax.Defaulter = &AWSCloudMapResolver{}
+
+// SetToDefault implements syntax.Defaulter.
+func (r *AWSCloudMapResolver) SetToDefault() {
+	*r = AWSCloudMapResolver{
+		Interval:     30 * time.Second,
+		Timeout:      5 * time.Second,
+		HealthStatus: HealthStatusFilterHealthy,
+	}
+}
+
+func (r *AWSCloudMapResolver) Validate() error {
+	if r == nil {
+		return nil
+	}
+
+	switch types.HealthStatusFilter(r.HealthStatus) {
+	case types.HealthStatusFilterAll,
+		types.HealthStatusFilterHealthy,
+		types.HealthStatusFilterUnhealthy,
+		types.HealthStatusFilterHealthyOrElseAll:
+		return nil
+	default:
+		return fmt.Errorf("invalid health status %q", r.HealthStatus)
+	}
+}
+
+func (r *AWSCloudMapResolver) Convert() *loadbalancingexporter.AWSCloudMapResolver {
+	if r == nil {
+		return nil
+	}
+
+	// Deep copy the port
+	var port *uint16
+	if r.Port != nil {
+		portNum := *r.Port
+		port = &portNum
+	}
+
+	return &loadbalancingexporter.AWSCloudMapResolver{
+		NamespaceName: r.NamespaceName,
+		ServiceName:   r.ServiceName,
+		HealthStatus:  types.HealthStatusFilter(r.HealthStatus),
+		Interval:      r.Interval,
+		Timeout:       r.Timeout,
+		Port:          port,
 	}
 }
 

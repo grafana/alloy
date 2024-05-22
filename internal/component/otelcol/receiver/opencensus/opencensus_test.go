@@ -5,14 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/opencensus"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/confignet"
 )
 
 // Test ensures that otelcol.receiver.opencensus can start successfully.
@@ -58,8 +59,12 @@ func TestDefaultArguments_UnmarshalAlloy(t *testing.T) {
 	defaultArgs.SetToDefault()
 	// Check the gRPC arguments
 	require.Equal(t, defaultArgs.GRPC.Endpoint, otelArgs.NetAddr.Endpoint)
-	require.Equal(t, defaultArgs.GRPC.Transport, otelArgs.NetAddr.Transport)
 	require.Equal(t, int(defaultArgs.GRPC.ReadBufferSize), otelArgs.ReadBufferSize)
+
+	// Check the gRPC Transport arguments
+	var expectedTransport confignet.TransportType
+	expectedTransport.UnmarshalText([]byte(defaultArgs.GRPC.Transport))
+	require.Equal(t, expectedTransport, otelArgs.NetAddr.Transport)
 }
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
@@ -84,7 +89,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 	// Check the gRPC arguments
 	require.Equal(t, otelArgs.NetAddr.Endpoint, httpAddr)
-	require.Equal(t, otelArgs.NetAddr.Transport, "tcp")
+	require.Equal(t, otelArgs.NetAddr.Transport, confignet.TransportTypeTCP)
 
 	// Check the CORS arguments
 	require.Equal(t, len(otelArgs.CorsOrigins), 2)

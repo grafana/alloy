@@ -5,11 +5,11 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"

@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/middleware"
 	"github.com/prometheus/client_golang/prometheus"

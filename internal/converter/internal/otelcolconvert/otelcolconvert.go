@@ -84,15 +84,11 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 }
 
 func readOpentelemetryConfig(in []byte) (*otelcol.Config, error) {
-	provider := yamlprovider.New()
-
 	configProvider, err := otelcol.NewConfigProvider(otelcol.ConfigProviderSettings{
 		ResolverSettings: confmap.ResolverSettings{
-			URIs: []string{"yaml:" + string(in)},
-			Providers: map[string]confmap.Provider{
-				provider.Scheme(): provider,
-			},
-			Converters: []confmap.Converter{expandconverter.New(confmap.ConverterSettings{})},
+			URIs:               []string{"yaml:" + string(in)},
+			ProviderFactories:  []confmap.ProviderFactory{yamlprovider.NewFactory()},
+			ConverterFactories: []confmap.ConverterFactory{expandconverter.NewFactory()},
 		},
 	})
 	if err != nil {

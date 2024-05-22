@@ -8,19 +8,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/service/cluster"
-	http_service "github.com/grafana/alloy/internal/service/http"
-	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/ckit/memconn"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component"
+	component_config "github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/service/cluster"
+	http_service "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestAlloyConfig(t *testing.T) {
@@ -49,6 +51,48 @@ func TestAlloyConfig(t *testing.T) {
 	var args Arguments
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
+}
+
+func TestDefaults(t *testing.T) {
+	var args Arguments
+	args.SetToDefault()
+	require.NoError(t, args.Validate())
+
+	require.Equal(t, "/metrics", args.MetricsPath)
+	require.Equal(t, "http", args.Scheme)
+	require.Equal(t, false, args.HonorLabels)
+	require.Equal(t, true, args.HonorTimestamps)
+	require.Equal(t, false, args.TrackTimestampsStaleness)
+	require.Equal(t, component_config.DefaultHTTPClientConfig, args.HTTPClientConfig)
+	require.Equal(t, time.Minute, args.ScrapeInterval)
+	require.Equal(t, time.Second*10, args.ScrapeTimeout)
+	require.Equal(t, []string{
+		"OpenMetricsText1.0.0",
+		"OpenMetricsText0.0.1",
+		"PrometheusText0.0.4",
+	}, args.ScrapeProtocols)
+}
+
+func TestDefaultsWithNativeHistograms(t *testing.T) {
+	var args Arguments
+	args.SetToDefault()
+	args.EnableProtobufNegotiation = true
+	require.NoError(t, args.Validate())
+
+	require.Equal(t, "/metrics", args.MetricsPath)
+	require.Equal(t, "http", args.Scheme)
+	require.Equal(t, false, args.HonorLabels)
+	require.Equal(t, true, args.HonorTimestamps)
+	require.Equal(t, false, args.TrackTimestampsStaleness)
+	require.Equal(t, component_config.DefaultHTTPClientConfig, args.HTTPClientConfig)
+	require.Equal(t, time.Minute, args.ScrapeInterval)
+	require.Equal(t, time.Second*10, args.ScrapeTimeout)
+	require.Equal(t, []string{
+		"PrometheusProto",
+		"OpenMetricsText1.0.0",
+		"OpenMetricsText0.0.1",
+		"PrometheusText0.0.4",
+	}, args.ScrapeProtocols)
 }
 
 func TestBadAlloyConfig(t *testing.T) {

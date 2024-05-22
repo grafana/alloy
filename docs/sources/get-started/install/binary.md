@@ -36,6 +36,16 @@ To download {{< param "PRODUCT_NAME" >}} as a standalone binary, perform the fol
    Replace the following:
    - _`<BINARY_PATH>`_: The path to the extracted binary.
 
+### BoringCrypto binaries
+
+{{< admonition type="note" >}}
+BoringCrypto support is in _Public preview_ and is only available for Linux with the AMD64 or ARM64 architecture.
+{{< /admonition >}}
+
+BoringCrypto binaries are published for Linux on AMD64 and ARM64 platforms. To
+retrieve them, follow the steps above but search the `alloy-boringcrypto` ZIP
+file that matches your Linux architecture.
+
 ## Next steps
 
 - [Run {{< param "PRODUCT_NAME" >}}][Run]

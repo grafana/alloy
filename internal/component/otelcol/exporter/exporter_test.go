@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -92,7 +92,7 @@ func newTestEnvironment(t *testing.T, fe *fakeExporter) *testEnvironment {
 			// Create a factory which always returns our instance of fakeExporter
 			// defined above.
 			factory := otelexporter.NewFactory(
-				"testcomponent",
+				otelcomponent.MustNewType("testcomponent"),
 				func() otelcomponent.Config {
 					res, err := fakeExporterArgs{}.Convert()
 					require.NoError(t, err)

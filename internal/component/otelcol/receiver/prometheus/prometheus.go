@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 	metricNoop "go.opentelemetry.io/otel/metric/noop"
 	traceNoop "go.opentelemetry.io/otel/trace/noop"
@@ -110,11 +112,16 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		// When supported, this could be added as an arg.
 		trimMetricSuffixes = false
 
+		enableNativeHistograms = c.opts.MinStability.Permits(featuregate.StabilityPublicPreview)
+
 		gcInterval = 5 * time.Minute
 	)
+
+	cTypeStr := strings.ReplaceAll(strings.ReplaceAll(c.opts.ID, ".", "_"), "/", "_")
+
 	settings := otelreceiver.CreateSettings{
 
-		ID: otelcomponent.NewID(otelcomponent.Type(c.opts.ID)),
+		ID: otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
 
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
@@ -122,6 +129,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 			// TODO(tpaschalis): expose tracing and logging statistics.
 			TracerProvider: traceNoop.NewTracerProvider(),
 			MeterProvider:  metricNoop.NewMeterProvider(),
+			MetricsLevel:   configtelemetry.LevelDetailed,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},
@@ -141,6 +149,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		useStartTimeMetric,
 		startTimeMetricRegex,
 		useCreatedMetric,
+		enableNativeHistograms,
 		labels.Labels{},
 		trimMetricSuffixes,
 	)

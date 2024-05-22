@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -46,7 +46,7 @@ func newTestEnvironment(t *testing.T, onCreated func()) *testEnvironment {
 		Exports: otelcol.ConsumerExports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			factory := otelextension.NewFactory(
-				"testcomponent",
+				otelcomponent.MustNewType("testcomponent"),
 				func() otelcomponent.Config { return nil },
 				func(
 					_ context.Context,

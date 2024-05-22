@@ -99,6 +99,7 @@ func toSpanmetricsConnector(state *State, id component.InstanceID, cfg *spanmetr
 			Explicit:    explicit,
 		},
 		MetricsFlushInterval:         cfg.MetricsFlushInterval,
+		MetricsExpiration:            cfg.MetricsExpiration,
 		Namespace:                    cfg.Namespace,
 		ResourceMetricsCacheSize:     cfg.ResourceMetricsCacheSize,
 		ResourceMetricsKeyAttributes: cfg.ResourceMetricsKeyAttributes,

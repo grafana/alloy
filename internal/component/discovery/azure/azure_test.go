@@ -5,11 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/config"
-	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
+	promdiscovery "github.com/prometheus/prometheus/discovery/azure"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
+
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestAlloyUnmarshal(t *testing.T) {
@@ -130,7 +132,9 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	promArgs := alloyArgsOAuth.Convert()
+	args := alloyArgsOAuth.Convert()
+	promArgs, ok := args.(*promdiscovery.SDConfig)
+	require.True(t, ok)
 	assert.Equal(t, "AzureTestCloud", promArgs.Environment)
 	assert.Equal(t, 8080, promArgs.Port)
 	assert.Equal(t, "subid", promArgs.SubscriptionID)
@@ -161,7 +165,9 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	promArgs = alloyArgsManagedIdentity.Convert()
+	args = alloyArgsManagedIdentity.Convert()
+	promArgs, ok = args.(*promdiscovery.SDConfig)
+	require.True(t, ok)
 	assert.Equal(t, "AzureTestCloud", promArgs.Environment)
 	assert.Equal(t, 8080, promArgs.Port)
 	assert.Equal(t, "subid", promArgs.SubscriptionID)

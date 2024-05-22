@@ -6,7 +6,7 @@ import (
 	"reflect"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/jmespath/go-jmespath"
 	json "github.com/json-iterator/go"
 )
@@ -173,4 +173,9 @@ func (j *jsonStage) processEntry(extracted map[string]interface{}, entry *string
 // Name implements Stage
 func (j *jsonStage) Name() string {
 	return StageTypeJSON
+}
+
+// Cleanup implements Stage.
+func (*jsonStage) Cleanup() {
+	// no-op
 }

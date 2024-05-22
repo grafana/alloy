@@ -8,6 +8,7 @@ package auth
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
@@ -17,6 +18,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelextension "go.opentelemetry.io/collector/extension"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -139,6 +141,7 @@ func (a *Auth) Update(args component.Arguments) error {
 
 			TracerProvider: a.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
+			MetricsLevel:   configtelemetry.LevelDetailed,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},
@@ -165,10 +168,12 @@ func (a *Auth) Update(args component.Arguments) error {
 		components = append(components, ext)
 	}
 
+	cTypeStr := strings.ReplaceAll(strings.ReplaceAll(a.opts.ID, ".", "_"), "/", "_")
+
 	// Inform listeners that our handler changed.
 	a.opts.OnStateChange(Exports{
 		Handler: Handler{
-			ID:        otelcomponent.NewID(otelcomponent.Type(a.opts.ID)),
+			ID:        otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
 			Extension: ext,
 		},
 	})
