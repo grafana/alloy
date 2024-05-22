@@ -11,6 +11,8 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.processor.probabilistic_sampler "default" {
+	fail_closed = true
+
 	output {
 		logs   = [otelcol.exporter.otlp.default.input]
 		traces = [otelcol.exporter.otlp.default.input]
