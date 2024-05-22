@@ -159,6 +159,7 @@ require (
 	github.com/prometheus/snmp_exporter v0.26.0
 	github.com/prometheus/statsd_exporter v0.22.8
 	github.com/richardartoul/molecule v1.0.1-0.20221107223329-32cfee06a052
+	github.com/rogpeppe/go-internal v1.12.0
 	github.com/rs/cors v1.10.1
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.25
 	github.com/shirou/gopsutil/v3 v3.24.3
