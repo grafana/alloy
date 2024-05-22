@@ -339,3 +339,8 @@ Once accepted, a more general form of the proposal process will be moved to
 Authors of existing proposals may be asked to make changes to their proposal to
 adhere to this new process, such as moving embedded design documents into a
 design document PR.
+
+## Acknowledgments
+
+Heavily inspired by [Go's proposal review process](https://github.com/golang/proposal)
+and John Ousterhout's [Open Decision-Making](https://web.stanford.edu/~ouster/cgi-bin/decisions.php).
