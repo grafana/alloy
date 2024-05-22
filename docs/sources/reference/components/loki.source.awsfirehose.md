@@ -65,8 +65,9 @@ The component will start an HTTP server on the configured port and address with 
 
 - `/awsfirehose/api/v1/push` - accepting `POST` requests compatible with [AWS Firehose HTTP Specifications](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html).
 
-You can use the [X-Amz-Firehose-Common-Attributes](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html) header to set extra static labels. Label names should be prefixed with `lbl_`. 
-Label names and label values should be compatible with a [Prometheus data model](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels) specification.
+You can use the [X-Amz-Firehose-Common-Attributes](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html) header to set extra static labels.
+Label names must be prefixed with `lbl_`. 
+Label names and label values must be compatible with the [Prometheus data model](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels) specification.
 
 Example of the valid `X-Amz-Firehose-Common-Attributes` value with two custom labels:
 ```json
