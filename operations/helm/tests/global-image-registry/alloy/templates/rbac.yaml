@@ -10,6 +10,7 @@ metadata:
     app.kubernetes.io/instance: alloy
     app.kubernetes.io/version: "vX.Y.Z"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: rbac
 rules:
   # Rules which allow discovery.kubernetes to function.
   - apiGroups:
@@ -107,6 +108,7 @@ metadata:
     app.kubernetes.io/instance: alloy
     app.kubernetes.io/version: "vX.Y.Z"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: rbac
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

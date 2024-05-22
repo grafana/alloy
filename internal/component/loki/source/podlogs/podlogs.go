@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
@@ -19,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/oklog/run"
 	kubeclient "k8s.io/client-go/kubernetes"

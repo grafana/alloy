@@ -4,7 +4,7 @@ This document describes the process of creating a release for the
 `grafana/alloy` repo. A release includes release assets for everything inside
 the repository.
 
-The processes described here are for v0.24.0 and above.
+The processes described here are for v1.0 and above.
 
 # Release Cycle
 

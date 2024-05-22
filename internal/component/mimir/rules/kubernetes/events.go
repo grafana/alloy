@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/mimir/client"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
@@ -24,15 +24,6 @@ import (
 const (
 	eventTypeSyncMimir kubernetes.EventType = "sync-mimir"
 )
-
-// healthReporter allows the eventProcessor to mark the owning component as healthy
-// or unhealthy. This interface allows for easier testing of the eventProcessor.
-type healthReporter interface {
-	// reportUnhealthy marks the owning component as unhealthy
-	reportUnhealthy(err error)
-	// reportHealthy marks the owning component as healthy
-	reportHealthy()
-}
 
 type eventProcessor struct {
 	queue    workqueue.RateLimitingInterface

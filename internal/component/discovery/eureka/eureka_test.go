@@ -4,13 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/config"
-	"github.com/grafana/alloy/syntax"
-	"github.com/grafana/alloy/syntax/alloytypes"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	prom_sd "github.com/prometheus/prometheus/discovery/eureka"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func TestUnmarshal(t *testing.T) {
@@ -92,5 +93,5 @@ func TestConvert(t *testing.T) {
 			EnableHTTP2:     false,
 		},
 	}
-	require.Equal(t, expected, *sdConfig)
+	require.Equal(t, &expected, sdConfig)
 }

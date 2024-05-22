@@ -7,14 +7,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/alloy/logging/level"
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/grafana/alloy/internal/service/http"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
+
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/http"
 
 	"github.com/grafana/alloy/internal/component"
 	component_config "github.com/grafana/alloy/internal/component/common/config"
@@ -309,9 +310,9 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-c.reloadTargets:
 			c.mut.RLock()
 			var (
-				tgs        = c.args.Targets
-				jobName    = c.opts.ID
-				clustering = c.args.Clustering.Enabled
+				tgs               = c.args.Targets
+				jobName           = c.opts.ID
+				clusteringEnabled = c.args.Clustering.Enabled
 			)
 			if c.args.JobName != "" {
 				jobName = c.args.JobName
@@ -320,8 +321,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 			// NOTE(@tpaschalis) First approach, manually building the
 			// 'clustered' targets implementation every time.
-			ct := discovery.NewDistributedTargets(clustering, c.cluster, tgs)
-			promTargets := c.componentTargetsToProm(jobName, ct.Get())
+			ct := discovery.NewDistributedTargets(clusteringEnabled, c.cluster, tgs)
+			promTargets := c.componentTargetsToProm(jobName, ct.LocalTargets())
 
 			select {
 			case targetSetsChan <- promTargets:

@@ -9,6 +9,14 @@ import (
 
 	"github.com/phayes/freeport"
 
+	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/regexp"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
@@ -16,13 +24,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/loki/pkg/logproto"
-	"github.com/grafana/regexp"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestLokiSourceAPI_Simple(t *testing.T) {

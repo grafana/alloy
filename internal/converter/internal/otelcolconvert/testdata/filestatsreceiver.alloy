@@ -1,0 +1,56 @@
+otelcol.receiver.file_stats "default" {
+	include             = "/var/log/**/*.log"
+	collection_interval = "15s"
+	initial_delay       = "1m0s"
+	timeout             = "10s"
+
+	metrics {
+		file.atime {
+			enabled = true
+		}
+
+		file.count {
+			enabled = true
+		}
+
+		file.ctime {
+			enabled = true
+		}
+	}
+
+	resource_attributes {
+		file.name {
+			enabled = true
+
+			metrics_include {
+				strict = "foo"
+			}
+
+			metrics_include {
+				regexp = "bar.*"
+			}
+		}
+
+		file.path {
+			enabled = true
+
+			metrics_exclude {
+				strict = "fizz"
+			}
+
+			metrics_exclude {
+				regexp = "buzz.*"
+			}
+		}
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

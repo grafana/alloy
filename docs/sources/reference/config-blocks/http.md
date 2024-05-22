@@ -88,36 +88,36 @@ The `cipher_suites` argument determines what cipher suites to use.
 If you don't provide cipher suite, a default list is used.
 The set of cipher suites specified may be from the following:
 
-| Cipher                                          |
-| ----------------------------------------------- |
-| `TLS_RSA_WITH_AES_128_CBC_SHA`                  |
-| `TLS_RSA_WITH_AES_256_CBC_SHA`                  |
-| `TLS_RSA_WITH_AES_128_GCM_SHA256`               |
-| `TLS_RSA_WITH_AES_256_GCM_SHA384`               |
-| `TLS_AES_128_GCM_SHA256`                        |
-| `TLS_AES_256_GCM_SHA384`                        |
-| `TLS_CHACHA20_POLY1305_SHA256`                  |
-| `TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA`          |
-| `TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA`          |
-| `TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA`            |
-| `TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA`            |
-| `TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256`       |
-| `TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384`       |
-| `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256`         |
-| `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384`         |
-| `TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256`   |
-| `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` |
+| Cipher                                          | Allowed in BoringCrypto builds |
+| ----------------------------------------------- | ------------------------------ |
+| `TLS_RSA_WITH_AES_128_CBC_SHA`                  | no                             |
+| `TLS_RSA_WITH_AES_256_CBC_SHA`                  | no                             |
+| `TLS_RSA_WITH_AES_128_GCM_SHA256`               | yes                            |
+| `TLS_RSA_WITH_AES_256_GCM_SHA384`               | yes                            |
+| `TLS_AES_128_GCM_SHA256`                        | no                             |
+| `TLS_AES_256_GCM_SHA384`                        | no                             |
+| `TLS_CHACHA20_POLY1305_SHA256`                  | no                             |
+| `TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA`          | no                             |
+| `TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA`          | no                             |
+| `TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA`            | no                             |
+| `TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA`            | no                             |
+| `TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256`       | yes                            |
+| `TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384`       | yes                            |
+| `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256`         | yes                            |
+| `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384`         | yes                            |
+| `TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256`   | no                             |
+| `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` | no                             |
 
 The `curve_preferences` argument determines the set of elliptic curves to prefer during a handshake in preference order.
 If not provided, a default list is used.
 The set of elliptic curves specified may be from the following:
 
-| Curve       |
-| ----------- |
-| `CurveP256` |
-| `CurveP384` |
-| `CurveP521` |
-| `X25519`    |
+| Curve       | Allowed in BoringCrypto builds |
+| ----------- | ------------------------------ |
+| `CurveP256` | yes                            |
+| `CurveP384` | yes                            |
+| `CurveP521` | yes                            |
+| `X25519`    | no                             |
 
 The `min_version` and `max_version` arguments determine the oldest and newest TLS version that's acceptable from clients.
 If you don't provide the min and max TLS version, a default value is used.

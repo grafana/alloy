@@ -7,8 +7,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 
+	util_log "github.com/grafana/loki/v3/pkg/util/log"
+
 	"github.com/grafana/alloy/internal/util"
-	util_log "github.com/grafana/loki/pkg/util/log"
 )
 
 var testLogfmtAlloySingleStageWithoutSource = `

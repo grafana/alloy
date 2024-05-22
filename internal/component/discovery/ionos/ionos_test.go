@@ -4,13 +4,15 @@ import (
 	"testing"
 	"time"
 
+	promConfig "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/ionos"
+	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
+
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	promConfig "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func TestAlloyUnmarshal(t *testing.T) {
@@ -46,7 +48,7 @@ func TestConvert(t *testing.T) {
 			},
 		},
 	}
-	promArgs := alloyArgs.Convert()
+	promArgs := alloyArgs.Convert().(*prom_discovery.SDConfig)
 	assert.Equal(t, "datacenter_id", promArgs.DatacenterID)
 	assert.Equal(t, model.Duration(20*time.Second), promArgs.RefreshInterval)
 	assert.Equal(t, 81, promArgs.Port)
