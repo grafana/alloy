@@ -11,11 +11,11 @@ const (
 )
 
 type Metrics struct {
-	errorsAPIRequest   *prometheus.CounterVec
-	recordsReceived    *prometheus.CounterVec
-	errorsRecord       *prometheus.CounterVec
-	batchSize          *prometheus.HistogramVec
-	invalidLabelsCount *prometheus.CounterVec
+	errorsAPIRequest         *prometheus.CounterVec
+	recordsReceived          *prometheus.CounterVec
+	errorsRecord             *prometheus.CounterVec
+	batchSize                *prometheus.HistogramVec
+	invalidStaticLabelsCount *prometheus.CounterVec
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
@@ -40,7 +40,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		Help: "AWS Firehose received batch size in number of records",
 	}, nil)
 
-	m.invalidLabelsCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+	m.invalidStaticLabelsCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_source_awsfirehose_invalid_static_labels_errors",
 		Help: "Number of errors while processing AWS Firehose static labels",
 	}, []string{"reason", "tenant_id"})
@@ -51,7 +51,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			m.recordsReceived,
 			m.errorsRecord,
 			m.batchSize,
-			m.invalidLabelsCount,
+			m.invalidStaticLabelsCount,
 		)
 	}
 

@@ -618,7 +618,8 @@ func TestGetStaticLabelsFromRequest(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodGet, "https://example.com", nil)
 			req.Header.Set(commonAttributesHeader, tt.config)
-			got := handler.tryToGetStaticLabelsFromRequest(req)
+			req.Header.Set("X-Scope-OrgID", "001")
+			got := handler.tryToGetStaticLabelsFromRequest(req, "001")
 
 			require.Equal(t, tt.want, got)
 		})
@@ -732,7 +733,7 @@ func TestGetStaticLabelsFromRequest_NoError_InvalidData(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "https://example.com", nil)
 			req.Header.Set(commonAttributesHeader, tt.config)
 			req.Header.Set("X-Scope-OrgID", "001")
-			got := handler.tryToGetStaticLabelsFromRequest(req)
+			got := handler.tryToGetStaticLabelsFromRequest(req, "001")
 
 			require.Equal(t, tt.want, got)
 
