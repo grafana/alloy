@@ -4,11 +4,7 @@ description: Learn about pyroscope.scrape
 title: pyroscope.scrape
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # pyroscope.scrape
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.scrape` collects [pprof] performance profiles for a given set of HTTP `targets`.
 
