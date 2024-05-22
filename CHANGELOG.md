@@ -19,7 +19,7 @@ Main (unreleased)
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
 
-- Add the virtual_node_peer_attributes setting to `otelcol.connector.servicegraph`. (@hainenber)
+- Add the `virtual_node_peer_attributes` argument to `otelcol.connector.servicegraph`. (@hainenber)
 
 ### Bugfixes
 
