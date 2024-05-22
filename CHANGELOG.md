@@ -22,6 +22,8 @@ Main (unreleased)
 
 - Added `scrape_protocols` option to `prometheus.scrape`, which allows to
   control the preferred order of scrape protocols. (@thampiotr)
+  
+- Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
 
 ### Bugfixes
 
