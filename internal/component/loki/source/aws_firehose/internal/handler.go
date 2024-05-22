@@ -25,6 +25,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	lokiClient "github.com/grafana/alloy/internal/component/common/loki/client"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
