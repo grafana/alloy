@@ -330,15 +330,32 @@ compatibility of Alloy.
 
 ## Implementation
 
-If this proposal is accepted, all existing and new proposals will be subject to
-the process described here.
+This proposal is written using the new process to serve as an example.
+Following the proposed process, the next steps are:
 
-Once accepted, a more general form of the proposal process will be moved to
-`docs/design/README.md`.
+1. The proposal is currently in the _Active_ state; it bypasses _Incoming_ as it
+   is the only proposal using this process. Discussion towards a consensus
+   (accept or decline) is ongoing at #908.
 
-Authors of existing proposals may be asked to make changes to their proposal to
-adhere to this new process, such as moving embedded design documents into a
-design document PR.
+2. Once discussion slows down, the proposal will move to either _Likely Accept_
+   or _Likely Decline_. This depends on when discussion slows down, but is
+   likely to be at least a week from the date this was opened.
+
+3. After being in _Likely Accept_ or _Likely Decline_ for a week, this proposal
+   will be either formally accepted or declined and move to the relevant state.
+
+If this proposal is accepted, all existing an new proposals will be subject to
+the process described here, and the following will occur:
+
+* A new public project board will be created for tracking proposals in their
+  various states.
+
+* A more general form of the proposal process will be moved to
+  `docs/design/README.md`.
+
+* Authors of existing proposals may be asked to make changes to their proposal
+  to adhere to this new process, such as moving embedded design documents into
+  a design document PR.
 
 ## Acknowledgments
 
