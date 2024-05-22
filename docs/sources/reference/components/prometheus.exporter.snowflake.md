@@ -9,7 +9,9 @@ title: prometheus.exporter.snowflake
 The `prometheus.exporter.snowflake` component embeds
 [snowflake_exporter](https://github.com/grafana/snowflake-prometheus-exporter) for collecting warehouse, database, table, and replication statistics from a Snowflake account via HTTP for Prometheus consumption.
 
-## Usage - Password Authentication
+## Usage
+
+### Password Authentication
 
 ```alloy
 prometheus.exporter.snowflake "LABEL" {
@@ -20,7 +22,7 @@ prometheus.exporter.snowflake "LABEL" {
 }
 ```
 
-## Usage - RSA Authentication
+### RSA Authentication
 
 ```alloy
 prometheus.exporter.snowflake "LABEL" {
@@ -36,18 +38,16 @@ prometheus.exporter.snowflake "LABEL" {
 
 The following arguments can be used to configure the exporter's behavior.
 Omitted fields take their default values.
-One of `password` or `private_key_path` must be specified to authenticate.
-Users with an encrypted private key will also need to provide a `private_key_password`.
 
-| Name                   | Type     | Description                                                                      | Default          | Required |
-| ---------------------- | -------- | -------------------------------------------------------------------------------- | ---------------- | -------- |
-| `account_name`         | `string` | The account to collect metrics for.                                              |                  | yes      |
-| `username`             | `string` | The username for the user used when querying metrics.                            |                  | yes      |
-| `password`             | `secret` | The password for the user used when querying metrics.                            |                  | no       |
-| `private_key_path`     | `secret` | The path to the user's RSA private key file.                                     |                  | no       |
-| `private_key_password` | `secret` | The password for the user's RSA private key (not required for unencrypted keys). |                  | no       |
-| `role`                 | `string` | The role to use when querying metrics.                                           | `"ACCOUNTADMIN"` | no       |
-| `warehouse`            | `string` | The warehouse to use when querying metrics.                                      |                  | yes      |
+| Name                   | Type     | Description                                                                                  | Default          | Required |
+| ---------------------- | -------- | -------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `account_name`         | `string` | The account to collect metrics for.                                                          |                  | yes      |
+| `username`             | `string` | The username for the user used when querying metrics.                                        |                  | yes      |
+| `password`             | `secret` | The password for the user used when querying metrics (required for password authentication). |                  | yes      |
+| `private_key_path`     | `secret` | The path to the user's RSA private key file (required for RSA key-pair authentication).      |                  | yes      |
+| `private_key_password` | `secret` | The password for the user's RSA private key (required for encrypted keys).                   |                  | yes      |
+| `role`                 | `string` | The role to use when querying metrics.                                                       | `"ACCOUNTADMIN"` | no       |
+| `warehouse`            | `string` | The warehouse to use when querying metrics.                                                  |                  | yes      |
 
 ## Blocks
 
