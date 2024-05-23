@@ -39,13 +39,13 @@ func init() {
 
 // Config is the configuration for the CloudWatch metrics integration
 type Config struct {
-	STSRegion          string                `yaml:"sts_region"`
-	FIPSDisabled       bool                  `yaml:"fips_disabled"`
-	Discovery          DiscoveryConfig       `yaml:"discovery"`
-	Static             []StaticJob           `yaml:"static"`
-	Debug              bool                  `yaml:"debug"`
-	DecoupledScrape    DecoupledScrapeConfig `yaml:"decoupled_scraping"`
-	UseAWSSDKVersionV2 bool                  `yaml:"aws_sdk_version_v2"`
+	STSRegion       string                `yaml:"sts_region"`
+	FIPSDisabled    bool                  `yaml:"fips_disabled"`
+	Discovery       DiscoveryConfig       `yaml:"discovery"`
+	Static          []StaticJob           `yaml:"static"`
+	Debug           bool                  `yaml:"debug"`
+	DecoupledScrape DecoupledScrapeConfig `yaml:"decoupled_scraping"`
+	UseAWSSDKV2     bool                  `yaml:"aws_sdk_version_v2"`
 }
 
 // DecoupledScrapeConfig is the configuration for decoupled scraping feature.
@@ -140,10 +140,10 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 		if v := c.DecoupledScrape.ScrapeInterval; v != nil {
 			scrapeInterval = *v
 		}
-		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, c.Debug, c.UseAWSSDKVersionV2)
+		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, c.Debug, c.UseAWSSDKV2)
 	}
 
-	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, c.Debug, c.UseAWSSDKVersionV2)
+	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, c.Debug, c.UseAWSSDKV2)
 }
 
 // getHash calculates the MD5 hash of the yaml representation of the config

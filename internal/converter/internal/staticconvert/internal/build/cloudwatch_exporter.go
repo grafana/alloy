@@ -19,7 +19,7 @@ func toCloudwatchExporter(config *cloudwatch_exporter.Config) *cloudwatch.Argume
 		DiscoveryExportedTags: config.Discovery.ExportedTags,
 		Discovery:             toDiscoveryJobs(config.Discovery.Jobs),
 		Static:                toStaticJobs(config.Static),
-		UseAWSSDKVersionV2:    config.UseAWSSDKVersionV2,
+		UseAWSSDKV2:           config.UseAWSSDKV2,
 	}
 }
 
