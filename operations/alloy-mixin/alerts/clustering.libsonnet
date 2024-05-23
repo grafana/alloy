@@ -22,14 +22,11 @@ local alert = import './utils/alert.jsonnet';
           // Alloy instance matches the number of running Alloy instances in the
           // same cluster and namespace as reported by a count of Prometheus
           // metrics.
-          if enableK8sCluster then 
-          |||
+          if enableK8sCluster then |||
             sum without (state) (cluster_node_peers) !=
             on (cluster, namespace, job) group_left
             count by (cluster, namespace, job) (cluster_node_info)
-          |||
-          else
-          |||
+          ||| else |||
             sum without (state) (cluster_node_peers) !=
             on (job) group_left
             count by (job) (cluster_node_info)
@@ -76,18 +73,15 @@ local alert = import './utils/alert.jsonnet';
         // Nodes are not using the same configuration file.
         alert.newRule(
           'ClusterConfigurationDrift',
-          if enableK8sCluster then
-            |||
-              count without (sha256) (
-                  max by (cluster, namespace, sha256, job) (alloy_config_hash and on(cluster, namespace, job) cluster_node_info)
-              ) > 1
-            |||
-          else
-            |||
-              count without (sha256) (
-                  max by (sha256, job) (alloy_config_hash and on(job) cluster_node_info)
-              ) > 1
-            |||
+          if enableK8sCluster then |||
+            count without (sha256) (
+                max by (cluster, namespace, sha256, job) (alloy_config_hash and on(cluster, namespace, job) cluster_node_info)
+            ) > 1
+          ||| else |||
+            count without (sha256) (
+                max by (sha256, job) (alloy_config_hash and on(job) cluster_node_info)
+            ) > 1
+          |||
           ,
           'Cluster nodes are not using the same configuration file.',
           '5m',
