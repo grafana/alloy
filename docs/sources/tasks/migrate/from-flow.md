@@ -21,7 +21,7 @@ If you want a fresh start with {{< param "PRODUCT_NAME" >}}, you can [uninstall 
 
 ## Before you begin
 
-* You must have an Grafana Agent Flow configuration to migrate.
+* You must have a Grafana Agent Flow configuration to migrate.
 * You must be running Grafana Agent Flow version v0.40 or later.
 * If you use auto-scaling make sure you disable auto-scaling for your Grafana Agent Flow deployment to prevent it from scaling during the migration.
 
@@ -32,7 +32,7 @@ You can enable functionality in _Experimental_ and _Public preview_ by setting t
 * The default value of `--storage.path` has changed from `data-agent/` to `data-alloy/`.
 * The default value of `--server.http.memory-addr` has changed from `agent.internal:12345` to `alloy.internal:12345`.
 * Debug metrics reported by {{% param "PRODUCT_NAME" %}} are prefixed with `alloy_` instead of `agent_`.
-* The "classic modules" `module.file`, `module.git`, `module.http`, and `module.string` have been removed in favor of import configuration blocks.
+* The "classic modules", `module.file`, `module.git`, `module.http`, and `module.string` have been removed in favor of import configuration blocks.
 * The `prometheus.exporter.vsphere` component has been replaced by the `otelcol.receiver.vcenter` component.
 
 [run]: ../../../reference/cli/run
