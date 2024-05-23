@@ -23,7 +23,7 @@ Main (unreleased)
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
 
-- A new parameter `aws_sdk_version` is added for the cloudwatch exporters configuration. It enables the use of aws sdk v2 which is expected to come with performance benefits. (@kgeckhart, @andriikushch)
+- A new parameter `aws_sdk_version` is added for the cloudwatch exporters configuration. It enables the use of aws sdk v2 which has shown to have significant performance benefits. (@kgeckhart, @andriikushch)
 
 ### Bugfixes
 
