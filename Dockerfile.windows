@@ -27,3 +27,5 @@ COPY --from=builder ["/src/alloy/example-config.alloy", "C:/Program Files/Grafan
 ENTRYPOINT ["C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
 ENV ALLOY_DEPLOY_MODE=docker
 CMD ["run", "C:/Program Files/GrafanaLabs/Alloy/config.alloy", "--storage.path=C:/ProgramData/GrafanaLabs/Alloy/data"]
+
+# change to trigger CI
