@@ -23,9 +23,6 @@ const (
 	tagConcurrency                   = 5
 	labelsSnakeCase                  = false
 	defaultDecoupledScrapingInterval = time.Minute * 5
-
-	AWSSDKVersionV1 = "v1"
-	AWSSDKVersionV2 = "v2"
 )
 
 // Since we are gathering metrics from CloudWatch and writing them in prometheus during each scrape, the timestamp
@@ -42,13 +39,13 @@ func init() {
 
 // Config is the configuration for the CloudWatch metrics integration
 type Config struct {
-	STSRegion       string                `yaml:"sts_region"`
-	FIPSDisabled    bool                  `yaml:"fips_disabled"`
-	Discovery       DiscoveryConfig       `yaml:"discovery"`
-	Static          []StaticJob           `yaml:"static"`
-	Debug           bool                  `yaml:"debug"`
-	DecoupledScrape DecoupledScrapeConfig `yaml:"decoupled_scraping"`
-	AWSSDKVersion   string                `yaml:"aws_sdk_version"`
+	STSRegion          string                `yaml:"sts_region"`
+	FIPSDisabled       bool                  `yaml:"fips_disabled"`
+	Discovery          DiscoveryConfig       `yaml:"discovery"`
+	Static             []StaticJob           `yaml:"static"`
+	Debug              bool                  `yaml:"debug"`
+	DecoupledScrape    DecoupledScrapeConfig `yaml:"decoupled_scraping"`
+	UseAWSSDKVersionV2 bool                  `yaml:"aws_sdk_version_v2"`
 }
 
 // DecoupledScrapeConfig is the configuration for decoupled scraping feature.
@@ -143,10 +140,10 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 		if v := c.DecoupledScrape.ScrapeInterval; v != nil {
 			scrapeInterval = *v
 		}
-		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, c.Debug, "2")
+		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, c.Debug, c.UseAWSSDKVersionV2)
 	}
 
-	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, c.Debug, "2")
+	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, c.Debug, c.UseAWSSDKVersionV2)
 }
 
 // getHash calculates the MD5 hash of the yaml representation of the config

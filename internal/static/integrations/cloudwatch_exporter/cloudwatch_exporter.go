@@ -2,7 +2,6 @@ package cloudwatch_exporter
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
@@ -36,7 +35,7 @@ type exporter struct {
 }
 
 // NewCloudwatchExporter creates a new YACE wrapper, that implements Integration
-func NewCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, fipsEnabled, debug bool, clientVersion string) (*exporter, error) {
+func NewCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, fipsEnabled, debug bool, useAWSSDKVersionV2 bool) (*exporter, error) {
 	loggerWrapper := yaceLoggerWrapper{
 		debug: debug,
 		log:   logger,
@@ -44,13 +43,10 @@ func NewCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsCo
 	var factory cachingFactory
 	var err error
 
-	switch clientVersion {
-	case AWSSDKVersionV1:
-		factory = yaceClientsV1.NewFactory(loggerWrapper, conf, fipsEnabled)
-	case AWSSDKVersionV2:
+	if useAWSSDKVersionV2 {
 		factory, err = yaceClientsV2.NewFactory(loggerWrapper, conf, fipsEnabled)
-	default:
-		err = fmt.Errorf("invalid client version %s, valid versions are v1 and v2", clientVersion)
+	} else {
+		factory = yaceClientsV1.NewFactory(loggerWrapper, conf, fipsEnabled)
 	}
 
 	if err != nil {

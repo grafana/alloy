@@ -2,7 +2,6 @@ package cloudwatch_exporter
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -32,7 +31,7 @@ type asyncExporter struct {
 // NewDecoupledCloudwatchExporter creates a new YACE wrapper, that implements Integration. The decouple feature spawns a
 // background go-routine to perform YACE metric collection allowing for a decoupled collection of AWS metrics from the
 // ServerHandler.
-func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, scrapeInterval time.Duration, fipsEnabled, debug bool, clientVersion string) (*asyncExporter, error) {
+func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, scrapeInterval time.Duration, fipsEnabled, debug bool, useAWSSDKVersionV2 bool) (*asyncExporter, error) {
 	loggerWrapper := yaceLoggerWrapper{
 		debug: debug,
 		log:   logger,
@@ -41,13 +40,10 @@ func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceMod
 	var factory cachingFactory
 	var err error
 
-	switch clientVersion {
-	case AWSSDKVersionV1:
-		factory = yaceClientsV1.NewFactory(loggerWrapper, conf, fipsEnabled)
-	case AWSSDKVersionV2:
+	if useAWSSDKVersionV2 {
 		factory, err = yaceClientsV2.NewFactory(loggerWrapper, conf, fipsEnabled)
-	default:
-		err = fmt.Errorf("invalid client version %s, valid versions are v1 and v2", clientVersion)
+	} else {
+		factory = yaceClientsV1.NewFactory(loggerWrapper, conf, fipsEnabled)
 	}
 
 	if err != nil {

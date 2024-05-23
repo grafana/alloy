@@ -28,7 +28,7 @@ var defaults = Arguments{
 		Enabled:        false,
 		ScrapeInterval: 5 * time.Minute,
 	},
-	AWSSDKVersion: "v2",
+	UseAWSSDKVersionV2: false,
 }
 
 // Arguments are the Alloy based options to configure the embedded CloudWatch exporter.
@@ -40,7 +40,7 @@ type Arguments struct {
 	Discovery             []DiscoveryJob        `alloy:"discovery,block,optional"`
 	Static                []StaticJob           `alloy:"static,block,optional"`
 	DecoupledScrape       DecoupledScrapeConfig `alloy:"decoupled_scraping,block,optional"`
-	AWSSDKVersion         string                `alloy:"aws_sdk_version,attr,optional"`
+	UseAWSSDKVersionV2    bool                  `alloy:"aws_sdk_version_v2,attr,optional"`
 }
 
 // DecoupledScrapeConfig is the configuration for decoupled scraping feature.

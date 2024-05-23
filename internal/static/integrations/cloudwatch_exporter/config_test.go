@@ -69,7 +69,7 @@ static:
 const configString2 = `
 sts_region: us-east-2
 fips_disabled: true
-aws_sdk_version: "v1"
+aws_sdk_version_v2: false
 discovery:
   exported_tags:
     AWS/EC2:
