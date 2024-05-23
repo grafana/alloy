@@ -35,8 +35,8 @@ Replace the following:
 prometheus.exporter.snowflake "LABEL" {
     account_name =         <ACCOUNT_NAME>
     username =             <USERNAME>
-    private_key_path =     <PATH_TO_rsa_key.p8>
-    private_key_password = <PASSWORD>
+    private_key_path =     <PRIVATE_KEY_PATH>
+    private_key_password = <PRIVATE_KEY_PASSWORD>
     warehouse =            <WAREHOUSE>
 }
 ```
