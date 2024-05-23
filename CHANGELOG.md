@@ -41,6 +41,8 @@ Main (unreleased)
 
 ### Other changes
 
+- `pyroscope.ebpf`, `pyroscope.java`, `pyroscope.scrape`, `pyroscope.write` and `discovery.process` components are now GA. (@korniltsev)
+
 - `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0. (@ptodev, @erikbaranowski)
 
 - `prometheus.scrape` component's `enable_protobuf_negotiation` argument is now
