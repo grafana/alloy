@@ -41,6 +41,9 @@ Main (unreleased)
 
 - Fix error on boot when using IPv6 advertise addresses without explicitly
   specifying a port. (@matthewpi)
+  
+- Fix an issue where having long component labels (>63 chars) on otelcol.auth
+  components lead to a panic. (@tpaschalis)
 
 ### Other changes
 
