@@ -7,9 +7,9 @@ local cluster_node_filename = 'alloy-cluster-node.json';
   local templateVariables = 
     if $._config.enableK8sCluster then
       [
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
-        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components{job=~"$job"}, cluster)'),
-        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{job=~"$job", cluster=~"$cluster"}, namespace)'),
+        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components, cluster)'),
+        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster"}, namespace)'),
+        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, job)'),
       ]
     else
       [
@@ -36,7 +36,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withPosition({ h: 9, w: 8, x: 0, y: 0 }) +
         panel.withQueries([
           panel.newInstantQuery(
-            expr='count(cluster_node_info{' + $._config.groupSelector + '})'
+            expr='count(cluster_node_info{%(groupSelector)s})'
           ),
         ])
       ),
@@ -49,7 +49,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withPosition({ h: 9, w: 16, x: 8, y: 0 }) +
         panel.withQueries([
           panel.newInstantQuery(
-            expr='cluster_node_info{' + $._config.groupSelector + '}',
+            expr='cluster_node_info{%(groupSelector)s}',
             format='table',
           ),
         ]) +
@@ -127,14 +127,14 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withPosition({ h: 9, w: 8, x: 0, y: 9 }) +
         panel.withQueries([
           panel.newInstantQuery(
-            expr=
-              'clamp((
-                sum(stddev by (state) (cluster_node_peers{' + $._config.groupSelector + '}) != 0) or
-                (sum(abs(sum without (state) (cluster_node_peers{' + $._config.groupSelector + '})) - scalar(count(cluster_node_info{' + $._config.groupSelector + '})) != 0))
+            expr= |||
+              clamp((
+                sum(stddev by (state) (cluster_node_peers{%(groupSelector)s}) != 0) or
+                (sum(abs(sum without (state) (cluster_node_peers{%(groupSelector)s})) - scalar(count(cluster_node_info{%(groupSelector)s})) != 0))
                 ),
                 1, 1
-              )'
-            ,
+              )
+            ||| % $._config,
             format='time_series'
           ),
         ]) +
@@ -196,14 +196,14 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withPosition({ h: 9, w: 16, x: 8, y: 9 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=
-              'ceil(clamp((
-                sum(stddev by (state) (cluster_node_peers{' + $._config.groupSelector + '})) or
-                (sum(abs(sum without (state) (cluster_node_peers{' + $._config.groupSelector + '})) - scalar(count(cluster_node_info{' + $._config.groupSelector + '}))))
+            expr= |||
+              ceil(clamp((
+                sum(stddev by (state) (cluster_node_peers{%(groupSelector)s})) or
+                (sum(abs(sum without (state) (cluster_node_peers{%(groupSelector)s})) - scalar(count(cluster_node_info{%(groupSelector)s}))))
                 ),
                 0, 1
-              ))'
-            ,
+              ))
+            ||| % $._config,
             legendFormat='Converged'
           ),
         ]) +

@@ -30,10 +30,10 @@ local stackedPanelMixin = {
   local templateVariables = 
     if $._config.enableK8sCluster then
       [
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
-        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components{job=~"$job"}, cluster)'),
-        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{job=~"$job", cluster=~"$cluster"}, namespace)'),
-        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{job=~"$job", cluster=~"$cluster", namespace=~"$namespace"}, instance)'),
+        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components, cluster)'),
+        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster"}, namespace)'),
+        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, job)'),
+        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)'),
       ]
     else
       [
@@ -63,7 +63,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 0, y: 0, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='rate(alloy_resources_process_cpu_seconds_total{' + $._config.instanceSelector + '}[$__rate_interval])',
+            expr= |||
+              rate(alloy_resources_process_cpu_seconds_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -79,7 +81,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 12, y: 0, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='alloy_resources_process_resident_memory_bytes{' + $._config.instanceSelector + '}',
+            expr= |||
+              alloy_resources_process_resident_memory_bytes{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -99,11 +103,11 @@ local stackedPanelMixin = {
             // Lots of programs export go_goroutines so we ignore anything that
             // doesn't also have an Alloy-specific metric (i.e.,
             // alloy_build_info).
-            expr=
-              'rate(go_gc_duration_seconds_count{' + $._config.instanceSelector + '}[5m])
+            expr= |||
+              rate(go_gc_duration_seconds_count{%(instanceSelector)s}[5m])
               and on(instance)
-              alloy_build_info{' + $._config.instanceSelector + '}'
-            ,
+              alloy_build_info{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -123,11 +127,11 @@ local stackedPanelMixin = {
             // Lots of programs export go_goroutines so we ignore anything that
             // doesn't also have an Alloy-specific metric (i.e.,
             // alloy_build_info).
-            expr=
-              'go_goroutines{' + $._config.instanceSelector + '}
+            expr= |||
+              go_goroutines{%(instanceSelector)s}
               and on(instance)
-              alloy_build_info{' + $._config.instanceSelector + '}'
-            ,
+              alloy_build_info{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -146,11 +150,11 @@ local stackedPanelMixin = {
             // Lots of programs export go_memstats_heap_inuse_bytes so we ignore
             // anything that doesn't also have an Alloy-specific metric
             // (i.e., alloy_build_info).
-            expr=
-              'go_memstats_heap_inuse_bytes{' + $._config.instanceSelector + '}
+            expr= |||
+              go_memstats_heap_inuse_bytes{%(instanceSelector)s}
               and on(instance)
-              alloy_build_info{' + $._config.instanceSelector + '}'
-            ,
+              alloy_build_info{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -171,9 +175,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 0, y: 16, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=
-              'rate(alloy_resources_machine_rx_bytes_total{' + $._config.instanceSelector + '}[$__rate_interval])'
-            ,
+            expr= |||
+              rate(alloy_resources_machine_rx_bytes_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -194,9 +198,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 12, y: 16, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=
-              'rate(alloy_resources_machine_tx_bytes_total{' + $._config.instanceSelector + '}[$__rate_interval])'
-            ,
+            expr= |||
+              rate(alloy_resources_machine_tx_bytes_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])

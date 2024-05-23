@@ -6,10 +6,10 @@ local filename = 'alloy-cluster-node.json';
   local templateVariables = 
     if $._config.enableK8sCluster then
       [
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
-        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components{job=~"$job"}, cluster)'),
-        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{job=~"$job", cluster=~"$cluster"}, namespace)'),
-        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{job=~"$job", cluster=~"$cluster", namespace=~"$namespace"}, instance)'),
+        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components, cluster)'),
+        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster"}, namespace)'),
+        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, job)'),
+        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)'),
       ]
     else
       [
@@ -53,22 +53,30 @@ local filename = 'alloy-cluster-node.json';
         panel.withPosition({ x: 0, y: 1, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newNamedInstantQuery(
-            expr='sum(cluster_node_lamport_time{' + $._config.instanceSelector + '})',
+            expr= |||
+              sum(cluster_node_lamport_time{%(instanceSelector)s}) 
+            ||| % $._config,
             refId='Lamport clock time',
             format='table',
           ),
           panel.newNamedInstantQuery(
-            expr='sum(cluster_node_update_observers{' + $._config.instanceSelector + '})',
+            expr= |||
+              sum(cluster_node_update_observers{%(instanceSelector)s})
+            ||| % $._config,
             refId='Internal cluster state observers',
             format='table',
           ),
           panel.newNamedInstantQuery(
-            expr='sum(cluster_node_gossip_health_score{' + $._config.instanceSelector + '})',
+            expr= |||
+              sum(cluster_node_gossip_health_score{%(instanceSelector)s})
+            ||| % $._config,
             refId='Gossip health score',
             format='table',
           ),
           panel.newNamedInstantQuery(
-            expr='sum(cluster_node_gossip_proto_version{' + $._config.instanceSelector + '})',
+            expr= |||
+              sum(cluster_node_gossip_proto_version{%(instanceSelector)s})
+            ||| % $._config,
             refId='Gossip protocol version',
             format='table',
           ),
@@ -104,7 +112,9 @@ local filename = 'alloy-cluster-node.json';
         panel.withPosition({ x: 12, y: 1, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='rate(cluster_node_gossip_received_events_total{' + $._config.instanceSelector + '}[$__rate_interval])',
+            expr= |||
+              rate(cluster_node_gossip_received_events_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='{{event}}'
           ),
         ])
@@ -118,7 +128,9 @@ local filename = 'alloy-cluster-node.json';
         panel.withPosition({ x: 0, y: 9, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='sum(cluster_node_peers{' + $._config.instanceSelector + '})',
+            expr= ||| 
+              sum(cluster_node_peers{%(instanceSelector)s})
+            ||| % $._config,
           ),
         ]) +
         panel.withUnit('suffix:peers')
@@ -132,7 +144,9 @@ local filename = 'alloy-cluster-node.json';
         panel.withPosition({ x: 12, y: 9, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='cluster_node_peers{' + $._config.instanceSelector + '}',
+            expr= |||
+              cluster_node_peers{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='{{state}}',
           ),
         ]) +
@@ -154,11 +168,15 @@ local filename = 'alloy-cluster-node.json';
         }) +
         panel.withQueries([
           panel.newQuery(
-            expr='rate(cluster_transport_rx_bytes_total{' + $._config.instanceSelector + '}[$__rate_interval])',
+            expr= |||
+              rate(cluster_transport_rx_bytes_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='rx',
           ),
           panel.newQuery(
-            expr='-1 * rate(cluster_transport_tx_bytes_total{' + $._config.instanceSelector + '}[$__rate_interval])',
+            expr= |||
+              -1 * rate(cluster_transport_tx_bytes_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='tx',
           ),
         ]) +
@@ -176,19 +194,21 @@ local filename = 'alloy-cluster-node.json';
         }) +
         panel.withQueries([
           panel.newQuery(
-            expr=
-              '1 - (
-              rate(cluster_transport_tx_packets_failed_total{' + $._config.instanceSelector + '}[$__rate_interval]) /
-              rate(cluster_transport_tx_packets_total{' + $._config.instanceSelector + '}[$__rate_interval])
-              )',
+            expr= |||
+              1 - (
+                rate(cluster_transport_tx_packets_failed_total{%(instanceSelector)s}[$__rate_interval]) /
+                rate(cluster_transport_tx_packets_total{%(instanceSelector)s}[$__rate_interval])
+              )
+            ||| % $._config,
             legendFormat='Tx success %',
           ),
           panel.newQuery(
-            expr=
-              '1 - (
-                rate(cluster_transport_rx_packets_failed_total{' + $._config.instanceSelector + '}[$__rate_interval]) /
-                rate(cluster_transport_rx_packets_total{' + $._config.instanceSelector + '}[$__rate_interval])
-                )',
+            expr= |||
+              1 - (
+                rate(cluster_transport_rx_packets_failed_total{%(instanceSelector)s}[$__rate_interval]) /
+                rate(cluster_transport_rx_packets_total{%(instanceSelector)s}[$__rate_interval])
+              )
+            ||| % $._config,
             legendFormat='Rx success %',
           ),
         ]) +
@@ -210,11 +230,15 @@ local filename = 'alloy-cluster-node.json';
         }) +
         panel.withQueries([
           panel.newQuery(
-            expr='cluster_transport_tx_packet_queue_length{' + $._config.instanceSelector + '}',
+            expr= |||
+              cluster_transport_tx_packet_queue_length{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='tx queue',
           ),
           panel.newQuery(
-            expr='cluster_transport_rx_packet_queue_length{' + $._config.instanceSelector + '}',
+            expr= |||
+              cluster_transport_rx_packet_queue_length{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='rx queue',
           ),
         ]) +
@@ -231,11 +255,15 @@ local filename = 'alloy-cluster-node.json';
         }) +
         panel.withQueries([
           panel.newQuery(
-            expr='rate(cluster_transport_stream_rx_bytes_total{' + $._config.instanceSelector + '}[$__rate_interval])',
+            expr= ||| 
+              rate(cluster_transport_stream_rx_bytes_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='rx',
           ),
           panel.newQuery(
-            expr='-1 * rate(cluster_transport_stream_tx_bytes_total{' + $._config.instanceSelector + '}[$__rate_interval])',
+            expr= |||
+              -1 * rate(cluster_transport_stream_tx_bytes_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='tx',
           ),
         ]) +
@@ -253,19 +281,21 @@ local filename = 'alloy-cluster-node.json';
         }) +
         panel.withQueries([
           panel.newQuery(
-            expr=
-              '1 - (
-                rate(cluster_transport_stream_tx_packets_failed_total{' + $._config.instanceSelector + '}[$__rate_interval]) /
-                rate(cluster_transport_stream_tx_packets_total{' + $._config.instanceSelector + '}[$__rate_interval])
-                )',
+            expr= |||
+              1 - (
+                rate(cluster_transport_stream_tx_packets_failed_total{%(instanceSelector)s}[$__rate_interval]) /
+                rate(cluster_transport_stream_tx_packets_total{%(instanceSelector)s}[$__rate_interval])
+              )
+            ||| % $._config,
             legendFormat='Tx success %'
           ),
           panel.newQuery(
-            expr=
-              '1 - (
-                rate(cluster_transport_stream_rx_packets_failed_total{' + $._config.instanceSelector + '}[$__rate_interval]) /
-                rate(cluster_transport_stream_rx_packets_total{' + $._config.instanceSelector + '}[$__rate_interval])
-                )',
+            expr= |||
+              1 - (
+                rate(cluster_transport_stream_rx_packets_failed_total{%(instanceSelector)s}[$__rate_interval]) /
+                rate(cluster_transport_stream_rx_packets_total{%(instanceSelector)s}[$__rate_interval])
+              )
+            ||| % $._config,
             legendFormat='Rx success %'
           ),
         ]) +
@@ -287,7 +317,9 @@ local filename = 'alloy-cluster-node.json';
         }) +
         panel.withQueries([
           panel.newQuery(
-            expr='cluster_transport_streams{' + $._config.instanceSelector + '}',
+            expr= ||| 
+              cluster_transport_streams{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='Open streams'
           ),
         ])
