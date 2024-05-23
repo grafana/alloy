@@ -31,7 +31,7 @@ jobs:
                     New-Partition -AssignDriveLetter -UseMaximumSize |
                     Format-Volume -FileSystem ReFS -Confirm:$false -Force
           Write-Output $Volume
-          Write-Output "DEV_DRIVE=$($Volume.DriveLetter):" >> $env:GTIHUB_ENV
+          Write-Output "DEV_DRIVE=$($Volume.DriveLetter):" >> $env:GITHUB_ENV
 
       # actions/checkout does not let us clone anywhere outside the workspace
       # so we have to copy the clone repository into the Dev drive.
