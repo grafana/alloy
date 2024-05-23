@@ -97,8 +97,11 @@ design document.
   design document itself. All other comments should be made on the proposal
   issue.
 
-Once a design document is created, the proposal issue should be updated and a
-comment should be made to link to the design document.
+Once a design document is created, the proposal author should:
+
+* Update the proposal issue description to link to the design document.
+* Add a comment notifying readers that a design document is created, with a
+  link to the design document.
 
 Once comments on PRs for design documents have slowed down, the PR is merged
 regardless of the current state of the proposal. More PRs to update the design
