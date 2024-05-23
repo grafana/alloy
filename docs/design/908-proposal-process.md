@@ -295,7 +295,20 @@ documented and the proposal will move to the appropriate state.
 
 ## Rationale
 
-This process comes with some trade-offs.
+Formalizing proposal creation and review ensures that all proposals are
+eventually given attention. Having proposals reviewed weekly ensures that
+proposals are kept moving forward and nobody is left waiting months for a
+decision to be made.
+
+To re-embrace the spirit of "design in the open," conversations about a
+proposal should be discoverable by new parties to make it easy to participate.
+Having a single source of truth for discussions (the proposal issue) prevents
+conversations from fragmenting in multiple locations (such as design document
+PRs, offline discussions, Google Docs). This ensures that contributors know
+where to look for discussions and important information doesn't get lost while
+trying to reach consensus.
+
+However, this process comes with some trade-offs, described in sections below.
 
 ### Proposal lifecycle time
 
