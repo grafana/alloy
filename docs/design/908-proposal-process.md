@@ -253,6 +253,13 @@ Proposals are in one of the following states:
   discussion may lead to a different, non-obsolete proposal, the proposal may
   be kept open and the discussion continued.
 
+* **Hold**: If a discussion of a proposal requires design revisions or
+  additional information that will not be available for a couple of weeks or
+  more, the proposal review group moves the proposal to the _Hold_ state with a
+  note of what it is waiting on. Once the proposal is unblocked, the proposal
+  can be moved back to the _Active_ state for consideration during the next
+  proposal review.
+
 A publicly available GitHub project tracks proposals and their states.
 
 [governance]: https://github.com/grafana/alloy/blob/main/GOVERNANCE.md
