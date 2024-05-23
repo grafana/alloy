@@ -25,6 +25,9 @@ Main (unreleased)
   
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
 
+- Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
+  which removes some false-positive error log messages on Windows (@thampiotr) 
+
 ### Bugfixes
 
 - Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
