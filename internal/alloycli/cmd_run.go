@@ -267,6 +267,7 @@ func (fr *alloyRun) Run(configPath string) error {
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
 		Logger:      log.With(l, "service", "remotecfg"),
 		StoragePath: fr.storagePath,
+		Metrics:     reg,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create the remotecfg service: %w", err)

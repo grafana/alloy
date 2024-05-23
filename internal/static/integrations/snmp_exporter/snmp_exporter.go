@@ -155,6 +155,13 @@ func NewSNMPMetrics(reg prometheus.Registerer) collector.Metrics {
 				Help:      "Number of SNMP packet retries.",
 			},
 		),
+		SNMPInflight: promauto.With(reg).NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "request_in_flight",
+				Help:      "Current number of SNMP scrapes being requested.",
+			},
+		),
 	}
 }
 

@@ -18,6 +18,12 @@ Main (unreleased)
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
+- (_Public preview_) Add metrics to report status of `remotecfg` service. (@captncraig)
+
+- Added `scrape_protocols` option to `prometheus.scrape`, which allows to
+  control the preferred order of scrape protocols. (@thampiotr)
+  
+- Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
 
 ### Bugfixes
 
@@ -33,12 +39,25 @@ Main (unreleased)
 
 - Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
 
+- Fix error on boot when using IPv6 advertise addresses without explicitly
+  specifying a port. (@matthewpi)
+  
 - Fix an issue where having long component labels (>63 chars) on otelcol.auth
   components lead to a panic. (@tpaschalis)
 
 ### Other changes
 
-- `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0.
+- `pyroscope.ebpf`, `pyroscope.java`, `pyroscope.scrape`, `pyroscope.write` and `discovery.process` components are now GA. (@korniltsev)
+
+- `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0. (@ptodev, @erikbaranowski)
+
+- `prometheus.scrape` component's `enable_protobuf_negotiation` argument is now
+  deprecated and will be removed in a future major release.
+  Use `scrape_protocols` instead and refer to `prometheus.scrape` reference
+  documentation for further details. (@thampiotr)
+
+- Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
+
 
 v1.1.0
 ------

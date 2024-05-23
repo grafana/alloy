@@ -4,9 +4,11 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/grafana/alloy/internal/component/common/config"
+	promaws "github.com/prometheus/prometheus/discovery/aws"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
+
+	"github.com/grafana/alloy/internal/component/common/config"
 )
 
 func TestConvert(t *testing.T) {
@@ -27,7 +29,9 @@ func TestConvert(t *testing.T) {
 	}
 
 	// ensure values are set
-	promArgs := alloyArgs.Convert()
+	converted := alloyArgs.Convert()
+	promArgs, ok := converted.(*promaws.EC2SDConfig)
+	require.True(t, ok)
 	assert.Equal(t, "us-east-1", promArgs.Region)
 	assert.Equal(t, "http://example:8080", promArgs.HTTPClientConfig.ProxyURL.String())
 }

@@ -6,14 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/loki/internal/convert"
-	"github.com/grafana/alloy/internal/component/otelcol/processor/processortest"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/loki/internal/convert"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/processortest"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestConsumeLogs(t *testing.T) {

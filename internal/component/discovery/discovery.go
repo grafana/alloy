@@ -7,11 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/component"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Target refers to a singular discovered endpoint found by a discovery
@@ -44,12 +46,12 @@ type Exports struct {
 	Targets []Target `alloy:"targets,attr"`
 }
 
-// Discoverer is an alias for Prometheus' Discoverer interface, so users of this package don't need
+// DiscovererConfig is an alias for Prometheus' DiscovererConfig interface, so users of this package don't need
 // to import github.com/prometheus/prometheus/discover as well.
-type Discoverer discovery.Discoverer
+type DiscovererConfig discovery.Config
 
-// Creator is a function provided by an implementation to create a concrete Discoverer instance.
-type Creator func(component.Arguments) (Discoverer, error)
+// Creator is a function provided by an implementation to create a concrete DiscovererConfig instance.
+type Creator func(component.Arguments) (DiscovererConfig, error)
 
 // Component is a reusable component for any discovery implementation.
 // it will handle dynamic updates and exporting targets appropriately for a scrape implementation.
@@ -57,7 +59,7 @@ type Component struct {
 	opts component.Options
 
 	discMut       sync.Mutex
-	latestDisc    discovery.Discoverer
+	latestDisc    DiscovererWithMetrics
 	newDiscoverer chan struct{}
 
 	creator Creator
@@ -74,36 +76,93 @@ func New(o component.Options, args component.Arguments, creator Creator) (*Compo
 	return c, c.Update(args)
 }
 
+// ConvertibleConfig is used to more conveniently convert a configuration struct into a DiscovererConfig.
+type ConvertibleConfig interface {
+	// Convert converts the struct into a DiscovererConfig.
+	Convert() DiscovererConfig
+}
+
+// NewFromConvertibleConfig creates a discovery component given a ConvertibleConfig. Convenience function for New.
+func NewFromConvertibleConfig[T ConvertibleConfig](opts component.Options, conf T) (component.Component, error) {
+	return New(opts, conf, func(args component.Arguments) (DiscovererConfig, error) {
+		return args.(T).Convert(), nil
+	})
+}
+
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	var cancel context.CancelFunc
+	var (
+		runFn                func()
+		stopFn               func() = nil
+		stopCurrentIfRunning        = func() {
+			if stopFn != nil {
+				stopFn()
+			}
+		}
+	)
+	defer stopCurrentIfRunning()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-c.newDiscoverer:
-			// cancel any previously running discovery
-			if cancel != nil {
-				cancel()
-			}
-			// create new context so we can cancel it if we get any future updates
-			// since it is derived from the main run context, it only needs to be
-			// canceled directly if we receive new updates
-			newCtx, cancelFunc := context.WithCancel(ctx)
-			cancel = cancelFunc
+			// stop the current discovery (blocking, unregisters metrics etc.)
+			stopCurrentIfRunning()
 
-			// finally run discovery
+			// grab the latest discovery
 			c.discMut.Lock()
 			disc := c.latestDisc
 			c.discMut.Unlock()
-			go c.runDiscovery(newCtx, disc)
+
+			// run the new discovery and grab the new stop function
+			runFn, stopFn = c.newRunAndStopForDisc(ctx, disc)
+			go runFn()
 		}
 	}
 }
 
+// newRunAndStopForDisc creates a new runFn and stopFn functions for a given DiscovererWithMetrics. The run function will
+// register the metrics and run discoverer until stopFn is called. After that it will unregister the metrics. The stop
+// function will block until run function is finished cleaning up.
+func (c *Component) newRunAndStopForDisc(ctx context.Context, disc DiscovererWithMetrics) (runFn func(), stopFn func()) {
+	// create new context, so we can cancel it if we get any future updates
+	// since it is derived from the main run context, it only needs to be
+	// canceled directly if we receive new updates
+	newCtx, cancelCtx := context.WithCancel(ctx)
+
+	doneRunning := make(chan struct{})
+	runFn = func() {
+		// DiscovererWithMetrics needs to have its metrics registered before running.
+		err := disc.Register()
+		if err != nil {
+			_ = level.Warn(c.opts.Logger).Log("msg", "failed to register discoverer metrics", "err", err)
+		}
+
+		// Run the discoverer.
+		c.runDiscovery(newCtx, disc)
+
+		// DiscovererWithMetrics needs to have its metrics unregistered after running.
+		disc.Unregister()
+		doneRunning <- struct{}{}
+	}
+
+	stopFn = func() {
+		cancelCtx()
+		// Wait till the runFn is done and cleaned up / unregistered the metrics.
+		<-doneRunning
+	}
+
+	return runFn, stopFn
+}
+
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
-	disc, err := c.creator(args)
+	discConfig, err := c.creator(args)
+	if err != nil {
+		return err
+	}
+	disc, err := NewDiscovererWithMetrics(discConfig, c.opts.Registerer, c.opts.Logger)
 	if err != nil {
 		return err
 	}
@@ -125,12 +184,16 @@ var MaxUpdateFrequency = 5 * time.Second
 
 // runDiscovery is a utility for consuming and forwarding target groups from a discoverer.
 // It will handle collating targets (and clearing), as well as time based throttling of updates.
-func (c *Component) runDiscovery(ctx context.Context, d Discoverer) {
+func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 	// all targets we have seen so far
 	cache := map[string]*targetgroup.Group{}
 
 	ch := make(chan []*targetgroup.Group)
-	go d.Run(ctx, ch)
+	runExited := make(chan struct{})
+	go func() {
+		d.Run(ctx, ch)
+		runExited <- struct{}{}
+	}()
 
 	// function to convert and send targets in format scraper expects
 	send := func() {
@@ -163,7 +226,9 @@ func (c *Component) runDiscovery(ctx context.Context, d Discoverer) {
 				haveUpdates = false
 			}
 		case <-ctx.Done():
+			// shut down the discoverer - send latest targets and wait for discoverer goroutine to exit
 			send()
+			<-runExited
 			return
 		case groups := <-ch:
 			for _, group := range groups {

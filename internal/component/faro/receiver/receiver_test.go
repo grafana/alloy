@@ -8,14 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/phayes/freeport"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/loki/pkg/logproto"
-	"github.com/phayes/freeport"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
 )
 
 // Test performs an end-to-end test of the component.
