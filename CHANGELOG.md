@@ -20,6 +20,9 @@ Main (unreleased)
 
 - Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
 
+- Fix error on boot when using IPv6 advertise addresses without explicitly
+  specifying a port. (@matthewpi)
+
 v1.1.0
 ------
 
