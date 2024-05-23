@@ -76,9 +76,7 @@
     },
     datasource: '${datasource}',
     refresh: 2,
-    sort: 2,
-    allValue: '.*',
-    includeAll: true,
+    sort: 2,    
   },
 
   newLokiAnnotation(name, expression, color):: {
@@ -93,6 +91,8 @@
 
   newMultiTemplateVariable(name, query):: $.newTemplateVariable(name, query) {
     multi: true,
+    allValue: '.*',
+    includeAll: true,
   },
 
   withPanelsMixin(panels):: { panels+: panels },

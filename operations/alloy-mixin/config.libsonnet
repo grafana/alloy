@@ -1,6 +1,6 @@
 {
     _config+:: {
-        enableK8sCluster: false,
+        enableK8sCluster: true,
         enableAlloyCluster: true,
         enableLokiLogs: true,
         filterSelector: 'job=~"$job"',
