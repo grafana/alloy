@@ -21,7 +21,7 @@ jobs:
           docker build -t alloy-test:latest -f Dockerfile .
 
   windows:
-    runs-on: windows-2019
+    runs-on: windows-latest
     steps:
       - name: Create Dev Drive using ReFS
         run: |
