@@ -23,9 +23,24 @@ jobs:
   windows:
     runs-on: windows-2019
     steps:
+      - name: Create Dev Drive using ReFS
+        run: |
+          $Volume = New-VHD -Path C:/dev_drive.vhdx -SizeBytes 10GB |
+                    Mount-VHD -Passthru |
+                    Initialize-Disk -Passthru |
+                    New-Partition -AssignDriveLetter -UseMaximumSize |
+                    Format-Volume -FileSystem ReFS -Confirm:$false -Force
+          Write-Output $Volume
+          Write-Output "DEV_DRIVE=$($Volume.DriveLetter):" >> $env:GTIHUB_ENV
+
+      # actions/checkout does not let us clone anywhere outside the workspace
+      # so we have to copy the clone repository into the Dev drive.
       - uses: actions/checkout@v4
+      - name: Copy repo to Dev Drive
+        run: |
+          Copy-Item -Path "${{ github.workspace }}" -Destination "${{ env.DEV_DRIVE }}/work" -Recurse
+
       - name: Build image
+        working-directory: ${{ env.DEV_DRIVE }}/work
         run: |
           docker build -t alloy-test:latest -f Dockerfile.windows .
-
-
