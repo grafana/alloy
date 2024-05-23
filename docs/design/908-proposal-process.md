@@ -124,7 +124,7 @@ the source of truth.
 
 ## Background
 
-[An introduction of the necessary background and the propoasl being solved by the proposed change.]
+[An introduction of the necessary context and the proposal being solved by the proposed change. Background should include why the proposal is necessary and what problem it solves.]
 
 ## Proposal
 
