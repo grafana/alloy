@@ -25,8 +25,6 @@ internal API changes are not present.
 
 - `prometheus.exporter.snowflake`: Add support for RSA key-pair authentication. (@Caleb-Hurshman)
 
-- `prometheus.exporter.snowflake`: Add support for RSA key-pair authentication. (@Caleb-Hurshman)
-
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
   which removes some false-positive error log messages on Windows (@thampiotr)
 
