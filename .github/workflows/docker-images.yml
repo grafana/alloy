@@ -43,4 +43,10 @@ jobs:
       - name: Build image
         working-directory: ${{ env.DEV_DRIVE }}/work
         run: |
+          Write-Output "::group::Docker build --help"
+          docker build --help
+          Write-Output "::endgroup::"
+
+          Write-Output "::group::Docker build"
           docker build -t alloy-test:latest -f Dockerfile.windows .
+          Write-Output "::endgroup::"
