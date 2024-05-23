@@ -333,7 +333,9 @@ There are two mitigation strategies to help with this:
 * Authors of proposals can start with offline discussions and use alternative
   tools (such as Google Docs) to prepare proposals for public presentation.
 
-* The proposal review group keeps discussions on track.
+* The proposal review group keeps discussions focused by preventing derailing
+  and pointing out when concurrent conversational threads can be joined
+  together under a larger idea.
 
 ## Compatibility
 
