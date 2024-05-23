@@ -31,10 +31,10 @@ Main (unreleased)
 - Updates `processor/probabilistic_sampler` to use new `FailedClosed` field from OTEL release v0.101.0
   (but with a default value of `false`). (@StefanKurek)
 
-- Updates `receiver/vcenter` to use many new features and bugfixes introduces from OTEL releases
-  v0.100.0 and v0.101.0. Please see the release notes for more detailed descriptions here for
-  [v0.100.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.100.0)
-  and here [v0.101.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.101.0).
+- Updates `receiver/vcenter` to use new features and bugfixes introduced in OTEL releases v0.100.0 and v0.101.0.
+  Refer to the [v0.100.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.100.0)
+  and [v0.101.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.101.0) release
+  notes for more detailed information.
   Changes that directly affected the configuration are as follows: (@StefanKurek)
   - The resource attribute `vcenter.datacenter.name` has been added and enabled by default for all resource types.
   - The resource attribute `vcenter.virtual_app.inventory_path` has been added and enabled by default to
