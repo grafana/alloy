@@ -300,10 +300,12 @@ Formalizing the proposal process ensures that all proposals are given
 attention. However, the process described here will slow down the acceptance
 rate of proposals.
 
-The acceptance cycle of most proposals is increased to take at least three
-weeks; one week to move to _Active_, one additional week to move to _Likely
-Accept_, and a final week to move to _Accepted_. This does not include the time
-a proposal may spend in _Incoming_ or _Hold_.
+Because changing a proposal's state is tied to the frequency of proposal review
+process, a weekly proposal review process means that the acceptance cycle of
+most proposals is increased to take at least two or three weeks; up to one week
+to move to _Active_, at least one week to move to _Likely Accept_, and at least
+one week to move to _Accepted_. This does not include the time a proposal may
+spend in _Hold_.
 
 Three weeks is half the time of our release cadence, and so proposals opened
 too late in the cycle may need to wait two releases before being available to
