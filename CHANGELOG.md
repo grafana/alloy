@@ -33,6 +33,9 @@ Main (unreleased)
 
 - Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
 
+- Fix an issue where having long component labels (>63 chars) on otelcol.auth
+  components lead to a panic. (@tpaschalis)
+
 ### Other changes
 
 - `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0.
