@@ -171,17 +171,17 @@ This connects directly to the Loki instance running via `docker-compose` from th
 
 Copy your local `config.alloy` file into the default configuration file location, which depends on your OS.
 
-   {{< code >}}
+{{< code >}}
 
-   ```macOS
-   sudo cp config.alloy $(brew --prefix)/etc/alloy/config.alloy
-   ```
+```macos
+sudo cp config.alloy $(brew --prefix)/etc/alloy/config.alloy
+```
 
-   ```linux
-  sudo cp config.alloy /etc/alloy/config.alloy
-   ```
+```linux
+sudo cp config.alloy /etc/alloy/config.alloy
+```
 
-   {{< /code >}}
+{{< /code >}}
 
 Finally, call the reload endpoint to alert {{< param "PRODUCT_NAME" >}} to the configuration change without the need
 for restarting the system service.
@@ -198,17 +198,17 @@ one extra optional step for Linux, while this is enabled by default on MacOS.
 The alternative to using this endpoint is to reload the {{< param "PRODUCT_NAME" >}} configuration, which can
 be done as follows:
 
-   {{< code >}}
+{{< code >}}
 
-   ```macOS
-   brew services restart alloy
-   ```
+```macos
+brew services restart alloy
+```
 
-   ```linux
-  sudo systemctl reload alloy
-   ```
+```linux
+sudo systemctl reload alloy
+```
 
-   {{< /code >}}
+{{< /code >}}
 
 ## Inspect your Configuration in the {{< param "PRODUCT_NAME" >}} UI
 
