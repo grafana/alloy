@@ -28,6 +28,8 @@ Main (unreleased)
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
   which removes some false-positive error log messages on Windows (@thampiotr) 
 
+- Add `yaml_decode` to standard library. (@mattdurham, @djcode)
+
 ### Bugfixes
 
 - Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
