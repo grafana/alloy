@@ -47,6 +47,7 @@ var (
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
+	FailClosed:      true,
 	AttributeSource: "traceID",
 }
 

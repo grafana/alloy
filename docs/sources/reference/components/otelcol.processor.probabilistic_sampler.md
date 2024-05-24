@@ -34,7 +34,7 @@ Name                  | Type      | Description                                 
 ----------------------|-----------|----------------------------------------------------------------------------------------------------------------------|-------------|---------
 `hash_seed`           | `uint32`  | An integer used to compute the hash algorithm.                                                                       | `0`         | no
 `sampling_percentage` | `float32` | Percentage of traces or logs sampled.                                                                                | `0`         | no
-`fail_closed`         | `bool`    | Whether to reject items with sampling-related errors.                                                                | `false`     | no
+`fail_closed`         | `bool`    | Whether to reject items with sampling-related errors.                                                                | `true`      | no
 `attribute_source`    | `string`  | Defines where to look for the attribute in `from_attribute`.                                                         | `"traceID"` | no
 `from_attribute`      | `string`  | The name of a log record attribute used for sampling purposes.                                                       | `""`        | no
 `sampling_priority`   | `string`  | The name of a log record attribute used to set a different sampling priority from the `sampling_percentage` setting. | `""`        | no
@@ -45,8 +45,6 @@ For hashing to work, all collectors for a given tier, for example, behind the sa
 It is also possible to leverage a different `hash_seed` at different collector tiers to support additional sampling requirements.
 
 `sampling_percentage` determines the percentage at which traces or logs are sampled. All traces or logs are sampled if you set this argument to a value greater than or equal to 100.
-
-`fail_closed` determines whether items with sampling-related errors will be rejected.
 
 `attribute_source` (logs only) determines where to look for the attribute in `from_attribute`. The allowed values are `traceID` or `record`.
 

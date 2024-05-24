@@ -28,7 +28,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: probabilisticsamplerprocessor.Config{
 				SamplingPercentage: 0,
 				HashSeed:           0,
-				FailClosed:         false,
+				FailClosed:         true,
 				AttributeSource:    "traceID",
 				FromAttribute:      "",
 				SamplingPriority:   "",
@@ -39,7 +39,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 					sampling_percentage = 10
 					hash_seed = 123
-					fail_closed = true
+					fail_closed = false
 					attribute_source = "record"
 					from_attribute = "logID"
 					sampling_priority = "priority"
@@ -48,7 +48,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: probabilisticsamplerprocessor.Config{
 				SamplingPercentage: 10,
 				HashSeed:           123,
-				FailClosed:         true,
+				FailClosed:         false,
 				AttributeSource:    "record",
 				FromAttribute:      "logID",
 				SamplingPriority:   "priority",
