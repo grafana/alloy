@@ -14,7 +14,7 @@ import (
 )
 
 // Five minutes in seconds for Unix comparisons
-const DefaultPruneWindow int64 = 5 * 60 * 60
+const FiveMinutePruneWindow int64 = 5 * 60
 
 type CounterOrHistogramStore[T CounterOrHistogram] interface {
 	Increment(metricDescriptor *monitoring.MetricDescriptor, currentValue *T)
@@ -27,7 +27,6 @@ type CounterOrHistogram interface {
 
 type SelfPruningDeltaStore[T CounterOrHistogram] struct {
 	wrapping                     CounterOrHistogramStore[T]
-	pruneWindow                  int64
 	mux                          sync.Mutex
 	trackedMetricDescriptorNames map[string]struct{}
 	lastListOperationTime        atomic.Int64
@@ -43,16 +42,10 @@ type SelfPruningDeltaStore[T CounterOrHistogram] struct {
 //
 // This is a short term fix until clustering aware components are completed. This will ensure the in-memory counters
 // are pruned when an exporter instance no longer has targets assigned.
-func NewSelfPruningDeltaStore[T CounterOrHistogram](l log.Logger, wrapping CounterOrHistogramStore[T], pruningWindowSeconds ...int64) *SelfPruningDeltaStore[T] {
-	pruneWindow := DefaultPruneWindow
-	if len(pruningWindowSeconds) > 0 {
-		pruneWindow = pruningWindowSeconds[0]
-	}
-
+func NewSelfPruningDeltaStore[T CounterOrHistogram](l log.Logger, wrapping CounterOrHistogramStore[T]) *SelfPruningDeltaStore[T] {
 	return &SelfPruningDeltaStore[T]{
 		logger:                       l,
 		wrapping:                     wrapping,
-		pruneWindow:                  pruneWindow,
 		trackedMetricDescriptorNames: map[string]struct{}{},
 	}
 }
@@ -106,5 +99,5 @@ func (s *SelfPruningDeltaStore[T]) Prune(ctx context.Context) {
 }
 
 func (s *SelfPruningDeltaStore[T]) shouldPrune(now int64) bool {
-	return (now - s.lastListOperationTime.Load()) > s.pruneWindow
+	return (now - s.lastListOperationTime.Load()) > FiveMinutePruneWindow
 }

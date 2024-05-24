@@ -60,7 +60,7 @@ func TestSelfPruningDeltaStore_ListMetrics_Delegates(t *testing.T) {
 }
 
 func TestSelfPruningDeltaStore_PruningWorkflow(t *testing.T) {
-	contextWithClockToTriggerPruning := clock.Context(context.Background(), clock.NewMock(time.Now().Add(5*time.Minute)))
+	sixMinutesAheadClock := clock.Context(context.Background(), clock.NewMock(time.Now().Add(6*time.Minute)))
 	type testCase struct {
 		name               string
 		storeState         map[string][]*collectors.ConstMetric
@@ -69,20 +69,26 @@ func TestSelfPruningDeltaStore_PruningWorkflow(t *testing.T) {
 	}
 	tests := []testCase{
 		{
+			name: "does nothing when last operation time does not require pruning",
+			storeState: map[string][]*collectors.ConstMetric{
+				"test-descriptor": {{FqName: "test-const-metric"}},
+			},
+			callsToMakeTo: func(store *gcp_exporter.SelfPruningDeltaStore[collectors.ConstMetric], ts *testStore) {
+				// Initialize last operation time
+				store.ListMetrics("test-descriptor")
+				store.Prune(context.Background())
+			},
+			expectedCallCounts: map[string]int{"test-descriptor": 1}, // Once to init last operation time
+		},
+		{
 			name:       "does nothing when no metric descriptors have been tracked",
 			storeState: map[string][]*collectors.ConstMetric{},
 			callsToMakeTo: func(store *gcp_exporter.SelfPruningDeltaStore[collectors.ConstMetric], ts *testStore) {
-				store.Prune(contextWithClockToTriggerPruning)
+				// Initialize last operation time
+				store.ListMetrics("test-descriptor")
+				store.Prune(sixMinutesAheadClock)
 			},
-			expectedCallCounts: map[string]int{},
-		},
-		{
-			name:       "does nothing when we should not prune",
-			storeState: map[string][]*collectors.ConstMetric{},
-			callsToMakeTo: func(store *gcp_exporter.SelfPruningDeltaStore[collectors.ConstMetric], ts *testStore) {
-				store.Prune(context.Background())
-			},
-			expectedCallCounts: map[string]int{},
+			expectedCallCounts: map[string]int{"test-descriptor": 1}, // Once to init last operation time
 		},
 		{
 			name: "will prune outstanding descriptors",
@@ -91,7 +97,7 @@ func TestSelfPruningDeltaStore_PruningWorkflow(t *testing.T) {
 			},
 			callsToMakeTo: func(store *gcp_exporter.SelfPruningDeltaStore[collectors.ConstMetric], ts *testStore) {
 				store.ListMetrics("test-descriptor")
-				store.Prune(contextWithClockToTriggerPruning)
+				store.Prune(sixMinutesAheadClock)
 			},
 			expectedCallCounts: map[string]int{
 				"test-descriptor": 2, // Once to track it and once to prune it
@@ -105,8 +111,8 @@ func TestSelfPruningDeltaStore_PruningWorkflow(t *testing.T) {
 			callsToMakeTo: func(store *gcp_exporter.SelfPruningDeltaStore[collectors.ConstMetric], ts *testStore) {
 				store.ListMetrics("test-descriptor")
 				ts.state["test-descriptor"] = []*collectors.ConstMetric{}
-				store.Prune(contextWithClockToTriggerPruning)
-				store.Prune(contextWithClockToTriggerPruning)
+				store.Prune(sixMinutesAheadClock)
+				store.Prune(sixMinutesAheadClock)
 			},
 			expectedCallCounts: map[string]int{
 				"test-descriptor": 2, // Once to track it and once to prune it
@@ -124,7 +130,7 @@ func TestSelfPruningDeltaStore_PruningWorkflow(t *testing.T) {
 				ts.state["test-descriptor"] = []*collectors.ConstMetric{}
 				// Try to untrack it
 				store.ListMetrics("test-descriptor")
-				store.Prune(contextWithClockToTriggerPruning)
+				store.Prune(sixMinutesAheadClock)
 			},
 			expectedCallCounts: map[string]int{
 				"test-descriptor": 2, // Once to track it and once to untrack it
@@ -136,8 +142,7 @@ func TestSelfPruningDeltaStore_PruningWorkflow(t *testing.T) {
 			ts := newTestStore(tc.storeState)
 			store := gcp_exporter.NewSelfPruningDeltaStore[collectors.ConstMetric](
 				util.TestAlloyLogger(t),
-				ts,
-				1)
+				ts)
 			tc.callsToMakeTo(store, ts)
 
 			require.ElementsMatch(t, maps.Keys(tc.expectedCallCounts), maps.Keys(ts.descriptorToListMetricsCounter))
