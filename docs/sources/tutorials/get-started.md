@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/get-started/
-description: Getting started with {{< param "PRODUCT_NAME" >}}
-title: Get started with {{< param "PRODUCT_NAME" >}}
+description: Getting started with Alloy
+title: Get started with Alloy
 weight: 10
 ---
 
@@ -22,19 +22,19 @@ You are encouraged to try the examples using a `config.alloy` file and experimen
 
 ### Linux
 
-Follow the instructions on the [../get-started/install/linux] Linux install page for the steps for several popular
+Follow the instructions on the [Linux Install] page for the steps for several popular
 Linux distributions.  
 
 {{< admonition type="tip" >}}
 Make sure to follow the optional install step to enable the UI, we will be referring to it in this tutorial.
 {{< /admonition >}}
 
-Once you have completed this, follow the instructions to [../get-started/run/linux](Run Grafana Alloy on Linux) using `systemctl`.
+Once you have completed this, follow the instructions to [Run on Linux] using `systemctl`.
 
 ### Mac
 
-Follow the instructions on the [../get-started/install/macos] MacOS install page for homebrew instructions. Once you have
-completed this, follow the instructions to [../get-started/run/macos](Run Grafana Alloy on MacOS) which will start
+Follow the instructions on the [MacOS Install] page for homebrew instructions. Once you have
+completed this, follow the instructions to [Run on MacOS] which will start
 {{< param "PRODUCT_NAME" >}} as a Homebrew service.
 
 ## Set up a local Grafana instance
@@ -119,7 +119,7 @@ local.file_match "local_files" {
 }
 ```
 
-In {{< param "PRODUCT_NAME" >}}'s configuration language, this creates a `[../../reference/components/local.file_match/](local.file_match)` named `systemlogs` with an attribute that tells {{< param "PRODUCT_NAME" >}} which files to source, and to check every 5 seconds.
+In {{< param "PRODUCT_NAME" >}}'s configuration language, this creates a [local.file_match] component named `local_files` with an attribute that tells {{< param "PRODUCT_NAME" >}} which files to source, and to check every 5 seconds.
 
 ### Second Component: Scraping
 
@@ -133,7 +133,7 @@ loki.source.file "log_scrape" {
 }
 ```
 
-This configuration creates a `[../../reference/components/loki.source_file/](loki.source_file)` component named `log_scrape`, and
+This configuration creates a [loki.source.file] component named `log_scrape`, and
 shows the pipeline concept of {{< param "PRODUCT_NAME" >}} in action:
 
 1. It applies to the `local_files` component (its "source" or target)
@@ -158,17 +158,16 @@ loki.write "grafana_loki" {
 }
 ```
 
-We create a `[../../reference/components/loki.write/](loki.write)` component named `grafana_loki` that points to `http://localhost:3100/loki/api/v1/push`. This completes a simple configuration pipeline.
+We create a [loki.write] component named `grafana_loki` that points to `http://localhost:3100/loki/api/v1/push`. This completes a simple configuration pipeline.
 
 {{< admonition type="tip" >}}
 Notice that the `basic_auth` is commented out. Our local `docker-compose` stack does not require it; we include it in this example
-to show how you can configure auth for other environments. For further auth options, consult the 
-`[../../reference/components/loki.write/](loki.write)` component reference.
+to show how you can configure auth for other environments. For further auth options, consult the [loki.write] component reference.
 {{< /admonition >}}
 
 This connects directly to the Loki instance running via `docker-compose` from the earlier step.
 
-### Reload the Configuration
+## Reload the Configuration
 
 Copy your local `config.alloy` file into the default configuration file location, which depends on your OS.
 
@@ -196,9 +195,24 @@ If this step does not work for you, please note that in the install instructions
 one extra optional step for Linux, while this is enabled by default on MacOS.
 {{< /admonition >}}
 
+The alternative to using this endpoint is to reload the {{< param "PRODUCT_NAME" >}} configuration, which can
+be done as follows:
+
+   {{< code >}}
+
+   ```macOS
+   brew services restart alloy
+   ```
+
+   ```linux
+  sudo systemctl reload alloy
+   ```
+
+   {{< /code >}}
+
 ## Inspect your Configuration in the {{< param "PRODUCT_NAME" >}} UI
 
-Open `[http://localhost:12345](http://localhost:12345)` and click the Graph tab at the top, which will show
+Open [http://localhost:12345] and click the Graph tab at the top, which will show
 something similar to the following:
 
 {{< figure src="/media/docs/alloy/tutorial/healthy-config.png" alt="Logs reported by Alloy in Grafana" >}}
@@ -208,7 +222,7 @@ component configuration.  We can further see that the components are healthy, an
 
 ## Log into Grafana and Explore Loki Logs
 
-Open `[http://localhost:3000/explore](http://localhost:3000/explore)` to access Grafana's Explore feature. Select Loki as 
+Open [http://localhost:3000/explore] to access Grafana's Explore feature. Select Loki as
 the data source, and click the "Label Browser" button to select a file that {{< param "PRODUCT_NAME" >}} as sent to Loki.
 
 Here we can see that logs are flowing through to Loki as expected, and the end-to-end configuration was successful!
@@ -221,6 +235,15 @@ Congratulations, you have fully installed and configured {{< param "PRODUCT_NAME
 host to a Grafana stack. In the following tutorials, you will learn more about configuration concepts, metrics, and more
 advanced log scraping.
 
+[http://localhost:3000/explore]: http://localhost:3000/explore
+[http://localhost:12345]: http://localhost:12345
+[MacOS Install]: ../../get-started/install/macos/
+[Linux Install]: ../../get-started/install/linux/
+[Run on Linux]: ../../get-started/run/linux/
+[Run on MacOS]: ../../get-started/run/macos/
+[local.file_match]: ../../reference/components/local.file_match/
+[loki.write]: ../../reference/components/loki.write/
+[loki.source.file]: ../../reference/components/loki.source.file/
 [alloy]: https://grafana.com/docs/alloy/latest/
 [configuration]: ../../concepts/configuration-syntax/
 [install]: ../../get-started/install/binary/#install-alloy-as-a-standalone-binary
