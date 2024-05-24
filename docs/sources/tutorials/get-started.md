@@ -47,7 +47,7 @@ visualize them.
 version: '3'
 services:
   loki:
-    image: grafana/loki:2.9.0
+    image: grafana/loki:3.0.0
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
