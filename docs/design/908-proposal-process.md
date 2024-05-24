@@ -103,14 +103,12 @@ Once a design document is created, the proposal author should:
 * Add a comment notifying readers that a design document is created, with a
   link to the design document.
 
-Once comments on PRs for design documents have slowed down, the PR is merged
-regardless of the current state of the proposal. More PRs to update the design
-document may be warranted based on ongoing discussions on the proposal issue.
-Any links on the proposal issue should be updated to point to the latest
-version of the design document.
-
 Design documents do not track the state of the proposal; the proposal issue is
 the source of truth.
+
+The PR for design documents are merged once the associated proposal becomes
+_Accepted_. If the proposal becomes _Declined_, the PR for the design document
+is closed.
 
 ### Design document template
 
