@@ -276,8 +276,8 @@ func (fr *alloyRun) Run(configPath string) error {
 	liveDebuggingService := livedebugging.New()
 
 	uiService := uiservice.New(uiservice.Options{
-		UIPrefix:               fr.uiPrefix,
-		DebuggingStreamHandler: liveDebuggingService.Data().(livedebugging.DebugStreamManager),
+		UIPrefix:              fr.uiPrefix,
+		DebugCallbackRegistry: liveDebuggingService.Data().(livedebugging.DebugCallbackRegistry),
 	})
 
 	otelService := otel_service.New(l)
@@ -295,13 +295,13 @@ func (fr *alloyRun) Run(configPath string) error {
 		Reg:          reg,
 		MinStability: fr.minStability,
 		Services: []service.Service{
-			httpService,
-			liveDebuggingService,
-			uiService,
 			clusterService,
-			otelService,
+			httpService,
 			labelService,
+			liveDebuggingService,
+			otelService,
 			remoteCfgService,
+			uiService,
 		},
 	})
 

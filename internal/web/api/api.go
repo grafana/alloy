@@ -24,13 +24,13 @@ import (
 
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
-	alloy                  service.Host
-	debuggingStreamHandler livedebugging.DebugStreamManager
+	alloy                 service.Host
+	debugCallbackRegistry livedebugging.DebugCallbackRegistry
 }
 
 // NewAlloyAPI instantiates a new Alloy API.
-func NewAlloyAPI(alloy service.Host, debuggingStreamHandler livedebugging.DebugStreamManager) *AlloyAPI {
-	return &AlloyAPI{alloy: alloy, debuggingStreamHandler: debuggingStreamHandler}
+func NewAlloyAPI(alloy service.Host, debugCallbackRegistry livedebugging.DebugCallbackRegistry) *AlloyAPI {
+	return &AlloyAPI{alloy: alloy, debugCallbackRegistry: debugCallbackRegistry}
 }
 
 // RegisterRoutes registers all the API's routes.
@@ -43,7 +43,7 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
 	r.Handle(path.Join(urlPrefix, "/components/{id:.+}"), httputil.CompressionHandler{Handler: a.getComponentHandler()})
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: a.getClusteringPeersHandler()})
-	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), a.startDebugStream())
+	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), a.liveDebugging())
 }
 
 func (a *AlloyAPI) listComponentsHandler() http.HandlerFunc {
@@ -116,11 +116,11 @@ func (a *AlloyAPI) getClusteringPeersHandler() http.HandlerFunc {
 	}
 }
 
-func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
+func (a *AlloyAPI) liveDebugging() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		componentID := vars["id"]
-		requestedComponent := component.ParseID(componentID)
+		componentID := livedebugging.ComponentID(vars["id"])
+		requestedComponent := component.ParseID(vars["id"])
 
 		component, err := a.alloy.GetComponent(requestedComponent, component.InfoOptions{})
 		if err != nil {
@@ -128,7 +128,7 @@ func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
 			return
 		}
 
-		if !a.debuggingStreamHandler.IsRegistered(component.ComponentName) {
+		if !a.debugCallbackRegistry.IsRegistered(livedebugging.ComponentName(component.ComponentName)) {
 			http.Error(w, fmt.Sprintf("Live debugging is not supported for the component \"%s\"", component.ComponentName), http.StatusInternalServerError)
 			return
 		}
@@ -140,9 +140,9 @@ func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
 
 		sampleProb := setSampleProb(w, r.URL.Query().Get("sampleProb"))
 
-		id := uuid.New().String()
+		id := livedebugging.CallbackID(uuid.New().String())
 
-		a.debuggingStreamHandler.SetStream(id, componentID, func(data string) {
+		a.debugCallbackRegistry.AddCallback(id, componentID, func(data string) {
 			select {
 			case <-ctx.Done():
 				return
@@ -160,14 +160,14 @@ func (a *AlloyAPI) startDebugStream() http.HandlerFunc {
 
 		defer func() {
 			close(dataCh)
-			a.debuggingStreamHandler.DeleteStream(id, componentID)
+			a.debugCallbackRegistry.DeleteCallback(id, componentID)
 		}()
 
 		for {
 			select {
 			case data := <-dataCh:
 				var builder strings.Builder
-				builder.WriteString(data)
+				builder.WriteString(string(data))
 				// |;| delimiter is added at the end of every chunk
 				builder.WriteString("|;|")
 				_, writeErr := w.Write([]byte(builder.String()))

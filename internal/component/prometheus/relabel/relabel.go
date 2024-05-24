@@ -88,7 +88,7 @@ type Component struct {
 	exited           atomic.Bool
 	ls               labelstore.LabelStore
 
-	debuggingStreamHandler livedebugging.DebugStreamManager
+	debugDataPublisher livedebugging.DebugDataPublisher
 
 	cacheMut sync.RWMutex
 	cache    *lru.Cache[uint64, *labelAndID]
@@ -105,21 +105,21 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
-	debuggingStreamHandler, err := o.GetServiceData(livedebugging.ServiceName)
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
 	if err != nil {
 		return nil, err
 	}
-	debuggingStreamHandler.(livedebugging.DebugStreamManager).Register(name)
+	debugDataPublisher.(livedebugging.DebugDataPublisher).Register(name)
 
 	data, err := o.GetServiceData(labelstore.ServiceName)
 	if err != nil {
 		return nil, err
 	}
 	c := &Component{
-		opts:                   o,
-		cache:                  cache,
-		ls:                     data.(labelstore.LabelStore),
-		debuggingStreamHandler: debuggingStreamHandler.(livedebugging.DebugStreamManager),
+		opts:               o,
+		cache:              cache,
+		ls:                 data.(labelstore.LabelStore),
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	c.metricsProcessed = prometheus_client.NewCounter(prometheus_client.CounterOpts{
 		Name: "alloy_prometheus_relabel_metrics_processed",
@@ -273,7 +273,10 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	// TODO(@mattdurham): Instead of setting this each time could collect on demand for better performance.
 	c.cacheSize.Set(float64(c.cache.Len()))
 
-	c.debuggingStreamHandler.Stream(c.opts.ID, fmt.Sprintf("%s => %s", lbls.String(), relabelled.String()))
+	componentID := livedebugging.ComponentID(c.opts.ID)
+	if c.debugDataPublisher.IsActive(componentID) {
+		c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", lbls.String(), relabelled.String()))
+	}
 
 	return relabelled
 }

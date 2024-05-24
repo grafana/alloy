@@ -13,21 +13,21 @@ import (
 const ServiceName = "livedebugging"
 
 type Service struct {
-	debugStreamManager DebugStreamManager
+	liveDebugging *liveDebugging
 }
 
 var _ service.Service = (*Service)(nil)
 
 func New() *Service {
 	return &Service{
-		debugStreamManager: NewDebugStreamManager(),
+		liveDebugging: NewLiveDebugging(),
 	}
 }
 
 // Data implements service.Service.
-// It returns the debugStreamManager for the components to stream.
+// It returns the liveDebugging for the components to stream.
 func (s *Service) Data() any {
-	return s.debugStreamManager
+	return s.liveDebugging
 }
 
 // Definition implements service.Service.

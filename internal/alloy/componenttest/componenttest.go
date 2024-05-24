@@ -165,7 +165,7 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments) (
 			case labelstore.ServiceName:
 				return labelstore.New(nil, prometheus.DefaultRegisterer), nil
 			case livedebugging.ServiceName:
-				return livedebugging.NewDebugStreamManager(), nil
+				return livedebugging.NewLiveDebugging(), nil
 			default:
 				return nil, fmt.Errorf("no service named %s defined", name)
 			}

@@ -229,7 +229,7 @@ func getServiceData(name string) (interface{}, error) {
 	case labelstore.ServiceName:
 		return labelstore.New(nil, prom.DefaultRegisterer), nil
 	case livedebugging.ServiceName:
-		return livedebugging.NewDebugStreamManager(), nil
+		return livedebugging.NewLiveDebugging(), nil
 	default:
 		return nil, fmt.Errorf("service not found %s", name)
 	}
