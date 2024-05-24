@@ -1,16 +1,16 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/get-started/
-description: Getting started with the tutorials
-title: Get started
+description: Getting started with {{% param "PRODUCT_NAME" %}}
+title: Get started with {{% param "PRODUCT_NAME" %}}
 weight: 10
 ---
 
 ## Get started with {{% param "PRODUCT_NAME" %}}
 
-This set of tutorials contains a collection of examples that build on each other to demonstrate how to configure and use [{{< param "PRODUCT_NAME" >}}][alloy].
-To follow these tutorials, you need to have a basic understanding of what {{< param "PRODUCT_NAME" >}} is and telemetry collection in general.
+This set of tutorials contains a collection of examples that build on each other to demonstrate how to configure and use [{{% param "PRODUCT_NAME" >}}][alloy].
+To follow these tutorials, you need to have a basic understanding of what {{% param "PRODUCT_NAME" >}} is and telemetry collection in general.
 You should also be familiar with with Prometheus and PromQL, Loki and LogQL, and basic Grafana navigation.
-You don't need to know about the {{< param "PRODUCT_NAME" >}} [configuration syntax][configuration] concepts.
+You don't need to know about the {{% param "PRODUCT_NAME" >}} [configuration syntax][configuration] concepts.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ This first tutorial requires a Linux, Unix, or Mac environment with Docker insta
 The examples run on a single host so that you can run them on your laptop or in a Virtual Machine.
 You are encouraged to try the examples using a `config.alloy` file and experiment with the examples yourself.
 
-## Install {{< param "PRODUCT_NAME"> }} and start the service.
+## Install {{% param "PRODUCT_NAME"> }} and start the service.
 
 ### Linux
 
@@ -40,7 +40,7 @@ completed this, follow the instructions to [../get-started/run/macos](Run Grafan
 ## Set up a local Grafana instance
 
 You can use the following Docker Compose file to set up a local Grafana instance alongside Loki and Prometheus which are pre-configured as datasources. You can run and experiment with the examples on your local system. In this tutorial,
-{{< param "PRODUCT_NAME"> }} will report logs to the loki running in this stack, and we can use Grafana to query and
+{{% param "PRODUCT_NAME"> }} will report logs to the loki running in this stack, and we can use Grafana to query and
 visualize them.
 
 ```yaml
@@ -97,14 +97,14 @@ services:
 
 After running `docker-compose up`, open [http://localhost:3000](http://localhost:3000) in your browser to view the Grafana UI.
 
-## Configure {{< param "PRODUCT_NAME"> }}
+## Configure {{% param "PRODUCT_NAME"> }}
 
 Alloy is configured through `config.alloy` file which contains a set of components. Components do basic things 
 like identifying which logs we want to scrape, how we want to process them, and where we will send them. 
 Our configuration will connect components into a workflow.
 
 For the following steps, create a file called `config.alloy` in your current working directory. 
-{{< param "PRODUCT_NAME"> }} has a 
+{{% param "PRODUCT_NAME"> }} has a 
 feature that allows us to "hot reload" a configuration from a file. In a later step, we will copy this file to where
 Alloy will pick it up, and be able to reload without restarting the system service.
 
@@ -119,7 +119,7 @@ local.file_match "local_files" {
 }
 ```
 
-In {{< param "PRODUCT_NAME"> }}'s configuration language, this creates a `[../../reference/components/local.file_match/](local.file_match)` named `systemlogs` with an attribute that tells {{< param "PRODUCT_NAME"> }} which files to source, and to check every 5 seconds.
+In {{% param "PRODUCT_NAME"> }}'s configuration language, this creates a `[../../reference/components/local.file_match/](local.file_match)` named `systemlogs` with an attribute that tells {{% param "PRODUCT_NAME"> }} which files to source, and to check every 5 seconds.
 
 ### Second Component: Scraping
 
@@ -134,7 +134,7 @@ loki.source.file "log_scrape" {
 ```
 
 This configuration creates a `[../../reference/components/loki.source_file/](loki.source_file)` component named `log_scrape`, and
-shows the pipeline concept of {{< param "PRODUCT_NAME"> }} in action:
+shows the pipeline concept of {{% param "PRODUCT_NAME"> }} in action:
 
 1. It applies to the `local_files` component (its "source" or target)
 2. It forwards the logs it scrapes to the "receiver" of another component called `grafana_loki` that we will define next
@@ -182,7 +182,7 @@ Copy your local `config.alloy` file into the default configuration file location
    ```
    {{< /code >}}
 
-Finally, call the reload endpoint to alert {{< param "PRODUCT_NAME"> }} to the configuration change without the need
+Finally, call the reload endpoint to alert {{% param "PRODUCT_NAME"> }} to the configuration change without the need
 for restarting the system service.
 
 ```bash
@@ -194,20 +194,20 @@ If this step does not work for you, please note that in the install instructions
 one extra optional step for Linux, while this is enabled by default on MacOS.
 {{< /admonition >}}
 
-## Inspect your Configuration in the {{< param "PRODUCT_NAME"> }} UI
+## Inspect your Configuration in the {{% param "PRODUCT_NAME"> }} UI
 
 Open `[http://localhost:12345](http://localhost:12345)` and click the Graph tab at the top, which will show
 something similar to the following:
 
 {{< figure src="/media/docs/alloy/tutorial/healthy-config.png" alt="Logs reported by Alloy in Grafana" >}}
 
-The UI allows us to see a visual representation of the pipeline we are building with our {{< param "PRODUCT_NAME"> }}
+The UI allows us to see a visual representation of the pipeline we are building with our {{% param "PRODUCT_NAME"> }}
 component configuration.  We can further see that the components are healthy, and we are ready to go.
 
 ## Log into Grafana and Explore Loki Logs
 
 Open `[http://localhost:3000/explore](http://localhost:3000/explore)` to access Grafana's Explore feature. Select Loki as 
-the data source, and click the "Label Browser" button to select a file that {{< param "PRODUCT_NAME"> }} as sent to Loki.
+the data source, and click the "Label Browser" button to select a file that {{% param "PRODUCT_NAME"> }} as sent to Loki.
 
 Here we can see that logs are flowing through to Loki as expected, and the end-to-end configuration was successful!
 
@@ -215,7 +215,7 @@ Here we can see that logs are flowing through to Loki as expected, and the end-t
 
 ## Conclusion
 
-Congratulations, you have fully installed and configured {{< param "PRODUCT_NAME"> }}, and shipped logs from your local
+Congratulations, you have fully installed and configured {{% param "PRODUCT_NAME"> }}, and shipped logs from your local
 host to a Grafana stack. In the following tutorials, you will learn more about configuration concepts, metrics, and more
 advanced log scraping.
 
