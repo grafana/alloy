@@ -124,6 +124,8 @@ func TestLogProcessing(t *testing.T) {
 	cfg := `
 			sampling_percentage = 100
 			hash_seed = 123
+			attribute_source = "traceID"
+			from_attribute = "foo"
 			output {
 				// no-op: will be overridden by test code.
 			}
@@ -180,7 +182,8 @@ func TestTraceProcessing(t *testing.T) {
 		"resourceSpans": [{
 			"scopeSpans": [{
 				"spans": [{
-					"name": "TestSpan"
+					"name": "TestSpan",
+					"traceId": "0123456789abcdef0123456789abcdef"
 				}]
 			}]
 		}]
@@ -190,7 +193,8 @@ func TestTraceProcessing(t *testing.T) {
 		"resourceSpans": [{
 			"scopeSpans": [{
 				"spans": [{
-					"name": "TestSpan"
+					"name": "TestSpan",
+					"traceId": "0123456789abcdef0123456789abcdef"
 				}]
 			}]
 		}]
