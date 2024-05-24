@@ -90,7 +90,7 @@ services:
           editable: false
         EOF
         /run.sh
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.0.0
     ports:
       - "3000:3000"
 ```
