@@ -1,11 +1,11 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/get-started/
-description: Getting started with {{% param "PRODUCT_NAME" %}}
-title: Get started with {{% param "PRODUCT_NAME" %}}
+description: Getting started with {{< param "PRODUCT_NAME" >}}
+title: Get started with {{< param "PRODUCT_NAME" >}}
 weight: 10
 ---
 
-## Get started with {{% param "PRODUCT_NAME" %}}
+## Get started with {{< param "PRODUCT_NAME" >}}
 
 This set of tutorials contains a collection of examples that build on each other to demonstrate how to configure and use [{{% param "PRODUCT_NAME" }}][alloy].
 To follow these tutorials, you need to have a basic understanding of what {{% param "PRODUCT_NAME" }} is and telemetry collection in general.
@@ -35,7 +35,7 @@ Once you have completed this, follow the instructions to [../get-started/run/lin
 
 Follow the instructions on the [../get-started/install/macos] MacOS install page for homebrew instructions. Once you have
 completed this, follow the instructions to [../get-started/run/macos](Run Grafana Alloy on MacOS) which will start
-{{% param "PRODUCT_NAME" %}} as a Homebrew service.
+{{< param "PRODUCT_NAME" >}} as a Homebrew service.
 
 ## Set up a local Grafana instance
 
