@@ -7,10 +7,10 @@ weight: 10
 
 ## Get started with {{% param "PRODUCT_NAME" %}}
 
-This set of tutorials contains a collection of examples that build on each other to demonstrate how to configure and use [{{% param "PRODUCT_NAME" >}}][alloy].
-To follow these tutorials, you need to have a basic understanding of what {{% param "PRODUCT_NAME" >}} is and telemetry collection in general.
+This set of tutorials contains a collection of examples that build on each other to demonstrate how to configure and use [{{% param "PRODUCT_NAME" }}][alloy].
+To follow these tutorials, you need to have a basic understanding of what {{% param "PRODUCT_NAME" }} is and telemetry collection in general.
 You should also be familiar with with Prometheus and PromQL, Loki and LogQL, and basic Grafana navigation.
-You don't need to know about the {{% param "PRODUCT_NAME" >}} [configuration syntax][configuration] concepts.
+You don't need to know about the {{% param "PRODUCT_NAME" }} [configuration syntax][configuration] concepts.
 
 ## Prerequisites
 
