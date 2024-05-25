@@ -13,9 +13,11 @@ YAML.
 A common use case of `yaml_decode` is to decode the output of a
 [`local.file`][] component to an {{< param "PRODUCT_NAME" >}} value.
 
-> Remember to escape double quotes when passing YAML string literals to `yaml_decode`.
->
-> For example, the YAML value `key: "value"` is properly represented by the string `"key: \"value\""`.
+{{< admonition type="note" >}}
+ Remember to escape double quotes when passing YAML string literals to `yaml_decode`.
+
+For example, the YAML value `key: "value"` is properly represented by the string `"key: \"value\""`.
+{{< /admonition >}}
 
 ## Examples
 
