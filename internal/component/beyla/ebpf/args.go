@@ -37,10 +37,18 @@ type KubernetesDecorator struct {
 type Services []Service
 
 type Service struct {
-	Name      string `alloy:"name,attr,optional"`
-	Namespace string `alloy:"namespace,attr,optional"`
-	OpenPorts string `alloy:"open_ports,attr,optional"`
-	Path      string `alloy:"exe_path,attr,optional"`
+	Name               string            `alloy:"name,attr,optional"`
+	Namespace          string            `alloy:"namespace,attr,optional"`
+	OpenPorts          string            `alloy:"open_ports,attr,optional"`
+	Path               string            `alloy:"exe_path,attr,optional"`
+	K8sNamespace       string            `alloy:"k8s_namespace,attr,optional"`
+	K8sPodName         string            `alloy:"k8s_pod_name,attr,optional"`
+	K8sDeploymentName  string            `alloy:"k8s_deployment_name,attr,optional"`
+	K8sReplicaSetName  string            `alloy:"k8s_replicaset_name,attr,optional"`
+	K8sStatefulSetName string            `alloy:"k8s_statefulset_name,attr,optional"`
+	K8sDaemonSetName   string            `alloy:"k8s_daemonset_name,attr,optional"`
+	K8sOwnerName       string            `alloy:"k8s_owner_name,attr,optional"`
+	K8sPodLabels       map[string]string `alloy:"k8s_pod_labels,attr,optional"`
 }
 
 type Discovery struct {

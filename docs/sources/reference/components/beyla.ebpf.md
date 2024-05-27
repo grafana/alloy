@@ -120,7 +120,8 @@ It contains the following blocks:
 ### services block
 
 In some scenarios, Beyla will instrument a wide variety of services, such as a Kubernetes DaemonSet that instruments all the services in a node.
-This block allows you to filter the services to instrument based on their metadata.
+This block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
+the instrumented processes need to match all the selector properties.
 
 Name         | Type     | Description                                                                     | Default | Required
 -------------|----------|---------------------------------------------------------------------------------|---------|---------
@@ -128,6 +129,14 @@ Name         | Type     | Description                                           
 `namespace`  | `string` | The namespace of the service to match.                                          |         | no
 `open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF. |         | no
 `exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF. |         | no
+`k8s_namespace` | `string` | Regular expression of Kubernetes Namespaces to match.                          |         | no
+`k8s_pod_name`  | `string` | Regular expression of Kubernetes Pods to match.                           |         | no
+`k8s_deployment_name` | `string` | Regular expression of Kubernetes Deployments to match.                 |         | no
+`k8s_statefulset_name` | `string` | Regular expression of Kubernetes StatefulSets to match.                 |         | no
+`k8s_replicaset_name` | `string` | Regular expression of Kubernetes ReplicaSets to match.                 |         | no
+`k8s_daemonset_name` | `string` | Regular expression of Kubernetes DaemonSets to match.                 |         | no
+`k8s_owner_name` | `string` | Regular expression of Kubernetes owners of running Pods to match.                     |         | no
+`k8s_pod_labels` | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression.             |         | no
 
 `name` defines a name for the matching instrumented service.
 It is used to populate the `service.name` OTEL property and/or the `service_name` Prometheus property in the exported metrics/traces.

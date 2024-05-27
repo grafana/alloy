@@ -90,11 +90,57 @@ func (args Services) Convert() (services.DefinitionCriteria, error) {
 		if err != nil {
 			return nil, err
 		}
+		k8sNamespace, err := stringToRegexpAttr(s.K8sNamespace)
+		if err != nil {
+			return nil, err
+		}
+		k8sPodName, err := stringToRegexpAttr(s.K8sPodName)
+		if err != nil {
+			return nil, err
+		}
+		k8sDeploymentName, err := stringToRegexpAttr(s.K8sDeploymentName)
+		if err != nil {
+			return nil, err
+		}
+		k8sReplicaSetName, err := stringToRegexpAttr(s.K8sReplicaSetName)
+		if err != nil {
+			return nil, err
+		}
+		k8sStatefulSetName, err := stringToRegexpAttr(s.K8sStatefulSetName)
+		if err != nil {
+			return nil, err
+		}
+		k8sDaemonSetName, err := stringToRegexpAttr(s.K8sDaemonSetName)
+		if err != nil {
+			return nil, err
+		}
+		k8sOwnerName, err := stringToRegexpAttr(s.K8sOwnerName)
+		if err != nil {
+			return nil, err
+		}
+		k8sPodLabels := map[string]*services.RegexpAttr{}
+		for k, v := range s.K8sPodLabels {
+			label, err := stringToRegexpAttr(v)
+			if err != nil {
+				return nil, err
+			}
+			k8sPodLabels[k] = &label
+		}
 		attrs = append(attrs, services.Attributes{
 			Name:      s.Name,
 			Namespace: s.Namespace,
 			OpenPorts: ports,
 			Path:      paths,
+			Metadata: map[string]*services.RegexpAttr{
+				services.AttrNamespace:       &k8sNamespace,
+				services.AttrPodName:         &k8sPodName,
+				services.AttrDeploymentName:  &k8sDeploymentName,
+				services.AttrReplicaSetName:  &k8sReplicaSetName,
+				services.AttrStatefulSetName: &k8sStatefulSetName,
+				services.AttrDaemonSetName:   &k8sDaemonSetName,
+				services.AttrOwnerName:       &k8sOwnerName,
+			},
+			PodLabels: k8sPodLabels,
 		})
 	}
 	return attrs, nil

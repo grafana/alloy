@@ -1027,6 +1027,8 @@ github.com/grafana/agent-remote-config v0.0.2 h1:s3FKgVzfY5Ij+xG0wVKgVvtDrh/Bz0Z
 github.com/grafana/agent-remote-config v0.0.2/go.mod h1:amyG3pVNXKcMo+kNN46yhnAXAz/m/9Ew9MRf53n7XBg=
 github.com/grafana/beyla v1.5.1 h1:7CTTXSUmDcobGoJ3fvwdpfCgMxpRsW13V+Remxgl5aU=
 github.com/grafana/beyla v1.5.1/go.mod h1:y6zU7/QV3db6SVXx3PYOLOp2s/PlwWyIDzUzOrfcI6o=
+github.com/grafana/beyla v1.6.2 h1:cP6ajcf42/DsgJUnw+iZsD+qtqN01kZkshgPixZBSCQ=
+github.com/grafana/beyla v1.6.2/go.mod h1:kNi1vKt2ESdoOy84+zq6Z7z67+BqwaMfEngcM/K8yKA=
 github.com/grafana/cadvisor v0.0.0-20231110094609-5f7917925dea h1:Q5f5/nJJ0SbusZjA6F6XkJuHDbl2/PqdTGw6wHsuccA=
 github.com/grafana/cadvisor v0.0.0-20231110094609-5f7917925dea/go.mod h1:XjiOCFjmxXIWwauV5p39Mr2Yxlpyk72uKQH1UZvd4fQ=
 github.com/grafana/ckit v0.0.0-20230906125525-c046c99a5c04 h1:tG8Qxq4dN1WqakMmsPaxaH4+OQhYg5HVsarw5acLBX8=
