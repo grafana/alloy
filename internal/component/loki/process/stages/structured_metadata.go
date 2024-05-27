@@ -4,7 +4,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/loki/pkg/logproto"
+	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
 func newStructuredMetadataStage(logger log.Logger, configs LabelsConfig) (Stage, error) {
@@ -25,6 +25,11 @@ type structuredMetadataStage struct {
 
 func (s *structuredMetadataStage) Name() string {
 	return StageTypeStructuredMetadata
+}
+
+// Cleanup implements Stage.
+func (*structuredMetadataStage) Cleanup() {
+	// no-op
 }
 
 func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {

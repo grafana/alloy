@@ -10,17 +10,70 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-v1.1.0-rc.0 (2024-05-03)
-------------------------
+### Breaking changes to non-GA functionality
+
+- Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
+  API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
+
+### Enhancements
+
+- (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
+- (_Public preview_) Add metrics to report status of `remotecfg` service. (@captncraig)
+
+- Added `scrape_protocols` option to `prometheus.scrape`, which allows to
+  control the preferred order of scrape protocols. (@thampiotr)
+  
+- Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
+
+- Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
+  which removes some false-positive error log messages on Windows (@thampiotr) 
+
+- Add `yaml_decode` to standard library. (@mattdurham, @djcode)
+
+### Bugfixes
+
+- Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
+
+- Fixed an issue with `prometheus.scrape` in which targets that move from one
+  cluster instance to another could have a staleness marker inserted and result
+  in a gap in metrics (@thampiotr)
+
+- Exit Alloy immediately if the port it runs on is not available. 
+  This port can be configured with `--server.http.listen-addr` or using
+  the default listen address`127.0.0.1:12345`. (@mattdurham)
+
+- Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
+
+- Fix error on boot when using IPv6 advertise addresses without explicitly
+  specifying a port. (@matthewpi)
+  
+- Fix an issue where having long component labels (>63 chars) on otelcol.auth
+  components lead to a panic. (@tpaschalis)
+
+### Other changes
+
+- `pyroscope.ebpf`, `pyroscope.java`, `pyroscope.scrape`, `pyroscope.write` and `discovery.process` components are now GA. (@korniltsev)
+
+- `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0. (@ptodev, @erikbaranowski)
+
+- `prometheus.scrape` component's `enable_protobuf_negotiation` argument is now
+  deprecated and will be removed in a future major release.
+  Use `scrape_protocols` instead and refer to `prometheus.scrape` reference
+  documentation for further details. (@thampiotr)
+
+- Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
+
+
+v1.1.0
+------
 
 ### Features
 
 - (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
 
-- (_Public preview_) Introduce `boringcrypto` and `cngcrypto` Docker images.
-  These Docker images are tagged with the `-boringcrypto` (for Linux) and
-  `-cngcrypto` (for Windows) suffixes. `boringcrypto` support is only available
-  on AMD64 and ARM64, while `cngcrypto` support is only available on AMD64.
+- (_Public preview_) Introduce BoringCrypto Docker images.
+  The BoringCrypto image is tagged with the `-boringcrypto` suffix and
+  is only available on AMD64 and ARM64 Linux containers.
   (@rfratto, @mattdurham)
 
 - (_Public preview_) Introduce `boringcrypto` release assets. BoringCrypto
@@ -28,6 +81,9 @@ v1.1.0-rc.0 (2024-05-03)
   @mattdurham)
 
 - `otelcol.exporter.loadbalancing`: Add a new `aws_cloud_map` resolver. (@ptodev)
+
+- Introduce a `otelcol.receiver.file_stats` component from the upstream
+  OpenTelemetry `filestatsreceiver` component. (@rfratto)
 
 ### Enhancements
 
@@ -76,8 +132,14 @@ v1.1.0-rc.0 (2024-05-03)
 - Imported code using `slog` logging will now not panic and replay correctly when logged before the logging
   config block is initialized. (@mattdurham)
 
-- Fix a bug where custom components would not shadow the stdlib. If you have a module whose name conflicts with an stdlib function 
+- Fix a bug where custom components would not shadow the stdlib. If you have a module whose name conflicts with an stdlib function
   and if you use this exact function in your config, then you will need to rename your module. (@wildum)
+
+- Fix an issue where `loki.source.docker` stops collecting logs after a container restart. (@wildum)
+
+- Upgrading `pyroscope/ebpf` from 0.4.6 to 0.4.7 (@korniltsev):
+  * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
+  * treat elf files with short build id (8 bytes) properly
 
 ### Other changes
 
@@ -156,8 +218,10 @@ v1.1.0-rc.0 (2024-05-03)
   - `otelcol.processor.resourcedetection`: Update to ec2 scraper so that core attributes are not dropped if describeTags returns an error (likely due to permissions).
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/30672
 
-v1.0.0 (2024-04-09)
--------------------
+- Use Go 1.22.3 for builds. (@kminehart)
+
+v1.0.0
+------
 
 ### Features
 

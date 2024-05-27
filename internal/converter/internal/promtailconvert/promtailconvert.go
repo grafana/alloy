@@ -5,19 +5,20 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/grafana/dskit/flagext"
+	promtailcfg "github.com/grafana/loki/v3/clients/pkg/promtail/config"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/limit"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/positions"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/file"
+	lokicfgutil "github.com/grafana/loki/v3/pkg/util/cfg"
+	"gopkg.in/yaml.v2"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/promtailconvert/internal/build"
 	"github.com/grafana/alloy/syntax/token/builder"
-	"github.com/grafana/dskit/flagext"
-	promtailcfg "github.com/grafana/loki/clients/pkg/promtail/config"
-	"github.com/grafana/loki/clients/pkg/promtail/limit"
-	"github.com/grafana/loki/clients/pkg/promtail/positions"
-	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/clients/pkg/promtail/targets/file"
-	lokicfgutil "github.com/grafana/loki/pkg/util/cfg"
-	"gopkg.in/yaml.v2"
 )
 
 type Config struct {

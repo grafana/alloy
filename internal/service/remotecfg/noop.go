@@ -5,37 +5,37 @@ import (
 	"errors"
 
 	"connectrpc.com/connect"
-	agentv1 "github.com/grafana/agent-remote-config/api/gen/proto/go/agent/v1"
+	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 )
 
 type noopClient struct{}
 
-// GetConfig returns the agent's configuration.
-func (c noopClient) GetConfig(context.Context, *connect.Request[agentv1.GetConfigRequest]) (*connect.Response[agentv1.GetConfigResponse], error) {
+// GetConfig returns the collector's configuration.
+func (c noopClient) GetConfig(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
 	return nil, errors.New("noop client")
 }
 
-// GetAgent returns information about the agent.
-func (c noopClient) GetAgent(context.Context, *connect.Request[agentv1.GetAgentRequest]) (*connect.Response[agentv1.Agent], error) {
+// GetCollector returns information about the collector.
+func (c noopClient) GetCollector(context.Context, *connect.Request[collectorv1.GetCollectorRequest]) (*connect.Response[collectorv1.Collector], error) {
 	return nil, errors.New("noop client")
 }
 
-// ListAgents returns information about all agents.
-func (c noopClient) ListAgents(context.Context, *connect.Request[agentv1.ListAgentsRequest]) (*connect.Response[agentv1.Agents], error) {
+// ListCollectors returns information about all collectors.
+func (c noopClient) ListCollectors(context.Context, *connect.Request[collectorv1.ListCollectorsRequest]) (*connect.Response[collectorv1.Collectors], error) {
 	return nil, errors.New("noop client")
 }
 
-// CreateAgent registers a new agent.
-func (c noopClient) CreateAgent(context.Context, *connect.Request[agentv1.CreateAgentRequest]) (*connect.Response[agentv1.Agent], error) {
+// CreateCollector registers a new collector.
+func (c noopClient) CreateCollector(context.Context, *connect.Request[collectorv1.CreateCollectorRequest]) (*connect.Response[collectorv1.Collector], error) {
 	return nil, errors.New("noop client")
 }
 
-// UpdateAgent updates an existing agent.
-func (c noopClient) UpdateAgent(context.Context, *connect.Request[agentv1.UpdateAgentRequest]) (*connect.Response[agentv1.Agent], error) {
+// UpdateCollector updates an existing collector.
+func (c noopClient) UpdateCollector(context.Context, *connect.Request[collectorv1.UpdateCollectorRequest]) (*connect.Response[collectorv1.Collector], error) {
 	return nil, errors.New("noop client")
 }
 
-// DeleteAgent deletes an existing agent.
-func (c noopClient) DeleteAgent(context.Context, *connect.Request[agentv1.DeleteAgentRequest]) (*connect.Response[agentv1.DeleteAgentResponse], error) {
+// DeleteCollector deletes an existing collector.
+func (c noopClient) DeleteCollector(context.Context, *connect.Request[collectorv1.DeleteCollectorRequest]) (*connect.Response[collectorv1.DeleteCollectorResponse], error) {
 	return nil, errors.New("noop client")
 }

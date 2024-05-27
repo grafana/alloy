@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	ebpfspy "github.com/grafana/pyroscope/ebpf"
 	demangle2 "github.com/grafana/pyroscope/ebpf/cpp/demangle"
 	"github.com/grafana/pyroscope/ebpf/pprof"
@@ -25,7 +25,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.ebpf",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

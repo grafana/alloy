@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/grafana/alloy/internal/alloy"
-	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
@@ -172,7 +172,7 @@ func newTestEnvironment(t *testing.T) (*testEnvironment, error) {
 		Gatherer: prometheus.NewRegistry(),
 
 		ReadyFunc:  func() bool { return true },
-		ReloadFunc: func() (*alloy.Source, error) { return nil, nil },
+		ReloadFunc: func() (*runtime.Source, error) { return nil, nil },
 
 		HTTPListenAddr:   fmt.Sprintf("127.0.0.1:%d", port),
 		MemoryListenAddr: "alloy.internal:12345",

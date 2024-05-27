@@ -8,11 +8,19 @@ jobs:
     name: homebrew-grafana
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/create-github-app-token@v1
+      id: app-token
+      with:
+        app-id: ${{ secrets.ALLOYBOT_APP_ID }}
+        private-key: ${{ secrets.ALLOYBOT_PRIVATE_KEY }}
+        owner: grafana
+        repositories: alloy,homebrew-grafana
+
     - name: Get latest release
       uses: rez0n/actions-github-release@main
       id: latest_release
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ steps.app-token.outputs.token }}
         repository: "${{ github.repository }}"
         type: "stable"
 
@@ -21,7 +29,7 @@ jobs:
       uses: dawidd6/action-homebrew-bump-formula@v3
       with:
         # Required, custom GitHub access token with the 'public_repo' and 'workflow' scopes
-        token: ${{secrets.HOMEBREW_FORMULA_GH_TOKEN}}
+        token: ${{ steps.app-token.outputs.token }}
         # Optional, defaults to homebrew/core
         tap: grafana/grafana
         # Formula name, required

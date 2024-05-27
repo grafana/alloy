@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/java/asprof"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	jfrpprof "github.com/grafana/jfr-parser/pprof"
 	jfrpprofPyroscope "github.com/grafana/jfr-parser/pprof/pyroscope"
 	"github.com/prometheus/prometheus/model/labels"

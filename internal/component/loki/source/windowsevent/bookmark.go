@@ -14,7 +14,7 @@ import (
 
 	"github.com/natefinch/atomic"
 
-	"github.com/grafana/loki/clients/pkg/promtail/targets/windows/win_eventlog"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
 )
 
 type bookMark struct {

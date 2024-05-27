@@ -2,7 +2,7 @@ package scheduler
 
 import (
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
