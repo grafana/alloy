@@ -30,6 +30,8 @@ Main (unreleased)
 
 - Add `yaml_decode` to standard library. (@mattdurham, @djcode)
 
+- Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)
+
 ### Bugfixes
 
 - Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
@@ -63,6 +65,7 @@ Main (unreleased)
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
 
+- Upgrade Beyla from v1.5.1 to v1.6.2. (@marctc)
 
 v1.1.0
 ------
