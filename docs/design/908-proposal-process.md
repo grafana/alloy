@@ -30,6 +30,8 @@ Formalizing a process for creating and reviewing proposals will help ensure that
 * All existing and new proposals are guaranteed to be evaluated and decided on.
 * A publicly accessible single source of truth is used for discussing all
   proposals.
+* Make it clear when a change to Alloy requires consensus and approval before
+  code is acceptable.
 
 [design in the open]: https://github.com/grafana/agent/blob/main/docs/rfcs/0001-designing-in-the-open.md
 
@@ -60,15 +62,17 @@ At a high-level, proposals go through the following stages:
 
 ### Scope
 
-The proposal process is intended for all user-facing changes or any largely
-scoped internal change. Other changes typically do not need a proposal, such as
-minor code refactors. If a contributor is uncertain about whether a proposal is
-needed, it is preferable to create a proposal instead of jumping into a change
-that may be declined.
+The proposal process is intended for user-facing features, enhancements or any
+largely scoped internal change. Other changes typically do not need a proposal,
+such as minor code refactors. If a contributor is uncertain about whether a
+proposal is needed, it is preferable to create a proposal instead of jumping
+into a change that may be declined.
 
 Proposals may initially be brief, with just enough detail to explain what is
 being proposed, why it is being proposed, and any relevant details that may
 guide the public discussion towards consensus.
+
+Any existing issue can be turned into a proposal by adding a `proposal` label.
 
 ### Compatibility
 
