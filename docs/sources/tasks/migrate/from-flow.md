@@ -67,19 +67,13 @@ When deploying {{< param "PRODUCT_NAME" >}}, be aware of the following settings:
 - {{< param "PRODUCT_NAME" >}} should be deployed with identical topology as Grafana Agent Flow. The CPU, and storage limits should match.
 - Custom command-line flags configured in Grafana Agent Flow should be reflected in your {{< param "PRODUCT_NAME" >}} installation.
 - {{< param "PRODUCT_NAME" >}} may need to be deployed with the `--stability.level` flag in [run] to enable non-stable components:
-    - Set `--stability.level` to `public-preview` if you are using any of these components:
-        - [discovery.process]
-        - [pyroscope.ebpf]
-        - [pyroscope.java]
-        - [pyroscope.scrape]
-        - [pyroscope.write]
-    - Set `--stability.level` to `experimental` if you are using any of the following components:
+    - Set `--stability.level` to `experimental` if you are using the following component:
         - [otelcol.receiver.vcenter]
     - Otherwise, `--stability.level` may be omitted or set to the default value (`generally-available`).
 - When installing on Kubernetes, update your `values.yaml` file to rename the `agent` key to `alloy`.
-- If deploying {{< param "PRODUCT_NAME" >}} as a cluster:
+- If you are deploying {{< param "PRODUCT_NAME" >}} as a cluster:
     - Set the number of instances to match the number of instances in your Grafana Agent Flow cluster.
-    - Do not enable auto-scaling until the migration is complete.
+    - Don't enable auto-scaling until the migration is complete.
 
 [install]: ../../get-started/install
 [run]: ../../../reference/cli/run
@@ -99,7 +93,7 @@ Migrate your Grafana Agent Flow data to {{< param "PRODUCT_NAME" >}} by copying 
 * Windows installations: copy the _contents_ of `%ProgramData%\Grafana Agent Flow\data` to `%ProgramData%\GrafanaLabs\Alloy\data`.
 * Docker: copy the contents of mounted volumes to a new directory, and then mount the new directory when running {{% param "PRODUCT_NAME" %}}.
 * Kubernetes: use `kubectl cp` to copy the _contents_ of the data directory on Flow pods to the data directory on {{% param "PRODUCT_NAME" %}} pods.
-    * The data direrctory is determined by the `agent.storagePath` (default `/tmp/agent`) and `alloy.storagePath` (default `/tmp/alloy`) fields in `values.yaml`.
+    * The data directory is determined by the `agent.storagePath` (default `/tmp/agent`) and `alloy.storagePath` (default `/tmp/alloy`) fields in `values.yaml`.
 
 ### Migrate pipelines that receive data over the network
 
@@ -124,9 +118,8 @@ This alternative approach results in some duplicate data being sent to backends 
 
 ### Uninstall Grafana Agent Flow
 
-After following the sections above, you can uninstall Grafana Agent Flow.
+After you have migrated the configuration to {{< param "PRODUCT_NAME" >}}, you can uninstall Grafana Agent Flow.
 
 ### Cleanup temporary changes
 
 Auto-scaling may be re-enabled in your {{< param "PRODUCT_NAME" >}} deployment if it was disabled during the migration process.
-
