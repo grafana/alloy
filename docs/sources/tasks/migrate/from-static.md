@@ -27,7 +27,7 @@ This topic describes how to:
 ## Before you begin
 
 * You must have an existing Grafana Agent Static configuration.
-* You must be familiar with the [Components][] concept in {{< param "PRODUCT_NAME" >}}.
+* You must be running Grafana Agent Static version v0.40 or later.
 
 ## Convert a Grafana Agent Static configuration
 
