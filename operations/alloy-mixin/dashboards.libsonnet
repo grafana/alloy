@@ -1,18 +1,20 @@
-local alloyClusterDashboards =   
-  (import './dashboards/cluster-node.libsonnet') + 
-  (import './dashboards/cluster-overview.libsonnet') +
-  (import './config.libsonnet');
-
-local otherDashboards =  
-  (import './dashboards/resources.libsonnet') +
-  (import './dashboards/controller.libsonnet') + 
-  (import './dashboards/prometheus.libsonnet') + 
-  (import './dashboards/opentelemetry.libsonnet') +
-  (import './config.libsonnet');
-
 (import './dashboards/alloy-logs.libsonnet') +
-{   
-  grafanaDashboards+:     
+{
+  local alloyClusterDashboards =   
+    (import './dashboards/cluster-node.libsonnet') + 
+    (import './dashboards/cluster-overview.libsonnet') +
+    config,
+
+  local otherDashboards =  
+    (import './dashboards/resources.libsonnet') +
+    (import './dashboards/controller.libsonnet') + 
+    (import './dashboards/prometheus.libsonnet') + 
+    (import './dashboards/opentelemetry.libsonnet') +
+    config,
+
+  local config = {_config:: $._config},
+
+  grafanaDashboards+::
     if $._config.enableAlloyCluster then 
        alloyClusterDashboards +
        otherDashboards
