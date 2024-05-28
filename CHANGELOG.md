@@ -91,6 +91,8 @@ Main (unreleased)
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
 
+- Bubble up SSH key conversion error to facilitate failed `import.git`. (@hainenber)
+
 
 v1.1.0
 ------
