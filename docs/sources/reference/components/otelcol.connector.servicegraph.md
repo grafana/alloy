@@ -108,7 +108,7 @@ Additional labels can be included using the `dimensions` configuration option:
 
 When `metrics_flush_interval` is set to `0s`, metrics will be flushed on every received batch of traces.
 
-Attributes configured in `virtual_node_peer_attributes` argument are ordered by priority. Empty list disables the creation of virtual node.
+Attributes configured in the `virtual_node_peer_attributes` argument are ordered by priority. An empty list disables the creation of a virtual node.
 
 [Span Kind]: https://opentelemetry.io/docs/concepts/signals/traces/#span-kind
 
