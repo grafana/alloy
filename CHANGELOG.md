@@ -26,7 +26,33 @@ Main (unreleased)
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
 
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
-  which removes some false-positive error log messages on Windows (@thampiotr) 
+  which removes some false-positive error log messages on Windows (@thampiotr)
+
+- Updates `processor/probabilistic_sampler` to use new `FailedClosed` field from OTEL release v0.101.0. (@StefanKurek)
+
+- Updates `receiver/vcenter` to use new features and bugfixes introduced in OTEL releases v0.100.0 and v0.101.0.
+  Refer to the [v0.100.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.100.0)
+  and [v0.101.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.101.0) release
+  notes for more detailed information.
+  Changes that directly affected the configuration are as follows: (@StefanKurek)
+  - The resource attribute `vcenter.datacenter.name` has been added and enabled by default for all resource types.
+  - The resource attribute `vcenter.virtual_app.inventory_path` has been added and enabled by default to
+    differentiate between resource pools and virtual apps.
+  - The resource attribute `vcenter.virtual_app.name` has been added and enabled by default to differentiate
+    between resource pools and virtual apps.
+  - The resource attribute `vcenter.vm_template.id` has been added and enabled by default to differentiate between
+    virtual machines and virtual machine templates.
+  - The resource attribute `vcenter.vm_template.name` has been added and enabled by default to differentiate between
+    virtual machines and virtual machine templates.
+  - The metric `vcenter.cluster.memory.used` has been removed.
+  - The metric `vcenter.host.network.packet.count` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.host.network.packet.rate` that is enabled by default.
+  - The metric `vcenter.host.network.packet.errors` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.host.network.packet.error.rate` that is enabled by default.
+  - The metric `vcenter.vm.network.packet.count` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.vm.network.packet.rate` that is enabled by default.
+  - The metric `vcenter.vm.network.packet.drop.rate` has been added and enabled by default.
+  - The metric `vcenter.cluster.vm_template.count` has been added and enabled by default.
 
 - Add `yaml_decode` to standard library. (@mattdurham, @djcode)
 

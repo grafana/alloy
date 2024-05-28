@@ -34,6 +34,7 @@ Name                  | Type      | Description                                 
 ----------------------|-----------|----------------------------------------------------------------------------------------------------------------------|-------------|---------
 `hash_seed`           | `uint32`  | An integer used to compute the hash algorithm.                                                                       | `0`         | no
 `sampling_percentage` | `float32` | Percentage of traces or logs sampled.                                                                                | `0`         | no
+`fail_closed`         | `bool`    | Whether to reject items with sampling-related errors.                                                                | `true`      | no
 `attribute_source`    | `string`  | Defines where to look for the attribute in `from_attribute`.                                                         | `"traceID"` | no
 `from_attribute`      | `string`  | The name of a log record attribute used for sampling purposes.                                                       | `""`        | no
 `sampling_priority`   | `string`  | The name of a log record attribute used to set a different sampling priority from the `sampling_percentage` setting. | `""`        | no
