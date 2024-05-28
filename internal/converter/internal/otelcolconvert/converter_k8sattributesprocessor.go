@@ -71,6 +71,8 @@ func toK8SAttributesProcessor(state *State, id component.InstanceID, cfg *k8satt
 			Logs:    ToTokenizedConsumers(nextLogs),
 			Traces:  ToTokenizedConsumers(nextTraces),
 		},
+
+		DebugMetrics: common.DefaultValue[k8sattributes.Arguments]().DebugMetrics,
 	}
 }
 

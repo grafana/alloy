@@ -18,6 +18,45 @@ Main (unreleased)
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
+- (_Public preview_) Add metrics to report status of `remotecfg` service. (@captncraig)
+
+- Added `scrape_protocols` option to `prometheus.scrape`, which allows to
+  control the preferred order of scrape protocols. (@thampiotr)
+  
+- Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
+
+- Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
+  which removes some false-positive error log messages on Windows (@thampiotr)
+
+- Updates `processor/probabilistic_sampler` to use new `FailedClosed` field from OTEL release v0.101.0. (@StefanKurek)
+
+- Updates `receiver/vcenter` to use new features and bugfixes introduced in OTEL releases v0.100.0 and v0.101.0.
+  Refer to the [v0.100.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.100.0)
+  and [v0.101.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.101.0) release
+  notes for more detailed information.
+  Changes that directly affected the configuration are as follows: (@StefanKurek)
+  - The resource attribute `vcenter.datacenter.name` has been added and enabled by default for all resource types.
+  - The resource attribute `vcenter.virtual_app.inventory_path` has been added and enabled by default to
+    differentiate between resource pools and virtual apps.
+  - The resource attribute `vcenter.virtual_app.name` has been added and enabled by default to differentiate
+    between resource pools and virtual apps.
+  - The resource attribute `vcenter.vm_template.id` has been added and enabled by default to differentiate between
+    virtual machines and virtual machine templates.
+  - The resource attribute `vcenter.vm_template.name` has been added and enabled by default to differentiate between
+    virtual machines and virtual machine templates.
+  - The metric `vcenter.cluster.memory.used` has been removed.
+  - The metric `vcenter.host.network.packet.count` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.host.network.packet.rate` that is enabled by default.
+  - The metric `vcenter.host.network.packet.errors` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.host.network.packet.error.rate` that is enabled by default.
+  - The metric `vcenter.vm.network.packet.count` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.vm.network.packet.rate` that is enabled by default.
+  - The metric `vcenter.vm.network.packet.drop.rate` has been added and enabled by default.
+  - The metric `vcenter.cluster.vm_template.count` has been added and enabled by default.
+
+- Add `yaml_decode` to standard library. (@mattdurham, @djcode)
+
+- Allow override debug metrics level for `otelcol.*` components. (@hainenber)
 
 - Add the `virtual_node_peer_attributes` argument to `otelcol.connector.servicegraph`. (@hainenber)
 
@@ -35,9 +74,25 @@ Main (unreleased)
 
 - Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
 
+- Fix error on boot when using IPv6 advertise addresses without explicitly
+  specifying a port. (@matthewpi)
+  
+- Fix an issue where having long component labels (>63 chars) on otelcol.auth
+  components lead to a panic. (@tpaschalis)
+
 ### Other changes
 
-- `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0.
+- `pyroscope.ebpf`, `pyroscope.java`, `pyroscope.scrape`, `pyroscope.write` and `discovery.process` components are now GA. (@korniltsev)
+
+- `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0. (@ptodev, @erikbaranowski)
+
+- `prometheus.scrape` component's `enable_protobuf_negotiation` argument is now
+  deprecated and will be removed in a future major release.
+  Use `scrape_protocols` instead and refer to `prometheus.scrape` reference
+  documentation for further details. (@thampiotr)
+
+- Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
+
 
 v1.1.0
 ------

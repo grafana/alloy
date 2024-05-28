@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/grafana/loki/v3/clients/pkg/promtail/positions"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/file"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/discovery/relabel"
@@ -18,10 +23,6 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
 	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/grafana/alloy/syntax/token/builder"
-	"github.com/grafana/loki/clients/pkg/promtail/positions"
-	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/clients/pkg/promtail/targets/file"
-	"github.com/prometheus/common/model"
 )
 
 type ScrapeConfigBuilder struct {

@@ -10,16 +10,16 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/v3/pkg/ingester/wal"
+	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/v3/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/loki/pkg/ingester/wal"
-	"github.com/grafana/loki/pkg/logproto"
-	"github.com/grafana/loki/pkg/util"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (

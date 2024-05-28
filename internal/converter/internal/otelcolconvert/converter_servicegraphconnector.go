@@ -65,5 +65,6 @@ func toServicegraphConnector(state *State, id component.InstanceID, cfg *service
 			Metrics: ToTokenizedConsumers(nextMetrics),
 		},
 		VirtualNodePeerAttributes: cfg.VirtualNodePeerAttributes,
+		DebugMetrics: common.DefaultValue[servicegraph.Arguments]().DebugMetrics,
 	}
 }

@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
+	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/influxdata/go-syslog/v3"
 	"github.com/influxdata/go-syslog/v3/rfc5424"
 	"github.com/prometheus/common/model"
@@ -20,10 +22,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/clients/pkg/promtail/targets/target"
-
-	"github.com/grafana/loki/pkg/logproto"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var (

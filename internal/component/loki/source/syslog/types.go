@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/component/common/config"
 	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
-	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
-	"github.com/prometheus/common/model"
 )
 
 // ListenerConfig defines a syslog listener.

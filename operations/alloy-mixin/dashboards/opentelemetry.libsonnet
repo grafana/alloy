@@ -15,21 +15,25 @@ local stackedPanelMixin = {
 };
 
 {
+  local templateVariables = 
+    if $._config.enableK8sCluster then
+      [
+        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components, cluster)'),
+        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster"}, namespace)'),
+        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, job)'),
+        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)'),
+      ]
+    else
+      [
+        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
+        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{job=~"$job"}, instance)'),
+      ],
+
   [filename]:
-    dashboard.new(name='Alloy / OpenTelemetry') +
-    dashboard.withDashboardsLink() +
+    dashboard.new(name='Alloy / OpenTelemetry', tag=$._config.dashboardTag) +
+    dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
     dashboard.withUID(std.md5(filename)) +
-    dashboard.withTemplateVariablesMixin([
-      dashboard.newTemplateVariable('cluster', |||
-        label_values(alloy_component_controller_running_components, cluster)
-      |||),
-      dashboard.newTemplateVariable('namespace', |||
-        label_values(alloy_component_controller_running_components{cluster="$cluster"}, namespace)
-      |||),
-      dashboard.newMultiTemplateVariable('instance', |||
-        label_values(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace"}, instance)
-      |||),
-    ]) +
+    dashboard.withTemplateVariablesMixin(templateVariables) +
     dashboard.withPanelsMixin([
       // "Receivers for traces" row
       (
@@ -45,9 +49,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 0, y: 0, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              rate(receiver_accepted_spans_ratio_total{cluster="$cluster", namespace="$namespace", instance=~"$instance"}[$__rate_interval])
-            |||,
+            expr= |||
+              rate(receiver_accepted_spans_ratio_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             //TODO: How will the dashboard look if there is more than one receiver component? The legend is not unique enough?
             legendFormat='{{ pod }} / {{ transport }}',
           ),
@@ -63,9 +67,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 8, y: 0, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              rate(receiver_refused_spans_ratio_total{cluster="$cluster", namespace="$namespace", instance=~"$instance"}[$__rate_interval])
-            |||,
+            expr= |||
+              rate(receiver_refused_spans_ratio_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='{{ pod }} / {{ transport }}',
           ),
         ])
@@ -78,7 +82,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 16, y: 0, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='sum by (le) (increase(rpc_server_duration_milliseconds_bucket{cluster="$cluster", namespace="$namespace", instance=~"$instance", rpc_service="opentelemetry.proto.collector.trace.v1.TraceService"}[$__rate_interval]))',
+            expr= |||
+              sum by (le) (increase(rpc_server_duration_milliseconds_bucket{%(instanceSelector)s, rpc_service="opentelemetry.proto.collector.trace.v1.TraceService"}[$__rate_interval]))
+            ||| % $._config,
             format='heatmap',
             legendFormat='{{le}}',
           ),
@@ -99,7 +105,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 0, y: 10, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='sum by (le) (increase(processor_batch_batch_send_size_ratio_bucket{cluster="$cluster", namespace="$namespace", instance=~"$instance"}[$__rate_interval]))',
+            expr= |||
+              sum by (le) (increase(processor_batch_batch_send_size_ratio_bucket{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
             format='heatmap',
             legendFormat='{{le}}',
           ),
@@ -116,9 +124,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 8, y: 10, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              processor_batch_metadata_cardinality_ratio{cluster="$cluster", namespace="$namespace", instance=~"$instance"}
-            |||,
+            expr= |||
+              processor_batch_metadata_cardinality_ratio{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='{{ pod }}',
           ),
         ])
@@ -131,9 +139,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 16, y: 10, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              rate(processor_batch_timeout_trigger_send_ratio_total{cluster="$cluster", namespace="$namespace", instance=~"$instance"}[$__rate_interval])
-            |||,
+            expr= |||
+              rate(processor_batch_timeout_trigger_send_ratio_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='{{ pod }}',
           ),
         ])
@@ -153,9 +161,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 0, y: 20, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              rate(exporter_sent_spans_ratio_total{cluster="$cluster", namespace="$namespace", instance=~"$instance"}[$__rate_interval])
-            |||,
+            expr= ||| 
+              rate(exporter_sent_spans_ratio_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='{{ pod }}',
           ),
         ])
@@ -169,9 +177,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 8, y: 20, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              rate(exporter_send_failed_spans_ratio_total{cluster="$cluster", namespace="$namespace", instance=~"$instance"}[$__rate_interval])
-            |||,
+            expr= |||
+              rate(exporter_send_failed_spans_ratio_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='{{ pod }}',
           ),
         ])

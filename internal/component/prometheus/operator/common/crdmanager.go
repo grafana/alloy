@@ -10,30 +10,31 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/grafana/alloy/internal/service/http"
-	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/ckit/shard"
+	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/scrape"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/component/prometheus/operator/configgen"
 	compscrape "github.com/grafana/alloy/internal/component/prometheus/scrape"
-	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // Generous timeout period for configuring all informers
@@ -105,8 +106,16 @@ func (c *crdManager) Run(ctx context.Context) error {
 		return fmt.Errorf("creating kubernetes client: %w", err)
 	}
 
+	unregisterer := util.WrapWithUnregisterer(c.opts.Registerer)
+	defer unregisterer.UnregisterAll()
+
+	sdMetrics, err := discovery.CreateAndRegisterSDMetrics(unregisterer)
+	if err != nil {
+		return fmt.Errorf("creating and registering service discovery metrics: %w", err)
+	}
+
 	// Start prometheus service discovery manager
-	c.discoveryManager = discovery.NewManager(ctx, c.logger, discovery.Name(c.opts.ID))
+	c.discoveryManager = discovery.NewManager(ctx, c.logger, unregisterer, sdMetrics, discovery.Name(c.opts.ID))
 	go func() {
 		err := c.discoveryManager.Run()
 		if err != nil {
@@ -117,7 +126,10 @@ func (c *crdManager) Run(ctx context.Context) error {
 	// Start prometheus scrape manager.
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
 	opts := &scrape.Options{}
-	c.scrapeManager = scrape.NewManager(opts, c.logger, alloyAppendable)
+	c.scrapeManager, err = scrape.NewManager(opts, c.logger, alloyAppendable, unregisterer)
+	if err != nil {
+		return fmt.Errorf("creating scrape manager: %w", err)
+	}
 	defer c.scrapeManager.Stop()
 	targetSetsChan := make(chan map[string][]*targetgroup.Group)
 	go func() {

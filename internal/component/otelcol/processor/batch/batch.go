@@ -7,6 +7,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
 	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -38,6 +39,9 @@ type Arguments struct {
 
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 var (
@@ -54,6 +58,7 @@ var DefaultArguments = Arguments{
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
+	args.DebugMetrics.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -88,4 +93,9 @@ func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.I
 // NextConsumers implements processor.Arguments.
 func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
 	return args.Output
+}
+
+// DebugMetricsConfig implements processor.Arguments.
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	return args.DebugMetrics
 }

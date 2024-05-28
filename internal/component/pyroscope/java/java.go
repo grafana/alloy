@@ -23,7 +23,7 @@ const (
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.java",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

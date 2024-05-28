@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/connector"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
@@ -62,6 +63,9 @@ type Arguments struct {
 
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 type StoreConfig struct {
@@ -115,6 +119,7 @@ func (args *Arguments) SetToDefault() {
 		},
 	}
 	args.Store.SetToDefault()
+	args.DebugMetrics.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -177,4 +182,9 @@ func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
 // ConnectorType() int implements connector.Arguments.
 func (Arguments) ConnectorType() int {
 	return connector.ConnectorTracesToMetrics
+}
+
+// DebugMetricsConfig implements connector.Arguments.
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	return args.DebugMetrics
 }
