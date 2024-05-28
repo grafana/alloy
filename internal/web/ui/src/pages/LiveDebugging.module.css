@@ -28,6 +28,7 @@
   .debugLink button {
     font-size: .8em;
     line-height: 30px;
+    width: 100px;
     margin-left: auto;
     margin-top: 6px;
     padding: 0 15px;
