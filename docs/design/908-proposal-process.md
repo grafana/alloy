@@ -101,11 +101,6 @@ design document.
 * Design documents should address any specific concerns raised during the
   initial discussion.
 
-* Comments on PRs for design documents should be restricted to grammar,
-  spelling, or proposal procedural errors related to the preparation of the
-  design document itself. All other comments should be made on the proposal
-  issue.
-
 * Design documents should acknowledge and address alternative solutions, if
   known, to the problem statement.
 
