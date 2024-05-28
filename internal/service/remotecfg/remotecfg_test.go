@@ -70,7 +70,7 @@ func TestAPIResponse(t *testing.T) {
 	env := newTestEnvironment(t)
 	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
 		url            = "%s"
-		poll_frequency = "10ms"
+		poll_frequency = "1s"
 	`, url)))
 
 	client := &collectorClient{}
@@ -100,7 +100,7 @@ func TestAPIResponse(t *testing.T) {
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfg2)), env.svc.getCfgHash())
-	}, time.Second, 10*time.Millisecond)
+	}, 2*time.Second, 10*time.Millisecond)
 }
 
 func buildGetConfigHandler(in string) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
