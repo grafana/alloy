@@ -28,8 +28,7 @@ Main (unreleased)
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
   which removes some false-positive error log messages on Windows (@thampiotr)
 
-- Updates `processor/probabilistic_sampler` to use new `FailedClosed` field from OTEL release v0.101.0
-  (but with a default value of `false`). (@StefanKurek)
+- Updates `processor/probabilistic_sampler` to use new `FailedClosed` field from OTEL release v0.101.0. (@StefanKurek)
 
 - Updates `receiver/vcenter` to use new features and bugfixes introduced in OTEL releases v0.100.0 and v0.101.0.
   Refer to the [v0.100.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.100.0)
