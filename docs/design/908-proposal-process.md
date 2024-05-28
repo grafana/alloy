@@ -77,6 +77,10 @@ Proposals may initially be brief, with just enough detail to explain what is
 being proposed, why it is being proposed, and any relevant details that may
 guide the public discussion towards consensus.
 
+Proposal authors may skip straight to creating a design document for their
+proposal if they know one will be needed. If in doubt, it's better to create a
+proposal issue first.
+
 Any existing issue can be turned into a proposal by adding a `proposal` label.
 
 ### Compatibility
