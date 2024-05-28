@@ -108,6 +108,17 @@ Additional labels can be included using the `dimensions` configuration option:
 
 When `metrics_flush_interval` is set to `0s`, metrics will be flushed on every received batch of traces.
 
+`virtual_node_peer_attributes` is useful when an OTel-instrumented client sends a request to a service which is not OTel-instrumented.
+Normally, `otelcol.connector.servicegraph` wouldn't be able to pair the client span with a service span, 
+because no service span will be received if the service is not OTel-instrumented.
+When an edge expires, `otelcol.connector.servicegraph` checks if it has peer attributes listed in `virtual_node_peer_attributes`.
+If an attribute is found, the metrics are then aggregated with a virtual node.
+
+If no client span is found and `virtual_node_peer_attributes` is not an empty list,
+then the service span will be paired with a virtual node called `client="user"`.
+This can be useful when a client which is not OTel-instrumented (like a web browser) sends a request to an OTel-instrumented service. 
+Without a virtual node, normally the client span will be missing, and the server span will expire without being paired.
+
 Attributes configured in the `virtual_node_peer_attributes` argument are ordered by priority. An empty list disables the creation of a virtual node.
 
 [Span Kind]: https://opentelemetry.io/docs/concepts/signals/traces/#span-kind
