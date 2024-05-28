@@ -37,6 +37,10 @@ Formalizing a process for creating and reviewing proposals will help ensure that
 
 ## Proposal
 
+Proposals are the process of getting consensus on a problem and a solution to
+that problem. Proposals are the more detailed form of an enhancement request,
+which typically only include a problem statement but no suggested solution.
+
 At a high-level, proposals go through the following stages:
 
 1. *Issue*: A brief [issue][new-proposal] is created for the proposal.
