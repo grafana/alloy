@@ -63,7 +63,7 @@ Main (unreleased)
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
 
-- Updated Windows install script to add DisplayVersion into registory on install
+- Updated Windows install script to add DisplayVersion into registory on install (@enessene)
 
 v1.1.0
 ------
