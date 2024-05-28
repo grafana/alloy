@@ -25,7 +25,7 @@ function PageLiveDebugging() {
       return (
         <div className={styles.debugLink}>
           <button className={styles.stopButton} onClick={() => setEnabled(false)}>
-            Stop <FontAwesomeIcon icon={faStop} />
+            <FontAwesomeIcon icon={faStop} /> Stop
           </button>
         </div>
       );
@@ -33,7 +33,7 @@ function PageLiveDebugging() {
     return (
       <div className={styles.debugLink}>
         <button className={styles.resumeButton} onClick={() => setEnabled(true)}>
-          Resume <FontAwesomeIcon icon={faRoad} />
+          <FontAwesomeIcon icon={faRoad} /> Resume
         </button>
       </div>
     );
@@ -93,12 +93,12 @@ function PageLiveDebugging() {
       {toggleEnableButton()}
       <div className={styles.debugLink}>
         <button className={styles.clearButton} onClick={() => setData([])}>
-          Clear <FontAwesomeIcon icon={faBroom} />
+          <FontAwesomeIcon icon={faBroom} /> Clear
         </button>
       </div>
       <div className={styles.debugLink}>
         <button className={styles.copyButton} onClick={copyDataToClipboard}>
-          Copy <FontAwesomeIcon icon={faCopy} />
+          <FontAwesomeIcon icon={faCopy} /> Copy
         </button>
       </div>
     </>

@@ -96,13 +96,13 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
 
         <div className={styles.docsLink}>
           <a href={`https://grafana.com/docs/alloy/latest/reference/components/${props.component.name}`}>
-            Documentation <FontAwesomeIcon icon={faLink} />
+            <FontAwesomeIcon icon={faLink} /> Documentation
           </a>
         </div>
 
         <div className={styles.debugLink}>
           <a href={`debug/${pathJoin([props.component.moduleID, props.component.localID])}`}>
-            Live debugging <FontAwesomeIcon icon={faBug} />
+            <FontAwesomeIcon icon={faBug} /> Live debugging
           </a>
         </div>
 
