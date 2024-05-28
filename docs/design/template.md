@@ -2,7 +2,7 @@
 
 * Author(s): [List of proposal authors]
 * Last updated: [Date]
-* Discussion: https://github.com/grafana/alloy/issues/NNNN
+* Original issue: https://github.com/grafana/alloy/issues/NNNN
 
 ## Abstract
 

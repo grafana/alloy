@@ -2,7 +2,7 @@
 
 * Author: Robert Fratto (@rfratto)
 * Last updated: 2024-05-22
-* Discussion: https://github.com/grafana/alloy/issues/908
+* Original issue: https://github.com/grafana/alloy/issues/908
 
 ## Abstract
 
@@ -54,7 +54,8 @@ At a high-level, proposals go through the following stages:
 
    If the proposal is accepted or declined, the proposal process ends here.
 
-3. *Design document*: If requested, a design document is written.
+3. *Design document*: If requested, a design document is written, and the PR
+   for the design document becomes the new home for discussing the proposal.
 
 4. *Consensus*: Once comments and changes have slowed down, a final public
    discussion aims to reach consensus for one of two outcomes:
@@ -107,11 +108,13 @@ design document.
 
 Once a design document is created, the proposal author should:
 
-* Update the proposal issue description to link to the design document.
-* Add a comment notifying readers that a design document is created, with a
-  link to the design document.
+* Close the original proposal issue and link to the design document PR.
+* Update the proposal issue description with a link to the design document.
 
-Design documents do not track the state of the proposal; the proposal issue is
+Closing the original proposal issue in favor of the design document PR prevents
+fragmenting discussions as contributors work towards consensus on a proposal.
+
+Design documents do not track the state of the proposal; the proposal PR  is
 the source of truth.
 
 The PR for design documents are merged once the associated proposal becomes
@@ -125,7 +128,7 @@ is closed.
 
 * Author(s): [List of proposal authors]
 * Last updated: [Date]
-* Discussion: https://github.com/grafana/alloy/issues/NNNN
+* Original issue: https://github.com/grafana/alloy/issues/NNNN
 
 ## Abstract
 
@@ -195,8 +198,8 @@ Proposals are in one of the following states:
 * **Likely Accept**: If a proposal discussion seems to have reached a consensus
   to accept a proposal, the proposal review group moves the proposal to the
   _Likely Accept_ state. This change should be indicated with a comment on the
-  proposal issue. This state marks the final period for comments that might
-  change the recognition of consensus.
+  proposal. This state marks the final period for comments that might change
+  the recognition of consensus.
 
 * **Likely Decline**: If a proposal discussion seems to have reached a consensus
   to decline a proposal, the proposal review group moves the proposal to the
@@ -207,8 +210,8 @@ Proposals are in one of the following states:
   not accepting the proposal is appropriate.
 
   Similarly to _Likely Accept_, this change should be indicated with a comment
-  on the proposal issue, and this state marks the final period for comments
-  that might change the recognition of consensus.
+  on the proposal, and this state marks the final period for comments that
+  might change the recognition of consensus.
 
 * **Accepted**: If a proposal has been in _Likely Accept_ for a week and
   consensus has not changed, the proposal is moved to the _Accepted_ state.
@@ -308,11 +311,11 @@ decision to be made.
 
 To re-embrace the spirit of "design in the open," conversations about a
 proposal should be discoverable by new parties to make it easy to participate.
-Having a single source of truth for discussions (the proposal issue) prevents
-conversations from fragmenting in multiple locations (such as design document
-PRs, offline discussions, Google Docs). This ensures that contributors know
-where to look for discussions and important information doesn't get lost while
-trying to reach consensus.
+Having a single source of truth for discussions (the proposal issue or design
+document PR) prevents concurrent conversations from fragmenting in multiple
+locations. This ensures that contributors know where to look for active
+discussions and important information doesn't get lost while trying to reach
+consensus.
 
 However, this process comes with some trade-offs, described in sections below.
 
@@ -340,14 +343,18 @@ the time it takes to get a proposal approved and implemented into a release.
 
 ### Conversational toil
 
-Using GitHub issues for proposals ensures there is a single source of truth for
-discussion, and that all interested parties can participate in shaping the
-future of Alloy.
+Using GitHub for all proposals ensures there is a single source of truth at a
+given time for discussion, and that all interested parties can participate in
+shaping the future of Alloy.
 
-However, GitHub's issue system is not well-suited for long-form discussions.
-This may lead to long threads that are difficult to follow.
+However, GitHub is not well-suited for long-form discussions. This may lead to
+long threads that can be difficult to follow.
 
-There are two mitigation strategies to help with this:
+There are some mitigation strategies to help with this:
+
+* Discussion on issues should be done conversationally rather than responding
+  to individual lines of text. This can help reduce the total number of
+  comments and make a conversation more digestible.
 
 * Authors of proposals can start with offline discussions and use alternative
   tools (such as Google Docs) to prepare proposals for public presentation.
@@ -355,6 +362,11 @@ There are two mitigation strategies to help with this:
 * The proposal review group keeps discussions focused by preventing derailing
   and pointing out when concurrent conversational threads can be joined
   together under a larger idea.
+
+* More involved proposals are transformed into design document PRs, where
+  tooling for discussions is better suited for long-form discussions. Less
+  involved proposals can require less discussion, potentially avoiding the
+  issue of an issue becoming long-winded.
 
 ## Compatibility
 
