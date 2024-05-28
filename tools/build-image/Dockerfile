@@ -59,7 +59,7 @@ RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_V
 FROM rfratto/viceroy:v0.4.0
 
 # Install NodeJS LTS. This is needed because the most recent version of NodeJS
-# from official Debian packages is v12, and we need LTS version v16.
+# from official Debian packages is v12, and we need version v18.
 #
 # This must be done before installing other dependencies, otherwise nodesource
 # will fail on installing NodeJS for all platforms instead of just our host
