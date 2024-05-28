@@ -99,6 +99,7 @@ policy > composite > composite_sub_policy > boolean_attribute | [boolean_attribu
 policy > composite > composite_sub_policy > ottl_condition    | [ottl_condition] | The policy will sample based on a given boolean OTTL condition (span and span event). | no
 policy > composite > composite_sub_policy > trace_state       | [trace_state] | The policy will sample based on TraceState value matches. | no
 output                                                        | [output] [] | Configures where to send received telemetry data. | yes
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [policy]: #policy-block
 [latency]: #latency-block
@@ -117,6 +118,7 @@ output                                                        | [output] [] | Co
 [composite_sub_policy]: #composite_sub_policy-block
 [output]: #output-block
 [otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
+[debug_metrics]: #debug_metrics-block
 
 ### policy block
 
@@ -310,6 +312,10 @@ Name   | Type     | Description                            | Default | Required
 ### output block
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

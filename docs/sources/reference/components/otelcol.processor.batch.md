@@ -98,12 +98,18 @@ The following blocks are supported inside the definition of
 Hierarchy | Block      | Description                                       | Required
 ----------|------------|---------------------------------------------------|---------
 output    | [output][] | Configures where to send received telemetry data. | yes
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [output]: #output-block
+[debug_metrics]: #debug_metrics-block
 
 ### output block
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

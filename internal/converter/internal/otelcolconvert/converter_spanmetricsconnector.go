@@ -115,5 +115,7 @@ func toSpanmetricsConnector(state *State, id component.InstanceID, cfg *spanmetr
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
 		},
+
+		DebugMetrics: common.DefaultValue[spanmetrics.Arguments]().DebugMetrics,
 	}
 }
