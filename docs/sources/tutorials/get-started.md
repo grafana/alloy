@@ -5,7 +5,7 @@ title: Get started with Alloy
 weight: 10
 ---
 
-## Get started with {{< param "PRODUCT_NAME" >}}
+## Get started with {{% param "PRODUCT_NAME" %}}
 
 This set of tutorials contains a collection of examples that build on each other to demonstrate how to configure and use [{{< param "PRODUCT_NAME" >}}][alloy].
 To follow these tutorials, you need to have a basic understanding of what {{< param "PRODUCT_NAME" >}} is and telemetry collection in general.
@@ -18,7 +18,7 @@ This first tutorial requires a Linux, Unix, or Mac environment with Docker insta
 The examples run on a single host so that you can run them on your laptop or in a Virtual Machine.
 You are encouraged to try the examples using a `config.alloy` file and experiment with the examples yourself.
 
-## Install {{< param "PRODUCT_NAME" >}} and start the service
+## Install {{% param "PRODUCT_NAME" %}} and start the service
 
 ### Linux
 
@@ -29,12 +29,12 @@ Linux distributions.
 Make sure to follow the optional install step to enable the UI, we will be referring to it in this tutorial.
 {{< /admonition >}}
 
-Once you have completed this, follow the instructions to [Run on Linux] using `systemctl`.
+Once you have completed this, follow the instructions to [Run on Linux][] using `systemctl`.
 
-### Mac
+### macOS
 
-Follow the instructions on the [MacOS Install] page for homebrew instructions. Once you have
-completed this, follow the instructions to [Run on MacOS] which will start
+Follow the instructions on the [macOS Install] page for Homebrew instructions. Once you have
+completed this, follow the instructions to [Run on macOS] which will start
 {{< param "PRODUCT_NAME" >}} as a Homebrew service.
 
 ## Set up a local Grafana instance
