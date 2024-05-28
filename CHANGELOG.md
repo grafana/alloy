@@ -32,6 +32,8 @@ Main (unreleased)
 
 - Allow override debug metrics level for `otelcol.*` components. (@hainenber)
 
+- Added support for NS records to `discovery.dns`. (@djcode)
+
 ### Bugfixes
 
 - Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
