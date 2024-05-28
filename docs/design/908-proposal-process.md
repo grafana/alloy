@@ -106,6 +106,9 @@ design document.
   design document itself. All other comments should be made on the proposal
   issue.
 
+* Design documents should acknowledge and address alternative solutions, if
+  known, to the problem statement.
+
 Once a design document is created, the proposal author should:
 
 * Close the original proposal issue and link to the design document PR.
