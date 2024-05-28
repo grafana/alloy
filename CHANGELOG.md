@@ -63,6 +63,7 @@ Main (unreleased)
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
 
+- Updated Windows install script to seperate DisplayName and DisplayVersion into seperate tags
 
 v1.1.0
 ------
