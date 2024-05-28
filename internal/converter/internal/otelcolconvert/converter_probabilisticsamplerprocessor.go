@@ -59,5 +59,6 @@ func toProbabilisticSamplerProcessor(state *State, id component.InstanceID, cfg 
 			Logs:   ToTokenizedConsumers(nextLogs),
 			Traces: ToTokenizedConsumers(nextTraces),
 		},
+		DebugMetrics: common.DefaultValue[probabilistic_sampler.Arguments]().DebugMetrics,
 	}
 }

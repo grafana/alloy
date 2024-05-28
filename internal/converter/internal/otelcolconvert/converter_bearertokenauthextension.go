@@ -61,8 +61,9 @@ func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id compo
 
 func toBearerTokenAuthExtension(cfg *bearertokenauthextension.Config) *bearer.Arguments {
 	return &bearer.Arguments{
-		Scheme: cfg.Scheme,
-		Token:  alloytypes.Secret(string(cfg.BearerToken)),
+		Scheme:       cfg.Scheme,
+		Token:        alloytypes.Secret(string(cfg.BearerToken)),
+		DebugMetrics: common.DefaultValue[bearer.Arguments]().DebugMetrics,
 	}
 }
 
@@ -78,6 +79,7 @@ func toBearerTokenAuthExtensionWithFilename(state *State, cfg *bearertokenauthex
 	state.Body().AppendBlock(block)
 
 	return &bearer.Arguments{
-		Scheme: cfg.Scheme,
+		Scheme:       cfg.Scheme,
+		DebugMetrics: common.DefaultValue[bearer.Arguments]().DebugMetrics,
 	}, fmt.Sprintf("%s.content", StringifyBlock(block))
 }

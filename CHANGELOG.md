@@ -26,7 +26,7 @@ Main (unreleased)
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
 
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
-  which removes some false-positive error log messages on Windows (@thampiotr) 
+  which removes some false-positive error log messages on Windows (@thampiotr)
 
 - Updates `processor/probabilistic_sampler` to use new `FailedClosed` field from OTEL release v0.101.0
   (but with a default value of `false`). (@StefanKurek)
@@ -54,6 +54,10 @@ Main (unreleased)
     It has been replaced by a new metric `vcenter.vm.network.packet.rate` that is enabled by default.
   - The metric `vcenter.vm.network.packet.drop.rate` has been added and enabled by default.
   - The metric `vcenter.cluster.vm_template.count` has been added and enabled by default.
+
+- Add `yaml_decode` to standard library. (@mattdurham, @djcode)
+
+- Allow override debug metrics level for `otelcol.*` components. (@hainenber)
 
 ### Bugfixes
 
