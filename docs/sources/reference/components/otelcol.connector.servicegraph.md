@@ -61,7 +61,7 @@ Name                        | Type             | Description                    
 `store_expiration_loop`     | `duration`       | The time to expire old entries from the store periodically.         | `"2s"`       | no
 `metrics_flush_interval`    | `duration`       | The interval at which metrics are flushed to downstream components. | `"0s"`       | no
 `database_name_attribute`   | `string`         | The attribute name used to identify the database name from span attributes. | `"db.name"`  | no
-`virtual_node_peer_attributes` | `list(string)` | List of attributes whose presence in client span will result in creation of a virtual server node | `["peer.service", "db.name", "db.system"]` | no
+`virtual_node_peer_attributes` | `list(string)` | A list of attributes to search for in the client span. A virtual node is created if the attributes are found in the client span. | `["peer.service", "db.name", "db.system"]` | no
 
 Service graphs work by inspecting traces and looking for spans with parent-children relationship that represent a request.
 `otelcol.connector.servicegraph` uses OpenTelemetry semantic conventions to detect a myriad of requests.

@@ -58,7 +58,7 @@ Main (unreleased)
 
 - Allow override debug metrics level for `otelcol.*` components. (@hainenber)
 
-- Add the `virtual_node_peer_attributes` argument to `otelcol.connector.servicegraph`. (@hainenber)
+- Add a `virtual_node_peer_attributes` argument to `otelcol.connector.servicegraph`. (@hainenber)
 
 ### Bugfixes
 
