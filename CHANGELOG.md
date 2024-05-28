@@ -58,6 +58,9 @@ Main (unreleased)
 
 - Allow override debug metrics level for `otelcol.*` components. (@hainenber)
 
+- Add a lower limit of 1 second for the the `poll_frequency` argument in the
+  `remotecfg` block. (@tpaschalis)
+
 - Added support for NS records to `discovery.dns`. (@djcode)
 
 ### Bugfixes
