@@ -85,7 +85,7 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt' | sudo tee /etc/yum.repos.d/grafana.
    ```
 
 The {{< param "PRODUCT_NAME" >}} UI is a web application that runs on `http://localhost:12345/` and allows for
-[../../tasks/debug/](debugging your configuration) and viewing it in a visual format. Enabling this UI is recommended
+[debugging your configuration] and viewing it in a visual format. Enabling this UI is recommended
 for beginners and is not necessary for network isolated, headless, or production installs. It also enables hot-reloading
 of the {{< param "PRODUCT_NAME" >}} configuration without restarting the system service.
 
@@ -138,3 +138,4 @@ To uninstall {{< param "PRODUCT_NAME" >}} on Linux, run the following commands i
 
 [Run]: ../../run/linux/
 [Configure]: ../../../tasks/configure/configure-linux/
+[debugging your configuration]: ../../tasks/debug/
