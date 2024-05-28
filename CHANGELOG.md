@@ -58,6 +58,8 @@ Main (unreleased)
 
 - Allow override debug metrics level for `otelcol.*` components. (@hainenber)
 
+- Added support for NS records to `discovery.dns`. (@djcode)
+
 - Add a `virtual_node_peer_attributes` argument to `otelcol.connector.servicegraph`. (@hainenber)
 
 ### Bugfixes
