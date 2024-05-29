@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/auth/headers"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	otlphttp "github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
@@ -61,6 +62,10 @@ func TestWithOtelcolConsumer(t *testing.T) {
 					Action:      headers.ActionUpsert,
 				},
 			},
+			DebugMetrics: otelcolCfg.DebugMetricsArguments{
+				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
+			},
 		})
 		require.NoError(t, err)
 	}()
@@ -81,6 +86,10 @@ func TestWithOtelcolConsumer(t *testing.T) {
 				},
 			}),
 			Encoding: otlphttp.EncodingJSON,
+			DebugMetrics: otelcolCfg.DebugMetricsArguments{
+				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
+			},
 		})
 		require.NoError(t, err)
 	}()
