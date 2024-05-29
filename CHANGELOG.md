@@ -60,6 +60,8 @@ Main (unreleased)
 
 - Added support for NS records to `discovery.dns`. (@djcode)
 
+- Add `base64_decode` to standard library. (@hainenber)
+
 ### Bugfixes
 
 - Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
