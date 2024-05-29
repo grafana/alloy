@@ -20,17 +20,12 @@ func (h *GitAuthConfig) Convert() (transport.AuthMethod, error) {
 	if h == nil {
 		return nil, nil
 	}
-
 	if h.BasicAuth != nil {
 		return h.BasicAuth.Convert(), nil
 	}
 
 	if h.SSHKey != nil {
-		key, err := h.SSHKey.Convert()
-		if err != nil {
-			return nil, err
-		}
-		return key, nil
+		return h.SSHKey.Convert()
 	}
 	return nil, nil
 }
