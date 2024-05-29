@@ -24,13 +24,13 @@ import (
 
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
-	alloy                 service.Host
-	debugCallbackRegistry livedebugging.DebugCallbackRegistry
+	alloy                service.Host
+	debugCallbackManager livedebugging.DebugCallbackManager
 }
 
 // NewAlloyAPI instantiates a new Alloy API.
-func NewAlloyAPI(alloy service.Host, debugCallbackRegistry livedebugging.DebugCallbackRegistry) *AlloyAPI {
-	return &AlloyAPI{alloy: alloy, debugCallbackRegistry: debugCallbackRegistry}
+func NewAlloyAPI(alloy service.Host, debugCallbackManager livedebugging.DebugCallbackManager) *AlloyAPI {
+	return &AlloyAPI{alloy: alloy, debugCallbackManager: debugCallbackManager}
 }
 
 // RegisterRoutes registers all the API's routes.
@@ -128,7 +128,7 @@ func (a *AlloyAPI) liveDebugging() http.HandlerFunc {
 			return
 		}
 
-		if !a.debugCallbackRegistry.IsRegistered(livedebugging.ComponentName(component.ComponentName)) {
+		if !a.debugCallbackManager.IsRegistered(livedebugging.ComponentName(component.ComponentName)) {
 			http.Error(w, fmt.Sprintf("Live debugging is not supported for the component \"%s\"", component.ComponentName), http.StatusInternalServerError)
 			return
 		}
@@ -142,7 +142,7 @@ func (a *AlloyAPI) liveDebugging() http.HandlerFunc {
 
 		id := livedebugging.CallbackID(uuid.New().String())
 
-		a.debugCallbackRegistry.AddCallback(id, componentID, func(data string) {
+		a.debugCallbackManager.AddCallback(id, componentID, func(data string) {
 			select {
 			case <-ctx.Done():
 				return
@@ -160,7 +160,7 @@ func (a *AlloyAPI) liveDebugging() http.HandlerFunc {
 
 		defer func() {
 			close(dataCh)
-			a.debugCallbackRegistry.DeleteCallback(id, componentID)
+			a.debugCallbackManager.DeleteCallback(id, componentID)
 		}()
 
 		for {

@@ -6,25 +6,31 @@ type ComponentName string
 type ComponentID string
 type CallbackID string
 
-// DebugCallbackRegistry is used to manage live debugging callbacks.
-type DebugCallbackRegistry interface {
-	// IsRegistered returns true if a component has live debugging support.
-	IsRegistered(componentName ComponentName) bool
+// DebugCallbackManager is used to manage live debugging callbacks.
+type DebugCallbackManager interface {
+	DebugRegistry
 	// AddCallback sets a callback for a given componentID.
-	// The callback can be used by the component to send debugging data to live debugging consumers.
+	// The callback is used to send debugging data to live debugging consumers.
 	AddCallback(callbackID CallbackID, componentID ComponentID, callback func(string))
 	// DeleteCallback deletes a callback for a given componentID.
 	DeleteCallback(callbackID CallbackID, componentID ComponentID)
 }
 
-// DebugDataPublisher is an interface that components can use to push information to live debugging consumers.
+// DebugDataPublisher is used by components to push information to live debugging consumers.
 type DebugDataPublisher interface {
-	// Register a component by name.
-	Register(componentName ComponentName)
+	DebugRegistry
 	// Publish sends debugging data for a given componentID.
 	Publish(componentID ComponentID, data string)
 	// IsActive returns true when at least one consumer is listening for debugging data for the given componentID.
 	IsActive(componentID ComponentID) bool
+}
+
+// DebugRegistry is used to keep track of the components that supports the live debugging functionality.
+type DebugRegistry interface {
+	// Register a component by name.
+	Register(componentName ComponentName)
+	// IsRegistered returns true if a component has live debugging support.
+	IsRegistered(componentName ComponentName) bool
 }
 
 type liveDebugging struct {
@@ -33,7 +39,7 @@ type liveDebugging struct {
 	registeredComponents map[ComponentName]struct{}
 }
 
-var _ DebugCallbackRegistry = &liveDebugging{}
+var _ DebugCallbackManager = &liveDebugging{}
 var _ DebugDataPublisher = &liveDebugging{}
 
 // NewLiveDebugging creates a new instance of liveDebugging.

@@ -276,8 +276,8 @@ func (fr *alloyRun) Run(configPath string) error {
 	liveDebuggingService := livedebugging.New()
 
 	uiService := uiservice.New(uiservice.Options{
-		UIPrefix:              fr.uiPrefix,
-		DebugCallbackRegistry: liveDebuggingService.Data().(livedebugging.DebugCallbackRegistry),
+		UIPrefix:             fr.uiPrefix,
+		DebugCallbackManager: liveDebuggingService.Data().(livedebugging.DebugCallbackManager),
 	})
 
 	otelService := otel_service.New(l)
