@@ -2,10 +2,9 @@ package component
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 	"time"
-
-	"golang.org/x/exp/maps"
 
 	prom_config "github.com/prometheus/prometheus/config"
 	prom_discovery "github.com/prometheus/prometheus/discovery"

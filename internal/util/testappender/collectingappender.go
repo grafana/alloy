@@ -2,6 +2,7 @@ package testappender
 
 import (
 	"context"
+	"maps"
 	"sync"
 
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -9,7 +10,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
-	"golang.org/x/exp/maps"
 )
 
 type MetricSample struct {

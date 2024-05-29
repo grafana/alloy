@@ -3,11 +3,11 @@ package otelcolconvert
 import (
 	"cmp"
 	"fmt"
+	"slices"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/service/pipelines"
 	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 // pipelineGroup groups a set of pipelines together by their telemetry type.
