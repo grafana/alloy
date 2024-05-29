@@ -83,6 +83,8 @@ Main (unreleased)
 - Update `prometheus.exporter.snowflake` with the [latest](https://github.com/grafana/snowflake-prometheus-exporter) version of the exporter as of May 28, 2024 (@StefanKurek)
   - Fixes issue where returned `NULL` values from database could cause unexpected errors.
 
+- Bubble up SSH key conversion error to facilitate failed `import.git`. (@hainenber)
+
 ### Other changes
 
 - `pyroscope.ebpf`, `pyroscope.java`, `pyroscope.scrape`, `pyroscope.write` and `discovery.process` components are now GA. (@korniltsev)
