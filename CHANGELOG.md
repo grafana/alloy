@@ -80,6 +80,9 @@ Main (unreleased)
 - Fix an issue where having long component labels (>63 chars) on otelcol.auth
   components lead to a panic. (@tpaschalis)
 
+- Update `prometheus.exporter.snowflake` with the [latest](https://github.com/grafana/snowflake-prometheus-exporter) version of the exporter as of May 28, 2024 (@StefanKurek)
+  - Fixes issue where returned `NULL` values from database could cause unexpected errors.
+
 ### Other changes
 
 - `pyroscope.ebpf`, `pyroscope.java`, `pyroscope.scrape`, `pyroscope.write` and `discovery.process` components are now GA. (@korniltsev)
@@ -92,7 +95,6 @@ Main (unreleased)
   documentation for further details. (@thampiotr)
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
-
 
 v1.1.0
 ------
