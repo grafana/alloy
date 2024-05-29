@@ -96,6 +96,9 @@ Main (unreleased)
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
 
+- Switch from `github.com/golang/snappy` to `github.com/klauspost/compress/snappy` for 
+  better compression in Loki clients. (@hainenber)
+
 v1.1.0
 ------
 

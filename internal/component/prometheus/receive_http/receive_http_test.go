@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/snappy"
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/klauspost/compress/snappy"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"

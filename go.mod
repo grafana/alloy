@@ -13,7 +13,6 @@ require (
 	github.com/Lusitaniae/apache_exporter v0.11.1-0.20220518131644-f9522724dab4
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/PuerkitoBio/rehttp v1.4.0
-	github.com/Shopify/sarama v1.38.1
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/alecthomas/units v0.0.0-20231202071711-9a357b53e9c9
 	github.com/aws/aws-sdk-go-v2 v1.26.1
@@ -44,7 +43,6 @@ require (
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.4
-	github.com/golang/snappy v0.0.4
 	github.com/google/cadvisor v0.47.0
 	github.com/google/dnsmasq_exporter v0.2.1-0.20230620100026-44b14480804a
 	github.com/google/go-cmp v0.6.0
@@ -293,6 +291,7 @@ require (
 	github.com/Microsoft/hcsshim v0.12.3 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
+	github.com/Shopify/sarama v1.38.1 // indirect
 	github.com/Showmax/go-fqdn v1.0.0 // indirect
 	github.com/Workiva/go-datastructures v1.1.0 // indirect
 	github.com/alecthomas/participle/v2 v2.1.1 // indirect
@@ -426,6 +425,7 @@ require (
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gomodule/redigo v1.8.9 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
