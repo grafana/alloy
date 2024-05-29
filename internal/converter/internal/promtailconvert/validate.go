@@ -1,8 +1,9 @@
 package promtailconvert
 
 import (
+	promtailcfg "github.com/grafana/loki/v3/clients/pkg/promtail/config"
+
 	"github.com/grafana/alloy/internal/converter/diag"
-	promtailcfg "github.com/grafana/loki/clients/pkg/promtail/config"
 )
 
 // validateTopLevelConfig validates the top-level config for any unsupported features. There may still be some

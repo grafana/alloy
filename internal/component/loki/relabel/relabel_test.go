@@ -7,6 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/relabel"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -15,12 +21,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	"github.com/grafana/loki/pkg/logproto"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/relabel"
-
-	"github.com/stretchr/testify/require"
 )
 
 // Rename the kubernetes_(.*) labels without the suffix and remove them,

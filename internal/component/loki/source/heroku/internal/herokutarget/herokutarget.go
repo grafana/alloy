@@ -12,15 +12,16 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/component/common/loki"
-	fnet "github.com/grafana/alloy/internal/component/common/net"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/pkg/logproto"
+	"github.com/grafana/loki/v3/pkg/logproto"
 	herokuEncoding "github.com/heroku/x/logplex/encoding"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const ReservedLabelTenantID = "__tenant_id__"

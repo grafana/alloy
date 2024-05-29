@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/ovhcloud"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	prom_discovery "github.com/prometheus/prometheus/discovery/ovhcloud"
 )
 
 func init() {
@@ -21,7 +22,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -75,8 +76,7 @@ func (args *Arguments) Validate() error {
 	return nil
 }
 
-// Convert returns the upstream configuration struct.
-func (args *Arguments) Convert() *prom_discovery.SDConfig {
+func (args Arguments) Convert() discovery.DiscovererConfig {
 	return &prom_discovery.SDConfig{
 		Endpoint:          args.Endpoint,
 		ApplicationKey:    args.ApplicationKey,
@@ -85,12 +85,4 @@ func (args *Arguments) Convert() *prom_discovery.SDConfig {
 		RefreshInterval:   model.Duration(args.RefreshInterval),
 		Service:           args.Service,
 	}
-}
-
-// New returns a new instance of a discovery.ovhcloud component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
-		newArgs := args.(Arguments)
-		return prom_discovery.NewDiscovery(newArgs.Convert(), opts.Logger)
-	})
 }

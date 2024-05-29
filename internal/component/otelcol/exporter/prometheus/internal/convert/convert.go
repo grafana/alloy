@@ -18,13 +18,11 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
-	"github.com/prometheus/prometheus/model/textparse"
 	"github.com/prometheus/prometheus/model/timestamp"
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
@@ -32,6 +30,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	semconv "go.opentelemetry.io/collector/semconv/v1.6.1"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var (
@@ -130,7 +130,7 @@ func (conv *Converter) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) e
 
 func (conv *Converter) consumeResourceMetrics(app storage.Appender, rm pmetric.ResourceMetrics) {
 	resourceMD := conv.createOrUpdateMetadata("target_info", metadata.Metadata{
-		Type: textparse.MetricTypeGauge,
+		Type: model.MetricTypeGauge,
 		Help: "Target metadata",
 	})
 	resAttrs := rm.Resource().Attributes()
@@ -224,7 +224,7 @@ func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
 
 func (conv *Converter) consumeScopeMetrics(app storage.Appender, memResource *memorySeries, sm pmetric.ScopeMetrics, resAttrs pcommon.Map) {
 	scopeMD := conv.createOrUpdateMetadata("otel_scope_info", metadata.Metadata{
-		Type: textparse.MetricTypeGauge,
+		Type: model.MetricTypeGauge,
 	})
 	memScope := conv.getOrCreateScope(memResource, sm.Scope())
 
@@ -303,7 +303,7 @@ func (conv *Converter) consumeGauge(app storage.Appender, memResource *memorySer
 	metricName := prometheus.BuildCompliantName(m, "", conv.opts.AddMetricSuffixes)
 
 	metricMD := conv.createOrUpdateMetadata(metricName, metadata.Metadata{
-		Type: textparse.MetricTypeGauge,
+		Type: model.MetricTypeGauge,
 		Unit: m.Unit(),
 		Help: m.Description(),
 	})
@@ -418,12 +418,12 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 	//   SHOULD be converted to a cumulative temporarlity and become a Prometheus
 	//   Sum.
 	// * Otherwise, it MUST be dropped.
-	var convType textparse.MetricType
+	var convType model.MetricType
 	switch {
 	case m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityCumulative && m.Sum().IsMonotonic():
-		convType = textparse.MetricTypeCounter
+		convType = model.MetricTypeCounter
 	case m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityCumulative && !m.Sum().IsMonotonic():
-		convType = textparse.MetricTypeGauge
+		convType = model.MetricTypeGauge
 	case m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityDelta && m.Sum().IsMonotonic():
 		level.Debug(conv.log).Log("msg", "dropped unsupported delta sum")
 		// Drop non-cumulative summaries for now, which is permitted by the spec.
@@ -458,7 +458,7 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 			level.Error(conv.log).Log("msg", "failed to write metric sample", metricName, "err", err)
 		}
 
-		if convType == textparse.MetricTypeCounter {
+		if convType == model.MetricTypeCounter {
 			for i := 0; i < dp.Exemplars().Len(); i++ {
 				if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
 					level.Error(conv.log).Log("msg", "failed to write exemplar for metric sample", metricName, "err", err)
@@ -479,7 +479,7 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 	}
 
 	metricMD := conv.createOrUpdateMetadata(metricName, metadata.Metadata{
-		Type: textparse.MetricTypeHistogram,
+		Type: model.MetricTypeHistogram,
 		Unit: m.Unit(),
 		Help: m.Description(),
 	})
@@ -613,7 +613,7 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 	}
 
 	metricMD := conv.createOrUpdateMetadata(metricName, metadata.Metadata{
-		Type: textparse.MetricTypeHistogram,
+		Type: model.MetricTypeHistogram,
 		Unit: m.Unit(),
 		Help: m.Description(),
 	})
@@ -688,7 +688,7 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 	metricName := prometheus.BuildCompliantName(m, "", conv.opts.AddMetricSuffixes)
 
 	metricMD := conv.createOrUpdateMetadata(metricName, metadata.Metadata{
-		Type: textparse.MetricTypeSummary,
+		Type: model.MetricTypeSummary,
 		Unit: m.Unit(),
 		Help: m.Description(),
 	})

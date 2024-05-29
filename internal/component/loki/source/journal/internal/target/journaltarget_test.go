@@ -18,7 +18,6 @@ import (
 
 	"github.com/coreos/go-systemd/sdjournal"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -26,8 +25,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
-	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/clients/pkg/promtail/targets/testutils"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+
+	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/testutils"
 )
 
 type mockJournalReader struct {

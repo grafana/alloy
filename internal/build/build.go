@@ -5,7 +5,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
-	vc "github.com/prometheus/client_golang/prometheus/collectors/version"
+	cv "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/common/version"
 )
 
@@ -55,7 +55,7 @@ func injectVersion() {
 func NewCollector(program string) prometheus.Collector {
 	injectVersion()
 
-	return vc.NewCollector(program)
+	return cv.NewCollector(program)
 }
 
 // Print returns version information.
