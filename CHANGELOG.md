@@ -22,9 +22,12 @@ Main (unreleased)
 
 - Fix error on boot when using IPv6 advertise addresses without explicitly
   specifying a port. (@matthewpi)
-  
+
 - Fix an issue where having long component labels (>63 chars) on otelcol.auth
   components lead to a panic. (@tpaschalis)
+
+- Update `prometheus.exporter.snowflake` with the [latest](https://github.com/grafana/snowflake-prometheus-exporter) version of the exporter as of May 28, 2024 (@StefanKurek)
+  - Fixes issue where returned `NULL` values from database could cause unexpected errors.
 
 v1.1.0
 ------
