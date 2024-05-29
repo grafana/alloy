@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/base64_decode/
 description: Learn about base64_decode
-title: yaml_decode
+title: base64_decode
 ---
 
 # base64_decode
