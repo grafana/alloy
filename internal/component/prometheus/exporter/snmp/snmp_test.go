@@ -62,13 +62,15 @@ func TestUnmarshalAlloy(t *testing.T) {
 
 func TestConvertConfig(t *testing.T) {
 	args := Arguments{
-		ConfigFile: "modules.yml",
-		Targets:    TargetBlock{{Name: "network_switch_1", Target: "192.168.1.2", Module: "if_mib"}},
-		WalkParams: WalkParams{{Name: "public", Retries: 2}},
+		ConfigFile:  "modules.yml",
+		ConfigFiles: []string{"modules_1.yml", "modules_2.yml"},
+		Targets:     TargetBlock{{Name: "network_switch_1", Target: "192.168.1.2", Module: "if_mib"}},
+		WalkParams:  WalkParams{{Name: "public", Retries: 2}},
 	}
 
 	res := args.Convert()
 	require.Equal(t, "modules.yml", res.SnmpConfigFile)
+	require.Equal(t, []string{"modules_1.yml", "modules_2.yml"}, res.SnmpConfigFiles)
 	require.Equal(t, 1, len(res.SnmpTargets))
 	require.Equal(t, "network_switch_1", res.SnmpTargets[0].Name)
 }

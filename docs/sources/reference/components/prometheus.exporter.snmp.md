@@ -17,7 +17,7 @@ The `prometheus.exporter.snmp` component embeds
 
 ```alloy
 prometheus.exporter.snmp "LABEL" {
-  config_file = SNMP_CONFIG_FILE_PATH
+  config_files = [SNMP_CONFIG_FILE_PATH_1, SNMP_CONFIG_FILE_PATH_2]
 
   target "TARGET_NAME" {
     address = TARGET_ADDRESS
@@ -30,13 +30,16 @@ prometheus.exporter.snmp "LABEL" {
 The following arguments can be used to configure the exporter's behavior.
 Omitted fields take their default values.
 
-| Name          | Type                 | Description                                      | Default | Required |
-| ------------- | -------------------- | ------------------------------------------------ | ------- | -------- |
-| `config_file` | `string`             | SNMP configuration file defining custom modules. |         | no       |
-| `config`      | `string` or `secret` | SNMP configuration as inline string.             |         | no       |
+| Name          | Type                 | Description                                               | Default | Required |
+| ------------- | -------------------- | --------------------------------------------------------- | ------- | -------- |
+| `config_file` | `string`             | SNMP configuration file defining custom modules.          |         | no       |
+| `config_file` | `list(string)`       | List of SNMP configuration files defining custom modules. |         | no       |
+| `config`      | `string` or `secret` | SNMP configuration as inline string.                      |         | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
 Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter#generating-configuration) for details on how to generate a configuration file.
+
+The `config_files` argument consist of list of YAML files with content as described as above for `config_file`.
 
 The `config` argument must be a YAML document as string defining which SNMP modules and auths to use.
 `config` is typically loaded by using the exports of another component. For example,
@@ -109,7 +112,7 @@ from `prometheus.exporter.snmp`:
 
 ```alloy
 prometheus.exporter.snmp "example" {
-    config_file = "snmp_modules.yml"
+    config_files = ["snmp_modules.yml"]
 
     target "network_switch_1" {
         address     = "192.168.1.2"

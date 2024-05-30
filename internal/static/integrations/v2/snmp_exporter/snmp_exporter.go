@@ -11,17 +11,19 @@ import (
 
 // DefaultConfig holds the default settings for the snmp_exporter integration.
 var DefaultConfig = Config{
-	WalkParams:     make(map[string]snmp_config.WalkParams),
-	SnmpConfigFile: "",
+	WalkParams:      make(map[string]snmp_config.WalkParams),
+	SnmpConfigFile:  "",
+	SnmpConfigFiles: []string{},
 }
 
 // Config configures the SNMP integration.
 type Config struct {
-	WalkParams     map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
-	SnmpConfigFile string                            `yaml:"config_file,omitempty"`
-	SnmpTargets    []snmp_exporter.SNMPTarget        `yaml:"snmp_targets"`
-	SnmpConfig     snmp_config.Config                `yaml:"snmp_config,omitempty"`
-	Common         common.MetricsConfig              `yaml:",inline"`
+	WalkParams      map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
+	SnmpConfigFile  string                            `yaml:"config_file,omitempty"`
+	SnmpConfigFiles []string                          `yaml:"config_file,omitempty"`
+	SnmpTargets     []snmp_exporter.SNMPTarget        `yaml:"snmp_targets"`
+	SnmpConfig      snmp_config.Config                `yaml:"snmp_config,omitempty"`
+	Common          common.MetricsConfig              `yaml:",inline"`
 
 	globals integrations_v2.Globals
 }
@@ -42,7 +44,8 @@ func (c *Config) Identifier(globals integrations_v2.Globals) (string, error) {
 
 // NewIntegration creates a new SNMP integration.
 func (c *Config) NewIntegration(log log.Logger, globals integrations_v2.Globals) (integrations_v2.Integration, error) {
-	snmpCfg, err := snmp_exporter.LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig)
+	snmpConfigFiles := append(c.SnmpConfigFiles, c.SnmpConfigFile)
+	snmpCfg, err := snmp_exporter.LoadSNMPConfig(snmpConfigFiles, &c.SnmpConfig)
 	if err != nil {
 		return nil, err
 	}

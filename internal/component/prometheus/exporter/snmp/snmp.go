@@ -113,6 +113,7 @@ func (w WalkParams) Convert() map[string]snmp_config.WalkParams {
 
 type Arguments struct {
 	ConfigFile   string                    `alloy:"config_file,attr,optional"`
+	ConfigFiles  []string                  `alloy:"config_files,attr,optional"`
 	Config       alloytypes.OptionalSecret `alloy:"config,attr,optional"`
 	Targets      TargetBlock               `alloy:"target,block"`
 	WalkParams   WalkParams                `alloy:"walk_param,block,optional"`
@@ -141,9 +142,10 @@ func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 // Convert converts the component's Arguments to the integration's Config.
 func (a *Arguments) Convert() *snmp_exporter.Config {
 	return &snmp_exporter.Config{
-		SnmpConfigFile: a.ConfigFile,
-		SnmpTargets:    a.Targets.Convert(),
-		WalkParams:     a.WalkParams.Convert(),
-		SnmpConfig:     a.ConfigStruct,
+		SnmpConfigFile:  a.ConfigFile,
+		SnmpConfigFiles: a.ConfigFiles,
+		SnmpTargets:     a.Targets.Convert(),
+		WalkParams:      a.WalkParams.Convert(),
+		SnmpConfig:      a.ConfigStruct,
 	}
 }
