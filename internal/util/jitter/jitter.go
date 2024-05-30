@@ -86,8 +86,9 @@ func (t *Ticker) ResetJitter(d time.Duration) {
 
 // getNextPeriod is used to calculate the period for the Ticker.
 func (t *Ticker) getNextPeriod() time.Duration {
-	// jitter is a random value between [0, 2j]
+	// jitter is a random value between [0, 2j)
 	// the returned period is then d-j + jitter
+	// which results in [d-j, d+j).
 	t.mut.RLock()
 	jitter := rand.Int63n(2 * int64(t.j))
 	period := t.d - t.j + time.Duration(jitter)
