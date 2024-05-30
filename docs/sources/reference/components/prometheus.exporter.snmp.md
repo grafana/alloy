@@ -33,7 +33,7 @@ Omitted fields take their default values.
 | Name          | Type                 | Description                                               | Default | Required |
 | ------------- | -------------------- | --------------------------------------------------------- | ------- | -------- |
 | `config_file` | `string`             | SNMP configuration file defining custom modules.          |         | no       |
-| `config_file` | `list(string)`       | List of SNMP configuration files defining custom modules. |         | no       |
+| `config_files` | `list(string)`       | List of SNMP configuration files defining custom modules. |         | no       |
 | `config`      | `string` or `secret` | SNMP configuration as inline string.                      |         | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
