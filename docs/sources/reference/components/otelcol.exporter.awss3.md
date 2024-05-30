@@ -31,6 +31,13 @@ otelcol.exporter.awss3 "<LABEL>" {
 }
 ```
 
+Replace the following:
+
+* _`<LABEL>`_: The label for the `otelcol.exporter.awss3` component.
+* _`<REGION>`_: The AWS region.
+* _`<BUCKET_NAME>`_: The S3 bucket.
+* _`<PREFIX>`_: The prefix for the S3 key.
+
 ## Arguments
 
 `otelcol.exporter.awss3` supports the following arguments:
