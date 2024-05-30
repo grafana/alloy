@@ -382,7 +382,7 @@ Following the proposed process, the next steps are:
 
 1. The proposal is currently in the _Active_ state; it bypasses _Incoming_ as it
    is the only proposal using this process. Discussion towards a consensus
-   (accept or decline) is ongoing at #908.
+   (accept or decline) is ongoing at #909.
 
 2. Once discussion slows down, the proposal will move to either _Likely Accept_
    or _Likely Decline_. This depends on when discussion slows down, but is
