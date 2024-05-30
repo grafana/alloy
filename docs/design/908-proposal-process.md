@@ -156,7 +156,7 @@ is closed.
 
 [A description of the steps in the implementation, who will do them, and when.]
 
-## Open issues
+## Related open issues
 
 [If applicable, a discussion of issues relating to this proposal for which the author does not know the solution. This section may be omitted if there are none.]
 ```
