@@ -5,7 +5,6 @@ import (
 	"context"
 	"os"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -115,12 +114,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		gcInterval = 5 * time.Minute
 	)
 
-	cTypeStr := strings.ReplaceAll(c.opts.ID, ".", "_")
-
 	settings := otelreceiver.CreateSettings{
-
-		ID: otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
-
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
 

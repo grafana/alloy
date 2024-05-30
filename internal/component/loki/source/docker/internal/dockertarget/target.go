@@ -235,9 +235,11 @@ func (t *Target) StartIfNotRunning() {
 
 // Stop shuts down the target.
 func (t *Target) Stop() {
-	t.cancel()
-	t.wg.Wait()
-	level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerName)
+	if t.Ready() {
+		t.cancel()
+		t.wg.Wait()
+		level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerName)
+	}
 }
 
 // Ready reports whether the target is running.
