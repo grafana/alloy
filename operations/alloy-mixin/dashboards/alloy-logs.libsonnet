@@ -9,7 +9,7 @@ local logsDashboard = import 'github.com/grafana/jsonnet-libs/logs-lib/logs/main
     if $._config.enableLokiLogs then {
       local alloyLogs =
         logsDashboard.new(
-          'Alloy logs overview',
+          'Alloy / Logs Overview',
           datasourceName='loki_datasource',
           datasourceRegex='',
           filterSelector=$._config.filterSelector,
@@ -18,6 +18,7 @@ local logsDashboard = import 'github.com/grafana/jsonnet-libs/logs-lib/logs/main
           showLogsVolume=true
         )
         {
+          tags: [$._config.dashboardTag],
           panels+:
             {
               logs+:

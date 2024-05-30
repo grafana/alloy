@@ -309,7 +309,7 @@ local filename = 'alloy-controller.json';
             expr= |||
               sum(increase(alloy_component_evaluation_seconds{%(groupSelector)s}[$__rate_interval]))
               or ignoring (le)
-              sum by (le) (increase(alloy_component_evaluation_seconds_bucket{%(groupSelector)s}[$__rate_interval]))'
+              sum by (le) (increase(alloy_component_evaluation_seconds_bucket{%(groupSelector)s}[$__rate_interval]))
             ||| % $._config,
             format='heatmap',
             legendFormat='{{le}}',
