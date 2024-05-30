@@ -74,6 +74,7 @@ func toSpanProcessor(state *State, id component.InstanceID, cfg *spanprocessor.C
 		Output: &otelcol.ConsumerArguments{
 			Traces: ToTokenizedConsumers(nextTraces),
 		},
+		DebugMetrics: common.DefaultValue[span.Arguments]().DebugMetrics,
 	}
 }
 
