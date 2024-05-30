@@ -108,7 +108,7 @@ Name                    | Type       | Description                              
 
 Encoding overrides the marshaler if it's present and sets it to use the encoding extension defined in the collector configuration.
 
-Refer to the Open Telemetry [encoding extensions] documentation for more information.
+Refer to the Open Telemetry [encoding extensions][] documentation for more information.
 
 [encoding]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/encoding
 
