@@ -101,39 +101,9 @@ require (
 	github.com/oklog/run v1.1.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/oliver006/redis_exporter v1.54.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.99.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.99.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.101.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.101.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.99.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.101.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.101.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.101.0
