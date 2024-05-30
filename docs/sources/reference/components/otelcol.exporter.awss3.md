@@ -114,8 +114,8 @@ Refer to the Open Telemetry [encoding extensions] documentation for more informa
 
 ### Compression
 
-- `none` (default): No compression will be applied
-- `gzip`: Files will be compressed with gzip. **This doesn't support `sumo_ic`marshaler.**
+- `none` (default): File compression isn't used.
+- `gzip`: Files are compressed with Gzip. **This doesn't support `sumo_ic`marshaler.**
 
 ## Exported fields
 
