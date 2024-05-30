@@ -391,7 +391,7 @@ Following the proposed process, the next steps are:
 3. After being in _Likely Accept_ or _Likely Decline_ for a week, this proposal
    will be either formally accepted or declined and move to the relevant state.
 
-If this proposal is accepted, all existing an new proposals will be subject to
+If this proposal is accepted, all existing and new proposals will be subject to
 the process described here, and the following will occur:
 
 * A new public project board will be created for tracking proposals in their
