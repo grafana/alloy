@@ -20,7 +20,7 @@ var DefaultConfig = Config{
 type Config struct {
 	WalkParams      map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
 	SnmpConfigFile  string                            `yaml:"config_file,omitempty"`
-	SnmpConfigFiles []string                          `yaml:"config_file,omitempty"`
+	SnmpConfigFiles []string                          `yaml:"config_files,omitempty"`
 	SnmpTargets     []snmp_exporter.SNMPTarget        `yaml:"snmp_targets"`
 	SnmpConfig      snmp_config.Config                `yaml:"snmp_config,omitempty"`
 	Common          common.MetricsConfig              `yaml:",inline"`
