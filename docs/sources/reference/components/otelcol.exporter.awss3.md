@@ -22,7 +22,7 @@ You can specify multiple `otelcol.exporter.awss3` components by giving them diff
 ## Usage
 
 ```alloy
-otelcol.exporter.awss3 "LABEL" {
+otelcol.exporter.awss3 "<LABEL>" {
   s3_uploader {
     region = "<REGION>"
     s3_bucket = "<BUCKET_NAME>"
