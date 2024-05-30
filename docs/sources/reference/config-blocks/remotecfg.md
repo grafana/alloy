@@ -50,7 +50,7 @@ If not set, the self-reported `id` that {{< param "PRODUCT_NAME" >}} uses is a r
 The `id` and `metadata` fields are used in the periodic request sent to the
 remote endpoint so that the API can decide what configuration to serve.
 
-The `poll_frequency` must be set to least "1s".
+The `poll_frequency` must be set to at least `"10s"`.
 
 ## Blocks
 
