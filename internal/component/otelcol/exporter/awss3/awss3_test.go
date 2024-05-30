@@ -3,7 +3,7 @@ package awss3_test
 import (
 	"testing"
 
-	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/vcenter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
@@ -13,7 +13,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
 		alloyCfg string
-		expected otelcol.DebugMetricsArguments
+		expected otelcolCfg.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
@@ -24,7 +24,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 
 			output {}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
 			},
 		},
@@ -41,7 +41,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 
 			output {}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
 			},
 		},
@@ -58,7 +58,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 
 			output {}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
 			},
 		},
