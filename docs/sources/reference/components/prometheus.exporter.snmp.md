@@ -34,6 +34,7 @@ Omitted fields take their default values.
 | ------------- | -------------------- | ------------------------------------------------ | ------- | -------- |
 | `config_file` | `string`             | SNMP configuration file defining custom modules. |         | no       |
 | `config`      | `string` or `secret` | SNMP configuration as inline string.             |         | no       |
+| `targets`     | `list(map(string))`  | SNMP targets.                                    |         | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
 Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter#generating-configuration) for details on how to generate a configuration file.
@@ -45,6 +46,14 @@ The `config` argument must be a YAML document as string defining which SNMP modu
 - `remote.http.LABEL.content`
 - `remote.s3.LABEL.content`
 
+The `targets` argument serves as an alternative to the [target][] block. This is useful when SNMP targets are supplied by another component.
+The following labels can be set to a target:
+* `name` is the name of the target (required).
+* `address` is the address of SNMP device (required).
+* `module` is the SNMP module to use for polling.
+* `auth` is the SNMP authentication profile to use.
+* `walk_params` is the config to use for this target.
+
 ## Blocks
 
 The following blocks are supported inside the definition of
@@ -52,7 +61,7 @@ The following blocks are supported inside the definition of
 
 | Hierarchy  | Name           | Description                                                 | Required |
 | ---------- | -------------- | ----------------------------------------------------------- | -------- |
-| target     | [target][]     | Configures an SNMP target.                                  | yes      |
+| target     | [target][]     | Configures an SNMP target.                                  | no      |
 | walk_param | [walk_param][] | SNMP connection profiles to override default SNMP settings. | no       |
 
 [target]: #target-block
@@ -131,6 +140,7 @@ prometheus.exporter.snmp "example" {
         retries = "2"
     }
 }
+
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
     targets    = prometheus.exporter.snmp.example.targets
@@ -169,6 +179,7 @@ prometheus.exporter.snmp "example" {
         retries = "2"
     }
 }
+
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
     targets    = prometheus.exporter.snmp.example.targets
@@ -187,6 +198,71 @@ prometheus.remote_write "demo" {
 }
 ```
 
+This example uses the alternative way to pass targets:
+
+```alloy
+prometheus.exporter.snmp "example" {
+    config_file = "snmp_modules.yml"
+
+    targets = [
+        {
+            "name"        = "network_switch_1",
+            "address"     = "192.168.1.2",
+            "module"      = "if_mib",
+            "walk_params" = "public",
+        },
+        {
+            "name"        = "network_router_2",
+            "address"     = "192.168.1.3",
+            "module"      = "mikrotik",
+            "walk_params" = "private",
+        },
+    ]
+
+    walk_param "private" {
+        retries = "2"
+    }
+
+    walk_param "public" {
+        retries = "2"
+    }
+}
+
+// Configure a prometheus.scrape component to collect SNMP metrics.
+prometheus.scrape "demo" {
+    targets    = prometheus.exporter.snmp.example.targets
+    forward_to = [ /* ... */ ]
+}
+```
+
+This example uses the [`local.file` component][file] to read targets from a YAML file and feed them to the prometheus.exporter.snmp component:
+
+```alloy
+local.file "targets" {
+  filename = "targets.yml"
+}
+
+prometheus.exporter.snmp "example" {
+    config_file = "snmp_modules.yml"
+
+    targets = yaml_decode(local.file.targets.content)
+
+    walk_param "private" {
+        retries = "2"
+    }
+
+    walk_param "public" {
+        retries = "2"
+    }
+}
+
+// Configure a prometheus.scrape component to collect SNMP metrics.
+prometheus.scrape "demo" {
+    targets    = prometheus.exporter.snmp.example.targets
+    forward_to = [ /* ... */ ]
+}
+```
+
 Replace the following:
 
 - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
@@ -194,6 +270,7 @@ Replace the following:
 - `PASSWORD`: The password to use for authentication to the remote_write API.
 
 [scrape]: ../prometheus.scrape/
+[file]: ../local.file/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

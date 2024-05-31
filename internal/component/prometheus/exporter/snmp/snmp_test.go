@@ -60,6 +60,57 @@ func TestUnmarshalAlloy(t *testing.T) {
 	require.Equal(t, 2, args.WalkParams[1].Retries)
 }
 
+func TestUnmarshalAlloyTargets(t *testing.T) {
+	alloyCfg := `
+		config_file = "modules.yml"
+		targets = [
+			{
+				"name" = "network_switch_1", 
+				"address" = "192.168.1.2", 
+				"module" = "if_mib",
+				"walk_params" = "public",
+				"auth" = "public_v2",
+			},
+			{
+				"name" = "network_router_2", 
+				"address" = "192.168.1.3", 
+				"module" = "mikrotik",
+				"walk_params" = "private",
+			},
+		  ]
+		walk_param "private" {
+			retries = 1
+		}
+		walk_param "public" {
+			retries = 2
+		}		
+`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.NoError(t, err)
+	require.Equal(t, "modules.yml", args.ConfigFile)
+	require.Equal(t, 2, len(args.TargetsList))
+
+	require.Contains(t, "network_switch_1", args.TargetsList[0]["name"])
+	require.Contains(t, "192.168.1.2", args.TargetsList[0]["address"])
+	require.Contains(t, "if_mib", args.TargetsList[0]["module"])
+	require.Contains(t, "public", args.TargetsList[0]["walk_params"])
+	require.Contains(t, "public_v2", args.TargetsList[0]["auth"])
+
+	require.Contains(t, "network_router_2", args.TargetsList[1]["name"])
+	require.Contains(t, "192.168.1.3", args.TargetsList[1]["address"])
+	require.Contains(t, "mikrotik", args.TargetsList[1]["module"])
+	require.Contains(t, "private", args.TargetsList[1]["walk_params"])
+	require.Empty(t, args.TargetsList[1]["auth"])
+
+	require.Equal(t, 2, len(args.WalkParams))
+
+	require.Contains(t, "private", args.WalkParams[0].Name)
+	require.Equal(t, 1, args.WalkParams[0].Retries)
+	require.Contains(t, "public", args.WalkParams[1].Name)
+	require.Equal(t, 2, args.WalkParams[1].Retries)
+}
+
 func TestConvertConfig(t *testing.T) {
 	args := Arguments{
 		ConfigFile: "modules.yml",
@@ -100,6 +151,83 @@ func TestConvertTargets(t *testing.T) {
 	require.Equal(t, "192.168.1.2", res[0].Target)
 	require.Equal(t, "if_mib", res[0].Module)
 	require.Equal(t, "public_v2", res[0].Auth)
+}
+
+func TestConvertTargetsList(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "network_switch_1",
+			"target":      "192.168.1.2",
+			"module":      "if_mib",
+			"auth":        "public_v2",
+			"walk_params": "1.3.6.1.2.1.2",
+		},
+	}
+
+	res := targets.Convert()
+	require.Equal(t, 1, len(res))
+	require.Equal(t, "network_switch_1", res[0].Name)
+	require.Equal(t, "192.168.1.2", res[0].Target)
+	require.Equal(t, "if_mib", res[0].Module)
+	require.Equal(t, "public_v2", res[0].Auth)
+	require.Equal(t, "1.3.6.1.2.1.2", res[0].WalkParams)
+}
+
+func TestValidateTargetMissingName(t *testing.T) {
+	targets := TargetsList{
+		{
+			"target":      "192.168.1.2",
+			"module":      "if_mib",
+			"auth":        "public_v2",
+			"walk_params": "1.3.6.1.2.1.2",
+		},
+	}
+	args := Arguments{
+		TargetsList: targets,
+	}
+	require.ErrorContains(t, args.Validate(), "all targets must have a `name`")
+}
+
+func TestValidateTargetMissingAddress(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "target1",
+			"module":      "if_mib",
+			"auth":        "public_v2",
+			"walk_params": "1.3.6.1.2.1.2",
+		},
+	}
+	args := Arguments{
+		TargetsList: targets,
+	}
+	require.ErrorContains(t, args.Validate(), "all targets must have an `address`")
+}
+
+func TestValidateMissingTargets(t *testing.T) {
+	args := Arguments{}
+	require.ErrorContains(t, args.Validate(), "either a `target block` or a `targets` attribute should be set")
+}
+
+func TestValidateTargetsMutualExclusivity(t *testing.T) {
+	targets := TargetsList{
+		{
+			"target":      "192.168.1.2",
+			"module":      "if_mib",
+			"auth":        "public_v2",
+			"walk_params": "1.3.6.1.2.1.2",
+		},
+	}
+	targetBlock := TargetBlock{{
+		Name:   "network_switch_1",
+		Target: "192.168.1.2",
+		Module: "if_mib",
+		Auth:   "public_v2",
+	}}
+	args := Arguments{
+		TargetsList: targets,
+		Targets:     targetBlock,
+	}
+	require.ErrorContains(t, args.Validate(), "the block `target` and the attribute `targets` are mutually exclusive")
 }
 
 func TestConvertWalkParams(t *testing.T) {
