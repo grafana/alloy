@@ -68,7 +68,7 @@
 
   newTemplateVariable(name, query):: {
     name: name,
-    label: name,
+    label: $.toSentenceCase(name),
     type: 'query',
     query: {
       query: query,
@@ -126,4 +126,7 @@
       targetBlank: false,
     }],
   },
+
+  toSentenceCase(string)::
+    std.asciiUpper(string[0]) + std.slice(string, 1, std.length(string), 1),
 }

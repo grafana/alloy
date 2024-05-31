@@ -397,24 +397,72 @@ local filename = 'alloy-prometheus-remote-write.json';
     else
       remoteWritePanels(y_offset=0),
 
-  local templateVariables = 
+  local templateVariables =
     if $._config.enableK8sCluster then
       [
-        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components, cluster)'),
-        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster"}, namespace)'),
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, job)'),
-        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)'),
-        dashboard.newMultiTemplateVariable('component_path', 'label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)'),
-        dashboard.newMultiTemplateVariable('component', 'label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)'),
-        dashboard.newMultiTemplateVariable('url', 'label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)'),
+        dashboard.newTemplateVariable(
+          name='cluster', 
+          query= ||| 
+            label_values(alloy_component_controller_running_components{%(filterSelector)s}, cluster)
+          ||| % $._config),
+        dashboard.newTemplateVariable(
+          name='namespace', 
+          query= |||
+            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster"}, namespace)
+          ||| % $._config),
+        dashboard.newMultiTemplateVariable(
+          name='job', 
+          query= ||| 
+            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace"}, job)
+          ||| % $._config),
+        dashboard.newMultiTemplateVariable(
+          name='instance', 
+          query= |||
+            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)
+          ||| % $._config),
+        dashboard.newMultiTemplateVariable(
+          name='component_path', 
+          query= |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+          ||| % $._config),
+        dashboard.newMultiTemplateVariable(
+          name='component', 
+          query= |||
+            'label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+          ||| % $._config),          
+        dashboard.newMultiTemplateVariable(
+          name='url', 
+          query= |||
+            'label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+          ||| % $._config),
       ]
     else
       [
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
-        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{job=~"$job"}, instance)'),
-        dashboard.newMultiTemplateVariable('component_path', 'label_values(prometheus_remote_write_wal_samples_appended_total{job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)'),
-        dashboard.newMultiTemplateVariable('component', 'label_values(prometheus_remote_write_wal_samples_appended_total{job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)'),
-        dashboard.newMultiTemplateVariable('url', 'label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{job=~"$job", instance=~"$instance", component_id=~"$component"}, url)'),
+        dashboard.newMultiTemplateVariable(
+          name='job', 
+          query= ||| 
+            label_values(alloy_component_controller_running_components{%(filterSelector)s}, job)
+          ||| % $._config),
+        dashboard.newMultiTemplateVariable(
+          name='instance', 
+          query= |||
+            label_values(alloy_component_controller_running_components{%(filterSelector)s, job=~"$job"}, instance)
+          ||| % $._config),
+        dashboard.newMultiTemplateVariable(
+          name='component_path', 
+          query= |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+          ||| % $._config),
+        dashboard.newMultiTemplateVariable(
+          name='component', 
+          query= |||
+            'label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+          ||| % $._config),          
+        dashboard.newMultiTemplateVariable(
+          name='url', 
+          query= |||
+            'label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, job="$job", instance=~"$instance", component_id=~"$component"}, url)
+          ||| % $._config),
       ],
 
   [filename]:

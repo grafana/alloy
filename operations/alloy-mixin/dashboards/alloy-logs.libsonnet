@@ -12,7 +12,7 @@ local logsDashboard = import 'github.com/grafana/jsonnet-libs/logs-lib/logs/main
           'Alloy / Logs Overview',
           datasourceName='loki_datasource',
           datasourceRegex='',
-          filterSelector=$._config.filterSelector,
+          filterSelector=$._config.logsFilterSelector,
           labels=labels,
           formatParser=null,
           showLogsVolume=true

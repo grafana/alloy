@@ -6,15 +6,39 @@ local filename = 'alloy-cluster-node.json';
   local templateVariables = 
     if $._config.enableK8sCluster then
       [
-        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components, cluster)'),
-        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster"}, namespace)'),
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, job)'),
-        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)'),
+        dashboard.newTemplateVariable(
+          name='cluster', 
+          query= |||
+            label_values(alloy_component_controller_running_components{%(filterSelector)s}, cluster)
+          ||| % $._config),
+        dashboard.newTemplateVariable(
+          name='namespace', 
+          query= |||
+            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster"}, namespace)
+          ||| % $._config),
+        dashboard.newMultiTemplateVariable(
+          name='job', 
+          query= |||
+            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace"}, job)
+          ||| % $._config),
+        dashboard.newMultiTemplateVariable(
+          name='instance', 
+          query= |||
+            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)
+          ||| % $._config),
       ]
     else
       [
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
-        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{job=~"$job"}, instance)'),
+        dashboard.newMultiTemplateVariable(
+          name='job', 
+          query= |||
+            label_values(alloy_component_controller_running_components{%(filterSelector)s}, job)
+          ||| % $._config),
+        dashboard.newMultiTemplateVariable(
+          name='instance', 
+          query= |||
+            label_values(alloy_component_controller_running_components{%(filterSelector)s, job=~"$job"}, instance)
+          ||| % $._config),
       ],
 
   [filename]:
