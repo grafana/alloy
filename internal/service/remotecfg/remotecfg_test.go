@@ -70,7 +70,7 @@ func TestAPIResponse(t *testing.T) {
 	env := newTestEnvironment(t)
 	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
 		url            = "%s"
-		poll_frequency = "1s"
+		poll_frequency = "10s"
 	`, url)))
 
 	client := &collectorClient{}
@@ -100,7 +100,7 @@ func TestAPIResponse(t *testing.T) {
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfg2)), env.svc.getCfgHash())
-	}, 2*time.Second, 10*time.Millisecond)
+	}, 1*time.Second, 10*time.Millisecond)
 }
 
 func buildGetConfigHandler(in string) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
@@ -138,6 +138,10 @@ func (env *testEnvironment) ApplyConfig(config string) error {
 	if err := syntax.Unmarshal([]byte(config), &args); err != nil {
 		return err
 	}
+	// The lower limit of the poll_frequency argument would slow our tests
+	// considerably; let's artificially lower it after the initial validation
+	// has taken place.
+	args.PollFrequency /= 100
 	return env.svc.Update(args)
 }
 
