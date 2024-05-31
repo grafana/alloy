@@ -91,6 +91,8 @@ v1.2.0-rc.0
 - Add an initial lower limit of 10 seconds for the the `poll_frequency`
   argument in the `remotecfg` block. (@tpaschalis)
 
+- Add a constant jitter to `remotecfg` service's polling. (@tpaschalis)
+
 - Added support for NS records to `discovery.dns`. (@djcode)
 
 - Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart)
