@@ -22,6 +22,8 @@ type Ticker struct {
 // Following the behavior of time.Ticker, we use a 1-buffer channel, so if the
 // client falls behind while reading, we'll drop ticks on the floor until the
 // client catches up.
+// Callers have to make sure that both d and d-j, d+j are valid positive int64
+// values (non-negative and non-overflowing).
 // Use Stop to release associated resources and the Reset methods to modify the
 // duration and jitter.
 func NewTicker(d time.Duration, j time.Duration) *Ticker {

@@ -131,7 +131,7 @@ func New(opts Options) (*Service, error) {
 
 	return &Service{
 		opts:   opts,
-		ticker: jitter.NewTicker(math.MaxInt64, 100*time.Millisecond),
+		ticker: jitter.NewTicker(math.MaxInt64-100*time.Millisecond, 100*time.Millisecond),
 	}, nil
 }
 
@@ -230,7 +230,7 @@ func (s *Service) Update(newConfig any) error {
 	// it. Make sure we stop everything gracefully before returning.
 	if newArgs.URL == "" {
 		s.mut.Lock()
-		s.ticker.Reset(math.MaxInt64)
+		s.ticker.Reset(math.MaxInt64 - 100*time.Millisecond)
 		s.asClient = noopClient{}
 		s.args.HTTPClientConfig = config.CloneDefaultHTTPClientConfig()
 		s.mut.Unlock()
