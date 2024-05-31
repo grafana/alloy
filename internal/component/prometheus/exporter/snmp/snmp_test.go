@@ -157,7 +157,7 @@ func TestConvertTargetsList(t *testing.T) {
 	targets := TargetsList{
 		{
 			"name":        "network_switch_1",
-			"target":      "192.168.1.2",
+			"address":     "192.168.1.2",
 			"module":      "if_mib",
 			"auth":        "public_v2",
 			"walk_params": "1.3.6.1.2.1.2",
