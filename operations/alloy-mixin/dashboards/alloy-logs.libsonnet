@@ -17,7 +17,7 @@ local logsDashboard = import 'github.com/grafana/jsonnet-libs/logs-lib/logs/main
           formatParser=null,
           showLogsVolume=true
         )
-        {          
+        {
           panels+:
             {
               logs+:
