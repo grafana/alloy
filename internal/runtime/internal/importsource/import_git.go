@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-kit/log"
 
 	"github.com/grafana/alloy/internal/component"
@@ -194,11 +195,12 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 	if im.repo == nil || !reflect.DeepEqual(repoOpts, im.repoOpts) {
 		r, err := vcs.NewGitRepo(context.Background(), repoPath, repoOpts)
 		if err != nil {
+			if errors.Is(err, plumbing.ErrReferenceNotFound) || !errors.As(err, &vcs.UpdateFailedError{}) {
+				return err
+			}
 			if errors.As(err, &vcs.UpdateFailedError{}) {
 				level.Error(im.log).Log("msg", "failed to update repository", "err", err)
 				im.updateHealth(err)
-			} else {
-				return err
 			}
 		}
 		im.repo = r

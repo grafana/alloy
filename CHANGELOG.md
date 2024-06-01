@@ -66,6 +66,8 @@ Main (unreleased)
   cluster instance to another could have a staleness marker inserted and result
   in a gap in metrics (@thampiotr)
 
+- Fix panic when `import.git` are given with revision non-existent on remote repo. (@hainenber)
+
 ### Other changes
 
 - `pyroscope.ebpf`, `pyroscope.java`, `pyroscope.scrape`, `pyroscope.write` and `discovery.process` components are now GA. (@korniltsev)
