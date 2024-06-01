@@ -39,7 +39,7 @@ Omitted fields take their default values.
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
 Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter#generating-configuration) for details on how to generate a configuration file.
 
-The `config_files` argument consist of list of YAML files with content as described as above for `config_file`.
+Each file listed in in the `config_files` argument must conform to the `config_file` requirements.
 
 The `config` argument must be a YAML document as string defining which SNMP modules and auths to use.
 `config` is typically loaded by using the exports of another component. For example,
