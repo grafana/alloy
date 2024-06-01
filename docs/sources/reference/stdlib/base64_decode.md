@@ -14,6 +14,6 @@ into the original string.
 ## Examples
 
 ```
-> base64_decode("Zm9vYmFy")
-foobar
+> base64_decode("dGFuZ2VyaW5l")
+tangerine
 ```
