@@ -195,10 +195,11 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 	if im.repo == nil || !reflect.DeepEqual(repoOpts, im.repoOpts) {
 		r, err := vcs.NewGitRepo(context.Background(), repoPath, repoOpts)
 		if err != nil {
-			if errors.Is(err, plumbing.ErrReferenceNotFound) || !errors.As(err, &vcs.UpdateFailedError{}) {
+			isUpdateFailedError := errors.As(err, &vcs.UpdateFailedError{})
+			if errors.Is(err, plumbing.ErrReferenceNotFound) || !isUpdateFailedError {
 				return err
 			}
-			if errors.As(err, &vcs.UpdateFailedError{}) {
+			if isUpdateFailedError {
 				level.Error(im.log).Log("msg", "failed to update repository", "err", err)
 				im.updateHealth(err)
 			}
