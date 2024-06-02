@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/auth/headers"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	otlphttp "github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
@@ -61,12 +62,15 @@ func TestWithOtelcolConsumer(t *testing.T) {
 					Action:      headers.ActionUpsert,
 				},
 			},
+			DebugMetrics: otelcolCfg.DebugMetricsArguments{
+				Level: otelcolCfg.LevelDetailed,
+			},
 		})
 		require.NoError(t, err)
 	}()
 
-	require.NoError(t, otelcolAuthHeader.WaitRunning(time.Second), "otelco.auth.headers never started")
-	require.NoError(t, otelcolAuthHeader.WaitExports(time.Second), "otelco.auth.headers never exported anything")
+	require.NoError(t, otelcolAuthHeader.WaitRunning(time.Second), "otelcol.auth.headers never started")
+	require.NoError(t, otelcolAuthHeader.WaitExports(time.Second), "otelcol.auth.headers never exported anything")
 	otelcolAuthHeaderExport, ok := otelcolAuthHeader.Exports().(auth.Exports)
 	require.True(t, ok)
 
@@ -81,6 +85,9 @@ func TestWithOtelcolConsumer(t *testing.T) {
 				},
 			}),
 			Encoding: otlphttp.EncodingJSON,
+			DebugMetrics: otelcolCfg.DebugMetricsArguments{
+				Level: otelcolCfg.LevelDetailed,
+			},
 		})
 		require.NoError(t, err)
 	}()
