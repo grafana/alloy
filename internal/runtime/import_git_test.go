@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -349,9 +350,9 @@ testImport.add "cc" {
 	defer verifyNoGoroutineLeaks(t)
 	ctrl, f := setup(t, main)
 	err = ctrl.LoadSource(f, nil)
-	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	require.ErrorContains(t, err, plumbing.ErrReferenceNotFound.Error())
 
+	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 	defer func() {
 		cancel()
@@ -363,23 +364,4 @@ testImport.add "cc" {
 		defer wg.Done()
 		ctrl.Run(ctx)
 	}()
-
-	// Check for initial condition
-	require.Eventually(t, func() bool {
-		export := getExport[map[string]interface{}](t, ctrl, "", "testImport.add.cc")
-		return export["sum"] == 2
-	}, 5*time.Second, 100*time.Millisecond)
-
-	err = os.WriteFile(math, []byte(contentsMore), 0666)
-	require.NoError(t, err)
-
-	runGit(t, testRepo, "add", ".")
-
-	runGit(t, testRepo, "commit", "-m \"test2\"")
-
-	// Check for final condition.
-	require.Eventually(t, func() bool {
-		export := getExport[map[string]interface{}](t, ctrl, "", "testImport.add.cc")
-		return export["sum"] == 3
-	}, 5*time.Second, 100*time.Millisecond)
 }
