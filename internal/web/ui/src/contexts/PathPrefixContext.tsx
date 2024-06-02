@@ -1,10 +1,10 @@
-import React from 'react';
+import { createContext, useContext } from 'react';
 
 /**
  * PathPrefixContext propagates the base URL throughout the component tree where
  * the application is hosted.
  */
-const PathPrefixContext = React.createContext('');
+const PathPrefixContext = createContext('');
 
 /**
  * usePathPrefix retrieves the current base URL where the application is
@@ -14,7 +14,7 @@ const PathPrefixContext = React.createContext('');
  * The returned path prefix will always end in a `/`.
  */
 function usePathPrefix(): string {
-  const prefix = React.useContext(PathPrefixContext);
+  const prefix = useContext(PathPrefixContext);
   if (prefix === '') {
     return '/';
   }
