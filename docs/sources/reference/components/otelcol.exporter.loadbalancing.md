@@ -76,6 +76,7 @@ resolver                             | [resolver][]      | Configures discoverin
 resolver > static                    | [static][]        | Static list of endpoints to export to.                                     | no
 resolver > dns                       | [dns][]           | DNS-sourced list of endpoints to export to.                                | no
 resolver > kubernetes                | [kubernetes][]    | Kubernetes-sourced list of endpoints to export to.                         | no
+resolver > aws_cloud_map             | [aws_cloud_map][] | AWS CloudMap-sourced list of endpoints to export to.                       | no
 protocol                             | [protocol][]      | Protocol settings. Only OTLP is supported at the moment.                   | no
 protocol > otlp                      | [otlp][]          | Configures an OTLP exporter.                                               | no
 protocol > otlp > client             | [client][]        | Configures the exporter gRPC client.                                       | no
@@ -83,7 +84,7 @@ protocol > otlp > client > tls       | [tls][]           | Configures TLS for th
 protocol > otlp > client > keepalive | [keepalive][]     | Configures keepalive settings for the gRPC client.                         | no
 protocol > otlp > queue              | [queue][]         | Configures batching of data before sending.                                | no
 protocol > otlp > retry              | [retry][]         | Configures retry mechanism for failed requests.                            | no
-debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `resolver > static`
 refers to a `static` block defined inside a `resolver` block.
@@ -92,6 +93,7 @@ refers to a `static` block defined inside a `resolver` block.
 [static]: #static-block
 [dns]: #dns-block
 [kubernetes]: #kubernetes-block
+[aws_cloud_map]: #aws_cloud_map-block
 [protocol]: #protocol-block
 [otlp]: #otlp-block
 [client]: #client-block
@@ -145,6 +147,7 @@ Name      | Type           | Description                                        
 ----------|----------------|-------------------------------------------------------------|----------|---------
 `service` | `string`       | Kubernetes service to resolve.                              |          | yes
 `ports`   | `list(number)` | Ports to use with the IP addresses resolved from `service`. | `[4317]` | no
+`timeout` | `duration`     | Resolver timeout.                                           | `"1s"`   | no
 
 If no namespace is specified inside `service`, an attempt will be made to infer the namespace for this {{< param "PRODUCT_NAME" >}}.
 If this fails, the `default` namespace will be used.
@@ -153,6 +156,36 @@ Each of the ports listed in `ports` will be used with each of the IPs resolved f
 
 The "get", "list", and "watch" [roles](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-example)
 must be granted in Kubernetes for the resolver to work.
+
+### aws_cloud_map block
+
+The `aws_cloud_map` block allows users to use `otelcol.exporter.loadbalancing` when using ECS over EKS in an AWS infrastructure.
+
+The following arguments are supported:
+
+Name            | Type       | Description                                                                        | Default     | Required
+----------------|------------|------------------------------------------------------------------------------------|-------------|---------
+`namespace`     | `string`   | The CloudMap namespace where the service is registered.                            |             | yes
+`service_name`  | `string`   | The name of the service which was specified when registering the instance.         |             | yes
+`interval`      | `duration` | Resolver interval.                                                                 | `"30s"`     | no
+`timeout`       | `duration` | Resolver timeout.                                                                  | `"5s"`      | no
+`health_status` | `string`   | Ports to use with the IP addresses resolved from `service`.                        | `"HEALTHY"` | no
+`port`          | `number`   | Port to be used for exporting the traces to the addresses resolved from `service`. | `null`      | no
+
+`health_status` can be set to either of:
+* `HEALTHY`: Only return instances that are healthy.
+* `UNHEALTHY`: Only return instances that are unhealthy.
+* `ALL`: Return all instances, regardless of their health status.
+* `HEALTHY_OR_ELSE_ALL`: Returns healthy instances, unless none are reporting a healthy state. 
+  In that case, return all instances. This is also called failing open.
+
+If `port` is not set, a default port defined in CloudMap will be used.
+
+{{< admonition type="note" >}}
+The `aws_cloud_map` resolver returns a maximum of 100 hosts.
+A [feature request](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/29771) 
+aims cover pagination for this scenario.
+{{< /admonition >}}
 
 ### protocol block
 

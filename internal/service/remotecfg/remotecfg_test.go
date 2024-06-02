@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	agentv1 "github.com/grafana/agent-remote-config/api/gen/proto/go/agent/v1"
-	"github.com/grafana/alloy/internal/alloy"
-	"github.com/grafana/alloy/internal/alloy/componenttest"
-	"github.com/grafana/alloy/internal/alloy/logging"
+	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy/internal/component"
 	_ "github.com/grafana/alloy/internal/component/loki/process"
 	"github.com/grafana/alloy/internal/featuregate"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
@@ -39,7 +39,7 @@ func TestOnDiskCache(t *testing.T) {
 		url = "%s"
 	`, url)))
 
-	client := &agentClient{}
+	client := &collectorClient{}
 	env.svc.asClient = client
 
 	// Mock client to return an unparseable response.
@@ -70,10 +70,10 @@ func TestAPIResponse(t *testing.T) {
 	env := newTestEnvironment(t)
 	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
 		url            = "%s"
-		poll_frequency = "10ms"
+		poll_frequency = "10s"
 	`, url)))
 
-	client := &agentClient{}
+	client := &collectorClient{}
 	env.svc.asClient = client
 
 	// Mock client to return a valid response.
@@ -100,13 +100,13 @@ func TestAPIResponse(t *testing.T) {
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfg2)), env.svc.getCfgHash())
-	}, time.Second, 10*time.Millisecond)
+	}, 1*time.Second, 10*time.Millisecond)
 }
 
-func buildGetConfigHandler(in string) func(context.Context, *connect.Request[agentv1.GetConfigRequest]) (*connect.Response[agentv1.GetConfigResponse], error) {
-	return func(context.Context, *connect.Request[agentv1.GetConfigRequest]) (*connect.Response[agentv1.GetConfigResponse], error) {
-		rsp := &connect.Response[agentv1.GetConfigResponse]{
-			Msg: &agentv1.GetConfigResponse{
+func buildGetConfigHandler(in string) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+	return func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+		rsp := &connect.Response[collectorv1.GetConfigResponse]{
+			Msg: &collectorv1.GetConfigResponse{
 				Content: in,
 			},
 		}
@@ -138,6 +138,10 @@ func (env *testEnvironment) ApplyConfig(config string) error {
 	if err := syntax.Unmarshal([]byte(config), &args); err != nil {
 		return err
 	}
+	// The lower limit of the poll_frequency argument would slow our tests
+	// considerably; let's artificially lower it after the initial validation
+	// has taken place.
+	args.PollFrequency /= 100
 	return env.svc.Update(args)
 }
 
@@ -165,7 +169,7 @@ func (fakeHost) GetService(_ string) (service.Service, bool)     { return nil, f
 
 func (f fakeHost) NewController(id string) service.Controller {
 	logger, _ := logging.New(io.Discard, logging.DefaultOptions)
-	ctrl := alloy.New(alloy.Options{
+	ctrl := alloy_runtime.New(alloy_runtime.Options{
 		ControllerID:    ServiceName,
 		Logger:          logger,
 		Tracer:          nil,
@@ -179,12 +183,12 @@ func (f fakeHost) NewController(id string) service.Controller {
 	return serviceController{ctrl}
 }
 
-type agentClient struct {
+type collectorClient struct {
 	mut           sync.RWMutex
-	getConfigFunc func(context.Context, *connect.Request[agentv1.GetConfigRequest]) (*connect.Response[agentv1.GetConfigResponse], error)
+	getConfigFunc func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error)
 }
 
-func (ag *agentClient) GetConfig(ctx context.Context, req *connect.Request[agentv1.GetConfigRequest]) (*connect.Response[agentv1.GetConfigResponse], error) {
+func (ag *collectorClient) GetConfig(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
 	ag.mut.RLock()
 	defer ag.mut.RUnlock()
 
@@ -194,29 +198,29 @@ func (ag *agentClient) GetConfig(ctx context.Context, req *connect.Request[agent
 
 	panic("getConfigFunc not set")
 }
-func (ag *agentClient) GetAgent(context.Context, *connect.Request[agentv1.GetAgentRequest]) (*connect.Response[agentv1.Agent], error) {
+func (ag *collectorClient) GetCollector(context.Context, *connect.Request[collectorv1.GetCollectorRequest]) (*connect.Response[collectorv1.Collector], error) {
 	return nil, nil
 }
-func (ag *agentClient) CreateAgent(context.Context, *connect.Request[agentv1.CreateAgentRequest]) (*connect.Response[agentv1.Agent], error) {
+func (ag *collectorClient) CreateCollector(context.Context, *connect.Request[collectorv1.CreateCollectorRequest]) (*connect.Response[collectorv1.Collector], error) {
 	return nil, nil
 }
-func (ag *agentClient) UpdateAgent(context.Context, *connect.Request[agentv1.UpdateAgentRequest]) (*connect.Response[agentv1.Agent], error) {
+func (ag *collectorClient) UpdateCollector(context.Context, *connect.Request[collectorv1.UpdateCollectorRequest]) (*connect.Response[collectorv1.Collector], error) {
 	return nil, nil
 }
-func (ag *agentClient) DeleteAgent(context.Context, *connect.Request[agentv1.DeleteAgentRequest]) (*connect.Response[agentv1.DeleteAgentResponse], error) {
+func (ag *collectorClient) DeleteCollector(context.Context, *connect.Request[collectorv1.DeleteCollectorRequest]) (*connect.Response[collectorv1.DeleteCollectorResponse], error) {
 	return nil, nil
 }
-func (ag *agentClient) ListAgents(context.Context, *connect.Request[agentv1.ListAgentsRequest]) (*connect.Response[agentv1.Agents], error) {
+func (ag *collectorClient) ListCollectors(context.Context, *connect.Request[collectorv1.ListCollectorsRequest]) (*connect.Response[collectorv1.Collectors], error) {
 	return nil, nil
 }
 
 type serviceController struct {
-	f *alloy.Alloy
+	f *alloy_runtime.Runtime
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
 func (sc serviceController) LoadSource(b []byte, args map[string]any) error {
-	source, err := alloy.ParseSource("", b)
+	source, err := alloy_runtime.ParseSource("", b)
 	if err != nil {
 		return err
 	}

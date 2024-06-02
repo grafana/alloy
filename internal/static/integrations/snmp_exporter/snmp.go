@@ -69,6 +69,12 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 		authName = "public_v2"
 	}
 
+	snmpContext := query.Get("snmp_context")
+	if len(query["snmp_context"]) > 1 {
+		http.Error(w, "'snmp_context' parameter must only be specified once", http.StatusBadRequest)
+		return
+	}
+
 	module, ok := (*snmpCfg).Modules[moduleName]
 	if !ok {
 		http.Error(w, fmt.Sprintf("Unknown module '%s'", moduleName), http.StatusBadRequest)
@@ -113,7 +119,7 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 
 	start := time.Now()
 	registry := prometheus.NewRegistry()
-	c := collector.New(r.Context(), target, authName, auth, nmodules, logger, NewSNMPMetrics(registry), concurrency)
+	c := collector.New(r.Context(), target, authName, snmpContext, auth, nmodules, logger, NewSNMPMetrics(registry), concurrency, false)
 	registry.MustRegister(c)
 	// Delegate http serving to Prometheus client library, which will call collector.Collect.
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})

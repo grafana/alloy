@@ -9,10 +9,11 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 
 	"github.com/alecthomas/units"
-	types "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
-	lokiflagext "github.com/grafana/loki/pkg/util/flagext"
+	lokiflagext "github.com/grafana/loki/v3/pkg/util/flagext"
+
+	types "github.com/grafana/alloy/internal/component/common/config"
 )
 
 // EndpointOptions describes an individual location to send logs to.

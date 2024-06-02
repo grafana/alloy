@@ -141,6 +141,8 @@ type Storage struct {
 	deleted map[chunks.HeadSeriesRef]int // Deleted series, and what WAL segment they must be kept until.
 
 	metrics *storageMetrics
+
+	notifier wlog.WriteNotified
 }
 
 // NewStorage makes a new Storage.
@@ -455,6 +457,12 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 		}
 		return nil
 	}
+}
+
+// SetNotifier sets the notifier for the WAL storage. SetNotifier must only be
+// called before data is written to the WAL.
+func (w *Storage) SetNotifier(n wlog.WriteNotified) {
+	w.notifier = n
 }
 
 // Directory returns the path where the WAL storage is held.
@@ -783,13 +791,13 @@ func (a *appender) AppendExemplar(ref storage.SeriesRef, _ labels.Labels, e exem
 
 func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	if h != nil {
-		if err := tsdb.ValidateHistogram(h); err != nil {
+		if err := h.Validate(); err != nil {
 			return 0, err
 		}
 	}
 
 	if fh != nil {
-		if err := tsdb.ValidateFloatHistogram(fh); err != nil {
+		if err := fh.Validate(); err != nil {
 			return 0, err
 		}
 	}
@@ -848,6 +856,11 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 	return storage.SeriesRef(series.ref), nil
 }
 
+func (a *appender) AppendCTZeroSample(_ storage.SeriesRef, _ labels.Labels, _ int64, _ int64) (storage.SeriesRef, error) {
+	// TODO(ptodev): implement this later
+	return 0, nil
+}
+
 func (a *appender) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
 	// TODO(rfratto): implement pushing metadata to WAL
 	return 0, nil
@@ -857,6 +870,10 @@ func (a *appender) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels, m meta
 func (a *appender) Commit() error {
 	if err := a.log(); err != nil {
 		return err
+	}
+
+	if a.w.notifier != nil {
+		a.w.notifier.Notify()
 	}
 
 	a.clearData()

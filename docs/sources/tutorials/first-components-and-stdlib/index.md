@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/first-components-and-stdlib/
-description: Learn about the basics of the {{< param "PRODUCT_NAME" >}} configuration syntax
+description: Learn about the basics of the Alloy configuration syntax
 title: First components and the standard library
 weight: 20
 ---
@@ -78,7 +78,7 @@ Look at the following simple pipeline:
 
 ```alloy
 local.file "example" {
-    path = env("HOME") + "file.txt"
+    filename = env("HOME") + "/file.txt"
 }
 
 prometheus.remote_write "local_prom" {
@@ -101,7 +101,7 @@ Each component has a link to its documentation, which contains a description of 
 {{< /admonition >}}
 
 This pipeline has two components: `local.file` and `prometheus.remote_write`.
-The `local.file` component is configured with a single argument, `path`, which is set by calling the [env][] standard library function to retrieve the value of the `HOME` environment variable and concatenating it with the string `"file.txt"`.
+The `local.file` component is configured with a single argument, `filename`, which is set by calling the [env][] standard library function to retrieve the value of the `HOME` environment variable and concatenating it with the string `"file.txt"`.
 The `local.file` component has a single export, `content`, which contains the contents of the file.
 
 The `prometheus.remote_write` component is configured with an `endpoint` block, containing the `url` attribute and a `basic_auth` block.

@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/loki/pkg/logproto"
+	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Configuration errors.
@@ -204,4 +205,9 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 // Name implements Stage
 func (m *multilineStage) Name() string {
 	return StageTypeMultiline
+}
+
+// Cleanup implements Stage.
+func (*multilineStage) Cleanup() {
+	// no-op
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
@@ -15,6 +16,11 @@ import (
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 )
+
+func getPtrToUint(v uint16) *uint16 {
+	res := &v
+	return res
+}
 
 func TestConfigConversion(t *testing.T) {
 	var (
@@ -221,6 +227,7 @@ func TestConfigConversion(t *testing.T) {
 					K8sSvc: &loadbalancingexporter.K8sSvcResolver{
 						Service: "lb-svc.lb-ns",
 						Ports:   []int32{4317},
+						Timeout: 1 * time.Second,
 					},
 				},
 				RoutingKey: "traceID",
@@ -234,6 +241,7 @@ func TestConfigConversion(t *testing.T) {
 				kubernetes {
 					service = "lb-svc.lb-ns"
 					ports = [55690, 55691]
+					timeout = "13s"
 				}
 			}
 			protocol {
@@ -248,6 +256,75 @@ func TestConfigConversion(t *testing.T) {
 					K8sSvc: &loadbalancingexporter.K8sSvcResolver{
 						Service: "lb-svc.lb-ns",
 						Ports:   []int32{55690, 55691},
+						Timeout: 13 * time.Second,
+					},
+				},
+				RoutingKey: "traceID",
+				Protocol:   defaultProtocol,
+			},
+		},
+		{
+			testName: "aws with defaults",
+			alloyCfg: `
+			resolver {
+				aws_cloud_map {
+					namespace = "cloudmap"
+					service_name = "otelcollectors"
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+				}
+			}
+			`,
+			expected: loadbalancingexporter.Config{
+				Resolver: loadbalancingexporter.ResolverSettings{
+					Static: nil,
+					K8sSvc: nil,
+					AWSCloudMap: &loadbalancingexporter.AWSCloudMapResolver{
+						NamespaceName: "cloudmap",
+						ServiceName:   "otelcollectors",
+						HealthStatus:  "HEALTHY",
+						Interval:      30 * time.Second,
+						Timeout:       5 * time.Second,
+						Port:          nil,
+					},
+				},
+				RoutingKey: "traceID",
+				Protocol:   defaultProtocol,
+			},
+		},
+		{
+			testName: "aws with non-defaults",
+			alloyCfg: `
+				resolver {
+					aws_cloud_map {
+						namespace = "cloudmap3"
+						service_name = "otelcollectors3"
+						health_status = "UNHEALTHY"
+						interval = "123s"
+						timeout = "113s"
+						port = 4321
+					}
+				}
+				protocol {
+					otlp {
+						client {}
+					}
+				}
+				`,
+			expected: loadbalancingexporter.Config{
+				Resolver: loadbalancingexporter.ResolverSettings{
+					Static: nil,
+					K8sSvc: nil,
+					AWSCloudMap: &loadbalancingexporter.AWSCloudMapResolver{
+						NamespaceName: "cloudmap3",
+						ServiceName:   "otelcollectors3",
+						HealthStatus:  "UNHEALTHY",
+						Interval:      123 * time.Second,
+						Timeout:       113 * time.Second,
+						Port:          getPtrToUint(4321),
 					},
 				},
 				RoutingKey: "traceID",
@@ -271,7 +348,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
 		alloyCfg string
-		expected otelcol.DebugMetricsArguments
+		expected otelcolCfg.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
@@ -287,8 +364,9 @@ func TestDebugMetricsConfig(t *testing.T) {
 				}
 			}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -308,8 +386,9 @@ func TestDebugMetricsConfig(t *testing.T) {
 				disable_high_cardinality_metrics = false
 			}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -329,8 +408,9 @@ func TestDebugMetricsConfig(t *testing.T) {
 				disable_high_cardinality_metrics = true
 			}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}

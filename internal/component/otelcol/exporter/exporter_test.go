@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -92,7 +93,7 @@ func newTestEnvironment(t *testing.T, fe *fakeExporter) *testEnvironment {
 			// Create a factory which always returns our instance of fakeExporter
 			// defined above.
 			factory := otelexporter.NewFactory(
-				"testcomponent",
+				otelcomponent.MustNewType("testcomponent"),
 				func() otelcomponent.Config {
 					res, err := fakeExporterArgs{}.Convert()
 					require.NoError(t, err)
@@ -137,8 +138,8 @@ func (fa fakeExporterArgs) Exporters() map[otelcomponent.DataType]map[otelcompon
 	return nil
 }
 
-func (fe fakeExporterArgs) DebugMetricsConfig() otelcol.DebugMetricsArguments {
-	var dma otelcol.DebugMetricsArguments
+func (fe fakeExporterArgs) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	var dma otelcolCfg.DebugMetricsArguments
 	dma.SetToDefault()
 	return dma
 }

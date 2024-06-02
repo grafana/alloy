@@ -57,11 +57,13 @@ func toServicegraphConnector(state *State, id component.InstanceID, cfg *service
 			MaxItems: cfg.Store.MaxItems,
 			TTL:      cfg.Store.TTL,
 		},
-		CacheLoop:            cfg.CacheLoop,
-		StoreExpirationLoop:  cfg.StoreExpirationLoop,
-		MetricsFlushInterval: cfg.MetricsFlushInterval,
+		CacheLoop:             cfg.CacheLoop,
+		StoreExpirationLoop:   cfg.StoreExpirationLoop,
+		MetricsFlushInterval:  cfg.MetricsFlushInterval,
+		DatabaseNameAttribute: cfg.DatabaseNameAttribute,
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
 		},
+		DebugMetrics: common.DefaultValue[servicegraph.Arguments]().DebugMetrics,
 	}
 }

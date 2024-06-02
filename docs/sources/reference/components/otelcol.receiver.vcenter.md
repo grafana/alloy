@@ -101,8 +101,8 @@ Name | Type | Description | Default | Required
 `vcenter.cluster.host.count` | [metric][] | Enables the `vcenter.cluster.host.count` metric. | `true` | no
 `vcenter.cluster.memory.effective` | [metric][] | Enables the `vcenter.cluster.memory.effective` metric. | `true` | no
 `vcenter.cluster.memory.limit` | [metric][] | Enables the `vcenter.cluster.memory.limit` metric. | `true` | no
-`vcenter.cluster.memory.used` | [metric][] | Enables the `vcenter.cluster.memory.used` metric. | `true` | no
 `vcenter.cluster.vm.count` | [metric][] | Enables the `vcenter.cluster.vm.count` metric. | `true` | no
+`vcenter.cluster.vm_template.count` | [metric][] | Enables the `vcenter.cluster.vm_template.count` metric. | `true` | no
 `vcenter.datastore.disk.usage` | [metric][] | Enables the `vcenter.datastore.disk.usage` metric. | `true` | no
 `vcenter.datastore.disk.utilization` | [metric][] | Enables the `vcenter.datastore.disk.utilization` metric. | `true` | no
 `vcenter.host.cpu.usage` | [metric][] | Enables the `vcenter.host.cpu.usage` metric. | `true` | no
@@ -112,8 +112,8 @@ Name | Type | Description | Default | Required
 `vcenter.host.disk.throughput` | [metric][] | Enables the `vcenter.host.disk.throughput` metric. | `true` | no
 `vcenter.host.memory.usage` | [metric][] | Enables the `vcenter.host.memory.usage` metric. | `true` | no
 `vcenter.host.memory.utilization` | [metric][] | Enables the `vcenter.host.memory.utilization` metric. | `true` | no
-`vcenter.host.network.packet.count` | [metric][] | Enables the `vcenter.host.network.packet.count` metric. | `true` | no
-`vcenter.host.network.packet.errors` | [metric][] | Enables the `vcenter.host.network.packet.errors` metric. | `true` | no
+`vcenter.host.network.packet.rate` | [metric][] | Enables the `vcenter.host.network.packet.rate` metric. | `true` | no
+`vcenter.host.network.packet.error.rate` | [metric][] | Enables the `vcenter.host.network.packet.error.rate` metric. | `true` | no
 `vcenter.host.network.throughput` | [metric][] | Enables the `vcenter.host.network.throughput` metric. | `true` | no
 `vcenter.host.network.usage` | [metric][] | Enables the `vcenter.host.network.usage` metric. | `true` | no
 `vcenter.resource_pool.cpu.shares` | [metric][] | Enables the `vcenter.resource_pool.cpu.shares` metric. | `true` | no
@@ -131,8 +131,9 @@ Name | Type | Description | Default | Required
 `vcenter.vm.memory.swapped` | [metric][] | Enables the `vcenter.vm.memory.swapped` metric. | `true` | no
 `vcenter.vm.memory.swapped_ssd` | [metric][] | Enables the `vcenter.vm.memory.swapped_ssd` metric. | `true` | no
 `vcenter.vm.memory.usage` | [metric][] | Enables the `vcenter.vm.memory.usage` metric. | `true` | no
-`vcenter.vm.memory.utilization` | [metric][] | Enables the `vcenter.vm.memory.utilization` metric. | `false` | no
-`vcenter.vm.network.packet.count` | [metric][] | Enables the `vcenter.vm.network.packet.count` metric. | `true` | no
+`vcenter.vm.memory.utilization` | [metric][] | Enables the `vcenter.vm.memory.utilization` metric. | `true` | no
+`vcenter.vm.network.packet.rate` | [metric][] | Enables the `vcenter.vm.network.packet.rate` metric. | `true` | no
+`vcenter.vm.network.packet.drop.rate` | [metric][] | Enables the `vcenter.vm.network.packet.drop.rate` metric. | `true` | no
 `vcenter.vm.network.throughput` | [metric][] | Enables the `vcenter.vm.network.throughput` metric. | `true` | no
 `vcenter.vm.network.usage` | [metric][] | Enables the `vcenter.vm.network.usage` metric. | `true` | no
 
@@ -149,13 +150,18 @@ Name | Type | Description | Default | Required
 
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
+`vcenter.datacenter.name` | [resource_attribute][] | Enables the `vcenter.datacenter.name` resource attribute. | `true` | no
 `vcenter.cluster.name` | [resource_attribute][] | Enables the `vcenter.cluster.name` resource attribute. | `true` | no
 `vcenter.datastore.name` | [resource_attribute][] | Enables the `vcenter.cluster.resource_pool` resource attribute. | `true` | no
 `vcenter.host.name` | [resource_attribute][] | Enables the `vcenter.host.name` resource attribute. | `true` | no
 `vcenter.resource_pool.inventory_path` | [resource_attribute][] | Enables the `vcenter.resource_pool.inventory_path` resource attribute. | `true` | no
 `vcenter.resource_pool.name` | [resource_attribute][] | Enables the `vcenter.resource_pool.name` resource attribute. | `true` | no
+`vcenter.virtual_app.inventory_path` | [resource_attribute][] | Enables the `vcenter.virtual_app.inventory_path` resource attribute. | `true` | no
+`vcenter.virtual_app.name` | [resource_attribute][] | Enables the `vcenter.virtual_app.name` resource attribute. | `true` | no
 `vcenter.vm.id` | [resource_attribute][] | Enables the `vcenter.vm.id` resource attribute. | `true` | no
 `vcenter.vm.name` | [resource_attribute][] | Enables the `vcenter.vm.name` resource attribute. | `true` | no
+`vcenter.vm_template.id` | [resource_attribute][] | Enables the `vcenter.vm_template.id` resource attribute. | `true` | no
+`vcenter.vm_template.name` | [resource_attribute][] | Enables the `vcenter.vm_template.name` resource attribute. | `true` | no
 
 [resource_attribute]: #resource_attribute-block
 

@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"

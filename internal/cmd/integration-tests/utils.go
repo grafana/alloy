@@ -56,7 +56,7 @@ func runSingleTest(testDir string, port int) {
 	dirName := filepath.Base(testDir)
 
 	var alloyLogBuffer bytes.Buffer
-	cmd := exec.Command(alloyBinaryPath, "run", "config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port))
+	cmd := exec.Command(alloyBinaryPath, "run", "config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental")
 	cmd.Dir = testDir
 	cmd.Stdout = &alloyLogBuffer
 	cmd.Stderr = &alloyLogBuffer

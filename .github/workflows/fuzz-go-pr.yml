@@ -1,0 +1,9 @@
+name: Run Go fuzz tests (PR)
+on:
+  pull_request:
+jobs:
+  fuzz:
+    uses: ./.github/workflows/fuzz-go.yml
+    with:
+      fuzz-time: 5m
+

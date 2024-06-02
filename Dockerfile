@@ -4,7 +4,7 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.0 as build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.1 as build
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
 ARG TARGETOS
@@ -39,21 +39,22 @@ ARG USERNAME="alloy"
 LABEL org.opencontainers.image.source="https://github.com/grafana/alloy"
 
 # Install dependencies needed at runtime.
-RUN <<EOF
-  apt-get update
-  apt-get install -qy libsystemd-dev tzdata ca-certificates libcap2-bin
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-EOF
+RUN  apt-get update \
+ &&  apt-get install -qy libsystemd-dev tzdata ca-certificates \
+ &&  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 
 COPY --from=build /src/alloy/build/alloy /bin/alloy
 COPY example-config.alloy /etc/alloy/config.alloy
 
 # Create alloy user in container, but do not set it as default
+#
+# NOTE(rfratto): non-root support in Docker containers is an experimental,
+# undocumented feature; use at your own risk.
 RUN groupadd --gid $UID $USERNAME
 RUN useradd -m -u $UID -g $UID $USERNAME
 RUN chown -R $USERNAME:$USERNAME /etc/alloy
 RUN chown -R $USERNAME:$USERNAME /bin/alloy
-RUN setcap 'cap_net_bind_service=+ep' /bin/alloy
 
 RUN mkdir -p /var/lib/alloy/data
 RUN chown -R $USERNAME:$USERNAME /var/lib/alloy
