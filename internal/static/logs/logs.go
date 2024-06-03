@@ -5,12 +5,14 @@ package logs
 import (
 	_ "time/tzdata" // embed timezone data
 
+	"github.com/grafana/loki/v3/clients/pkg/promtail/client"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/config"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/server"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/wal"
+	"github.com/grafana/loki/v3/pkg/tracing"
+
 	"github.com/grafana/alloy/internal/useragent"
-	"github.com/grafana/loki/clients/pkg/promtail/client"
-	"github.com/grafana/loki/clients/pkg/promtail/config"
-	"github.com/grafana/loki/clients/pkg/promtail/server"
-	"github.com/grafana/loki/clients/pkg/promtail/wal"
-	"github.com/grafana/loki/pkg/tracing"
+	_ "github.com/grafana/alloy/internal/util/otelfeaturegatefix" // Gracefully handle duplicate OTEL feature gates
 )
 
 func init() {

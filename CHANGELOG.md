@@ -10,23 +10,112 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes to non-GA functionality
+
+- Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
+  API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
+
+### Enhancements
+
+- (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
+- (_Public preview_) Add metrics to report status of `remotecfg` service. (@captncraig)
+
+- Added `scrape_protocols` option to `prometheus.scrape`, which allows to
+  control the preferred order of scrape protocols. (@thampiotr)
+
+- Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
+
+- Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
+  which removes some false-positive error log messages on Windows (@thampiotr)
+
+- Updates `processor/probabilistic_sampler` to use new `FailedClosed` field from OTEL release v0.101.0. (@StefanKurek)
+
+- Updates `receiver/vcenter` to use new features and bugfixes introduced in OTEL releases v0.100.0 and v0.101.0.
+  Refer to the [v0.100.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.100.0)
+  and [v0.101.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.101.0) release
+  notes for more detailed information.
+  Changes that directly affected the configuration are as follows: (@StefanKurek)
+  - The resource attribute `vcenter.datacenter.name` has been added and enabled by default for all resource types.
+  - The resource attribute `vcenter.virtual_app.inventory_path` has been added and enabled by default to
+    differentiate between resource pools and virtual apps.
+  - The resource attribute `vcenter.virtual_app.name` has been added and enabled by default to differentiate
+    between resource pools and virtual apps.
+  - The resource attribute `vcenter.vm_template.id` has been added and enabled by default to differentiate between
+    virtual machines and virtual machine templates.
+  - The resource attribute `vcenter.vm_template.name` has been added and enabled by default to differentiate between
+    virtual machines and virtual machine templates.
+  - The metric `vcenter.cluster.memory.used` has been removed.
+  - The metric `vcenter.host.network.packet.count` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.host.network.packet.rate` that is enabled by default.
+  - The metric `vcenter.host.network.packet.errors` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.host.network.packet.error.rate` that is enabled by default.
+  - The metric `vcenter.vm.network.packet.count` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.vm.network.packet.rate` that is enabled by default.
+  - The metric `vcenter.vm.network.packet.drop.rate` has been added and enabled by default.
+  - The metric `vcenter.cluster.vm_template.count` has been added and enabled by default.
+
+- Add `yaml_decode` to standard library. (@mattdurham, @djcode)
+
+- Allow override debug metrics level for `otelcol.*` components. (@hainenber)
+
+- Add an initial lower limit of 10 seconds for the the `poll_frequency`
+  argument in the `remotecfg` block. (@tpaschalis)
+
+- Added support for NS records to `discovery.dns`. (@djcode)
+
 ### Bugfixes
 
-- Upgrading `pyroscope/ebpf` from 0.4.6 to 0.4.7 (@korniltsev):
-  * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
-  * treat elf files with short build id (8 bytes) properly
+- Fixed an issue with `prometheus.scrape` in which targets that move from one
+  cluster instance to another could have a staleness marker inserted and result
+  in a gap in metrics (@thampiotr)
 
-v1.1.0-rc.0
------------
+### Other changes
+
+- `pyroscope.ebpf`, `pyroscope.java`, `pyroscope.scrape`, `pyroscope.write` and `discovery.process` components are now GA. (@korniltsev)
+
+- `prometheus.exporter.snmp`: Updating SNMP exporter from v0.24.1 to v0.26.0. (@ptodev, @erikbaranowski)
+
+- `prometheus.scrape` component's `enable_protobuf_negotiation` argument is now
+  deprecated and will be removed in a future major release.
+  Use `scrape_protocols` instead and refer to `prometheus.scrape` reference
+  documentation for further details. (@thampiotr)
+
+- Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
+
+v1.1.1
+------
+
+### Bugfixes
+
+- Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
+
+- Exit Alloy immediately if the port it runs on is not available.
+  This port can be configured with `--server.http.listen-addr` or using
+  the default listen address`127.0.0.1:12345`. (@mattdurham)
+
+- Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
+
+- Fix error on boot when using IPv6 advertise addresses without explicitly
+  specifying a port. (@matthewpi)
+
+- Fix an issue where having long component labels (>63 chars) on otelcol.auth
+  components lead to a panic. (@tpaschalis)
+
+- Update `prometheus.exporter.snowflake` with the [latest](https://github.com/grafana/snowflake-prometheus-exporter) version of the exporter as of May 28, 2024 (@StefanKurek)
+  - Fixes issue where returned `NULL` values from database could cause unexpected errors.
+
+- Bubble up SSH key conversion error to facilitate failed `import.git`. (@hainenber)
+
+v1.1.0
+------
 
 ### Features
 
 - (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
 
-- (_Public preview_) Introduce `boringcrypto` and `cngcrypto` Docker images.
-  These Docker images are tagged with the `-boringcrypto` (for Linux) and
-  `-cngcrypto` (for Windows) suffixes. `boringcrypto` support is only available
-  on AMD64 and ARM64, while `cngcrypto` support is only available on AMD64.
+- (_Public preview_) Introduce BoringCrypto Docker images.
+  The BoringCrypto image is tagged with the `-boringcrypto` suffix and
+  is only available on AMD64 and ARM64 Linux containers.
   (@rfratto, @mattdurham)
 
 - (_Public preview_) Introduce `boringcrypto` release assets. BoringCrypto
@@ -34,6 +123,9 @@ v1.1.0-rc.0
   @mattdurham)
 
 - `otelcol.exporter.loadbalancing`: Add a new `aws_cloud_map` resolver. (@ptodev)
+
+- Introduce a `otelcol.receiver.file_stats` component from the upstream
+  OpenTelemetry `filestatsreceiver` component. (@rfratto)
 
 ### Enhancements
 
@@ -84,6 +176,12 @@ v1.1.0-rc.0
 
 - Fix a bug where custom components would not shadow the stdlib. If you have a module whose name conflicts with an stdlib function
   and if you use this exact function in your config, then you will need to rename your module. (@wildum)
+
+- Fix an issue where `loki.source.docker` stops collecting logs after a container restart. (@wildum)
+
+- Upgrading `pyroscope/ebpf` from 0.4.6 to 0.4.7 (@korniltsev):
+  * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
+  * treat elf files with short build id (8 bytes) properly
 
 ### Other changes
 
@@ -161,6 +259,8 @@ v1.1.0-rc.0
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/32574
   - `otelcol.processor.resourcedetection`: Update to ec2 scraper so that core attributes are not dropped if describeTags returns an error (likely due to permissions).
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/30672
+
+- Use Go 1.22.3 for builds. (@kminehart)
 
 v1.0.0
 ------

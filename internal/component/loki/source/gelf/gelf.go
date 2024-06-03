@@ -4,14 +4,15 @@ import (
 	"context"
 	"sync"
 
+	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/relabel"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/gelf/internal/target"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/relabel"
 )
 
 func init() {

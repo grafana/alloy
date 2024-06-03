@@ -61,6 +61,7 @@ type Entry struct {
 type Stage interface {
 	Name() string
 	Run(chan Entry) chan Entry
+	Cleanup()
 }
 
 func (entry *Entry) copy() *Entry {
@@ -242,4 +243,9 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		panic(fmt.Sprintf("unreachable; should have decoded into one of the StageConfig fields: %+v", cfg))
 	}
 	return s, nil
+}
+
+// Cleanup implements Stage.
+func (*stageProcessor) Cleanup() {
+	// no-op
 }

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component/local/file"
 	filedetector "github.com/grafana/alloy/internal/filedetector"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/stretchr/testify/require"
 )

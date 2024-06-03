@@ -10,7 +10,7 @@ The `prometheus.exporter.snmp` component embeds
 [`snmp_exporter`](https://github.com/prometheus/snmp_exporter). `snmp_exporter` lets you collect SNMP data and expose them as Prometheus metrics.
 
 {{< admonition type="note" >}}
-`prometheus.exporter.snmp` uses the latest configuration introduced in version 0.23 of the Prometheus `snmp_exporter`.
+`prometheus.exporter.snmp` uses the latest configuration introduced in version 0.26 of the Prometheus `snmp_exporter`.
 {{< /admonition >}}
 
 ## Usage

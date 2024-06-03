@@ -10,19 +10,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/alloy/componenttest"
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/wal"
-	"github.com/grafana/alloy/internal/component/discovery"
-	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/loki/v3/pkg/logproto"
+	loki_util "github.com/grafana/loki/v3/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 
-	"github.com/grafana/loki/pkg/logproto"
-	loki_util "github.com/grafana/loki/pkg/util"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
+	"github.com/grafana/alloy/internal/component/discovery"
+	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestAlloyConfig(t *testing.T) {

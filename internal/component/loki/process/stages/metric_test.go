@@ -7,12 +7,13 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/loki/process/metric"
-	util_log "github.com/grafana/loki/pkg/util/log"
+	util_log "github.com/grafana/loki/v3/pkg/util/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/loki/process/metric"
 )
 
 var testMetricAlloy = `
@@ -119,6 +120,13 @@ func TestMetricsPipeline(t *testing.T) {
 
 	if err := testutil.GatherAndCompare(registry,
 		strings.NewReader(expectedMetrics)); err != nil {
+		t.Fatalf("mismatch metrics: %v", err)
+	}
+
+	pl.Cleanup()
+
+	if err := testutil.GatherAndCompare(registry,
+		strings.NewReader("")); err != nil {
 		t.Fatalf("mismatch metrics: %v", err)
 	}
 }

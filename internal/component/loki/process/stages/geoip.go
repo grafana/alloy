@@ -7,7 +7,7 @@ import (
 	"reflect"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/jmespath/go-jmespath"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
@@ -145,6 +145,11 @@ func (g *geoIPStage) Run(in chan Entry) chan Entry {
 // Name implements Stage
 func (g *geoIPStage) Name() string {
 	return StageTypeGeoIP
+}
+
+// Cleanup implements Stage.
+func (*geoIPStage) Cleanup() {
+	// no-op
 }
 
 func (g *geoIPStage) process(_ model.LabelSet, extracted map[string]interface{}) {

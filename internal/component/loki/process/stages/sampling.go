@@ -100,3 +100,8 @@ func (m *samplingStage) randomNumber() uint64 {
 func (m *samplingStage) Name() string {
 	return StageTypeSampling
 }
+
+// Cleanup implements Stage.
+func (*samplingStage) Cleanup() {
+	// no-op
+}

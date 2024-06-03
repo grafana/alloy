@@ -6,6 +6,7 @@ metadata:
   name: {{ include "alloy.fullname" . }}-cluster
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: networking
 spec:
   type: ClusterIP
   clusterIP: 'None'
@@ -18,7 +19,7 @@ spec:
     #
     # This service should only be used for clustering, and not metric
     # collection.
-    - name: http
+    - name: {{ $values.clustering.portName }}
       port: {{ $values.listenPort }}
       targetPort: {{ $values.listenPort }}
       protocol: "TCP"

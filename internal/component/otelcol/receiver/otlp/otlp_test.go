@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/alloy/componenttest"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/otlp"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
@@ -178,7 +179,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
 		alloyCfg string
-		expected otelcol.DebugMetricsArguments
+		expected otelcolCfg.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
@@ -188,8 +189,9 @@ func TestDebugMetricsConfig(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -203,8 +205,9 @@ func TestDebugMetricsConfig(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -218,8 +221,9 @@ func TestDebugMetricsConfig(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
@@ -56,6 +57,9 @@ type Arguments interface {
 	NextConsumers() *otelcol.ConsumerArguments
 
 	ConnectorType() int
+
+	// DebugMetricsConfig returns the configuration for debug metrics
+	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
 }
 
 // Connector is an Alloy component shim which manages an OpenTelemetry
@@ -143,12 +147,18 @@ func (p *Connector) Update(args component.Arguments) error {
 		return err
 	}
 
+	metricsLevel, err := pargs.DebugMetricsConfig().Level.Convert()
+	if err != nil {
+		return err
+	}
+
 	settings := otelconnector.CreateSettings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(p.opts.Logger),
 
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
+			MetricsLevel:   metricsLevel,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},

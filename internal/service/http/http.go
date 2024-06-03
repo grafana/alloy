@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof" // Register pprof handlers
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -15,10 +16,10 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/alloy"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/static/server"
 	"github.com/grafana/ckit/memconn"
@@ -43,7 +44,7 @@ type Options struct {
 	Gatherer prometheus.Gatherer  // Where to collect metrics from.
 
 	ReadyFunc  func() bool
-	ReloadFunc func() (*alloy.Source, error)
+	ReloadFunc func() (*alloy_runtime.Source, error)
 
 	HTTPListenAddr   string // Address to listen for HTTP traffic on.
 	MemoryListenAddr string // Address to accept in-memory traffic on.
@@ -151,7 +152,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	netLis, err := net.Listen("tcp", s.opts.HTTPListenAddr)
 	if err != nil {
-		return fmt.Errorf("failed to listen on %s: %w", s.opts.HTTPListenAddr, err)
+		// There is no recovering from failing to listen on the port.
+		level.Error(s.log).Log("msg", fmt.Sprintf("failed to listen on %s", s.opts.HTTPListenAddr), "err", err)
+		os.Exit(1)
 	}
 	if err := s.tcpLis.SetInner(netLis); err != nil {
 		return fmt.Errorf("failed to use listener: %w", err)

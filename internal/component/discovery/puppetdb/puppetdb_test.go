@@ -4,10 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/puppetdb"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 var exampleAlloyConfig = `
@@ -39,7 +41,7 @@ func TestConvert(t *testing.T) {
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
-	sd := args.Convert()
+	sd := args.Convert().(*prom_discovery.SDConfig)
 	assert.Equal(t, "https://www.example.com", sd.URL)
 	assert.Equal(t, model.Duration(60*time.Second), sd.RefreshInterval)
 	assert.Equal(t, "abc", sd.Query)
