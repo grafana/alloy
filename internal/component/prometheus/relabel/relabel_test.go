@@ -1,6 +1,7 @@
 package relabel
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	prom "github.com/prometheus/client_golang/prometheus"
@@ -67,13 +69,11 @@ func TestNil(t *testing.T) {
 		return ref, nil
 	}))
 	relabeller, err := New(component.Options{
-		ID:            "1",
-		Logger:        util.TestAlloyLogger(t),
-		OnStateChange: func(e component.Exports) {},
-		Registerer:    prom.NewRegistry(),
-		GetServiceData: func(name string) (interface{}, error) {
-			return labelstore.New(nil, prom.DefaultRegisterer), nil
-		},
+		ID:             "1",
+		Logger:         util.TestAlloyLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		Registerer:     prom.NewRegistry(),
+		GetServiceData: getServiceData,
 	}, Arguments{
 		ForwardTo: []storage.Appendable{fanout},
 		MetricRelabelConfigs: []*alloy_relabel.Config{
@@ -154,13 +154,11 @@ func generateRelabel(t *testing.T) *Component {
 		return ref, nil
 	}))
 	relabeller, err := New(component.Options{
-		ID:            "1",
-		Logger:        util.TestAlloyLogger(t),
-		OnStateChange: func(e component.Exports) {},
-		Registerer:    prom.NewRegistry(),
-		GetServiceData: func(name string) (interface{}, error) {
-			return labelstore.New(nil, prom.DefaultRegisterer), nil
-		},
+		ID:             "1",
+		Logger:         util.TestAlloyLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		Registerer:     prom.NewRegistry(),
+		GetServiceData: getServiceData,
 	}, Arguments{
 		ForwardTo: []storage.Appendable{fanout},
 		MetricRelabelConfigs: []*alloy_relabel.Config{
@@ -224,4 +222,15 @@ func TestRuleGetter(t *testing.T) {
 	require.Equal(t, gotUpdated[0].Action, alloy_relabel.Drop)
 	require.Equal(t, gotUpdated[0].SourceLabels, gotOriginal[0].SourceLabels)
 	require.Equal(t, gotUpdated[0].Regex, gotOriginal[0].Regex)
+}
+
+func getServiceData(name string) (interface{}, error) {
+	switch name {
+	case labelstore.ServiceName:
+		return labelstore.New(nil, prom.DefaultRegisterer), nil
+	case livedebugging.ServiceName:
+		return livedebugging.NewLiveDebugging(), nil
+	default:
+		return nil, fmt.Errorf("service not found %s", name)
+	}
 }
