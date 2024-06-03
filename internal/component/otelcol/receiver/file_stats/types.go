@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -16,7 +17,7 @@ type Arguments struct {
 	MetricsBuilder MetricsBuilderArguments     `alloy:",squash"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`

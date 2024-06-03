@@ -22,35 +22,54 @@ Main (unreleased)
 
 - Added `scrape_protocols` option to `prometheus.scrape`, which allows to
   control the preferred order of scrape protocols. (@thampiotr)
-  
+
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
 
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
-  which removes some false-positive error log messages on Windows (@thampiotr) 
+  which removes some false-positive error log messages on Windows (@thampiotr)
+
+- Updates `processor/probabilistic_sampler` to use new `FailedClosed` field from OTEL release v0.101.0. (@StefanKurek)
+
+- Updates `receiver/vcenter` to use new features and bugfixes introduced in OTEL releases v0.100.0 and v0.101.0.
+  Refer to the [v0.100.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.100.0)
+  and [v0.101.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.101.0) release
+  notes for more detailed information.
+  Changes that directly affected the configuration are as follows: (@StefanKurek)
+  - The resource attribute `vcenter.datacenter.name` has been added and enabled by default for all resource types.
+  - The resource attribute `vcenter.virtual_app.inventory_path` has been added and enabled by default to
+    differentiate between resource pools and virtual apps.
+  - The resource attribute `vcenter.virtual_app.name` has been added and enabled by default to differentiate
+    between resource pools and virtual apps.
+  - The resource attribute `vcenter.vm_template.id` has been added and enabled by default to differentiate between
+    virtual machines and virtual machine templates.
+  - The resource attribute `vcenter.vm_template.name` has been added and enabled by default to differentiate between
+    virtual machines and virtual machine templates.
+  - The metric `vcenter.cluster.memory.used` has been removed.
+  - The metric `vcenter.host.network.packet.count` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.host.network.packet.rate` that is enabled by default.
+  - The metric `vcenter.host.network.packet.errors` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.host.network.packet.error.rate` that is enabled by default.
+  - The metric `vcenter.vm.network.packet.count` has been hidden (removed from docs & disabled from default).
+    It has been replaced by a new metric `vcenter.vm.network.packet.rate` that is enabled by default.
+  - The metric `vcenter.vm.network.packet.drop.rate` has been added and enabled by default.
+  - The metric `vcenter.cluster.vm_template.count` has been added and enabled by default.
 
 - Add `yaml_decode` to standard library. (@mattdurham, @djcode)
+
+- Allow override debug metrics level for `otelcol.*` components. (@hainenber)
+
+- Add an initial lower limit of 10 seconds for the the `poll_frequency`
+  argument in the `remotecfg` block. (@tpaschalis)
+
+- Added support for NS records to `discovery.dns`. (@djcode)
 
 - Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)
 
 ### Bugfixes
 
-- Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
-
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
   cluster instance to another could have a staleness marker inserted and result
   in a gap in metrics (@thampiotr)
-
-- Exit Alloy immediately if the port it runs on is not available. 
-  This port can be configured with `--server.http.listen-addr` or using
-  the default listen address`127.0.0.1:12345`. (@mattdurham)
-
-- Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
-
-- Fix error on boot when using IPv6 advertise addresses without explicitly
-  specifying a port. (@matthewpi)
-  
-- Fix an issue where having long component labels (>63 chars) on otelcol.auth
-  components lead to a panic. (@tpaschalis)
 
 ### Other changes
 
@@ -66,6 +85,30 @@ Main (unreleased)
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
 
 - Upgrade Beyla from v1.5.1 to v1.6.3. (@marctc)
+
+v1.1.1
+------
+
+### Bugfixes
+
+- Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
+
+- Exit Alloy immediately if the port it runs on is not available.
+  This port can be configured with `--server.http.listen-addr` or using
+  the default listen address`127.0.0.1:12345`. (@mattdurham)
+
+- Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
+
+- Fix error on boot when using IPv6 advertise addresses without explicitly
+  specifying a port. (@matthewpi)
+
+- Fix an issue where having long component labels (>63 chars) on otelcol.auth
+  components lead to a panic. (@tpaschalis)
+
+- Update `prometheus.exporter.snowflake` with the [latest](https://github.com/grafana/snowflake-prometheus-exporter) version of the exporter as of May 28, 2024 (@StefanKurek)
+  - Fixes issue where returned `NULL` values from database could cause unexpected errors.
+
+- Bubble up SSH key conversion error to facilitate failed `import.git`. (@hainenber)
 
 v1.1.0
 ------

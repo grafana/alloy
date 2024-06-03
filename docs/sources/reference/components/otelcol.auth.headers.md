@@ -40,8 +40,10 @@ The following blocks are supported inside the definition of
 Hierarchy | Block      | Description                          | Required
 ----------|------------|--------------------------------------|---------
 header    | [header][] | Custom header to attach to requests. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [header]: #header-block
+[debug_metrics]: #debug_metrics-block
 
 ### header block
 
@@ -71,6 +73,10 @@ For `from_context` to work, other components in the pipeline also need to be con
 * If an `otelcol.processor.batch` is present in the pipeline, it must be configured to preserve client metadata. 
   Do this by adding the value that `from_context` needs to the `metadata_keys` of the batch processor.
 * `otelcol` receivers must be configured with `include_metadata` set to `true` so that metadata keys are available to the pipeline.
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

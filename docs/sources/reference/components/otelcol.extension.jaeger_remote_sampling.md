@@ -47,6 +47,7 @@ source                                | [source][]             | Configures the 
 source > remote                       | [remote][]             | Configures the gRPC client used to retrieve the Jaeger remote sampling document. | no
 source > remote > tls                 | [tls_client][]                | Configures TLS for the gRPC client.                                              | no
 source > remote > keepalive           | [keepalive][]          | Configures keepalive settings for the gRPC client.                               | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `grpc > tls`
 refers to a `tls` block defined inside a `grpc` block.
@@ -62,6 +63,7 @@ refers to a `tls` block defined inside a `grpc` block.
 [remote]: #remote-block
 [tls_client]: #tls-client-block
 [keepalive_client]: #keepalive-client-block
+[debug_metrics]: #debug_metrics-block
 
 ### http block
 
@@ -237,6 +239,10 @@ Name                    | Type       | Description                              
 `ping_wait`             | `duration` | How often to ping the server after no activity.                                            |         | no
 `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server does not respond to a ping. |         | no
 `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                      |         | no
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 
