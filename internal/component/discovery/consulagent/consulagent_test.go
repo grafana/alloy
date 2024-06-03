@@ -4,11 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestConvert(t *testing.T) {
@@ -32,7 +33,7 @@ func TestConvert(t *testing.T) {
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
-	converted := args.Convert()
+	converted := args.Convert().(*SDConfig)
 	assert.Equal(t, "localhost:8500", converted.Server)
 	assert.Equal(t, promcfg.Secret("token"), converted.Token)
 	assert.Equal(t, "dc", converted.Datacenter)

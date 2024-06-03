@@ -11,14 +11,12 @@ import (
 	"strings"
 	"time"
 
-	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanmetricsprocessor"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
@@ -40,6 +38,8 @@ import (
 	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
 
+	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
+
 	"github.com/grafana/alloy/internal/static/logs"
 	"github.com/grafana/alloy/internal/static/traces/automaticloggingprocessor"
 	"github.com/grafana/alloy/internal/static/traces/noopreceiver"
@@ -47,7 +47,9 @@ import (
 	"github.com/grafana/alloy/internal/static/traces/pushreceiver"
 	"github.com/grafana/alloy/internal/static/traces/remotewriteexporter"
 	"github.com/grafana/alloy/internal/static/traces/servicegraphprocessor"
+	"github.com/grafana/alloy/internal/static/traces/spanmetricsprocessor"
 	"github.com/grafana/alloy/internal/util"
+	_ "github.com/grafana/alloy/internal/util/otelfeaturegatefix" // Gracefully handle duplicate OTEL feature gates
 )
 
 const (
@@ -142,7 +144,6 @@ type InstanceConfig struct {
 	PodAssociations []string      `yaml:"prom_sd_pod_associations,omitempty"`
 
 	// SpanMetricsProcessor:
-	// https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.95.0/processor/spanmetricsprocessor
 	SpanMetrics *SpanMetricsConfig `yaml:"spanmetrics,omitempty"`
 
 	// AutomaticLogging
@@ -598,7 +599,7 @@ func resolver(config map[string]interface{}) (map[string]interface{}, error) {
 func (c *InstanceConfig) loadBalancingExporter() (map[string]interface{}, error) {
 	exporter, err := exporter(RemoteWriteConfig{
 		// Endpoint is omitted in OTel load balancing exporter
-		Endpoint:    "noop",
+		Endpoint:    "noop:8888",
 		Compression: c.LoadBalancing.Exporter.Compression,
 		Insecure:    c.LoadBalancing.Exporter.Insecure,
 		TLSConfig:   &prom_config.TLSConfig{InsecureSkipVerify: c.LoadBalancing.Exporter.InsecureSkipVerify},

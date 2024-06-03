@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/connector"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
@@ -57,8 +58,15 @@ type Arguments struct {
 	// If set to 0, metrics are flushed on every received batch of traces.
 	MetricsFlushInterval time.Duration `alloy:"metrics_flush_interval,attr,optional"`
 
+	// DatabaseNameAttribute is the attribute name used to identify the database name from span attributes.
+	// The default value is db.name
+	DatabaseNameAttribute string `alloy:"database_name_attribute,attr,optional"`
+
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 type StoreConfig struct {
@@ -101,9 +109,10 @@ func (args *Arguments) SetToDefault() {
 			10 * time.Second,
 			15 * time.Second,
 		},
-		Dimensions:          []string{},
-		CacheLoop:           1 * time.Minute,
-		StoreExpirationLoop: 2 * time.Second,
+		Dimensions:            []string{},
+		CacheLoop:             1 * time.Minute,
+		StoreExpirationLoop:   2 * time.Second,
+		DatabaseNameAttribute: "db.name",
 		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 		// the "processor.servicegraph.virtualNode" feature gate.
 		// VirtualNodePeerAttributes: []string{
@@ -118,6 +127,7 @@ func (args *Arguments) SetToDefault() {
 		// },
 	}
 	args.Store.SetToDefault()
+	args.DebugMetrics.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -154,9 +164,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 			MaxItems: args.Store.MaxItems,
 			TTL:      args.Store.TTL,
 		},
-		CacheLoop:            args.CacheLoop,
-		StoreExpirationLoop:  args.StoreExpirationLoop,
-		MetricsFlushInterval: args.MetricsFlushInterval,
+		CacheLoop:             args.CacheLoop,
+		StoreExpirationLoop:   args.StoreExpirationLoop,
+		MetricsFlushInterval:  args.MetricsFlushInterval,
+		DatabaseNameAttribute: args.DatabaseNameAttribute,
 		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 		// the "processor.servicegraph.virtualNode" feature gate.
 		// VirtualNodePeerAttributes: args.VirtualNodePeerAttributes,
@@ -181,4 +192,9 @@ func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
 // ConnectorType() int implements connector.Arguments.
 func (Arguments) ConnectorType() int {
 	return connector.ConnectorTracesToMetrics
+}
+
+// DebugMetricsConfig implements connector.Arguments.
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	return args.DebugMetrics
 }

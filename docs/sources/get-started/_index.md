@@ -1,4 +1,6 @@
 ---
+aliases:
+- ./getting_started/
 canonical: https://grafana.com/docs/alloy/latest/get-started/
 description: Learn how to install and use Grafana Alloy
 menuTitle: Get started

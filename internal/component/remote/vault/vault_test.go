@@ -12,7 +12,7 @@ import (
 
 	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/componenttest"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"

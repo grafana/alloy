@@ -4,11 +4,12 @@ package gce
 import (
 	"time"
 
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/discovery/gce"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/discovery/gce"
 )
 
 func init() {
@@ -19,7 +20,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -46,9 +47,8 @@ func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
-// Convert converts Arguments to the upstream Prometheus SD type.
-func (args Arguments) Convert() gce.SDConfig {
-	return gce.SDConfig{
+func (args Arguments) Convert() discovery.DiscovererConfig {
+	return &gce.SDConfig{
 		Project:         args.Project,
 		Zone:            args.Zone,
 		Filter:          args.Filter,
@@ -56,12 +56,4 @@ func (args Arguments) Convert() gce.SDConfig {
 		Port:            args.Port,
 		TagSeparator:    args.TagSeparator,
 	}
-}
-
-// New returns a new instance of a discovery.gce component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
-		conf := args.(Arguments).Convert()
-		return gce.NewDiscovery(conf, opts.Logger)
-	})
 }

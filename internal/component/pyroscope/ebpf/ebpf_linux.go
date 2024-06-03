@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	ebpfspy "github.com/grafana/pyroscope/ebpf"
 	demangle2 "github.com/grafana/pyroscope/ebpf/cpp/demangle"
 	"github.com/grafana/pyroscope/ebpf/pprof"
@@ -25,7 +25,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.ebpf",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -66,13 +66,10 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	return res, nil
 }
 
-func (rc *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
-	*rc = defaultArguments()
-	type config Arguments
-	return f((*config)(rc))
-}
+var DefaultArguments = NewDefaultArguments()
 
-func defaultArguments() Arguments {
+// NewDefaultArguments create the default settings for a scrape job.
+func NewDefaultArguments() Arguments {
 	return Arguments{
 		CollectInterval:      15 * time.Second,
 		SampleRate:           97,
@@ -85,7 +82,14 @@ func defaultArguments() Arguments {
 		CollectKernelProfile: true,
 		Demangle:             "none",
 		PythonEnabled:        true,
+		SymbolsMapSize:       2048,
+		PIDMapSize:           16384,
 	}
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (arg *Arguments) SetToDefault() {
+	*arg = NewDefaultArguments()
 }
 
 type Component struct {
@@ -250,6 +254,10 @@ func convertSessionOptions(args Arguments, ms *metrics) ebpfspy.SessionOptions {
 				Size:       args.SameFileCacheSize,
 				KeepRounds: args.CacheRounds,
 			},
+		},
+		BPFMapsOptions: ebpfspy.BPFMapsOptions{
+			SymbolsMapSize: uint32(args.SymbolsMapSize),
+			PIDMapSize:     uint32(args.PIDMapSize),
 		},
 	}
 }

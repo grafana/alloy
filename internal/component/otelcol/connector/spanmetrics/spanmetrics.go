@@ -7,6 +7,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/connector"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
@@ -65,6 +66,10 @@ type Arguments struct {
 	// MetricsEmitInterval is the time period between when metrics are flushed or emitted to the downstream components.
 	MetricsFlushInterval time.Duration `alloy:"metrics_flush_interval,attr,optional"`
 
+	// MetricsExpiration is the time period after which metrics are considered stale and are removed from the cache.
+	// Default value (0) means that the metrics will never expire.
+	MetricsExpiration time.Duration `alloy:"metrics_expiration,attr,optional"`
+
 	// Namespace is the namespace of the metrics emitted by the connector.
 	Namespace string `alloy:"namespace,attr,optional"`
 
@@ -76,6 +81,9 @@ type Arguments struct {
 
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 var (
@@ -93,13 +101,15 @@ const (
 var DefaultArguments = Arguments{
 	DimensionsCacheSize:      1000,
 	AggregationTemporality:   AggregationTemporalityCumulative,
-	MetricsFlushInterval:     15 * time.Second,
+	MetricsFlushInterval:     60 * time.Second,
+	MetricsExpiration:        0,
 	ResourceMetricsCacheSize: 1000,
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
+	args.DebugMetrics.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -174,6 +184,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		AggregationTemporality:       aggregationTemporality,
 		Histogram:                    *histogram,
 		MetricsFlushInterval:         args.MetricsFlushInterval,
+		MetricsExpiration:            args.MetricsExpiration,
 		Namespace:                    args.Namespace,
 		Exemplars:                    *args.Exemplars.Convert(),
 		Events:                       args.Events.Convert(),
@@ -198,4 +209,9 @@ func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
 // ConnectorType() int implements connector.Arguments.
 func (Arguments) ConnectorType() int {
 	return connector.ConnectorTracesToMetrics
+}
+
+// DebugMetricsConfig implements receiver.Arguments.
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	return args.DebugMetrics
 }

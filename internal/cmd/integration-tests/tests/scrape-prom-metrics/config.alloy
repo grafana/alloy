@@ -2,7 +2,7 @@ prometheus.scrape "scrape_prom_metrics" {
   targets = [
     {"__address__" = "localhost:9001"},
   ]
-  forward_to = [prometheus.remote_write.scrape_prom_metrics.receiver]
+  forward_to = [prometheus.remote_write.scrape_prom_metrics.receiver, otelcol.receiver.prometheus.scrape_prom_metrics_to_otlp.receiver]
   scrape_classic_histograms = true
   enable_protobuf_negotiation = true
   scrape_interval = "1s"
@@ -22,5 +22,33 @@ prometheus.remote_write "scrape_prom_metrics" {
   }
   external_labels = {
     test_name = "scrape_prom_metrics",
+  }
+}
+
+otelcol.receiver.prometheus "scrape_prom_metrics_to_otlp" {
+  output {
+    metrics = [otelcol.processor.attributes.scrape_prom_metrics_to_otlp.input]
+  }
+}
+
+otelcol.processor.attributes "scrape_prom_metrics_to_otlp" {
+  action {
+    key = "test_name"
+    value = "scrape_prom_metrics_to_otlp"
+    action = "insert"
+  }
+
+  output {
+    metrics = [otelcol.exporter.otlphttp.scrape_prom_metrics_to_otlp.input]
+  }
+}
+
+otelcol.exporter.otlphttp "scrape_prom_metrics_to_otlp" {
+  client {
+    endpoint = "http://localhost:9009/otlp"
+    tls {
+      insecure             = true
+      insecure_skip_verify = true
+    }
   }
 }

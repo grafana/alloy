@@ -2,10 +2,13 @@
 package kafka
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -48,7 +51,7 @@ type Arguments struct {
 	HeaderExtraction HeaderExtraction        `alloy:"header_extraction,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -63,7 +66,6 @@ func (args *Arguments) SetToDefault() {
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
 
-		Topic:         "otlp_spans",
 		Encoding:      "otlp_proto",
 		Brokers:       []string{"localhost:9092"},
 		ClientID:      "otel-collector",
@@ -75,6 +77,27 @@ func (args *Arguments) SetToDefault() {
 	args.MessageMarking.SetToDefault()
 	args.HeaderExtraction.SetToDefault()
 	args.DebugMetrics.SetToDefault()
+}
+
+// Validate implements syntax.Validator.
+func (args *Arguments) Validate() error {
+	var signals []string
+
+	if len(args.Topic) > 0 {
+		if len(args.Output.Logs) > 0 {
+			signals = append(signals, "logs")
+		}
+		if len(args.Output.Metrics) > 0 {
+			signals = append(signals, "metrics")
+		}
+		if len(args.Output.Traces) > 0 {
+			signals = append(signals, "traces")
+		}
+		if len(signals) > 1 {
+			return fmt.Errorf("only one signal can be set in the output block when a Kafka topic is explicitly set; currently set signals: %s", strings.Join(signals, ", "))
+		}
+	}
+	return nil
 }
 
 // Convert implements receiver.Arguments.
@@ -330,6 +353,6 @@ func (h HeaderExtraction) Convert() kafkareceiver.HeaderExtraction {
 }
 
 // DebugMetricsConfig implements receiver.Arguments.
-func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
 }

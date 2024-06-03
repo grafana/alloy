@@ -24,7 +24,7 @@ const (
 // NewFactory creates a factory for the jaeger remote sampling extension.
 func NewFactory() extension.Factory {
 	return extension.NewFactory(
-		typeStr,
+		otelcomponent.MustNewType(typeStr),
 		createDefaultConfig,
 		createExtension,
 		otelcomponent.StabilityLevelBeta,

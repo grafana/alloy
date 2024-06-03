@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"golang.org/x/time/rate"
@@ -128,6 +128,11 @@ func (m *limitStage) shouldThrottle(labels model.LabelSet) bool {
 // Name implements Stage
 func (m *limitStage) Name() string {
 	return StageTypeLimit
+}
+
+// Cleanup implements Stage.
+func (*limitStage) Cleanup() {
+	// no-op
 }
 
 func getDropCountByLabelMetric(registerer prometheus.Registerer) *prometheus.CounterVec {

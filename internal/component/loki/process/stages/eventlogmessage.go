@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/common/model"
 )
 
@@ -114,6 +114,11 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, ke
 
 func (m *eventLogMessageStage) Name() string {
 	return StageTypeEventLogMessage
+}
+
+// Cleanup implements Stage.
+func (*eventLogMessageStage) Cleanup() {
+	// no-op
 }
 
 // Sanitize a input string to convert it into a valid prometheus label

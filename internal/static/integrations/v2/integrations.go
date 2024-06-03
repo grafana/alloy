@@ -25,10 +25,12 @@ import (
 	"net/url"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
-	"github.com/grafana/alloy/internal/static/server"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
+
+	"github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
+	"github.com/grafana/alloy/internal/static/server"
+	_ "github.com/grafana/alloy/internal/util/otelfeaturegatefix" // Gracefully handle duplicate OTEL feature gates
 )
 
 var (

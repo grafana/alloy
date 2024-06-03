@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -57,6 +58,74 @@ func TestReceiver(t *testing.T) {
 	require.NoError(t, waitTracesTrigger.Wait(time.Second), "consumer did not get invoked")
 }
 
+func TestReceiverNotStarted(t *testing.T) {
+	var (
+		waitConsumerTrigger = util.NewWaitTrigger()
+		onTracesConsumer    = func(t otelconsumer.Traces) {
+			waitConsumerTrigger.Trigger()
+		}
+	)
+	te := newTestEnvironment(t, onTracesConsumer)
+	te.Start(fakeReceiverArgs{
+		Output: &otelcol.ConsumerArguments{},
+	})
+
+	// Check that no trace receiver was started because it's not needed by the output.
+	require.ErrorContains(t, waitConsumerTrigger.Wait(time.Second), "context deadline exceeded")
+}
+
+func TestReceiverUpdate(t *testing.T) {
+	var (
+		consumer otelconsumer.Traces
+
+		waitConsumerTrigger = util.NewWaitTrigger()
+		onTracesConsumer    = func(t otelconsumer.Traces) {
+			consumer = t
+			waitConsumerTrigger.Trigger()
+		}
+
+		waitTracesTrigger = util.NewWaitTrigger()
+		nextConsumer      = &fakeconsumer.Consumer{
+			ConsumeTracesFunc: func(context.Context, ptrace.Traces) error {
+				waitTracesTrigger.Trigger()
+				return nil
+			},
+		}
+	)
+
+	te := newTestEnvironment(t, onTracesConsumer)
+	te.Start(fakeReceiverArgs{
+		Output: &otelcol.ConsumerArguments{},
+	})
+
+	// Check that no trace receiver was started because it's not needed by the output.
+	require.ErrorContains(t, waitConsumerTrigger.Wait(time.Second), "context deadline exceeded")
+
+	te.Controller.Update(fakeReceiverArgs{
+		Output: &otelcol.ConsumerArguments{
+			Traces: []otelcol.Consumer{nextConsumer},
+		},
+	})
+
+	// Now the trace receiver is started.
+	require.NoError(t, waitConsumerTrigger.Wait(time.Second), "no traces consumer sent")
+
+	err := consumer.ConsumeTraces(context.Background(), ptrace.NewTraces())
+	require.NoError(t, err)
+
+	require.NoError(t, waitTracesTrigger.Wait(time.Second), "consumer did not get invoked")
+
+	waitConsumerTrigger = util.NewWaitTrigger()
+
+	// Remove the trace receiver.
+	te.Controller.Update(fakeReceiverArgs{
+		Output: &otelcol.ConsumerArguments{},
+	})
+
+	// Check that after the update no trace receiver is started.
+	require.ErrorContains(t, waitConsumerTrigger.Wait(time.Second), "context deadline exceeded")
+}
+
 type testEnvironment struct {
 	t *testing.T
 
@@ -74,7 +143,7 @@ func newTestEnvironment(t *testing.T, onTracesConsumer func(t otelconsumer.Trace
 			// Create a factory which always returns our instance of fakeReceiver
 			// defined above.
 			factory := otelreceiver.NewFactory(
-				"testcomponent",
+				otelcomponent.MustNewType("testcomponent"),
 				func() otelcomponent.Config { return nil },
 				otelreceiver.WithTraces(func(
 					_ context.Context,
@@ -128,8 +197,8 @@ func (fa fakeReceiverArgs) NextConsumers() *otelcol.ConsumerArguments {
 	return fa.Output
 }
 
-func (fa fakeReceiverArgs) DebugMetricsConfig() otelcol.DebugMetricsArguments {
-	var args otelcol.DebugMetricsArguments
+func (fa fakeReceiverArgs) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	var args otelcolCfg.DebugMetricsArguments
 	args.SetToDefault()
 	return args
 }

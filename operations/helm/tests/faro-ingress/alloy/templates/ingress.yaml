@@ -11,6 +11,7 @@ metadata:
     app.kubernetes.io/instance: alloy
     app.kubernetes.io/version: "vX.Y.Z"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: networking
 spec:
   rules:
     - host: chart-example.local

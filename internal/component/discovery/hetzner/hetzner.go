@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/hetzner"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/common/model"
-	prom_discovery "github.com/prometheus/prometheus/discovery/hetzner"
 )
 
 func init() {
@@ -20,7 +21,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -53,7 +54,7 @@ func (args *Arguments) Validate() error {
 	return args.HTTPClientConfig.Validate()
 }
 
-func (args *Arguments) Convert() *prom_discovery.SDConfig {
+func (args Arguments) Convert() discovery.DiscovererConfig {
 	httpClient := &args.HTTPClientConfig
 
 	cfg := &prom_discovery.SDConfig{
@@ -63,12 +64,4 @@ func (args *Arguments) Convert() *prom_discovery.SDConfig {
 		Role:             prom_discovery.Role(args.Role),
 	}
 	return cfg
-}
-
-// New returns a new instance of a discovery.hetzner component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
-		newArgs := args.(Arguments)
-		return prom_discovery.NewDiscovery(newArgs.Convert(), opts.Logger)
-	})
 }

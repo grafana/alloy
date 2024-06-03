@@ -14,18 +14,19 @@ import (
 	"sync"
 	"time"
 
-	docker_types "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	"github.com/grafana/loki/pkg/logproto"
+	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -94,7 +95,7 @@ func (t *Target) processLoop(ctx context.Context) {
 	t.wg.Add(1)
 	defer t.wg.Done()
 
-	opts := docker_types.ContainerLogsOptions{
+	opts := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
@@ -230,16 +231,16 @@ func (t *Target) StartIfNotRunning() {
 		ctx, cancel := context.WithCancel(context.Background())
 		t.cancel = cancel
 		go t.processLoop(ctx)
-	} else {
-		level.Debug(t.logger).Log("msg", "attempted to start process loop but it's already running", "container", t.containerName)
 	}
 }
 
 // Stop shuts down the target.
 func (t *Target) Stop() {
-	t.cancel()
-	t.wg.Wait()
-	level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerName)
+	if t.Ready() {
+		t.cancel()
+		t.wg.Wait()
+		level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerName)
+	}
 }
 
 // Ready reports whether the target is running.
