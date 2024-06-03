@@ -63,6 +63,8 @@ Main (unreleased)
 
 - Added support for NS records to `discovery.dns`. (@djcode)
 
+- Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart) 
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
