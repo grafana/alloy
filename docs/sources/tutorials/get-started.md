@@ -95,7 +95,8 @@ services:
       - "3000:3000"
 ```
 
-After running `docker-compose up`, open [http://localhost:3000](http://localhost:3000) in your browser to view the Grafana UI.
+After running `docker-compose up`, open [http://localhost:3000](http://localhost:3000) in your browser to view the Grafana UI. In some newer
+docker installs, this command may be run as `docker compose up` without the dash character.
 
 ## Configure {{< param "PRODUCT_NAME" >}}
 
