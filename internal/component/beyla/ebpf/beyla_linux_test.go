@@ -34,14 +34,18 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				name = "test"
 				namespace = "default"
 				open_ports = "80,443"
-				k8s_namespace = "default"
+				kubernetes {
+					namespace = "default"
+				}
 			}
 			services {
 				name = "test2"
 				namespace = "default"
 				open_ports = "80,443"
-				k8s_pod_labels = {
-					test = "test",
+				kubernetes {
+					pod_labels = {
+						test = "test",
+					}
 				}
 			}
 		}
@@ -158,18 +162,20 @@ func TestConvert_Discovery(t *testing.T) {
 	args := Discovery{
 		Services: []Service{
 			{
-				Name:               "test",
-				Namespace:          "default",
-				OpenPorts:          "80",
-				Path:               "/api/v1/*",
-				K8sNamespace:       "default",
-				K8sPodName:         "test",
-				K8sDeploymentName:  "test",
-				K8sReplicaSetName:  "test",
-				K8sStatefulSetName: "test",
-				K8sDaemonSetName:   "test",
-				K8sOwnerName:       "test",
-				K8sPodLabels:       map[string]string{"test": "test"},
+				Name:      "test",
+				Namespace: "default",
+				OpenPorts: "80",
+				Path:      "/api/v1/*",
+				Kubernetes: KubernetesService{
+					Namespace:       "default",
+					PodName:         "test",
+					DeploymentName:  "test",
+					ReplicaSetName:  "test",
+					StatefulSetName: "test",
+					DaemonSetName:   "test",
+					OwnerName:       "test",
+					PodLabels:       map[string]string{"test": "test"},
+				},
 			},
 		},
 	}

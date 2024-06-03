@@ -52,6 +52,8 @@ attributes              | [attributes][] | Configures the Beyla attributes for t
 attributes > kubernetes | [kubernetes][] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
 discovery               | [discovery][]  | Configures the discovery for instrumentable processes matching a given criteria.                   | no
 discovery > services    | [services][]   | Configures the discovery for the component.                                                        | no
+discovery > services > kubernetes    | [kubernetes services][]   | Configures the discovery for the component.                               | no
+
 output                  | [output][]     | Configures where to send received telemetry data.                                                  | yes
 
 The `>` symbol indicates deeper levels of nesting.
@@ -63,7 +65,7 @@ This block allows you to configure how some attributes for metrics and traces ar
 
 It contains the following blocks:
 
-#### kubernetes block
+#### kubernetes attributes block
 
 Name     | Type     | Description                                | Default | Required
 ---------|----------|--------------------------------------------|---------|---------
@@ -129,20 +131,29 @@ Name         | Type     | Description                                           
 `namespace`  | `string` | The namespace of the service to match.                                          |         | no
 `open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF. |         | no
 `exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF. |         | no
-`k8s_namespace` | `string` | Regular expression of Kubernetes Namespaces to match.                          |         | no
-`k8s_pod_name`  | `string` | Regular expression of Kubernetes Pods to match.                           |         | no
-`k8s_deployment_name` | `string` | Regular expression of Kubernetes Deployments to match.                 |         | no
-`k8s_statefulset_name` | `string` | Regular expression of Kubernetes StatefulSets to match.                 |         | no
-`k8s_replicaset_name` | `string` | Regular expression of Kubernetes ReplicaSets to match.                 |         | no
-`k8s_daemonset_name` | `string` | Regular expression of Kubernetes DaemonSets to match.                 |         | no
-`k8s_owner_name` | `string` | Regular expression of Kubernetes owners of running Pods to match.                     |         | no
-`k8s_pod_labels` | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression.             |         | no
 
 `name` defines a name for the matching instrumented service.
 It is used to populate the `service.name` OTEL property and/or the `service_name` Prometheus property in the exported metrics/traces.
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it is considered to match the selection criteria.
 `exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
+
+### kubernetes services block
+
+This block allows you to filter the services to instrument based on their Kubernetes metadata. If you specify other selectors in the same services entry,
+the instrumented processes need to match all the selector properties.
+
+Name         | Type     | Description                                                                     | Default | Required
+-------------|----------|---------------------------------------------------------------------------------|---------|---------
+`namespace` | `string` | Regular expression of Kubernetes Namespaces to match.                          |         | no
+`pod_name`  | `string` | Regular expression of Kubernetes Pods to match.                           |         | no
+`deployment_name` | `string` | Regular expression of Kubernetes Deployments to match.                 |         | no
+`statefulset_name` | `string` | Regular expression of Kubernetes StatefulSets to match.                 |         | no
+`replicaset_name` | `string` | Regular expression of Kubernetes ReplicaSets to match.                 |         | no
+`daemonset_name` | `string` | Regular expression of Kubernetes DaemonSets to match.                 |         | no
+`owner_name` | `string` | Regular expression of Kubernetes owners of running Pods to match.                     |         | no
+`pod_labels` | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression.             |         | no
+
 
 ### output block
 
