@@ -8,7 +8,7 @@ export const useLiveDebugging = (
 ) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const maxLines = 5000;
+  const maxLines = 5000; // TODO: should we make this configurable?
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -47,6 +47,15 @@ export const useLiveDebugging = (
           setData((prevValue) => {
             const newValue = decodedChunk.split('|;|');
             newValue.pop(); // last element is empty because of the split, we discard it
+
+            if (newValue.length > maxLines) {
+              console.warn(
+                'Received %s lines but the buffer has a maximum of %s. Some lines will be dropped.',
+                newValue.length,
+                maxLines
+              );
+            }
+
             let dataArr = prevValue.concat(newValue);
             if (dataArr.length > maxLines) {
               dataArr = dataArr.slice(-maxLines); // truncate the array to keep the last {maxLines} lines
