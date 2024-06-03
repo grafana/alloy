@@ -194,12 +194,10 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 	if im.repo == nil || !reflect.DeepEqual(repoOpts, im.repoOpts) {
 		r, err := vcs.NewGitRepo(context.Background(), repoPath, repoOpts)
 		if err != nil {
-			isUpdateFailedError := errors.As(err, &vcs.UpdateFailedError{})
-			if isUpdateFailedError {
+			if errors.As(err, &vcs.UpdateFailedError{}) {
 				level.Error(im.log).Log("msg", "failed to update repository", "err", err)
 				im.updateHealth(err)
-			}
-			if errors.As(err, &vcs.InvalidRevisionError{}) || !isUpdateFailedError {
+			} else {
 				return err
 			}
 		}
