@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
+	"strings"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/static/integrations"
@@ -19,10 +21,11 @@ import (
 
 // DefaultConfig holds the default settings for the snmp_exporter integration.
 var DefaultConfig = Config{
-	WalkParams:     make(map[string]snmp_config.WalkParams),
-	SnmpConfigFile: "",
-	SnmpTargets:    make([]SNMPTarget, 0),
-	SnmpConfig:     snmp_config.Config{},
+	WalkParams:      make(map[string]snmp_config.WalkParams),
+	SnmpConfigFile:  "",
+	SnmpConfigFiles: []string{},
+	SnmpTargets:     make([]SNMPTarget, 0),
+	SnmpConfig:      snmp_config.Config{},
 }
 
 // SNMPTarget defines a target device to be used by the integration.
@@ -36,10 +39,11 @@ type SNMPTarget struct {
 
 // Config configures the SNMP integration.
 type Config struct {
-	WalkParams     map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
-	SnmpConfigFile string                            `yaml:"config_file,omitempty"`
-	SnmpTargets    []SNMPTarget                      `yaml:"snmp_targets"`
-	SnmpConfig     snmp_config.Config                `yaml:"snmp_config,omitempty"`
+	WalkParams      map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
+	SnmpConfigFile  string                            `yaml:"config_file,omitempty"`
+	SnmpConfigFiles []string                          `yaml:"config_files,omitempty"`
+	SnmpTargets     []SNMPTarget                      `yaml:"snmp_targets"`
+	SnmpConfig      snmp_config.Config                `yaml:"snmp_config,omitempty"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
@@ -71,7 +75,8 @@ func init() {
 
 // New creates a new snmp_exporter integration
 func New(log log.Logger, c *Config) (integrations.Integration, error) {
-	snmpCfg, err := LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig)
+	snmpConfigFiles := c.SnmpConfigFiles
+	snmpCfg, err := LoadSNMPConfig(snmpConfigFiles, &c.SnmpConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -97,12 +102,16 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 
 // LoadSNMPConfig loads the SNMP configuration from the given file. If the file is empty, it will
 // load the embedded configuration.
-func LoadSNMPConfig(snmpConfigFile string, snmpCfg *snmp_config.Config) (*snmp_config.Config, error) {
+func LoadSNMPConfig(snmpConfigFiles []string, snmpCfg *snmp_config.Config) (*snmp_config.Config, error) {
 	var err error
-	if snmpConfigFile != "" {
-		snmpCfg, err = snmp_config.LoadFile([]string{snmpConfigFile}, false)
+
+	// Remove empty string of default `snmpConfig`
+	validSnmpConfigFiles := slices.DeleteFunc(snmpConfigFiles, func(i string) bool { return i == "" })
+
+	if len(validSnmpConfigFiles) > 0 {
+		snmpCfg, err = snmp_config.LoadFile(validSnmpConfigFiles, false)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load snmp config from file %v: %w", snmpConfigFile, err)
+			return nil, fmt.Errorf("failed to load snmp config from files %v: %w", strings.Join(snmpConfigFiles, " "), err)
 		}
 	} else {
 		if len(snmpCfg.Modules) == 0 && len(snmpCfg.Auths) == 0 { // If the user didn't specify a config, load the embedded config.

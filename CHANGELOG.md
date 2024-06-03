@@ -63,6 +63,8 @@ Main (unreleased)
 
 - Added support for NS records to `discovery.dns`. (@djcode)
 
+- Add support to pass multiple SNMP config files to `prometheus.exporter.snmp`. (@hainenber)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
