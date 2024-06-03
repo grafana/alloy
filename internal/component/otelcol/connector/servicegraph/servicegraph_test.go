@@ -49,18 +49,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				CacheLoop:             1 * time.Minute,
 				StoreExpirationLoop:   2 * time.Second,
 				DatabaseNameAttribute: "db.name",
-				//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
-				// the "processor.servicegraph.virtualNode" feature gate.
-				// VirtualNodePeerAttributes: []string{
-				// 				"db.name",
-				// 				"net.sock.peer.addr",
-				// 				"net.peer.name",
-				// 				"rpc.service",
-				// 				"net.sock.peer.name",
-				// 				"net.peer.name",
-				// 				"http.url",
-				// 				"http.target",
-				// 			},
+				VirtualNodePeerAttributes: []string{
+					"peer.service",
+					"db.name",
+					"db.system",
+				},
 			},
 		},
 		{
@@ -76,6 +69,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					store_expiration_loop = "77s"
 
 					output {}
+
+					virtual_node_peer_attributes = ["db.connection_string", "db.user"]
 				`,
 			expected: servicegraphconnector.Config{
 				LatencyHistogramBuckets: []time.Duration{
@@ -88,12 +83,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxItems: 333,
 					TTL:      12 * time.Hour,
 				},
-				CacheLoop:             55 * time.Minute,
-				StoreExpirationLoop:   77 * time.Second,
-				DatabaseNameAttribute: "db.name",
-				//TODO: Ad VirtualNodePeerAttributes when it's no longer controlled by
-				// the "processor.servicegraph.virtualNode" feature gate.
-				// VirtualNodePeerAttributes: []string{"attr1", "attr2"},
+				CacheLoop:                 55 * time.Minute,
+				StoreExpirationLoop:       77 * time.Second,
+				DatabaseNameAttribute:     "db.name",
+				VirtualNodePeerAttributes: []string{"db.connection_string", "db.user"},
 			},
 		},
 		{

@@ -61,6 +61,7 @@ Name                        | Type             | Description                    
 `store_expiration_loop`     | `duration`       | The time to expire old entries from the store periodically.         | `"2s"`       | no
 `metrics_flush_interval`    | `duration`       | The interval at which metrics are flushed to downstream components. | `"0s"`       | no
 `database_name_attribute`   | `string`         | The attribute name used to identify the database name from span attributes. | `"db.name"`  | no
+`virtual_node_peer_attributes` | `list(string)` | A list of attributes to search for in the client span. A virtual node is created if the attributes are found in the client span. | `["peer.service", "db.name", "db.system"]` | no
 
 Service graphs work by inspecting traces and looking for spans with parent-children relationship that represent a request.
 `otelcol.connector.servicegraph` uses OpenTelemetry semantic conventions to detect a myriad of requests.
@@ -106,6 +107,19 @@ Additional labels can be included using the `dimensions` configuration option:
 * Firstly the resource attributes will be searched. If the attribute is not found, the span attributes will be searched.
 
 When `metrics_flush_interval` is set to `0s`, metrics will be flushed on every received batch of traces.
+
+`virtual_node_peer_attributes` is useful when an OTel-instrumented client sends a request to a service which is not OTel-instrumented.
+Normally, `otelcol.connector.servicegraph` wouldn't be able to pair the client span with a service span, 
+because no service span will be received if the service is not OTel-instrumented.
+When an edge expires, `otelcol.connector.servicegraph` checks if it has peer attributes listed in `virtual_node_peer_attributes`.
+If an attribute is found, the metrics are then aggregated with a virtual node.
+
+If no client span is found and `virtual_node_peer_attributes` is not an empty list,
+then the service span will be paired with a virtual node called `client="user"`.
+This can be useful when a client which is not OTel-instrumented (like a web browser) sends a request to an OTel-instrumented service. 
+Without a virtual node, normally the client span will be missing, and the server span will expire without being paired.
+
+Attributes configured in the `virtual_node_peer_attributes` argument are ordered by priority. An empty list disables the creation of a virtual node.
 
 [Span Kind]: https://opentelemetry.io/docs/concepts/signals/traces/#span-kind
 

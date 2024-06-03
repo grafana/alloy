@@ -63,6 +63,8 @@ Main (unreleased)
 
 - Added support for NS records to `discovery.dns`. (@djcode)
 
+- Add a `virtual_node_peer_attributes` argument to `otelcol.connector.servicegraph`. (@hainenber)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one

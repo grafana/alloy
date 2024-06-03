@@ -16,6 +16,10 @@ connectors:
     cache_loop: 2m
     store_expiration_loop: 5s
     database_name_attribute: db_name3
+    virtual_node_peer_attributes:
+      - db.connection_string
+      - db.user
+      - net.sock.peer.name
 
 exporters:
   otlp:
