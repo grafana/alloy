@@ -999,8 +999,8 @@ github.com/gosnmp/gosnmp v1.37.0/go.mod h1:GDH9vNqpsD7f2HvZhKs5dlqSEcAS6s6Qp099o
 github.com/gotestyourself/gotestyourself v2.2.0+incompatible/go.mod h1:zZKM6oeNM8k+FRljX1mnzVYeS8wiGgQyvST1/GafPbY=
 github.com/grafana/alloy-remote-config v0.0.4 h1:XqpZ5ZmaVc1E1MZwWoQ4pTPtDQq1L2I2TEhN5JpH8nY=
 github.com/grafana/alloy-remote-config v0.0.4/go.mod h1:kHE1usYo2WAVCikQkIXuoG1Clz8BSdiz3kF+DZSCQ4k=
-github.com/grafana/beyla v1.6.2 h1:cP6ajcf42/DsgJUnw+iZsD+qtqN01kZkshgPixZBSCQ=
-github.com/grafana/beyla v1.6.2/go.mod h1:kNi1vKt2ESdoOy84+zq6Z7z67+BqwaMfEngcM/K8yKA=
+github.com/grafana/beyla v1.6.3 h1:Jonwtz2BouJ0A6vgcKZyZ4+zI22LAKDUm+NAD4WbwLI=
+github.com/grafana/beyla v1.6.3/go.mod h1:kNi1vKt2ESdoOy84+zq6Z7z67+BqwaMfEngcM/K8yKA=
 github.com/grafana/cadvisor v0.0.0-20231110094609-5f7917925dea h1:Q5f5/nJJ0SbusZjA6F6XkJuHDbl2/PqdTGw6wHsuccA=
 github.com/grafana/cadvisor v0.0.0-20231110094609-5f7917925dea/go.mod h1:XjiOCFjmxXIWwauV5p39Mr2Yxlpyk72uKQH1UZvd4fQ=
 github.com/grafana/ckit v0.0.0-20230906125525-c046c99a5c04 h1:tG8Qxq4dN1WqakMmsPaxaH4+OQhYg5HVsarw5acLBX8=

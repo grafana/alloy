@@ -65,7 +65,7 @@ Main (unreleased)
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
 
-- Upgrade Beyla from v1.5.1 to v1.6.2. (@marctc)
+- Upgrade Beyla from v1.5.1 to v1.6.3. (@marctc)
 
 v1.1.0
 ------
