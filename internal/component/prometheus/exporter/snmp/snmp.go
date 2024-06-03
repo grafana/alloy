@@ -127,7 +127,7 @@ type Arguments struct {
 	TargetsList TargetsList `alloy:"targets,attr,optional"`
 }
 
-type TargetsList []discovery.Target
+type TargetsList []map[string]string
 
 func (t TargetsList) Convert() []snmp_exporter.SNMPTarget {
 	targets := make([]snmp_exporter.SNMPTarget, 0, len(t))
