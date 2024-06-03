@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/grafana/alloy/internal/vcs"
 	"github.com/stretchr/testify/require"
 )
 
@@ -350,7 +350,10 @@ testImport.add "cc" {
 	defer verifyNoGoroutineLeaks(t)
 	ctrl, f := setup(t, main)
 	err = ctrl.LoadSource(f, nil)
-	require.ErrorContains(t, err, plumbing.ErrReferenceNotFound.Error())
+	expectedErr := vcs.InvalidRevisionError{
+		Revision: "nonexistent",
+	}
+	require.ErrorContains(t, err, expectedErr.Error())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
