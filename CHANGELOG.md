@@ -67,11 +67,15 @@ Main (unreleased)
   by electing a single instance as the leader for the `loki.rules.kubernetes` component
   to avoid conflicts when making calls to the Loki API. (@toontijtgat2)
 
+- Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart) 
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
   cluster instance to another could have a staleness marker inserted and result
   in a gap in metrics (@thampiotr)
+
+- Fix panic when `import.git` is given a revision that does not exist on the remote repo. (@hainenber)
 
 ### Other changes
 
