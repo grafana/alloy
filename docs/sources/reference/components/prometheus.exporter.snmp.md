@@ -235,7 +235,7 @@ prometheus.scrape "demo" {
 }
 ```
 
-This example uses the [`local.file` component][file] to read targets from a YAML file and feed them to the prometheus.exporter.snmp component:
+This example uses the [`local.file` component][file] to read targets from a YAML file and send them to the prometheus.exporter.snmp component:
 
 ```alloy
 local.file "targets" {
