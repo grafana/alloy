@@ -7,10 +7,12 @@ weight: 10
 
 ## Get started with {{% param "PRODUCT_NAME" %}}
 
-This tutorial will walk you through configuring Alloy to collect logs from your local machine and report logs to Loki running in the local Grafana Stack. This process will enable you to query and visualize the logs sent to Loki using the Grafana dashboard.
+This tutorial shows you how to configure Alloy to collect logs from your local machine and send them to Loki, running in a local Grafana stack.
+This process will enable you to query and visualize the logs sent to Loki using the Grafana dashboard.
 
-To follow this tutorial, you must have a basic understanding of Alloy and telemetry collection in general. You should also be familiar with Prometheus and PromQL, Loki and LogQL, and basic Grafana navigation. You don't need to know about the 
-{{< param "PRODUCT_NAME" >}} [configuration syntax][configuration] concepts.
+To follow this tutorial, you must have a basic understanding of Alloy and telemetry collection in general.
+You should also be familiar with Prometheus and PromQL, Loki and LogQL, and basic Grafana navigation.
+You don't need to know about the {{< param "PRODUCT_NAME" >}} [configuration syntax][configuration] concepts.
 
 ## Prerequisites
 
@@ -20,24 +22,27 @@ This tutorial requires a Linux, Unix, or Mac environment with Docker installed.
 
 ### Linux
 
-Follow the instructions on the [Linux Install] page for the steps for several popular
-Linux distributions.  
+1. [Install {{< param "PRODUCT_NAME" >}}][Linux Install].  
 
-{{< admonition type="tip" >}}
-Make sure to follow the optional install step to enable the UI, we will be referring to it in this tutorial.
-{{< /admonition >}}
+   {{< admonition type="tip" >}}
+   Make sure you enable the {{< param "PRODUCT_NAME" >}} UI.
+   {{< /admonition >}}
 
-Once you have completed this, follow the instructions to [Run on Linux][] using `systemctl`.
+1. [Run {{< param "PRODUCT_NAME" >}}][Run on Linux].
 
 ### macOS
 
-Follow the instructions on the [macOS Install] page for Homebrew instructions. Once you have
-completed this, follow the instructions to [Run on macOS] which will start
-{{< param "PRODUCT_NAME" >}} as a Homebrew service.
+1. [Install {{< param "PRODUCT_NAME" >}} on macOS][macOS Install].
+
+   {{< admonition type="tip" >}}
+   The {{< param "PRODUCT_NAME" >}} UI is enabled by default in {{< param "PRODUCT_NAME" >}} on macOS.
+   {{< /admonition >}}
+
+1. [Run {{< param "PRODUCT_NAME" >}}][Run on macOS].
 
 ## Set up a local Grafana instance
 
-To enable Grafana Alloy to write data to Loki running in the local Grafana Stack, we will use the following Docker Compose file to set up a local Grafana instance alongside Loki and Prometheus which are pre-configured as data sources.
+To allow {{< param "PRODUCT__NAME" >}} to write data to Loki running in the local Grafana stack, you can use the following Docker Compose file to set up a local Grafana instance alongside Loki and Prometheus, which are pre-configured as data sources.
 
 ```yaml
 version: '3'
@@ -96,18 +101,19 @@ docker installs, this command may be run as `docker compose up` without the dash
 
 ## Configure {{< param "PRODUCT_NAME" >}}
 
-Once the local Grafana instance has been set up, the next step is to give detailed instructions to Alloy on which logs we want to scrape, how we want to process that data, and where we want the data sent. This is done through `config.alloy` file which contains components with instructions for Alloy to execute. Our configuration will connect components into a workflow.
+Once the local Grafana instance is set up, the next step is to configure {{< param "PRODUCT_NAME" >}}.
+You use components in the `config.alloy` file to tell {{< param "PRODUCT_NAME" >}} which logs you want to scrape, how you want to process that data, and where you want the data sent.
 
-The examples run on a single host so that you can run them on your laptop or in a Virtual Machine. You are encouraged to try the examples using a `config.alloy` file and experiment with the examples yourself.
+The examples run on a single host so that you can run them on your laptop or in a Virtual Machine.
+You can try the examples using a `config.alloy` file and experiment with the examples yourself.
 
 For the following steps, create a file called `config.alloy` in your current working directory. 
-{{< param "PRODUCT_NAME" >}} has a feature that allows us to "hot reload" a configuration from a file. In a later 
-step, we will copy this file to where {{< param "PRODUCT_NAME" >}} will pick it up, and be able to reload without restarting 
-the system service.
+If you have enabled the {{< param "PRODUCT_NAME" >}} UI, you can "hot reload" a configuration from a file.
+In a later step, you will copy this file to where {{< param "PRODUCT_NAME" >}} will pick it up, and be able to reload without restarting the system service.
 
 ### First Component: Log files
 
-Put this component into the top of the `config.alloy` file:
+Paste this component into the top of the `config.alloy` file:
 
 ```alloy
 local.file_match "local_files" {
@@ -116,11 +122,11 @@ local.file_match "local_files" {
 }
 ```
 
-In {{< param "PRODUCT_NAME" >}}'s configuration language, this creates a [local.file_match] component named `local_files` with an attribute that tells {{< param "PRODUCT_NAME" >}} which files to source, and to check every 5 seconds.
+This component creates a [local.file_match][] component named `local_files` with an attribute that tells {{< param "PRODUCT_NAME" >}} which files to source, and to check every 5 seconds.
 
 ### Second Component: Scraping
 
-Put this component next in the `config.alloy` file:
+Paste this component next in the `config.alloy` file:
 
 ```alloy
 loki.source.file "log_scrape" {
@@ -130,17 +136,15 @@ loki.source.file "log_scrape" {
 }
 ```
 
-This configuration creates a [loki.source.file] component named `log_scrape`, and
-shows the pipeline concept of {{< param "PRODUCT_NAME" >}} in action:
+This configuration creates a [loki.source.file][] component named `log_scrape`, and shows the pipeline concept of {{< param "PRODUCT_NAME" >}} in action. The `log.scrape` component does the following:
 
-1. It applies to the `local_files` component (its "source" or target)
-2. It forwards the logs it scrapes to the "receiver" of another component called `grafana_loki` that we will define next
-3. It provides extra attributes and options, in this case, we will tail log files from the end and not ingest the entire
-past history
+1. It applies to the `local_files` component (its "source" or target).
+1. It forwards the logs it scrapes to the "receiver" of another component called `grafana_loki` that you will define next.
+1. It provides extra attributes and options, in this case, you will tail log files from the end and not ingest the entire past history.
 
 ### Third Component: Write Logs to Loki
 
-Place this component last in your configuration file:
+Paste this component last in your configuration file:
 
 ```alloy
 loki.write "grafana_loki" {
@@ -155,11 +159,15 @@ loki.write "grafana_loki" {
 }
 ```
 
-We create a [loki.write] component named `grafana_loki` that points to `http://localhost:3100/loki/api/v1/push`. This completes a simple configuration pipeline.
+This last component creates a [loki.write][] component named `grafana_loki` that points to `http://localhost:3100/loki/api/v1/push`.
+This completes the simple configuration pipeline.
 
 {{< admonition type="tip" >}}
-Notice that the `basic_auth` is commented out. Our local `docker-compose` stack does not require it; we include it in this example
-to show how you can configure auth for other environments. For further auth options, consult the [loki.write] component reference.
+The `basic_auth` is commented out because the local `docker-compose` stack doesn't require it. 
+It is included in this example to show how you can configure authorization for other environments.
+For further authorization options, refer to the [loki.write][] component reference.
+
+[loki.write]: ../../reference/components/loki.write/
 {{< /admonition >}}
 
 This connects directly to the Loki instance running via `docker-compose` from the earlier step.
