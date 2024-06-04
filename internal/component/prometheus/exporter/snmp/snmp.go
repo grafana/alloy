@@ -168,22 +168,10 @@ func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 		return errors.New("config and config_file are mutually exclusive")
 	}
 
-	err := yaml.UnmarshalStrict([]byte(a.Config.Value), &a.ConfigStruct)
-	if err != nil {
-		return fmt.Errorf("invalid snmp_exporter config: %s", err)
-	}
-
-	return nil
-}
-
-// Validate implements syntax.Validator.
-func (a *Arguments) Validate() error {
 	if len(a.Targets) != 0 && len(a.TargetsList) != 0 {
 		return fmt.Errorf("the block `target` and the attribute `targets` are mutually exclusive")
 	}
-	if len(a.Targets) == 0 && len(a.TargetsList) == 0 {
-		return fmt.Errorf("either a `target block` or a `targets` attribute should be set")
-	}
+
 	for _, target := range a.TargetsList {
 		if _, hasName := target["name"]; !hasName {
 			return fmt.Errorf("all targets must have a `name`")
@@ -192,6 +180,12 @@ func (a *Arguments) Validate() error {
 			return fmt.Errorf("all targets must have an `address`")
 		}
 	}
+
+	err := yaml.UnmarshalStrict([]byte(a.Config.Value), &a.ConfigStruct)
+	if err != nil {
+		return fmt.Errorf("invalid snmp_exporter config: %s", err)
+	}
+
 	return nil
 }
 

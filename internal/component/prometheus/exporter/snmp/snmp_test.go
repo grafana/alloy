@@ -174,60 +174,60 @@ func TestConvertTargetsList(t *testing.T) {
 }
 
 func TestValidateTargetMissingName(t *testing.T) {
-	targets := TargetsList{
-		{
-			"target":      "192.168.1.2",
-			"module":      "if_mib",
-			"auth":        "public_v2",
-			"walk_params": "1.3.6.1.2.1.2",
-		},
-	}
-	args := Arguments{
-		TargetsList: targets,
-	}
-	require.ErrorContains(t, args.Validate(), "all targets must have a `name`")
+	alloyCfg := `
+		config_file = "modules.yml"
+		targets = [
+			{
+				"address" = "192.168.1.2", 
+				"module" = "if_mib",
+				"walk_params" = "public",
+				"auth" = "public_v2",
+			},
+		  ]		
+`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.ErrorContains(t, err, "all targets must have a `name`")
 }
 
 func TestValidateTargetMissingAddress(t *testing.T) {
-	targets := TargetsList{
-		{
-			"name":        "target1",
-			"module":      "if_mib",
-			"auth":        "public_v2",
-			"walk_params": "1.3.6.1.2.1.2",
-		},
-	}
-	args := Arguments{
-		TargetsList: targets,
-	}
-	require.ErrorContains(t, args.Validate(), "all targets must have an `address`")
-}
-
-func TestValidateMissingTargets(t *testing.T) {
-	args := Arguments{}
-	require.ErrorContains(t, args.Validate(), "either a `target block` or a `targets` attribute should be set")
+	alloyCfg := `
+		config_file = "modules.yml"
+		targets = [
+			{
+				"name" = "t1",
+				"module" = "if_mib",
+				"walk_params" = "public",
+				"auth" = "public_v2",
+			},
+		  ]		
+`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.ErrorContains(t, err, "all targets must have an `address`")
 }
 
 func TestValidateTargetsMutualExclusivity(t *testing.T) {
-	targets := TargetsList{
-		{
-			"target":      "192.168.1.2",
-			"module":      "if_mib",
-			"auth":        "public_v2",
-			"walk_params": "1.3.6.1.2.1.2",
-		},
-	}
-	targetBlock := TargetBlock{{
-		Name:   "network_switch_1",
-		Target: "192.168.1.2",
-		Module: "if_mib",
-		Auth:   "public_v2",
-	}}
-	args := Arguments{
-		TargetsList: targets,
-		Targets:     targetBlock,
-	}
-	require.ErrorContains(t, args.Validate(), "the block `target` and the attribute `targets` are mutually exclusive")
+	alloyCfg := `
+		config_file = "modules.yml"
+		targets = [
+			{
+				"name" = "t1",
+				"address" = "192.168.1.2", 
+				"module" = "if_mib",
+				"walk_params" = "public",
+				"auth" = "public_v2",
+			},
+		  ]		
+		target "t2" {
+			address = "192.168.1.3"
+			module = "mikrotik"
+			walk_params = "private"
+		}
+`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.ErrorContains(t, err, "the block `target` and the attribute `targets` are mutually exclusive")
 }
 
 func TestConvertWalkParams(t *testing.T) {
