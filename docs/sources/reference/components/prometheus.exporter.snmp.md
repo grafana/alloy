@@ -235,7 +235,7 @@ prometheus.scrape "demo" {
 }
 ```
 
-This example uses the [`local.file` component][file] to read targets from a YAML file and send them to the prometheus.exporter.snmp component:
+This example uses the [`local.file` component][file] to read targets from a YAML file and send them to the `prometheus.exporter.snmp` component:
 
 ```alloy
 local.file "targets" {
@@ -263,6 +263,62 @@ prometheus.scrape "demo" {
 }
 ```
 
+The YAML file in this example looks like this:
+```
+- name: t1
+  address: localhost:161
+  module: default
+  auth: public_v2
+- name: t2
+  address: localhost:161
+  module: default
+  auth: public_v2
+```
+
+This example uses the [`discovery.file` component][disc] and the [`discovery.relabel` component][relabel] to send targets to the `prometheus.exporter.snmp` component:
+```
+discovery.file "example" {
+  files = ["targets.yml"]
+}
+
+discovery.relabel "example" {
+  targets = discovery.file.example.targets
+
+  rule {
+    source_labels = ["__address__"]
+    target_label  = "address"
+    action        = "replace"
+  }
+}
+
+prometheus.exporter.snmp "example" {
+  config_file = "snmp_modules.yml"
+  targets = discovery.relabel.example.output
+}
+
+// Configure a prometheus.scrape component to collect SNMP metrics.
+prometheus.scrape "demo" {
+    targets    = prometheus.exporter.snmp.example.targets
+    forward_to = [ /* ... */ ]
+}
+```
+
+The YAML file in this example looks like this:
+```
+- targets:
+  - localhost:161
+  labels:
+    name: t1
+    module: default
+    auth: public_v2
+- targets:
+  - localhost:161
+  labels:
+    name: t2
+    module: default
+    auth: public_v2
+```
+
 Replace the following:
 
 - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
@@ -271,6 +327,8 @@ Replace the following:
 
 [scrape]: ../prometheus.scrape/
 [file]: ../local.file/
+[disc]: ../discovery.file/
+[relabel]: ../discovery.relabel/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
