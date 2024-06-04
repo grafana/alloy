@@ -78,13 +78,13 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt' | sudo tee /etc/yum.repos.d/grafana.
    ```
    {{< /code >}}
 
-1. Optional: Edit the run configuration to enable the {{< param "PRODUCT_NAME" >}} UI
+1. For beginners, those following tutorials, and debugging: Edit the run configuration to enable the {{< param "PRODUCT_NAME" >}} UI
 
    ```bash
    sudo sed -i -e 's/CUSTOM_ARGS=""/CUSTOM_ARGS="--server.http.listen-addr=0.0.0.0:12345"/' /etc/default/alloy
    ```
 
-The {{< param "PRODUCT_NAME" >}} UI is a web application that runs on `http://localhost:12345/` and allows for
+The {{< param "PRODUCT_NAME" >}} UI is a web application that is available at `http://localhost:12345/` and allows for
 [debugging your configuration] and viewing it in a visual format. Enabling this UI is recommended
 for beginners and is not necessary for network isolated, headless, or production installs. It also enables hot-reloading
 of the {{< param "PRODUCT_NAME" >}} configuration without restarting the system service.

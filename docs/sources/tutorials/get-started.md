@@ -7,16 +7,14 @@ weight: 10
 
 ## Get started with {{% param "PRODUCT_NAME" %}}
 
-This set of tutorials contains a collection of examples that build on each other to demonstrate how to configure and use [{{< param "PRODUCT_NAME" >}}][alloy].
-To follow these tutorials, you need to have a basic understanding of what {{< param "PRODUCT_NAME" >}} is and telemetry collection in general.
-You should also be familiar with with Prometheus and PromQL, Loki and LogQL, and basic Grafana navigation.
-You don't need to know about the {{< param "PRODUCT_NAME" >}} [configuration syntax][configuration] concepts.
+This tutorial will walk you through configuring Alloy to collect logs from your local machine and report logs to Loki running in the local Grafana Stack. This process will enable you to query and visualize the logs sent to Loki using the Grafana dashboard.
+
+To follow this tutorial, you must have a basic understanding of Alloy and telemetry collection in general. You should also be familiar with Prometheus and PromQL, Loki and LogQL, and basic Grafana navigation. You don't need to know about the 
+{{< param "PRODUCT_NAME" >}} [configuration syntax][configuration] concepts.
 
 ## Prerequisites
 
-This first tutorial requires a Linux, Unix, or Mac environment with Docker installed.
-The examples run on a single host so that you can run them on your laptop or in a Virtual Machine.
-You are encouraged to try the examples using a `config.alloy` file and experiment with the examples yourself.
+This tutorial requires a Linux, Unix, or Mac environment with Docker installed.
 
 ## Install {{% param "PRODUCT_NAME" %}} and start the service
 
@@ -39,9 +37,7 @@ completed this, follow the instructions to [Run on macOS] which will start
 
 ## Set up a local Grafana instance
 
-You can use the following Docker Compose file to set up a local Grafana instance alongside Loki and Prometheus which are pre-configured as datasources. You can run and experiment with the examples on your local system. In this tutorial,
-{{< param "PRODUCT_NAME" >}} will report logs to the loki running in this stack, and we can use Grafana to query and
-visualize them.
+To enable Grafana Alloy to write data to Loki running in the local Grafana Stack, we will use the following Docker Compose file to set up a local Grafana instance alongside Loki and Prometheus which are pre-configured as data sources.
 
 ```yaml
 version: '3'
@@ -100,14 +96,14 @@ docker installs, this command may be run as `docker compose up` without the dash
 
 ## Configure {{< param "PRODUCT_NAME" >}}
 
-Alloy is configured through `config.alloy` file which contains a set of components. Components do basic things 
-like identifying which logs we want to scrape, how we want to process them, and where we will send them. 
-Our configuration will connect components into a workflow.
+Once the local Grafana instance has been set up, the next step is to give detailed instructions to Alloy on which logs we want to scrape, how we want to process that data, and where we want the data sent. This is done through `config.alloy` file which contains components with instructions for Alloy to execute. Our configuration will connect components into a workflow.
+
+The examples run on a single host so that you can run them on your laptop or in a Virtual Machine. You are encouraged to try the examples using a `config.alloy` file and experiment with the examples yourself.
 
 For the following steps, create a file called `config.alloy` in your current working directory. 
-{{< param "PRODUCT_NAME" >}} has a 
-feature that allows us to "hot reload" a configuration from a file. In a later step, we will copy this file to where
-Alloy will pick it up, and be able to reload without restarting the system service.
+{{< param "PRODUCT_NAME" >}} has a feature that allows us to "hot reload" a configuration from a file. In a later 
+step, we will copy this file to where {{< param "PRODUCT_NAME" >}} will pick it up, and be able to reload without restarting 
+the system service.
 
 ### First Component: Log files
 
