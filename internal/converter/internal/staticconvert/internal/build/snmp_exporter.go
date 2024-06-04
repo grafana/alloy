@@ -19,7 +19,7 @@ func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
 	var targets snmp.TargetsList
 	for _, t := range config.SnmpTargets {
 		target := make(map[string]string)
-		target["name"] = common.SanitizeIdentifierPanics(t.Name)
+		target["name"] = t.Name
 		target["address"] = t.Target
 		target["module"] = t.Module
 		target["auth"] = t.Auth
@@ -67,7 +67,7 @@ func toSnmpExporterV2(config *snmp_exporter_v2.Config) *snmp.Arguments {
 	var targets snmp.TargetsList
 	for _, t := range config.SnmpTargets {
 		target := make(map[string]string)
-		target["name"] = common.SanitizeIdentifierPanics(t.Name)
+		target["name"] = t.Name
 		target["address"] = t.Target
 		target["module"] = t.Module
 		target["auth"] = t.Auth

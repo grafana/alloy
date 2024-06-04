@@ -93,7 +93,7 @@ prometheus.exporter.snmp "integrations_snmp" {
 		address     = "192.168.1.2",
 		auth        = "public",
 		module      = "if_mib",
-		name        = "network_switch_1",
+		name        = "network_switch.1",
 		walk_params = "public",
 	}, {
 		address     = "192.168.1.3",
