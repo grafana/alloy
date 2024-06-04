@@ -495,14 +495,38 @@ type leadership interface {
 	isLeader() bool
 }
 
-// leadership encapsulates the logic for checking if this instance of the Component
-// is the leader among all instances to avoid conflicting updates of the Mimir API.
-type leadership interface {
-	// update checks if this component instance is still the leader, stores the result,
-	// and returns true if the leadership status has changed since the last time update
-	// was called.
-	update() (bool, error)
+// componentLeadership implements leadership based on checking ownership of a specific
+// key using a cluster.Cluster service.
+type componentLeadership struct {
+	id      string
+	logger  log.Logger
+	cluster cluster.Cluster
+	leader  atomic.Bool
+}
 
-	// isLeader returns true if this component instance is the leader, false otherwise.
-	isLeader() bool
+func newComponentLeadership(id string, logger log.Logger, cluster cluster.Cluster) *componentLeadership {
+	return &componentLeadership{
+		id:      id,
+		logger:  logger,
+		cluster: cluster,
+	}
+}
+
+func (l *componentLeadership) update() (bool, error) {
+	peers, err := l.cluster.Lookup(shard.StringKey(l.id), 1, shard.OpReadWrite)
+	if err != nil {
+		return false, fmt.Errorf("unable to determine leader for %s: %w", l.id, err)
+	}
+
+	if len(peers) != 1 {
+		return false, fmt.Errorf("unexpected peers from leadership check: %+v", peers)
+	}
+
+	isLeader := peers[0].Self
+	level.Info(l.logger).Log("msg", "checked leadership of component", "is_leader", isLeader)
+	return l.leader.Swap(isLeader) != isLeader, nil
+}
+
+func (l *componentLeadership) isLeader() bool {
+	return l.leader.Load()
 }
