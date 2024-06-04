@@ -63,6 +63,10 @@ Main (unreleased)
 
 - Added support for NS records to `discovery.dns`. (@djcode)
 
+- In `loki.rules.kubernetes`, add support for running in a cluster of Alloy instances
+  by electing a single instance as the leader for the `loki.rules.kubernetes` component
+  to avoid conflicts when making calls to the Loki API. (@toontijtgat2)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
