@@ -25,6 +25,15 @@ prometheus.exporter.snmp "LABEL" {
 }
 ```
 
+or 
+
+```alloy
+prometheus.exporter.snmp "LABEL" {
+  config_file = SNMP_CONFIG_FILE_PATH
+  targets     = TARGET_LIST
+}
+```
+
 ## Arguments
 
 The following arguments can be used to configure the exporter's behavior.
@@ -264,7 +273,7 @@ prometheus.scrape "demo" {
 ```
 
 The YAML file in this example looks like this:
-```
+```yaml
 - name: t1
   address: localhost:161
   module: default
@@ -276,7 +285,7 @@ The YAML file in this example looks like this:
 ```
 
 This example uses the [`discovery.file` component][disc] and the [`discovery.relabel` component][relabel] to send targets to the `prometheus.exporter.snmp` component:
-```
+```alloy
 discovery.file "example" {
   files = ["targets.yml"]
 }
@@ -304,7 +313,7 @@ prometheus.scrape "demo" {
 ```
 
 The YAML file in this example looks like this:
-```
+```yaml
 - targets:
   - localhost:161
   labels:
