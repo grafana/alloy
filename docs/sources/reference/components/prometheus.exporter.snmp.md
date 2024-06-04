@@ -46,13 +46,13 @@ The `config` argument must be a YAML document as string defining which SNMP modu
 - `remote.http.LABEL.content`
 - `remote.s3.LABEL.content`
 
-The `targets` argument serves as an alternative to the [target][] block. This is useful when SNMP targets are supplied by another component.
+The `targets` argument is an alternative to the [target][] block. This is useful when SNMP targets are supplied by another component.
 The following labels can be set to a target:
-* `name` is the name of the target (required).
-* `address` is the address of SNMP device (required).
-* `module` is the SNMP module to use for polling.
-* `auth` is the SNMP authentication profile to use.
-* `walk_params` is the config to use for this target.
+* `name`: The name of the target (required).
+* `address`: The address of SNMP device (required).
+* `module`: The SNMP module to use for polling.
+* `auth`: The SNMP authentication profile to use.
+* `walk_params`: The config to use for this target.
 
 ## Blocks
 
