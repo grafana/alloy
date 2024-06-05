@@ -96,8 +96,11 @@ services:
       - "3000:3000"
 ```
 
-After running `docker compose up`, open [http://localhost:3000](http://localhost:3000) in your browser to view the Grafana UI. In deprecated
-docker installs, this command may be run as `docker-compose up` with the dash character.
+Run `docker compose up` to start your Docker container and open [http://localhost:3000](http://localhost:3000) in your browser to view the Grafana UI.
+
+ {{< admonition type="note" >}}
+If you the following error when you start your Docker container, `docker: 'compose' is not a docker command`, use the command `docker-compose up` to start your Docker container.
+ {{< /admonition >}}
 
 ## Configure {{< param "PRODUCT_NAME" >}}
 
