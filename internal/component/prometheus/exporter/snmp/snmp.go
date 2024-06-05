@@ -132,9 +132,10 @@ type TargetsList []map[string]string
 func (t TargetsList) Convert() []snmp_exporter.SNMPTarget {
 	targets := make([]snmp_exporter.SNMPTarget, 0, len(t))
 	for _, target := range t {
+		address, _ := getAddress(target)
 		targets = append(targets, snmp_exporter.SNMPTarget{
 			Name:       target["name"],
-			Target:     target["address"],
+			Target:     address,
 			Module:     target["module"],
 			Auth:       target["auth"],
 			WalkParams: target["walk_params"],
@@ -146,9 +147,10 @@ func (t TargetsList) Convert() []snmp_exporter.SNMPTarget {
 func (t TargetsList) convert() []SNMPTarget {
 	targets := make([]SNMPTarget, 0, len(t))
 	for _, target := range t {
+		address, _ := getAddress(target)
 		targets = append(targets, SNMPTarget{
 			Name:       target["name"],
-			Target:     target["address"],
+			Target:     address,
 			Module:     target["module"],
 			Auth:       target["auth"],
 			WalkParams: target["walk_params"],
@@ -176,8 +178,8 @@ func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 		if _, hasName := target["name"]; !hasName {
 			return fmt.Errorf("all targets must have a `name`")
 		}
-		if _, hasAddress := target["address"]; !hasAddress {
-			return fmt.Errorf("all targets must have an `address`")
+		if _, hasAddress := getAddress(target); !hasAddress {
+			return fmt.Errorf("all targets must have an `address` or an `__address__` label")
 		}
 	}
 
@@ -203,4 +205,14 @@ func (a *Arguments) Convert() *snmp_exporter.Config {
 		WalkParams:     a.WalkParams.Convert(),
 		SnmpConfig:     a.ConfigStruct,
 	}
+}
+
+func getAddress(data map[string]string) (string, bool) {
+	if value, ok := data["address"]; ok {
+		return value, true
+	}
+	if value, ok := data["__address__"]; ok {
+		return value, true
+	}
+	return "", false
 }

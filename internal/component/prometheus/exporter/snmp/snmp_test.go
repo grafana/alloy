@@ -173,6 +173,47 @@ func TestConvertTargetsList(t *testing.T) {
 	require.Equal(t, "1.3.6.1.2.1.2", res[0].WalkParams)
 }
 
+func TestConvertTargetsListAlternativeAddress(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "network_switch_1",
+			"address":     "192.168.1.2",
+			"__address__": "192.168.1.3",
+			"module":      "if_mib",
+			"auth":        "public_v2",
+			"walk_params": "1.3.6.1.2.1.2",
+		},
+	}
+
+	res := targets.Convert()
+	require.Equal(t, 1, len(res))
+	require.Equal(t, "network_switch_1", res[0].Name)
+	require.Equal(t, "192.168.1.2", res[0].Target)
+	require.Equal(t, "if_mib", res[0].Module)
+	require.Equal(t, "public_v2", res[0].Auth)
+	require.Equal(t, "1.3.6.1.2.1.2", res[0].WalkParams)
+}
+
+func TestConvertTargetsListAddressOverride(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "network_switch_1",
+			"__address__": "192.168.1.2",
+			"module":      "if_mib",
+			"auth":        "public_v2",
+			"walk_params": "1.3.6.1.2.1.2",
+		},
+	}
+
+	res := targets.Convert()
+	require.Equal(t, 1, len(res))
+	require.Equal(t, "network_switch_1", res[0].Name)
+	require.Equal(t, "192.168.1.2", res[0].Target)
+	require.Equal(t, "if_mib", res[0].Module)
+	require.Equal(t, "public_v2", res[0].Auth)
+	require.Equal(t, "1.3.6.1.2.1.2", res[0].WalkParams)
+}
+
 func TestValidateTargetMissingName(t *testing.T) {
 	alloyCfg := `
 		config_file = "modules.yml"

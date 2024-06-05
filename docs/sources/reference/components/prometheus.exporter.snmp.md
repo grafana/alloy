@@ -58,7 +58,7 @@ The `config` argument must be a YAML document as string defining which SNMP modu
 The `targets` argument is an alternative to the [target][] block. This is useful when SNMP targets are supplied by another component.
 The following labels can be set to a target:
 * `name`: The name of the target (required).
-* `address`: The address of SNMP device (required).
+* `address` or `__address__`: The address of SNMP device (required).
 * `module`: The SNMP module to use for polling.
 * `auth`: The SNMP authentication profile to use.
 * `walk_params`: The config to use for this target.
@@ -289,25 +289,15 @@ The YAML file in this example looks like this:
   auth: public_v2
 ```
 
-This example uses the [`discovery.file` component][disc] and the [`discovery.relabel` component][relabel] to send targets to the `prometheus.exporter.snmp` component:
+This example uses the [`discovery.file` component][disc] to send targets to the `prometheus.exporter.snmp` component:
 ```alloy
 discovery.file "example" {
   files = ["targets.yml"]
 }
 
-discovery.relabel "example" {
-  targets = discovery.file.example.targets
-
-  rule {
-    source_labels = ["__address__"]
-    target_label  = "address"
-    action        = "replace"
-  }
-}
-
 prometheus.exporter.snmp "example" {
   config_file = "snmp_modules.yml"
-  targets = discovery.relabel.example.output
+  targets = discovery.file.example.targets
 }
 
 // Configure a prometheus.scrape component to collect SNMP metrics.
@@ -336,7 +326,6 @@ The YAML file in this example looks like this:
 [scrape]: ../prometheus.scrape/
 [file]: ../local.file/
 [disc]: ../discovery.file/
-[relabel]: ../discovery.relabel/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
