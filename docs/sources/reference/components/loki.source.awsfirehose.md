@@ -66,7 +66,7 @@ The component will start an HTTP server on the configured port and address with 
 - `/awsfirehose/api/v1/push` - accepting `POST` requests compatible with [AWS Firehose HTTP Specifications](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html).
 
 You can use the [X-Amz-Firehose-Common-Attributes](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html) header to set extra static labels. The header can be configured in the **Parameters** section of the Amazon Data Firehose delivery stream configuration. 
-Label names must be prefixed with `lbl_`. The prefix is removed before storing the label in the log entry.
+Label names must be prefixed with `lbl_`. The prefix is removed before the label is stored in the log entry.
 Label names and label values must be compatible with the [Prometheus data model](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels) specification.
 
 Example of the valid `X-Amz-Firehose-Common-Attributes` value with two custom labels:
