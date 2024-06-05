@@ -96,8 +96,8 @@ services:
       - "3000:3000"
 ```
 
-After running `docker-compose up`, open [http://localhost:3000](http://localhost:3000) in your browser to view the Grafana UI. In some newer
-docker installs, this command may be run as `docker compose up` without the dash character.
+After running `docker compose up`, open [http://localhost:3000](http://localhost:3000) in your browser to view the Grafana UI. In deprecated
+docker installs, this command may be run as `docker-compose up` with the dash character.
 
 ## Configure {{< param "PRODUCT_NAME" >}}
 
@@ -163,14 +163,14 @@ This last component creates a [loki.write][] component named `grafana_loki` that
 This completes the simple configuration pipeline.
 
 {{< admonition type="tip" >}}
-The `basic_auth` is commented out because the local `docker-compose` stack doesn't require it. 
+The `basic_auth` is commented out because the local `docker compose` stack doesn't require it. 
 It is included in this example to show how you can configure authorization for other environments.
 For further authorization options, refer to the [loki.write][] component reference.
 
 [loki.write]: ../../reference/components/loki.write/
 {{< /admonition >}}
 
-This connects directly to the Loki instance running via `docker-compose` from the earlier step.
+This connects directly to the Loki instance running via `docker compose` from the earlier step.
 
 ## Reload the Configuration
 
