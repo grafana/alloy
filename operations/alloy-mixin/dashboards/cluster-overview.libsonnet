@@ -1,36 +1,17 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
 local filename = 'alloy-cluster-overview.json';
+local templates = import './utils/templates.libsonnet';
 local cluster_node_filename = 'alloy-cluster-node.json';
 
 {
   local templateVariables = 
-    if $._config.enableK8sCluster then
-      [
-        dashboard.newTemplateVariable(
-          name='cluster', 
-          query= ||| 
-            label_values(alloy_component_controller_running_components{%(filterSelector)s}, cluster)
-          ||| % $._config),
-        dashboard.newTemplateVariable(
-          name='namespace', 
-          query= |||
-            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster"}, namespace)
-          ||| % $._config),
-        dashboard.newMultiTemplateVariable(
-          name='job', 
-          query= ||| 
-            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace"}, job)
-          ||| % $._config),        
-      ]
-    else
-      [
-        dashboard.newMultiTemplateVariable(
-          name='job', 
-          query= ||| 
-            label_values(alloy_component_controller_running_components{%(filterSelector)s}, job)
-          ||| % $._config),        
-      ],
+    templates.newTemplateVariablesList(
+      filterSelector=$._config.filterSelector, 
+      enableK8sCluster=$._config.enableK8sCluster, 
+      includeInstance=false,
+      useSentenceCaseLabel=$._config.setenceCaseTemplates)
+    .variables,
 
   [filename]:
     dashboard.new(name='Alloy / Cluster Overview', tag=$._config.dashboardTag) +

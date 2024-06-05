@@ -1,5 +1,6 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
+local templates = import './utils/templates.libsonnet';
 local filename = 'alloy-resources.json';
 
 local pointsMixin = {
@@ -28,42 +29,12 @@ local stackedPanelMixin = {
 
 {
   local templateVariables = 
-    if $._config.enableK8sCluster then
-      [
-        dashboard.newTemplateVariable(
-          name='cluster', 
-          query= ||| 
-            label_values(alloy_component_controller_running_components{%(filterSelector)s}, cluster)
-          ||| % $._config),
-        dashboard.newTemplateVariable(
-          name='namespace', 
-          query= |||
-            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster"}, namespace)
-          ||| % $._config),
-        dashboard.newMultiTemplateVariable(
-          name='job', 
-          query= ||| 
-            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace"}, job)
-          ||| % $._config),
-        dashboard.newMultiTemplateVariable(
-          name='instance', 
-          query= |||
-            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)
-          ||| % $._config),
-      ]
-    else
-      [
-        dashboard.newMultiTemplateVariable(
-          name='job', 
-          query= ||| 
-            label_values(alloy_component_controller_running_components{%(filterSelector)s}, job)
-          ||| % $._config),
-        dashboard.newMultiTemplateVariable(
-          name='instance', 
-          query= |||
-            label_values(alloy_component_controller_running_components{%(filterSelector)s, job=~"$job"}, instance)
-          ||| % $._config),
-      ],
+    templates.newTemplateVariablesList(
+      filterSelector=$._config.filterSelector, 
+      enableK8sCluster=$._config.enableK8sCluster, 
+      includeInstance=true,
+      useSentenceCaseLabel=$._config.setenceCaseTemplates)
+    .variables,
 
   [filename]:
     dashboard.new(name='Alloy / Resources', tag=$._config.dashboardTag) +

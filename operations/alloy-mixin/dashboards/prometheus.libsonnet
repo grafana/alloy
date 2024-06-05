@@ -1,5 +1,6 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
+local templates = import './utils/templates.libsonnet';
 local filename = 'alloy-prometheus-remote-write.json';
 
 {
@@ -397,73 +398,105 @@ local filename = 'alloy-prometheus-remote-write.json';
     else
       remoteWritePanels(y_offset=0),
 
-  local templateVariables =
+  local k8sComponentPathQuery = 
+    if std.isEmpty($._config.filterSelector) then
+    |||
+        label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+    |||
+    else
+    |||
+        label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+    ||| % $._config,
+
+  local k8sComponentQuery = 
+    if std.isEmpty($._config.filterSelector) then
+    |||
+        label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+    |||
+    else
+    |||
+        label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+    ||| % $._config,
+
+  local k8sUrlQuery = 
+    if std.isEmpty($._config.filterSelector) then
+    |||
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+    |||
+    else
+    |||
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+    ||| % $._config,
+  
+  local componentPathQuery = 
+    if std.isEmpty($._config.filterSelector) then
+    |||
+        label_values(prometheus_remote_write_wal_samples_appended_total{job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+    |||
+    else
+    |||
+        label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+    ||| % $._config,
+
+  local componentQuery = 
+    if std.isEmpty($._config.filterSelector) then
+    |||
+        label_values(prometheus_remote_write_wal_samples_appended_total{job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+    |||
+    else
+    |||
+        label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+    ||| % $._config,
+
+  local urlQuery = 
+    if std.isEmpty($._config.filterSelector) then
+    |||
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{job="$job", instance=~"$instance", component_id=~"$component"}, url)
+    |||
+    else
+    |||
+        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, job="$job", instance=~"$instance", component_id=~"$component"}, url)
+    ||| % $._config,
+
+  local prometheusTemplateVariables =
     if $._config.enableK8sCluster then
-      [
-        dashboard.newTemplateVariable(
-          name='cluster', 
-          query= ||| 
-            label_values(alloy_component_controller_running_components{%(filterSelector)s}, cluster)
-          ||| % $._config),
-        dashboard.newTemplateVariable(
-          name='namespace', 
-          query= |||
-            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster"}, namespace)
-          ||| % $._config),
-        dashboard.newMultiTemplateVariable(
-          name='job', 
-          query= ||| 
-            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace"}, job)
-          ||| % $._config),
-        dashboard.newMultiTemplateVariable(
-          name='instance', 
-          query= |||
-            label_values(alloy_component_controller_running_components{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)
-          ||| % $._config),
+      [        
         dashboard.newMultiTemplateVariable(
           name='component_path', 
-          query= |||
-            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
-          ||| % $._config),
+          query=k8sComponentPathQuery,
+          useSentenceCaseLabel=$._config.setenceCaseTemplates),
         dashboard.newMultiTemplateVariable(
           name='component', 
-          query= |||
-            'label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
-          ||| % $._config),          
+          query=k8sComponentQuery,
+          useSentenceCaseLabel=$._config.setenceCaseTemplates),          
         dashboard.newMultiTemplateVariable(
           name='url', 
-          query= |||
-            'label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
-          ||| % $._config),
+          query= k8sUrlQuery,
+          useSentenceCaseLabel=$._config.setenceCaseTemplates),
       ]
     else
-      [
-        dashboard.newMultiTemplateVariable(
-          name='job', 
-          query= ||| 
-            label_values(alloy_component_controller_running_components{%(filterSelector)s}, job)
-          ||| % $._config),
-        dashboard.newMultiTemplateVariable(
-          name='instance', 
-          query= |||
-            label_values(alloy_component_controller_running_components{%(filterSelector)s, job=~"$job"}, instance)
-          ||| % $._config),
+      [       
         dashboard.newMultiTemplateVariable(
           name='component_path', 
-          query= |||
-            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
-          ||| % $._config),
+          query=componentPathQuery,
+          useSentenceCaseLabel=$._config.setenceCaseTemplates),
         dashboard.newMultiTemplateVariable(
           name='component', 
-          query= |||
-            'label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
-          ||| % $._config),          
+          query=componentQuery,
+          useSentenceCaseLabel=$._config.setenceCaseTemplates),          
         dashboard.newMultiTemplateVariable(
           name='url', 
-          query= |||
-            'label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, job="$job", instance=~"$instance", component_id=~"$component"}, url)
-          ||| % $._config),
+          query=urlQuery,
+          useSentenceCaseLabel=$._config.setenceCaseTemplates),
       ],
+    
+    local templateVariables = 
+      templates.newTemplateVariablesList(
+        filterSelector=$._config.filterSelector, 
+        enableK8sCluster=$._config.enableK8sCluster, 
+        includeInstance=true,
+        useSentenceCaseLabel=$._config.setenceCaseTemplates)
+      .variables + prometheusTemplateVariables,
 
   [filename]:
     dashboard.new(name='Alloy / Prometheus Components', tag=$._config.dashboardTag) +
