@@ -27,7 +27,7 @@ func (kafkaExporterConverter) ConvertAndAppend(state *State, id component.Instan
 
 	label := state.AlloyComponentLabel()
 
-	args := toKafkaExporter(state, id, cfg.(*kafkaexporter.Config))
+	args := toKafkaExporter(cfg.(*kafkaexporter.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "exporter", "kafka"}, label, args)
 
 	diags.Add(

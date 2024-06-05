@@ -9,7 +9,6 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
-	alloy_kafka_receiver "github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
@@ -46,11 +45,11 @@ type Arguments struct {
 	PartitionMetricsByResourceAttributes bool          `alloy:"partition_metrics_by_resource_attributes,attr,optional"`
 	Timeout                              time.Duration `alloy:"timeout,attr,optional"`
 
-	Authentication alloy_kafka_receiver.AuthenticationArguments `alloy:"authentication,block,optional"`
-	Metadata       alloy_kafka_receiver.MetadataArguments       `alloy:"metadata,block,optional"`
-	Retry          otelcol.RetryArguments                       `alloy:"retry_on_failure,block,optional"`
-	Queue          otelcol.QueueArguments                       `alloy:"sending_queue,block,optional"`
-	Producer       Producer                                     `alloy:"producer,block,optional"`
+	Authentication otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
+	Metadata       otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
+	Retry          otelcol.RetryArguments               `alloy:"retry_on_failure,block,optional"`
+	Queue          otelcol.QueueArguments               `alloy:"sending_queue,block,optional"`
+	Producer       Producer                             `alloy:"producer,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -103,9 +102,9 @@ func (args *Arguments) SetToDefault() {
 		Brokers:  []string{"localhost:9092"},
 		ClientID: "sarama",
 		Timeout:  5 * time.Second,
-		Metadata: alloy_kafka_receiver.MetadataArguments{
+		Metadata: otelcol.KafkaMetadataArguments{
 			IncludeAllTopics: true,
-			Retry: alloy_kafka_receiver.MetadataRetryArguments{
+			Retry: otelcol.KafkaMetadataRetryArguments{
 				MaxRetries: 3,
 				Backoff:    250 * time.Millisecond,
 			},

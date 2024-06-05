@@ -9,6 +9,9 @@ title: otelcol.exporter.kafka
 `otelcol.exporter.kafka` accepts logs, metrics, and traces telemetry data from 
 other `otelcol` components and sends it to Kafka.
 
+It is important to use `otelcol.exporter.kafka` together with `otelcol.processor.batch`
+in order to make sure `otelcol.exporter.kafka` doesn't slow down due to sending Kafka a huge number of small payloads.
+
 > **NOTE**: `otelcol.exporter.kafka` is a wrapper over the upstream
 > OpenTelemetry Collector `kafka` exporter from the `otelcol-contrib`
 > distribution. Bug reports or feature requests will be redirected to the
@@ -33,7 +36,7 @@ Name                                       | Type            | Description      
 ------------------------------------------ | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
 `protocol_version`                         | `string`        | Kafka protocol version to use.                                                      |                      | yes
 `brokers`                                  | `list(string)`  | Kafka brokers to connect to.                                                        | `["localhost:9092"]` | no
-`topic`                                    | `string`        | Kafka topic to read from.                                                           |  _See below_         | no
+`topic`                                    | `string`        | Kafka topic to send to.                                                             |  _See below_         | no
 `topic_from_attribute`                     | `string`        | A resource attribute whose value should be used as the message's topic.             |  `""`                | no
 `encoding`                                 | `string`        | Encoding of payload read from Kafka.                                                | `"otlp_proto"`       | no
 `client_id`                                | `string`        | Consumer client ID to use. The ID will be used for all produce requests.            | `"sarama"`           | no
@@ -44,13 +47,11 @@ Name                                       | Type            | Description      
 
 If `topic` is not set, different topics will be used for different telemetry signals:
 
-* Metrics will be received from an `otlp_metrics` topic.
-* Traces will be received from an `otlp_spans` topic.
-* Logs will be received from an `otlp_logs` topic.
+* Metrics will be sent to an `otlp_metrics` topic.
+* Traces will be sent to an `otlp_spans` topic.
+* Logs will be sent to an `otlp_logs` topic.
 
-If `topic` is set to a specific value, then only the signal type that corresponds to the data stored in the topic must be set in the output block.
-For example, if `topic` is set to `"my_telemetry"`, then the `"my_telemetry"` topic can only contain either metrics, logs, or traces. 
-If it contains only metrics, then `otelcol.exporter.kafka` should be configured to process only metrics.
+If topic is set, the same topic will be used for all telemetry signals - metrics, logs, and traces.
 
 When `topic_from_attribute` is set, it will take precedence over `topic`.
 
@@ -106,56 +107,19 @@ For example, `authentication > tls` refers to a `tls` block defined inside an `a
 
 ### authentication block
 
-The `authentication` block holds the definition of different authentication
-mechanisms to use when connecting to Kafka brokers. It doesn't support any
-arguments and is configured fully through inner blocks.
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### plaintext block
 
-The `plaintext` block configures `PLAIN` authentication against Kafka brokers.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`username` | `string` | Username to use for `PLAIN` authentication. | | yes
-`password` | `secret` | Password to use for `PLAIN` authentication. | | yes
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-plaintext.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### sasl block
 
-The `sasl` block configures SASL authentication against Kafka brokers.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`username` | `string` | Username to use for SASL authentication. | | yes
-`password` | `secret` | Password to use for SASL authentication. | | yes
-`mechanism` | `string` | SASL mechanism to use when authenticating. | | yes
-`version` | `number` | Version of the SASL Protocol to use when authenticating. | `0` | no
-
-The `mechanism` argument can be set to one of the following strings:
-
-* `"PLAIN"`
-* `"AWS_MSK_IAM"`
-* `"SCRAM-SHA-256"`
-* `"SCRAM-SHA-512"`
-
-When `mechanism` is set to `"AWS_MSK_IAM"`, the [`aws_msk` child block][aws_msk] must also be provided.
-
-The `version` argument can be set to either `0` or `1`.
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-sasl.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### aws_msk block
 
-The `aws_msk` block configures extra parameters for SASL authentication when
-using the `AWS_MSK_IAM` mechanism.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`region` | `string` | AWS region the MSK cluster is based in. | | yes
-`broker_addr` | `string` | MSK address to connect to for authentication. | | yes
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-sasl-aws_msk.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### tls block
 
@@ -167,58 +131,15 @@ communication.
 
 ### kerberos block
 
-The `kerberos` block configures Kerberos authentication against the Kafka
-broker.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`service_name` | `string` | Kerberos service name. | | no
-`realm` | `string` | Kerberos realm. | | no
-`use_keytab` | `string` | Enables using keytab instead of password. | | no
-`username` | `string` | Kerberos username to authenticate as. | | yes
-`password` | `secret` | Kerberos password to authenticate with. | | no
-`config_file` | `string` | Path to Kerberos location (for example, `/etc/krb5.conf`). | | no
-`keytab_file` | `string` | Path to keytab file (for example, `/etc/security/kafka.keytab`). | | no
-
-When `use_keytab` is `false`, the `password` argument is required. When
-`use_keytab` is `true`, the file pointed to by the `keytab_file` argument is
-used for authentication instead. At most one of `password` or `keytab_file`
-must be provided.
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-kerberos.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### metadata block
 
-The `metadata` block configures how to retrieve and store metadata from the
-Kafka broker.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`include_all_topics` | `bool` | When true, maintains metadata for all topics. | `true` | no
-
-If the `include_all_topics` argument is `true`, `otelcol.exporter.kafka`
-maintains a full set of metadata for all topics rather than the minimal set
-that has been necessary so far. Including the full set of metadata is more
-convenient for users but can consume a substantial amount of memory if you have
-many topics and partitions.
-
-Retrieving metadata may fail if the Kafka broker is starting up at the same
-time as the `otelcol.exporter.kafka` component. The [`retry` child
-block][retry] can be provided to customize retry behavior.
+{{< docs/shared lookup="reference/components/otelcol-kafka-metadata.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### retry block
 
-The `retry` block configures how to retry retrieving metadata when retrieval
-fails.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`max_retries` | `number` | How many times to reattempt retrieving metadata. | `3` | no
-`backoff` | `duration` | Time to wait between retries. | `"250ms"` | no
+{{< docs/shared lookup="reference/components/otelcol-kafka-metadata-retry.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### retry_on_failure block
 
