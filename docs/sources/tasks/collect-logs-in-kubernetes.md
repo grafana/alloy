@@ -16,27 +16,27 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [discovery.kubernetes]
-* [discovery.relabel]
-* [local.file_match]
-* [loki.source.file]
-* [loki.source.kubernetes]
-* [loki.source.kubernetes_events]
-* [loki.process]
-* [loki.write]
+* [discovery.kubernetes][]
+* [discovery.relabel][]
+* [local.file_match][]
+* [loki.source.file][]
+* [loki.source.kubernetes][]
+* [loki.source.kubernetes_events][]
+* [loki.process][]
+* [loki.write][]
 
 ## Before you begin
 
-* Ensure that you have basic familiarity with logs labelling when working with Loki.
+* Ensure that you are familiar with logs labelling when working with Loki.
 * Identify where you will write collected logs.
-  Logs can be written to Loki endpoints such as Grafana Loki, Grafana Cloud, or Grafana Enterprise Logs.
+  You can write logs to Loki endpoints such as Grafana Loki, Grafana Cloud, or Grafana Enterprise Logs.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Configure logs delivery
 
 Before components can collect logs, you must have a component responsible for writing those logs somewhere.
 
-The [loki.write][] component is responsible for delivering logs to a Loki endpoint.
+The [loki.write][] component delivers logs to a Loki endpoint.
 After a `loki.write` component is defined, you can use other {{< param "PRODUCT_NAME" >}} components to forward logs to it.
 
 To configure a `loki.write` component for logs delivery, complete the following steps:
@@ -73,7 +73,7 @@ To configure a `loki.write` component for logs delivery, complete the following 
 
 1. If you have more than one endpoint to write logs to, repeat the `endpoint` block for additional endpoints.
 
-The following example demonstrates configuring `loki.write` with multiple endpoints and mixed usage of basic authentication, and a `loki.source.file` component which forwards logs to it.
+The following example demonstrates configuring `loki.write` with multiple endpoints, mixed usage of basic authentication, and a `loki.source.file` component that forwards logs to Loki.
 
 ```alloy
 loki.write "default" {
@@ -108,7 +108,7 @@ For more information on configuring logs delivery, refer to [loki.write][].
 
 ## Collect logs from Kubernetes
 
-{{< param "PRODUCT_NAME" >}} can be configured to collect all kind of logs from Kubernetes:
+{{< param "PRODUCT_NAME" >}} can be configured to collect all kinds of logs from Kubernetes:
 
 1. System logs
 1. Pods logs
@@ -138,7 +138,7 @@ local.file_match "node_logs" {
 }
 
 // loki.source.file reads log entries from files and forwards them to other loki.* components.
-// Multiple loki.source.file components can be specified by giving them different labels.
+// You can specify multiple loki.source.file components by giving them different labels.
 loki.source.file "node_logs" {
   targets    = local.file_match.node_logs.targets
   forward_to = [loki.write.<WRITE_COMPONENT_NAME>.receiver]
@@ -147,18 +147,18 @@ loki.source.file "node_logs" {
 
 Replace the following values:
 
-- _`<CLUSTER_NAME>`_: The label for this sepcific Kubernetes cluster, such as `production` or `us-east-1`.
+- _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
 - _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
 
 ### Pods logs
 
 {{< admonition type="tip" >}}
-It's possible to get pods logs through the log files on each of the nodes. In this guide, we will get the logs through the Kubernetes API as it doesn't require system privileges for {{< param "PRODUCT_NAME" >}}.
+You can get pods logs through the log files on each node. In this guide, you will get the logs through the Kubernetes API because it doesn't require system privileges for {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
 The following components are needed:
 
-1. [discovery.kubernetes]: Discover pods information and list them for future components to use
+1. [discovery.kubernetes][]: Discover pods information and list them for future components to use
 1. [discovery.relabel][]: Enforce relabelling strategies on the list of pods
 1. [loki.source.kubernetes][]: Tails logs from a list of Kubernetes pods targets
 1. [loki.process][]: Modify the logs before sending them to the next component
@@ -168,7 +168,7 @@ Here is an example using those stages:
 
 ```alloy
 // discovery.kubernetes allows you to find scrape targets from Kubernetes resources.
-// It watches cluster state, and ensures targets are continually synced with what is currently running in your cluster.
+// It watches cluster state and ensures targets are continually synced with what is currently running in your cluster.
 discovery.kubernetes "pod" {
   role = "pod"
 }
@@ -242,7 +242,7 @@ loki.source.kubernetes "pod_logs" {
   forward_to = [loki.process.pod_logs.receiver]
 }
 
-// loki.process receives log entries from other loki components, applies one or more processing stages,
+// loki.process receives log entries from other Loki components, applies one or more processing stages,
 // and forwards the results to the list of receivers in the component’s arguments.
 loki.process "pod_logs" {
   stage.static_labels {
@@ -257,7 +257,7 @@ loki.process "pod_logs" {
 
 Replace the following values:
 
-- _`<CLUSTER_NAME>`_: The label for this sepcific Kubernetes cluster, such as `production` or `us-east-1`.
+- _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
 - _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
 
 ### Kubernetes Cluster Events
@@ -272,7 +272,7 @@ Here is an example using those stages:
 
 ```alloy
 // loki.source.kubernetes_events tails events from the Kubernetes API and converts them
-// into log lines to forward to other loki components.
+// into log lines to forward to other Loki components.
 loki.source.kubernetes_events "cluster_events" {
   job_name   = "integrations/kubernetes/eventhandler"
   log_format = "logfmt"
@@ -302,7 +302,7 @@ loki.process "cluster_events" {
 
 Replace the following values:
 
-- _`<CLUSTER_NAME>`_: The label for this sepcific Kubernetes cluster, such as `production` or `us-east-1`.
+- _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
 - _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
 
 [Loki]: https://grafana.com/oss/loki/
