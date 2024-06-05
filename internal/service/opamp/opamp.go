@@ -3,6 +3,7 @@ package opamp
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"runtime"
 	"sync"
@@ -122,6 +123,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			}
 			// todo: add log context
 			opCli = client.NewWebSocket(logAdapter{inner: s.logger})
+			opCli = client.NewHTTP(logAdapter{inner: s.logger})
 			err := opCli.SetAgentDescription(&protobufs.AgentDescription{
 				IdentifyingAttributes: []*protobufs.KeyValue{
 
@@ -141,10 +143,13 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			err = opCli.Start(ctx, types.StartSettings{
 				InstanceUid:    ulid,
 				OpAMPServerURL: args.URL,
+				Header:         http.Header{"X-Scope-OrgID": []string{"123"}},
+				Capabilities:   protobufs.AgentCapabilities_AgentCapabilities_AcceptsRemoteConfig,
 			})
 			if err != nil {
 				return err
 			}
+			level.Error(s.logger).Log("msg", "Opamp success?")
 			started = true
 		}
 	}
