@@ -17,7 +17,7 @@ Main (unreleased)
 
 ### Features
 
-- Adding an `otelcol.exporter.kafka` component for sending OTLP metrics, logs, and traces to Kafka.
+- Add an `otelcol.exporter.kafka` component to send OTLP metrics, logs, and traces to Kafka.
 
 ### Enhancements
 

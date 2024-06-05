@@ -39,7 +39,7 @@ func (kafkaExporterConverter) ConvertAndAppend(state *State, id component.Instan
 	return diags
 }
 
-func toKafkaExporter(state *State, id component.InstanceID, cfg *kafkaexporter.Config) *kafka.Arguments {
+func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 	return &kafka.Arguments{
 		Brokers:                              cfg.Brokers,
 		ProtocolVersion:                      cfg.ProtocolVersion,
