@@ -70,12 +70,30 @@ The clustering page shows the following information for each cluster node:
 * The node's current state (Viewer/Participant/Terminating).
 * The local node that serves the UI.
 
+### Live Debugging page
+
+<!-- TODO: add screenshot once the branch is ready to go to main -->
+
+The live debugging provides a real-time stream of debugging data from a component. You can access this page from the corresponding [Component detail page](#component-detail-page).
+
+The page offers the following features:
+
+* Pause and clear the data stream.
+* Sample data and disable auto-scrolling to handle heavy loads.
+* Search through the data using keywords.
+* Copy the entire data stream to the clipboard.
+
+The format and content of the debugging data vary depending on the component type.
+
+Please note that not all components support this feature yet. We are working on gradually extending this capability to more components.
+
 ## Debugging using the UI
 
 To debug using the UI:
 
 * Ensure that no component is reported as unhealthy.
 * Ensure that the arguments and exports for misbehaving components appear correct.
+* Ensure that the live debugging data meets your expectations.
 
 ## Examining logs
 
