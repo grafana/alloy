@@ -1,5 +1,5 @@
 ---
-description: Shared content, otelcol kafka plain text authentication
+description: Shared content, otelcol kafka plaintext authentication
 headless: true
 ---
 

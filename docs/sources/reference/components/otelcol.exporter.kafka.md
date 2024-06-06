@@ -10,12 +10,12 @@ title: otelcol.exporter.kafka
 other `otelcol` components and sends it to Kafka.
 
 It is important to use `otelcol.exporter.kafka` together with `otelcol.processor.batch`
-in order to make sure `otelcol.exporter.kafka` doesn't slow down due to sending Kafka a huge number of small payloads.
+to make sure `otelcol.exporter.kafka` doesn't slow down due to sending Kafka a huge number of small payloads.
 
-> **NOTE**: `otelcol.exporter.kafka` is a wrapper over the upstream
-> OpenTelemetry Collector `kafka` exporter from the `otelcol-contrib`
-> distribution. Bug reports or feature requests will be redirected to the
-> upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.exporter.kafka` is a wrapper over the upstream OpenTelemetry Collector `kafka` exporter from the `otelcol-contrib`  distribution.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
 
 Multiple `otelcol.exporter.kafka` components can be specified by giving them
 different labels.
@@ -169,7 +169,7 @@ Name | Type | Description | Default | Required
 Refer to the [sarama documentation][RequiredAcks] for more information on `required_acks`.
 
 `compression` could be set to either `none`, `gzip`, `snappy`, `lz4`, or `zstd`.
-Refer to the [sarama documentation][CompressionCodec] for more information.
+Refer to the [Sarama documentation][CompressionCodec] for more information.
 
 [RequiredAcks]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#RequiredAcks
 [CompressionCodec]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#CompressionCodec
