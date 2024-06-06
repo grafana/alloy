@@ -7,34 +7,6 @@ otelcol.receiver.vcenter "default" {
 		vcenter.host.cpu.utilization {
 			enabled = false
 		}
-
-		vcenter.host.network.packet.count {
-			enabled = true
-		}
-
-		vcenter.host.network.packet.rate {
-			enabled = false
-		}
-
-		vcenter.host.network.packet.errors {
-			enabled = true
-		}
-
-		vcenter.host.network.packet.error.rate {
-			enabled = false
-		}
-
-		vcenter.vm.network.packet.count {
-			enabled = true
-		}
-
-		vcenter.vm.network.packet.rate {
-			enabled = false
-		}
-
-		vcenter.vm.network.packet.drop.rate {
-			enabled = false
-		}
 	}
 
 	resource_attributes {
