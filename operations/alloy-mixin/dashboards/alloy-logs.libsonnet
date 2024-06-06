@@ -9,10 +9,10 @@ local logsDashboard = import 'github.com/grafana/jsonnet-libs/logs-lib/logs/main
     if $._config.enableLokiLogs then {
       local alloyLogs =
         logsDashboard.new(
-          'Alloy logs overview',
+          'Alloy / Logs Overview',
           datasourceName='loki_datasource',
           datasourceRegex='',
-          filterSelector=$._config.filterSelector,
+          filterSelector=$._config.logsFilterSelector,
           labels=labels,
           formatParser=null,
           showLogsVolume=true
@@ -27,7 +27,8 @@ local logsDashboard = import 'github.com/grafana/jsonnet-libs/logs-lib/logs/main
           dashboards+:
             {
               logs+: g.dashboard.withLinksMixin($.grafanaDashboards['alloy-resources.json'].links)                     
-                     + g.dashboard.withRefresh('10s'),
+                     + g.dashboard.withRefresh('10s')
+                     + g.dashboard.withTagsMixin($._config.dashboardTag),
             },
         },
       'alloy-logs.json': alloyLogs.dashboards.logs,
