@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tasks/collect-logs-in-kubernetes/
-description: Learn how to collect and forward logs from Kubernetes to Loki
-title: Collect and forward Kubernetes logs
-weight: 200
+description: Learn how to collect logs on Kubernetes and forward them to Loki
+title: Collect logs on Kubernetes
+weight: 375
 ---
 
 # Collect logs and forward Kubernetes logs
@@ -55,9 +55,9 @@ To configure a `loki.write` component for logs delivery, complete the following 
 
    - _`<LABEL>`_: The label for the component, such as `default`.
      The label you use must be unique across all `loki.write` components in the same configuration file.
-   - _`<LOKI_URL>`_ The full URL of the Loki endpoint where logs will be sent, such as `https://logs-us-central1.grafana.net/loki/api/v1/push`.
+   - _`<LOKI_URL>`_ : The full URL of the Loki endpoint where logs will be sent, such as `https://logs-us-central1.grafana.net/loki/api/v1/push`.
 
-1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
+  1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
    ```alloy
    basic_auth {
@@ -71,9 +71,10 @@ To configure a `loki.write` component for logs delivery, complete the following 
    - _`<USERNAME>`_: The basic authentication username.
    - _`<PASSWORD>`_: The basic authentication password or API key.
 
-1. If you have more than one endpoint to write logs to, repeat the `endpoint` block for additional endpoints.
+  1. If you have more than one endpoint to write logs to, repeat the `endpoint` block for additional endpoints.
 
-The following example demonstrates configuring `loki.write` with multiple endpoints, mixed usage of basic authentication, and a `loki.source.file` component that forwards logs to Loki.
+The following simple example demonstrates configuring `loki.write` with multiple endpoints, mixed usage of basic authentication, 
+and a `loki.source.file` component that collects logs from the filesystem on Alloy's own container.
 
 ```alloy
 loki.write "default" {
@@ -86,8 +87,8 @@ loki.write "default" {
 
     // Get basic authentication based on environment variables.
     basic_auth {
-      username = env("<REMOTE_WRITE_USERNAME>")
-      password = env("<REMOTE_WRITE_PASSWORD>")
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
@@ -119,9 +120,9 @@ Thanks to the component architecture, you can follow one or all of the next sect
 ### System logs
 
 To get the system logs, you should use the following components:
-1. [local.file_match][]: Discovers files on the local filesystem
-1. [loki.source.file][]: Reads log entries from files
-1. [loki.write][]: Send logs to the Loki endpoint. You should have configured it in the [Configure logs delivery](#configure-logs-delivery) section
+1. [local.file_match][]: Discovers files on the local filesystem.
+1. [loki.source.file][]: Reads log entries from files.
+1. [loki.write][]: Send logs to the Loki endpoint. You should have configured it in the [Configure logs delivery](#configure-logs-delivery) section.
 
 Here is an example using those stages.
 
