@@ -48,17 +48,6 @@ func (args *HTTPServerArguments) Convert() *otelconfighttp.ServerConfig {
 	}
 }
 
-// SetToDefault to all default values to be set.
-func (args *HTTPServerArguments) SetToDefault() {
-	*args = defaultHTTPServerConfig()
-}
-
-func defaultHTTPServerConfig() HTTPServerArguments {
-	return HTTPServerArguments{
-		MaxRequestBodySize: 20 * units.MiB,
-	}
-}
-
 // CORSArguments holds shared CORS settings for components which launch HTTP
 // servers.
 type CORSArguments struct {
