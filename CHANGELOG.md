@@ -23,6 +23,7 @@ Main (unreleased)
 
 - Component `otelcol.receiver.vcenter` removed `vcenter.host.network.packet.errors`, `vcenter.host.network.packet.count`, and
   `vcenter.vm.network.packet.count`.
+  -  `vcenter.host.network.packet.errors` replaced by `vcenter.host.network.packet.error.rate`. 
   - `vcenter.host.network.packet.count` replaced by `vcenter.host.network.packet.rate`.
   - `vcenter.vm.network.packet.count` replaced by `vcenter.vm.network.packet.rate`.
 
