@@ -1,11 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tasks/collect-logs-in-kubernetes/
 description: Learn how to collect logs on Kubernetes and forward them to Loki
-title: Collect logs on Kubernetes
+menuTitle: Collect logs on Kubernetes
+title:  Collect Kubernetes logs and forward them to Loki
 weight: 375
 ---
 
-# Collect logs and forward Kubernetes logs
+# Collect Kubernetes logs and forward them to Loki
 
 You can configure {{< param "PRODUCT_NAME" >}} to collect logs and forward them to a [Loki][] database.
 
