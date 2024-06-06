@@ -9,8 +9,7 @@ local filename = 'alloy-cluster-node.json';
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=true,
-      useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates)
-    .variables,
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
   [filename]:
     dashboard.new(name='Alloy / Cluster Node', tag=$._config.dashboardTag) +

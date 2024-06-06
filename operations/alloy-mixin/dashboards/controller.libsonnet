@@ -9,8 +9,7 @@ local filename = 'alloy-controller.json';
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=false,
-      useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates)
-    .variables,
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
   [filename]:
     dashboard.new(name='Alloy / Controller', tag=$._config.dashboardTag) +

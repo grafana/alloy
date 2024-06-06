@@ -464,30 +464,30 @@ local filename = 'alloy-prometheus-remote-write.json';
         dashboard.newMultiTemplateVariable(
           name='component_path', 
           query=k8sComponentPathQuery,
-          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),
+          setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
         dashboard.newMultiTemplateVariable(
           name='component', 
           query=k8sComponentQuery,
-          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),          
+          setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),          
         dashboard.newMultiTemplateVariable(
           name='url', 
           query= k8sUrlQuery,
-          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),
+          setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
       ]
     else
       [       
         dashboard.newMultiTemplateVariable(
           name='component_path', 
           query=componentPathQuery,
-          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),
+          setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
         dashboard.newMultiTemplateVariable(
           name='component', 
           query=componentQuery,
-          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),          
+          setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),          
         dashboard.newMultiTemplateVariable(
           name='url', 
           query=urlQuery,
-          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),
+          setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
       ],
     
     local templateVariables = 
@@ -495,8 +495,8 @@ local filename = 'alloy-prometheus-remote-write.json';
         filterSelector=$._config.filterSelector, 
         enableK8sCluster=$._config.enableK8sCluster, 
         includeInstance=true,
-        useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates)
-      .variables + prometheusTemplateVariables,
+        setenceCaseLabels=$._config.useSetenceCaseTemplateLabels)
+      + prometheusTemplateVariables,
 
   [filename]:
     dashboard.new(name='Alloy / Prometheus Components', tag=$._config.dashboardTag) +
