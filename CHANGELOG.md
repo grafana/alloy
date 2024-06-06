@@ -15,16 +15,16 @@ Main (unreleased)
 - Updated OpenTelemetry to v0.102.1. (@mattdurham)
   - Components `otelcol.receiver.otlp`,`otelcol.receiver.zipkin` and `otelcol.receiver.jaeger` setting `max_request_body_size`
     default changed from unlimited size to `20MiB`. This is due to [CVE-2024-36129](https://github.com/open-telemetry/opentelemetry-collector/security/advisories/GHSA-c74f-6mfw-mm4v).
-  - Component `otelcol.receiver.vcenter` removed `vcenter.host.network.packet.errors`, `vcenter.host.network.packet.count`, and
-    `vcenter.vm.network.packet.count`.  
-    - `vcenter.host.network.packet.count` replaced by `vcenter.host.network.packet.rate`. 
-    - `vcenter.vm.network.packet.count` replaced by `vcenter.vm.network.packet.rate`.
-
 
 ### Breaking changes to non-GA functionality
 
 - Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
   API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
+
+- Component `otelcol.receiver.vcenter` removed `vcenter.host.network.packet.errors`, `vcenter.host.network.packet.count`, and
+  `vcenter.vm.network.packet.count`.
+  - `vcenter.host.network.packet.count` replaced by `vcenter.host.network.packet.rate`.
+  - `vcenter.vm.network.packet.count` replaced by `vcenter.vm.network.packet.rate`.
 
 ### Enhancements
 
