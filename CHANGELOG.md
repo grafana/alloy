@@ -155,6 +155,8 @@ v1.1.0
   by electing a single instance as the leader for the `mimir.rules.kubernetes` component
   to avoid conflicts when making calls to the Mimir API. (@56quarters)
 
+- Add the possibility of setting custom labels for the AWS Firehose logs via `X-Amz-Firehose-Common-Attributes` header. (@andriikushch)
+
 ### Bugfixes
 
 - Fixed issue with defaults for Beyla component not being applied correctly. (marctc)
