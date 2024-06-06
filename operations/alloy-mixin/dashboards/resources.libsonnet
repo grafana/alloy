@@ -33,7 +33,7 @@ local stackedPanelMixin = {
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=true,
-      useSentenceCaseLabel=$._config.setenceCaseTemplates)
+      useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates)
     .variables,
 
   [filename]:

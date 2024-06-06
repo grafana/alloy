@@ -464,30 +464,30 @@ local filename = 'alloy-prometheus-remote-write.json';
         dashboard.newMultiTemplateVariable(
           name='component_path', 
           query=k8sComponentPathQuery,
-          useSentenceCaseLabel=$._config.setenceCaseTemplates),
+          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),
         dashboard.newMultiTemplateVariable(
           name='component', 
           query=k8sComponentQuery,
-          useSentenceCaseLabel=$._config.setenceCaseTemplates),          
+          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),          
         dashboard.newMultiTemplateVariable(
           name='url', 
           query= k8sUrlQuery,
-          useSentenceCaseLabel=$._config.setenceCaseTemplates),
+          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),
       ]
     else
       [       
         dashboard.newMultiTemplateVariable(
           name='component_path', 
           query=componentPathQuery,
-          useSentenceCaseLabel=$._config.setenceCaseTemplates),
+          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),
         dashboard.newMultiTemplateVariable(
           name='component', 
           query=componentQuery,
-          useSentenceCaseLabel=$._config.setenceCaseTemplates),          
+          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),          
         dashboard.newMultiTemplateVariable(
           name='url', 
           query=urlQuery,
-          useSentenceCaseLabel=$._config.setenceCaseTemplates),
+          useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates),
       ],
     
     local templateVariables = 
@@ -495,7 +495,7 @@ local filename = 'alloy-prometheus-remote-write.json';
         filterSelector=$._config.filterSelector, 
         enableK8sCluster=$._config.enableK8sCluster, 
         includeInstance=true,
-        useSentenceCaseLabel=$._config.setenceCaseTemplates)
+        useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates)
       .variables + prometheusTemplateVariables,
 
   [filename]:

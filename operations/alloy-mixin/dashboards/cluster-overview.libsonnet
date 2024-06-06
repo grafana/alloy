@@ -10,7 +10,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=false,
-      useSentenceCaseLabel=$._config.setenceCaseTemplates)
+      useSetenceCaseTemplateLabels=$._config.setenceCaseTemplates)
     .variables,
 
   [filename]:

@@ -9,6 +9,6 @@
         instanceSelector: self.groupSelector + ', instance=~"$instance"',        
         logsFilterSelector: '', #use to filter logs originated from alloy, and avoid picking up other platform logs, ie: service_name="alloy"
         dashboardTag: 'alloy-mixin',
-        setenceCaseTemplates: false,
+        useSetenceCaseTemplateLabels: false,
     }
 }

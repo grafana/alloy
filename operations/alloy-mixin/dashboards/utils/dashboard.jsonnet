@@ -66,9 +66,9 @@
     },
   },
 
-  newTemplateVariable(name, query, useSentenceCaseLabel=false):: {
+  newTemplateVariable(name, query, useSetenceCaseTemplateLabels=false):: {
     name: name,
-    label: if useSentenceCaseLabel then $.toSentenceCase(name) else name,
+    label: if useSetenceCaseTemplateLabels then $.toSentenceCase(name) else name,
     type: 'query',
     query: {
       query: query,
@@ -89,7 +89,7 @@
     titleFormat: '{{cluster}}/{{namespace}}',
   },
 
-  newMultiTemplateVariable(name, query, useSentenceCaseLabel=false):: $.newTemplateVariable(name, query, useSentenceCaseLabel) {
+  newMultiTemplateVariable(name, query, useSetenceCaseTemplateLabels=false):: $.newTemplateVariable(name, query, useSetenceCaseTemplateLabels) {
     multi: true,
     allValue: '.*',
     includeAll: true,
