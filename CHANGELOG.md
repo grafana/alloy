@@ -65,6 +65,8 @@ Main (unreleased)
 
 - Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart)
 
+- Add the `targets` argument to the `prometheus.exporter.snmp` component to support passing SNMP targets at runtime. (@wildum)
+
 - Prefix Faro measurement values with `value_` to align with the latest Faro cloud receiver updates. (@codecapitano)
 
 ### Bugfixes
