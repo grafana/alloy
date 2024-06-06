@@ -74,7 +74,7 @@ The clustering page shows the following information for each cluster node:
 
 <!-- TODO: add screenshot once the branch is ready to go to main -->
 
-The live debugging provides a real-time stream of debugging data from a component. You can access this page from the corresponding [Component detail page](#component-detail-page).
+Live debugging provides a real-time stream of debugging data from a component. You can access this page from the corresponding [Component detail page](#component-detail-page).
 
 Live debugging allows you to do the following:
 
