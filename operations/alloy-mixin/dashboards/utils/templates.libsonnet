@@ -65,36 +65,42 @@ local dashboard = import './dashboard.jsonnet';
 
         variables:  
             if enableK8sCluster then
-            [
-                dashboard.newTemplateVariable(
-                name='cluster', 
-                query=clusterTemplateQuery,
-                useSentenceCaseLabel=useSentenceCaseLabel),
-                dashboard.newTemplateVariable(
-                name='namespace', 
-                query=namespaceTemplateQuery,
-                useSentenceCaseLabel=useSentenceCaseLabel),
-                dashboard.newMultiTemplateVariable(
-                name='job', 
-                query=k8sJobTemplateQuery,
-                useSentenceCaseLabel=useSentenceCaseLabel),
-                if includeInstance then
+                [
+                    dashboard.newTemplateVariable(
+                    name='cluster', 
+                    query=clusterTemplateQuery,
+                    useSentenceCaseLabel=useSentenceCaseLabel),
+                    dashboard.newTemplateVariable(
+                    name='namespace', 
+                    query=namespaceTemplateQuery,
+                    useSentenceCaseLabel=useSentenceCaseLabel),
                     dashboard.newMultiTemplateVariable(
-                    name='instance', 
-                    query=k8sInstanceTemplateQuery,
-                useSentenceCaseLabel=useSentenceCaseLabel),
-            ]
+                    name='job', 
+                    query=k8sJobTemplateQuery,
+                    useSentenceCaseLabel=useSentenceCaseLabel),
+                ] + 
+                if includeInstance then
+                    [   
+                        dashboard.newMultiTemplateVariable(
+                        name='instance', 
+                        query=k8sInstanceTemplateQuery,
+                        useSentenceCaseLabel=useSentenceCaseLabel) 
+                    ]
+                else []
             else
-            [
-                dashboard.newMultiTemplateVariable(
-                name='job', 
-                query=jobTemplateQuery,
-                useSentenceCaseLabel=useSentenceCaseLabel),
-                if includeInstance then
+                [
                     dashboard.newMultiTemplateVariable(
-                    name='instance', 
-                    query=instanceTemplateQuery,
-                useSentenceCaseLabel=useSentenceCaseLabel),
-            ],        
+                    name='job', 
+                    query=jobTemplateQuery,
+                    useSentenceCaseLabel=useSentenceCaseLabel),                
+                ] + 
+                if includeInstance then
+                    [
+                        dashboard.newMultiTemplateVariable(
+                        name='instance', 
+                        query=instanceTemplateQuery,
+                        useSentenceCaseLabel=useSentenceCaseLabel)
+                    ]
+                else [],
     }
 }
