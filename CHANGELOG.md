@@ -15,6 +15,10 @@ Main (unreleased)
 - Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
   API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
 
+### Features
+
+- Add an `otelcol.exporter.kafka` component to send OTLP metrics, logs, and traces to Kafka.
+
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
