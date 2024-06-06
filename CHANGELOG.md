@@ -63,7 +63,9 @@ Main (unreleased)
 
 - Added support for NS records to `discovery.dns`. (@djcode)
 
-- Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart) 
+- Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart)
+
+- Prefix Faro measurement values with `value_` to align with the latest Faro cloud receiver updates. (@codecapitano)
 
 ### Bugfixes
 
