@@ -1,5 +1,5 @@
 ---
-description: Shared content, otelcol kafka kerberos authentication
+description: Shared content, otelcol Kafka Kerberos authentication
 headless: true
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Shared content, otelcol kafka authentication
+description: Shared content, otelcol Kafka authentication
 headless: true
 ---
 

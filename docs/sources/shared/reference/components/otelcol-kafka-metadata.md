@@ -1,5 +1,5 @@
 ---
-description: Shared content, otelcol kafka metadata
+description: Shared content, otelcol Kafka metadata
 headless: true
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Shared content, otelcol kafka metadata retry
+description: Shared content, otelcol Kafka metadata retry
 headless: true
 ---
 

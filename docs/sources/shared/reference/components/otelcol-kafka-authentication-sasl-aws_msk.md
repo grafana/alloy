@@ -1,5 +1,5 @@
 ---
-description: Shared content, otelcol kafka sasl aws_msk authentication
+description: Shared content, otelcol Kafka SASL AWS_MSK authentication
 headless: true
 ---
 
