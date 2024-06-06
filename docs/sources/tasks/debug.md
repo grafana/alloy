@@ -85,7 +85,10 @@ The page offers the following features:
 
 The format and content of the debugging data vary depending on the component type.
 
-Please note that not all components support this feature yet. We are working on gradually extending this capability to more components.
+{{< admonition type="note" >}}
+Live debugging is not yet available in all components.
+{{< /admonition >}}
+
 
 ## Debugging using the UI
 
