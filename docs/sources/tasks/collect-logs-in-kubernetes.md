@@ -57,21 +57,21 @@ To configure a `loki.write` component for logs delivery, complete the following 
      The label you use must be unique across all `loki.write` components in the same configuration file.
    - _`<LOKI_URL>`_ : The full URL of the Loki endpoint where logs will be sent, such as `https://logs-us-central1.grafana.net/loki/api/v1/push`.
 
-1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
+  1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
-  ```alloy
-  basic_auth {
-    username = "<USERNAME>"
-    password = "<PASSWORD>"
-  }
-  ```
+   ```alloy
+   basic_auth {
+     username = "<USERNAME>"
+     password = "<PASSWORD>"
+   }
+   ```
 
-  Replace the following:
+   Replace the following:
 
-  - _`<USERNAME>`_: The basic authentication username.
-  - _`<PASSWORD>`_: The basic authentication password or API key.
+   - _`<USERNAME>`_: The basic authentication username.
+   - _`<PASSWORD>`_: The basic authentication password or API key.
 
-1. If you have more than one endpoint to write logs to, repeat the `endpoint` block for additional endpoints.
+  1. If you have more than one endpoint to write logs to, repeat the `endpoint` block for additional endpoints.
 
 The following simple example demonstrates configuring `loki.write` with multiple endpoints, mixed usage of basic authentication, 
 and a `loki.source.file` component that collects logs from the filesystem on Alloy's own container.
@@ -133,7 +133,7 @@ local.file_match "node_logs" {
       // Monitor syslog to scrape node-logs
       __path__  = "/var/log/syslog",
       job       = "node/syslog",
-      node_name = constants.hostname,
+      node_name = env("HOSTNAME"),
       cluster   = <CLUSTER_NAME>
   }]
 }
@@ -154,10 +154,7 @@ Replace the following values:
 ### Pods logs
 
 {{< admonition type="tip" >}}
-You can get pods logs through the log files on each node however you need to check that:
-- you can give system privileges to {{< param "PRODUCT_NAME" >}}
-- your cloud provider gives you direct access to the log files
-In this guide, you will get the logs through the Kubernetes API with `loki.source.kubernetes`.
+You can get pods logs through the log files on each node. In this guide, you will get the logs through the Kubernetes API because it doesn't require system privileges for {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
 The following components are needed:
@@ -308,221 +305,6 @@ Replace the following values:
 
 - _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
 - _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
-
-<!-- TO TEST ! >
-
-{{< collapse title="Example Kubernetes configuration" >}}
-
-```yaml
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: grafana-cloud-monitoring
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: alloy-logs
-  namespace: grafana-cloud-monitoring
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: alloy-logs-role
-  namespace: grafana-cloud-monitoring
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - list
-  - watch
-  - get
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: alloy-logs-rolebinding
-  namespace: grafana-cloud-monitoring
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: alloy-logs-role
-subjects:
-- kind: ServiceAccount
-  name: alloy-logs
-  namespace: grafana-cloud-monitoring
----
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: alloy-logs-collector
-  namespace: grafana-cloud-monitoring
-spec:
-
-CHECK THIS SPEC FOR DAEMONSET!
-
-  minReadySeconds: 10
-  selector:
-    matchLabels:
-      name: alloy-logs-collector
-  template:
-    metadata:
-      labels:
-        name: alloy-logs-collector
-    spec:
-      containers:
-      - args:
-        - run
-        - /etc/alloy/config.alloy
-        command:
-        - /bin/alloy
-        image: grafana/alloy:v1.0
-        imagePullPolicy: IfNotPresent
-        name: alloy-logs
-        volumeMounts:
-        - mountPath: /etc/alloy
-          name: alloy-logs
-      serviceAccount: alloy-logs
-      volumes:
-      - configMap:
-          name: alloy-logs
-        name: alloy-logs
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: alloy-logs
-  namespace: grafana-cloud-monitoring
-data:
-  config.alloy: |
-    loki.write "default" {
-      endpoint {
-        url = "https://logs-us-central1.grafana.net/loki/api/v1/push"
-
-        basic_auth {
-          username = "111111"
-          password = "mySuperSecretKey"
-        }
-      }
-
-    // Nodes files
-    local.file_match "node_logs" {
-      path_targets = [{
-          // Monitor syslog to scrape node-logs
-          __path__  = "/var/log/syslog",
-          job       = "node/syslog",
-          node_name = constants.hostname,
-          cluster   = "myCluster"
-      }]
-    }
-
-    loki.source.file "node_logs" {
-      targets    = local.file_match.node_logs.targets
-      forward_to = [loki.write.default.receiver]
-    }
-
-    // Pods
-    discovery.kubernetes "pod" {
-      role = "pod"
-    }
-
-    discovery.relabel "pod_logs" {
-      targets = discovery.kubernetes.pod.targets
-
-      rule {
-        source_labels = ["__meta_kubernetes_namespace"]
-        action = "replace"
-        target_label = "namespace"
-      }
-
-      rule {
-        source_labels = ["__meta_kubernetes_pod_name"]
-        action = "replace"
-        target_label = "pod"
-      }
-
-      rule {
-        source_labels = ["__meta_kubernetes_pod_container_name"]
-        action = "replace"
-        target_label = "container"
-      }
-
-      rule {
-        source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
-        action = "replace"
-        target_label = "app"
-      }
-
-      rule {
-        source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
-        action = "replace"
-        target_label = "job"
-        separator = "/"
-        replacement = "$1"
-      }
-
-      rule {
-        source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
-        action = "replace"
-        target_label = "__path__"
-        separator = "/"
-        replacement = "/var/log/pods/*$1/*.log"
-      }
-
-      rule {
-        source_labels = ["__meta_kubernetes_pod_container_id"]
-        action = "replace"
-        target_label = "container_runtime"
-        regex = "^(\\S+):\\/\\/.+$"
-        replacement = "$1"
-      }
-    }
-
-    loki.source.kubernetes "pod_logs" {
-      targets    = discovery.relabel.pod_logs.output
-      forward_to = [loki.process.pod_logs.receiver]
-    }
-
-    loki.process "pod_logs" {
-      stage.static_labels {
-          values = {
-            cluster = "myCluster",
-          }
-      }
-
-      forward_to = [loki.write.default.receiver]
-    }
-
-    // Cluster events
-    loki.source.kubernetes_events "cluster_events" {
-      job_name   = "integrations/kubernetes/eventhandler"
-      log_format = "logfmt"
-      forward_to = [
-        loki.process.cluster_events.receiver,
-      ]
-    }
-
-    loki.process "cluster_events" {
-      forward_to = [loki.write.default.receiver]
-
-      stage.static_labels {
-        values = {
-          cluster = "myCluster",
-        }
-      }
-
-      stage.labels {
-        values = {
-          kubernetes_cluster_events = "job",
-        }
-      }
-    }
-```
-
-{{< /collapse >}}
-<-->
 
 [Loki]: https://grafana.com/oss/loki/
 [Field Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
