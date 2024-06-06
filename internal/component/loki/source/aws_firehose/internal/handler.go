@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/v3/pkg/logproto"
+	yacepromutil "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/promutil"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -34,6 +35,9 @@ const (
 	errorResponseTemplate   = `{"requestId": "%s", "timestamp": %d, "errorMessage": "%s"}`
 
 	millisecondsPerSecond = 1000
+
+	commonAttributesHeader      = "X-Amz-Firehose-Common-Attributes"
+	commonAttributesLabelPrefix = "lbl_"
 )
 
 // RecordOrigin is a type that tells from which origin the data received from AWS Firehose comes.
@@ -49,6 +53,12 @@ const (
 // should be written to.
 type Sender interface {
 	Send(ctx context.Context, entry loki.Entry)
+}
+
+// commonAttributes is a struct to Unmarshal value from the "X-Amz-Firehose-Common-Attributes" header.
+// Specification of the value: https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html#:~:text=HTTP%20Headers%20%2D%20X%2DAmz%2DFirehose%2DCommon%2DAttributes
+type commonAttributes struct {
+	CommonAttributes map[string]string `json:"commonAttributes"`
 }
 
 // Handler implements a http.Handler that is able to receive records from a Firehose HTTP destination.
@@ -117,9 +127,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	commonLabels.Set("__aws_firehose_source_arn", req.Header.Get("X-Amz-Firehose-Source-Arn"))
 
 	// if present, use the tenantID header
-	tenantHeader := req.Header.Get("X-Scope-OrgID")
-	if tenantHeader != "" {
-		commonLabels.Set(lokiClient.ReservedLabelTenantID, tenantHeader)
+	tenantID := req.Header.Get("X-Scope-OrgID")
+	if tenantID != "" {
+		commonLabels.Set(lokiClient.ReservedLabelTenantID, tenantID)
+	}
+
+	requestStaticLabels := h.tryToGetStaticLabelsFromRequest(req, tenantID)
+	for l, v := range requestStaticLabels {
+		commonLabels.Set(string(l), string(v))
 	}
 
 	h.metrics.batchSize.WithLabelValues().Observe(float64(len(firehoseReq.Records)))
@@ -269,4 +284,70 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 	}
 
 	return nil
+}
+
+// tryToGetStaticLabelsFromRequest tries to extract static labels from the request header.
+func (h *Handler) tryToGetStaticLabelsFromRequest(req *http.Request, tenantID string) model.LabelSet {
+	var staticLabels model.LabelSet
+	commonAttributesHeaderValue := req.Header.Get(commonAttributesHeader)
+	if len(commonAttributesHeaderValue) == 0 {
+		return staticLabels
+	}
+
+	ca := commonAttributes{
+		CommonAttributes: make(map[string]string),
+	}
+
+	err := json.Unmarshal([]byte(commonAttributesHeaderValue), &ca)
+	if err != nil {
+		// log error, increase metric value and ignore the header values
+		level.Debug(h.logger).Log(fmt.Sprintf("error decoding %s: %s", commonAttributesHeader, err.Error()))
+		h.metrics.invalidStaticLabelsCount.WithLabelValues(reasonInvalidJsonFormat, tenantID).Inc()
+		return nil
+	}
+
+	staticLabels = make(model.LabelSet)
+	for name, value := range ca.CommonAttributes {
+		// check if the value is suppose to be a label name
+		if !strings.HasPrefix(name, commonAttributesLabelPrefix) {
+			continue
+		}
+
+		// construct model.LabelName from the header value, if the raw data is not valid label name, try to fix it and use
+		rawLabelName := strings.TrimPrefix(name, commonAttributesLabelPrefix)
+		labelName := model.LabelName(rawLabelName)
+		if !labelName.IsValid() {
+			level.Debug(h.logger).Log(fmt.Sprintf("label name is not valid, trying to fix: %s", rawLabelName))
+
+			// try to sanitize label name
+			sanitizedLabelName := yacepromutil.PromString(rawLabelName)
+			labelName = model.LabelName(sanitizedLabelName)
+			if !labelName.IsValid() {
+				// This situation can happen when:
+				// - the header with label information is a valid JSON
+				// - the label name is not valid and can not be sanitized
+				//
+				// For example:
+				// {
+				//  "commonAttributes": {
+				//   "lbl_0mylabel": "value"
+				//  }
+				// }
+				h.metrics.invalidStaticLabelsCount.WithLabelValues(reasonInvalidLabelName, tenantID).Inc()
+				level.Debug(h.logger).Log(fmt.Sprintf("label name is not valid, can not create a prom string from: %s", rawLabelName))
+				continue
+			}
+		}
+
+		labelValue := model.LabelValue(value)
+		if !labelValue.IsValid() {
+			h.metrics.invalidStaticLabelsCount.WithLabelValues(reasonInvalidLabelValue, tenantID).Inc()
+			level.Debug(h.logger).Log(fmt.Sprintf("label %s has invalid value: %s", labelName, value))
+			continue
+		}
+
+		staticLabels[labelName] = labelValue
+	}
+
+	return staticLabels
 }

@@ -220,7 +220,7 @@ type Measurement struct {
 	Context   MeasurementContext `json:"context,omitempty"`
 }
 
-// KeyVal representation of the exception object
+// KeyVal representation of the measurement object
 func (m Measurement) KeyVal() *KeyVal {
 	kv := NewKeyVal()
 
@@ -238,6 +238,14 @@ func (m Measurement) KeyVal() *KeyVal {
 	}
 	MergeKeyVal(kv, m.Trace.KeyVal())
 	MergeKeyValWithPrefix(kv, KeyValFromMap(m.Context), "context_")
+
+	values := make(map[string]float64, len(m.Values))
+	for key, value := range m.Values {
+		values[key] = value
+	}
+
+	MergeKeyValWithPrefix(kv, KeyValFromFloatMap(values), "value_")
+
 	return kv
 }
 

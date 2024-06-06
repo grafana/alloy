@@ -67,6 +67,8 @@ Main (unreleased)
 
 - Add the `targets` argument to the `prometheus.exporter.snmp` component to support passing SNMP targets at runtime. (@wildum)
 
+- Prefix Faro measurement values with `value_` to align with the latest Faro cloud receiver updates. (@codecapitano)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
@@ -154,6 +156,8 @@ v1.1.0
 - In `mimir.rules.kubernetes`, add support for running in a cluster of Alloy instances
   by electing a single instance as the leader for the `mimir.rules.kubernetes` component
   to avoid conflicts when making calls to the Mimir API. (@56quarters)
+
+- Add the possibility of setting custom labels for the AWS Firehose logs via `X-Amz-Firehose-Common-Attributes` header. (@andriikushch)
 
 ### Bugfixes
 
