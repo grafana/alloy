@@ -73,6 +73,7 @@ type ComponentGlobals struct {
 	ControllerID        string                                 // ID of controller.
 	NewModuleController func(id string) ModuleController       // Func to generate a module controller.
 	GetServiceData      func(name string) (interface{}, error) // Get data for a service.
+	Community           bool                                   // Enables the use of community components.
 }
 
 // BuiltinComponentNode is a controller node which manages a builtin component.
