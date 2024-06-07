@@ -41,6 +41,21 @@ Proposals are the process of getting consensus on a problem and a solution to
 that problem. Proposals are the more detailed form of an enhancement request,
 which typically only include a problem statement but no suggested solution.
 
+Proposals typically include:
+
+* A clear problem statement.
+* A proposed solution to the problem statement.
+* If applicable, a list of alternative solutions with rationale for why the
+  alternative solutions were not selected.
+
+Proposals can still meet the above criteria while remaining brief. For example,
+this proposal would be sufficient:
+
+> I would like to use the batch processor component from OpenTelemetry
+> Collector in Grafana Alloy to reduce the number of outgoing network requests.
+> Please add the batch processor as a new Alloy component called
+> `otelcol.processor.batch`.
+
 At a high-level, proposals go through the following stages:
 
 1. *Issue*: A brief [issue][new-proposal] is created for the proposal.
