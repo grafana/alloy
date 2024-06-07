@@ -1,0 +1,63 @@
+prometheus.exporter.blackbox "blackbox_metrics" {
+  config = "{ modules: { http_2xx: { prober: http, timeout: 5s } } }"
+  targets = [
+    {
+      "name" = "t1",
+      "address" = "localhost:9009", // use mimir as a target
+      "module" = "http_2xx",
+    },
+  ]
+}
+
+prometheus.scrape "blackbox_metrics" {
+  targets    = prometheus.exporter.blackbox.blackbox_metrics.targets
+  forward_to = [prometheus.remote_write.blackbox_metrics.receiver]
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.remote_write "blackbox_metrics" {
+  endpoint {
+    url = "http://localhost:9009/api/v1/push"
+    metadata_config {
+        send_interval = "1s"
+    }
+    queue_config {
+        max_samples_per_send = 100
+    }    
+  }
+  external_labels = {
+    test_name = "blackbox_metrics",
+  }  
+}
+
+prometheus.exporter.blackbox "blackbox_metrics2" {
+  config = "{ modules: { http_2xx: { prober: http, timeout: 5s } } }"
+  target {
+    name = "t1"
+    address = "localhost:9009" // use mimir as a target
+    module = "http_2xx"
+  }
+}
+
+prometheus.scrape "blackbox_metrics2" {
+  targets    = prometheus.exporter.blackbox.blackbox_metrics2.targets
+  forward_to = [prometheus.remote_write.blackbox_metrics2.receiver]
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.remote_write "blackbox_metrics2" {
+  endpoint {
+    url = "http://localhost:9009/api/v1/push"
+    metadata_config {
+        send_interval = "1s"
+    }
+    queue_config {
+        max_samples_per_send = 100
+    }    
+  }
+  external_labels = {
+    test_name = "blackbox_metrics2",
+  }  
+}

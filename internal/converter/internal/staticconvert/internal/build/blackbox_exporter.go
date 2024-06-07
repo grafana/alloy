@@ -22,7 +22,7 @@ func toBlackboxExporter(config *blackbox_exporter.Config) *blackbox.Arguments {
 			IsSecret: false,
 			Value:    string(config.BlackboxConfig),
 		},
-		Targets:            toBlackboxTargets(config.BlackboxTargets),
+		TargetsList:        toBlackboxTargets(config.BlackboxTargets),
 		ProbeTimeoutOffset: time.Duration(config.ProbeTimeoutOffset),
 	}
 }
@@ -39,25 +39,19 @@ func toBlackboxExporterV2(config *blackbox_exporter_v2.Config) *blackbox.Argumen
 			IsSecret: false,
 			Value:    string(config.BlackboxConfig),
 		},
-		Targets:            toBlackboxTargets(config.BlackboxTargets),
+		TargetsList:        toBlackboxTargets(config.BlackboxTargets),
 		ProbeTimeoutOffset: time.Duration(config.ProbeTimeoutOffset),
 	}
 }
 
-func toBlackboxTargets(blackboxTargets []blackbox_exporter.BlackboxTarget) blackbox.TargetBlock {
-	var targetBlock blackbox.TargetBlock
-
+func toBlackboxTargets(blackboxTargets []blackbox_exporter.BlackboxTarget) []map[string]string {
+	var targets blackbox.TargetsList
 	for _, bt := range blackboxTargets {
-		targetBlock = append(targetBlock, toBlackboxTarget(bt))
+		target := make(map[string]string)
+		target["name"] = bt.Name
+		target["address"] = bt.Target
+		target["module"] = bt.Module
+		targets = append(targets, target)
 	}
-
-	return targetBlock
-}
-
-func toBlackboxTarget(target blackbox_exporter.BlackboxTarget) blackbox.BlackboxTarget {
-	return blackbox.BlackboxTarget{
-		Name:   target.Name,
-		Target: target.Target,
-		Module: target.Module,
-	}
+	return targets
 }

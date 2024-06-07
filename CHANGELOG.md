@@ -73,6 +73,8 @@ Main (unreleased)
 
 - Prefix Faro measurement values with `value_` to align with the latest Faro cloud receiver updates. (@codecapitano)
 
+- Add the `targets` argument to the `prometheus.exporter.blackbox` component to support passing blackbox targets at runtime. (@wildum)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
