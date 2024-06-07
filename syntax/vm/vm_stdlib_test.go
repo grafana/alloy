@@ -31,6 +31,7 @@ func TestVM_Stdlib(t *testing.T) {
 		{"yaml_decode array float", "yaml_decode(`[0.0, 1.0, 2.0]`)", []interface{}{float64(0), float64(1), float64(2)}},
 		{"yaml_decode nil field", "yaml_decode(`foo: null`)", map[string]interface{}{"foo": nil}},
 		{"yaml_decode nil array element", `yaml_decode("[0, null]")`, []interface{}{0, nil}},
+		{"base64_decode", `base64_decode("Zm9vYmFyMTIzIT8kKiYoKSctPUB+")`, string(`foobar123!?$*&()'-=@~`)},
 	}
 
 	for _, tc := range tt {

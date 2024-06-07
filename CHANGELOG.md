@@ -73,6 +73,8 @@ Main (unreleased)
 
 - Prefix Faro measurement values with `value_` to align with the latest Faro cloud receiver updates. (@codecapitano)
 
+- Add `base64_decode` to standard library. (@hainenber)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
