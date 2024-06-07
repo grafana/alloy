@@ -14,7 +14,7 @@
 
 ## Proposal
 
-[A precise description of the proposed changed.]
+[A description of the proposed change with a level of detail sufficient to evaluate the tradeoffs and alternatives.]
 
 ## Rationale
 
