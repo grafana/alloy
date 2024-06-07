@@ -50,7 +50,8 @@ The `config` argument must be a YAML document as string defining which `blackbox
 - `remote.s3.LABEL.content`
 
 The `targets` argument is an alternative to the [target][] block. This is useful when blackbox targets are supplied by another component.
-The following labels can be set to a target:
+
+You can set the following labels to a target:
 * `name`: The name of the target to probe (required).
 * `address`: The address of the target to probe (required).
 * `module`: The blackbox module to use to probe.
