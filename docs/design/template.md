@@ -16,9 +16,13 @@
 
 [A description of the proposed change with a level of detail sufficient to evaluate the tradeoffs and alternatives.]
 
-## Rationale
+## Pros and cons
 
-[A discussion of alternative approaches and the trade offs, advantages, and disadvantages of the specified approach.]
+[A list of trade offs, advantages, and disadvantages introduced by the proposed solution.]
+
+## Alternative solutions
+
+[If applicable, a discussion of alternative approches. Alternative approaches should include pros and cons, and a rationale for why the alternative approach was not selected.]
 
 ## Compatibility
 
@@ -31,3 +35,4 @@
 ## Related open issues
 
 [If applicable, a discussion of issues relating to this proposal for which the author does not know the solution. This section may be omitted if there are none.]
+
