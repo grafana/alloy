@@ -10,7 +10,7 @@ local openTelemetryAlerts = (import './alerts/opentelemetry.libsonnet');
     openTelemetryAlerts.newOpenTelemetryAlertsGroup($._config.enableK8sCluster)
   ],
 
-  prometheusAlerts+: {
+  prometheusAlerts+:: {
     groups+: 
       if $._config.enableAlloyCluster then
         alloyClusterAlerts + otherAlerts

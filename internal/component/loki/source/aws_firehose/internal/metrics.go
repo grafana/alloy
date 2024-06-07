@@ -4,11 +4,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	reasonInvalidLabelName  = "invalid_label_name"
+	reasonInvalidLabelValue = "invalid_label_value"
+	reasonInvalidJsonFormat = "invalid_json_format"
+)
+
 type Metrics struct {
-	errorsAPIRequest *prometheus.CounterVec
-	recordsReceived  *prometheus.CounterVec
-	errorsRecord     *prometheus.CounterVec
-	batchSize        *prometheus.HistogramVec
+	errorsAPIRequest         *prometheus.CounterVec
+	recordsReceived          *prometheus.CounterVec
+	errorsRecord             *prometheus.CounterVec
+	batchSize                *prometheus.HistogramVec
+	invalidStaticLabelsCount *prometheus.CounterVec
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
@@ -33,12 +40,18 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		Help: "AWS Firehose received batch size in number of records",
 	}, nil)
 
+	m.invalidStaticLabelsCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "loki_source_awsfirehose_invalid_static_labels_errors",
+		Help: "Number of errors while processing AWS Firehose static labels",
+	}, []string{"reason", "tenant_id"})
+
 	if reg != nil {
 		reg.MustRegister(
 			m.errorsAPIRequest,
 			m.recordsReceived,
 			m.errorsRecord,
 			m.batchSize,
+			m.invalidStaticLabelsCount,
 		)
 	}
 
