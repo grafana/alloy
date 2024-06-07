@@ -8,9 +8,9 @@
 
 [A short summary of the proposal.]
 
-## Background
+## Problem
 
-[An introduction of the necessary context and the proposal being solved by the proposed change. Background should include why the proposal is necessary and what problem it solves.]
+[A description of the necessary context and the problem being solved by the proposed change. The problem statement should explain why a solution is necessary.]
 
 ## Proposal
 
