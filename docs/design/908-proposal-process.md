@@ -116,8 +116,10 @@ Once a design document is created, the proposal author should:
 Closing the original proposal issue in favor of the design document PR prevents
 fragmenting discussions as contributors work towards consensus on a proposal.
 
-Design documents do not track the state of the proposal; the proposal PR  is
-the source of truth.
+The state of the design document PR is used to denote whether the proposal is
+accepted or declined and is treated as the source of truth. The design document
+content should not include any indication of the current status of the
+proposal.
 
 The PR for design documents are merged once the associated proposal becomes
 _Accepted_. If the proposal becomes _Declined_, the PR for the design document
