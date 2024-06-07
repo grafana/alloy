@@ -58,7 +58,7 @@ The component detail page shows the following information for each component:
 * The current exports for the component.
 * The current debug info for the component (if the component has debug info).
 
-From there you can also jump to the documentation page of the component or to its corresponding [Live Debugging page](#live-debugging-page).
+From there you can also go to the component documentation or to its corresponding [Live Debugging page](#live-debugging-page).
 
 > Values marked as a [secret][] are obfuscated and display as the text `(secret)`.
 
