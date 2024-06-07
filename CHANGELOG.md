@@ -19,6 +19,8 @@ Main (unreleased)
 
 - Add an `otelcol.exporter.kafka` component to send OTLP metrics, logs, and traces to Kafka.
 
+- Add a live debugging feature to the UI, including support for the `prometheus.relabel` component. (@wildum)
+
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
