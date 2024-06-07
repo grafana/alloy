@@ -71,6 +71,9 @@ Main (unreleased)
 
 - Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart) 
 
+- Updated OpenTelemetry Contrib to [v0.102.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.102.0). (@mattdurham)
+  - Added `tags` to `otelcol.processor.resourcedetection`.
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
