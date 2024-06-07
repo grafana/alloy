@@ -10,6 +10,7 @@ The first step is to ensure that the proposal meets the following criteria and d
 * Avoid components that can be implemented as [modules][module].
 * Avoid components that affect our dependencies in an undesired way, such as pulling in an incompatible version or bloating the collector.
 * Make sure that the code licenses are compatible with Alloy's [license][].
+* You are willing to be a maintainer of the component.
 
 While not mandatory, it is beneficial if:
 
@@ -34,13 +35,13 @@ The documentation should also follow the same pattern as the core components but
 
 ## Being a community component maintainer
 
-Community component maintainers may be pinged on GitHub issues and Pull Requests related to their components. They are expected to help keeping their component up to date with the project (e.g. if it's a component from [Opentelemetry's contrib repository][otel], the implementation should match the current otel version of the project).
+Community component maintainers may be pinged on GitHub issues and Pull Requests related to their components. They are expected to help keeping their component and the documentation up to date with the project (e.g. if it's a component from [Opentelemetry's contrib repository][otel], the implementation should match the current otel version of the project).
 
 Failing to keep the component up to date may result in the component being disabled or removed.
 
 The list of maintainers is kept as a comment in the component's Go file:
-* Anyone can volunteer to become a maintainer by opening a pull request to add their GitHub handle to the list.
-* Any maintainer can step out of the role by opening a pull request to remove their GitHub handle from the list.
+* Anyone can volunteer to become a maintainer by opening a pull request to add themselves as code owner for the component.
+* Any maintainer can step out of the role by opening a pull request to remove their GitHub handle from code owners for the component.
 
 
 [cc]: ../sources/concepts/community_components.md
