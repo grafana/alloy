@@ -9,7 +9,7 @@
 Formalize a process for proposing changes to Alloy and reviewing proposed
 changes.
 
-## Background
+## Problem
 
 Today, there is no formalized process for proposing changes to Alloy, and no
 formalized process for reviewing proposed changes. This has led to governance
@@ -333,7 +333,7 @@ documented and the proposal will move to the appropriate state.
 [governance]: https://github.com/grafana/alloy/blob/main/GOVERNANCE.md
 [vote]: https://github.com/grafana/alloy/blob/main/GOVERNANCE.md#voting
 
-## Rationale
+## Pros and cons
 
 Formalizing proposal creation and review ensures that all proposals are
 eventually given attention. Having proposals reviewed weekly ensures that
