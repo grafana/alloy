@@ -27,6 +27,10 @@ Main (unreleased)
   - `vcenter.host.network.packet.count` replaced by `vcenter.host.network.packet.rate`.
   - `vcenter.vm.network.packet.count` replaced by `vcenter.vm.network.packet.rate`.
 
+### Features
+
+- Add an `otelcol.exporter.kafka` component to send OTLP metrics, logs, and traces to Kafka.
+
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
@@ -69,7 +73,13 @@ Main (unreleased)
 
 - Added support for NS records to `discovery.dns`. (@djcode)
 
-- Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart) 
+- Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart)
+
+- Add the `targets` argument to the `prometheus.exporter.snmp` component to support passing SNMP targets at runtime. (@wildum)
+
+- Prefix Faro measurement values with `value_` to align with the latest Faro cloud receiver updates. (@codecapitano)
+
+- Add `base64_decode` to standard library. (@hainenber)
 
 - Updated OpenTelemetry Contrib to [v0.102.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.102.0). (@mattdurham)
   - Added `tags` to `otelcol.processor.resourcedetection`.
@@ -161,6 +171,8 @@ v1.1.0
 - In `mimir.rules.kubernetes`, add support for running in a cluster of Alloy instances
   by electing a single instance as the leader for the `mimir.rules.kubernetes` component
   to avoid conflicts when making calls to the Mimir API. (@56quarters)
+
+- Add the possibility of setting custom labels for the AWS Firehose logs via `X-Amz-Firehose-Common-Attributes` header. (@andriikushch)
 
 ### Bugfixes
 

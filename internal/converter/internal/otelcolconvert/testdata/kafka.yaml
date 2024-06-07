@@ -9,8 +9,8 @@ receivers:
       sasl:
         username: fakeusername
         password: fakepassword
-        mechanism: somemechanism
-        version: 5
+        mechanism: AWS_MSK_IAM
+        version: 1
         aws_msk:
           region: us-east-1
           broker_addr: broker:9092
@@ -24,20 +24,52 @@ receivers:
 
 
 exporters:
-  otlp:
-    endpoint: database:4317
+  kafka:
+    brokers: redpanda:9092
+    protocol_version: 2.0.0
+    resolve_canonical_bootstrap_servers_only: true
+    client_id: otelcol
+    topic_from_attribute: my_topic
+    partition_traces_by_id: true
+    partition_metrics_by_resource_attributes: true
+    timeout: 11s
+    encoding: otlp_json
+    auth:
+      plain_text:
+        username: fakeusername
+        password: fakepassword
+      sasl:
+        username: fakeusername
+        password: fakepassword
+        mechanism: SCRAM-SHA-256
+        version: 1
+        aws_msk:
+          region: us-east-1
+          broker_addr: broker:9092
+      tls:
+        insecure: true
+      kerberos:
+        username: fakeusername
+        password: fakepassword
+        service_name: someservice
+        realm: myrealm
+    producer:
+      max_message_bytes: 1000001
+      compression: snappy
+      required_acks: 0
+      flush_max_messages: 11
 
 service:
   pipelines:
     metrics:
       receivers: [kafka]
       processors: []
-      exporters: [otlp]
+      exporters: [kafka]
     logs:
       receivers: [kafka]
       processors: []
-      exporters: [otlp]
+      exporters: [kafka]
     traces:
       receivers: [kafka]
       processors: []
-      exporters: [otlp]
+      exporters: [kafka]
