@@ -293,6 +293,11 @@ A publicly available GitHub project tracks proposals and their states.
 The goal of the proposal process is to reach general public consensus about the
 outcome in a timely manner.
 
+General public consensus does not require unanimity; one person disagreeing
+will not necessarily prevent consensus from being achieved. Consensus should
+consider all raised concerns, but not necessarily addressing all concerns
+raised.
+
 If the proposal review process cannot identify a general consensus of the
 proposal, the usual result is that the proposal is declined. It can happen that
 the proposal review process may not identify a general consensus but the
