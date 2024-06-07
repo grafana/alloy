@@ -1,0 +1,22 @@
+name: Community component proposal
+description: Propose a new community component.
+labels: ["community-component"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for opening a community component proposal for Grafana Alloy.
+
+        Before opening the proposal, make sure you read the [Community Component Guidelines](https://github.com/grafana/alloy/tree/main/docs/developer/adding-community-components.md).
+  - type: textarea
+    attributes:
+      label: Community component name
+      description: What is the name of the component you want to add?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Community component description
+      description: What should this component do?
+    validations:
+      required: true
