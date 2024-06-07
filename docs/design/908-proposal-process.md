@@ -52,6 +52,9 @@ At a high-level, proposals go through the following stages:
    * decline the proposal, or
    * ask for a design document.
 
+   As public discussion occurs, the proposal is expected to be refined over
+   time to address incoming feedback.
+
    If the proposal is accepted or declined, the proposal process ends here.
 
 3. *Design document*: If requested, a design document is written, and the PR
