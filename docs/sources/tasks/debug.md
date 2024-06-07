@@ -48,6 +48,7 @@ Clicking a component in the graph navigates to the [Component detail page](#comp
 
 ### Component detail page
 
+<!-- TODO: update this screenshot once the branch is ready to go to main because it contains an additional button now -->
 {{< figure src="/media/docs/alloy/ui_component_detail_page.png" alt="Alloy UI component detail page" >}}
 
 The component detail page shows the following information for each component:
@@ -56,6 +57,8 @@ The component detail page shows the following information for each component:
 * The current evaluated arguments for the component.
 * The current exports for the component.
 * The current debug info for the component (if the component has debug info).
+
+From there you can also go to the component documentation or to its corresponding [Live Debugging page](#live-debugging-page).
 
 > Values marked as a [secret][] are obfuscated and display as the text `(secret)`.
 
@@ -70,12 +73,33 @@ The clustering page shows the following information for each cluster node:
 * The node's current state (Viewer/Participant/Terminating).
 * The local node that serves the UI.
 
+### Live Debugging page
+
+<!-- TODO: add screenshot once the branch is ready to go to main -->
+
+Live debugging provides a real-time stream of debugging data from a component. You can access this page from the corresponding [Component detail page](#component-detail-page).
+
+Live debugging allows you to do the following:
+
+* Pause and clear the data stream.
+* Sample data and disable auto-scrolling to handle heavy loads.
+* Search through the data using keywords.
+* Copy the entire data stream to the clipboard.
+
+The format and content of the debugging data vary depending on the component type.
+
+{{< admonition type="note" >}}
+Live debugging is not yet available in all components.
+{{< /admonition >}}
+
+
 ## Debugging using the UI
 
 To debug using the UI:
 
 * Ensure that no component is reported as unhealthy.
 * Ensure that the arguments and exports for misbehaving components appear correct.
+* Ensure that the debugging data meets your expectations.
 
 ## Examining logs
 
