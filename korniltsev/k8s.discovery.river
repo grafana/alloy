@@ -1,0 +1,9 @@
+discovery.kubernetes "all_pods" {
+  role = "pod"
+  api_server = "http://127.0.0.1:8003"
+  //kubeconfig_file = "/home/korniltsev/.kube/config"
+}
+logging {
+level="debug"
+format="logfmt"
+}
