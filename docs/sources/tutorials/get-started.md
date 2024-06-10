@@ -26,22 +26,13 @@ Install and run {{< param "PRODUCT_NAME" >}} on Linux.
 
 1. [Install {{< param "PRODUCT_NAME" >}}][Linux Install].
 
-   {{< admonition type="tip" >}}
-   Make sure you enable the {{< param "PRODUCT_NAME" >}} UI.
-   {{< /admonition >}}
-
 1. [Run {{< param "PRODUCT_NAME" >}}][Run on Linux].
 
 ### macOS
 
 Install  and run {{< param "PRODUCT_NAME" >}} on macOS.
 
-
 1. [Install {{< param "PRODUCT_NAME" >}}][macOS Install].
-
-   {{< admonition type="tip" >}}
-   The {{< param "PRODUCT_NAME" >}} UI is enabled by default in {{< param "PRODUCT_NAME" >}} on macOS.
-   {{< /admonition >}}
 
 1. [Run {{< param "PRODUCT_NAME" >}}][Run on macOS].
 
@@ -175,7 +166,6 @@ The `basic_auth` is commented out because the local `docker compose` stack doesn
 It is included in this example to show how you can configure authorization for other environments.
 For further authorization options, refer to the [loki.write][] component reference.
 
-[loki.write]: ../../reference/components/loki.write/
 {{< /admonition >}}
 
 This connects directly to the Loki instance running in the Docker container.
@@ -204,8 +194,10 @@ for restarting the system service.
 ```
 
 {{< admonition type="tip" >}}
-If this step does not work for you, please note that in the install instructions, enabling it requires
-one extra optional step for Linux, while this is enabled by default on MacOS.
+This step uses the Alloy UI, which is exposed only on `localhost` port `12345`. If you chose to run Alloy in
+a dockerized environment, you will need to expose this to other addresses, for example via the argument
+`--server.http.listen-addr=0.0.0.0:12345` when running {{< param "PRODUCT_NAME" >}}
+For more information refer to [debugging your configuration]
 {{< /admonition >}}
 
 The alternative to using this endpoint is to reload the {{< param "PRODUCT_NAME" >}} configuration, which can
@@ -259,3 +251,4 @@ In the following tutorials, you will learn more about configuration concepts, me
 [alloy]: https://grafana.com/docs/alloy/latest/
 [configuration]: ../../concepts/configuration-syntax/
 [install]: ../../get-started/install/binary/#install-alloy-as-a-standalone-binary
+[debugging your configuration]: ../../tasks/debug/
