@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
-	"github.com/grafana/alloy/internal/component/otelcol/receiver/vcenter"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/awss3"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
@@ -12,62 +12,63 @@ import (
 func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
-		alloyCfg string
+		agentCfg string
 		expected otelcolCfg.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
-			alloyCfg: `
-			endpoint = "http://localhost:1234"
-			username = "user"
-			password = "pass"
-
-			output {}
+			agentCfg: `
+			s3_uploader {
+				s3_bucket = "test"
+				s3_prefix = "logs"
+			}
+			debug_metrics {
+				disable_high_cardinality_metrics = true
+			}
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
 			testName: "explicit_false",
-			alloyCfg: `
-			endpoint = "http://localhost:1234"
-			username = "user"
-			password = "pass"
-
+			agentCfg: `
+			s3_uploader {
+				s3_bucket = "test"
+				s3_prefix = "logs"
+			}
 			debug_metrics {
 				disable_high_cardinality_metrics = false
 			}
-
-			output {}
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
 			testName: "explicit_true",
-			alloyCfg: `
-			endpoint = "http://localhost:1234"
-			username = "user"
-			password = "pass"
-
+			agentCfg: `
+			s3_uploader {
+				s3_bucket = "test"
+				s3_prefix = "logs"
+			}
 			debug_metrics {
 				disable_high_cardinality_metrics = true
 			}
-
-			output {}
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
-			var args vcenter.Arguments
-			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
+			var args awss3.Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tc.agentCfg), &args))
 			_, err := args.Convert()
 			require.NoError(t, err)
 

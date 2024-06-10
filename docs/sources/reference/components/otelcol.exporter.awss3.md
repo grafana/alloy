@@ -188,7 +188,7 @@ otelcol.exporter.awss3 "logs" {
 
 ## Compatible components
 
-`otelcol.exporter.otlp` has exports that can be consumed by the following components:
+`otelcol.exporter.awss3` has exports that can be consumed by the following components:
 
 - Components that consume [OpenTelemetry `otelcol.Consumer`](../../compatibility/#opentelemetry-otelcolconsumer-consumers)
 
