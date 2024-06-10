@@ -90,6 +90,9 @@ The format and content of the debugging data vary depending on the component typ
 
 {{< admonition type="note" >}}
 Live debugging is not yet available in all components.
+
+Supported components:
+* prometheus.relabel
 {{< /admonition >}}
 
 
