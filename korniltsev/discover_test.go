@@ -183,10 +183,12 @@ func startAlloy(t *testing.T, configriver string) *exec.Cmd {
 	tmpfile.Close()
 
 	cmd := exec.Command("/home/korniltsev/p/alloy/alloy", "run", tmpfile.Name())
-	cmd.Stdout = bytes.NewBuffer(nil)
-	cmd.Stderr = bytes.NewBuffer(nil)
+	out := bytes.NewBuffer(nil)
+	cmd.Stdout = out
+	cmd.Stderr = out
 	err := cmd.Start()
 	if err != nil {
+		fmt.Print(string(out.Bytes()))
 		t.Fatal("failed to start alloy")
 	}
 	return cmd
@@ -198,28 +200,30 @@ func doChecks(t *testing.T, cluster string, alltargets []discovery.Target, targe
 	defer logf.Close()
 	for _, ittarget := range alltargets {
 		relabels := make(map[string]struct{})
+		all := []string{}
 		for rk, rt := range targetmap {
 			target := rt[getTargetPQ(ittarget)]
 
 			if target != nil {
+				all = append(all, rk)
 				k := rk
 				if strings.Contains(k, "sb_relabel_annotation_based") {
 					k = "sb_relabel_annotation_based"
 				} else if strings.Contains(k, "godeltaprof") {
 					k = "godeltaprof"
 				}
-				if strings.Contains(k, "ebpf") || strings.Contains(k, "local_pods") {
+				if strings.Contains(k, "ebpf") || strings.Contains(k, "ebpf_local_pods") {
 					k = "ebpf"
 				}
-				if k == "ebpf" {
-					continue
-				}
+				//if k == "ebpf" {
+				//	continue
+				//}
 				relabels[k] = struct{}{}
 				//relabels = append(relabels, rk)
 			}
 		}
 		if len(relabels) > 1 {
-			msg := fmt.Sprintf("%s %+v\n", getTargetPQ(ittarget), relabels)
+			msg := fmt.Sprintf("%s %+v %+v\n", getTargetPQ(ittarget), relabels, all)
 			_, _ = logf.WriteString(msg)
 			t.Error(msg)
 		}
