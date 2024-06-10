@@ -1678,6 +1678,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraph
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.101.0/go.mod h1:buYvWoBf0vEbKRe3uCIjAZ+RgzqrpsaJfrzkW2UiFYc=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.101.0 h1:lw/qbbVZFyC2E0AkV2qyA8xK/SR01kElK5Ki4+iaU2g=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.101.0/go.mod h1:A1dZrRTB/Jso0dscW3bVkCCckfUR0ogQF9/u1kcn6KQ=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.99.0 h1:Dwfe+f1DyUkCWms0qHtzNNfnl8n0tPQusgdlqrL4om8=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.99.0/go.mod h1:LIBau6/zMf4SmccqfGoYP5cF4+tExC8shHWRwcm2CCw=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.101.0 h1:yVkR10WYk/6D7p8sFaJhIWEXFcLkPO7D166qw2B3+AM=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.101.0/go.mod h1:mS5PokXE2OD191RKKnMhU70O4WnH6qSkvViGrphF9Hs=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.101.0 h1:eZIXo9VkTdhVyKnFZlPCDRCK9mt5kEkjPCs3kfEedFI=

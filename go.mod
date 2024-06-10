@@ -103,6 +103,7 @@ require (
 	github.com/oliver006/redis_exporter v1.54.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.101.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.101.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.99.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.101.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.101.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.101.0
