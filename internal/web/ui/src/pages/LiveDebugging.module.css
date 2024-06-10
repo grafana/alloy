@@ -95,6 +95,7 @@
   .logLine {
     white-space: pre-wrap;
     color: #24292e;
+    font-family: monospace;
   }
   
   .autoScroll .logLine:nth-child(odd) {
