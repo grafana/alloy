@@ -16,13 +16,15 @@ You don't need to know about the {{< param "PRODUCT_NAME" >}} [configuration syn
 
 ## Prerequisites
 
-This tutorial requires a Linux, Unix, or Mac environment with Docker installed.
+This tutorial requires a Linux or macOS environment with Docker installed.
 
 ## Install {{% param "PRODUCT_NAME" %}} and start the service
 
 ### Linux
 
-1. [Install {{< param "PRODUCT_NAME" >}}][Linux Install].  
+Install and run {{< param "PRODUCT_NAME" >}} on Linux.
+
+1. [Install {{< param "PRODUCT_NAME" >}}][Linux Install].
 
    {{< admonition type="tip" >}}
    Make sure you enable the {{< param "PRODUCT_NAME" >}} UI.
@@ -32,7 +34,10 @@ This tutorial requires a Linux, Unix, or Mac environment with Docker installed.
 
 ### macOS
 
-1. [Install {{< param "PRODUCT_NAME" >}} on macOS][macOS Install].
+Install  and run {{< param "PRODUCT_NAME" >}} on macOS.
+
+
+1. [Install {{< param "PRODUCT_NAME" >}}][macOS Install].
 
    {{< admonition type="tip" >}}
    The {{< param "PRODUCT_NAME" >}} UI is enabled by default in {{< param "PRODUCT_NAME" >}} on macOS.
@@ -42,7 +47,7 @@ This tutorial requires a Linux, Unix, or Mac environment with Docker installed.
 
 ## Set up a local Grafana instance
 
-To allow {{< param "PRODUCT__NAME" >}} to write data to Loki running in the local Grafana stack, you can use the following Docker Compose file to set up a local Grafana instance alongside Loki and Prometheus, which are pre-configured as data sources.
+To allow {{< param "PRODUCT_NAME" >}} to write data to Loki running in the local Grafana stack, you can use the following Docker Compose file to set up a local Grafana instance alongside Loki and Prometheus, which are pre-configured as data sources.
 
 ```yaml
 version: '3'
@@ -173,7 +178,7 @@ For further authorization options, refer to the [loki.write][] component referen
 [loki.write]: ../../reference/components/loki.write/
 {{< /admonition >}}
 
-This connects directly to the Loki instance running via `docker compose` from the earlier step.
+This connects directly to the Loki instance running in the Docker container.
 
 ## Reload the Configuration
 
@@ -220,28 +225,27 @@ sudo systemctl reload alloy
 
 ## Inspect your Configuration in the {{< param "PRODUCT_NAME" >}} UI
 
-Open [http://localhost:12345] and click the Graph tab at the top, which will show
-something similar to the following:
+Open [http://localhost:12345] and click the Graph tab at the top.
+The graph should look similar to the following:
 
 {{< figure src="/media/docs/alloy/tutorial/healthy-config.png" alt="Logs reported by Alloy in Grafana" >}}
 
-The UI allows us to see a visual representation of the pipeline we are building with our {{< param "PRODUCT_NAME" >}}
-component configuration.  We can further see that the components are healthy, and we are ready to go.
+The UI allows you to see a visual representation of the pipeline you built with your {{< param "PRODUCT_NAME" >}} component configuration.
+We can see that the components are healthy, and you are ready to go.
 
 ## Log into Grafana and Explore Loki Logs
 
-Open [http://localhost:3000/explore] to access Grafana's Explore feature. Select Loki as
-the data source, and click the "Label Browser" button to select a file that {{< param "PRODUCT_NAME" >}} as sent to Loki.
+Open [http://localhost:3000/explore] to access Explore feature in Grafana.
+Select Loki as the data source and click the "Label Browser" button to select a file that {{< param "PRODUCT_NAME" >}} has sent to Loki.
 
-Here we can see that logs are flowing through to Loki as expected, and the end-to-end configuration was successful!
+Here you can see that logs are flowing through to Loki as expected, and the end-to-end configuration was successful!
 
 {{< figure src="/media/docs/alloy/tutorial/loki-logs.png" alt="Logs reported by Alloy in Grafana" >}}
 
 ## Conclusion
 
-Congratulations, you have fully installed and configured {{< param "PRODUCT_NAME" >}}, and shipped logs from your local
-host to a Grafana stack. In the following tutorials, you will learn more about configuration concepts, metrics, and more
-advanced log scraping.
+Congratulations, you have fully installed and configured {{< param "PRODUCT_NAME" >}}, and sent logs from your local host to a Grafana stack.
+In the following tutorials, you will learn more about configuration concepts, metrics, and more advanced log scraping.
 
 [http://localhost:3000/explore]: http://localhost:3000/explore
 [http://localhost:12345]: http://localhost:12345
