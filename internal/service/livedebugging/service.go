@@ -36,7 +36,7 @@ func (*Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: nil, // livedebugging does not accept configuration
 		DependsOn:  []string{},
-		Stability:  featuregate.StabilityExperimental,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 
