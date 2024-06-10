@@ -3,7 +3,6 @@ package livedebugging
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
@@ -24,6 +23,10 @@ func New() *Service {
 	}
 }
 
+type Arguments struct {
+	Enabled bool `alloy:"enabled,attr,optional"`
+}
+
 // Data implements service.Service.
 // It returns the liveDebugging for the components to stream.
 func (s *Service) Data() any {
@@ -34,9 +37,9 @@ func (s *Service) Data() any {
 func (*Service) Definition() service.Definition {
 	return service.Definition{
 		Name:       ServiceName,
-		ConfigType: nil, // livedebugging does not accept configuration
+		ConfigType: Arguments{},
 		DependsOn:  []string{},
-		Stability:  featuregate.StabilityGenerallyAvailable,
+		Stability:  featuregate.StabilityExperimental,
 	}
 }
 
@@ -48,6 +51,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 }
 
 // Update implements service.Service.
-func (*Service) Update(_ any) error {
-	return fmt.Errorf("livedebugging service does not support configuration")
+func (s *Service) Update(args any) error {
+	newArgs := args.(Arguments)
+	s.liveDebugging.SetEnabled(newArgs.Enabled)
+	return nil
 }

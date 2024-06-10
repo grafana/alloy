@@ -32,6 +32,7 @@ type liveDebugging struct {
 	loadMut   sync.RWMutex
 	callbacks map[ComponentID]map[CallbackID]func(string)
 	host      service.Host
+	enabled   bool
 }
 
 var _ CallbackManager = &liveDebugging{}
@@ -47,8 +48,10 @@ func NewLiveDebugging() *liveDebugging {
 func (s *liveDebugging) Publish(componentID ComponentID, data string) {
 	s.loadMut.RLock()
 	defer s.loadMut.RUnlock()
-	for _, callback := range s.callbacks[componentID] {
-		callback(data)
+	if s.enabled {
+		for _, callback := range s.callbacks[componentID] {
+			callback(data)
+		}
 	}
 }
 
@@ -62,6 +65,10 @@ func (s *liveDebugging) IsActive(componentID ComponentID) bool {
 func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID ComponentID, callback func(string)) error {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
+
+	if !s.enabled {
+		return fmt.Errorf("the live debugging service is disabled. Check the documentation to find out how to enable it")
+	}
 
 	if s.host == nil {
 		return fmt.Errorf("the live debugging service is not ready yet")
@@ -93,4 +100,10 @@ func (s *liveDebugging) SetServiceHost(h service.Host) {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 	s.host = h
+}
+
+func (s *liveDebugging) SetEnabled(enabled bool) {
+	s.loadMut.Lock()
+	defer s.loadMut.Unlock()
+	s.enabled = enabled
 }

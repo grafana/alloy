@@ -15,9 +15,15 @@ func TestAddCallback(t *testing.T) {
 	callback := func(data string) {}
 
 	err := livedebugging.AddCallback(callbackID, "fake.liveDebugging", callback)
+	require.ErrorContains(t, err, "the live debugging service is disabled. Check the documentation to find out how to enable it")
+
+	livedebugging.SetEnabled(true)
+
+	err = livedebugging.AddCallback(callbackID, "fake.liveDebugging", callback)
 	require.ErrorContains(t, err, "the live debugging service is not ready yet")
 
 	setupServiceHost(livedebugging)
+
 	err = livedebugging.AddCallback(callbackID, "not found", callback)
 	require.ErrorContains(t, err, "component not found")
 
@@ -49,6 +55,10 @@ func TestStream(t *testing.T) {
 
 	livedebugging.Publish(componentID, "test data")
 	require.Equal(t, "test data", receivedData)
+
+	livedebugging.SetEnabled(false)
+	livedebugging.Publish(componentID, "new test data")
+	require.Equal(t, "test data", receivedData) // not updated because the feature is disabled
 }
 
 func TestStreamEmpty(t *testing.T) {
@@ -122,6 +132,7 @@ func setupServiceHost(liveDebugging *liveDebugging) {
 		},
 	}
 	liveDebugging.SetServiceHost(host)
+	liveDebugging.SetEnabled(true)
 }
 
 type fakeInfo struct {
