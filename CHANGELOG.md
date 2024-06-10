@@ -82,7 +82,8 @@ Main (unreleased)
 - Add `base64_decode` to standard library. (@hainenber)
 
 - Updated OpenTelemetry Contrib to [v0.102.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.102.0). (@mattdurham)
-  - Added `tags` to `otelcol.processor.resourcedetection`.
+  - `otelcol.processor.resourcedetection`: Added a `tags` config argument to the `azure` detection mechanism.
+  It exposes regex-matched Azure resource tags as OpenTelemetry resource attributes.
 
 ### Bugfixes
 
