@@ -20,6 +20,8 @@ function PageLiveDebugging() {
   const [filterValue, setFilterValue] = useState('');
   const { loading, error } = useLiveDebugging(String(componentID), enabled, sampleProb, setData);
 
+  const filteredData = data.filter((n) => n.toLowerCase().includes(filterValue.toLowerCase()));
+
   function toggleEnableButton() {
     if (enabled) {
       return (
@@ -52,7 +54,7 @@ function PageLiveDebugging() {
   }
 
   async function copyDataToClipboard(): Promise<void> {
-    const dataToCopy = data.join('\n');
+    const dataToCopy = filteredData.join('\n');
 
     try {
       await navigator.clipboard.writeText(dataToCopy);
@@ -109,15 +111,11 @@ function PageLiveDebugging() {
       {loading && <p>Listening for incoming data...</p>}
       {error && <p>Error: {error}</p>}
       <AutoScroll className={styles.autoScroll} height={document.body.scrollHeight - 260}>
-        {data
-          .filter((n) => n.toLowerCase().includes(filterValue))
-          .map((msg, index) => {
-            return (
-              <div className={styles.logLine} key={index}>
-                {msg}
-              </div>
-            );
-          })}
+        {filteredData.map((msg, index) => (
+          <div className={styles.logLine} key={index}>
+            {msg}
+          </div>
+        ))}
       </AutoScroll>
     </Page>
   );
