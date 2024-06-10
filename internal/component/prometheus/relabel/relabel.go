@@ -95,7 +95,8 @@ type Component struct {
 }
 
 var (
-	_ component.Component = (*Component)(nil)
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
 )
 
 // New creates a new prometheus.relabel component.
@@ -109,7 +110,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil {
 		return nil, err
 	}
-	debugDataPublisher.(livedebugging.DebugDataPublisher).Register(name)
 
 	data, err := o.GetServiceData(labelstore.ServiceName)
 	if err != nil {
@@ -317,6 +317,8 @@ func (c *Component) addToCache(originalID uint64, lbls labels.Labels, keep bool)
 		id:     newGlobal,
 	})
 }
+
+func (c *Component) LiveDebugging() {}
 
 // labelAndID stores both the globalrefid for the label and the id itself. We store the id so that it doesn't have
 // to be recalculated again.

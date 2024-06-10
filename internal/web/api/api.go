@@ -6,7 +6,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"path"
@@ -24,13 +23,13 @@ import (
 
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
-	alloy                service.Host
-	debugCallbackManager livedebugging.DebugCallbackManager
+	alloy           service.Host
+	CallbackManager livedebugging.CallbackManager
 }
 
 // NewAlloyAPI instantiates a new Alloy API.
-func NewAlloyAPI(alloy service.Host, debugCallbackManager livedebugging.DebugCallbackManager) *AlloyAPI {
-	return &AlloyAPI{alloy: alloy, debugCallbackManager: debugCallbackManager}
+func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager) *AlloyAPI {
+	return &AlloyAPI{alloy: alloy, CallbackManager: CallbackManager}
 }
 
 // RegisterRoutes registers all the API's routes.
@@ -120,18 +119,6 @@ func (a *AlloyAPI) liveDebugging() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		componentID := livedebugging.ComponentID(vars["id"])
-		requestedComponent := component.ParseID(vars["id"])
-
-		component, err := a.alloy.GetComponent(requestedComponent, component.InfoOptions{})
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-
-		if !a.debugCallbackManager.IsRegistered(livedebugging.ComponentName(component.ComponentName)) {
-			http.Error(w, fmt.Sprintf("Live debugging is not supported for the component \"%s\"", component.ComponentName), http.StatusInternalServerError)
-			return
-		}
 
 		// Buffer of 1000 entries to handle load spikes and prevent this functionality from eating up too much memory.
 		// TODO: in the future we may want to make this value configurable to handle heavy load
@@ -142,7 +129,7 @@ func (a *AlloyAPI) liveDebugging() http.HandlerFunc {
 
 		id := livedebugging.CallbackID(uuid.New().String())
 
-		a.debugCallbackManager.AddCallback(id, componentID, func(data string) {
+		err := a.CallbackManager.AddCallback(id, componentID, func(data string) {
 			select {
 			case <-ctx.Done():
 				return
@@ -158,9 +145,14 @@ func (a *AlloyAPI) liveDebugging() http.HandlerFunc {
 			}
 		})
 
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		defer func() {
 			close(dataCh)
-			a.debugCallbackManager.DeleteCallback(id, componentID)
+			a.CallbackManager.DeleteCallback(id, componentID)
 		}()
 
 		for {

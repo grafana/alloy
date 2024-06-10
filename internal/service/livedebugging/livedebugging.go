@@ -1,52 +1,46 @@
 package livedebugging
 
-import "sync"
+import (
+	"fmt"
+	"sync"
 
-type ComponentName string
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/service"
+)
+
 type ComponentID string
 type CallbackID string
 
-// DebugCallbackManager is used to manage live debugging callbacks.
-type DebugCallbackManager interface {
-	DebugRegistry
+// CallbackManager is used to manage live debugging callbacks.
+type CallbackManager interface {
 	// AddCallback sets a callback for a given componentID.
 	// The callback is used to send debugging data to live debugging consumers.
-	AddCallback(callbackID CallbackID, componentID ComponentID, callback func(string))
+	AddCallback(callbackID CallbackID, componentID ComponentID, callback func(string)) error
 	// DeleteCallback deletes a callback for a given componentID.
 	DeleteCallback(callbackID CallbackID, componentID ComponentID)
 }
 
 // DebugDataPublisher is used by components to push information to live debugging consumers.
 type DebugDataPublisher interface {
-	DebugRegistry
 	// Publish sends debugging data for a given componentID.
 	Publish(componentID ComponentID, data string)
 	// IsActive returns true when at least one consumer is listening for debugging data for the given componentID.
 	IsActive(componentID ComponentID) bool
 }
 
-// DebugRegistry is used to keep track of the components that supports the live debugging functionality.
-type DebugRegistry interface {
-	// Register a component by name.
-	Register(componentName ComponentName)
-	// IsRegistered returns true if a component has live debugging support.
-	IsRegistered(componentName ComponentName) bool
-}
-
 type liveDebugging struct {
-	loadMut              sync.RWMutex
-	callbacks            map[ComponentID]map[CallbackID]func(string)
-	registeredComponents map[ComponentName]struct{}
+	loadMut   sync.RWMutex
+	callbacks map[ComponentID]map[CallbackID]func(string)
+	host      service.Host
 }
 
-var _ DebugCallbackManager = &liveDebugging{}
+var _ CallbackManager = &liveDebugging{}
 var _ DebugDataPublisher = &liveDebugging{}
 
 // NewLiveDebugging creates a new instance of liveDebugging.
 func NewLiveDebugging() *liveDebugging {
 	return &liveDebugging{
-		callbacks:            make(map[ComponentID]map[CallbackID]func(string)),
-		registeredComponents: make(map[ComponentName]struct{}),
+		callbacks: make(map[ComponentID]map[CallbackID]func(string)),
 	}
 }
 
@@ -59,17 +53,34 @@ func (s *liveDebugging) Publish(componentID ComponentID, data string) {
 }
 
 func (s *liveDebugging) IsActive(componentID ComponentID) bool {
+	s.loadMut.RLock()
+	defer s.loadMut.RUnlock()
 	_, exist := s.callbacks[componentID]
 	return exist
 }
 
-func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID ComponentID, callback func(string)) {
+func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID ComponentID, callback func(string)) error {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
+
+	if s.host == nil {
+		return fmt.Errorf("the live debugging service is not ready yet")
+	}
+
+	info, err := s.host.GetComponent(component.ParseID(string(componentID)), component.InfoOptions{})
+	if err != nil {
+		return err
+	}
+
+	if _, ok := info.Component.(component.LiveDebugging); !ok {
+		return fmt.Errorf("the component %q does not support live debugging", info.ComponentName)
+	}
+
 	if _, ok := s.callbacks[componentID]; !ok {
 		s.callbacks[componentID] = make(map[CallbackID]func(string))
 	}
 	s.callbacks[componentID][callbackID] = callback
+	return nil
 }
 
 func (s *liveDebugging) DeleteCallback(callbackID CallbackID, componentID ComponentID) {
@@ -78,11 +89,8 @@ func (s *liveDebugging) DeleteCallback(callbackID CallbackID, componentID Compon
 	delete(s.callbacks[componentID], callbackID)
 }
 
-func (s *liveDebugging) Register(componentName ComponentName) {
-	s.registeredComponents[componentName] = struct{}{}
-}
-
-func (s *liveDebugging) IsRegistered(componentName ComponentName) bool {
-	_, exist := s.registeredComponents[componentName]
-	return exist
+func (s *liveDebugging) SetServiceHost(h service.Host) {
+	s.loadMut.Lock()
+	defer s.loadMut.Unlock()
+	s.host = h
 }
