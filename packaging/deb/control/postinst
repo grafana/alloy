@@ -18,10 +18,7 @@ case "$1" in
             useradd -m -r -g "$ALLOY_GROUP" -d /var/lib/alloy -s /sbin/nologin -c "alloy user" "$ALLOY_USER"
         fi
 
-        # Add Alloy user to groups used for reading logs.
-        if getent group adm > /dev/null 2>&1 ; then
-            usermod -a -G adm "$ALLOY_USER"
-        fi
+        # Add Alloy user to systemd-journal group for reading logs.
         if getent group systemd-journal > /dev/null 2>&1 ; then
             usermod -a -G systemd-journal "$ALLOY_USER"
         fi
