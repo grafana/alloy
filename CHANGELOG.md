@@ -15,6 +15,10 @@ Main (unreleased)
 - Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
   API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
 
+### Features
+
+- Add an `otelcol.exporter.kafka` component to send OTLP metrics, logs, and traces to Kafka.
+
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
@@ -22,7 +26,7 @@ Main (unreleased)
 
 - Added `scrape_protocols` option to `prometheus.scrape`, which allows to
   control the preferred order of scrape protocols. (@thampiotr)
-  
+
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
 
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
@@ -58,32 +62,26 @@ Main (unreleased)
 
 - Allow override debug metrics level for `otelcol.*` components. (@hainenber)
 
+- Add an initial lower limit of 10 seconds for the the `poll_frequency`
+  argument in the `remotecfg` block. (@tpaschalis)
+
 - Added support for NS records to `discovery.dns`. (@djcode)
 
-### Bugfixes
+- Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart)
 
-- Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
+- Add the `targets` argument to the `prometheus.exporter.snmp` component to support passing SNMP targets at runtime. (@wildum)
+
+- Prefix Faro measurement values with `value_` to align with the latest Faro cloud receiver updates. (@codecapitano)
+
+- Add `base64_decode` to standard library. (@hainenber)
+
+### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
   cluster instance to another could have a staleness marker inserted and result
   in a gap in metrics (@thampiotr)
 
-- Exit Alloy immediately if the port it runs on is not available. 
-  This port can be configured with `--server.http.listen-addr` or using
-  the default listen address`127.0.0.1:12345`. (@mattdurham)
-
-- Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
-
-- Fix error on boot when using IPv6 advertise addresses without explicitly
-  specifying a port. (@matthewpi)
-  
-- Fix an issue where having long component labels (>63 chars) on otelcol.auth
-  components lead to a panic. (@tpaschalis)
-
-- Update `prometheus.exporter.snowflake` with the [latest](https://github.com/grafana/snowflake-prometheus-exporter) version of the exporter as of May 28, 2024 (@StefanKurek)
-  - Fixes issue where returned `NULL` values from database could cause unexpected errors.
-
-- Bubble up SSH key conversion error to facilitate failed `import.git`. (@hainenber)
+- Fix panic when `import.git` is given a revision that does not exist on the remote repo. (@hainenber)
 
 ### Other changes
 
@@ -97,6 +95,30 @@ Main (unreleased)
   documentation for further details. (@thampiotr)
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
+
+v1.1.1
+------
+
+### Bugfixes
+
+- Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
+
+- Exit Alloy immediately if the port it runs on is not available.
+  This port can be configured with `--server.http.listen-addr` or using
+  the default listen address`127.0.0.1:12345`. (@mattdurham)
+
+- Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
+
+- Fix error on boot when using IPv6 advertise addresses without explicitly
+  specifying a port. (@matthewpi)
+
+- Fix an issue where having long component labels (>63 chars) on otelcol.auth
+  components lead to a panic. (@tpaschalis)
+
+- Update `prometheus.exporter.snowflake` with the [latest](https://github.com/grafana/snowflake-prometheus-exporter) version of the exporter as of May 28, 2024 (@StefanKurek)
+  - Fixes issue where returned `NULL` values from database could cause unexpected errors.
+
+- Bubble up SSH key conversion error to facilitate failed `import.git`. (@hainenber)
 
 v1.1.0
 ------
@@ -141,6 +163,8 @@ v1.1.0
 - In `mimir.rules.kubernetes`, add support for running in a cluster of Alloy instances
   by electing a single instance as the leader for the `mimir.rules.kubernetes` component
   to avoid conflicts when making calls to the Mimir API. (@56quarters)
+
+- Add the possibility of setting custom labels for the AWS Firehose logs via `X-Amz-Firehose-Common-Attributes` header. (@andriikushch)
 
 ### Bugfixes
 

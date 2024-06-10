@@ -76,8 +76,8 @@ func toKafkaReceiver(state *State, id component.InstanceID, cfg *kafkareceiver.C
 	}
 }
 
-func toKafkaAuthentication(cfg map[string]any) kafka.AuthenticationArguments {
-	return kafka.AuthenticationArguments{
+func toKafkaAuthentication(cfg map[string]any) otelcol.KafkaAuthenticationArguments {
+	return otelcol.KafkaAuthenticationArguments{
 		Plaintext: toKafkaPlaintext(encodeMapstruct(cfg["plain_text"])),
 		SASL:      toKafkaSASL(encodeMapstruct(cfg["sasl"])),
 		TLS:       toKafkaTLSClientArguments(encodeMapstruct(cfg["tls"])),
@@ -85,23 +85,23 @@ func toKafkaAuthentication(cfg map[string]any) kafka.AuthenticationArguments {
 	}
 }
 
-func toKafkaPlaintext(cfg map[string]any) *kafka.PlaintextArguments {
+func toKafkaPlaintext(cfg map[string]any) *otelcol.KafkaPlaintextArguments {
 	if cfg == nil {
 		return nil
 	}
 
-	return &kafka.PlaintextArguments{
+	return &otelcol.KafkaPlaintextArguments{
 		Username: cfg["username"].(string),
 		Password: alloytypes.Secret(cfg["password"].(string)),
 	}
 }
 
-func toKafkaSASL(cfg map[string]any) *kafka.SASLArguments {
+func toKafkaSASL(cfg map[string]any) *otelcol.KafkaSASLArguments {
 	if cfg == nil {
 		return nil
 	}
 
-	return &kafka.SASLArguments{
+	return &otelcol.KafkaSASLArguments{
 		Username:  cfg["username"].(string),
 		Password:  alloytypes.Secret(cfg["password"].(string)),
 		Mechanism: cfg["mechanism"].(string),
@@ -110,12 +110,12 @@ func toKafkaSASL(cfg map[string]any) *kafka.SASLArguments {
 	}
 }
 
-func toKafkaAWSMSK(cfg map[string]any) kafka.AWSMSKArguments {
+func toKafkaAWSMSK(cfg map[string]any) otelcol.KafkaAWSMSKArguments {
 	if cfg == nil {
-		return kafka.AWSMSKArguments{}
+		return otelcol.KafkaAWSMSKArguments{}
 	}
 
-	return kafka.AWSMSKArguments{
+	return otelcol.KafkaAWSMSKArguments{
 		Region:     cfg["region"].(string),
 		BrokerAddr: cfg["broker_addr"].(string),
 	}
@@ -136,12 +136,12 @@ func toKafkaTLSClientArguments(cfg map[string]any) *otelcol.TLSClientArguments {
 	return &res
 }
 
-func toKafkaKerberos(cfg map[string]any) *kafka.KerberosArguments {
+func toKafkaKerberos(cfg map[string]any) *otelcol.KafkaKerberosArguments {
 	if cfg == nil {
 		return nil
 	}
 
-	return &kafka.KerberosArguments{
+	return &otelcol.KafkaKerberosArguments{
 		ServiceName: cfg["service_name"].(string),
 		Realm:       cfg["realm"].(string),
 		UseKeyTab:   cfg["use_keytab"].(bool),
@@ -152,15 +152,15 @@ func toKafkaKerberos(cfg map[string]any) *kafka.KerberosArguments {
 	}
 }
 
-func toKafkaMetadata(cfg kafkaexporter.Metadata) kafka.MetadataArguments {
-	return kafka.MetadataArguments{
+func toKafkaMetadata(cfg kafkaexporter.Metadata) otelcol.KafkaMetadataArguments {
+	return otelcol.KafkaMetadataArguments{
 		IncludeAllTopics: cfg.Full,
 		Retry:            toKafkaRetry(cfg.Retry),
 	}
 }
 
-func toKafkaRetry(cfg kafkaexporter.MetadataRetry) kafka.MetadataRetryArguments {
-	return kafka.MetadataRetryArguments{
+func toKafkaRetry(cfg kafkaexporter.MetadataRetry) otelcol.KafkaMetadataRetryArguments {
+	return otelcol.KafkaMetadataRetryArguments{
 		MaxRetries: cfg.Max,
 		Backoff:    cfg.Backoff,
 	}
