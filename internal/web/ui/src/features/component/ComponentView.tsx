@@ -1,6 +1,6 @@
 import { FC, Fragment, ReactElement } from 'react';
 import { Link } from 'react-router-dom';
-import { faCubes, faLink } from '@fortawesome/free-solid-svg-icons';
+import { faBug, faCubes, faLink } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { partitionBody } from '../../utils/partition';
@@ -96,7 +96,13 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
 
         <div className={styles.docsLink}>
           <a href={`https://grafana.com/docs/alloy/latest/reference/components/${props.component.name}`}>
-            Documentation <FontAwesomeIcon icon={faLink} />
+            <FontAwesomeIcon icon={faLink} /> Documentation
+          </a>
+        </div>
+
+        <div className={styles.debugLink}>
+          <a href={`debug/${pathJoin([props.component.moduleID, props.component.localID])}`}>
+            <FontAwesomeIcon icon={faBug} /> Live debugging
           </a>
         </div>
 

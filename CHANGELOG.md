@@ -31,6 +31,11 @@ Main (unreleased)
 
 - Add an `otelcol.exporter.kafka` component to send OTLP metrics, logs, and traces to Kafka.
 
+- Added `live debugging` to the UI. Live debugging streams data as they flow through components for debugging telemetry data.
+  Individual components must be updated to support live debugging. (@wildum)
+
+- Added live debugging support for `prometheus.relabel`. (@wildum)
+
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
