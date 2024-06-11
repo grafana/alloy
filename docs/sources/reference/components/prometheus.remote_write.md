@@ -476,7 +476,7 @@ before being pushed to the remote_write endpoint.
 
 ### Tuning `max_shards`
 
-The `queue_config` block allows to configure `max_shards`. The `max_shards` is the maximum
+The [`queue_config`](#queue_config-block) block allows to configure `max_shards`. The `max_shards` is the maximum
 number of concurrent shards sending samples to the Prometheus-compatible remote write endpoint.
 For each shard, a single remote write request can send up to `max_samples_per_send` samples.
 
