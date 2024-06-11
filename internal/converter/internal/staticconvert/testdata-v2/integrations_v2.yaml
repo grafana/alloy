@@ -209,6 +209,7 @@ integrations:
         module: if_mib
         walk_params: public
         auth: public
+        snmp_context: dummyContext
       - name: network_router_2
         address: 192.168.1.3
         module: mikrotik
