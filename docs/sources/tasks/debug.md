@@ -102,7 +102,7 @@ To debug using the UI:
 
 * Ensure that no component is reported as unhealthy.
 * Ensure that the arguments and exports for misbehaving components appear correct.
-* Ensure that the debugging data meets your expectations.
+* Ensure that the live debugging data meets your expectations.
 
 ## Examining logs
 
