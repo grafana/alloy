@@ -171,7 +171,8 @@ Each queue then manages a number of concurrent _shards_ which is responsible
 for sending a fraction of data to their respective endpoints. The number of
 shards is automatically raised if samples are not being sent to the endpoint
 quickly enough. The range of permitted shards can be configured with the
-`min_shards` and `max_shards` arguments.
+`min_shards` and `max_shards` arguments. See "[Tuning `max_shards`](#tuning-max_shards)"
+for more information about how to configure `max_shards`.
 
 Each shard has a buffer of samples it will keep in memory, controlled with the
 `capacity` argument. New metrics aren't read from the WAL unless there is at
