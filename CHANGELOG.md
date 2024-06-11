@@ -85,6 +85,9 @@ Main (unreleased)
   - `otelcol.processor.resourcedetection`: Added a `tags` config argument to the `azure` detection mechanism.
   It exposes regex-matched Azure resource tags as OpenTelemetry resource attributes.
 
+- A new `snmp_context` configuration argument for `prometheus.exporter.snmp`
+  which overrides the `context_name` parameter in the SNMP configuration file. (@ptodev)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one

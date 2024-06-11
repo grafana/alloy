@@ -24,6 +24,7 @@ func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
 		target["module"] = t.Module
 		target["auth"] = t.Auth
 		target["walk_params"] = t.WalkParams
+		target["snmp_context"] = t.SNMPContext
 		targets = append(targets, target)
 	}
 
@@ -72,6 +73,7 @@ func toSnmpExporterV2(config *snmp_exporter_v2.Config) *snmp.Arguments {
 		target["module"] = t.Module
 		target["auth"] = t.Auth
 		target["walk_params"] = t.WalkParams
+		target["snmp_context"] = t.SNMPContext
 		targets = append(targets, target)
 	}
 
