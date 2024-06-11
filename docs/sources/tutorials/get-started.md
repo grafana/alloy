@@ -121,7 +121,7 @@ local.file_match "local_files" {
 }
 ```
 
-This component creates a [local.file_match][] component named `local_files` with an attribute that tells {{< param "PRODUCT_NAME" >}} which files to source, and to check every 5 seconds.
+This component creates a [local.file_match][] component named `local_files` with an attribute that tells {{< param "PRODUCT_NAME" >}} which files to source, and to check for new files every 5 seconds.
 
 ### Second component: Scraping
 
@@ -186,7 +186,7 @@ sudo cp config.alloy /etc/alloy/config.alloy
 
 {{< /code >}}
 
-Finally, call the reload endpoint to alert {{< param "PRODUCT_NAME" >}} to the configuration change without the need
+Finally, call the reload endpoint to notify {{< param "PRODUCT_NAME" >}} to the configuration change without the need
 for restarting the system service.
 
 ```bash
