@@ -26,6 +26,10 @@ crds:
 ## chart, this field may also be called "agent". Naming this field "agent" is
 ## deprecated and will be removed in a future release.
 alloy:
+  # -- If true, agent will load all files in /etc/alloy.
+  # alloy.configMap.key will be ignored
+  loadFolder: false
+
   configMap:
     # -- Create a new ConfigMap for the config file.
     create: true
@@ -35,6 +39,7 @@ alloy:
     # -- Name of existing ConfigMap to use. Used when create is false.
     name: null
     # -- Key in ConfigMap to get config from.
+    # Ignored if loadFolder is true.
     key: null
 
   clustering:
