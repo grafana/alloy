@@ -48,8 +48,7 @@ Clicking a component in the graph navigates to the [Component detail page](#comp
 
 ### Component detail page
 
-<!-- TODO: update this screenshot once the branch is ready to go to main because it contains an additional button now -->
-{{< figure src="/media/docs/alloy/ui_component_detail_page.png" alt="Alloy UI component detail page" >}}
+{{< figure src="/media/docs/alloy/ui_component_detail_page_2.png" alt="Alloy UI component detail page" >}}
 
 The component detail page shows the following information for each component:
 
@@ -75,7 +74,7 @@ The clustering page shows the following information for each cluster node:
 
 ### Live Debugging page
 
-<!-- TODO: add screenshot once the branch is ready to go to main -->
+{{< figure src="/media/docs/alloy/ui_live_debugging_page.png" alt="Alloy UI live debugging page" >}}
 
 Live debugging provides a real-time stream of debugging data from a component. You can access this page from the corresponding [Component detail page](#component-detail-page).
 
