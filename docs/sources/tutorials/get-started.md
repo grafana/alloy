@@ -98,7 +98,7 @@ Run `docker compose up` to start your Docker container and open [http://localhos
 If you the following error when you start your Docker container, `docker: 'compose' is not a docker command`, use the command `docker-compose up` to start your Docker container.
  {{< /admonition >}}
 
-## Configure {{< param "PRODUCT_NAME" >}}
+## Configure {{% param "PRODUCT_NAME" %}}
 
 Once the local Grafana instance is set up, the next step is to configure {{< param "PRODUCT_NAME" >}}.
 You use components in the `config.alloy` file to tell {{< param "PRODUCT_NAME" >}} which logs you want to scrape, how you want to process that data, and where you want the data sent.
@@ -110,7 +110,7 @@ For the following steps, create a file called `config.alloy` in your current wor
 If you have enabled the {{< param "PRODUCT_NAME" >}} UI, you can "hot reload" a configuration from a file.
 In a later step, you will copy this file to where {{< param "PRODUCT_NAME" >}} will pick it up, and be able to reload without restarting the system service.
 
-### First Component: Log files
+### First component: Log files
 
 Paste this component into the top of the `config.alloy` file:
 
@@ -123,7 +123,7 @@ local.file_match "local_files" {
 
 This component creates a [local.file_match][] component named `local_files` with an attribute that tells {{< param "PRODUCT_NAME" >}} which files to source, and to check every 5 seconds.
 
-### Second Component: Scraping
+### Second component: Scraping
 
 Paste this component next in the `config.alloy` file:
 
@@ -135,13 +135,13 @@ loki.source.file "log_scrape" {
 }
 ```
 
-This configuration creates a [loki.source.file][] component named `log_scrape`, and shows the pipeline concept of {{< param "PRODUCT_NAME" >}} in action. The `log.scrape` component does the following:
+This configuration creates a [loki.source.file][] component named `log_scrape`, and shows the pipeline concept of {{< param "PRODUCT_NAME" >}} in action. The `log_scrape` component does the following:
 
 1. It applies to the `local_files` component (its "source" or target).
 1. It forwards the logs it scrapes to the "receiver" of another component called `grafana_loki` that you will define next.
 1. It provides extra attributes and options, in this case, you will tail log files from the end and not ingest the entire past history.
 
-### Third Component: Write Logs to Loki
+### Third component: Write logs to Loki
 
 Paste this component last in your configuration file:
 
@@ -170,7 +170,7 @@ For further authorization options, refer to the [loki.write][] component referen
 
 This connects directly to the Loki instance running in the Docker container.
 
-## Reload the Configuration
+## Reload the configuration
 
 Copy your local `config.alloy` file into the default configuration file location, which depends on your OS.
 
@@ -216,7 +216,7 @@ sudo systemctl reload alloy
 
 {{< /code >}}
 
-## Inspect your Configuration in the {{< param "PRODUCT_NAME" >}} UI
+## Inspect your configuration in the {{% param "PRODUCT_NAME" %}} UI
 
 Open [http://localhost:12345] and click the Graph tab at the top.
 The graph should look similar to the following:
@@ -226,7 +226,7 @@ The graph should look similar to the following:
 The UI allows you to see a visual representation of the pipeline you built with your {{< param "PRODUCT_NAME" >}} component configuration.
 We can see that the components are healthy, and you are ready to go.
 
-## Log into Grafana and Explore Loki Logs
+## Log in to Grafana and explore Loki logs
 
 Open [http://localhost:3000/explore] to access Explore feature in Grafana.
 Select Loki as the data source and click the "Label Browser" button to select a file that {{< param "PRODUCT_NAME" >}} has sent to Loki.
