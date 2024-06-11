@@ -182,6 +182,7 @@ integrations:
         module: mikrotik
         walk_params: private
         auth: private
+        snmp_context: dummyContext
   snowflake:
     enabled: true
     account_name: XXXXXXX-YYYYYYY

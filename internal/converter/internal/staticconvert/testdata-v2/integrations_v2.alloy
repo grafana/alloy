@@ -715,15 +715,15 @@ prometheus.exporter.snmp "integrations_snmp" {
 		auth         = "public",
 		module       = "if_mib",
 		name         = "network_switch.1",
+		snmp_context = "dummyContext",
 		walk_params  = "public",
-		snmp_context = "dummyContext"
-		
 	}, {
-		address     = "192.168.1.3",
-		auth        = "private",
-		module      = "mikrotik",
-		name        = "network_router_2",
-		walk_params = "private",
+		address      = "192.168.1.3",
+		auth         = "private",
+		module       = "mikrotik",
+		name         = "network_router_2",
+		snmp_context = "dummyContext",
+		walk_params  = "private",
 	}]
 }
 
