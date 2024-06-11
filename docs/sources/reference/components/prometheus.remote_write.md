@@ -499,7 +499,7 @@ remote write endpoint `url`:
 clamp_min(
     (
         # Measure the actual number of shards used the 90th percentile of time.
-        min by(cluster, agent_hostname, url) (ceil(quantile_over_time(0.9, prometheus_remote_storage_shards{url=~".*grafana.*"}[24h])))
+        min by(cluster, agent_hostname, url) (ceil(quantile_over_time(0.9, prometheus_remote_storage_shards[24h])))
 
         # Add room for spikes.
         * 4
