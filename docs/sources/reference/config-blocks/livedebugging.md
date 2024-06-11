@@ -16,7 +16,7 @@ title: livedebugging block
 By default, [live debugging][debug] is disabled and must be explicitly enabled through this configuration block to make the debugging data visible in the UI.
 
 {{< admonition type="note" >}}
-Enabling this feature provides detailed insights into the data flowing through your pipelines via {{< param "PRODUCT_NAME" >}}'s API.
+The live debugging feature uses the {{< param "PRODUCT_NAME" >}} UI to provide detailed insights into the data flowing through your pipelines.
 To ensure that your data remains secure while live debugging is enabled, configure TLS in the [http block][].
 {{< /admonition >}}
 
