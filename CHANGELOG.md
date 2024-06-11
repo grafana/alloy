@@ -83,6 +83,8 @@ Main (unreleased)
 
 - Fix panic when `import.git` is given a revision that does not exist on the remote repo. (@hainenber)
 
+- Fixed an issue with `loki.source.docker` where collecting logs from targets configured with multiple networks would result in errors. (@wildum)
+
 ### Other changes
 
 - `pyroscope.ebpf`, `pyroscope.java`, `pyroscope.scrape`, `pyroscope.write` and `discovery.process` components are now GA. (@korniltsev)
