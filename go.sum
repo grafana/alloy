@@ -1680,6 +1680,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraph
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.102.0/go.mod h1:pnQ8+ilovHRomBKp+/enHVuTw7wC83DAG3KG8Z/LmeM=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.102.0 h1:h9PLYmJx+Ko8sqz02Vf+z+O8Wx7HaZBkvXt3g0tKG14=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.102.0/go.mod h1:PVQqU0d9bUVYEWOaymAUKNRaeeYizxFWkC9ibijey8c=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.102.0 h1:a4kQq8LpNG45+HEfxfxKzi3VQ2R/fbVlwi7iSrjzzrM=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.102.0/go.mod h1:2CrPcq0uv5FHUVKIXRIBjHXfBRjdW1e8UrDM93o5JhQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.102.0 h1:R70PpK14trQfL/Vj5oAiGRqX09s2gOWuf6t1Ae5fevQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.102.0/go.mod h1:xmy/yFFmB1Epy+czrYMbA+4xeOKvhFqNqYWU6qINeis=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.102.0 h1:EZuqhQIPU3M+DNRHAhds9KSfyP2im4+dAwRcwf9w5fc=
