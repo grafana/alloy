@@ -400,13 +400,14 @@ prometheus.remote_write "default" {
   }
 }
 ```
+
 ## Technical details
 
 `prometheus.remote_write` uses [snappy][] for compression.
 
 Any labels that start with `__` will be removed before sending to the endpoint.
 
-## Data retention
+### Data retention
 
 The `prometheus.remote_write` component uses a Write Ahead Log (WAL) to prevent
 data loss during network outages. The component buffers the received metrics in
@@ -471,6 +472,41 @@ It's not unusual for the component to temporarily fall behind 2 or 3 scrape inte
 If the component falls behind more than one third of the data written since the
 last truncate interval, it is possible for the truncate loop to checkpoint data
 before being pushed to the remote_write endpoint.
+
+### Tuning `max_shards`
+
+The `queue_config` block allows to configure `max_shards`. The `max_shards` is the maximum
+number of concurrent shards sending samples to the Prometheus-compatible remote write endpoint.
+For each shard, a single remote write request can send up to `max_samples_per_send` samples.
+
+The maximum throughput that Grafana Alloy can achieve when remote writing is a function of
+`max_shards * max_samples_per_send * <write request latency>`. For example, running Alloy with the
+default configuration of 50 `max_shards` and 2000 `max_samples_per_send`, and assuming the
+average latency of a remote write request is 500ms, the maximum throughput achievable is
+about `50 * 2000 * (1s / 500ms) = 200K samples / s`.
+
+The default `max_shards` configuration is good for most use cases. However, if you run Alloy
+at a large scale and each Alloy instance scrapes more than 1 million series, we recommend
+increasing `max_shards`.
+
+Assuming a steady number of series of time, without a high churning rate, a rule of
+thumb to configure `max_shards` to a value 4 times higher than the actual shards utilization.
+You can run the following PromQL query to compute the suggested `max_shards` for each
+remote write endpoint `url`:
+
+```
+clamp_min(
+    (
+        # Measure the actual number of shards used the 90th percentile of time.
+        min by(cluster, agent_hostname, url) (ceil(quantile_over_time(0.9, prometheus_remote_storage_shards{url=~".*grafana.*"}[24h])))
+
+        # Add room for spikes.
+        * 4
+    ),
+    # Recommended to run at least 50 max_shards, as in the default configuration.
+    50
+)
+```
 
 ### WAL corruption
 
