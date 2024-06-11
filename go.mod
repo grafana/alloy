@@ -249,6 +249,8 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
+require github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.102.0
+
 require (
 	cloud.google.com/go v0.112.2 // indirect
 	cloud.google.com/go/auth v0.4.1 // indirect

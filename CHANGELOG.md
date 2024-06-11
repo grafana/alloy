@@ -136,6 +136,7 @@ v1.1.0
 ### Features
 
 - (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
+- (_Experimental_) A new `otelcol.exporter.awss3` component for sending telemetry data to a S3 bucket. (@Imshelledin21)
 
 - (_Public preview_) Introduce BoringCrypto Docker images.
   The BoringCrypto image is tagged with the `-boringcrypto` suffix and
