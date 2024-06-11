@@ -10,10 +10,22 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- Updated OpenTelemetry to v0.102.1. (@mattdurham)
+  - Components `otelcol.receiver.otlp`,`otelcol.receiver.zipkin`,`otelcol.extension.jaeger_remote_sampling`, and `otelcol.receiver.jaeger` setting `max_request_body_size`
+    default changed from unlimited size to `20MiB`. This is due to [CVE-2024-36129](https://github.com/open-telemetry/opentelemetry-collector/security/advisories/GHSA-c74f-6mfw-mm4v).
+
 ### Breaking changes to non-GA functionality
 
 - Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
   API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
+
+- Component `otelcol.receiver.vcenter` removed `vcenter.host.network.packet.errors`, `vcenter.host.network.packet.count`, and
+  `vcenter.vm.network.packet.count`.
+  - `vcenter.host.network.packet.errors` replaced by `vcenter.host.network.packet.error.rate`. 
+  - `vcenter.host.network.packet.count` replaced by `vcenter.host.network.packet.rate`.
+  - `vcenter.vm.network.packet.count` replaced by `vcenter.vm.network.packet.rate`.
 
 ### Features
 
@@ -49,12 +61,6 @@ Main (unreleased)
   - The resource attribute `vcenter.vm_template.name` has been added and enabled by default to differentiate between
     virtual machines and virtual machine templates.
   - The metric `vcenter.cluster.memory.used` has been removed.
-  - The metric `vcenter.host.network.packet.count` has been hidden (removed from docs & disabled from default).
-    It has been replaced by a new metric `vcenter.host.network.packet.rate` that is enabled by default.
-  - The metric `vcenter.host.network.packet.errors` has been hidden (removed from docs & disabled from default).
-    It has been replaced by a new metric `vcenter.host.network.packet.error.rate` that is enabled by default.
-  - The metric `vcenter.vm.network.packet.count` has been hidden (removed from docs & disabled from default).
-    It has been replaced by a new metric `vcenter.vm.network.packet.rate` that is enabled by default.
   - The metric `vcenter.vm.network.packet.drop.rate` has been added and enabled by default.
   - The metric `vcenter.cluster.vm_template.count` has been added and enabled by default.
 
@@ -74,6 +80,10 @@ Main (unreleased)
 - Prefix Faro measurement values with `value_` to align with the latest Faro cloud receiver updates. (@codecapitano)
 
 - Add `base64_decode` to standard library. (@hainenber)
+
+- Updated OpenTelemetry Contrib to [v0.102.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.102.0). (@mattdurham)
+  - `otelcol.processor.resourcedetection`: Added a `tags` config argument to the `azure` detection mechanism.
+  It exposes regex-matched Azure resource tags as OpenTelemetry resource attributes.
 
 ### Bugfixes
 

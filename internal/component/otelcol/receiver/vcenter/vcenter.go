@@ -62,9 +62,7 @@ type MetricsConfig struct {
 	VcenterHostDiskThroughput         MetricConfig `alloy:"vcenter.host.disk.throughput,block,optional"`
 	VcenterHostMemoryUsage            MetricConfig `alloy:"vcenter.host.memory.usage,block,optional"`
 	VcenterHostMemoryUtilization      MetricConfig `alloy:"vcenter.host.memory.utilization,block,optional"`
-	VcenterHostNetworkPacketCount     MetricConfig `alloy:"vcenter.host.network.packet.count,block,optional"`
 	VcenterHostNetworkPacketRate      MetricConfig `alloy:"vcenter.host.network.packet.rate,block,optional"`
-	VcenterHostNetworkPacketErrors    MetricConfig `alloy:"vcenter.host.network.packet.errors,block,optional"`
 	VcenterHostNetworkPacketErrorRate MetricConfig `alloy:"vcenter.host.network.packet.error.rate,block,optional"`
 	VcenterHostNetworkThroughput      MetricConfig `alloy:"vcenter.host.network.throughput,block,optional"`
 	VcenterHostNetworkUsage           MetricConfig `alloy:"vcenter.host.network.usage,block,optional"`
@@ -84,7 +82,6 @@ type MetricsConfig struct {
 	VcenterVMMemorySwappedSsd         MetricConfig `alloy:"vcenter.vm.memory.swapped_ssd,block,optional"`
 	VcenterVMMemoryUsage              MetricConfig `alloy:"vcenter.vm.memory.usage,block,optional"`
 	VcenterVMMemoryUtilization        MetricConfig `alloy:"vcenter.vm.memory.utilization,block,optional"`
-	VcenterVMNetworkPacketCount       MetricConfig `alloy:"vcenter.vm.network.packet.count,block,optional"`
 	VcenterVMNetworkPacketRate        MetricConfig `alloy:"vcenter.vm.network.packet.rate,block,optional"`
 	VcenterVMNetworkPacketDropRate    MetricConfig `alloy:"vcenter.vm.network.packet.drop.rate,block,optional"`
 	VcenterVMNetworkThroughput        MetricConfig `alloy:"vcenter.vm.network.throughput,block,optional"`
@@ -109,9 +106,7 @@ func (args *MetricsConfig) SetToDefault() {
 		VcenterHostDiskThroughput:         MetricConfig{Enabled: true},
 		VcenterHostMemoryUsage:            MetricConfig{Enabled: true},
 		VcenterHostMemoryUtilization:      MetricConfig{Enabled: true},
-		VcenterHostNetworkPacketCount:     MetricConfig{Enabled: false},
 		VcenterHostNetworkPacketRate:      MetricConfig{Enabled: true},
-		VcenterHostNetworkPacketErrors:    MetricConfig{Enabled: false},
 		VcenterHostNetworkPacketErrorRate: MetricConfig{Enabled: true},
 		VcenterHostNetworkThroughput:      MetricConfig{Enabled: true},
 		VcenterHostNetworkUsage:           MetricConfig{Enabled: true},
@@ -131,7 +126,6 @@ func (args *MetricsConfig) SetToDefault() {
 		VcenterVMMemorySwappedSsd:         MetricConfig{Enabled: true},
 		VcenterVMMemoryUsage:              MetricConfig{Enabled: true},
 		VcenterVMMemoryUtilization:        MetricConfig{Enabled: true},
-		VcenterVMNetworkPacketCount:       MetricConfig{Enabled: false},
 		VcenterVMNetworkPacketRate:        MetricConfig{Enabled: true},
 		VcenterVMNetworkPacketDropRate:    MetricConfig{Enabled: true},
 		VcenterVMNetworkThroughput:        MetricConfig{Enabled: true},
@@ -161,9 +155,7 @@ func (args *MetricsConfig) Convert() map[string]interface{} {
 		"vcenter.host.disk.throughput":           args.VcenterHostDiskThroughput.Convert(),
 		"vcenter.host.memory.usage":              args.VcenterHostMemoryUsage.Convert(),
 		"vcenter.host.memory.utilization":        args.VcenterHostMemoryUtilization.Convert(),
-		"vcenter.host.network.packet.count":      args.VcenterHostNetworkPacketCount.Convert(),
 		"vcenter.host.network.packet.rate":       args.VcenterHostNetworkPacketRate.Convert(),
-		"vcenter.host.network.packet.errors":     args.VcenterHostNetworkPacketErrors.Convert(),
 		"vcenter.host.network.packet.error.rate": args.VcenterHostNetworkPacketErrorRate.Convert(),
 		"vcenter.host.network.throughput":        args.VcenterHostNetworkThroughput.Convert(),
 		"vcenter.host.network.usage":             args.VcenterHostNetworkUsage.Convert(),
@@ -183,7 +175,6 @@ func (args *MetricsConfig) Convert() map[string]interface{} {
 		"vcenter.vm.memory.swapped_ssd":          args.VcenterVMMemorySwappedSsd.Convert(),
 		"vcenter.vm.memory.usage":                args.VcenterVMMemoryUsage.Convert(),
 		"vcenter.vm.memory.utilization":          args.VcenterVMMemoryUtilization.Convert(),
-		"vcenter.vm.network.packet.count":        args.VcenterVMNetworkPacketCount.Convert(),
 		"vcenter.vm.network.packet.rate":         args.VcenterVMNetworkPacketRate.Convert(),
 		"vcenter.vm.network.packet.drop.rate":    args.VcenterVMNetworkPacketDropRate.Convert(),
 		"vcenter.vm.network.throughput":          args.VcenterVMNetworkThroughput.Convert(),
