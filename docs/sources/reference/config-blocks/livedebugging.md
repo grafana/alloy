@@ -17,7 +17,7 @@ By default, [live debugging][debug] is disabled and must be explicitly enabled t
 
 {{< admonition type="note" >}}
 Enabling this feature provides detailed insights into the data flowing through your pipelines via {{< param "PRODUCT_NAME" >}}'s API.
-To ensure that your data remains secure while live debugging is enabled, consider configuring TLS in the [http block][].
+To ensure that your data remains secure while live debugging is enabled, configure TLS in the [http block][].
 {{< /admonition >}}
 
 ## Example
