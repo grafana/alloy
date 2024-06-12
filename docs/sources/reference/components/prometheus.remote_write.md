@@ -171,7 +171,7 @@ Each queue then manages a number of concurrent _shards_ which is responsible
 for sending a fraction of data to their respective endpoints. The number of
 shards is automatically raised if samples are not being sent to the endpoint
 quickly enough. The range of permitted shards can be configured with the
-`min_shards` and `max_shards` arguments. See "[Tuning `max_shards`](#tuning-max_shards)"
+`min_shards` and `max_shards` arguments. Refer to  [Tuning `max_shards`](#tuning-max_shards)
 for more information about how to configure `max_shards`.
 
 Each shard has a buffer of samples it will keep in memory, controlled with the
@@ -476,35 +476,35 @@ before being pushed to the remote_write endpoint.
 
 ### Tuning `max_shards`
 
-The [`queue_config`](#queue_config-block) block allows to configure `max_shards`. The `max_shards` is the maximum
+The [`queue_config`](#queue_config-block) block allows you to configure `max_shards`. The `max_shards` is the maximum
 number of concurrent shards sending samples to the Prometheus-compatible remote write endpoint.
 For each shard, a single remote write request can send up to `max_samples_per_send` samples.
 
-The maximum throughput that Grafana Alloy can achieve when remote writing is a function of
-`max_shards * max_samples_per_send * <write request latency>`. For example, running Alloy with the
+The maximum throughput that {{< param "PRODUCT_NAME" >}} can achieve when remote writing is equal to
+`max_shards * max_samples_per_send * <write request latency>`. For example, running {{< param "PRODUCT_NAME" >}} with the
 default configuration of 50 `max_shards` and 2000 `max_samples_per_send`, and assuming the
 average latency of a remote write request is 500ms, the maximum throughput achievable is
 about `50 * 2000 * (1s / 500ms) = 200K samples / s`.
 
-The default `max_shards` configuration is good for most use cases. However, if you run Alloy
-at a large scale and each Alloy instance scrapes more than 1 million series, we recommend
-increasing `max_shards`.
+The default `max_shards` configuration is good for most use cases. However, if you run {{< param "PRODUCT_NAME" >}}
+at a large scale and each {{< param "PRODUCT_NAME" >}} instance scrapes more than 1 million series, we recommend
+increasing the value of `max_shards`.
 
 Assuming a steady number of series of time, without a high churning rate, a rule of
-thumb to configure `max_shards` to a value 4 times higher than the actual shards utilization.
-You can run the following PromQL query to compute the suggested `max_shards` for each
+thumb is to set `max_shards` to 4x shard utilization.
+Run the following PromQL query to compute the suggested `max_shards` value for each
 remote write endpoint `url`:
 
 ```
 clamp_min(
     (
-        # Measure the actual number of shards used the 90th percentile of time.
+        # Calculate the 90th percentile in-use shards over the most recent 24 hour period
         min by(cluster, agent_hostname, url) (ceil(quantile_over_time(0.9, prometheus_remote_storage_shards[24h])))
 
         # Add room for spikes.
         * 4
     ),
-    # Recommended to run at least 50 max_shards, as in the default configuration.
+    # We recommend setting max_shards to a value of no less than 50, as in the default configuration.
     50
 )
 ```
