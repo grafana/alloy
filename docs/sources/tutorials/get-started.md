@@ -137,7 +137,7 @@ loki.source.file "log_scrape" {
 
 This configuration creates a [loki.source.file][] component named `log_scrape`, and shows the pipeline concept of {{< param "PRODUCT_NAME" >}} in action. The `log_scrape` component does the following:
 
-1. It applies to the `local_files` component (its "source" or target).
+1. It connects to the `local_files` component (its "source" or target).
 1. It forwards the logs it scrapes to the "receiver" of another component called `grafana_loki` that you will define next.
 1. It provides extra attributes and options, in this case, you will tail log files from the end and not ingest the entire past history.
 
