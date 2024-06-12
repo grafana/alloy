@@ -253,6 +253,11 @@ require (
 )
 
 require (
+	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.102.0
+)
+
+require (
 	cloud.google.com/go v0.112.2 // indirect
 	cloud.google.com/go/auth v0.4.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
