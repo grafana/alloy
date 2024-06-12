@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"sync"
 	"time"
 
@@ -179,6 +180,11 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 }
 
+type promTarget struct {
+	labels      model.LabelSet
+	fingerPrint model.Fingerprint
+}
+
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
@@ -219,29 +225,39 @@ func (c *Component) Update(args component.Arguments) error {
 	targets := make([]*dt.Target, 0, len(newArgs.Targets))
 	seenTargets := make(map[string]struct{}, len(newArgs.Targets))
 
-	for _, target := range newArgs.Targets {
-		containerID, ok := target[dockerLabelContainerID]
-		if !ok {
-			level.Debug(c.opts.Logger).Log("msg", "docker target did not include container ID label:"+dockerLabelContainerID)
-			continue
-		}
-		if _, seen := seenTargets[containerID]; seen {
-			continue
-		}
-		seenTargets[containerID] = struct{}{}
-
+	promTargets := make([]promTarget, len(newArgs.Targets))
+	for i, target := range newArgs.Targets {
 		var labels = make(model.LabelSet)
 		for k, v := range target {
 			labels[model.LabelName(k)] = model.LabelValue(v)
 		}
+		promTargets[i] = promTarget{labels: labels, fingerPrint: labels.Fingerprint()}
+	}
+
+	// Sorting the targets before filtering ensures consistent filtering of targets
+	// when multiple targets share the same containerID.
+	sort.Slice(promTargets, func(i, j int) bool {
+		return promTargets[i].fingerPrint < promTargets[j].fingerPrint
+	})
+
+	for _, markedTarget := range promTargets {
+		containerID, ok := markedTarget.labels[dockerLabelContainerID]
+		if !ok {
+			level.Debug(c.opts.Logger).Log("msg", "docker target did not include container ID label:"+dockerLabelContainerID)
+			continue
+		}
+		if _, seen := seenTargets[string(containerID)]; seen {
+			continue
+		}
+		seenTargets[string(containerID)] = struct{}{}
 
 		tgt, err := dt.NewTarget(
 			c.metrics,
 			log.With(c.opts.Logger, "target", fmt.Sprintf("docker/%s", containerID)),
 			c.manager.opts.handler,
 			c.manager.opts.positions,
-			containerID,
-			labels.Merge(c.defaultLabels),
+			string(containerID),
+			markedTarget.labels.Merge(c.defaultLabels),
 			c.rcs,
 			c.manager.opts.client,
 		)
