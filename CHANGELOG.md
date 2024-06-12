@@ -45,7 +45,7 @@ v1.2.0-rc.0
 - (_Experimental_) Add an `otelcol.receiver.datadog` component to receive
   metrics and traces from Datadog. (@carrieedwards, @jesusvazquez, @alexgreenbank, @fedetorres93)
 
-- `prometheus.exporter.catchpoint` collects metrics from a catchpoint webhook. (@bominrahmani)
+- Add a `prometheus.exporter.catchpoint` component to collect metrics from Catchpoint. (@bominrahmani)
 
 ### Enhancements
 

@@ -12,10 +12,10 @@ The `prometheus.exporter.catchpoint` component embeds
 ## Usage
 
 ```alloy
-prometheus.exporter.catchpoint "LABEL" {
+prometheus.exporter.catchpoint "<LABEL>" {
     port              = PORT
-    verbosity_logging = VERBOSITY_LOGGING
-    webhook_path      = WEBHOOK_PATH
+    verbosity_logging = <VERBOSITY_LOGGING>
+    webhook_path      = <WEBHOOK_PATH>
 }
 ```
 
@@ -75,11 +75,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = <PROMETHEUS_REMOTE_WRITE_URL>
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = <USERNAME>
+      password = <PASSWORD>
     }
   }
 }
@@ -87,11 +87,12 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the remote_write API.
+- _`<PASSWORD>`_: The password to use for authentication to the remote_write API.
 
 [scrape]: ../prometheus.scrape/
+[catchpoint_exporter]: https://github.com/grafana/catchpoint-prometheus-exporter
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
