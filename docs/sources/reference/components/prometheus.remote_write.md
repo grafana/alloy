@@ -487,7 +487,7 @@ average latency of a remote write request is 500ms, the maximum throughput achie
 about `50 * 2000 * (1s / 500ms) = 200K samples / s`.
 
 The default `max_shards` configuration is good for most use cases, especially if each {{< param "PRODUCT_NAME" >}}
-replica scrapes up to 1 million active series. However, if you run {{< param "PRODUCT_NAME" >}}
+instance scrapes up to 1 million active series. However, if you run {{< param "PRODUCT_NAME" >}}
 at a large scale and each instance scrapes more than 1 million series, we recommend
 increasing the value of `max_shards`.
 
