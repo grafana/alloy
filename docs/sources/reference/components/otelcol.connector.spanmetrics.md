@@ -102,6 +102,7 @@ The following blocks are supported inside the definition of
 | histogram > explicit    | [explicit][]    | Configuration for a histogram with explicit buckets.                                                                                                       | no       |
 | histogram > exponential | [exponential][] | Configuration for a histogram with exponential buckets.                                                                                                    | no       |
 | output                  | [output][]      | Configures where to send telemetry data.                                                                                                                   | yes      |
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 It is necessary to specify either a "[exponential][]" or an "[explicit][]" block:
 
@@ -115,6 +116,7 @@ It is necessary to specify either a "[exponential][]" or an "[explicit][]" block
 [exemplars]: #exemplars-block
 [events]: #events-block
 [output]: #output-block
+[debug_metrics]: #debug_metrics-block
 
 ### dimension block
 
@@ -211,6 +213,10 @@ The following attributes are supported:
 ### output block
 
 {{< docs/shared lookup="reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

@@ -59,6 +59,7 @@ func toTransformProcessor(state *State, id component.InstanceID, cfg *transformp
 			Logs:    ToTokenizedConsumers(nextLogs),
 			Traces:  ToTokenizedConsumers(nextTraces),
 		},
+		DebugMetrics: common.DefaultValue[transform.Arguments]().DebugMetrics,
 	}
 }
 

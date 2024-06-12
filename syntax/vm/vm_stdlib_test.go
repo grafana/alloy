@@ -26,6 +26,12 @@ func TestVM_Stdlib(t *testing.T) {
 		{"json_decode array", `json_decode("[0, 1, 2]")`, []interface{}{float64(0), float64(1), float64(2)}},
 		{"json_decode nil field", `json_decode("{\"foo\": null}")`, map[string]interface{}{"foo": nil}},
 		{"json_decode nil array element", `json_decode("[0, null]")`, []interface{}{float64(0), nil}},
+		{"yaml_decode object", "yaml_decode(`foo: bar`)", map[string]interface{}{"foo": "bar"}},
+		{"yaml_decode array", "yaml_decode(`[0, 1, 2]`)", []interface{}{0, 1, 2}},
+		{"yaml_decode array float", "yaml_decode(`[0.0, 1.0, 2.0]`)", []interface{}{float64(0), float64(1), float64(2)}},
+		{"yaml_decode nil field", "yaml_decode(`foo: null`)", map[string]interface{}{"foo": nil}},
+		{"yaml_decode nil array element", `yaml_decode("[0, null]")`, []interface{}{0, nil}},
+		{"base64_decode", `base64_decode("Zm9vYmFyMTIzIT8kKiYoKSctPUB+")`, string(`foobar123!?$*&()'-=@~`)},
 	}
 
 	for _, tc := range tt {

@@ -99,6 +99,10 @@ func (a *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
+	if a.PollFrequency < 10*time.Second {
+		return fmt.Errorf("poll_frequency must be at least \"10s\", got %q", a.PollFrequency)
+	}
+
 	// We must explicitly Validate because HTTPClientConfig is squashed and it
 	// won't run otherwise
 	if a.HTTPClientConfig != nil {
