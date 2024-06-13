@@ -5,16 +5,12 @@ otelcol.receiver.otlp "default" {
 
 	output {
 		metrics = [otelcol.processor.deltatocumulative.default.input]
-		logs    = []
-		traces  = []
 	}
 }
 
 otelcol.processor.deltatocumulative "default" {
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]
-		logs    = []
-		traces  = []
 	}
 }
 
