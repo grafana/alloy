@@ -17,7 +17,7 @@ title: otelcol.processor.deltatocumulative
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
-Multiple `otelcol.processor.batch` components can be specified by giving them different labels.
+You can specify multiple `otelcol.processor.batch` components by giving them different labels.
 
 ## Usage
 
