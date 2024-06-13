@@ -4,7 +4,11 @@ description: Learn about otelcol.processor.deltatocumulative
 title: otelcol.processor.deltatocumulative
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
+
 # otelcol.processor.deltatocumulative
+
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.deltatocumulative` accepts metrics from other `otelcol` components and converts metrics metrics with the delta temporarlity to cumulative.
 
