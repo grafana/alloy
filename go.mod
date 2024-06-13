@@ -45,7 +45,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v0.0.4
-	github.com/google/cadvisor v0.47.0
+	github.com/google/cadvisor v0.49.1
 	github.com/google/dnsmasq_exporter v0.2.1-0.20230620100026-44b14480804a
 	github.com/google/go-cmp v0.6.0
 	github.com/google/pprof v0.0.0-20240227163752-401108e1b7e7
@@ -746,11 +746,6 @@ replace (
 
 // TODO(rfratto): remove forks when changes are merged upstream
 replace (
-	// TODO(tpaschalis) this is to remove global instantiation of plugins
-	// and allow non-singleton components.
-	// https://github.com/grafana/cadvisor/tree/grafana-v0.47-noglobals
-	github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20231110094609-5f7917925dea
-
 	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20240417113938-9358270470dd
 
 	// TODO(marctc): remove once this PR is merged upstream: https://github.com/prometheus/mysqld_exporter/pull/774

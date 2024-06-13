@@ -895,6 +895,8 @@ github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Z
 github.com/google/btree v1.0.0/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
 github.com/google/btree v1.1.2 h1:xf4v41cLI2Z6FxbKm+8Bu+m8ifhj15JuZ9sa0jZCMUU=
 github.com/google/btree v1.1.2/go.mod h1:qOPhT0dTNdNzV6Z/lhRX0YXUafgPLFUh+gZMl761Gm4=
+github.com/google/cadvisor v0.49.1 h1:9M++63nWvdq6Oci6wUDuAfQNTZpuz1ZObln0Bhs9xN0=
+github.com/google/cadvisor v0.49.1/go.mod h1:s6Fqwb2KiWG6leCegVhw4KW40tf9f7m+SF1aXiE8Wsk=
 github.com/google/dnsmasq_exporter v0.2.1-0.20230620100026-44b14480804a h1:cnKkC6FdLEg+Bg30BIrxSbRm+ktT+Dg0GUXsViJDMOQ=
 github.com/google/dnsmasq_exporter v0.2.1-0.20230620100026-44b14480804a/go.mod h1:0UipONgYNVYq/tP7xau4Kr5Xlv7jcb9te+sOSDjylnQ=
 github.com/google/flatbuffers v23.5.26+incompatible h1:M9dgRyhJemaM4Sw8+66GHBu8ioaQmyPLg1b8VwK5WJg=
@@ -1001,8 +1003,6 @@ github.com/grafana/alloy-remote-config v0.0.4 h1:XqpZ5ZmaVc1E1MZwWoQ4pTPtDQq1L2I
 github.com/grafana/alloy-remote-config v0.0.4/go.mod h1:kHE1usYo2WAVCikQkIXuoG1Clz8BSdiz3kF+DZSCQ4k=
 github.com/grafana/beyla v1.5.1 h1:7CTTXSUmDcobGoJ3fvwdpfCgMxpRsW13V+Remxgl5aU=
 github.com/grafana/beyla v1.5.1/go.mod h1:y6zU7/QV3db6SVXx3PYOLOp2s/PlwWyIDzUzOrfcI6o=
-github.com/grafana/cadvisor v0.0.0-20231110094609-5f7917925dea h1:Q5f5/nJJ0SbusZjA6F6XkJuHDbl2/PqdTGw6wHsuccA=
-github.com/grafana/cadvisor v0.0.0-20231110094609-5f7917925dea/go.mod h1:XjiOCFjmxXIWwauV5p39Mr2Yxlpyk72uKQH1UZvd4fQ=
 github.com/grafana/ckit v0.0.0-20230906125525-c046c99a5c04 h1:tG8Qxq4dN1WqakMmsPaxaH4+OQhYg5HVsarw5acLBX8=
 github.com/grafana/ckit v0.0.0-20230906125525-c046c99a5c04/go.mod h1:HOnDIbkxfvVlDM5FBujt0uawGLfdpdTeqE7fIwfBmQk=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 h1:qhugDMdQ4Vp68H0tp/0iN17DM2ehRo1rLEdOFe/gB8I=
