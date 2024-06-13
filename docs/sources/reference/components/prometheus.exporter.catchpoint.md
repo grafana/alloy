@@ -14,7 +14,7 @@ The `prometheus.exporter.catchpoint` component embeds
 ```alloy
 prometheus.exporter.catchpoint "<LABEL>" {
     port              = PORT
-    verbosity_logging = <VERBOSITY_LOGGING>
+    verbose_logging   = <VERBOSE_LOGGING>
     webhook_path      = <WEBHOOK_PATH>
 }
 ```
@@ -24,11 +24,11 @@ prometheus.exporter.catchpoint "<LABEL>" {
 The following arguments can be used to configure the exporter's behavior.
 Omitted fields take their default values.
 
-| Name                | Type     | Description                                           | Default                 | Required |
-| ------------------- | -------- | ----------------------------------------------------- | ----------------------- | -------- |
-| `port`              | `string` | The account to collect metrics for.                   | `"9090"`                | no       |
-| `verbosity_logging` | `bool`   | The username for the user used when querying metrics. | `false`                 | no       |
-| `webhook_path`      | `string` | The password for the user used when querying metrics. | `"/catchpoint-webhook"` | no       |
+| Name              | Type     | Description                                                                     | Default                 | Required |
+| ----------------- | -------- | ------------------------------------------------------------------------------- | ----------------------- | -------- |
+| `port`            | `string` | Sets the port on which the exporter will run.                                   | `"9090"`                | no       |
+| `verbose_logging` | `bool`   | Enables verbose logging to provide more detailed output for debugging purposes. | `false`                 | no       |
+| `webhook_path`    | `string` | Defines the path where the exporter will receive webhook data from Catchpoint   | `"/catchpoint-webhook"` | no       |
 
 ## Blocks
 
