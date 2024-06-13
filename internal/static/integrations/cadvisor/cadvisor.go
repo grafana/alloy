@@ -27,8 +27,8 @@ import (
 	"github.com/google/cadvisor/container/containerd"
 	"github.com/google/cadvisor/container/crio"
 	"github.com/google/cadvisor/container/docker"
-	"github.com/google/cadvisor/container/raw"
 	"github.com/google/cadvisor/container/systemd"
+	"github.com/google/cadvisor/container/podman"
 )
 
 // Matching the default disabled set from cadvisor - https://github.com/google/cadvisor/blob/3c6e3093c5ca65c57368845ddaea2b4ca6bc0da8/cmd/cadvisor.go#L78-L93
@@ -85,21 +85,11 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	// per host.
 
 	klog.SetLogger(c.logger)
-	plugins := map[string]container.Plugin{
-		"containerd": containerd.NewPluginWithOptions(&containerd.Options{
-			ContainerdEndpoint:  c.Containerd,
-			ContainerdNamespace: c.ContainerdNamespace,
-		}),
-		"crio": crio.NewPlugin(),
-		"docker": docker.NewPluginWithOptions(&docker.Options{
-			DockerEndpoint: c.Docker,
-			DockerTLS:      c.DockerTLS,
-			DockerCert:     c.DockerTLSCert,
-			DockerKey:      c.DockerTLSKey,
-			DockerCA:       c.DockerTLSCA,
-		}),
-		"systemd": systemd.NewPlugin(),
-	}
+	container.RegisterPlugin("containerd", containerd.NewPlugin())
+	container.RegisterPlugin("crio", crio.NewPlugin())
+	container.RegisterPlugin("docker", docker.NewPlugin())
+	container.RegisterPlugin("systemd", systemd.NewPlugin())
+	container.RegisterPlugin("podman", podman.NewPlugin())
 
 	// Only using in-memory storage, with no backup storage for cadvisor stats
 	memoryStorage := memory.New(c.StorageDuration, []storage.StorageDriver{})
@@ -113,11 +103,7 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		return nil, fmt.Errorf("unable to determine included metrics: %w", err)
 	}
 
-	rawOpts := raw.Options{
-		DockerOnly:             c.DockerOnly,
-		DisableRootCgroupStats: c.DisableRootCgroupStats,
-	}
-	rm, err := manager.New(plugins, memoryStorage, sysFs, manager.HousekeepingConfigFlags, includedMetrics, &collectorHTTPClient, c.RawCgroupPrefixAllowlist, c.EnvMetadataAllowlist, c.PerfEventsConfig, time.Duration(c.ResctrlInterval), rawOpts)
+	rm, err := manager.New(memoryStorage, sysFs, manager.HousekeepingConfigFlags, includedMetrics, &collectorHTTPClient, c.RawCgroupPrefixAllowlist, c.EnvMetadataAllowlist, c.PerfEventsConfig, time.Duration(c.ResctrlInterval))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a manager: %w", err)
 	}
