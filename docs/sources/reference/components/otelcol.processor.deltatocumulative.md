@@ -10,7 +10,7 @@ title: otelcol.processor.deltatocumulative
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.processor.deltatocumulative` accepts metrics from other `otelcol` components and converts metrics with the delta temporarlity to cumulative.
+`otelcol.processor.deltatocumulative` accepts metrics from other `otelcol` components and converts metrics with the delta temporality to cumulative.
 
 {{< admonition type="note" >}}
 `otelcol.processor.deltatocumulative` is a wrapper over the upstream OpenTelemetry Collector `deltatocumulative` processor.
@@ -90,7 +90,7 @@ Name    | Type               | Description
 * `processor_deltatocumulative_streams_limit` (gauge): Upper limit of tracked streams.
 * `processor_deltatocumulative_streams_evicted` (counter): Total number of streams removed from tracking to ingest newer streams.
 * `processor_deltatocumulative_streams_max_stale` (gauge): Duration without new samples after which streams are dropped.
-* `processor_deltatocumulative_datapoints_processed` (counter): Total number of datapoints processed (successfully or unsucessfully).
+* `processor_deltatocumulative_datapoints_processed` (counter): Total number of datapoints processed (successfully or unsuccessfully).
 * `processor_deltatocumulative_datapoints_dropped` (counter): Faulty datapoints that were dropped due to the reason given in the `reason` label.
 * `processor_deltatocumulative_gaps_length` (counter): Total length of all gaps in the streams, such as being due to lost in transit.
 
@@ -98,7 +98,7 @@ Name    | Type               | Description
 
 ### Basic usage
 
-This example converts delta temporarlity metrics to cumulative before sending it to [otelcol.exporter.otlp][] for further processing:
+This example converts delta temporality metrics to cumulative before sending it to [otelcol.exporter.otlp][] for further processing:
 
 ```alloy
 otelcol.processor.deltatocumulative "default" {
