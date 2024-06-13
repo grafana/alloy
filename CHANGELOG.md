@@ -23,7 +23,7 @@ Main (unreleased)
 
 - Component `otelcol.receiver.vcenter` removed `vcenter.host.network.packet.errors`, `vcenter.host.network.packet.count`, and
   `vcenter.vm.network.packet.count`.
-  - `vcenter.host.network.packet.errors` replaced by `vcenter.host.network.packet.error.rate`. 
+  - `vcenter.host.network.packet.errors` replaced by `vcenter.host.network.packet.error.rate`.
   - `vcenter.host.network.packet.count` replaced by `vcenter.host.network.packet.rate`.
   - `vcenter.vm.network.packet.count` replaced by `vcenter.vm.network.packet.rate`.
 
@@ -35,6 +35,9 @@ Main (unreleased)
   Individual components must be updated to support live debugging. (@wildum)
 
 - Added live debugging support for `prometheus.relabel`. (@wildum)
+
+- (_Experimental_) Add a `otelcol.processor.deltatocumulative` component to convert metrics from
+  delta temporality to cumulative by accumulating samples in memory. (@rfratto)
 
 ### Enhancements
 
