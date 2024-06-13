@@ -25,14 +25,5 @@ func toCadvisorExporter(config *cadvisor_integration.Config) *cadvisor.Arguments
 		DisabledMetrics:            config.DisabledMetrics,
 		EnabledMetrics:             config.EnabledMetrics,
 		StorageDuration:            config.StorageDuration,
-		ContainerdHost:             config.Containerd,
-		ContainerdNamespace:        config.ContainerdNamespace,
-		DockerHost:                 config.Docker,
-		UseDockerTLS:               config.DockerTLS,
-		DockerTLSCert:              config.DockerTLSCert,
-		DockerTLSKey:               config.DockerTLSKey,
-		DockerTLSCA:                config.DockerTLSCA,
-		DockerOnly:                 config.DockerOnly,
-		DisableRootCgroupStats:     config.DisableRootCgroupStats,
 	}
 }
