@@ -43,7 +43,9 @@ Sum and exponential histogram metrics with delta temporality are tracked and con
 
 If a new sample hasn't been received since the duration specified by `max_stale`, tracked streams are considered stale and dropped. `max_stale` must be set to a duration greater than `"0s"`.
 
-The `max_streams` attribute configures the upper limit of streams to track. If the limit of tracked streams is reached, new incoming streams are dropped. This behavior can be disabled by setting `max_streams` to `0`.
+The `max_streams` attribute configures the upper limit of streams to track.
+If the limit of tracked streams is reached, new incoming streams are dropped.
+You can disable this behavior by setting `max_streams` to `0`.
 
 ## Blocks
 
