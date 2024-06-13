@@ -116,6 +116,28 @@ otelcol.exporter.otlp "production" {
 
 [otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
 
+### Exporting Prometheus data
+
+This example converts delta temporality metrics to cumulative metrics before it is converted to Prometheus data, which requires cumulative temporality:
+
+```alloy
+otelcol.processor.deltatocumulative "default" {
+  output {
+    metrics = [otelcol.exporter.prometheus.default.input]
+  }
+}
+
+otelcol.exporter.prometheus "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = env("PROMETHEUS_SERVER_URL")
+  }
+}
+```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
