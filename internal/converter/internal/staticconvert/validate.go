@@ -12,7 +12,6 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations/azure_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/blackbox_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/cadvisor"
-	"github.com/grafana/alloy/internal/static/integrations/catchpoint_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/cloudwatch_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/consul_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/dnsmasq_exporter"
@@ -133,7 +132,6 @@ func validateIntegrationsV1(integrationsConfig *v1.ManagerConfig) diag.Diagnosti
 		case *apache_http.Config:
 		case *node_exporter.Config:
 		case *blackbox_exporter.Config:
-		case *catchpoint_exporter.Config:
 		case *cloudwatch_exporter.Config:
 		case *consul_exporter.Config:
 		case *dnsmasq_exporter.Config:
@@ -186,7 +184,6 @@ func validateIntegrationsV2(integrationsConfig *v2.SubsystemOptions) diag.Diagno
 			switch v1_itg := itg.Orig.(type) {
 			case *azure_exporter.Config:
 			case *cadvisor.Config:
-			case *catchpoint_exporter.Config:
 			case *cloudwatch_exporter.Config:
 			case *consul_exporter.Config:
 			case *dnsmasq_exporter.Config:

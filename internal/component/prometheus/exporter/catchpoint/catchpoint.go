@@ -11,7 +11,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.catchpoint",
-		Stability: featuregate.StabilityGenerallyAvailable,
+		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 		Build:     exporter.New(createExporter, "catchpoint"),
@@ -32,9 +32,9 @@ var DefaultArguments = Arguments{
 
 // Arguments controls the catchpoint exporter.
 type Arguments struct {
-	VerboseLogging bool   `alloy:"verbose_logging,attr"`
-	WebhookPath    string `alloy:"webhook_path,attr"`
-	Port           string `alloy:"port,attr"`
+	VerboseLogging bool   `alloy:"verbose_logging,attr,optional"`
+	WebhookPath    string `alloy:"webhook_path,attr,optional"`
+	Port           string `alloy:"port,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.

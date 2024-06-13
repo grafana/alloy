@@ -26,9 +26,9 @@ Omitted fields take their default values.
 
 | Name                | Type     | Description                                           | Default                 | Required |
 | ------------------- | -------- | ----------------------------------------------------- | ----------------------- | -------- |
-| `port`              | `string` | The account to collect metrics for.                   | `"9090"`                | yes      |
-| `verbosity_logging` | `bool`   | The username for the user used when querying metrics. | `false`                 | yes      |
-| `webhook_path`      | `string` | The password for the user used when querying metrics. | `"/catchpoint-webhook"` | yes      |
+| `port`              | `string` | The account to collect metrics for.                   | `"9090"`                | no       |
+| `verbosity_logging` | `bool`   | The username for the user used when querying metrics. | `false`                 | no       |
+| `webhook_path`      | `string` | The password for the user used when querying metrics. | `"/catchpoint-webhook"` | no       |
 
 ## Blocks
 

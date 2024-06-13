@@ -20,7 +20,6 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations/azure_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/blackbox_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/cadvisor"
-	"github.com/grafana/alloy/internal/static/integrations/catchpoint_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/cloudwatch_exporter"
 	int_config "github.com/grafana/alloy/internal/static/integrations/config"
 	"github.com/grafana/alloy/internal/static/integrations/consul_exporter"
@@ -91,8 +90,6 @@ func (b *ConfigBuilder) appendV1Integrations() {
 			exports = b.appendNodeExporter(itg, nil)
 		case *blackbox_exporter.Config:
 			exports = b.appendBlackboxExporter(itg)
-		case *catchpoint_exporter.Config:
-			exports = b.appendCatchpointExporter(itg, nil)
 		case *cloudwatch_exporter.Config:
 			exports = b.appendCloudwatchExporter(itg, nil)
 		case *consul_exporter.Config:
@@ -229,8 +226,6 @@ func (b *ConfigBuilder) appendV2Integrations() {
 				exports = b.appendAzureExporter(v1_itg, itg.Common.InstanceKey)
 			case *cadvisor.Config:
 				exports = b.appendCadvisorExporter(v1_itg, itg.Common.InstanceKey)
-			case *catchpoint_exporter.Config:
-				exports = b.appendCatchpointExporter(v1_itg, itg.Common.InstanceKey)
 			case *cloudwatch_exporter.Config:
 				exports = b.appendCloudwatchExporter(v1_itg, itg.Common.InstanceKey)
 			case *consul_exporter.Config:
