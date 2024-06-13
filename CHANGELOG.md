@@ -28,6 +28,9 @@ Main (unreleased)
 
 - Added community components support, enabling community members to implement and maintain components. (@wildum)
 
+- A new `otelcol.exporter.debug` component for printing OTel telemetry from 
+  other `otelcol` components to the console. (@BarunKGP)
+
 ### Enhancements
 
 - Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)

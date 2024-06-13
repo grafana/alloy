@@ -287,6 +287,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
 - [otelcol.connector.spanmetrics](../components/otelcol/otelcol.connector.spanmetrics)
 - [otelcol.exporter.awss3](../components/otelcol/otelcol.exporter.awss3)
+- [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
 - [otelcol.exporter.loadbalancing](../components/otelcol/otelcol.exporter.loadbalancing)
 - [otelcol.exporter.logging](../components/otelcol/otelcol.exporter.logging)
