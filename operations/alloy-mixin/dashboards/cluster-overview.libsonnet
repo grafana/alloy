@@ -33,7 +33,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withQueries([
           panel.newInstantQuery(
             expr= |||
-              'count(cluster_node_info{%(groupSelector)s})'
+              count(cluster_node_info{%(groupSelector)s})
             ||| % $._config
           ),
         ])
@@ -48,7 +48,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withQueries([
           panel.newInstantQuery(
             expr= |||
-              'cluster_node_info{%(groupSelector)s}'
+              cluster_node_info{%(groupSelector)s}
             ||| % $._config,
             format='table',
           ),
