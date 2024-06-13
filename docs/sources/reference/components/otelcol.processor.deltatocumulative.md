@@ -74,8 +74,7 @@ Name    | Type               | Description
 --------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
-`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,
-logs, or traces).
+`input` accepts `otelcol.Consumer` data for metrics.
 
 ## Component health
 
