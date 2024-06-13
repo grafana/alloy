@@ -56,6 +56,9 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 		if tgt.WalkParams != "" {
 			target["__param_walk_params"] = tgt.WalkParams
 		}
+		if tgt.SNMPContext != "" {
+			target["__param_snmp_context"] = tgt.SNMPContext
+		}
 		if tgt.Auth != "" {
 			target["__param_auth"] = tgt.Auth
 		}
@@ -68,11 +71,12 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 
 // SNMPTarget defines a target to be used by the exporter.
 type SNMPTarget struct {
-	Name       string `alloy:",label"`
-	Target     string `alloy:"address,attr"`
-	Module     string `alloy:"module,attr,optional"`
-	Auth       string `alloy:"auth,attr,optional"`
-	WalkParams string `alloy:"walk_params,attr,optional"`
+	Name        string `alloy:",label"`
+	Target      string `alloy:"address,attr"`
+	Module      string `alloy:"module,attr,optional"`
+	Auth        string `alloy:"auth,attr,optional"`
+	WalkParams  string `alloy:"walk_params,attr,optional"`
+	SNMPContext string `alloy:"snmp_context,attr,optional"`
 }
 
 type TargetBlock []SNMPTarget
@@ -82,11 +86,12 @@ func (t TargetBlock) Convert() []snmp_exporter.SNMPTarget {
 	targets := make([]snmp_exporter.SNMPTarget, 0, len(t))
 	for _, target := range t {
 		targets = append(targets, snmp_exporter.SNMPTarget{
-			Name:       target.Name,
-			Target:     target.Target,
-			Module:     target.Module,
-			Auth:       target.Auth,
-			WalkParams: target.WalkParams,
+			Name:        target.Name,
+			Target:      target.Target,
+			Module:      target.Module,
+			Auth:        target.Auth,
+			WalkParams:  target.WalkParams,
+			SNMPContext: target.SNMPContext,
 		})
 	}
 	return targets
@@ -134,11 +139,12 @@ func (t TargetsList) Convert() []snmp_exporter.SNMPTarget {
 	for _, target := range t {
 		address, _ := getAddress(target)
 		targets = append(targets, snmp_exporter.SNMPTarget{
-			Name:       target["name"],
-			Target:     address,
-			Module:     target["module"],
-			Auth:       target["auth"],
-			WalkParams: target["walk_params"],
+			Name:        target["name"],
+			Target:      address,
+			Module:      target["module"],
+			Auth:        target["auth"],
+			WalkParams:  target["walk_params"],
+			SNMPContext: target["snmp_context"],
 		})
 	}
 	return targets
@@ -149,11 +155,12 @@ func (t TargetsList) convert() []SNMPTarget {
 	for _, target := range t {
 		address, _ := getAddress(target)
 		targets = append(targets, SNMPTarget{
-			Name:       target["name"],
-			Target:     address,
-			Module:     target["module"],
-			Auth:       target["auth"],
-			WalkParams: target["walk_params"],
+			Name:        target["name"],
+			Target:      address,
+			Module:      target["module"],
+			Auth:        target["auth"],
+			WalkParams:  target["walk_params"],
+			SNMPContext: target["snmp_context"],
 		})
 	}
 	return targets

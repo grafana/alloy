@@ -71,11 +71,11 @@ The `http` block configures an HTTP server which serves the Jaeger remote sampli
 
 The following arguments are supported:
 
-Name                    | Type      | Description                                                           | Default          | Required
-------------------------|-----------|-----------------------------------------------------------------------|------------------|---------
-`endpoint`              | `string`  | `host:port` to listen for traffic on.                                 | `"0.0.0.0:5778"` | no
-`max_request_body_size` | `string`  | Maximum request body size the server will allow. No limit when unset. |                  | no
-`include_metadata`      | `boolean` | Propagate incoming connection metadata to downstream consumers.       |                  | no
+Name                    | Type       | Description                                                        | Default          | Required
+------------------------|------------|--------------------------------------------------------------------|------------------|---------
+`endpoint`              | `string`   | `host:port` to listen for traffic on.                              | `"0.0.0.0:5778"` | no
+`max_request_body_size` | `string`   | Maximum request body size the server will allow.                   | `20MiB`          | no
+`include_metadata`      | `boolean`  | Propagate incoming connection metadata to downstream consumers.    |                  | no
 
 ### tls block
 

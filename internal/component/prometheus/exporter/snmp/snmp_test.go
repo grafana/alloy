@@ -21,6 +21,7 @@ func TestUnmarshalAlloy(t *testing.T) {
 			module = "if_mib"
 			walk_params = "public"
 			auth = "public_v2"
+			snmp_context = "testcontext"
 		}
 		target "network_router_2" {
 			address = "192.168.1.3"
@@ -45,6 +46,7 @@ func TestUnmarshalAlloy(t *testing.T) {
 	require.Contains(t, "if_mib", args.Targets[0].Module)
 	require.Contains(t, "public", args.Targets[0].WalkParams)
 	require.Contains(t, "public_v2", args.Targets[0].Auth)
+	require.Contains(t, "testcontext", args.Targets[0].SNMPContext)
 
 	require.Contains(t, "network_router_2", args.Targets[1].Name)
 	require.Contains(t, "192.168.1.3", args.Targets[1].Target)
@@ -139,10 +141,11 @@ func TestConvertConfigWithInlineConfig(t *testing.T) {
 
 func TestConvertTargets(t *testing.T) {
 	targets := TargetBlock{{
-		Name:   "network_switch_1",
-		Target: "192.168.1.2",
-		Module: "if_mib",
-		Auth:   "public_v2",
+		Name:        "network_switch_1",
+		Target:      "192.168.1.2",
+		Module:      "if_mib",
+		Auth:        "public_v2",
+		SNMPContext: "testcontext",
 	}}
 
 	res := targets.Convert()
@@ -151,6 +154,7 @@ func TestConvertTargets(t *testing.T) {
 	require.Equal(t, "192.168.1.2", res[0].Target)
 	require.Equal(t, "if_mib", res[0].Module)
 	require.Equal(t, "public_v2", res[0].Auth)
+	require.Equal(t, "testcontext", res[0].SNMPContext)
 }
 
 func TestConvertTargetsList(t *testing.T) {
