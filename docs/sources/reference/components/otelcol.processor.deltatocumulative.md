@@ -10,7 +10,7 @@ title: otelcol.processor.deltatocumulative
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.processor.deltatocumulative` accepts metrics from other `otelcol` components and converts metrics metrics with the delta temporarlity to cumulative.
+`otelcol.processor.deltatocumulative` accepts metrics from other `otelcol` components and converts metrics with the delta temporarlity to cumulative.
 
 {{< admonition type="note" >}}
 `otelcol.processor.deltatocumulative` is a wrapper over the upstream OpenTelemetry Collector `deltatocumulative` processor.
