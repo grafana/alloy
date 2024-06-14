@@ -93,6 +93,8 @@ Main (unreleased)
 - A new `snmp_context` configuration argument for `prometheus.exporter.snmp`
   which overrides the `context_name` parameter in the SNMP configuration file. (@ptodev)
 
+- Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)  
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
@@ -115,6 +117,8 @@ Main (unreleased)
   documentation for further details. (@thampiotr)
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
+
+- Upgrade Beyla from v1.5.1 to v1.6.3. (@marctc)
 
 v1.1.1
 ------
