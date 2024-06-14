@@ -2306,6 +2306,8 @@ go.opentelemetry.io/collector/consumer v0.102.1 h1:0CkgHhxwx4lI/m+hWjh607xyjooW5
 go.opentelemetry.io/collector/consumer v0.102.1/go.mod h1:HoXqmrRV13jLnP3/Gg3fYNdRkDPoO7UW58hKiLyFF60=
 go.opentelemetry.io/collector/exporter v0.102.1 h1:4VURYgBNJscxfMhZWitzcwA1cig5a6pH0xZSpdECDnM=
 go.opentelemetry.io/collector/exporter v0.102.1/go.mod h1:1pmNxvrvvbWDW6PiGObICdj0eOSGV4Fzwpm5QA1GU54=
+go.opentelemetry.io/collector/exporter/debugexporter v0.102.1 h1:eATGZwBNmqUn8xRr7oGQhoegjeOOCdmtbYgziUoFMf8=
+go.opentelemetry.io/collector/exporter/debugexporter v0.102.1/go.mod h1:k5rDZX5pV3DsXZzvI+sk7PKMUljtB7T25PPXAPGBjEs=
 go.opentelemetry.io/collector/exporter/loggingexporter v0.102.1 h1:LblufdV22DxB5NZa66CGCQZjadYTVxT+O5NR9YjNQ9Y=
 go.opentelemetry.io/collector/exporter/loggingexporter v0.102.1/go.mod h1:zmOEwiQlfvEHnakWNO1YFNubgWZvZee+5Wshuck5lZk=
 go.opentelemetry.io/collector/exporter/otlpexporter v0.102.1 h1:bOXE7u1iy0SKwH2mnVyIMKkvFIR9bn9iIm1Cf/CJlZU=

@@ -1,0 +1,26 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [debug]
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [debug]
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [debug]

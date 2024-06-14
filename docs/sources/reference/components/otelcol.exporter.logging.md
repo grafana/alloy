@@ -6,6 +6,13 @@ title: otelcol.exporter.logging
 
 # otelcol.exporter.logging
 
+{{< admonition type="warning" >}}
+The OpenTelemetry Collector `logging` exporter is deprecated.
+It is due to be removed from the upstream Collector repository in September 2024.
+`otelcol.exporter.logging` may also be removed in a future Alloy version.
+Please use `otelcol.exporter.debug` instead.
+{{< /admonition >}}
+
 `otelcol.exporter.logging` accepts telemetry data from other `otelcol` components
 and writes them to the console.
 

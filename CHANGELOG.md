@@ -36,6 +36,9 @@ Main (unreleased)
 
 - Added live debugging support for `prometheus.relabel`. (@wildum)
 
+- A new `otelcol.exporter.debug` component for printing OTel telemetry from 
+  other `otelcol` components to the console. (@BarunKGP)
+
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)

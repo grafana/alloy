@@ -1,0 +1,17 @@
+otelcol.receiver.otlp "default" {
+	grpc { }
+
+	http { }
+
+	output {
+		metrics = [otelcol.exporter.debug.default.input]
+		logs    = [otelcol.exporter.debug.default.input]
+		traces  = [otelcol.exporter.debug.default.input]
+	}
+}
+
+otelcol.exporter.debug "default" {
+	verbosity           = "Detailed"
+	sampling_initial    = 5
+	sampling_thereafter = 200
+}
