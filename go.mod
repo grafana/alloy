@@ -103,6 +103,7 @@ require (
 	github.com/oliver006/redis_exporter v1.54.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.102.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.102.0
@@ -118,6 +119,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.102.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.102.0
@@ -248,8 +250,6 @@ require (
 	sigs.k8s.io/controller-runtime v0.17.3
 	sigs.k8s.io/yaml v1.4.0
 )
-
-require github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.102.0
 
 require (
 	cloud.google.com/go v0.112.2 // indirect
@@ -557,6 +557,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.102.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.102.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.102.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/exp/metrics v0.102.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.102.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/k8sconfig v0.102.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/kafka v0.102.0 // indirect
