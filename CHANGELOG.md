@@ -93,6 +93,8 @@ Main (unreleased)
 - A new `snmp_context` configuration argument for `prometheus.exporter.snmp`
   which overrides the `context_name` parameter in the SNMP configuration file. (@ptodev)
 
+- Updates `prometheus.exporter.cadvisor` to support podman in release v0.49.1. (@michaelact)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
