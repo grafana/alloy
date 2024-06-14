@@ -17,7 +17,7 @@ title: otelcol.processor.deltatocumulative
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
-You can specify multiple `otelcol.processor.batch` components by giving them different labels.
+You can specify multiple `otelcol.processor.deltatocumulative` components by giving them different labels.
 
 ## Usage
 
@@ -49,8 +49,7 @@ You can disable this behavior by setting `max_streams` to `0`.
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.processor.batch`:
+The following blocks are supported inside the definition of `otelcol.processor.deltatocumulative`:
 
 Hierarchy     | Block             | Description                                                                | Required
 ------------- | ----------------- | -------------------------------------------------------------------------- | --------
