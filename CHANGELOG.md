@@ -40,7 +40,7 @@ Main (unreleased)
   delta temporality to cumulative by accumulating samples in memory. (@rfratto)
 
 - (_Experimental_) Add an `otelcol.receiver.datadog` component to receive
-  metrics and traces from Datadog. (@rfratto)
+  metrics and traces from Datadog. (@carrieedwards, @jesusvazquez, @alexgreenbank, @fedetorres93)
 
 ### Enhancements
 
