@@ -75,7 +75,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.metricsHandler = c.getHttpHandler(exporter)
 			c.mut.Unlock()
 			go func() {
-				if err := exporter.Run(newCtx); err != nil {
+				if err := exporter.Run(newCtx); err != nil && err != context.Canceled {
 					level.Error(c.opts.Logger).Log("msg", "error running exporter", "err", err)
 				}
 			}()

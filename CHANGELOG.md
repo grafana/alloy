@@ -10,10 +10,31 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- Updated OpenTelemetry to v0.102.1. (@mattdurham)
+  - Components `otelcol.receiver.otlp`,`otelcol.receiver.zipkin`,`otelcol.extension.jaeger_remote_sampling`, and `otelcol.receiver.jaeger` setting `max_request_body_size`
+    default changed from unlimited size to `20MiB`. This is due to [CVE-2024-36129](https://github.com/open-telemetry/opentelemetry-collector/security/advisories/GHSA-c74f-6mfw-mm4v).
+
 ### Breaking changes to non-GA functionality
 
 - Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
   API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
+
+- Component `otelcol.receiver.vcenter` removed `vcenter.host.network.packet.errors`, `vcenter.host.network.packet.count`, and
+  `vcenter.vm.network.packet.count`.
+  - `vcenter.host.network.packet.errors` replaced by `vcenter.host.network.packet.error.rate`. 
+  - `vcenter.host.network.packet.count` replaced by `vcenter.host.network.packet.rate`.
+  - `vcenter.vm.network.packet.count` replaced by `vcenter.vm.network.packet.rate`.
+
+### Features
+
+- Add an `otelcol.exporter.kafka` component to send OTLP metrics, logs, and traces to Kafka.
+
+- Added `live debugging` to the UI. Live debugging streams data as they flow through components for debugging telemetry data.
+  Individual components must be updated to support live debugging. (@wildum)
+
+- Added live debugging support for `prometheus.relabel`. (@wildum)
 
 ### Enhancements
 
@@ -45,12 +66,6 @@ Main (unreleased)
   - The resource attribute `vcenter.vm_template.name` has been added and enabled by default to differentiate between
     virtual machines and virtual machine templates.
   - The metric `vcenter.cluster.memory.used` has been removed.
-  - The metric `vcenter.host.network.packet.count` has been hidden (removed from docs & disabled from default).
-    It has been replaced by a new metric `vcenter.host.network.packet.rate` that is enabled by default.
-  - The metric `vcenter.host.network.packet.errors` has been hidden (removed from docs & disabled from default).
-    It has been replaced by a new metric `vcenter.host.network.packet.error.rate` that is enabled by default.
-  - The metric `vcenter.vm.network.packet.count` has been hidden (removed from docs & disabled from default).
-    It has been replaced by a new metric `vcenter.vm.network.packet.rate` that is enabled by default.
   - The metric `vcenter.vm.network.packet.drop.rate` has been added and enabled by default.
   - The metric `vcenter.cluster.vm_template.count` has been added and enabled by default.
 
@@ -63,13 +78,32 @@ Main (unreleased)
 
 - Added support for NS records to `discovery.dns`. (@djcode)
 
-- Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)
+- Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart)
+
+- Add the `targets` argument to the `prometheus.exporter.snmp` component to support passing SNMP targets at runtime. (@wildum)
+
+- Prefix Faro measurement values with `value_` to align with the latest Faro cloud receiver updates. (@codecapitano)
+
+- Add `base64_decode` to standard library. (@hainenber)
+
+- Updated OpenTelemetry Contrib to [v0.102.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.102.0). (@mattdurham)
+  - `otelcol.processor.resourcedetection`: Added a `tags` config argument to the `azure` detection mechanism.
+  It exposes regex-matched Azure resource tags as OpenTelemetry resource attributes.
+
+- A new `snmp_context` configuration argument for `prometheus.exporter.snmp`
+  which overrides the `context_name` parameter in the SNMP configuration file. (@ptodev)
+
+- Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)  
 
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
   cluster instance to another could have a staleness marker inserted and result
   in a gap in metrics (@thampiotr)
+
+- Fix panic when `import.git` is given a revision that does not exist on the remote repo. (@hainenber)
+
+- Fixed an issue with `loki.source.docker` where collecting logs from targets configured with multiple networks would result in errors. (@wildum)
 
 ### Other changes
 
@@ -116,6 +150,7 @@ v1.1.0
 ### Features
 
 - (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
+- (_Experimental_) A new `otelcol.exporter.awss3` component for sending telemetry data to a S3 bucket. (@Imshelledin21)
 
 - (_Public preview_) Introduce BoringCrypto Docker images.
   The BoringCrypto image is tagged with the `-boringcrypto` suffix and
@@ -152,6 +187,8 @@ v1.1.0
 - In `mimir.rules.kubernetes`, add support for running in a cluster of Alloy instances
   by electing a single instance as the leader for the `mimir.rules.kubernetes` component
   to avoid conflicts when making calls to the Mimir API. (@56quarters)
+
+- Add the possibility of setting custom labels for the AWS Firehose logs via `X-Amz-Firehose-Common-Attributes` header. (@andriikushch)
 
 ### Bugfixes
 
