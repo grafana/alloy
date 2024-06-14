@@ -6,7 +6,7 @@ menuTitle: Debug issues
 weight: 1000
 ---
 
-# Debug {{< param "FULL_PRODUCT_NAME" >}}
+# Debug {{% param "FULL_PRODUCT_NAME" %}}
 
 Follow these steps to debug issues with {{< param "PRODUCT_NAME" >}}:
 
