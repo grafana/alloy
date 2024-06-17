@@ -1,20 +1,15 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
+local templates = import './utils/templates.libsonnet';
 local filename = 'alloy-controller.json';
 
 {
-
   local templateVariables = 
-    if $._config.enableK8sCluster then
-      [
-        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components, cluster)'),
-        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster"}, namespace)'),
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, job)'),
-      ]
-    else
-      [
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),        
-      ],
+    templates.newTemplateVariablesList(
+      filterSelector=$._config.filterSelector, 
+      enableK8sCluster=$._config.enableK8sCluster, 
+      includeInstance=false,
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
   [filename]:
     dashboard.new(name='Alloy / Controller', tag=$._config.dashboardTag) +
@@ -309,7 +304,7 @@ local filename = 'alloy-controller.json';
             expr= |||
               sum(increase(alloy_component_evaluation_seconds{%(groupSelector)s}[$__rate_interval]))
               or ignoring (le)
-              sum by (le) (increase(alloy_component_evaluation_seconds_bucket{%(groupSelector)s}[$__rate_interval]))'
+              sum by (le) (increase(alloy_component_evaluation_seconds_bucket{%(groupSelector)s}[$__rate_interval]))
             ||| % $._config,
             format='heatmap',
             legendFormat='{{le}}',

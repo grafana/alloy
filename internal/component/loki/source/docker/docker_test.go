@@ -87,6 +87,22 @@ func TestDuplicateTargets(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, cmp.manager.tasks, 1)
+	require.Equal(t, cmp.manager.tasks[0].target.LabelsStr(), "{__meta_docker_container_id=\"foo\", __meta_docker_port_private=\"8080\"}")
+
+	var newCfg = `
+		host       = "tcp://127.0.0.1:9376"
+		targets    = [
+			{__meta_docker_container_id = "foo", __meta_docker_port_private = "8081"},
+			{__meta_docker_container_id = "foo", __meta_docker_port_private = "8080"},
+		]
+		forward_to = []
+	`
+	err = syntax.Unmarshal([]byte(newCfg), &args)
+	require.NoError(t, err)
+	cmp.Update(args)
+	require.Len(t, cmp.manager.tasks, 1)
+	// Although the order of the targets changed, the filtered target stays the same.
+	require.Equal(t, cmp.manager.tasks[0].target.LabelsStr(), "{__meta_docker_container_id=\"foo\", __meta_docker_port_private=\"8080\"}")
 }
 
 func TestRestart(t *testing.T) {

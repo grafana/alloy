@@ -12,9 +12,7 @@ otelcol.receiver.otlp "default" {
 
 otelcol.processor.batch "default" {
 	output {
-		metrics = []
-		logs    = [otelcol.exporter.otlp.default.input]
-		traces  = []
+		logs = [otelcol.exporter.otlp.default.input]
 	}
 }
 

@@ -16,15 +16,16 @@ func (b *ConfigBuilder) appendSnmpExporter(config *snmp_exporter.Config) discove
 }
 
 func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
-	targets := make([]snmp.SNMPTarget, len(config.SnmpTargets))
-	for i, t := range config.SnmpTargets {
-		targets[i] = snmp.SNMPTarget{
-			Name:       common.SanitizeIdentifierPanics(t.Name),
-			Target:     t.Target,
-			Module:     t.Module,
-			Auth:       t.Auth,
-			WalkParams: t.WalkParams,
-		}
+	var targets snmp.TargetsList
+	for _, t := range config.SnmpTargets {
+		target := make(map[string]string)
+		target["name"] = t.Name
+		target["address"] = t.Target
+		target["module"] = t.Module
+		target["auth"] = t.Auth
+		target["walk_params"] = t.WalkParams
+		target["snmp_context"] = t.SNMPContext
+		targets = append(targets, target)
 	}
 
 	walkParams := make([]snmp.WalkParam, len(config.WalkParams))
@@ -46,10 +47,10 @@ func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
 	}
 
 	return &snmp.Arguments{
-		ConfigFile: config.SnmpConfigFile,
-		Config:     alloytypes.OptionalSecret{},
-		Targets:    targets,
-		WalkParams: walkParams,
+		ConfigFile:  config.SnmpConfigFile,
+		Config:      alloytypes.OptionalSecret{},
+		TargetsList: targets,
+		WalkParams:  walkParams,
 		ConfigStruct: snmp_config.Config{
 			Auths:   config.SnmpConfig.Auths,
 			Modules: config.SnmpConfig.Modules,
@@ -64,15 +65,16 @@ func (b *ConfigBuilder) appendSnmpExporterV2(config *snmp_exporter_v2.Config) di
 }
 
 func toSnmpExporterV2(config *snmp_exporter_v2.Config) *snmp.Arguments {
-	targets := make([]snmp.SNMPTarget, len(config.SnmpTargets))
-	for i, t := range config.SnmpTargets {
-		targets[i] = snmp.SNMPTarget{
-			Name:       common.SanitizeIdentifierPanics(t.Name),
-			Target:     t.Target,
-			Module:     t.Module,
-			Auth:       t.Auth,
-			WalkParams: t.WalkParams,
-		}
+	var targets snmp.TargetsList
+	for _, t := range config.SnmpTargets {
+		target := make(map[string]string)
+		target["name"] = t.Name
+		target["address"] = t.Target
+		target["module"] = t.Module
+		target["auth"] = t.Auth
+		target["walk_params"] = t.WalkParams
+		target["snmp_context"] = t.SNMPContext
+		targets = append(targets, target)
 	}
 
 	walkParams := make([]snmp.WalkParam, len(config.WalkParams))
@@ -94,10 +96,10 @@ func toSnmpExporterV2(config *snmp_exporter_v2.Config) *snmp.Arguments {
 	}
 
 	return &snmp.Arguments{
-		ConfigFile: config.SnmpConfigFile,
-		Config:     alloytypes.OptionalSecret{},
-		Targets:    targets,
-		WalkParams: walkParams,
+		ConfigFile:  config.SnmpConfigFile,
+		Config:      alloytypes.OptionalSecret{},
+		TargetsList: targets,
+		WalkParams:  walkParams,
 		ConfigStruct: snmp_config.Config{
 			Auths:   config.SnmpConfig.Auths,
 			Modules: config.SnmpConfig.Modules,

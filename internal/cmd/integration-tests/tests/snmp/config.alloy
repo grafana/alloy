@@ -1,0 +1,101 @@
+prometheus.exporter.snmp "snmp_metrics" {
+  config = `
+auths:
+  public_v2:
+    community: public
+    security_level: noAuthNoPriv
+    auth_protocol: MD5
+    priv_protocol: DES
+    version: 2
+modules:
+  default:
+    walk:
+      - 1.3.6.1.2.1.1  # OID for system
+      - 1.3.6.1.2.1.2  # OID for interfaces
+    metrics:
+      - name: sysDescr
+        oid: 1.3.6.1.2.1.1.1.0
+        type: DisplayString
+        help: "A textual description of the entity."
+`
+  targets = [
+    {
+      "name" = "t1",
+      "address" = "localhost:161",
+      "module" = "default",
+      "auth" = "public_v2",
+    },
+  ]
+}
+
+prometheus.scrape "snmp_metrics" {
+  targets    = prometheus.exporter.snmp.snmp_metrics.targets
+  forward_to = [prometheus.remote_write.snmp_metrics.receiver]
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.remote_write "snmp_metrics" {
+  endpoint {
+    url = "http://localhost:9009/api/v1/push"
+    metadata_config {
+        send_interval = "1s"
+    }
+    queue_config {
+        max_samples_per_send = 100
+    }    
+  }
+  external_labels = {
+    test_name = "snmp_metrics",
+  }  
+}
+
+prometheus.exporter.snmp "snmp_metrics2" {
+  config = `
+auths:
+  public_v2:
+    community: public
+    security_level: noAuthNoPriv
+    auth_protocol: MD5
+    priv_protocol: DES
+    version: 2
+modules:
+  default:
+    walk:
+      - 1.3.6.1.2.1.1  # OID for system
+      - 1.3.6.1.2.1.2  # OID for interfaces
+    metrics:
+      - name: sysDescr
+        oid: 1.3.6.1.2.1.1.1.0
+        type: DisplayString
+        help: "A textual description of the entity."
+`
+  target "t1" {
+      address     = "localhost:161"
+      module      = "default"
+      auth        = "public_v2"
+  }
+}
+
+prometheus.scrape "snmp_metrics2" {
+  targets    = prometheus.exporter.snmp.snmp_metrics2.targets
+  forward_to = [prometheus.remote_write.snmp_metrics2.receiver]
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.remote_write "snmp_metrics2" {
+  endpoint {
+    url = "http://localhost:9009/api/v1/push"
+    metadata_config {
+        send_interval = "1s"
+    }
+    queue_config {
+        max_samples_per_send = 100
+    }    
+  }
+  external_labels = {
+    test_name = "snmp_metrics2",
+  }  
+}
+

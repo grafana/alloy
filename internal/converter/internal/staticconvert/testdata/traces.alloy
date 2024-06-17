@@ -34,9 +34,7 @@ otelcol.receiver.otlp "_0_default" {
 	}
 
 	output {
-		metrics = []
-		logs    = []
-		traces  = [otelcol.processor.discovery._0_default.input]
+		traces = [otelcol.processor.discovery._0_default.input]
 	}
 }
 
@@ -84,9 +82,7 @@ otelcol.processor.discovery "_0_default" {
 	pod_associations = ["ip", "net.host.ip"]
 
 	output {
-		metrics = []
-		logs    = []
-		traces  = [otelcol.processor.attributes._0_default.input]
+		traces = [otelcol.processor.attributes._0_default.input]
 	}
 }
 
@@ -97,9 +93,7 @@ otelcol.processor.attributes "_0_default" {
 	}
 
 	output {
-		metrics = []
-		logs    = []
-		traces  = [otelcol.exporter.loadbalancing._0_default.input, otelcol.exporter.logging._0_default.input, otelcol.connector.spanmetrics._0_default.input]
+		traces = [otelcol.exporter.loadbalancing._0_default.input, otelcol.exporter.logging._0_default.input, otelcol.connector.spanmetrics._0_default.input]
 	}
 }
 
@@ -161,9 +155,7 @@ otelcol.receiver.otlp "_1_lb" {
 	}
 
 	output {
-		metrics = []
-		logs    = []
-		traces  = [otelcol.processor.tail_sampling._1_default.input]
+		traces = [otelcol.processor.tail_sampling._1_default.input]
 	}
 }
 
@@ -185,9 +177,7 @@ otelcol.processor.batch "_1_default" {
 	send_batch_max_size = 4096
 
 	output {
-		metrics = []
-		logs    = []
-		traces  = [otelcol.exporter.otlp._1_0.input, otelcol.exporter.logging._1_default.input, otelcol.connector.spanmetrics._1_default.input]
+		traces = [otelcol.exporter.otlp._1_0.input, otelcol.exporter.logging._1_default.input, otelcol.connector.spanmetrics._1_default.input]
 	}
 }
 
