@@ -1,3 +1,4 @@
+# Specify an extra manifest for verifying rendering extraObjects
 extraObjects:
   - apiVersion: v1
     kind: ConfigMap
