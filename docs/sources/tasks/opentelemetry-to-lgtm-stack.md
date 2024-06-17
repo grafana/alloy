@@ -83,7 +83,7 @@ Grafana Cloud provides OTLP Endpoints that you can use directly from within {{< 
 
 You can find the OTLP connection details from the OpenTelemetry **Details** page in the [Grafana Cloud Portal][].
 
-You will need to update the configuration file as follows:
+You must update the configuration file as follows:
 
 ```
 otelcol.auth.basic "default" {
