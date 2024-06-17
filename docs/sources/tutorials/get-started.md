@@ -166,6 +166,7 @@ The `basic_auth` is commented out because the local `docker compose` stack doesn
 It is included in this example to show how you can configure authorization for other environments.
 For further authorization options, refer to the [loki.write][] component reference.
 
+[loki.write]: ../../reference/components/loki.write/
 {{< /admonition >}}
 
 This connects directly to the Loki instance running in the Docker container.
