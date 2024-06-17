@@ -27,6 +27,5 @@ func TestRedisMetrics(t *testing.T) {
 		"redis_memory_used_rss_bytes",
 		"redis_up",
 	}
-	// TODO(marctc): Report list of failed metrics instead of one by one.
 	common.MimirMetricsTest(t, redisMetrics, []string{}, "redis_metrics")
 }

@@ -65,6 +65,21 @@ The component will start an HTTP server on the configured port and address with 
 
 - `/awsfirehose/api/v1/push` - accepting `POST` requests compatible with [AWS Firehose HTTP Specifications](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html).
 
+You can use the [X-Amz-Firehose-Common-Attributes](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html) header to set extra static labels. 
+You can configure the header in the **Parameters** section of the Amazon Data Firehose delivery stream configuration. 
+Label names must be prefixed with `lbl_`. The prefix is removed before the label is stored in the log entry.
+Label names and label values must be compatible with the [Prometheus data model](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels) specification.
+
+Example of the valid `X-Amz-Firehose-Common-Attributes` value with two custom labels:
+```json
+{
+  "commonAttributes": {
+    "lbl_label1": "value1",
+    "lbl_label2": "value2"
+  }
+}
+```
+
 ## Arguments
 
 `loki.source.awsfirehose` supports the following arguments:
@@ -122,6 +137,7 @@ The metrics include labels  such as `status_code` where relevant, which you can 
 - `loki_source_awsfirehose_record_errors` (counter): Count of errors while decoding an individual record.
 - `loki_source_awsfirehose_records_received` (counter): Count of records received.
 - `loki_source_awsfirehose_batch_size` (histogram): Size (in units) of the number of records received per request.
+- `loki_source_awsfirehose_invalid_static_labels_errors` (counter): Count number of errors while processing AWS Firehose static labels.
 
 ## Example
 

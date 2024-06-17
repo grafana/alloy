@@ -34,9 +34,9 @@ const ComponentDetailPage: FC = () => {
             cache: 'no-cache',
             credentials: 'same-origin',
           });
-          const moduleCompoents = (await moduleComponentsResp.json()) as ComponentInfo[];
+          const moduleComponents = (await moduleComponentsResp.json()) as ComponentInfo[];
 
-          data.moduleInfo = (data.moduleInfo || []).concat(moduleCompoents);
+          data.moduleInfo = (data.moduleInfo || []).concat(moduleComponents);
         }
 
         setComponent(data);

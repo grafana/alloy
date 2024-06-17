@@ -503,6 +503,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 			detectors = ["azure"]
 			azure {
+				tags = ["tag1","tag2"]
 				resource_attributes {
 					azure.resourcegroup.name { enabled = true }
 					azure.vm.name { enabled = true }
@@ -518,8 +519,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"timeout":   5 * time.Second,
 				"override":  true,
 				"azure": map[string]interface{}{
+					"tags": []string{"tag1", "tag2"},
 					"resource_attributes": map[string]interface{}{
-						"tags": []string{},
 						"azure.resourcegroup.name": map[string]interface{}{
 							"enabled": true,
 						},

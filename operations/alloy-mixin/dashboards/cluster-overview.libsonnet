@@ -1,20 +1,16 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
 local filename = 'alloy-cluster-overview.json';
+local templates = import './utils/templates.libsonnet';
 local cluster_node_filename = 'alloy-cluster-node.json';
 
 {
   local templateVariables = 
-    if $._config.enableK8sCluster then
-      [
-        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components, cluster)'),
-        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster"}, namespace)'),
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, job)'),
-      ]
-    else
-      [
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),        
-      ],
+    templates.newTemplateVariablesList(
+      filterSelector=$._config.filterSelector, 
+      enableK8sCluster=$._config.enableK8sCluster, 
+      includeInstance=false,
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
   [filename]:
     dashboard.new(name='Alloy / Cluster Overview', tag=$._config.dashboardTag) +
@@ -36,7 +32,9 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withPosition({ h: 9, w: 8, x: 0, y: 0 }) +
         panel.withQueries([
           panel.newInstantQuery(
-            expr='count(cluster_node_info{%(groupSelector)s})'
+            expr= |||
+              count(cluster_node_info{%(groupSelector)s})
+            ||| % $._config
           ),
         ])
       ),
@@ -49,7 +47,9 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withPosition({ h: 9, w: 16, x: 8, y: 0 }) +
         panel.withQueries([
           panel.newInstantQuery(
-            expr='cluster_node_info{%(groupSelector)s}',
+            expr= |||
+              cluster_node_info{%(groupSelector)s}
+            ||| % $._config,
             format='table',
           ),
         ]) +
