@@ -98,7 +98,7 @@ Main (unreleased)
 
 - Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)  
 
-- Add namespace label with the namespace of the probe object in the static config to allign with prometheus setup. (@toontijtgat2)
+- Add namespace label with the namespace of the probe object in the static config to align with prometheus setup. (@toontijtgat2)
 
 ### Bugfixes
 
