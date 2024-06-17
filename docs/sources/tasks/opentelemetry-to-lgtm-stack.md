@@ -104,8 +104,8 @@ Replace the following:
 * _`<ACCOUNT ID>`_: Your Grafana Cloud account ID.
 * _`<API TOKEN>`_: Your Grafana Cloud API token.
 * _`<OTLP_ENDPOINT>`_: Your OTLP endpoint.
-This will use the credentials stored in `otelcol.auth.basic "default"` to authenticate against the Grafana Cloud OTLP endpoints and you should start
-to see your data arrive!
+
+This configuration will use the credentials stored in `otelcol.auth.basic "default"` to authenticate against the Grafana Cloud OTLP endpoints, and you should start to see your data arrive!
 
 ## Other platforms (Grafana Enterprise, Grafana Open Source)
 
