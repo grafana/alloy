@@ -43,7 +43,7 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 
    Replace the following:
 
-    - _`<OTLP_ENDPOINT_URL>`_ The full URL of the OTel-compatible endpoint where metrics will be sent, such as `https://otlp-gateway-prod-eu-west-2.grafana.net/otlp`.
+    - _`<OTLP_ENDPOINT_URL>`_ The full URL of the OTel-compatible endpoint where metrics and traces will be sent, such as `https://otlp-gateway-prod-eu-west-2.grafana.net/otlp`.
 
 1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
@@ -69,26 +69,14 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
      max_streams = <MAX_STREAMS>
      output {
        metrics = [otelcol.exporter.otlp.default.input]
-       traces  = [otelcol.exporter.otlp.default.input]
      }
    }
    ```
 
    Replace the following:
 
-        - _`<MAX_STALE>`_ How long until a series not receiving new samples is removed, such as 5m
+        - _`<MAX_STALE>`_ How long until a series not receiving new samples is removed, such as "5m".
         - _`<MAX_STREAMS>`_ The upper limit of streams to track. new streams exceeding this limit will be dropped. For example 10000.
-
-1. Add the following `otelcol.processor.batch` component to your configuration file.
-
-   ```alloy
-   otelcol.processor.batch “example” {
-     output {
-       metrics = [otelcol.processor.deltatocumulative.example.input]
-       traces  = [otelcol.processor.deltatocumulative.example.input]
-     }
-   }
-   ```
 
 1. Add the following `otelcol.receiver.datadog` component to your configuration file.
 
@@ -97,7 +85,6 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
      endpoint = “<HOST>:<PORT>”
      output {
        metrics = [otelcol.processor.batch.example.input]
-       traces  = [otelcol.processor.batch.example.input]
      }
    }
    ```
@@ -125,7 +112,7 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 
 You can set up your Datadog Agent to forward Datadog metrics simultaneously to Alloy and Datadog.
 
-We recommend this approach for current Datadog users who just want to try this out.
+We recommend this approach for current Datadog users who want to try using Alloy.
 
 1. Add the following environment variable to your datadog-agent installation.
 
@@ -135,10 +122,11 @@ We recommend this approach for current Datadog users who just want to try this o
 
    Replace the following:
 
-    - _`<DATADOG_RECEIVER_HOST>`_: The hostname where the receiver can be found.
-    - _`<DATADOG_RECEIVER_PORT>`_: The port where the receiver is exposed.
+    - _`<DATADOG_RECEIVER_HOST>`_: The hostname where Alloy's receiver can be found.
+    - _`<DATADOG_RECEIVER_PORT>`_: The port where Alloy's receiver is exposed.
 
-Alternative to this approach if you wish yo just send the metrics to Alloy, you can set up your Datadog Agent to forward all your metrics to Alloy just by doing the following.
+Alternatively, you might want your Datadog Agent to send metrics only to Alloy,
+You can do this by setting up your Datadog Agent in the following way:
 
 1. Replace the DD_URL in the configuration yaml:
 
