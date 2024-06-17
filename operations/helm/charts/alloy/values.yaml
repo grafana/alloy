@@ -336,7 +336,7 @@ ingress:
 
 ## Additional Kubernetes manifests
 
-# -- Create dynamic manifest via values.
+# -- Create dynamic manifests via values.
 # See values.yaml or the documentation for examples.
 extraObjects: []
   # - apiVersion: v1
