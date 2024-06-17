@@ -77,6 +77,38 @@ The pipeline currently looks like this:
 Metrics, Logs, Traces: OTLP Receiver → batch processor → OTLP Exporter
 ```
 
+## Grafana Cloud
+
+Grafana Cloud provides OTLP Endpoints that you can use directly from within {{< param "PRODUCT_NAME" >}}.
+
+You can find the OTLP connection details from the OpenTelemetry **Details** page in the [Grafana Cloud Portal][].
+
+You must update the configuration file as follows:
+
+```
+otelcol.auth.basic "default" {
+  username = "<ACCOUNT ID>"
+  password = "<API TOKEN>"
+}
+
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = "<OTLP_ENDPOINT>"
+    auth     = otelcol.auth.basic.default.handler
+  }
+}
+```
+
+Replace the following:
+
+* _`<ACCOUNT ID>`_: Your Grafana Cloud account ID.
+* _`<API TOKEN>`_: Your Grafana Cloud API token.
+* _`<OTLP_ENDPOINT>`_: Your OTLP endpoint.
+
+This configuration will use the credentials stored in `otelcol.auth.basic "default"` to authenticate against the Grafana Cloud OTLP endpoints, and you should start to see your data arrive!
+
+## Other platforms (Grafana Enterprise, Grafana Open Source)
+
 You will implement the following pipelines to send your data to Loki, Tempo, and Mimir or Prometheus.
 
 ```
@@ -84,7 +116,7 @@ Metrics: OTel → batch processor → Mimir or Prometheus remote write
 Logs: OTel → batch processor → Loki exporter
 Traces: OTel → batch processor → OTel exporter
 ```
-## Grafana Loki
+### Grafana Loki
 
 [Grafana Loki][] is a horizontally scalable, highly available, multi-tenant log aggregation system inspired by Prometheus.
 Similar to Prometheus, to send from OTLP to Loki, you can do a passthrough from the [otelcol.exporter.loki][] component to [loki.write][] component.
@@ -121,7 +153,7 @@ loki.write "grafana_cloud_loki" {
 }
 ```
 
-## Grafana Tempo
+### Grafana Tempo
 
 [Grafana Tempo][] is an open source, easy-to-use, scalable distributed tracing backend.
 Tempo can ingest OTLP directly, and you can use the OTLP exporter to send the traces to Tempo.
@@ -151,7 +183,7 @@ otelcol.auth.basic "grafana_cloud_tempo" {
 }
 ```
 
-## Grafana Mimir or Prometheus Remote Write
+### Grafana Mimir or Prometheus Remote Write
 
 [Prometheus Remote Write][] is a popular metrics transmission protocol supported by most metrics systems, including [Grafana Mimir][] and Grafana Cloud.
 To send from OTLP to Prometheus, you can do a passthrough from the [otelcol.exporter.prometheus][] to the [prometheus.remote_write][] component.
@@ -189,7 +221,7 @@ prometheus.remote_write "grafana_cloud_prometheus" {
 }
 ```
 
-## Putting it all together
+### Putting it all together
 
 Instead of referencing `otelcol.exporter.otlp.default.input` in the output of `otelcol.processor.batch`, you need to reference the three exporters you set up.
 The final configuration becomes:
