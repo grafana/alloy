@@ -1,6 +1,7 @@
 package cloudwatch_exporter
 
 import (
+	"io"
 	"testing"
 
 	"github.com/grafana/regexp"
@@ -8,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 const configString = `
@@ -35,7 +38,7 @@ discovery:
           statistics:
             - Maximum
             - Average
-    - type: AWS/S3
+    - type: s3
       regions:
         - us-east-2
       roles:
@@ -93,7 +96,7 @@ discovery:
           statistics:
             - Maximum
             - Average
-    - type: AWS/S3
+    - type: s3
       regions:
         - us-east-2
       roles:
@@ -150,7 +153,7 @@ discovery:
           statistics:
             - Maximum
             - Average
-    - type: AWS/S3
+    - type: s3
       regions:
         - us-east-2
       roles:
@@ -387,7 +390,10 @@ func TestTranslateConfigToYACEConfig(t *testing.T) {
 	err := yaml.Unmarshal([]byte(configString), &c)
 	require.NoError(t, err, "failed to unmarshall config")
 
-	yaceConf, fipsEnabled, err := ToYACEConfig(&c)
+	logger, err := logging.New(io.Discard, logging.DefaultOptions)
+	require.NoError(t, err)
+
+	yaceConf, fipsEnabled, err := ToYACEConfig(&c, logger)
 	require.NoError(t, err, "failed to translate to YACE configuration")
 
 	require.EqualValues(t, expectedConfig, yaceConf)
@@ -396,7 +402,7 @@ func TestTranslateConfigToYACEConfig(t *testing.T) {
 	err = yaml.Unmarshal([]byte(configString2), &c)
 	require.NoError(t, err, "failed to unmarshall config")
 
-	yaceConf, fipsEnabled2, err := ToYACEConfig(&c)
+	yaceConf, fipsEnabled2, err := ToYACEConfig(&c, logger)
 	require.NoError(t, err, "failed to translate to YACE configuration")
 
 	require.EqualValues(t, expectedConfig, yaceConf)
@@ -408,7 +414,10 @@ func TestTranslateNilToZeroConfigToYACEConfig(t *testing.T) {
 	err := yaml.Unmarshal([]byte(configString3), &c)
 	require.NoError(t, err, "failed to unmarshal config")
 
-	yaceConf, fipsEnabled, err := ToYACEConfig(&c)
+	logger, err := logging.New(io.Discard, logging.DefaultOptions)
+	require.NoError(t, err)
+
+	yaceConf, fipsEnabled, err := ToYACEConfig(&c, logger)
 	require.NoError(t, err, "failed to translate to YACE configuration")
 
 	require.EqualValues(t, expectedConfig3.DiscoveryJobs, yaceConf.DiscoveryJobs)

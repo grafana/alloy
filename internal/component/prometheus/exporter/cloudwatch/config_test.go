@@ -1,12 +1,14 @@
 package cloudwatch
 
 import (
+	"io"
 	"testing"
 
 	"github.com/grafana/regexp"
 	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -42,7 +44,7 @@ sts_region = "us-east-2"
 debug = true
 static "super_ec2_instance_id" {
 	regions = ["us-east-2"]
-	namespace = "AWS/EC2"
+	namespace = "ec2"
 	dimensions = {
 		"InstanceId" = "i01u29u12ue1u2c",
 	}
@@ -57,9 +59,9 @@ static "super_ec2_instance_id" {
 const discoveryJobConfig = `
 sts_region = "us-east-2"
 debug = true
-discovery_exported_tags = { "AWS/SQS" = ["name"] }
+discovery_exported_tags = { "sqs" = ["name"] }
 discovery {
-	type = "AWS/SQS"
+	type = "sqs"
 	regions = ["us-east-2"]
 	search_tags = {
 		"scrape" = "true",
@@ -91,7 +93,7 @@ discovery {
 
 // the configuration below overrides the length
 discovery {
-	type = "AWS/S3"
+	type = "s3"
 	regions = ["us-east-1"]
 	role {
 		role_arn = "arn:aws:iam::878167871295:role/yace_testing"
@@ -111,7 +113,7 @@ sts_region = "us-east-2"
 debug = true
 static "super_ec2_instance_id" {
 	regions = ["us-east-2"]
-	namespace = "AWS/EC2"
+	namespace = "ec2"
 	dimensions = {
 		"InstanceId" = "i01u29u12ue1u2c",
 	}
@@ -130,7 +132,7 @@ sts_region = "us-east-2"
 debug = true
 static "super_ec2_instance_id" {
 	regions = ["us-east-2"]
-	namespace = "AWS/EC2"
+	namespace = "ec2"
 	dimensions = {
 		"InstanceId" = "i01u29u12ue1u2c",
 	}
@@ -147,9 +149,9 @@ static "super_ec2_instance_id" {
 const discoveryJobNilToZeroConfig = `
 sts_region = "us-east-2"
 debug = true
-discovery_exported_tags = { "AWS/SQS" = ["name"] }
+discovery_exported_tags = { "sqs" = ["name"] }
 discovery {
-	type = "AWS/SQS"
+	type = "sqs"
 	regions = ["us-east-2"]
 	search_tags = {
 		"scrape" = "true",
@@ -481,7 +483,10 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			converted, err := ConvertToYACE(args)
+			logger, err := logging.New(io.Discard, logging.DefaultOptions)
+			require.NoError(t, err)
+
+			converted, err := ConvertToYACE(args, logger)
 			if tc.expectConvertErr {
 				require.Error(t, err)
 				return

@@ -23,7 +23,7 @@ func init() {
 
 func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
 	a := args.(Arguments)
-	exporterConfig, err := ConvertToYACE(a)
+	exporterConfig, err := ConvertToYACE(a, opts.Logger)
 	if err != nil {
 		return nil, "", fmt.Errorf("invalid cloudwatch exporter configuration: %w", err)
 	}

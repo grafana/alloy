@@ -5,10 +5,12 @@ import (
 	"encoding/hex"
 	"time"
 
+	"github.com/go-kit/log"
 	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
 	"github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/logging"
 	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
 
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations/cloudwatch_exporter"
 	"github.com/grafana/alloy/syntax"
 )
@@ -110,7 +112,67 @@ func (a *Arguments) SetToDefault() {
 // ConvertToYACE converts the Alloy config into YACE config model. Note that
 // the conversion is not direct, some values have been opinionated to simplify
 // the config model Alloy exposes for this integration.
-func ConvertToYACE(a Arguments) (yaceModel.JobsConfig, error) {
+func ConvertToYACE(a Arguments, logger log.Logger) (yaceModel.JobsConfig, error) {
+	// Once the support for deprecated aliases is dropped, this function (convertAliasesToNamespaces) can be removed.
+	convertAliasesToNamespaces(&a, logger)
+
+	return convertToYACE(a)
+}
+
+// convertAliasesToNamespaces converts the deprecated service aliases to their corresponding namespaces.
+// This function is added for the backward compatibility of the deprecated service aliases. This compatability
+// may be removed in the future.
+func convertAliasesToNamespaces(a *Arguments, logger log.Logger) {
+	for i, job := range a.Discovery {
+		if job.Type != "" {
+			if svc := yaceConf.SupportedServices.GetService(job.Type); svc == nil {
+				if namespace := getServiceByAlias(job.Type); namespace != "" {
+					level.Warn(logger).Log("msg", "service alias is deprecated, use the namespace instead", "alias", job.Type, "namespace", namespace)
+					a.Discovery[i].Type = namespace
+				}
+			}
+		}
+	}
+
+	for i, job := range a.Static {
+		if svc := yaceConf.SupportedServices.GetService(job.Namespace); svc == nil {
+			if namespace := getServiceByAlias(job.Namespace); namespace != "" {
+				level.Warn(logger).Log("msg", "service alias is deprecated, use the namespace instead", "alias", job.Namespace, "namespace", namespace)
+				a.Static[i].Namespace = namespace
+			}
+		}
+	}
+
+	if len(a.DiscoveryExportedTags) > 0 {
+		var newDiscoveryExportedTags TagsPerNamespace = make(map[string][]string, len(a.DiscoveryExportedTags))
+
+		for namespace, tags := range a.DiscoveryExportedTags {
+			if svc := yaceConf.SupportedServices.GetService(namespace); svc == nil {
+				if ns := getServiceByAlias(namespace); ns != "" {
+					level.Warn(logger).Log("msg", "service alias is deprecated, use the namespace instead", "alias", namespace, "namespace", ns)
+					newDiscoveryExportedTags[ns] = tags
+				}
+			} else {
+				newDiscoveryExportedTags[svc.Namespace] = tags
+			}
+		}
+
+		a.DiscoveryExportedTags = newDiscoveryExportedTags
+	}
+}
+
+// getServiceByAlias returns the namespace for a given service alias.
+func getServiceByAlias(alias string) string {
+	for _, supportedServices := range yaceConf.SupportedServices {
+		if supportedServices.Alias == alias {
+			return supportedServices.Namespace
+		}
+	}
+
+	return ""
+}
+
+func convertToYACE(a Arguments) (yaceModel.JobsConfig, error) {
 	var discoveryJobs []*yaceConf.Job
 	for _, job := range a.Discovery {
 		discoveryJobs = append(discoveryJobs, toYACEDiscoveryJob(job))
