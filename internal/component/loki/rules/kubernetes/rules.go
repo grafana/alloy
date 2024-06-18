@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/ckit/shard"
 	"github.com/grafana/alloy/internal/component"
 	commonK8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -18,6 +19,7 @@ import (
 	"github.com/grafana/dskit/instrument"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/atomic"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
@@ -78,6 +80,7 @@ type Component struct {
 	currentState commonK8s.RuleGroupsByNamespace
 
 	leader         leadership
+	eventProcessor *eventProcessor
 	clusterUpdates chan struct{}
 
 	metrics   *metrics
