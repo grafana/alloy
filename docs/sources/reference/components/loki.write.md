@@ -131,7 +131,7 @@ enabled, the retry mechanism will be governed by the backoff configuration speci
 ### queue_config block (experimental)
 
 The optional `queue_config` block configures, when WAL is enabled, how the underlying client queues batches of logs sent to Loki.
-Refer to [Write-Ahead block](#wal-block-experimental).
+Refer to [Write-Ahead block](#wal-block-experimental) for more information.
 
 The following arguments are supported:
 

@@ -63,7 +63,7 @@ The following collectors are available for selection:
 * `statio_user_indexes`
 * `statio_user_tables`
 * `wal`
-* `xlog_location`.
+* `xlog_location`
 
 By default, the following collectors are enabled:
 

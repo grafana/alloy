@@ -18,7 +18,7 @@ Refer to the [OAuth 2.0 Authorization Framework](https://datatracker.ietf.org/do
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
-Youc an specify multiple `otelcol.auth.oauth2` components by giving them different labels.
+You can specify multiple `otelcol.auth.oauth2` components by giving them different labels.
 
 ## Usage
 

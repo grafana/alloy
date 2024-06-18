@@ -316,7 +316,7 @@ in the AWS IAM documentation for more information about how to configure this.
 | Name          | Type     | Description                                                             | Default | Required |
 | ------------- | -------- | ----------------------------------------------------------------------- | ------- | -------- |
 | `role_arn`    | `string` | AWS IAM Role ARN the exporter should assume to perform AWS API calls.   |         | yes      |
-| `external_id` | `string` | External ID used when calling STS AssumeRole API. Refer to [details][]. | `""`    | no       |
+| `external_id` | `string` | External ID used when calling STS AssumeRole API. Refer to the [IAM User Guide][details] for more information. | `""`    | no       |
 
 [details]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html
 

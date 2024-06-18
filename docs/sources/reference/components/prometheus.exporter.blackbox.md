@@ -40,7 +40,7 @@ The `config` argument must be a YAML document as string defining which `blackbox
 - `remote.http.LABEL.content`
 - `remote.s3.LABEL.content`
 
-Refer to [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml) for details on how to generate a configuration file.
+Refer to [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml) for more information about generating a configuration file.
 
 ## Blocks
 
