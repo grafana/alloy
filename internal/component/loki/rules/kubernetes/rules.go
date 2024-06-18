@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -14,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	lokiClient "github.com/grafana/alloy/internal/loki/client"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/grafana/ckit/shard"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/instrument"
@@ -50,7 +48,7 @@ func init() {
 		Args:      Arguments{},
 		Exports:   nil,
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
-			return NewComponent(o, c.(Arguments))
+			return New(o, c.(Arguments))
 		},
 	})
 }
@@ -141,7 +139,7 @@ func (m *metrics) register(r prometheus.Registerer) error {
 		m.eventsTotal,
 		m.eventsFailed,
 		m.eventsRetried,
-		m.mimirClientTiming,
+		m.lokiClientTiming,
 	} {
 		if err := r.Register(c); err != nil {
 			return err
@@ -340,6 +338,14 @@ func (c *Component) shutdown() {
 	c.queue.ShutDownWithDrain()
 }
 
+// syncState asks the eventProcessor to sync rule state from the Mimir Ruler. It does
+// not block waiting for state to be synced.
+func (c *Component) syncState() {
+	if c.eventProcessor != nil {
+		c.eventProcessor.enqueueSyncMimir()
+	}
+}
+
 func (c *Component) init() error {
 	level.Info(c.log).Log("msg", "initializing with new configuration")
 
@@ -471,14 +477,39 @@ type leadership interface {
 	isLeader() bool
 }
 
-// leadership encapsulates the logic for checking if this instance of the Component
-// is the leader among all instances to avoid conflicting updates of the Mimir API.
-type leadership interface {
-	// update checks if this component instance is still the leader, stores the result,
-	// and returns true if the leadership status has changed since the last time update
-	// was called.
-	update() (bool, error)
 
-	// isLeader returns true if this component instance is the leader, false otherwise.
-	isLeader() bool
+// componentLeadership implements leadership based on checking ownership of a specific
+// key using a cluster.Cluster service.
+type componentLeadership struct {
+	id      string
+	logger  log.Logger
+	cluster cluster.Cluster
+	leader  atomic.Bool
+}
+
+func newComponentLeadership(id string, logger log.Logger, cluster cluster.Cluster) *componentLeadership {
+	return &componentLeadership{
+		id:      id,
+		logger:  logger,
+		cluster: cluster,
+	}
+}
+
+func (l *componentLeadership) update() (bool, error) {
+	peers, err := l.cluster.Lookup(shard.StringKey(l.id), 1, shard.OpReadWrite)
+	if err != nil {
+		return false, fmt.Errorf("unable to determine leader for %s: %w", l.id, err)
+	}
+
+	if len(peers) != 1 {
+		return false, fmt.Errorf("unexpected peers from leadership check: %+v", peers)
+	}
+
+	isLeader := peers[0].Self
+	level.Info(l.logger).Log("msg", "checked leadership of component", "is_leader", isLeader)
+	return l.leader.Swap(isLeader) != isLeader, nil
+}
+
+func (l *componentLeadership) isLeader() bool {
+	return l.leader.Load()
 }
