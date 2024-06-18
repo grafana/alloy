@@ -6,8 +6,7 @@ title: prometheus.exporter.catchpoint
 
 # prometheus.exporter.catchpoint
 
-The `prometheus.exporter.catchpoint` component embeds
-[catchpoint_exporter](https://github.com/grafana/catchpoint-prometheus-exporter) for collecting statistics from a Catchpoint account.
+The `prometheus.exporter.catchpoint` component uses the [catchpoint_exporter](https://github.com/grafana/catchpoint-prometheus-exporter) for collecting statistics from a Catchpoint account.
 
 ## Usage
 
