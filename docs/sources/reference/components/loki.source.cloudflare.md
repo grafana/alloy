@@ -11,7 +11,7 @@ title: loki.source.cloudflare
 
 These logs contain data related to the connecting client, the request path through the Cloudflare network, and the response from the origin web server and can be useful for enriching existing logs on an origin server.
 
-Multiple `loki.source.cloudflare` components can be specified by giving them different labels.
+You can specify multiple `loki.source.cloudflare` components by giving them different labels.
 
 ## Usage
 
