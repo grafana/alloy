@@ -39,6 +39,9 @@ Main (unreleased)
 - (_Experimental_) Add a `otelcol.processor.deltatocumulative` component to convert metrics from
   delta temporality to cumulative by accumulating samples in memory. (@rfratto)
 
+- (_Experimental_) Add an `otelcol.receiver.datadog` component to receive
+  metrics and traces from Datadog. (@carrieedwards, @jesusvazquez, @alexgreenbank, @fedetorres93)
+
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
@@ -96,7 +99,7 @@ Main (unreleased)
 - A new `snmp_context` configuration argument for `prometheus.exporter.snmp`
   which overrides the `context_name` parameter in the SNMP configuration file. (@ptodev)
 
-- Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc) 
+- Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)
 
 - A new parameter `aws_sdk_version_v2` is added for the cloudwatch exporters configuration. It enables the use of aws sdk v2 which has shown to have significant performance benefits. (@kgeckhart, @andriikushch)
 
