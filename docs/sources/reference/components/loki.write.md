@@ -59,7 +59,7 @@ For example, `endpoint > basic_auth` refers to a `basic_auth` block defined insi
 ### endpoint block
 
 The `endpoint` block describes a single location to send logs to.
-Multiple `endpoint` blocks can be provided to send logs to multiple locations.
+You can use multiple `endpoint` blocks to send logs to multiple locations.
 
 The following arguments are supported:
 
