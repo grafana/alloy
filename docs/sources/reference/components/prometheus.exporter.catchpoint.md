@@ -91,7 +91,6 @@ Replace the following:
 - _`<PASSWORD>`_: The password to use for authentication to the remote_write API.
 
 [scrape]: ../prometheus.scrape/
-[catchpoint_exporter]: https://github.com/grafana/catchpoint-prometheus-exporter
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
