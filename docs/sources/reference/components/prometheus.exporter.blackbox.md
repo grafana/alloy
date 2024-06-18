@@ -102,13 +102,13 @@ prometheus.exporter.blackbox "example" {
 
   target {
     name    = "example"
-    address = "http://example.com"
+    address = "https://example.com"
     module  = "http_2xx"
   }
 
   target {
     name    = "grafana"
-    address = "http://grafana.com"
+    address = "https://grafana.com"
     module  = "http_2xx"
     labels = {
       "env" = "dev",
@@ -150,13 +150,13 @@ prometheus.exporter.blackbox "example" {
 
   target {
     name    = "example"
-    address = "http://example.com"
+    address = "https://example.com"
     module  = "http_2xx"
   }
 
   target {
     name    = "grafana"
-    address = "http://grafana.com"
+    address = "https://grafana.com"
     module  = "http_2xx"
     labels = {
       "env" = "dev",
