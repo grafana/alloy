@@ -3,7 +3,6 @@ package remotewrite
 import (
 	"context"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -16,15 +15,14 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/static/metrics/wal"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
-	"github.com/prometheus/prometheus/model/timestamp"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote"
+	"github.com/prometheus/prometheus/tsdb/agent"
 	"go.uber.org/atomic"
 )
 
@@ -53,7 +51,7 @@ type Component struct {
 	log  log.Logger
 	opts component.Options
 
-	walStore    *wal.Storage
+	walStore    *agent.DB
 	remoteStore *remote.Storage
 	storage     storage.Storage
 	exited      atomic.Bool
@@ -75,16 +73,15 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	oldDataPath := filepath.Join(o.DataPath, "wal", o.ID)
 	_ = os.RemoveAll(oldDataPath)
 
-	walLogger := log.With(o.Logger, "subcomponent", "wal")
-	walStorage, err := wal.NewStorage(walLogger, o.Registerer, o.DataPath)
-	if err != nil {
-		return nil, err
-	}
-
 	remoteLogger := log.With(o.Logger, "subcomponent", "rw")
 	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
 
-	walStorage.SetNotifier(remoteStore)
+	walLogger := log.With(o.Logger, "subcomponent", "wal")
+	walStorage, err := agent.Open(walLogger, o.Registerer, remoteStore, o.DataPath, agent.DefaultOptions())
+	if err != nil {
+		return nil, err
+	}
+	walStorage.SetWriteNotified(remoteStore)
 
 	service, err := o.GetServiceData(labelstore.ServiceName)
 	if err != nil {
@@ -185,61 +182,8 @@ func (c *Component) Run(ctx context.Context) error {
 			level.Error(c.log).Log("msg", "error when closing storage", "err", err)
 		}
 	}()
-
-	// Track the last timestamp we truncated for to prevent segments from getting
-	// deleted until at least some new data has been sent.
-	var lastTs = int64(math.MinInt64)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-time.After(c.truncateFrequency()):
-			// We retrieve the current min/max keepalive time at once, since
-			// retrieving them separately could lead to issues where we have an older
-			// value for min which is now larger than max.
-			c.mut.RLock()
-			var (
-				minWALTime = c.cfg.WALOptions.MinKeepaliveTime
-				maxWALTime = c.cfg.WALOptions.MaxKeepaliveTime
-			)
-			c.mut.RUnlock()
-
-			// The timestamp ts is used to determine which series are not receiving
-			// samples and may be deleted from the WAL. Their most recent append
-			// timestamp is compared to ts, and if that timestamp is older than ts,
-			// they are considered inactive and may be deleted.
-			//
-			// Subtracting a duration from ts will delay when it will be considered
-			// inactive and scheduled for deletion.
-			ts := c.remoteStore.LowestSentTimestamp() - minWALTime.Milliseconds()
-			if ts < 0 {
-				ts = 0
-			}
-
-			// Network issues can prevent the result of LowestSentTimestamp from
-			// changing. We don't want data in the WAL to grow forever, so we set a cap
-			// on the maximum age data can be. If our ts is older than this cutoff point,
-			// we'll shift it forward to start deleting very stale data.
-			if maxTS := timestamp.FromTime(time.Now().Add(-maxWALTime)); ts < maxTS {
-				ts = maxTS
-			}
-
-			if ts == lastTs {
-				level.Debug(c.log).Log("msg", "not truncating the WAL, remote_write timestamp is unchanged", "ts", ts)
-				continue
-			}
-			lastTs = ts
-
-			level.Debug(c.log).Log("msg", "truncating the WAL", "ts", ts)
-			err := c.walStore.Truncate(ts)
-			if err != nil {
-				// The only issue here is larger disk usage and a greater replay time,
-				// so we'll only log this as a warning.
-				level.Warn(c.log).Log("msg", "could not truncate WAL", "err", err)
-			}
-		}
-	}
+	<-ctx.Done()
+	return nil
 }
 
 func (c *Component) truncateFrequency() time.Duration {
