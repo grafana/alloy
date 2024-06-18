@@ -106,11 +106,6 @@ func newMetrics() *metrics {
 			Name:      "config_updates_total",
 			Help:      "Total number of times the configuration has been updated.",
 		}),
-		clusterUpdatesTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Subsystem: "mimir_rules",
-			Name:      "cluster_updates_total",
-			Help:      "Total number of times the cluster has changed.",
-		}),
 		eventsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Subsystem: "loki_rules",
 			Name:      "events_total",
@@ -292,7 +287,7 @@ func (c *Component) iteration(ctx context.Context, leader leadership, state life
 	return nil
 }
 
-// update updates the Arguments used to create new Kubernetes or Mimir clients
+// update updates the Arguments used to create new Kubernetes or Loki clients
 // when restarting the component in response to configuration or cluster updates.
 func (c *Component) update(args Arguments) {
 	c.args = args
@@ -341,11 +336,11 @@ func (c *Component) shutdown() {
 	c.queue.ShutDownWithDrain()
 }
 
-// syncState asks the eventProcessor to sync rule state from the Mimir Ruler. It does
+// syncState asks the eventProcessor to sync rule state from the Loki Ruler. It does
 // not block waiting for state to be synced.
 func (c *Component) syncState() {
-	if c.eventProcessor != nil {
-		c.eventProcessor.enqueueSyncMimir()
+	if err := c.syncLoki(ctx); err != nil {
+		return err
 	}
 }
 
@@ -463,13 +458,13 @@ type lifecycle interface {
 	// shutdown stops the component, blocking until existing events are processed.
 	shutdown()
 
-	// syncState requests that Mimir ruler state be synced independent of any
+	// syncState requests that Loki ruler state be synced independent of any
 	// changes made to Kubernetes objects.
 	syncState()
 }
 
 // leadership encapsulates the logic for checking if this instance of the Component
-// is the leader among all instances to avoid conflicting updates of the Mimir API.
+// is the leader among all instances to avoid conflicting updates of the Loki API.
 type leadership interface {
 	// update checks if this component instance is still the leader, stores the result,
 	// and returns true if the leadership status has changed since the last time update
