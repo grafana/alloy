@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.2.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - Updated OpenTelemetry to v0.102.1. (@mattdurham)
