@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/processortest"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"

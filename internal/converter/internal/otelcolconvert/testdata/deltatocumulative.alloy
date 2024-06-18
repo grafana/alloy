@@ -1,0 +1,21 @@
+otelcol.receiver.otlp "default" {
+	grpc { }
+
+	http { }
+
+	output {
+		metrics = [otelcol.processor.deltatocumulative.default.input]
+	}
+}
+
+otelcol.processor.deltatocumulative "default" {
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

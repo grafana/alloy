@@ -14,11 +14,11 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/componenttest"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
@@ -87,6 +87,22 @@ func TestDuplicateTargets(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, cmp.manager.tasks, 1)
+	require.Equal(t, cmp.manager.tasks[0].target.LabelsStr(), "{__meta_docker_container_id=\"foo\", __meta_docker_port_private=\"8080\"}")
+
+	var newCfg = `
+		host       = "tcp://127.0.0.1:9376"
+		targets    = [
+			{__meta_docker_container_id = "foo", __meta_docker_port_private = "8081"},
+			{__meta_docker_container_id = "foo", __meta_docker_port_private = "8080"},
+		]
+		forward_to = []
+	`
+	err = syntax.Unmarshal([]byte(newCfg), &args)
+	require.NoError(t, err)
+	cmp.Update(args)
+	require.Len(t, cmp.manager.tasks, 1)
+	// Although the order of the targets changed, the filtered target stays the same.
+	require.Equal(t, cmp.manager.tasks[0].target.LabelsStr(), "{__meta_docker_container_id=\"foo\", __meta_docker_port_private=\"8080\"}")
 }
 
 func TestRestart(t *testing.T) {
@@ -123,6 +139,22 @@ func TestRestart(t *testing.T) {
 			assert.Equal(c, expectedLogLine, logLines[0].Line)
 		}
 	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit after restart.")
+}
+
+func TestTargetNeverStarted(t *testing.T) {
+	runningState := false
+	client := clientMock{
+		logLine: "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
+		running: func() bool { return runningState },
+	}
+
+	tailer, _ := setupTailer(t, client)
+	ctx, cancel := context.WithCancel(context.Background())
+	go tailer.Run(ctx)
+
+	time.Sleep(20 * time.Millisecond)
+
+	require.NotPanics(t, func() { cancel() })
 }
 
 func setupTailer(t *testing.T, client clientMock) (tailer *tailer, entryHandler *fake.Client) {

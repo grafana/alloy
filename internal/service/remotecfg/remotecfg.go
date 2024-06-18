@@ -15,12 +15,14 @@ import (
 	"github.com/go-kit/log"
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1/collectorv1connect"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/syntax"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	commonconfig "github.com/prometheus/common/config"
 )
 
@@ -48,6 +50,16 @@ type Service struct {
 	ticker            *time.Ticker
 	dataPath          string
 	currentConfigHash string
+	metrics           *metrics
+}
+
+type metrics struct {
+	lastFetchSuccess     prometheus.Gauge
+	totalFailures        prometheus.Counter
+	configHash           *prometheus.GaugeVec
+	lastFetchSuccessTime prometheus.Gauge
+	totalAttempts        prometheus.Counter
+	getConfigTime        prometheus.Histogram
 }
 
 // ServiceName defines the name used for the remotecfg service.
@@ -56,8 +68,9 @@ const ServiceName = "remotecfg"
 // Options are used to configure the remotecfg service. Options are
 // constant for the lifetime of the remotecfg service.
 type Options struct {
-	Logger      log.Logger // Where to send logs.
-	StoragePath string     // Where to cache configuration on-disk.
+	Logger      log.Logger            // Where to send logs.
+	StoragePath string                // Where to cache configuration on-disk.
+	Metrics     prometheus.Registerer // Where to send metrics to.
 }
 
 // Arguments holds runtime settings for the remotecfg service.
@@ -86,6 +99,10 @@ func (a *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
+	if a.PollFrequency < 10*time.Second {
+		return fmt.Errorf("poll_frequency must be at least \"10s\", got %q", a.PollFrequency)
+	}
+
 	// We must explicitly Validate because HTTPClientConfig is squashed and it
 	// won't run otherwise
 	if a.HTTPClientConfig != nil {
@@ -116,6 +133,50 @@ func New(opts Options) (*Service, error) {
 		opts:   opts,
 		ticker: time.NewTicker(math.MaxInt64),
 	}, nil
+}
+
+func (s *Service) registerMetrics() {
+	prom := promauto.With(s.opts.Metrics)
+	mets := &metrics{
+		configHash: prom.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "remotecfg_hash",
+				Help: "Hash of the currently active remote configuration.",
+			},
+			[]string{"hash"},
+		),
+		lastFetchSuccess: prom.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "remotecfg_last_load_successful",
+				Help: "Remote config loaded successfully",
+			},
+		),
+		totalFailures: prom.NewCounter(
+			prometheus.CounterOpts{
+				Name: "remotecfg_load_failures_total",
+				Help: "Remote configuration load failures",
+			},
+		),
+		totalAttempts: prom.NewCounter(
+			prometheus.CounterOpts{
+				Name: "remotecfg_load_attempts_total",
+				Help: "Attempts to load remote configuration",
+			},
+		),
+		lastFetchSuccessTime: prom.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "remotecfg_last_load_success_timestamp_seconds",
+				Help: "Timestamp of the last successful remote configuration load",
+			},
+		),
+		getConfigTime: prom.NewHistogram(
+			prometheus.HistogramOpts{
+				Name: "remotecfg_request_duration_seconds",
+				Help: "Duration of remote configuration requests.",
+			},
+		),
+	}
+	s.metrics = mets
 }
 
 // Data is a no-op for the remotecfg service.
@@ -214,6 +275,7 @@ func (s *Service) Update(newConfig any) error {
 // and then parse/load their contents in order of preference.
 func (s *Service) fetch() {
 	if err := s.fetchRemote(); err != nil {
+		level.Error(s.opts.Logger).Log("msg", "failed to fetch remote config", "err", err)
 		s.fetchLocal()
 	}
 }
@@ -223,9 +285,14 @@ func (s *Service) fetchRemote() error {
 	}
 
 	b, err := s.getAPIConfig()
+	s.metrics.totalAttempts.Add(1)
 	if err != nil {
+		s.metrics.totalFailures.Add(1)
+		s.metrics.lastFetchSuccess.Set(0)
 		return err
 	}
+	s.metrics.lastFetchSuccess.Set(1)
+	s.metrics.lastFetchSuccessTime.SetToCurrentTime()
 
 	// API return the same configuration, no need to reload.
 	newConfigHash := getHash(b)
@@ -267,11 +334,12 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 	client := s.asClient
 	s.mut.RUnlock()
 
+	start := time.Now()
 	gcr, err := client.GetConfig(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}
-
+	s.metrics.getConfigTime.Observe(time.Since(start).Seconds())
 	return []byte(gcr.Msg.GetContent()), nil
 }
 
@@ -322,13 +390,19 @@ func (s *Service) getCfgHash() string {
 func (s *Service) setCfgHash(h string) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
-
+	if s.metrics != nil {
+		s.metrics.configHash.Reset()
+		s.metrics.configHash.WithLabelValues(h).Set(1)
+	}
 	s.currentConfigHash = h
 }
 
 func (s *Service) isEnabled() bool {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
-
-	return s.args.URL != "" && s.asClient != nil
+	enabled := s.args.URL != "" && s.asClient != nil
+	if enabled && s.metrics == nil {
+		s.registerMetrics()
+	}
+	return enabled
 }

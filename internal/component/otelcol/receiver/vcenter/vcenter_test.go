@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/vcenter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver"
@@ -19,6 +19,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		collection_interval = "2m"
 
 		resource_attributes {
+			vcenter.datacenter.name {
+				enabled = true
+			}
 			vcenter.cluster.name {
 				enabled = true
 			}
@@ -34,7 +37,16 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			vcenter.resource_pool.name {
 				enabled = true
 			}
+			vcenter.virtual_app.inventory_path {
+				enabled = false
+			}
+			vcenter.virtual_app.name {
+				enabled = true
+			}
 			vcenter.vm.name {
+				enabled = true
+			}
+			vcenter.vm_template.name {
 				enabled = true
 			}
 		}
@@ -55,10 +67,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			vcenter.cluster.memory.limit {
 				enabled = true
 			}
-			vcenter.cluster.memory.used {
+			vcenter.cluster.vm.count {
 				enabled = true
 			}
-			vcenter.cluster.vm.count {
+			vcenter.cluster.vm_template.count {
 				enabled = true
 			}
 			vcenter.datastore.disk.usage {
@@ -88,10 +100,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			vcenter.host.memory.utilization {
 				enabled = true
 			}
-			vcenter.host.network.packet.count {
+			vcenter.host.network.packet.rate {
 				enabled = true
 			}
-			vcenter.host.network.packet.errors {
+			vcenter.host.network.packet.error.rate {
 				enabled = true
 			}
 			vcenter.host.network.throughput {
@@ -145,7 +157,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			vcenter.vm.memory.usage {
 				enabled = true
 			}
-			vcenter.vm.network.packet.count {
+			vcenter.vm.memory.utilization {
+				enabled = true
+			}
+			vcenter.vm.network.packet.rate {
+				enabled = true
+			}
+			vcenter.vm.network.packet.drop.rate {
 				enabled = true
 			}
 			vcenter.vm.network.throughput {
@@ -191,7 +209,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.True(t, otelArgs.Metrics.VcenterClusterHostCount.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterClusterMemoryEffective.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterClusterMemoryLimit.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterClusterMemoryUsed.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterClusterVMCount.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterDatastoreDiskUsage.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterDatastoreDiskUtilization.Enabled)
@@ -202,8 +219,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.True(t, otelArgs.Metrics.VcenterHostDiskThroughput.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostMemoryUsage.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostMemoryUtilization.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostNetworkPacketCount.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostNetworkPacketErrors.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterHostNetworkPacketRate.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterHostNetworkPacketErrorRate.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostNetworkThroughput.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostNetworkUsage.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterResourcePoolCPUShares.Enabled)
@@ -221,8 +238,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.True(t, otelArgs.Metrics.VcenterVMMemorySwapped.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMMemorySwappedSsd.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMMemoryUsage.Enabled)
-	require.False(t, otelArgs.Metrics.VcenterVMMemoryUtilization.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMNetworkPacketCount.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterVMMemoryUtilization.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterVMNetworkPacketRate.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterVMNetworkPacketDropRate.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMNetworkThroughput.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMNetworkUsage.Enabled)
 }
@@ -231,7 +249,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	tests := []struct {
 		testName string
 		alloyCfg string
-		expected otelcol.DebugMetricsArguments
+		expected otelcolCfg.DebugMetricsArguments
 	}{
 		{
 			testName: "default",
@@ -242,8 +260,9 @@ func TestDebugMetricsConfig(t *testing.T) {
 
 			output {}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -259,8 +278,9 @@ func TestDebugMetricsConfig(t *testing.T) {
 
 			output {}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -276,8 +296,9 @@ func TestDebugMetricsConfig(t *testing.T) {
 
 			output {}
 			`,
-			expected: otelcol.DebugMetricsArguments{
+			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}

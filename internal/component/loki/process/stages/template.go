@@ -13,7 +13,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/common/model"
 
 	"golang.org/x/crypto/sha3"

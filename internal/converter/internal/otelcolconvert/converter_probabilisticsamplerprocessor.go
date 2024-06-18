@@ -51,6 +51,7 @@ func toProbabilisticSamplerProcessor(state *State, id component.InstanceID, cfg 
 	return &probabilistic_sampler.Arguments{
 		SamplingPercentage: cfg.SamplingPercentage,
 		HashSeed:           cfg.HashSeed,
+		FailClosed:         cfg.FailClosed,
 		AttributeSource:    string(cfg.AttributeSource),
 		FromAttribute:      cfg.FromAttribute,
 		SamplingPriority:   cfg.SamplingPriority,
@@ -58,5 +59,6 @@ func toProbabilisticSamplerProcessor(state *State, id component.InstanceID, cfg 
 			Logs:   ToTokenizedConsumers(nextLogs),
 			Traces: ToTokenizedConsumers(nextTraces),
 		},
+		DebugMetrics: common.DefaultValue[probabilistic_sampler.Arguments]().DebugMetrics,
 	}
 }

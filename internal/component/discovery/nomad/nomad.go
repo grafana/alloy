@@ -5,12 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/nomad"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/common/model"
-	prom_discovery "github.com/prometheus/prometheus/discovery/nomad"
 )
 
 func init() {
@@ -21,7 +22,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -59,7 +60,7 @@ func (a *Arguments) Validate() error {
 	return a.HTTPClientConfig.Validate()
 }
 
-func (a *Arguments) Convert() *prom_discovery.SDConfig {
+func (a Arguments) Convert() discovery.DiscovererConfig {
 	return &prom_discovery.SDConfig{
 		AllowStale:       a.AllowStale,
 		HTTPClientConfig: *a.HTTPClientConfig.Convert(),
@@ -69,12 +70,4 @@ func (a *Arguments) Convert() *prom_discovery.SDConfig {
 		Server:           a.Server,
 		TagSeparator:     a.TagSeparator,
 	}
-}
-
-// New returns a new instance of a discovery.azure component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
-		newArgs := args.(Arguments)
-		return prom_discovery.NewDiscovery(newArgs.Convert(), opts.Logger)
-	})
 }

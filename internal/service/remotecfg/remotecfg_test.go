@@ -11,12 +11,12 @@ import (
 
 	"connectrpc.com/connect"
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
-	"github.com/grafana/alloy/internal/alloy"
-	"github.com/grafana/alloy/internal/alloy/componenttest"
-	"github.com/grafana/alloy/internal/alloy/logging"
 	"github.com/grafana/alloy/internal/component"
 	_ "github.com/grafana/alloy/internal/component/loki/process"
 	"github.com/grafana/alloy/internal/featuregate"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
@@ -70,7 +70,7 @@ func TestAPIResponse(t *testing.T) {
 	env := newTestEnvironment(t)
 	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
 		url            = "%s"
-		poll_frequency = "10ms"
+		poll_frequency = "10s"
 	`, url)))
 
 	client := &collectorClient{}
@@ -100,7 +100,7 @@ func TestAPIResponse(t *testing.T) {
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfg2)), env.svc.getCfgHash())
-	}, time.Second, 10*time.Millisecond)
+	}, 1*time.Second, 10*time.Millisecond)
 }
 
 func buildGetConfigHandler(in string) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
@@ -138,6 +138,10 @@ func (env *testEnvironment) ApplyConfig(config string) error {
 	if err := syntax.Unmarshal([]byte(config), &args); err != nil {
 		return err
 	}
+	// The lower limit of the poll_frequency argument would slow our tests
+	// considerably; let's artificially lower it after the initial validation
+	// has taken place.
+	args.PollFrequency /= 100
 	return env.svc.Update(args)
 }
 
@@ -165,7 +169,7 @@ func (fakeHost) GetService(_ string) (service.Service, bool)     { return nil, f
 
 func (f fakeHost) NewController(id string) service.Controller {
 	logger, _ := logging.New(io.Discard, logging.DefaultOptions)
-	ctrl := alloy.New(alloy.Options{
+	ctrl := alloy_runtime.New(alloy_runtime.Options{
 		ControllerID:    ServiceName,
 		Logger:          logger,
 		Tracer:          nil,
@@ -211,12 +215,12 @@ func (ag *collectorClient) ListCollectors(context.Context, *connect.Request[coll
 }
 
 type serviceController struct {
-	f *alloy.Alloy
+	f *alloy_runtime.Runtime
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
 func (sc serviceController) LoadSource(b []byte, args map[string]any) error {
-	source, err := alloy.ParseSource("", b)
+	source, err := alloy_runtime.ParseSource("", b)
 	if err != nil {
 		return err
 	}

@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	"github.com/alecthomas/units"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/client"
+	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	lokiwrite "github.com/grafana/alloy/internal/component/loki/write"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/token/builder"
-	"github.com/grafana/loki/clients/pkg/promtail/client"
-	lokiflag "github.com/grafana/loki/pkg/util/flagext"
 )
 
 func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, labelPrefix string) (*builder.Block, loki.LogsReceiver) {

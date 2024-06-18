@@ -64,12 +64,12 @@ func runForGenerator(t *testing.T, g generator.DocsGenerator) {
 	}
 
 	actual, err := g.Read()
-	require.NoError(t, err, "failed to read existing generated docs for %q, try running 'go generate ./docs'", g.Name())
+	require.NoError(t, err, "failed to read existing generated docs for %q, try running 'go generate ./internal/tools/docs_generator/", g.Name())
 	require.Contains(
 		t,
 		actual,
 		strings.TrimSpace(generated),
-		"outdated docs detected when running %q, try updating with 'go generate ./docs'",
+		"outdated docs detected when running %q, try updating with 'go generate ./internal/tools/docs_generator/",
 		g.Name(),
 	)
 }

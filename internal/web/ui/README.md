@@ -3,4 +3,4 @@
 ## Prerequisites
 
 * Yarn >= v1.22
-* Node.js >= v16
+* Node.js >= v18

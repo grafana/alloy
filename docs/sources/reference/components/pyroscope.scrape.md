@@ -4,11 +4,7 @@ description: Learn about pyroscope.scrape
 title: pyroscope.scrape
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # pyroscope.scrape
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.scrape` collects [pprof] performance profiles for a given set of HTTP `targets`.
 
@@ -65,6 +61,7 @@ Name                | Type                     | Description                    
 `params`            | `map(list(string))`      | A set of query parameters with which the target is scraped.        |                | no
 `scrape_interval`   | `duration`               | How frequently to scrape the targets of this scrape configuration. | `"15s"`        | no
 `scrape_timeout`    | `duration`               | The timeout for scraping targets of this configuration. Must be larger than `scrape_interval`. | `"18s"` | no
+`delta_profiling_duration`| `duration` | The duration for a delta profiling to be scraped. Must be larger than 1 second. | `"14s"` | no
 `scheme`            | `string`                 | The URL scheme with which to fetch metrics from targets.           | `"http"`       | no
 `bearer_token_file` | `string`                 | File containing a bearer token to authenticate with.               |                | no
 `bearer_token`      | `secret`                 | Bearer token to authenticate with.                                 |                | no
@@ -395,8 +392,11 @@ When the `delta` argument is `false`, the [pprof][] HTTP query will be instantan
 When the `delta` argument is `true`:
 * The [pprof][] HTTP query will run for a certain amount of time.
 * A `seconds` parameter is automatically added to the HTTP request.
-* The `seconds` used will be equal to `scrape_interval - 1`.
-  For example, if `scrape_interval` is `"15s"`, `seconds` will be 14 seconds.
+* The default value for the `seconds` query parameter is `scrape_interval - 1`.
+    If you set `delta_profiling_duration`, then `seconds` is assigned the same value as `delta_profiling_duration`.
+    However, the `delta_profiling_duration` cannot be larger than `scrape_interval`. 
+    For example, if you set `scrape_interval` to `"15s"`, then `seconds` defaults to `14s`
+    If you set `delta_profiling_duration` to `16s`, then `scrape_interval` must be set to at least `17s`.
   If the HTTP endpoint is `/debug/pprof/profile`, then the HTTP query will become `/debug/pprof/profile?seconds=14`
 
 ## Exported fields

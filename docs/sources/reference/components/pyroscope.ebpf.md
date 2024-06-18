@@ -4,11 +4,7 @@ description: Learn about pyroscope.ebpf
 title: pyroscope.ebpf
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # pyroscope.ebpf
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.ebpf` configures an ebpf profiling job for the current host.
 The collected performance profiles are forwarded to the list of receivers passed in `forward_to`.

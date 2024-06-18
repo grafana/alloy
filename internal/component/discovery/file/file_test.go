@@ -4,9 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/file"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestUnmarshal(t *testing.T) {
@@ -37,7 +39,7 @@ func TestConvert(t *testing.T) {
 		RefreshInterval: 10 * time.Minute,
 	}
 
-	promSDConfig := args.Convert()
+	promSDConfig := args.Convert().(*prom_discovery.SDConfig)
 	require.Equal(t, 2, len(promSDConfig.Files))
 	require.Equal(t, model.Duration(10*time.Minute), promSDConfig.RefreshInterval)
 }

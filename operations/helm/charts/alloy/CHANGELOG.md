@@ -10,6 +10,28 @@ internal API changes are not present.
 Unreleased
 ----------
 
+0.3.2 (2024-05-30)
+------------------
+
+### Bugfixes
+
+- Update to Grafana Alloy v1.1.1. (@rfratto)
+
+0.3.1 (2024-05-22)
+------------------
+
+### Bugfixes
+
+- Fix clustering on instances running within Istio mesh by allowing to change the name of the clustering port
+
+0.3.0 (2024-05-14)
+------------------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.1.0. (@rfratto)
+
+
 0.2.0 (2024-05-08)
 ------------------
 

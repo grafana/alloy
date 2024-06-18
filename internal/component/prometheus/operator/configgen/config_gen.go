@@ -5,15 +5,16 @@ package configgen
 import (
 	"regexp"
 
-	k8sConfig "github.com/grafana/alloy/internal/component/common/kubernetes"
-	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 	"github.com/prometheus/prometheus/model/relabel"
+
+	k8sConfig "github.com/grafana/alloy/internal/component/common/kubernetes"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/prometheus/operator"
 )
 
 type ConfigGenerator struct {
@@ -173,6 +174,7 @@ func (cg *ConfigGenerator) generateDefaultScrapeConfig() *config.ScrapeConfig {
 	c := config.DefaultScrapeConfig
 	c.ScrapeInterval = config.DefaultGlobalConfig.ScrapeInterval
 	c.ScrapeTimeout = config.DefaultGlobalConfig.ScrapeTimeout
+	c.ScrapeProtocols = config.DefaultGlobalConfig.ScrapeProtocols
 
 	if opt.DefaultScrapeInterval != 0 {
 		c.ScrapeInterval = model.Duration(opt.DefaultScrapeInterval)

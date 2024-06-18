@@ -67,18 +67,12 @@ When deploying {{< param "PRODUCT_NAME" >}}, be aware of the following settings:
 - {{< param "PRODUCT_NAME" >}} should be deployed with topology that's the same as Grafana Agent Flow.
   The CPU, and storage limits should match.
 - Custom command-line flags configured in Grafana Agent Flow should be reflected in your {{< param "PRODUCT_NAME" >}} installation.
-- You might need to deploy {{< param "PRODUCT_NAME" >}} with the `--stability.level` flag in [run] to enable non-stable components:
-    - Set `--stability.level` to `public-preview` if you are using any of these components:
-        - [discovery.process]
-        - [pyroscope.ebpf]
-        - [pyroscope.java]
-        - [pyroscope.scrape]
-        - [pyroscope.write]
-    - Set `--stability.level` to `experimental` if you are using any of the following components:
+- {{< param "PRODUCT_NAME" >}} may need to be deployed with the `--stability.level` flag in [run] to enable non-stable components:
+    - Set `--stability.level` to `experimental` if you are using the following component:
         - [otelcol.receiver.vcenter]
     - Otherwise, `--stability.level` may be omitted or set to the default value (`generally-available`).
 - When installing on Kubernetes, update your `values.yaml` file to rename the `agent` key to `alloy`.
-- If deploying {{< param "PRODUCT_NAME" >}} as a cluster:
+- If you are deploying {{< param "PRODUCT_NAME" >}} as a cluster:
     - Set the number of instances to match the number of instances in your Grafana Agent Flow cluster.
     - Don't enable auto-scaling until the migration is complete.
 

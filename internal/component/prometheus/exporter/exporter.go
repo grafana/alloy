@@ -9,9 +9,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grafana/alloy/internal/alloy/logging/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/prometheus/common/model"
@@ -75,7 +75,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.metricsHandler = c.getHttpHandler(exporter)
 			c.mut.Unlock()
 			go func() {
-				if err := exporter.Run(newCtx); err != nil {
+				if err := exporter.Run(newCtx); err != nil && err != context.Canceled {
 					level.Error(c.opts.Logger).Log("msg", "error running exporter", "err", err)
 				}
 			}()
