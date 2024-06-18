@@ -24,6 +24,7 @@ type HTTPClientConfig struct {
 	TLSConfig       TLSConfig         `alloy:"tls_config,block,optional"`
 	FollowRedirects bool              `alloy:"follow_redirects,attr,optional"`
 	EnableHTTP2     bool              `alloy:"enable_http2,attr,optional"`
+	Host            string            `alloy:"host,attr,optional"`
 }
 
 // SetToDefault implements the syntax.Defaulter
@@ -92,6 +93,7 @@ func (h *HTTPClientConfig) Convert() *config.HTTPClientConfig {
 		FollowRedirects: h.FollowRedirects,
 		EnableHTTP2:     h.EnableHTTP2,
 		ProxyConfig:     h.ProxyConfig.Convert(),
+		Host:            h.Host,
 	}
 }
 

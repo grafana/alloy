@@ -36,6 +36,7 @@ type Arguments struct {
 
 	ProxyConfig     *config.ProxyConfig `alloy:",squash"`
 	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
+	Host            string              `alloy:"host,attr,optional"`
 	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
 }
 
@@ -73,6 +74,7 @@ func (a Arguments) Convert() discovery.DiscovererConfig {
 	httpClientConfig.FollowRedirects = a.FollowRedirects
 	httpClientConfig.EnableHTTP2 = a.EnableHTTP2
 	httpClientConfig.ProxyConfig = a.ProxyConfig
+	httpClientConfig.Host = a.Host
 
 	return &prom_discovery.SDConfig{
 		RefreshInterval:  model.Duration(a.RefreshInterval),

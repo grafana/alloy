@@ -40,6 +40,7 @@ type Arguments struct {
 
 	ProxyConfig     *config.ProxyConfig `alloy:",squash"`
 	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
+	Host            string              `alloy:"host,attr,optional"`
 	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
 	TLSConfig       config.TLSConfig    `alloy:"tls_config,block,optional"`
 }
@@ -102,6 +103,7 @@ func (a Arguments) Convert() discovery.DiscovererConfig {
 	httpClientConfig.EnableHTTP2 = a.EnableHTTP2
 	httpClientConfig.TLSConfig = a.TLSConfig
 	httpClientConfig.ProxyConfig = a.ProxyConfig
+	httpClientConfig.Host = a.Host
 
 	return &prom_discovery.SDConfig{
 		Environment:          a.Environment,

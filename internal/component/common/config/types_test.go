@@ -42,6 +42,18 @@ func TestHTTPClientConfigBearerTokenFile(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestHTTPClientConfigHost(t *testing.T) {
+	var exampleAlloyConfig = `
+    host = localhost
+	follow_redirects = true
+	enable_http2 = true
+`
+
+	var httpClientConfig HTTPClientConfig
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
+	require.NoError(t, err)
+}
+
 func TestHTTPClientConfigBasicAuthPassword(t *testing.T) {
 	var exampleAlloyConfig = `
 	proxy_url = "http://0.0.0.0:11111"

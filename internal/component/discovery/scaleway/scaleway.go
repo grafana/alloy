@@ -49,6 +49,7 @@ type Arguments struct {
 	TLSConfig       config.TLSConfig    `alloy:"tls_config,block,optional"`
 	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
 	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
+	Host            string              `alloy:"host,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -124,6 +125,7 @@ func (args Arguments) Convert() discovery.DiscovererConfig {
 			TLSConfig:       *args.TLSConfig.Convert(),
 			FollowRedirects: args.FollowRedirects,
 			EnableHTTP2:     args.EnableHTTP2,
+			Host:            args.Host,
 		},
 
 		RefreshInterval: model.Duration(args.RefreshInterval),
