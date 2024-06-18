@@ -82,7 +82,7 @@ Adding more workers, decreasing the pull range, or decreasing the quantity of fi
 The last timestamp fetched by the component is recorded in the `loki_source_cloudflare_target_last_requested_end_timestamp` debug metric.
 
 All incoming Cloudflare log entries are in JSON format.
-You can make use of the `loki.process` component and a JSON processing stage to extract more labels or change the log line format.
+You can use the `loki.process` component and a JSON processing stage to extract more labels or change the log line format.
 A sample log looks like this:
 
 ```json
