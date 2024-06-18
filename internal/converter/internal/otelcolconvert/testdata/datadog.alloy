@@ -1,0 +1,12 @@
+otelcol.receiver.datadog "default" {
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+		traces  = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
