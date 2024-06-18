@@ -55,6 +55,7 @@ require (
 	github.com/grafana/alloy-remote-config v0.0.4
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/beyla v1.6.3
+	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
 	github.com/grafana/ckit v0.0.0-20230906125525-c046c99a5c04
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
 	github.com/grafana/dskit v0.0.0-20240104111617-ea101a3b86eb
@@ -250,11 +251,6 @@ require (
 	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
 	sigs.k8s.io/controller-runtime v0.17.3
 	sigs.k8s.io/yaml v1.4.0
-)
-
-require (
-	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.102.0
 )
 
 require (
