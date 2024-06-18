@@ -2,7 +2,7 @@
     _config+:: {
         enableK8sCluster: true,
         enableAlloyCluster: true,
-        enableLokiLogs: true,
+        enableLokiLogs: false,
         filterSelector: '', #use it to filter specific metric label values, ie: job=~"integrations/alloy"
         k8sClusterSelector: 'cluster=~"$cluster", namespace=~"$namespace"',
         groupSelector: if self.enableK8sCluster then self.k8sClusterSelector + ', job=~"$job"' else 'job=~"$job"',        
