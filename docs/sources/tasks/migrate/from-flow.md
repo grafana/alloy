@@ -11,7 +11,7 @@ weight: 350
 This topic describes how to perform a live migration from Grafana Agent Flow to {{< param "FULL_PRODUCT_NAME" >}} with minimal downtime.
 
 {{< admonition type="note" >}}
-This procedure is only required for live migrations from an existing Grafana Agent Flow install to {{< param "PRODUCT_NAME" >}}.
+This procedure is only required for live migrations from a Grafana Agent Flow install to {{< param "PRODUCT_NAME" >}}.
 
 If you want a fresh start with {{< param "PRODUCT_NAME" >}}, you can [uninstall Grafana Agent Flow][uninstall] and [install {{< param "PRODUCT_NAME" >}}][install].
 
@@ -21,31 +21,31 @@ If you want a fresh start with {{< param "PRODUCT_NAME" >}}, you can [uninstall 
 
 ## Before you begin
 
-* You must have an existing Grafana Agent Flow configuration to migrate.
+* You must have a Grafana Agent Flow configuration to migrate.
 * You must be running Grafana Agent Flow version v0.40 or later.
-* If auto-scaling is used:
-    * Disable auto-scaling for your Grafana Agent Flow deployment to prevent it from scaling during the migration.
+* If you use auto-scaling make sure you disable auto-scaling for your Grafana Agent Flow deployment to prevent it from scaling during the migration.
 
 ## Differences between Grafana Agent Flow and {{% param "PRODUCT_NAME" %}}
 
-* Only functionality marked _Generally available_ may be used by default. Functionality in _Experimental_ and _Public preview_ can be enabled by setting the `--stability.level` flag in [run].
+* Only functionality marked _Generally available_ may be used by default.
+You can enable functionality in _Experimental_ and _Public preview_ by setting the `--stability.level` flag in [run].
 * The default value of `--storage.path` has changed from `data-agent/` to `data-alloy/`.
 * The default value of `--server.http.memory-addr` has changed from `agent.internal:12345` to `alloy.internal:12345`.
 * Debug metrics reported by {{% param "PRODUCT_NAME" %}} are prefixed with `alloy_` instead of `agent_`.
-* "Classic modules" (`module.file`, `module.git`, `module.http`, and `module.string`) has been removed in favor of import configuration blocks.
+* The "classic modules", `module.file`, `module.git`, `module.http`, and `module.string` have been removed in favor of import configuration blocks.
 * The `prometheus.exporter.vsphere` component has been replaced by the `otelcol.receiver.vcenter` component.
 
 [run]: ../../../reference/cli/run
 
 ## Steps
 
-### Prepare the Grafana Agent Flow configuration
+### Prepare your Grafana Agent Flow configuration
 
 {{< param "PRODUCT_NAME" >}} uses the same configuration format as Grafana Agent Flow, but some functionality has been removed.
 
 Before migrating, modify your Grafana Agent Flow configuration to remove or replace any unsupported components:
 
-* Flow's "classic modules" have been removed in favor of the new modules introduced in v0.40:
+* The "classic modules" in Grafana Agent Flow have been removed in favor of the modules introduced in v0.40:
     * `module.file` is replaced by the [import.file] configuration block.
     * `module.git` is replaced by the [import.git] configuration block.
     * `module.http` is replaced by the [import.http] configuration block.
@@ -64,7 +64,8 @@ Follow the [installation instructions][install] for {{< param "PRODUCT_NAME" >}}
 
 When deploying {{< param "PRODUCT_NAME" >}}, be aware of the following settings:
 
-- {{< param "PRODUCT_NAME" >}} should be deployed with identical topology as Grafana Agent Flow. The CPU, and storage limits should match.
+- {{< param "PRODUCT_NAME" >}} should be deployed with topology that's the same as Grafana Agent Flow.
+  The CPU, and storage limits should match.
 - Custom command-line flags configured in Grafana Agent Flow should be reflected in your {{< param "PRODUCT_NAME" >}} installation.
 - {{< param "PRODUCT_NAME" >}} may need to be deployed with the `--stability.level` flag in [run] to enable non-stable components:
     - Set `--stability.level` to `experimental` if you are using the following component:
@@ -118,8 +119,8 @@ This alternative approach results in some duplicate data being sent to backends 
 
 ### Uninstall Grafana Agent Flow
 
-After you have migrated the configuration to {{< param "PRODUCT_NAME" >}}, you can uninstall Grafana Agent Flow.
+After you have completed the migration, you can uninstall Grafana Agent Flow.
 
 ### Cleanup temporary changes
 
-Auto-scaling may be re-enabled in your {{< param "PRODUCT_NAME" >}} deployment if it was disabled during the migration process.
+You can enable auto-scaling in your {{< param "PRODUCT_NAME" >}} deployment if you disabled it during the migration process.

@@ -25,7 +25,7 @@ the raw records to Loki. The decoding process goes as follows:
 - AWS Firehose sends batched requests
 - Each record is treated individually
 - For each `record` received in each request:
-  - If the `record` comes from a [CloudWatch logs subscription filter](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html#DestinationKinesisExample), it is decoded and each logging event is written to Loki
+  - If the `record` comes from a [CloudWatch logs subscription filter](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html#DestinationKinesisExample), it's decoded and each logging event is written to Loki
   - All other records are written raw to Loki
 
 The component exposes some internal labels, available for relabeling. The following tables describes internal labels available
@@ -47,7 +47,7 @@ exposed as follows:
 | `__aws_cw_matched_filters` | The list of subscription filter names that match the originating log data. The list is encoded as a comma-separated list. | `Destination,Destination2`               |
 | `__aws_cw_msg_type`        | Data messages will use the `DATA_MESSAGE` type. Sometimes CloudWatch Logs may emit Kinesis Data Streams records with a `CONTROL_MESSAGE` type, mainly for checking if the destination is reachable. | `DATA_MESSAGE`                           |
 
-See [Examples](#example) for a full example configuration showing how to enrich each log entry with these labels.
+Refer to [Examples](#example) for a full example configuration showing how to enrich each log entry with these labels.
 
 ## Usage
 
@@ -55,7 +55,7 @@ See [Examples](#example) for a full example configuration showing how to enrich 
 loki.source.awsfirehose "LABEL" {
     http {
         listen_address = "LISTEN_ADDRESS"
-        listen_port = PORT 
+        listen_port = PORT
     }
     forward_to = RECEIVER_LIST
 }
@@ -119,7 +119,7 @@ The following blocks are supported inside the definition of `loki.source.awsfire
 
 ## Exported fields
 
-`loki.source.awsfirehose` does not export any fields.
+`loki.source.awsfirehose` doesn't export any fields.
 
 ## Component health
 
