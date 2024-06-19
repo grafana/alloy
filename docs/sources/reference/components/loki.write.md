@@ -6,7 +6,7 @@ title: loki.write
 
 # loki.write
 
-`loki.write` receives log entries from other loki components and sends them over the network using Loki's `logproto` format.
+`loki.write` receives log entries from other loki components and sends them over the network using the Loki `logproto` format.
 
 Multiple `loki.write` components can be specified by giving them different labels.
 
@@ -34,20 +34,19 @@ Name              | Type          | Description                                 
 The following blocks are supported inside the definition of
 `loki.write`:
 
-Hierarchy                      | Block             | Description                                              | Required
--------------------------------|-------------------|----------------------------------------------------------|---------
-endpoint                       | [endpoint][]      | Location to send logs to.                                | no
-wal                            | [wal][]           | Write-ahead log configuration.                           | no
-endpoint > basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no
-endpoint > authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no
-endpoint > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no
-endpoint > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
-endpoint > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
-| endpoint > queue_config        | [queue_config][]  | When WAL is enabled, configures the queue client.        | no       |
+Hierarchy                      | Block             | Description                                                | Required
+-------------------------------|-------------------|------------------------------------------------------------|---------
+endpoint                       | [endpoint][]      | Location to send logs to.                                  | no
+wal                            | [wal][]           | Write-ahead log configuration.                             | no
+endpoint > basic_auth          | [basic_auth][]    | Configure `basic_auth` for authenticating to the endpoint. | no
+endpoint > authorization       | [authorization][] | Configure generic authorization to the endpoint.           | no
+endpoint > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.       | no
+endpoint > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.     | no
+endpoint > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.     | no
+endpoint > queue_config        | [queue_config][]  | When WAL is enabled, configures the queue client.          | no
 
-The `>` symbol indicates deeper levels of nesting. For example, `endpoint >
-basic_auth` refers to a `basic_auth` block defined inside an
-`endpoint` block.
+The `>` symbol indicates deeper levels of nesting.
+For example, `endpoint > basic_auth` refers to a `basic_auth` block defined inside an `endpoint` block.
 
 [endpoint]: #endpoint-block
 [wal]: #wal-block
@@ -59,8 +58,8 @@ basic_auth` refers to a `basic_auth` block defined inside an
 
 ### endpoint block
 
-The `endpoint` block describes a single location to send logs to. Multiple
-`endpoint` blocks can be provided to send logs to multiple locations.
+The `endpoint` block describes a single location to send logs to.
+You can use multiple `endpoint` blocks to send logs to multiple locations.
 
 The following arguments are supported:
 
@@ -131,8 +130,8 @@ enabled, the retry mechanism will be governed by the backoff configuration speci
 
 ### queue_config block (experimental)
 
-The optional `queue_config` block configures, when WAL is enabled (see [Write-Ahead block](#wal-block-experimental)), how the
-underlying client queues batches of logs to be sent to Loki.
+The optional `queue_config` block configures, when WAL is enabled, how the underlying client queues batches of logs sent to Loki.
+Refer to [Write-Ahead block](#wal-block-experimental) for more information.
 
 The following arguments are supported:
 
