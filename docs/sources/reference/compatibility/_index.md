@@ -86,6 +86,7 @@ The following components, grouped by namespace, _export_ Targets.
 - [prometheus.exporter.azure](../components/prometheus.exporter.azure)
 - [prometheus.exporter.blackbox](../components/prometheus.exporter.blackbox)
 - [prometheus.exporter.cadvisor](../components/prometheus.exporter.cadvisor)
+- [prometheus.exporter.catchpoint](../components/prometheus.exporter.catchpoint)
 - [prometheus.exporter.cloudwatch](../components/prometheus.exporter.cloudwatch)
 - [prometheus.exporter.consul](../components/prometheus.exporter.consul)
 - [prometheus.exporter.dnsmasq](../components/prometheus.exporter.dnsmasq)

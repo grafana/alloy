@@ -45,6 +45,8 @@ v1.2.0-rc.0
 - (_Experimental_) Add an `otelcol.receiver.datadog` component to receive
   metrics and traces from Datadog. (@carrieedwards, @jesusvazquez, @alexgreenbank, @fedetorres93)
 
+- Add a `prometheus.exporter.catchpoint` component to collect metrics from Catchpoint. (@bominrahmani)
+
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
