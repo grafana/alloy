@@ -248,8 +248,6 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
-require github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240520173028-eacad96bfe42
-
 require (
 	cloud.google.com/go v0.112.2 // indirect
 	cloud.google.com/go/auth v0.4.1 // indirect
@@ -443,6 +441,7 @@ require (
 	github.com/grafana/go-offsets-tracker v0.1.7 // indirect
 	github.com/grafana/gomemcache v0.0.0-20231204155601-7de47a8c3cb0 // indirect
 	github.com/grafana/jfr-parser v0.8.0 // indirect
+	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240520173028-eacad96bfe42
 	github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
