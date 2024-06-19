@@ -8,6 +8,7 @@ export interface PageProps {
   name: string;
   desc: string;
   icon: IconProp;
+  controls?: ReactNode;
   children?: ReactNode;
 }
 
@@ -22,6 +23,7 @@ const Page: FC<PageProps> = (props) => {
           <h1>{props.name}</h1>
           <h2>{props.desc}</h2>
         </div>
+        <div className={styles.controls}>{props.controls}</div>
       </header>
       <main>{props.children}</main>
     </div>

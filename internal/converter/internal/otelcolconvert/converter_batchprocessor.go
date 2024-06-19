@@ -60,5 +60,6 @@ func toBatchProcessor(state *State, id component.InstanceID, cfg *batchprocessor
 			Logs:    ToTokenizedConsumers(nextLogs),
 			Traces:  ToTokenizedConsumers(nextTraces),
 		},
+		DebugMetrics: common.DefaultValue[batch.Arguments]().DebugMetrics,
 	}
 }

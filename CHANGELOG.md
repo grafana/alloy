@@ -9,10 +9,40 @@ internal API changes are not present.
 
 ## Main (unreleased)
 
+v1.2.0-rc.0
+-----------------
+
+### Breaking changes
+
+- Updated OpenTelemetry to v0.102.1. (@mattdurham)
+  - Components `otelcol.receiver.otlp`,`otelcol.receiver.zipkin`,`otelcol.extension.jaeger_remote_sampling`, and `otelcol.receiver.jaeger` setting `max_request_body_size`
+    default changed from unlimited size to `20MiB`. This is due to [CVE-2024-36129](https://github.com/open-telemetry/opentelemetry-collector/security/advisories/GHSA-c74f-6mfw-mm4v).
+
 ### Breaking changes to non-GA functionality
 
 - Update Public preview `remotecfg` to use `alloy-remote-config` instead of `agent-remote-config`. The
   API has been updated to use the term `collector` over `agent`. (@erikbaranowski)
+
+- Component `otelcol.receiver.vcenter` removed `vcenter.host.network.packet.errors`, `vcenter.host.network.packet.count`, and
+  `vcenter.vm.network.packet.count`.
+  - `vcenter.host.network.packet.errors` replaced by `vcenter.host.network.packet.error.rate`.
+  - `vcenter.host.network.packet.count` replaced by `vcenter.host.network.packet.rate`.
+  - `vcenter.vm.network.packet.count` replaced by `vcenter.vm.network.packet.rate`.
+
+### Features
+
+- Add an `otelcol.exporter.kafka` component to send OTLP metrics, logs, and traces to Kafka.
+
+- Added `live debugging` to the UI. Live debugging streams data as they flow through components for debugging telemetry data.
+  Individual components must be updated to support live debugging. (@wildum)
+
+- Added live debugging support for `prometheus.relabel`. (@wildum)
+
+- (_Experimental_) Add a `otelcol.processor.deltatocumulative` component to convert metrics from
+  delta temporality to cumulative by accumulating samples in memory. (@rfratto)
+
+- (_Experimental_) Add an `otelcol.receiver.datadog` component to receive
+  metrics and traces from Datadog. (@carrieedwards, @jesusvazquez, @alexgreenbank, @fedetorres93)
 
 ### Enhancements
 
@@ -21,6 +51,7 @@ internal API changes are not present.
 
 - Added `scrape_protocols` option to `prometheus.scrape`, which allows to
   control the preferred order of scrape protocols. (@thampiotr)
+  
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
 
 - `prometheus.exporter.snowflake`: Add support for RSA key-pair authentication. (@Caleb-Hurshman)
@@ -28,24 +59,63 @@ internal API changes are not present.
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
   which removes some false-positive error log messages on Windows (@thampiotr)
 
-### Bugfixes
+- Updates `processor/probabilistic_sampler` to use new `FailedClosed` field from OTEL release v0.101.0. (@StefanKurek)
 
-- Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
+- Updates `receiver/vcenter` to use new features and bugfixes introduced in OTEL releases v0.100.0 and v0.101.0.
+  Refer to the [v0.100.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.100.0)
+  and [v0.101.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.101.0) release
+  notes for more detailed information.
+  Changes that directly affected the configuration are as follows: (@StefanKurek)
+  - The resource attribute `vcenter.datacenter.name` has been added and enabled by default for all resource types.
+  - The resource attribute `vcenter.virtual_app.inventory_path` has been added and enabled by default to
+    differentiate between resource pools and virtual apps.
+  - The resource attribute `vcenter.virtual_app.name` has been added and enabled by default to differentiate
+    between resource pools and virtual apps.
+  - The resource attribute `vcenter.vm_template.id` has been added and enabled by default to differentiate between
+    virtual machines and virtual machine templates.
+  - The resource attribute `vcenter.vm_template.name` has been added and enabled by default to differentiate between
+    virtual machines and virtual machine templates.
+  - The metric `vcenter.cluster.memory.used` has been removed.
+  - The metric `vcenter.vm.network.packet.drop.rate` has been added and enabled by default.
+  - The metric `vcenter.cluster.vm_template.count` has been added and enabled by default.
+
+- Add `yaml_decode` to standard library. (@mattdurham, @djcode)
+
+- Allow override debug metrics level for `otelcol.*` components. (@hainenber)
+
+- Add an initial lower limit of 10 seconds for the the `poll_frequency`
+  argument in the `remotecfg` block. (@tpaschalis)
+
+- Added support for NS records to `discovery.dns`. (@djcode)
+
+- Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart)
+
+- Add the `targets` argument to the `prometheus.exporter.snmp` component to support passing SNMP targets at runtime. (@wildum)
+
+- Prefix Faro measurement values with `value_` to align with the latest Faro cloud receiver updates. (@codecapitano)
+
+- Add `base64_decode` to standard library. (@hainenber)
+
+- Updated OpenTelemetry Contrib to [v0.102.0](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.102.0). (@mattdurham)
+  - `otelcol.processor.resourcedetection`: Added a `tags` config argument to the `azure` detection mechanism.
+  It exposes regex-matched Azure resource tags as OpenTelemetry resource attributes.
+
+- A new `snmp_context` configuration argument for `prometheus.exporter.snmp`
+  which overrides the `context_name` parameter in the SNMP configuration file. (@ptodev)
+
+- Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)
+
+### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
   cluster instance to another could have a staleness marker inserted and result
   in a gap in metrics (@thampiotr)
 
-- Exit Alloy immediately if the port it runs on is not available.
-  This port can be configured with `--server.http.listen-addr` or using
-  the default listen address`127.0.0.1:12345`. (@mattdurham)
+- Fix panic when `import.git` is given a revision that does not exist on the remote repo. (@hainenber)
 
-- Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
+- Fixed an issue with `loki.source.docker` where collecting logs from targets configured with multiple networks would result in errors. (@wildum)
 
-- Fix error on boot when using IPv6 advertise addresses without explicitly
-  specifying a port. (@matthewpi)
-- Fix an issue where having long component labels (>63 chars) on otelcol.auth
-  components lead to a panic. (@tpaschalis)
+- Fixed an issue where converting OpenTelemetry Collector configs with unused telemetry types resulted in those types being explicitly configured with an empty array in `output` blocks, rather than them being omitted entirely. (@rfratto)
 
 ### Other changes
 
@@ -60,11 +130,39 @@ internal API changes are not present.
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
 
-## v1.1.0
+- Upgrade Beyla from v1.5.1 to v1.6.3. (@marctc)
+
+v1.1.1
+------
+
+### Bugfixes
+
+- Fix panic when component ID contains `/` in `otelcomponent.MustNewType(ID)`.(@qclaogui)
+
+- Exit Alloy immediately if the port it runs on is not available.
+  This port can be configured with `--server.http.listen-addr` or using
+  the default listen address`127.0.0.1:12345`. (@mattdurham)
+
+- Fix a panic in `loki.source.docker` when trying to stop a target that was never started. (@wildum)
+
+- Fix error on boot when using IPv6 advertise addresses without explicitly
+  specifying a port. (@matthewpi)
+
+- Fix an issue where having long component labels (>63 chars) on otelcol.auth
+  components lead to a panic. (@tpaschalis)
+
+- Update `prometheus.exporter.snowflake` with the [latest](https://github.com/grafana/snowflake-prometheus-exporter) version of the exporter as of May 28, 2024 (@StefanKurek)
+  - Fixes issue where returned `NULL` values from database could cause unexpected errors.
+
+- Bubble up SSH key conversion error to facilitate failed `import.git`. (@hainenber)
+
+v1.1.0
+------
 
 ### Features
 
 - (_Public preview_) Add support for setting GOMEMLIMIT based on cgroup setting. (@mattdurham)
+- (_Experimental_) A new `otelcol.exporter.awss3` component for sending telemetry data to a S3 bucket. (@Imshelledin21)
 
 - (_Public preview_) Introduce BoringCrypto Docker images.
   The BoringCrypto image is tagged with the `-boringcrypto` suffix and
@@ -102,6 +200,8 @@ internal API changes are not present.
 - In `mimir.rules.kubernetes`, add support for running in a cluster of Alloy instances
   by electing a single instance as the leader for the `mimir.rules.kubernetes` component
   to avoid conflicts when making calls to the Mimir API. (@56quarters)
+
+- Add the possibility of setting custom labels for the AWS Firehose logs via `X-Amz-Firehose-Common-Attributes` header. (@andriikushch)
 
 ### Bugfixes
 

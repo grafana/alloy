@@ -33,8 +33,8 @@ beyla.ebpf "<LABEL>" {
 
 Name              | Type     | Description                                                                         | Default | Required
 ------------------|----------|-------------------------------------------------------------------------------------|---------|---------
-`open_port`       | `string` | The port of the running service for Beyla automatically instrumented with eBPF.     |         | no
-`executable_name` | `string` | The name of the executable to match for Beyla automatically instrumented with eBPF. |         | no
+`open_port`       | `string` | The port of the running service for Beyla automatically instrumented with eBPF.     | `""`    | no
+`executable_name` | `string` | The name of the executable to match for Beyla automatically instrumented with eBPF. | `""`    | no
 
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it is considered to match the selection criteria.
@@ -52,6 +52,8 @@ attributes              | [attributes][] | Configures the Beyla attributes for t
 attributes > kubernetes | [kubernetes][] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
 discovery               | [discovery][]  | Configures the discovery for instrumentable processes matching a given criteria.                   | no
 discovery > services    | [services][]   | Configures the discovery for the component.                                                        | no
+discovery > services > kubernetes    | [kubernetes services][]   | Configures the discovery for the component.                                | no
+
 output                  | [output][]     | Configures where to send received telemetry data.                                                  | yes
 
 The `>` symbol indicates deeper levels of nesting.
@@ -63,7 +65,7 @@ This block allows you to configure how some attributes for metrics and traces ar
 
 It contains the following blocks:
 
-#### kubernetes block
+#### kubernetes attributes block
 
 Name     | Type     | Description                                | Default | Required
 ---------|----------|--------------------------------------------|---------|---------
@@ -91,10 +93,10 @@ This block is used to configure the routes to match HTTP paths into user-provide
 
 Name              | Type           | Description                                                                               | Default | Required
 ------------------|----------------|-------------------------------------------------------------------------------------------|---------|---------
-`patterns`        | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property          |         | no
-`ignore_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.     |         | no
-`ignore_mode`     | `string`       | The mode to use when ignoring patterns.                                                   |         | no
-`unmatched`       | `string`       | Specifies what to do when a trace HTTP path does not match any of the `patterns` entries. |         | no
+`patterns`        | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property          | `[]`    | no
+`ignore_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.     | `[]`    | no
+`ignore_mode`     | `string`       | The mode to use when ignoring patterns.                                                   | `""`    | no
+`unmatched`       | `string`       | Specifies what to do when a trace HTTP path does not match any of the `patterns` entries. | `""`    | no
 
 `patterns` and `ignored_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
 The matcher tags can be in the `:name` or `{name}` format.
@@ -120,20 +122,38 @@ It contains the following blocks:
 ### services block
 
 In some scenarios, Beyla will instrument a wide variety of services, such as a Kubernetes DaemonSet that instruments all the services in a node.
-This block allows you to filter the services to instrument based on their metadata.
+This block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
+the instrumented processes need to match all the selector properties.
 
 Name         | Type     | Description                                                                     | Default | Required
 -------------|----------|---------------------------------------------------------------------------------|---------|---------
-`name `      | `string` | The name of the service to match.                                               |         | no
-`namespace`  | `string` | The namespace of the service to match.                                          |         | no
-`open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF. |         | no
-`exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF. |         | no
+`name `      | `string` | The name of the service to match.                                               | `""`    | no
+`namespace`  | `string` | The namespace of the service to match.                                          | `""`    | no
+`open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF. | `""`    | no
+`exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF. | `""`    | no
 
 `name` defines a name for the matching instrumented service.
 It is used to populate the `service.name` OTEL property and/or the `service_name` Prometheus property in the exported metrics/traces.
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it is considered to match the selection criteria.
 `exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
+
+### kubernetes services block
+
+This block allows you to filter the services to instrument based on their Kubernetes metadata. If you specify other selectors in the same services entry,
+the instrumented processes need to match all the selector properties.
+
+Name               | Type           | Description                                                                                                | Default | Required
+-------------------|----------------|-------------------------------------------------------------------------------------------------------------|---------|---------
+`namespace`        | `string`       | Regular expression of Kubernetes Namespaces to match.                                                       | `""`    | no
+`pod_name`         | `string`       | Regular expression of Kubernetes Pods to match.                                                             | `""`    | no
+`deployment_name`  | `string`       | Regular expression of Kubernetes Deployments to match.                                                      | `""`    | no
+`statefulset_name` | `string`       | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no
+`replicaset_name`  | `string`       | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no
+`daemonset_name`   | `string`       | Regular expression of Kubernetes DaemonSets to match.                                                       | `""`    | no
+`owner_name`       | `string`       | Regular expression of Kubernetes owners of running Pods to match.                                           | `""`    | no
+`pod_labels`       | `map(string)`  | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression. |  `{}`   | no
+
 
 ### output block
 

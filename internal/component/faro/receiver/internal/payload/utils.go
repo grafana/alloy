@@ -29,6 +29,20 @@ func KeyValFromMap(m map[string]string) *KeyVal {
 	return kv
 }
 
+// KeyValFromMap will instantiate KeyVal from a map[string]float64
+func KeyValFromFloatMap(m map[string]float64) *KeyVal {
+	kv := NewKeyVal()
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		kv.Set(k, m[k])
+	}
+	return kv
+}
+
 // MergeKeyVal will merge source in target
 func MergeKeyVal(target *KeyVal, source *KeyVal) {
 	for el := source.Oldest(); el != nil; el = el.Next() {

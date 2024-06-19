@@ -40,7 +40,7 @@ Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `brokers` | `array(string)` | Kafka brokers to connect to. | | yes
 `protocol_version` | `string` | Kafka protocol version to use. | | yes
-`topic` | `string` | Kafka topic to read from. | | no
+`topic` | `string` | Kafka topic to read from. | _See below_ | no
 `encoding` | `string` | Encoding of payload read from Kafka. | `"otlp_proto"` | no
 `group_id` | `string` | Consumer group to consume messages from. | `"otel-collector"` | no
 `client_id` | `string` | Consumer client ID to use. | `"otel-collector"` | no
@@ -118,56 +118,19 @@ The `>` symbol indicates deeper levels of nesting. For example,
 
 ### authentication block
 
-The `authentication` block holds the definition of different authentication
-mechanisms to use when connecting to Kafka brokers. It doesn't support any
-arguments and is configured fully through inner blocks.
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### plaintext block
 
-The `plaintext` block configures `PLAIN` authentication against Kafka brokers.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`username` | `string` | Username to use for `PLAIN` authentication. | | yes
-`password` | `secret` | Password to use for `PLAIN` authentication. | | yes
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-plaintext.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### sasl block
 
-The `sasl` block configures SASL authentication against Kafka brokers.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`username` | `string` | Username to use for SASL authentication. | | yes
-`password` | `secret` | Password to use for SASL authentication. | | yes
-`mechanism` | `string` | SASL mechanism to use when authenticating. | | yes
-`version` | `number` | Version of the SASL Protocol to use when authenticating. | `0` | no
-
-The `mechanism` argument can be set to one of the following strings:
-
-* `"PLAIN"`
-* `"AWS_MSK_IAM"`
-* `"SCRAM-SHA-256"`
-* `"SCRAM-SHA-512"`
-
-When `mechanism` is set to `"AWS_MSK_IAM"`, the [`aws_msk` child block][aws_msk] must also be provided.
-
-The `version` argument can be set to either `0` or `1`.
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-sasl.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### aws_msk block
 
-The `aws_msk` block configures extra parameters for SASL authentication when
-using the `AWS_MSK_IAM` mechanism.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`region` | `string` | AWS region the MSK cluster is based in. | | yes
-`broker_addr` | `string` | MSK address to connect to for authentication. | | yes
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-sasl-aws_msk.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### tls block
 
@@ -179,58 +142,15 @@ communication.
 
 ### kerberos block
 
-The `kerberos` block configures Kerberos authentication against the Kafka
-broker.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`service_name` | `string` | Kerberos service name. | | no
-`realm` | `string` | Kerberos realm. | | no
-`use_keytab` | `string` | Enables using keytab instead of password. | | no
-`username` | `string` | Kerberos username to authenticate as. | | yes
-`password` | `secret` | Kerberos password to authenticate with. | | no
-`config_file` | `string` | Path to Kerberos location (for example, `/etc/krb5.conf`). | | no
-`keytab_file` | `string` | Path to keytab file (for example, `/etc/security/kafka.keytab`). | | no
-
-When `use_keytab` is `false`, the `password` argument is required. When
-`use_keytab` is `true`, the file pointed to by the `keytab_file` argument is
-used for authentication instead. At most one of `password` or `keytab_file`
-must be provided.
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-kerberos.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### metadata block
 
-The `metadata` block configures how to retrieve and store metadata from the
-Kafka broker.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`include_all_topics` | `bool` | When true, maintains metadata for all topics. | `true` | no
-
-If the `include_all_topics` argument is `true`, `otelcol.receiver.kafka`
-maintains a full set of metadata for all topics rather than the minimal set
-that has been necessary so far. Including the full set of metadata is more
-convenient for users but can consume a substantial amount of memory if you have
-many topics and partitions.
-
-Retrieving metadata may fail if the Kafka broker is starting up at the same
-time as the `otelcol.receiver.kafka` component. The [`retry` child
-block][retry] can be provided to customize retry behavior.
+{{< docs/shared lookup="reference/components/otelcol-kafka-metadata.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### retry block
 
-The `retry` block configures how to retry retrieving metadata when retrieval
-fails.
-
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`max_retries` | `number` | How many times to reattempt retrieving metadata. | `3` | no
-`backoff` | `duration` | Time to wait between retries. | `"250ms"` | no
+{{< docs/shared lookup="reference/components/otelcol-kafka-metadata-retry.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### autocommit block
 

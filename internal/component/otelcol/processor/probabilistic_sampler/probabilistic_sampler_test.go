@@ -28,6 +28,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: probabilisticsamplerprocessor.Config{
 				SamplingPercentage: 0,
 				HashSeed:           0,
+				FailClosed:         true,
 				AttributeSource:    "traceID",
 				FromAttribute:      "",
 				SamplingPriority:   "",
@@ -38,6 +39,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 					sampling_percentage = 10
 					hash_seed = 123
+					fail_closed = false
 					attribute_source = "record"
 					from_attribute = "logID"
 					sampling_priority = "priority"
@@ -46,6 +48,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: probabilisticsamplerprocessor.Config{
 				SamplingPercentage: 10,
 				HashSeed:           123,
+				FailClosed:         false,
 				AttributeSource:    "record",
 				FromAttribute:      "logID",
 				SamplingPriority:   "priority",
@@ -121,6 +124,8 @@ func TestLogProcessing(t *testing.T) {
 	cfg := `
 			sampling_percentage = 100
 			hash_seed = 123
+			attribute_source = "traceID"
+			from_attribute = "foo"
 			output {
 				// no-op: will be overridden by test code.
 			}
@@ -177,7 +182,8 @@ func TestTraceProcessing(t *testing.T) {
 		"resourceSpans": [{
 			"scopeSpans": [{
 				"spans": [{
-					"name": "TestSpan"
+					"name": "TestSpan",
+					"traceId": "0123456789abcdef0123456789abcdef"
 				}]
 			}]
 		}]
@@ -187,7 +193,8 @@ func TestTraceProcessing(t *testing.T) {
 		"resourceSpans": [{
 			"scopeSpans": [{
 				"spans": [{
-					"name": "TestSpan"
+					"name": "TestSpan",
+					"traceId": "0123456789abcdef0123456789abcdef"
 				}]
 			}]
 		}]

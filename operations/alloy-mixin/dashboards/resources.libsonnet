@@ -1,5 +1,6 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
+local templates = import './utils/templates.libsonnet';
 local filename = 'alloy-resources.json';
 
 local pointsMixin = {
@@ -27,21 +28,18 @@ local stackedPanelMixin = {
 };
 
 {
+  local templateVariables = 
+    templates.newTemplateVariablesList(
+      filterSelector=$._config.filterSelector, 
+      enableK8sCluster=$._config.enableK8sCluster, 
+      includeInstance=true,
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
+
   [filename]:
-    dashboard.new(name='Alloy / Resources') +
-    dashboard.withDashboardsLink() +
+    dashboard.new(name='Alloy / Resources', tag=$._config.dashboardTag) +
+    dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
     dashboard.withUID(std.md5(filename)) +
-    dashboard.withTemplateVariablesMixin([
-      dashboard.newTemplateVariable('cluster', |||
-        label_values(alloy_component_controller_running_components, cluster)
-      |||),
-      dashboard.newTemplateVariable('namespace', |||
-        label_values(alloy_component_controller_running_components{cluster="$cluster"}, namespace)
-      |||),
-      dashboard.newMultiTemplateVariable('instance', |||
-        label_values(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace"}, instance)
-      |||),
-    ]) +
+    dashboard.withTemplateVariablesMixin(templateVariables) +
     // TODO(@tpaschalis) Make the annotation optional.
     dashboard.withAnnotations([
       dashboard.newLokiAnnotation('Deployments', '{cluster="$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
@@ -59,7 +57,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 0, y: 0, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='rate(alloy_resources_process_cpu_seconds_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])',
+            expr= |||
+              rate(alloy_resources_process_cpu_seconds_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -75,7 +75,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 12, y: 0, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='alloy_resources_process_resident_memory_bytes{cluster="$cluster",namespace="$namespace",instance=~"$instance"}',
+            expr= |||
+              alloy_resources_process_resident_memory_bytes{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -95,11 +97,11 @@ local stackedPanelMixin = {
             // Lots of programs export go_goroutines so we ignore anything that
             // doesn't also have an Alloy-specific metric (i.e.,
             // alloy_build_info).
-            expr=|||
-              rate(go_gc_duration_seconds_count{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[5m])
+            expr= |||
+              rate(go_gc_duration_seconds_count{%(instanceSelector)s}[5m])
               and on(instance)
-              alloy_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
-            |||,
+              alloy_build_info{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -119,11 +121,11 @@ local stackedPanelMixin = {
             // Lots of programs export go_goroutines so we ignore anything that
             // doesn't also have an Alloy-specific metric (i.e.,
             // alloy_build_info).
-            expr=|||
-              go_goroutines{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
+            expr= |||
+              go_goroutines{%(instanceSelector)s}
               and on(instance)
-              alloy_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
-            |||,
+              alloy_build_info{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -142,11 +144,11 @@ local stackedPanelMixin = {
             // Lots of programs export go_memstats_heap_inuse_bytes so we ignore
             // anything that doesn't also have an Alloy-specific metric
             // (i.e., alloy_build_info).
-            expr=|||
-              go_memstats_heap_inuse_bytes{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
+            expr= |||
+              go_memstats_heap_inuse_bytes{%(instanceSelector)s}
               and on(instance)
-              alloy_build_info{cluster="$cluster",namespace="$namespace",instance=~"$instance"}
-            |||,
+              alloy_build_info{%(instanceSelector)s}
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -167,9 +169,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 0, y: 16, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              rate(alloy_resources_machine_rx_bytes_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])
-            |||,
+            expr= |||
+              rate(alloy_resources_machine_rx_bytes_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])
@@ -190,9 +192,9 @@ local stackedPanelMixin = {
         panel.withPosition({ x: 12, y: 16, w: 12, h: 8 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              rate(alloy_resources_machine_tx_bytes_total{cluster="$cluster",namespace="$namespace",instance=~"$instance"}[$__rate_interval])
-            |||,
+            expr= |||
+              rate(alloy_resources_machine_tx_bytes_total{%(instanceSelector)s}[$__rate_interval])
+            ||| % $._config,
             legendFormat='{{instance}}'
           ),
         ])

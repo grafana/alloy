@@ -2,6 +2,7 @@
 package stdlib
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/grafana/alloy/syntax/internal/value"
 	"github.com/ohler55/ojg/jp"
 	"github.com/ohler55/ojg/oj"
+	"gopkg.in/yaml.v3"
 )
 
 // Identifiers holds a list of stdlib identifiers by name. All interface{}
@@ -81,6 +83,23 @@ var Identifiers = map[string]interface{}{
 			return nil, err
 		}
 		return res, nil
+	},
+
+	"yaml_decode": func(in string) (interface{}, error) {
+		var res interface{}
+		err := yaml.Unmarshal([]byte(in), &res)
+		if err != nil {
+			return nil, err
+		}
+		return res, nil
+	},
+
+	"base64_decode": func(in string) (interface{}, error) {
+		decoded, err := base64.StdEncoding.DecodeString(in)
+		if err != nil {
+			return nil, err
+		}
+		return decoded, nil
 	},
 
 	"json_path": func(jsonString string, path string) (interface{}, error) {

@@ -2,13 +2,13 @@
 // schemaVersion present in Grafana 9.
 
 {
-  new(name=''):: {
+  new(name='', tag='alloy-mixin'):: {
     title: name,
     timezone: 'utc',
     refresh: '10s',
     schemaVersion: 36,
     graphTooltip: 1,  // shared crosshair for all graphs
-    tags: ['alloy-mixin'],
+    tags: [tag],
     templating: {
       list: [{
         name: 'datasource',
@@ -66,9 +66,9 @@
     },
   },
 
-  newTemplateVariable(name, query):: {
+  newTemplateVariable(name, query, setenceCaseLabels=false):: {
     name: name,
-    label: name,
+    label: if setenceCaseLabels then $.toSentenceCase(name) else name,
     type: 'query',
     query: {
       query: query,
@@ -76,7 +76,7 @@
     },
     datasource: '${datasource}',
     refresh: 2,
-    sort: 2,
+    sort: 2,    
   },
 
   newLokiAnnotation(name, expression, color):: {
@@ -89,10 +89,10 @@
     titleFormat: '{{cluster}}/{{namespace}}',
   },
 
-  newMultiTemplateVariable(name, query):: $.newTemplateVariable(name, query) {
+  newMultiTemplateVariable(name, query, setenceCaseLabels=false):: $.newTemplateVariable(name, query, setenceCaseLabels) {
+    multi: true,
     allValue: '.*',
     includeAll: true,
-    multi: true,
   },
 
   withPanelsMixin(panels):: { panels+: panels },
@@ -114,7 +114,7 @@
     }],
   },
 
-  withDashboardsLink():: {
+  withDashboardsLink(tag='alloy-mixin'):: {
     links+: [{
       title: 'Dashboards',
       type: 'dashboards',
@@ -122,8 +122,11 @@
       icon: 'external link',
       includeVars: true,
       keepTime: true,
-      tags: ['alloy-mixin'],
+      tags: [tag],
       targetBlank: false,
     }],
   },
+
+  toSentenceCase(string)::
+    std.asciiUpper(string[0]) + std.slice(string, 1, std.length(string), 1),
 }

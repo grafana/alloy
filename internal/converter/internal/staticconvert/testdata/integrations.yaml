@@ -171,16 +171,18 @@ integrations:
   snmp:
     enabled: true
     snmp_targets:
-      - name: network_switch_1
+      - name: network_switch.1
         address: 192.168.1.2
         module: if_mib
         walk_params: public
         auth: public
+        snmp_context: dummyContext
       - name: network_router_2
         address: 192.168.1.3
         module: mikrotik
         walk_params: private
         auth: private
+        snmp_context: dummyContext
   snowflake:
     enabled: true
     account_name: XXXXXXX-YYYYYYY
