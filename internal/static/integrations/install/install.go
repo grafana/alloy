@@ -11,6 +11,7 @@ import (
 	_ "github.com/grafana/alloy/internal/static/integrations/azure_exporter"         // register azure_exporter
 	_ "github.com/grafana/alloy/internal/static/integrations/blackbox_exporter"      // register blackbox_exporter
 	_ "github.com/grafana/alloy/internal/static/integrations/cadvisor"               // register cadvisor
+	_ "github.com/grafana/alloy/internal/static/integrations/catchpoint_exporter"    // register catchpoint_exporter
 	_ "github.com/grafana/alloy/internal/static/integrations/cloudwatch_exporter"    // register cloudwatch_exporter
 	_ "github.com/grafana/alloy/internal/static/integrations/consul_exporter"        // register consul_exporter
 	_ "github.com/grafana/alloy/internal/static/integrations/dnsmasq_exporter"       // register dnsmasq_exporter
