@@ -1423,7 +1423,7 @@ the stage should attempt to parse as a timestamp.
 
 The `format` field defines _how_ that source should be parsed.
 
-First off, the `format` can be set to one of the following shorthand values for commonly-used forms:
+The `format` can be set to one of the following shorthand values for commonly used forms:
 
 ```
 ANSIC: Mon Jan _2 15:04:05 2006
