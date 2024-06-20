@@ -7,7 +7,8 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-## Main (unreleased)
+Main (unreleased)
+-----------------
 
 v1.2.0-rc.0
 -----------------
@@ -182,14 +183,14 @@ v1.1.0
 
 - Update `prometheus.exporter.kafka` with the following functionalities (@wildum):
 
-  - GSSAPI config
-  - enable/disable PA_FX_FAST
-  - set a TLS server name
-  - show the offset/lag for all consumer group or only the connected ones
-  - set the minimum number of topics to monitor
-  - enable/disable auto-creation of requested topics if they don't already exist
-  - regex to exclude topics / groups
-  - added metric kafka_broker_info
+  * GSSAPI config
+  * enable/disable PA_FX_FAST
+  * set a TLS server name
+  * show the offset/lag for all consumer group or only the connected ones
+  * set the minimum number of topics to monitor
+  * enable/disable auto*creation of requested topics if they don't already exist
+  * regex to exclude topics / groups
+  * added metric kafka_broker_info
 
 - In `prometheus.exporter.kafka`, the interpolation table used to compute estimated lag metrics is now pruned
   on `metadata_refresh_interval` instead of `prune_interval_seconds`. (@wildum)
@@ -234,8 +235,8 @@ v1.1.0
 - Fix an issue where `loki.source.docker` stops collecting logs after a container restart. (@wildum)
 
 - Upgrading `pyroscope/ebpf` from 0.4.6 to 0.4.7 (@korniltsev):
-  - detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
-  - treat elf files with short build id (8 bytes) properly
+  * detect libc version properly when libc file name is libc-2.31.so and not libc.so.6
+  * treat elf files with short build id (8 bytes) properly
 
 ### Other changes
 
@@ -317,7 +318,8 @@ v1.1.0
 
 - Use Go 1.22.3 for builds. (@kminehart)
 
-## v1.0.0
+v1.0.0
+------
 
 ### Features
 
