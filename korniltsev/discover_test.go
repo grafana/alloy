@@ -280,7 +280,8 @@ func getComponent(t *testing.T, cluster string, name string, label string) (stri
 	fmt.Printf("%s : %d\n", label, len(targes))
 	ls := []string{}
 	for _, targe := range targes {
-		ls = append(ls, fmt.Sprintf("%s", getTargetPQ(targe)))
+		json, _ := json.Marshal(targe)
+		ls = append(ls, fmt.Sprintf("%s %s", getTargetPQ(targe), string(json)))
 	}
 
 	slices.Sort(ls)
