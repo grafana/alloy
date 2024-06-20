@@ -7,7 +7,8 @@ weight: 10
 
 ## Get started with {{% param "PRODUCT_NAME" %}}
 
-This tutorial shows you how to configure Alloy to collect logs from your local machine and send them to Loki, running in a local Grafana stack.
+This tutorial shows you how to configure Alloy to collect logs from your local machine, filter non-essential log lines, and send them to Loki, running in a local Grafana stack. 
+
 This process will enable you to query and visualize the logs sent to Loki using the Grafana dashboard.
 
 To follow this tutorial, you must have a basic understanding of Alloy and telemetry collection in general.
