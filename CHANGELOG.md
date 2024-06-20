@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes to non-GA functionality
+
+- Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
+
 v1.2.0-rc.0
 -----------------
 

@@ -77,7 +77,7 @@ type Options struct {
 type Arguments struct {
 	URL              string                   `alloy:"url,attr,optional"`
 	ID               string                   `alloy:"id,attr,optional"`
-	Metadata         map[string]string        `alloy:"metadata,attr,optional"`
+	Attributes       map[string]string        `alloy:"attributes,attr,optional"`
 	PollFrequency    time.Duration            `alloy:"poll_frequency,attr,optional"`
 	HTTPClientConfig *config.HTTPClientConfig `alloy:",squash"`
 }
@@ -86,7 +86,7 @@ type Arguments struct {
 func GetDefaultArguments() Arguments {
 	return Arguments{
 		ID:               alloyseed.Get().UID,
-		Metadata:         make(map[string]string),
+		Attributes:       make(map[string]string),
 		PollFrequency:    1 * time.Minute,
 		HTTPClientConfig: config.CloneDefaultHTTPClientConfig(),
 	}
@@ -328,8 +328,8 @@ func (s *Service) fetchLocal() {
 func (s *Service) getAPIConfig() ([]byte, error) {
 	s.mut.RLock()
 	req := connect.NewRequest(&collectorv1.GetConfigRequest{
-		Id:       s.args.ID,
-		Metadata: s.args.Metadata,
+		Id:         s.args.ID,
+		Attributes: s.args.Attributes,
 	})
 	client := s.asClient
 	s.mut.RUnlock()
