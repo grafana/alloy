@@ -26,16 +26,15 @@ This topic describes how to:
 
 ## Before you begin
 
-* You must have an existing Grafana Agent Static configuration.
-* You must be running Grafana Agent Static version v0.40 or later.
+* You must have a Grafana Agent Static configuration.
+* You must be familiar with the [Components][] concept in {{< param "PRODUCT_NAME" >}}.
 
 ## Convert a Grafana Agent Static configuration
 
 To fully migrate Grafana Agent Static to {{< param "PRODUCT_NAME" >}}, you must convert your Grafana Agent Static configuration into an {{< param "PRODUCT_NAME" >}} configuration.
-This conversion will enable you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
+This conversion allows you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
 
-> In this task, you will use the [convert][] CLI command to output an {{< param "PRODUCT_NAME" >}}
-> configuration from a Static configuration.
+> In this task, you use the [convert][] CLI command to output an {{< param "PRODUCT_NAME" >}} configuration from a Grafana Agent Static configuration.
 
 1. Open a terminal window and run the following command.
 
@@ -45,7 +44,7 @@ This conversion will enable you to take full advantage of the many additional fe
 
    Replace the following:
 
-    * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
+    * _`<INPUT_CONFIG_PATH>`_: The full path to the configuration file for Grafana Agent Static.
     * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 1. [Run][run alloy] {{< param "PRODUCT_NAME" >}} using the new {{< param "PRODUCT_NAME" >}} configuration from _`<OUTPUT_CONFIG_PATH>`_:
@@ -66,7 +65,7 @@ This conversion will enable you to take full advantage of the many additional fe
 
    Replace the following:
 
-   * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the configuration file for Grafana Agent Static.
    * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 1. You can use the `--report` flag to output a diagnostic report.
@@ -77,7 +76,7 @@ This conversion will enable you to take full advantage of the many additional fe
 
    Replace the following:
 
-   * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the configuration file for Grafana Agent Static.
    * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
    * _`<OUTPUT_REPORT_PATH>`_: The output path for the report.
 
@@ -89,18 +88,18 @@ This conversion will enable you to take full advantage of the many additional fe
 
 ## Run a Grafana Agent Static mode configuration
 
-If you’re not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Grafana Agent Static configuration.
-The `--config.format=static` flag tells {{< param "PRODUCT_NAME" >}} to convert your Grafana Agent Static configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the new configuration.
-This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your existing Grafana Agent Static configuration infrastructure.
+If you’re not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your Grafana Agent Static configuration.
+The `--config.format=static` flag tells {{< param "PRODUCT_NAME" >}} to convert your Grafana Agent Static configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the configuration.
+This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your Grafana Agent Static configuration infrastructure.
 
-> In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Static configuration.
+> In this task, you use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Grafana Agent Static configuration.
 
 [Run][] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=static`.
 Your configuration file must be a valid Grafana Agent Static configuration file.
 
 ### Debugging
 
-1. You can follow the convert CLI command [debugging][] instructions to generate a diagnostic report.
+1. Follow the convert CLI command [debugging][] instructions to generate a diagnostic report.
 
 1. Refer to the {{< param "PRODUCT_NAME" >}} [debugging UI][UI] for more information about running {{< param "PRODUCT_NAME" >}}.
 
@@ -109,7 +108,7 @@ Your configuration file must be a valid Grafana Agent Static configuration file.
 
    {{< admonition type="caution" >}}
    If you bypass the errors, the behavior of the converted configuration may not match the original Grafana Agent Static configuration.
-   Do not use this flag in a production environment.
+   Don't use this flag in a production environment.
    {{< /admonition >}}
 
 ## Example
@@ -180,10 +179,10 @@ alloy convert --source-format=static --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG
 
 Replace the following:
 
-* _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
+* _`<INPUT_CONFIG_PATH>`_: The full path to the configuration file for Grafana Agent Static.
 * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
-The new {{< param "PRODUCT_NAME" >}} configuration file looks like this:
+The {{< param "PRODUCT_NAME" >}} configuration file looks like this:
 
 ```alloy
 prometheus.scrape "metrics_test_local_agent" {
@@ -270,10 +269,10 @@ alloy convert --source-format=static --extra-args="-enable-features=integrations
 ```
 
  Replace the following:
-   * _`<INPUT_CONFIG_PATH>`_: The full path to the Grafana Agent Static configuration.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the configuration file for Grafana Agent Static.
    * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
-## Environment Vars
+## Environment variables
 
 You can use the `-config.expand-env` command line flag to interpret environment variables in your Grafana Agent Static configuration.
 You can pass these flags to [convert][] with `--extra-args="-config.expand-env"` or to [run][] with `--config.extra-args="-config.expand-env"`.
@@ -283,7 +282,7 @@ You can pass these flags to [convert][] with `--extra-args="-config.expand-env"`
 
 ## Limitations
 
-Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_NAME" >}} will issue warnings or errors where the conversion can't be performed.
+Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_NAME" >}} issues warnings or errors if the conversion can't be done.
 
 After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} configuration file and verify that it's correct before starting to use it in a production environment.
 
@@ -291,21 +290,18 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 
 * The [Agent Management][] configuration options can't be automatically converted to {{< param "PRODUCT_NAME" >}}.
   Any additional unsupported features are returned as errors during conversion.
-* There is no gRPC server to configure for {{< param "PRODUCT_NAME" >}}, as any non-default configuration will show as unsupported during the conversion.
-* Check if you are using any extra command line arguments with Static that aren't present in your configuration file. For example, `-server.http.address`.
+* There is no gRPC server to configure for {{< param "PRODUCT_NAME" >}}. Any non-default configuration shows as unsupported during the conversion.
+* Check if you are using any extra command line arguments with Grafana Agent Static that aren't present in your configuration file. For example, `-server.http.address`.
 * Check if you are using any environment variables in your Grafana Agent Static configuration.
-  These will be evaluated during conversion and you may want to replace them with the {{< param "PRODUCT_NAME" >}} Standard library [env][] function after conversion.
+  These are evaluated during conversion, and you may want to replace them with the {{< param "PRODUCT_NAME" >}} Standard library [env][] function after conversion.
 * Review additional [Prometheus Limitations][] for limitations specific to your [Metrics][] configuration.
 * Review additional [Promtail Limitations][] for limitations specific to your [Logs][] configuration.
-* The logs produced by {{< param "PRODUCT_NAME" >}} mode will differ from those produced by Static.
+* The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Grafana Agent Static.
 * {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
 
 [debugging]: #debugging
 [example]: #example
-
-<!-- ToDo: Verify URL path -->
 [Static]: https://grafana.com/docs/agent/latest/static
-
 [prometheus.scrape]: ../../../reference/components/prometheus.scrape/
 [prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
 [local.file_match]: ../../../reference/components/local.file_match/
@@ -318,16 +314,11 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [run alloy]: ../../../get-started/run/
 [DebuggingUI]: ../../debug/
 [configuration]: ../../../concepts/configuration-syntax/
-
-<!--ToDo: Check path -->
 [Integrations next]: https://grafana.com/docs/agent/latest/static/configuration/integrations/integrations-next/
 [Agent Management]: https://grafana.com/docs/agent/latest/static/configuration/agent-management/
-
 [env]: ../../../reference/stdlib/env/
 [Prometheus Limitations]: ../from-prometheus/#limitations
 [Promtail Limitations]: ../from-promtail/#limitations
-
-<!--ToDo: Check path -->
 [Metrics]: https://grafana.com/docs/agent/latest/static/configuration/metrics-config/
 [Logs]: https://grafana.com/docs/agent/latest/static/configuration/logs-config/
 [UI]: ../../debug/#alloy-ui
