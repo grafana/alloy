@@ -188,7 +188,7 @@ v1.1.0
   * set a TLS server name
   * show the offset/lag for all consumer group or only the connected ones
   * set the minimum number of topics to monitor
-  * enable/disable auto*creation of requested topics if they don't already exist
+  * enable/disable auto-creation of requested topics if they don't already exist
   * regex to exclude topics / groups
   * added metric kafka_broker_info
 
