@@ -39,7 +39,7 @@ func defaultArgs() Arguments {
 	return Arguments{
 		TTL:       2 * time.Hour,
 		Evict:     1 * time.Hour,
-		BatchSize: 256 * 1024 * 1024,
+		BatchSize: 32 * 1024 * 1024,
 		FlushTime: 30 * time.Second,
 	}
 }

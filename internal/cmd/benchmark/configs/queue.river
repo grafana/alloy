@@ -3,7 +3,7 @@ logging {
 }
 
 discovery.http "disco" {
-	url = env("DISCOVERY")
+	url  = "http://localhost:8080/discovery"
 }
 
 prometheus.scrape "scraper" {
@@ -70,7 +70,7 @@ prometheus.scrape "data" {
 prometheus.remote.queue "empty" {
   flush_time = "1m"
 	endpoint {
-		url = "http://localhost:8888/post"
+		url = "http://localhost:8080/post"
 		headers = {
 			from = env("RUNTYPE"),
 		}
