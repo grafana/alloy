@@ -26,13 +26,17 @@ loki.source.api "LABEL" {
 }
 ```
 
-The component will start HTTP server on the configured port and address with the following endpoints:
+The component will start an HTTP server on the configured port and address with the following endpoints:
 
 - `/loki/api/v1/push` - accepting `POST` requests compatible with [Loki push API][loki-push-api], for example, from another {{< param "PRODUCT_NAME" >}}'s [`loki.write`][loki.write] component.
-- `/loki/api/v1/raw` - accepting `POST` requests with newline-delimited log lines in body. This can be used to send NDJSON or plaintext logs. This is compatible with promtail's push API endpoint - see [promtail's documentation][promtail-push-api] for more information. NOTE: when this endpoint is used, the incoming timestamps cannot be used and the `use_incoming_timestamp = true` setting will be ignored.
-- `/ready` - accepting `GET` requests - can be used to confirm the server is reachable and healthy.
-- `/api/v1/push` - internally reroutes to `/loki/api/v1/push`
-- `/api/v1/raw` - internally reroutes to `/loki/api/v1/raw`
+- `/loki/api/v1/raw` - accepting `POST` requests with newline-delimited log lines in body.
+   This can be used to send NDJSON or plain text logs.
+   This is compatible with the Promtail push API endpoint.
+   Refer to the [Promtail documentation][promtail-push-api] for more information.
+   When this endpoint is used, the incoming timestamps can't be used and the `use_incoming_timestamp = true` setting will be ignored.
+- `/ready` - accepting `GET` requests. Can be used to confirm the server is reachable and healthy.
+- `/api/v1/push` - internally reroutes to `/loki/api/v1/push`.
+- `/api/v1/raw` - internally reroutes to `/loki/api/v1/raw`.
 
 
 [promtail-push-api]: https://grafana.com/docs/loki/latest/clients/promtail/configuration/#loki_push_api
@@ -48,8 +52,7 @@ Name                     | Type                 | Description                   
 `labels`                 | `map(string)`        | The labels to associate with each received logs record.    | `{}`    | no
 `relabel_rules`          | `RelabelRules`       | Relabeling rules to apply on log entries.                  | `{}`    | no
 
-The `relabel_rules` field can make use of the `rules` export value from a
-[`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
+The `relabel_rules` field can make use of the `rules` export value from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 
 [loki.relabel]: ../loki.relabel/
 
@@ -69,7 +72,7 @@ Hierarchy | Name     | Description                                        | Requ
 
 ## Exported fields
 
-`loki.source.api` does not export any fields.
+`loki.source.api` doesn't export any fields.
 
 ## Component health
 
@@ -86,7 +89,9 @@ The following are some of the metrics that are exposed when this component is us
 
 ## Example
 
-This example starts an HTTP server on `0.0.0.0` address and port `9999`. The server receives log entries and forwards them to a `loki.write` component while adding a `forwarded="true"` label. The `loki.write` component will send the logs to the specified loki instance using basic auth credentials provided.
+This example starts an HTTP server on `0.0.0.0` address and port `9999`.
+The server receives log entries and forwards them to a `loki.write` component while adding a `forwarded="true"` label.
+The `loki.write` component will send the logs to the specified loki instance using basic auth credentials provided.
 
 ```alloy
 loki.write "local" {

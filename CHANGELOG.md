@@ -10,6 +10,13 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes to non-GA functionality
+
+- Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
+
+v1.2.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - Updated OpenTelemetry to v0.102.1. (@mattdurham)
@@ -42,6 +49,8 @@ Main (unreleased)
 - (_Experimental_) Add an `otelcol.receiver.datadog` component to receive
   metrics and traces from Datadog. (@carrieedwards, @jesusvazquez, @alexgreenbank, @fedetorres93)
 
+- Add a `prometheus.exporter.catchpoint` component to collect metrics from Catchpoint. (@bominrahmani)
+
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
@@ -49,8 +58,10 @@ Main (unreleased)
 
 - Added `scrape_protocols` option to `prometheus.scrape`, which allows to
   control the preferred order of scrape protocols. (@thampiotr)
-
+  
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
+
+- `prometheus.exporter.snowflake`: Add support for RSA key-pair authentication. (@Caleb-Hurshman)
 
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
   which removes some false-positive error log messages on Windows (@thampiotr)
@@ -81,6 +92,8 @@ Main (unreleased)
 
 - Add an initial lower limit of 10 seconds for the the `poll_frequency`
   argument in the `remotecfg` block. (@tpaschalis)
+
+- Add a constant jitter to `remotecfg` service's polling. (@tpaschalis)
 
 - Added support for NS records to `discovery.dns`. (@djcode)
 
@@ -181,6 +194,7 @@ v1.1.0
 ### Enhancements
 
 - Update `prometheus.exporter.kafka` with the following functionalities (@wildum):
+
   * GSSAPI config
   * enable/disable PA_FX_FAST
   * set a TLS server name
@@ -262,6 +276,7 @@ v1.1.0
   Modern container runtimes allow binding to unprivileged ports as non-root. (@BlackDex)
 
 - Upgrading from OpenTelemetry v0.96.0 to v0.99.0.
+
   - `otelcol.processor.batch`: Prevent starting unnecessary goroutines.
     https://github.com/open-telemetry/opentelemetry-collector/issues/9739
   - `otelcol.exporter.otlp`: Checks for port in the config validation for the otlpexporter.
