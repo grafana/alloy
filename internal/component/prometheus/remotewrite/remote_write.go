@@ -77,7 +77,6 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
 
 	walLogger := log.With(o.Logger, "subcomponent", "wal")
-	// Need to translate the metrics into a different name to preserve backwards compatibility.
 	walStorage, err := agent.Open(walLogger, o.Registerer, remoteStore, o.DataPath, agent.DefaultOptions())
 	if err != nil {
 		return nil, err

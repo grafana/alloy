@@ -21,6 +21,8 @@ func (t translator) Gather() ([]*dto.MetricFamily, error) {
 	if err != nil {
 		return nil, err
 	}
+	// To preserve backwards compatibility for metrics we need to ensure the name for metrics used on official dashboards
+	// stays the same.
 	for _, m := range metrics {
 		switch *m.Name {
 		case "prometheus_agent_active_series":
