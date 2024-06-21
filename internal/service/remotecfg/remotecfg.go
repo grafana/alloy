@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util/jitter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -31,6 +32,8 @@ func getHash(in []byte) string {
 	fnvHash.Write(in)
 	return fmt.Sprintf("%x", fnvHash.Sum(nil))
 }
+
+const baseJitter = 100 * time.Millisecond
 
 // Service implements a service for remote configuration.
 // The default value of ch is nil; this means it will block forever if the
@@ -46,8 +49,7 @@ type Service struct {
 
 	mut               sync.RWMutex
 	asClient          collectorv1connect.CollectorServiceClient
-	ch                <-chan time.Time
-	ticker            *time.Ticker
+	ticker            *jitter.Ticker
 	dataPath          string
 	currentConfigHash string
 	metrics           *metrics
@@ -131,7 +133,7 @@ func New(opts Options) (*Service, error) {
 
 	return &Service{
 		opts:   opts,
-		ticker: time.NewTicker(math.MaxInt64),
+		ticker: jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
 	}, nil
 }
 
@@ -210,7 +212,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	for {
 		select {
-		case <-s.ch:
+		case <-s.ticker.C:
 			err := s.fetchRemote()
 			if err != nil {
 				level.Error(s.opts.Logger).Log("msg", "failed to fetch remote configuration from the API", "err", err)
@@ -230,8 +232,7 @@ func (s *Service) Update(newConfig any) error {
 	// it. Make sure we stop everything gracefully before returning.
 	if newArgs.URL == "" {
 		s.mut.Lock()
-		s.ch = nil
-		s.ticker.Reset(math.MaxInt64)
+		s.ticker.Reset(math.MaxInt64 - baseJitter) // avoid overflowing
 		s.asClient = noopClient{}
 		s.args.HTTPClientConfig = config.CloneDefaultHTTPClientConfig()
 		s.mut.Unlock()
@@ -247,7 +248,6 @@ func (s *Service) Update(newConfig any) error {
 	}
 	s.dataPath = filepath.Join(s.opts.StoragePath, ServiceName, hash)
 	s.ticker.Reset(newArgs.PollFrequency)
-	s.ch = s.ticker.C
 	// Update the HTTP client last since it might fail.
 	if !reflect.DeepEqual(s.args.HTTPClientConfig, newArgs.HTTPClientConfig) {
 		httpClient, err := commonconfig.NewClientFromConfig(*newArgs.HTTPClientConfig.Convert(), "remoteconfig")
