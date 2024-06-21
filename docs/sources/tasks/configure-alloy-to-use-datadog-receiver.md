@@ -33,7 +33,7 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 1. Add the following `otelcol.exporter.otlp` component to your configuration file.
 
    ```alloy
-   otelcol.exporter.otlp “default” {
+   otelcol.exporter.otlp "default" {
      client {
        endpoint = "<OTLP_ENDPOINT_URL>"
        auth     = otelcol.auth.basic.auth.handler
@@ -64,9 +64,10 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 1. Add the following `otelcol.processor.batch` component to your configuration file.
 
    ```alloy
-   otelcol.processor.batch “example” {
+   otelcol.processor.batch "default" {
      output {
        metrics = [otelcol.exporter.otlp.default.input]
+       traces  = [otelcol.exporter.otlp.default.input]
      }
    }
    ```
@@ -74,7 +75,7 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 1. Add the following `otelcol.processor.deltatocumulative` component to your configuration file.
 
    ```alloy
-   otelcol.processor.deltatocumulative “example” {
+   otelcol.processor.deltatocumulative "default" {
      max_stale = “<MAX_STALE>”
      max_streams = <MAX_STREAMS>
      output {
@@ -91,10 +92,11 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 1. Add the following `otelcol.receiver.datadog` component to your configuration file.
 
    ```alloy
-   otelcol.receiver.datadog “example” {
+   otelcol.receiver.datadog "default" {
      endpoint = “<HOST>:<PORT>”
      output {
-       metrics = [otelcol.processor.deltatocumulative.example.input]
+       metrics = [otelcol.processor.deltatocumulative.default.input]
+       traces  = [otelcol.processor.batch.default.input]
      }
    }
    ```
