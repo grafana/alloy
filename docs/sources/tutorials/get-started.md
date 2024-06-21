@@ -144,7 +144,7 @@ This configuration creates a [loki.source.file][] component named `log_scrape`, 
 
 ### Third component: Filter non-essential logs 
 
-Filtering non-essential logs before shipping them to a data source can help you manage log volumes to reduce costs. The filtering strategy of each organization will differ as they have different monitoring needs and setups. 
+Filtering non-essential logs before sending them to a data source can help you manage log volumes to reduce costs. The filtering strategy of each organization will differ as they have different monitoring needs and setups. 
 
 The following example is intended to demonstrate how logs can be filtered out (“dropped”) before being shipped to Loki. 
 
