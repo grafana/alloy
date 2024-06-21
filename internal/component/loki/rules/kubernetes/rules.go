@@ -80,7 +80,6 @@ type Component struct {
 	currentState commonK8s.RuleGroupsByNamespace
 
 	leader         leadership
-	eventProcessor *eventProcessor
 	clusterUpdates chan struct{}
 
 	metrics   *metrics
@@ -338,7 +337,7 @@ func (c *Component) shutdown() {
 
 // syncState asks the eventProcessor to sync rule state from the Loki Ruler. It does
 // not block waiting for state to be synced.
-func (c *Component) syncState() {
+func (c *Component) syncState(ctx context.Context) {
 	if err := c.syncLoki(ctx); err != nil {
 		return err
 	}
