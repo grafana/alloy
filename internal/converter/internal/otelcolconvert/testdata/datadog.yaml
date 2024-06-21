@@ -1,0 +1,17 @@
+receivers:
+  datadog:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    metrics:
+      receivers: [datadog]
+      processors: []
+      exporters: [otlp]
+    traces:
+      receivers: [datadog]
+      processors: []
+      exporters: [otlp]

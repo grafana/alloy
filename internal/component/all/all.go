@@ -78,6 +78,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling" // Import otelcol.extension.jaeger_remote_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/attributes"             // Import otelcol.processor.attributes
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/batch"                  // Import otelcol.processor.batch
+	_ "github.com/grafana/alloy/internal/component/otelcol/processor/deltatocumulative"      // Import otelcol.processor.deltatocumulative
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/discovery"              // Import otelcol.processor.discovery
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/filter"                 // Import otelcol.processor.filter
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/k8sattributes"          // Import otelcol.processor.k8sattributes
@@ -87,6 +88,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/span"                   // Import otelcol.processor.span
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/tail_sampling"          // Import otelcol.processor.tail_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/transform"              // Import otelcol.processor.transform
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/datadog"                 // Import otelcol.receiver.datadog
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/file_stats"              // Import otelcol.receiver.file_stats
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/jaeger"                  // Import otelcol.receiver.jaeger
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"                   // Import otelcol.receiver.kafka
@@ -100,6 +102,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/azure"                // Import prometheus.exporter.azure
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/blackbox"             // Import prometheus.exporter.blackbox
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/cadvisor"             // Import prometheus.exporter.cadvisor
+	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/catchpoint"           // Import prometheus.exporter.catchpoint
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/cloudwatch"           // Import prometheus.exporter.cloudwatch
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/consul"               // Import prometheus.exporter.consul
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/dnsmasq"              // Import prometheus.exporter.dnsmasq

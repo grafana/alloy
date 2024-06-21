@@ -174,6 +174,9 @@ func (state *State) Next(c component.InstanceID, dataType component.DataType) []
 		})
 	}
 
+	if len(ids) == 0 {
+		return nil
+	}
 	return ids
 }
 

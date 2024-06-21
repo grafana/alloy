@@ -16,6 +16,13 @@ jobs:
         owner: grafana
         repositories: alloy,homebrew-grafana
 
+    # These need to be hard-coded to the bot being used; ideally in the future
+    # we can find a way to automatically determine this based on the token.
+    - name: Setup Git
+      run: |
+        git config --global user.name "grafana-alloybot[bot]"
+        git config --global user.email "879451+grafana-alloybot[bot]@users.noreply.github.com"
+
     - name: Get latest release
       uses: rez0n/actions-github-release@main
       id: latest_release
@@ -24,19 +31,23 @@ jobs:
         repository: "${{ github.repository }}"
         type: "stable"
 
+    - name: Setup Homebrew
+      uses: Homebrew/actions/setup-homebrew@master
+      with:
+        token: ${{ steps.app-token.outputs.token }}
+
+    - name: Tap Grafana formula repository
+      run: brew tap grafana/grafana
+
     - name: Update Homebrew formula
       if: 'steps.latest_release.outputs.release_id == github.event.release.id'
-      uses: dawidd6/action-homebrew-bump-formula@v3
-      with:
-        # Required, custom GitHub access token with the 'public_repo' and 'workflow' scopes
-        token: ${{ steps.app-token.outputs.token }}
-        # Optional, defaults to homebrew/core
-        tap: grafana/grafana
-        # Formula name, required
-        formula: alloy
-        # Optional, will be determined automatically
-        tag: ${{github.ref}}
-        # Optional, will be determined automatically
-        revision: ${{github.sha}}
-        # Optional, if don't want to check for already open PRs
-        force: false # true
+      run: |
+        brew bump-formula-pr \
+          --no-browse \
+          --no-audit \
+          --no-fork \
+          --url https://github.com/grafana/alloy/archive/refs/tags/${{ github.ref_name }}.tar.gz \
+          grafana/grafana/alloy
+      env:
+        HOMEBREW_DEVELOPER: "1"
+        HOMEBREW_GITHUB_API_TOKEN: ${{ steps.app-token.outputs.token }}

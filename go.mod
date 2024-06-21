@@ -52,9 +52,10 @@ require (
 	github.com/google/renameio/v2 v2.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/grafana/alloy-remote-config v0.0.4
+	github.com/grafana/alloy-remote-config v0.0.6
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla v1.5.1
+	github.com/grafana/beyla v1.6.3
+	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
 	github.com/grafana/ckit v0.0.0-20230906125525-c046c99a5c04
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
 	github.com/grafana/dskit v0.0.0-20240104111617-ea101a3b86eb
@@ -103,6 +104,7 @@ require (
 	github.com/oliver006/redis_exporter v1.54.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.102.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.102.0
@@ -118,6 +120,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.102.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.102.0
@@ -125,6 +128,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.102.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.102.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.102.0
@@ -249,8 +253,6 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
-require github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.102.0
-
 require (
 	cloud.google.com/go v0.112.2 // indirect
 	cloud.google.com/go/auth v0.4.1 // indirect
@@ -285,7 +287,11 @@ require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/ClickHouse/clickhouse-go v1.5.4 // indirect
 	github.com/Code-Hex/go-generics-cache v1.3.1 // indirect
+	github.com/DataDog/agent-payload/v5 v5.0.115 // indirect
+	github.com/DataDog/datadog-agent/pkg/proto v0.54.0-rc.4 // indirect
+	github.com/DataDog/datadog-api-client-go/v2 v2.25.0 // indirect
 	github.com/DataDog/sketches-go v1.4.4 // indirect
+	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.23.0 // indirect
 	github.com/JohnCGriffin/overflow v0.0.0-20211019200055-46fa312c352c // indirect
@@ -557,6 +563,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.102.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.102.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.102.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/exp/metrics v0.102.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.102.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/k8sconfig v0.102.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/kafka v0.102.0 // indirect
@@ -585,6 +592,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
+	github.com/philhofer/fwd v1.1.2 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
@@ -627,6 +635,7 @@ require (
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go v1.0.162 // indirect
 	github.com/tg123/go-htpasswd v1.2.2 // indirect
+	github.com/tinylib/msgp v1.1.9 // indirect
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
 	github.com/tklauser/numcpus v0.7.0 // indirect
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
@@ -750,6 +759,10 @@ replace (
 	// and allow non-singleton components.
 	// https://github.com/grafana/cadvisor/tree/grafana-v0.47-noglobals
 	github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20231110094609-5f7917925dea
+
+	// TODO(rfratto): Remove this directive alongside internal/etc once the
+	// datadogreceiver component is contributed upstream.
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver => ./internal/etc/datadogreceiver
 
 	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20240417113938-9358270470dd
 

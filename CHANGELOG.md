@@ -10,6 +10,13 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes to non-GA functionality
+
+- Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
+
+v1.2.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - Updated OpenTelemetry to v0.102.1. (@mattdurham)
@@ -23,7 +30,7 @@ Main (unreleased)
 
 - Component `otelcol.receiver.vcenter` removed `vcenter.host.network.packet.errors`, `vcenter.host.network.packet.count`, and
   `vcenter.vm.network.packet.count`.
-  - `vcenter.host.network.packet.errors` replaced by `vcenter.host.network.packet.error.rate`. 
+  - `vcenter.host.network.packet.errors` replaced by `vcenter.host.network.packet.error.rate`.
   - `vcenter.host.network.packet.count` replaced by `vcenter.host.network.packet.rate`.
   - `vcenter.vm.network.packet.count` replaced by `vcenter.vm.network.packet.rate`.
 
@@ -35,6 +42,14 @@ Main (unreleased)
   Individual components must be updated to support live debugging. (@wildum)
 
 - Added live debugging support for `prometheus.relabel`. (@wildum)
+
+- (_Experimental_) Add a `otelcol.processor.deltatocumulative` component to convert metrics from
+  delta temporality to cumulative by accumulating samples in memory. (@rfratto)
+
+- (_Experimental_) Add an `otelcol.receiver.datadog` component to receive
+  metrics and traces from Datadog. (@carrieedwards, @jesusvazquez, @alexgreenbank, @fedetorres93)
+
+- Add a `prometheus.exporter.catchpoint` component to collect metrics from Catchpoint. (@bominrahmani)
 
 ### Enhancements
 
@@ -76,6 +91,8 @@ Main (unreleased)
 - Add an initial lower limit of 10 seconds for the the `poll_frequency`
   argument in the `remotecfg` block. (@tpaschalis)
 
+- Add a constant jitter to `remotecfg` service's polling. (@tpaschalis)
+
 - Added support for NS records to `discovery.dns`. (@djcode)
 
 - Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart)
@@ -93,6 +110,8 @@ Main (unreleased)
 - A new `snmp_context` configuration argument for `prometheus.exporter.snmp`
   which overrides the `context_name` parameter in the SNMP configuration file. (@ptodev)
 
+- Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
@@ -100,6 +119,10 @@ Main (unreleased)
   in a gap in metrics (@thampiotr)
 
 - Fix panic when `import.git` is given a revision that does not exist on the remote repo. (@hainenber)
+
+- Fixed an issue with `loki.source.docker` where collecting logs from targets configured with multiple networks would result in errors. (@wildum)
+
+- Fixed an issue where converting OpenTelemetry Collector configs with unused telemetry types resulted in those types being explicitly configured with an empty array in `output` blocks, rather than them being omitted entirely. (@rfratto)
 
 ### Other changes
 
@@ -113,6 +136,8 @@ Main (unreleased)
   documentation for further details. (@thampiotr)
 
 - Updated Prometheus dependency to [v2.51.2](https://github.com/prometheus/prometheus/releases/tag/v2.51.2) (@thampiotr)
+
+- Upgrade Beyla from v1.5.1 to v1.6.3. (@marctc)
 
 v1.1.1
 ------
