@@ -281,6 +281,8 @@ func (c *Component) iteration(ctx context.Context, leader leadership, state life
 	case <-ctx.Done():
 		state.shutdown()
 		return errShutdown
+	case <-c.ticker.C:
+		state.syncState()
 	}
 
 	return nil
