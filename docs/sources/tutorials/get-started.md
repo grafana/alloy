@@ -154,7 +154,7 @@ loki.process "filter_logs" {
   stage.drop {
        source = ""
        expression  = ".*Connection closed by authenticating user root"
-       drop_counter_reason = "irrelevant"
+       drop_counter_reason = "noisy"
     }
   forward_to = [loki.write.grafana_loki.receiver]
   }
