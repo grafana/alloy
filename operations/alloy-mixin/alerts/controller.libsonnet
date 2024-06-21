@@ -9,12 +9,12 @@ local alert = import './utils/alert.jsonnet';
         alert.newRule(
           'SlowComponentEvaluations',
           if enableK8sCluster then
-            'sum by (cluster, namespace, job, instance, component_path, component_id) (rate(alloy_component_evaluation_slow_seconds[10m])) > 0'
+            'sum by (cluster, namespace, job, component_path, component_id) (rate(alloy_component_evaluation_slow_seconds[10m])) > 0'
           else
-            'sum by (job, instance, component_path, component_id) (rate(alloy_component_evaluation_slow_seconds[10m])) > 0'
+            'sum by (job, component_path, component_id) (rate(alloy_component_evaluation_slow_seconds[10m])) > 0'
           ,
           'Component evaluations are taking too long.',
-          'Component evaluations are taking too long for instance {{ $labels.instance }}, component_path {{ $labels.component_path }}, component_id {{ $labels.component_id }}.',
+          'Component evaluations are taking too long under job {{ $labels.job }}, component_path {{ $labels.component_path }}, component_id {{ $labels.component_id }}.',
           '15m',
         ),
 
@@ -22,12 +22,12 @@ local alert = import './utils/alert.jsonnet';
         alert.newRule(
           'UnhealthyComponents',
           if enableK8sCluster then
-            'sum by (cluster, namespace, job, instance) (alloy_component_controller_running_components{health_type!="healthy"}) > 0'
+            'sum by (cluster, namespace, job) (alloy_component_controller_running_components{health_type!="healthy"}) > 0'
           else
-            'sum by (job, instance) (alloy_component_controller_running_components{health_type!="healthy"}) > 0'
+            'sum by (job) (alloy_component_controller_running_components{health_type!="healthy"}) > 0'
           ,
           'Unhealthy components detected.',
-          'Unhealthy components detected within instance {{ $labels.instance }}',
+          'Unhealthy components detected under job {{ $labels.job }}',
           '15m',
         ),
       ]
