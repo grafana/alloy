@@ -14,6 +14,11 @@ Main (unreleased)
 
 - Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
 
+### Bugfixes
+
+- Switch to using Prometheus Agent WAL which fixes issue with [failed scrapes not being deletable](https://github.com/grafana/alloy/issues/546). (@mattdurham)
+ 
+
 v1.2.0-rc.0
 -----------------
 
