@@ -17,25 +17,25 @@ type Ticker struct {
 }
 
 // NewTicker creates a Ticker that works similar to time.Ticker, but sends the
-// time with a period specified by `d` adjusted by a pseudorandom jitter in
-// the range of [d-j, d+j).
+// time with a period specified by `duration` adjusted by a pseudorandom jitter
+// in the range of [duration-jitter, duration+jitter).
 // Following the behavior of time.Ticker, we use a 1-buffer channel, so if the
 // client falls behind while reading, we'll drop ticks on the floor until the
 // client catches up.
-// Callers have to make sure that both d and d-j, d+j are valid positive int64
-// values (non-negative and non-overflowing).
+// Callers have to make sure that both duration and the [d-j, d+j) intervals
+// are valid positive int64 values (non-negative and non-overflowing).
 // Use Stop to release associated resources and the Reset methods to modify the
 // duration and jitter.
-func NewTicker(d time.Duration, j time.Duration) *Ticker {
-	ticker := time.NewTicker(d)
+func NewTicker(duration time.Duration, jitter time.Duration) *Ticker {
+	ticker := time.NewTicker(duration)
 	c := make(chan time.Time, 1)
 	t := &Ticker{
 		C: c,
 
 		stop:  make(chan struct{}),
 		reset: make(chan struct{}),
-		d:     d,
-		j:     j,
+		d:     duration,
+		j:     jitter,
 	}
 
 	go func() {

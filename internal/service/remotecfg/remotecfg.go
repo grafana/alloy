@@ -33,6 +33,8 @@ func getHash(in []byte) string {
 	return fmt.Sprintf("%x", fnvHash.Sum(nil))
 }
 
+const baseJitter = 100 * time.Millisecond
+
 // Service implements a service for remote configuration.
 // The default value of ch is nil; this means it will block forever if the
 // remotecfg service is not configured. In addition, we're keeping track of
@@ -131,7 +133,7 @@ func New(opts Options) (*Service, error) {
 
 	return &Service{
 		opts:   opts,
-		ticker: jitter.NewTicker(math.MaxInt64-100*time.Millisecond, 100*time.Millisecond),
+		ticker: jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
 	}, nil
 }
 
@@ -230,7 +232,7 @@ func (s *Service) Update(newConfig any) error {
 	// it. Make sure we stop everything gracefully before returning.
 	if newArgs.URL == "" {
 		s.mut.Lock()
-		s.ticker.Reset(math.MaxInt64 - 100*time.Millisecond)
+		s.ticker.Reset(math.MaxInt64 - baseJitter) // avoid overflowing
 		s.asClient = noopClient{}
 		s.args.HTTPClientConfig = config.CloneDefaultHTTPClientConfig()
 		s.mut.Unlock()
