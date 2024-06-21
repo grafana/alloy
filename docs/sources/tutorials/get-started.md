@@ -130,19 +130,49 @@ Paste this component next in the `config.alloy` file:
 
 ```alloy
 loki.source.file "log_scrape" {
-    targets    = local.file_match.local_files.targets
-    forward_to = [loki.write.grafana_loki.receiver]
-    tail_from_end = true
+   targets    = local.file_match.local_files.targets
+   forward_to = [loki.process.filter_logs.receiver]
+   tail_from_end = true
 }
 ```
 
 This configuration creates a [loki.source.file][] component named `log_scrape`, and shows the pipeline concept of {{< param "PRODUCT_NAME" >}} in action. The `log_scrape` component does the following:
 
 1. It connects to the `local_files` component (its "source" or target).
-1. It forwards the logs it scrapes to the "receiver" of another component called `grafana_loki` that you will define next.
+1. It forwards the logs it scrapes to the "receiver" of another component called `filter_logs` that you will define next.
 1. It provides extra attributes and options, in this case, you will tail log files from the end and not ingest the entire past history.
 
-### Third component: Write logs to Loki
+### Third component: Filter non-essential logs 
+
+Filtering non-essential logs before shipping them to a data source can help you manage log volumes to reduce costs. The filtering strategy of each organization will differ as they have different monitoring needs and setups. 
+
+The following example is intended to demonstrate how logs can be filtered out (“dropped”) before being shipped to Loki. 
+
+Paste this component next in the `config.alloy` file:
+```alloy
+loki.process "filter_logs" {
+  stage.drop {
+       source = ""
+       expression  = ".*Connection closed by authenticating user root"
+       drop_counter_reason = "irrelevant"
+    }
+  forward_to = [loki.write.grafana_loki.receiver]
+  }
+  
+
+```
+1. `loki.process` is a component that allows you to transform, filter, parse, and enrich log data. Within this component, you can define one or more processing stages to specify how you would like to process log entries before they are stored or forwarded. 
+2. In this example, we create a `loki.process` component named “filter_logs”. This component receives scraped log entries from a component we created in the previous step (`log_scrape`). 
+3. There are many ways to [transform, filter, parse, and enrich log data](https://grafana.com/docs/alloy/latest/reference/components/loki.process/). In this example, we use the `stage.drop` block to drop log entries based on specified criteria. 
+4. We set the `source` parameter equal to an empty string to denote that scraped logs from the default source (`log_scrape` component) will be processed.
+5. We set the `expression` parameter equal to the log message we find irrelevant to our use case. The log message ".*Connection closed by authenticating user root" was chosen as an example to demonstrate how to use the `stage.drop` block. 
+6. We can also include an optional string label  `drop_counter_reason` to denote the rationale for dropping log entries. This label can later be used to categorize and count the drops to track and analyze the reasons for dropping logs. 
+7. Lastly, we use the `forward_to` parameter to specify where the processed logs should be sent. In this case, we will send the processed logs to a component we will create next called `grafana_loki`. 
+
+Check out the following [tutorial](https://grafana.com/docs/alloy/latest/tutorials/processing-logs/) and [documentation](https://grafana.com/docs/alloy/latest/reference/components/loki.process/) for more comprehensive information on processing logs. 
+
+
+### Fourth component: Write logs to Loki
 
 Paste this component last in your configuration file:
 
@@ -240,7 +270,7 @@ Here you can see that logs are flowing through to Loki as expected, and the end-
 ## Conclusion
 
 Congratulations, you have fully installed and configured {{< param "PRODUCT_NAME" >}}, and sent logs from your local host to a Grafana stack.
-In the following tutorials, you will learn more about configuration concepts, metrics, and more advanced log scraping.
+In the following tutorials, you will learn more about configuration concepts and metrics. 
 
 [http://localhost:3000/explore]: http://localhost:3000/explore
 [http://localhost:12345]: http://localhost:12345
