@@ -183,8 +183,8 @@ func TestGenerateProbeConfig(t *testing.T) {
 								{"__address__": "promcon.io"},
 							},
 							Labels: model.LabelSet{
-								{"static": "label"},
-								{"namespace": "default"},
+								"static": "label",
+								"namespace": "default"
 							},
 						},
 					},
