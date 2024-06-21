@@ -37,6 +37,14 @@ type Arguments struct {
 	DisabledMetrics            []string      `alloy:"disabled_metrics,attr,optional"`
 	EnabledMetrics             []string      `alloy:"enabled_metrics,attr,optional"`
 	StorageDuration            time.Duration `alloy:"storage_duration,attr,optional"`
+	ContainerdNamespace        string        `alloy:"containerd_namespace,attr,optional"`
+	ContainerdHost             string        `alloy:"containerd_host,attr,optional"`
+	DockerHost                 string        `alloy:"docker_host,attr,optional"`
+	UseDockerTLS               bool          `alloy:"use_docker_tls,attr,optional"`
+	DockerTLSCert              string        `alloy:"docker_tls_cert,attr,optional"`
+	DockerTLSKey               string        `alloy:"docker_tls_key,attr,optional"`
+	DockerTLSCA                string        `alloy:"docker_tls_ca,attr,optional"`
+	DockerOnly                 bool          `alloy:"docker_only,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -48,6 +56,18 @@ func (a *Arguments) SetToDefault() {
 		RawCgroupPrefixAllowlist:   []string{""},
 		ResctrlInterval:            0,
 		StorageDuration:            2 * time.Minute,
+
+		ContainerdHost:      "/run/containerd/containerd.sock",
+		ContainerdNamespace: "k8s.io",
+
+		// TODO(@tpaschalis) Do we need the default cert/key/ca since tls is disabled by default?
+		DockerHost:    "unix:///var/run/docker.sock",
+		UseDockerTLS:  false,
+		DockerTLSCert: "cert.pem",
+		DockerTLSKey:  "key.pem",
+		DockerTLSCA:   "ca.pem",
+
+		DockerOnly: false,
 	}
 }
 
@@ -73,6 +93,14 @@ func (a *Arguments) Convert() *cadvisor.Config {
 		DisabledMetrics:            a.DisabledMetrics,
 		EnabledMetrics:             a.EnabledMetrics,
 		StorageDuration:            a.StorageDuration,
+		Containerd:                 a.ContainerdHost,
+		ContainerdNamespace:        a.ContainerdNamespace,
+		Docker:                     a.DockerHost,
+		DockerTLS:                  a.UseDockerTLS,
+		DockerTLSCert:              a.DockerTLSCert,
+		DockerTLSKey:               a.DockerTLSKey,
+		DockerTLSCA:                a.DockerTLSCA,
+		DockerOnly:                 a.DockerOnly,
 	}
 
 	return cfg

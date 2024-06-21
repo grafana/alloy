@@ -29,6 +29,7 @@ import (
 	"github.com/google/cadvisor/container/docker"
 	"github.com/google/cadvisor/container/systemd"
 	"github.com/google/cadvisor/container/podman"
+	"github.com/google/cadvisor/container/raw"
 )
 
 // Matching the default disabled set from cadvisor - https://github.com/google/cadvisor/blob/3c6e3093c5ca65c57368845ddaea2b4ca6bc0da8/cmd/cadvisor.go#L78-L93
@@ -85,9 +86,21 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	// per host.
 
 	klog.SetLogger(c.logger)
+
 	container.RegisterPlugin("containerd", containerd.NewPlugin())
+	containerd.ArgContainerdEndpoint  = &c.Containerd
+	containerd.ArgContainerdNamespace = &c.ContainerdNamespace
+
 	container.RegisterPlugin("crio", crio.NewPlugin())
+
 	container.RegisterPlugin("docker", docker.NewPlugin())
+	docker.ArgDockerEndpoint = &c.Docker
+	docker.ArgDockerTLS      = &c.DockerTLS
+	docker.ArgDockerCert     = &c.DockerTLSCert
+	docker.ArgDockerKey      = &c.DockerTLSKey
+	docker.ArgDockerCA       = &c.DockerTLSCA
+	raw.DockerOnly           = &c.DockerOnly
+
 	container.RegisterPlugin("systemd", systemd.NewPlugin())
 	container.RegisterPlugin("podman", podman.NewPlugin())
 
