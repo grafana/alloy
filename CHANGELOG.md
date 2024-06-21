@@ -14,6 +14,10 @@ Main (unreleased)
 
 - Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
 
+### Enhancements
+
+- Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
+
 v1.2.0-rc.0
 -----------------
 
