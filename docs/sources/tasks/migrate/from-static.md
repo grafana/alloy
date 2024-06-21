@@ -221,8 +221,8 @@ prometheus.remote_write "metrics_test" {
         url  = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
         basic_auth {
-            username = "USERNAME"
-            password = "PASSWORD"
+            username = "<USERNAME>"
+            password = "<PASSWORD>"
         }
 
         queue_config { }
