@@ -17,6 +17,7 @@ Main (unreleased)
 ### Enhancements
 
 - Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
+- Add namespace field to Faro payload (@cedricziel)
 
 v1.2.0-rc.0
 -----------------
