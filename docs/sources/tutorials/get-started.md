@@ -172,7 +172,6 @@ loki.process "filter_logs" {
 
 Check out the following [tutorial](https://grafana.com/docs/alloy/latest/tutorials/processing-logs/) and [documentation](https://grafana.com/docs/alloy/latest/reference/components/loki.process/) for more comprehensive information on processing logs. 
 
-
 ### Fourth component: Write logs to Loki
 
 Paste this component last in your configuration file:
