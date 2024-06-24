@@ -83,7 +83,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	opts.MinWALTime = c.WALOptions.MinKeepaliveTime.Milliseconds()
 	opts.TruncateFrequency = c.WALOptions.TruncateFrequency
 	opts.WALCompression = wlog.CompressionSnappy
-	walStorage, err := agent.Open(walLogger, o.Registerer, remoteStore, o.DataPath, agent.DefaultOptions())
+	walStorage, err := agent.Open(walLogger, o.Registerer, remoteStore, o.DataPath, opts)
 	if err != nil {
 		return nil, err
 	}
