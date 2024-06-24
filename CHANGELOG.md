@@ -13,8 +13,8 @@ v1.2.0-rc.1
 ### Security fixes
 
 - Fixes the following vulnerabilities (@ptodev):
-  - [CVE-2024-35255][https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-35255]
-  - [CVE-2024-36129][https://avd.aquasec.com/nvd/2024/cve-2024-36129/]
+  - [CVE-2024-35255](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-35255)
+  - [CVE-2024-36129](https://avd.aquasec.com/nvd/2024/cve-2024-36129/)
 
 v1.2.0-rc.0
 -----------------
