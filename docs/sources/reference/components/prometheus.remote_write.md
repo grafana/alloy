@@ -480,6 +480,12 @@ The [`queue_config`](#queue_config-block) block allows you to configure `max_sha
 number of concurrent shards sending samples to the Prometheus-compatible remote write endpoint.
 For each shard, a single remote write request can send up to `max_samples_per_send` samples.
 
+{{< param "PRODUCT_NAME" >}} will try to not use too many shards, but if the queue falls behind the remote write
+component will increase the number of shards up to `max_shards` to increase throughput. A high number of shards may
+potentially overwhelm the remote endpoint, or increase {{< param "PRODUCT_NAME" >}} memory utilization. For this reason,
+it's important to tune `max_shards` to a reasonable value which is good enough to keep up with the backlog of data
+to send to the remote endpoint without overwhelming it.
+
 The maximum throughput that {{< param "PRODUCT_NAME" >}} can achieve when remote writing is equal to
 `max_shards * max_samples_per_send * <1 / average write request latency>`. For example, running {{< param "PRODUCT_NAME" >}} with the
 default configuration of 50 `max_shards` and 2000 `max_samples_per_send`, and assuming the
