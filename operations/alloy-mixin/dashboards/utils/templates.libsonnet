@@ -73,7 +73,7 @@ local dashboard = import './dashboard.jsonnet';
                 name='namespace', 
                 query=namespaceTemplateQuery,
                 setenceCaseLabels=setenceCaseLabels),
-                dashboard.newMultiTemplateVariable(
+                dashboard.newTemplateVariable(
                 name='job', 
                 query=k8sJobTemplateQuery,
                 setenceCaseLabels=setenceCaseLabels),
@@ -88,7 +88,7 @@ local dashboard = import './dashboard.jsonnet';
             else []
         else
             [
-                dashboard.newMultiTemplateVariable(
+                dashboard.newTemplateVariable(
                 name='job', 
                 query=jobTemplateQuery,
                 setenceCaseLabels=setenceCaseLabels),                
