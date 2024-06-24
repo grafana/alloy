@@ -480,10 +480,10 @@ The [`queue_config`](#queue_config-block) block allows you to configure `max_sha
 number of concurrent shards sending samples to the Prometheus-compatible remote write endpoint.
 For each shard, a single remote write request can send up to `max_samples_per_send` samples.
 
-{{< param "PRODUCT_NAME" >}} will try to not use too many shards, but if the queue falls behind the remote write
+{{< param "PRODUCT_NAME" >}} will try not to use too many shards, but if the queue falls behind, the remote write
 component will increase the number of shards up to `max_shards` to increase throughput. A high number of shards may
-potentially overwhelm the remote endpoint, or increase {{< param "PRODUCT_NAME" >}} memory utilization. For this reason,
-it's important to tune `max_shards` to a reasonable value which is good enough to keep up with the backlog of data
+potentially overwhelm the remote endpoint or increase {{< param "PRODUCT_NAME" >}} memory utilization. For this reason,
+it's important to tune `max_shards` to a reasonable value that is good enough to keep up with the backlog of data
 to send to the remote endpoint without overwhelming it.
 
 The maximum throughput that {{< param "PRODUCT_NAME" >}} can achieve when remote writing is equal to
@@ -497,12 +497,12 @@ instance scrapes up to 1 million active series. However, if you run {{< param "P
 at a large scale and each instance scrapes more than 1 million series, we recommend
 increasing the value of `max_shards`.
 
-{{< param "PRODUCT_NAME" >}} exposes few metrics that you can use to monitor the remote write shards:
+{{< param "PRODUCT_NAME" >}} exposes a few metrics that you can use to monitor the remote write shards:
 
 * `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
 * `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards a queue is allowed to run.
-* `prometheus_remote_storage_shards_max` (gauge): The maximum number of a shards a queue is allowed to run.
-* `prometheus_remote_storage_shards_desired` (gauge): The number of shards a queue wants to run to be able to keep up with the amount of incoming metrics.
+* `prometheus_remote_storage_shards_max` (gauge): The maximum number of shards a queue is allowed to run.
+* `prometheus_remote_storage_shards_desired` (gauge): The number of shards a queue wants to run to keep up with the number of incoming metrics.
 
 If you're already running {{< param "PRODUCT_NAME" >}}, a rule of thumb is to set `max_shards` to
 4x shard utilization. Using the metrics explained above, you can run the following PromQL instant query
@@ -511,8 +511,8 @@ to compute the suggested `max_shards` value for each remote write endpoint `url`
 ```
 clamp_min(
     (
-        # Calculate the 90th percentile desired shards over the last 7 days period.
-        # If you're running {{< param "PRODUCT_NAME" >}} since less than 7 days, then
+        # Calculate the 90th percentile desired shards over the last seven-day period.
+        # If you're running {{< param "PRODUCT_NAME" >}} for less than seven days, then
         # reduce the [7d] period to cover only the time range since when you deployed it.
         ceil(quantile_over_time(0.9, prometheus_remote_storage_shards_desired[7d]))
 
@@ -525,7 +525,7 @@ clamp_min(
 ```
 
 If you aren't running {{< param "PRODUCT_NAME" >}} yet, we recommend running it with the default `max_shards`
-and then use the PromQL instant query mentioned above to compute the recommended `max_shards`.
+and then using the PromQL instant query mentioned above to compute the recommended `max_shards`.
 
 ### WAL corruption
 
