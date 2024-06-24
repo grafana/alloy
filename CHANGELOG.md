@@ -18,6 +18,10 @@ Main (unreleased)
 
 - Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
 
+### Bugfixes
+
+- Fixed an issue with `loki.source.kubernetes_events` not starting in large clusters due to short informer sync timeout. (@nrwiersma)
+
 v1.2.0-rc.0
 -----------------
 
@@ -62,7 +66,7 @@ v1.2.0-rc.0
 
 - Added `scrape_protocols` option to `prometheus.scrape`, which allows to
   control the preferred order of scrape protocols. (@thampiotr)
-  
+
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
 
 - `prometheus.exporter.snowflake`: Add support for RSA key-pair authentication. (@Caleb-Hurshman)
