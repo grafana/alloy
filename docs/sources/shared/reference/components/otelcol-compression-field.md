@@ -4,7 +4,7 @@ description: Shared content, otelcol compression field
 headless: true
 ---
 
-By default, requests are compressed with gzip.
+By default, requests are compressed with Gzip.
 The `compression` argument controls which compression mechanism to use. Supported strings are:
 
 * `"gzip"`
@@ -13,4 +13,4 @@ The `compression` argument controls which compression mechanism to use. Supporte
 * `"snappy"`
 * `"zstd"`
 
-If `compression` is set to `"none"` or an empty string `""`, no compression is used.
+If you set `compression` to `"none"` or an empty string `""`, the requests aren't compressed.
