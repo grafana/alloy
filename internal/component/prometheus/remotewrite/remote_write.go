@@ -3,7 +3,6 @@ package remotewrite
 import (
 	"context"
 	"fmt"
-	"github.com/prometheus/prometheus/tsdb/wlog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -24,6 +23,7 @@ import (
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote"
 	"github.com/prometheus/prometheus/tsdb/agent"
+	"github.com/prometheus/prometheus/tsdb/wlog"
 	"go.uber.org/atomic"
 )
 
