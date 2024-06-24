@@ -14,6 +14,10 @@ Main (unreleased)
 
 - Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
 
+### Enhancements
+
+- Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
+
 ### Bugfixes
 
 - Switch to using Prometheus Agent WAL which fixes issue with [failed scrapes not being deletable](https://github.com/grafana/alloy/issues/546). (@mattdurham)
@@ -63,8 +67,10 @@ v1.2.0-rc.0
 
 - Added `scrape_protocols` option to `prometheus.scrape`, which allows to
   control the preferred order of scrape protocols. (@thampiotr)
-
+  
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
+
+- `prometheus.exporter.snowflake`: Add support for RSA key-pair authentication. (@Caleb-Hurshman)
 
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
   which removes some false-positive error log messages on Windows (@thampiotr)
@@ -193,6 +199,7 @@ v1.1.0
 ### Enhancements
 
 - Update `prometheus.exporter.kafka` with the following functionalities (@wildum):
+
   * GSSAPI config
   * enable/disable PA_FX_FAST
   * set a TLS server name
@@ -274,6 +281,7 @@ v1.1.0
   Modern container runtimes allow binding to unprivileged ports as non-root. (@BlackDex)
 
 - Upgrading from OpenTelemetry v0.96.0 to v0.99.0.
+
   - `otelcol.processor.batch`: Prevent starting unnecessary goroutines.
     https://github.com/open-telemetry/opentelemetry-collector/issues/9739
   - `otelcol.exporter.otlp`: Checks for port in the config validation for the otlpexporter.
