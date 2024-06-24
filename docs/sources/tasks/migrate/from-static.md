@@ -23,6 +23,9 @@ This topic describes how to:
 * [loki.process][]
 * [loki.source.file][]
 * [loki.write][]
+* [otelcol.receiver.otlp][]
+* [otelcol.processor.batch][]
+* [otelcol.exporter.otlp][]
 
 ## Before you begin
 
@@ -169,6 +172,23 @@ logs:
                       - level
       clients:
         - url: https://USER_ID:API_KEY@logs-prod3.grafana.net/loki/api/v1/push
+
+traces:
+  configs:
+    - name: tempo
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+            http:
+      batch:
+        send_batch_size: 10000
+        timeout: 20s
+      remote_write:
+        - endpoint: tempo-us-central1.grafana.net:443
+          basic_auth:
+            username: USERNAME
+            password: PASSWORD
 ```
 
 The convert command takes the YAML file as input and outputs a [{{< param "PRODUCT_NAME" >}} configuration][configuration] file.
@@ -197,7 +217,7 @@ prometheus.scrape "metrics_test_local_agent" {
 
 prometheus.remote_write "metrics_test" {
     endpoint {
-        name = "test-3a2a1b"
+        name = "test-4dec64"
         url  = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
         basic_auth {
@@ -257,6 +277,46 @@ loki.write "logs_varlogs" {
         url = "https://USER_ID:API_KEY@logs-prod3.grafana.net/loki/api/v1/push"
     }
     external_labels = {}
+}
+
+otelcol.receiver.otlp "default" {
+    grpc {
+        include_metadata = true
+    }
+
+    http {
+        include_metadata = true
+    }
+
+    output {
+        metrics = []
+        logs    = []
+        traces  = [otelcol.processor.batch.default.input]
+    }
+}
+
+otelcol.processor.batch "default" {
+    timeout         = "20s"
+    send_batch_size = 10000
+
+    output {
+        metrics = []
+        logs    = []
+        traces  = [otelcol.exporter.otlp.default_0.input]
+    }
+}
+
+otelcol.exporter.otlp "default_0" {
+    retry_on_failure {
+        max_elapsed_time = "1m0s"
+    }
+
+    client {
+        endpoint = "tempo-us-central1.grafana.net:443"
+        headers  = {
+            authorization = "Basic VVNFUk5BTUU6UEFTU1dPUkQ=",
+        }
+    }
 }
 ```
 
@@ -322,3 +382,6 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Metrics]: https://grafana.com/docs/agent/latest/static/configuration/metrics-config/
 [Logs]: https://grafana.com/docs/agent/latest/static/configuration/logs-config/
 [UI]: ../../debug/#alloy-ui
+[otelcol.receiver.otlp]: ../../../reference/components/otelcol.receiver.otlp/
+[otelcol.processor.batch]: ../../../reference/components/otelcol.processor.batch/
+[otelcol.exporter.otlp]:../../../reference/components/otelcol.exporter.otlp/

@@ -175,7 +175,7 @@ otelcol.receiver.otlp "default" {
   }
 
   output {
-    traces  = [otelcol.connector.servicegraph.default.input,otelcol.exporter.otlp.grafana_cloud_tempo.input]
+    traces  = [otelcol.connector.servicegraph.default.input,otelcol.exporter.otlp.grafana_cloud_traces.input]
   }
 }
 
@@ -201,14 +201,14 @@ prometheus.remote_write "mimir" {
   }
 }
 
-otelcol.exporter.otlp "grafana_cloud_tempo" {
+otelcol.exporter.otlp "grafana_cloud_traces" {
   client {
     endpoint = "https://tempo-xxx.grafana.net/tempo"
-    auth     = otelcol.auth.basic.grafana_cloud_tempo.handler
+    auth     = otelcol.auth.basic.grafana_cloud_traces.handler
   }
 }
 
-otelcol.auth.basic "grafana_cloud_tempo" {
+otelcol.auth.basic "grafana_cloud_traces" {
   username = env("TEMPO_USERNAME")
   password = env("GRAFANA_CLOUD_API_KEY")
 }
