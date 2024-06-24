@@ -169,7 +169,8 @@ loki.process "filter_logs" {
    The log message ".*Connection closed by authenticating user root" was chosen to demonstrate how to use the `stage.drop` block. 
 1. You can include an optional string label  `drop_counter_reason` to show the rationale for dropping log entries.
    You can use this label to categorize and count the drops to track and analyze the reasons for dropping logs. 
-1. Lastly, we use the `forward_to` parameter to specify where the processed logs should be sent. In this case, we will send the processed logs to a component we will create next called `grafana_loki`. 
+1. You use the `forward_to` parameter to specify where to send the processed logs.
+   In this case, you will send the processed logs to a component you will create next called `grafana_loki`. 
 
 Check out the following [tutorial](https://grafana.com/docs/alloy/latest/tutorials/processing-logs/) and [documentation](https://grafana.com/docs/alloy/latest/reference/components/loki.process/) for more comprehensive information on processing logs. 
 
