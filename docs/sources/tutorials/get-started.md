@@ -158,8 +158,8 @@ loki.process "filter_logs" {
     }
   forward_to = [loki.write.grafana_loki.receiver]
   }
-
 ```
+
 1. `loki.process` is a component that allows you to transform, filter, parse, and enrich log data. Within this component, you can define one or more processing stages to specify how you would like to process log entries before they are stored or forwarded. 
 1. In this example, you create a `loki.process` component named “filter_logs”.
    This component receives scraped log entries from the `log_scrape` component you created in the previous step. 
