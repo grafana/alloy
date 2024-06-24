@@ -288,3 +288,7 @@ In the following tutorials, you will learn more about configuration concepts and
 [configuration]: ../../concepts/configuration-syntax/
 [install]: ../../get-started/install/binary/#install-alloy-as-a-standalone-binary
 [debugging your configuration]: ../../tasks/debug/
+[parse]: ../../reference/components/loki.process/
+[tutorial]: ./processing-logs/
+[loki.process]: ../../reference/components/loki.process/
+
