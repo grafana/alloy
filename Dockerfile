@@ -44,8 +44,8 @@ RUN  apt-get update \
  &&  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 
-COPY --from=build /src/alloy/build/alloy /bin/alloy
-COPY example-config.alloy /etc/alloy/config.alloy
+COPY --from=build --chown=$UID /src/alloy/build/alloy /bin/alloy
+COPY --chown=$UID example-config.alloy /etc/alloy/config.alloy
 
 # Create alloy user in container, but do not set it as default
 #
@@ -53,8 +53,6 @@ COPY example-config.alloy /etc/alloy/config.alloy
 # undocumented feature; use at your own risk.
 RUN groupadd --gid $UID $USERNAME
 RUN useradd -m -u $UID -g $UID $USERNAME
-RUN chown -R $USERNAME:$USERNAME /etc/alloy
-RUN chown -R $USERNAME:$USERNAME /bin/alloy
 
 RUN mkdir -p /var/lib/alloy/data
 RUN chown -R $USERNAME:$USERNAME /var/lib/alloy
