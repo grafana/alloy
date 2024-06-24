@@ -20,8 +20,9 @@ Main (unreleased)
 
 ### Bugfixes
 
+- Fixed an issue with `loki.source.kubernetes_events` not starting in large clusters due to short informer sync timeout. (@nrwiersma)
+
 - Switch to using Prometheus Agent WAL which fixes issue with [failed scrapes not being deletable](https://github.com/grafana/alloy/issues/546). (@mattdurham)
- 
 
 v1.2.0-rc.0
 -----------------
@@ -67,7 +68,7 @@ v1.2.0-rc.0
 
 - Added `scrape_protocols` option to `prometheus.scrape`, which allows to
   control the preferred order of scrape protocols. (@thampiotr)
-  
+
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
 
 - `prometheus.exporter.snowflake`: Add support for RSA key-pair authentication. (@Caleb-Hurshman)
