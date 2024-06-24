@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/pubsub v1.36.1
 	connectrpc.com/connect v1.14.0
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.6.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.7.0
 	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/IBM/sarama v1.43.2
 	github.com/KimMachineGun/automemlimit v0.6.0
