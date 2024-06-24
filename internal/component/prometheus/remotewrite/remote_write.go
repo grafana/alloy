@@ -3,6 +3,7 @@ package remotewrite
 import (
 	"context"
 	"fmt"
+	"github.com/prometheus/prometheus/tsdb/wlog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -81,6 +82,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	opts.MaxWALTime = c.WALOptions.MaxKeepaliveTime.Milliseconds()
 	opts.MinWALTime = c.WALOptions.MinKeepaliveTime.Milliseconds()
 	opts.TruncateFrequency = c.WALOptions.TruncateFrequency
+	opts.WALCompression = wlog.CompressionSnappy
 	walStorage, err := agent.Open(walLogger, o.Registerer, remoteStore, o.DataPath, agent.DefaultOptions())
 	if err != nil {
 		return nil, err
