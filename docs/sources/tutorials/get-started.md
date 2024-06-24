@@ -167,7 +167,8 @@ loki.process "filter_logs" {
 1. You set the `source` parameter equal to an empty string to denote that scraped logs from the default source, the `log_scrape` component, will be processed.
 1. You set the `expression` parameter equal to the log message that is not relevant to the use case.
    The log message ".*Connection closed by authenticating user root" was chosen to demonstrate how to use the `stage.drop` block. 
-1. We can also include an optional string label  `drop_counter_reason` to denote the rationale for dropping log entries. This label can later be used to categorize and count the drops to track and analyze the reasons for dropping logs. 
+1. You can include an optional string label  `drop_counter_reason` to show the rationale for dropping log entries.
+   You can use this label to categorize and count the drops to track and analyze the reasons for dropping logs. 
 1. Lastly, we use the `forward_to` parameter to specify where the processed logs should be sent. In this case, we will send the processed logs to a component we will create next called `grafana_loki`. 
 
 Check out the following [tutorial](https://grafana.com/docs/alloy/latest/tutorials/processing-logs/) and [documentation](https://grafana.com/docs/alloy/latest/reference/components/loki.process/) for more comprehensive information on processing logs. 
