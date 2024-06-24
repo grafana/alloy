@@ -77,6 +77,10 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
 
 	walLogger := log.With(o.Logger, "subcomponent", "wal")
+	opts := agent.DefaultOptions()
+	opts.MaxWALTime = c.WALOptions.MaxKeepaliveTime.Milliseconds()
+	opts.MinWALTime = c.WALOptions.MinKeepaliveTime.Milliseconds()
+	opts.TruncateFrequency = c.WALOptions.TruncateFrequency
 	walStorage, err := agent.Open(walLogger, o.Registerer, remoteStore, o.DataPath, agent.DefaultOptions())
 	if err != nil {
 		return nil, err
