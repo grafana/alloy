@@ -157,6 +157,6 @@ Here you can see that metrics are flowing through to Prometheus as expected, and
 {{< figure src="/media/docs/alloy/tutorial/Metrics_visualization.png " alt="Your data flowing through Prometheus." >}}
 
 ## Conclusion
-Well done! You have configured {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local host and send them to a Grafana stack. 
+Well done. You have configured {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local host and send them to a Grafana stack. 
 
 
