@@ -65,11 +65,12 @@ prometheus.relabel "filter_metrics" {
  forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
 ```
+
 1. `prometheus.relabel` is a component most commonly used to filter Prometheus metrics or standardize the label set passed to one or more downstream receivers. 
 1. In this example, you create a `prometheus.relabel` component named “filter_metrics”. 
-  This component receives scraped metrics from the `scrape_metrics` component you created in the previous step. 
-1. There are many ways to [process metrics](https://grafana.com/docs/alloy/latest/reference/components/prometheus.relabel/). 
-  Within this component, you can define rule block(s) to specify how you would like to process metrics before they are stored or forwarded. 
+   This component receives scraped metrics from the `scrape_metrics` component you created in the previous step. 
+1. There are many ways to [process metrics][prometheus.relabel]. 
+   Within this component, you can define rule block(s) to specify how you would like to process metrics before they are stored or forwarded. 
 1. This example assumes that you are monitoring a production environment and the metrics collected from the dev environment will not be needed for this particular use case. 
 1. To instruct Alloy to drop metrics whose environment label, `[”env]”`, is equal to `”dev”`, you set the `action` parameter to `”drop”`, set the `source_labels` parameter equal to `[“env”]`, and the `regex` parameter to `“dev”`.  
 1. You use the `forward_to` parameter to specify where to send the processed metrics. In this case, you will send the processed metrics to a component you will create next called `metrics_service`. 
