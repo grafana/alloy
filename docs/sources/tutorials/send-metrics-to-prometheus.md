@@ -79,6 +79,7 @@ prometheus.relabel "filter_metrics" {
 ### Third component: Write metrics to Prometheus
 
 Paste this component next in your configuration file:
+
 ```alloy
 
 prometheus.remote_write "metrics_service" {
