@@ -156,7 +156,7 @@ sudo systemctl reload alloy
 
 Open [http://localhost:12345] and click the Graph tab at the top.
 The graph should look similar to the following: 
-{{< figure src="/media/docs/alloy/tutorial/Metrics-inspect-your-config.png" alt="Your configuration in the Alloy UI"" >}}
+{{< figure src="/media/docs/alloy/tutorial/Metrics-inspect-your-config.png" alt="Your configuration in the Alloy UI" >}}
 
 The {{< param "PRODUCT_NAME" >}} UI shows you a visual representation of the pipeline you built with your {{< param "PRODUCT_NAME" >}} component configuration.
 
