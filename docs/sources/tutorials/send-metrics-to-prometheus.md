@@ -76,7 +76,7 @@ prometheus.relabel "filter_metrics" {
 1. You use the `forward_to` parameter to specify where to send the processed metrics.
    In this case, you will send the processed metrics to a component you will create next called `metrics_service`. 
 
-### Third Component: Write metrics to Prometheus
+### Third component: Write metrics to Prometheus
 
 Paste this component next in your configuration file:
 ```alloy
