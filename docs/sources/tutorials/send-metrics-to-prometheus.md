@@ -142,7 +142,7 @@ Open [http://localhost:12345] and click the Graph tab at the top.
 The graph should look similar to the following: 
 {{< figure src="/media/docs/alloy/tutorial/Metrics-inspect-your-config.png" >}}
 
-The UI allows you to see a visual representation of the pipeline you built with your {{< param "PRODUCT_NAME" >}} component configuration.
+The {{< param "PRODUCT_NAME" >}} UI shows you a visual representation of the pipeline you built with your {{< param "PRODUCT_NAME" >}} component configuration.
 
 You can see that the components are healthy, and you are ready to go.
 
