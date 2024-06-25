@@ -48,7 +48,7 @@ It also creates a [`prometheus.scrape`][prometheus.scrape] component named `scra
 1. It forwards the metrics it scrapes to the "receiver" of another component called `filter_metrics` which you will define next.
 1. It tells {{< param "PRODUCT_NAME" >}} to scrape metrics every 10 seconds. 
 
-### Second Component: Filter metrics
+### Second component: Filter metrics
 
 Filtering non-essential metrics before sending them to a data source can help you reduce costs and enable you to focus on the data that matters most. The filtering strategy of each organization will differ as they have different monitoring needs and setups. 
 
