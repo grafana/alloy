@@ -29,7 +29,7 @@ func (w *wrappedClient) LogpullReceived(ctx context.Context, start, end time.Tim
 	})
 }
 
-var getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+func NewClient(apiKey, zoneID string, fields []string) (Client, error) {
 	c, err := cloudflare.NewWithAPIToken(apiKey)
 	if err != nil {
 		return nil, err

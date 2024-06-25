@@ -8,12 +8,15 @@ package cloudflaretarget
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/cloudflare-go"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
@@ -23,6 +26,60 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_WithFakeHttpServer(t *testing.T) {
+	// mux is the HTTP request multiplexer used with the test server.
+	var mux *http.ServeMux
+
+	// server is a test HTTP server used to provide mock API responses
+	var server *httptest.Server
+
+	// disable rate limits and retries in testing - prepended so any provided value overrides this
+	opts := []cloudflare.Option{
+		cloudflare.UsingRateLimit(100000),
+		cloudflare.UsingRetryPolicy(0, 0, 0),
+		cloudflare.UsingRetryPolicy(2, 0, 1),
+	}
+
+	// test server
+	mux = http.NewServeMux()
+	server = httptest.NewServer(mux)
+
+	// Cloudflare client configured to use test server
+	client, _ := cloudflare.New("deadbeef", "cloudflare@example.org", opts...)
+	client.BaseURL = server.URL
+
+	defer server.Close()
+
+	var (
+		w      = log.NewSyncWriter(os.Stderr)
+		logger = log.NewLogfmtLogger(w)
+		end    = time.Unix(0, time.Hour.Nanoseconds())
+		start  = time.Unix(0, end.Add(-30*time.Minute).UnixNano())
+		// client   = fake.NewClient(func() {})
+		cfClient = &wrappedClient{
+			client: client,
+			zoneID: "fakeZone",
+			fields: []string{"OriginResponseTime"},
+		}
+	)
+	// cfClient.On("LogpullReceived", mock.Anything, start, end).Return(&fakeLogIterator{
+	// 	err: ErrorLogpullReceived,
+	// }, nil).Times(2) // just retry once
+	defaultBackoff.MinBackoff = 0
+	defaultBackoff.MaxBackoff = 5
+	ta := &Target{
+		logger: logger,
+		// handler: client,
+		client: cfClient,
+		config: &Config{
+			Labels: make(model.LabelSet),
+		},
+		metrics: NewMetrics(nil),
+	}
+
+	require.NoError(t, ta.pull(context.Background(), start, end))
+}
 
 func Test_CloudflareTarget(t *testing.T) {
 	var (
@@ -71,11 +128,11 @@ func Test_CloudflareTarget(t *testing.T) {
 		logs: []string{},
 	}, nil)
 	// replace the client.
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient := func(apiKey, zoneID string, fields []string) (Client, error) {
 		return cfClient, nil
 	}
 
-	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, client, ps, cfg)
+	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, client, ps, cfg, getClient)
 	require.NoError(t, err)
 	require.True(t, ta.Ready())
 
@@ -119,10 +176,6 @@ func Test_RetryErrorLogpullReceived(t *testing.T) {
 	cfClient.On("LogpullReceived", mock.Anything, start, end).Return(&fakeLogIterator{
 		err: ErrorLogpullReceived,
 	}, nil).Times(2) // just retry once
-	// replace the client
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
-		return cfClient, nil
-	}
 	defaultBackoff.MinBackoff = 0
 	defaultBackoff.MaxBackoff = 5
 	ta := &Target{
@@ -164,10 +217,6 @@ func Test_RetryErrorIterating(t *testing.T) {
 	cfClient.On("LogpullReceived", mock.Anything, start, end).Return(&fakeLogIterator{
 		err: ErrorLogpullReceived,
 	}, nil).Once()
-	// replace the client.
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
-		return cfClient, nil
-	}
 	// retries as fast as possible.
 	defaultBackoff.MinBackoff = 0
 	defaultBackoff.MaxBackoff = 0
@@ -219,11 +268,11 @@ func Test_CloudflareTargetError(t *testing.T) {
 	// setup errors for all retries
 	cfClient.On("LogpullReceived", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("no logs"))
 	// replace the client.
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient := func(apiKey, zoneID string, fields []string) (Client, error) {
 		return cfClient, nil
 	}
 
-	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, client, ps, cfg)
+	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, client, ps, cfg, getClient)
 	require.NoError(t, err)
 	require.True(t, ta.Ready())
 
@@ -274,11 +323,11 @@ func Test_CloudflareTargetError168h(t *testing.T) {
 	// setup errors for all retries
 	cfClient.On("LogpullReceived", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("HTTP status 400: bad query: error parsing time: invalid time range: too early: logs older than 168h0m0s are not available"))
 	// replace the client.
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient := func(apiKey, zoneID string, fields []string) (Client, error) {
 		return cfClient, nil
 	}
 
-	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, client, ps, cfg)
+	ta, err := NewTarget(NewMetrics(prometheus.NewRegistry()), logger, client, ps, cfg, getClient)
 	require.NoError(t, err)
 	require.True(t, ta.Ready())
 

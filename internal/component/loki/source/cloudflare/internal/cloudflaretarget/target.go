@@ -49,6 +49,8 @@ type Config struct {
 	AdditionalFields []string
 }
 
+type ClientFactory = func(apiKey, zoneID string, fields []string) (Client, error)
+
 // Target enables pulling HTTP log messages from Cloudflare using the Logpull
 // API.
 type Target struct {
@@ -68,12 +70,12 @@ type Target struct {
 }
 
 // NewTarget creates and runs a Cloudflare target.
-func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, position positions.Positions, config *Config) (*Target, error) {
+func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, position positions.Positions, config *Config, cf ClientFactory) (*Target, error) {
 	fields, err := Fields(FieldsType(config.FieldsType), config.AdditionalFields)
 	if err != nil {
 		return nil, err
 	}
-	client, err := getClient(config.APIToken, config.ZoneID, fields)
+	client, err := cf(config.APIToken, config.ZoneID, fields)
 	if err != nil {
 		return nil, err
 	}

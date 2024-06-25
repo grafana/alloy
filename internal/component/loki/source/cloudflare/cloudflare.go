@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/cloudflare/internal/cloudflaretarget"
 	cft "github.com/grafana/alloy/internal/component/loki/source/cloudflare/internal/cloudflaretarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -170,7 +171,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
-	t, err := cft.NewTarget(c.metrics, c.opts.Logger, entryHandler, c.posFile, newArgs.Convert())
+	t, err := cft.NewTarget(c.metrics, c.opts.Logger, entryHandler, c.posFile, newArgs.Convert(), cloudflaretarget.NewClient)
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create cloudflare target with provided config", "err", err)
 		return err
