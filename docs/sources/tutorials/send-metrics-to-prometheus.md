@@ -133,7 +133,7 @@ Finally, call the reload endpoint to notify {{< param "PRODUCT_NAME" >}} to the 
 This step uses the {{< param "PRODUCT_NAME" >}} UI, which is exposed on `localhost` port `12345`.
 If you choose to run Alloy in a Docker container, make sure you use the `--server.http.listen-addr=0.0.0.0:12345` argument.
 
-If you don’t use this argument, the [debugging UI][https://grafana.com/docs/alloy/latest/tasks/debug/#alloy-ui] won’t be available outside of the Docker container.
+If you don’t use this argument, the [debugging UI][debug] won’t be available outside of the Docker container.
 
 [debug]: ../../tasks/debug/#alloy-ui
 {{< /admonition >}}
