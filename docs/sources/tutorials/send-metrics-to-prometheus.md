@@ -102,7 +102,9 @@ This completes the simple configuration pipeline.
 The `basic_auth` is commented out because the local `docker compose` stack doesn't require it. 
 It is included in this example to show how you can configure authorization for other environments.
 
-For further authorization options, refer to the [prometheus.remote_write ][] component reference.
+For further authorization options, refer to the [`prometheus.remote_write`][prometheus.remote_write] component documentation.
+
+[prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
 {{< /admonition >}}
 
 This connects directly to the Prometheus instance running in the Docker container.
