@@ -42,7 +42,8 @@ prometheus.scrape "scrape_metrics" {
 ```
 This configuration defines a Prometheus exporter for a local system from which the metrics will be collected. 
 
-It also creates a [prometheus.scrape][https://grafana.com/docs/alloy/latest/reference/components/prometheus.scrape/] component named `"scrape_metrics”` which does the following:
+It also creates a [`prometheus.scrape`][prometheus.scrape] component named `scrape_metrics` which does the following:
+
 1. It connects to the `local_system` component (its "source" or target).
 1. It forwards the metrics it scrapes to the "receiver" of another component called `filter_metrics` which you will define next.
 1. It tells Alloy to scrape metrics every 10 seconds. 
