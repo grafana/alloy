@@ -46,7 +46,7 @@ It also creates a [`prometheus.scrape`][prometheus.scrape] component named `scra
 
 1. It connects to the `local_system` component (its "source" or target).
 1. It forwards the metrics it scrapes to the "receiver" of another component called `filter_metrics` which you will define next.
-1. It tells Alloy to scrape metrics every 10 seconds. 
+1. It tells {{< param "PRODUCT_NAME" >}} to scrape metrics every 10 seconds. 
 
 ### Second Component: Filter metrics
 
