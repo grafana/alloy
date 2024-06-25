@@ -15,9 +15,9 @@ This process will enable you to query and visualize the metrics sent to Promethe
 ## Prerequisites
 
 Complete the [previous tutorial][get started] to:
-1. Install Alloy and start the service in your environment
-1. Set up a local Grafana instance  
-1. Create a `config.alloy` file
+1. Install {{< param "PRODUCT_NAME" >}} and start the service in your environment.
+1. Set up a local Grafana instance.
+1. Create a `config.alloy` file.
 
 ## Configure {{< param "PRODUCT_NAME" >}}
 Once the prerequisite steps have been completed, the next step is to configure {{< param "PRODUCT_NAME" >}}.
