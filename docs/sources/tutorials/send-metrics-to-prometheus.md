@@ -13,7 +13,8 @@ As a next step, you will collect and process metrics from the same machine using
 This process will enable you to query and visualize the metrics sent to Prometheus using the Grafana dashboard.
 
 ## Prerequisites
-Complete the [previous tutorial](https://grafana.com/docs/alloy/latest/tutorials/get-started/) to:
+
+Complete the [previous tutorial][get started] to:
 1. Install Alloy and start the service in your environment
 1. Set up a local Grafana instance  
 1. Create a `config.alloy` file
