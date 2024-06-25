@@ -110,15 +110,20 @@ For further authorization options, refer to the [`prometheus.remote_write`][prom
 This connects directly to the Prometheus instance running in the Docker container.
 
 ## Reload the Configuration
+
 Copy your local `config.alloy` file into the default configuration file location, which depends on your OS.
+
 {{< code >}}
+
 ```macos
 sudo cp config.alloy $(brew --prefix)/etc/alloy/config.alloy
 ```
+
 ```linux
 sudo cp config.alloy /etc/alloy/config.alloy
 ```
 {{< /code >}}
+
 Finally, call the reload endpoint to notify {{< param "PRODUCT_NAME" >}} to the configuration change without the need for restarting the system service.
 ```bash
     curl -X POST http://localhost:12345/-/reload
