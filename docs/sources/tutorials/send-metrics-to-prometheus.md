@@ -8,7 +8,7 @@ weight: 15
 # Send metrics to Prometheus
 In the [Get started with {{< param "PRODUCT_NAME" >}} tutorial][get started], you learned how to configure {{< param "PRODUCT_NAME" >}} to collect and process logs from your local machine and send them to Loki, running in the local Grafana stack. 
 
-As a next step, you will collect and process metrics from the same machine using Alloy and send them to Prometheus, running in the same Stack. 
+As a next step, you will collect and process metrics from the same machine using {{< param "PRODUCT_NAME" >}} and send them to Prometheus, running in the same Grafana stack. 
 
 This process will enable you to query and visualize the metrics sent to Prometheus using the Grafana dashboard.
 
