@@ -164,7 +164,7 @@ You can see that the components are healthy, and you are ready to go.
 
 ## Log into Grafana and explore metrics in Prometheus 
 
-Open [http://localhost:3000/explore] to access the Explore feature in Grafana.
+Open <http://localhost:3000/explore> to access the Explore feature in Grafana.
 
 Select Prometheus as the data source and click the **Metrics Browser** button to select the metric, labels, and values for your labels.
 
