@@ -152,7 +152,7 @@ sudo systemctl reload alloy
 
 {{< /code >}}
 
-## Inspect your Configuration in the {{< param "PRODUCT_NAME" >}} UI
+## Inspect your configuration in the {{% param "PRODUCT_NAME" %}} UI
 
 Open [http://localhost:12345] and click the Graph tab at the top.
 The graph should look similar to the following: 
