@@ -175,7 +175,7 @@ Here you can see that metrics are flowing through to Prometheus as expected, and
 ## Conclusion
 Well done. You have configured {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local host and send them to a Grafana stack. 
 
-[get started]: ./get-started/
+[get started]: ../get-started/
 [prometheus.scrape]: ../../reference/components/prometheus.scrape/
 [prometheus.relabel]: ../../reference/components/prometheus.relabel/
 [prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
