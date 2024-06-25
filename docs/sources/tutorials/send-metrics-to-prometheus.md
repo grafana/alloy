@@ -138,15 +138,18 @@ If you don’t use this argument, the [debugging UI][https://grafana.com/docs/al
 [debug]: ../../tasks/debug/#alloy-ui
 {{< /admonition >}}
 
-The alternative to using this endpoint is to reload the {{< param "PRODUCT_NAME" >}} configuration, which can
-be done as follows:
+The alternative to using this endpoint is to reload the {{< param "PRODUCT_NAME" >}} configuration, which can be done as follows:
+
 {{< code >}}
+
 ```macos
 brew services restart alloy
 ```
+
 ```linux
 sudo systemctl reload alloy
 ```
+
 {{< /code >}}
 
 ## Inspect your Configuration in the {{< param "PRODUCT_NAME" >}} UI
