@@ -97,8 +97,8 @@ prometheus.remote_write "metrics_service" {
 This last component creates a [prometheus.remote_write][prometheus.remote_write] component named `metrics_service` that points to `http://localhost:9090/api/v1/write`.
 
 This completes the simple configuration pipeline.
-{{< admonition type="tip" >}}
 
+{{< admonition type="tip" >}}
 The `basic_auth` is commented out because the local `docker compose` stack doesn't require it. 
 It is included in this example to show how you can configure authorization for other environments.
 
