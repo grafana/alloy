@@ -27,7 +27,8 @@ Same as you did for logs, you will use the components in the `config.alloy` file
 
 Add the following to the `config.alloy` file you created in the prerequisite steps.  
 
-### First Component: Scraping
+### First component: Scraping
+
 Paste this component into the top of the `config.alloy` file:
 
 ```alloy
