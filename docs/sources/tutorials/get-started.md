@@ -164,17 +164,15 @@ loki.process "filter_logs" {
 `loki.process` is a component that allows you to transform, filter, parse, and enrich log data.
 Within this component, you can define one or more processing stages to specify how you would like to process log entries before they're stored or forwarded.
 
-In this example, you create a `loki.process` component named `filter_logs` and use the `stage.drop` block to drop log entries based on specified criteria.
-This component receives scraped log entries from the `log_scrape` component you created in the previous step.
-
-1. You set the `source` parameter equal to an empty string.
-   This tells {{< param "PRODUCT_NAME" >}} to scrape logs from the default `log_scrape` component.
-1. You set the `expression` parameter equal to the log message that's not relevant to the use case.
-   The log message _".*Connection closed by authenticating user root"_ demonstrates how to use the `stage.drop` block.
-1. You can include an optional string label  `drop_counter_reason` to show the rationale for dropping log entries.
-   You can use this label to categorize and count the drops to track and analyze the reasons for dropping logs.
-1. You use the `forward_to` parameter to specify where to send the processed logs.
-   In this case, you send the processed logs to a component you create next called `grafana_loki`.
+* The `filter_logs` component receives scraped log entries from the `log_scrape` component and uses the `stage.drop` block to drop log entries based on specified criteria.
+* The `source` parameter is an empty string.
+  This tells {{< param "PRODUCT_NAME" >}} to scrape logs from the default `log_scrape` component.
+* The `expression` parameter contains the expression to drop from the logs.
+  In this example, it's the log message _".*Connection closed by authenticating user root"_.
+* You can include an optional string label  `drop_counter_reason` to show the rationale for dropping log entries.
+  You can use this label to categorize and count the drops to track and analyze the reasons for dropping logs.
+* The `forward_to` parameter specifies where to send the processed logs.
+  In this example, you send the processed logs to a component you create next called `grafana_loki`.
 
 Check out the following [tutorial][] and the [`loki.process` documentation][loki.process] for more comprehensive information on processing logs.
 
