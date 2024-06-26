@@ -21,9 +21,18 @@ Refer to the [Go runtime][runtime] documentation for more information about Go r
 
 The following arguments are supported.
 
-Environment variable | Argument                   | Description                                                                     | Default
----------------------|----------------------------|---------------------------------------------------------------------------------|--------
-`GODEBUG`            | `x509usefallbackroots`     | Enforce a fallback on the X.509 trusted root certificates. Set to `1` to enable | `0`
-`HTTP_PROXY`         | `http://proxy.example.com` | The hostname or IP address of the proxy server.                                 |
+### GODEBUG
+
+Argument               | Description                                                                     | Default
+-----------------------|---------------------------------------------------------------------------------|--------
+`x509usefallbackroots` | Enforce a fallback on the X.509 trusted root certificates. Set to `1` to enable | `0`
+`netdns=go`            | Force pure Go resolver                                                          |
+`netdns=cgo`           | Force native resolver. Can be set to `cgo` or `win32`.                          |
+
+### HTTP_PROXY
+
+Argument                   | Description                                     | Default
+---------------------------|-------------------------------------------------|--------
+`http://proxy.example.com` | The hostname or IP address of the proxy server. |
 
 [runtime]: https://pkg.go.dev/runtime
