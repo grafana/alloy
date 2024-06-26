@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Features
+
+- Alloy can load all river files located in `/etc/alloy` (mounted via default or user provided configMap) instead of only one. This allows increased modularity, besides modules, and a terraform like behaviour. To enable it, set `.Values.alloy.loadFolder` to `true`. (@fculpo)
+
 0.3.2 (2024-05-30)
 ------------------
 
