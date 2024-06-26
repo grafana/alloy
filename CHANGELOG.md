@@ -23,8 +23,13 @@ Main (unreleased)
 - Fixed an issue with `loki.source.kubernetes_events` not starting in large clusters due to short informer sync timeout. (@nrwiersma)
 - Updated [ckit](https://github.com/grafana/ckit) to fix an issue with armv7 panic on startup when forming a cluster. (@imavroukakis)
 
-v1.2.0-rc.0
+v1.2.0
 -----------------
+
+### Security fixes
+- Fixes the following vulnerabilities (@ptodev):
+  - [CVE-2024-35255](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-35255)
+  - [CVE-2024-36129](https://avd.aquasec.com/nvd/2024/cve-2024-36129/)
 
 ### Breaking changes
 
