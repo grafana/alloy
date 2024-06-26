@@ -81,7 +81,7 @@ Live debugging provides a real-time stream of debugging data from a component. Y
 {{< admonition type="caution" >}}
 Live debugging is disabled by default to avoid accidentally displaying sensitive telemetry data. To enable live debugging, configure the [livedebugging block][livedebugging].
 
-[livedebugging]: {{< relref "../reference/config-blocks/livedebugging" >}}
+[livedebugging]: ../../reference/config-blocks/livedebugging/
 {{< /admonition >}}
 
 Live debugging allows you to do the following:
