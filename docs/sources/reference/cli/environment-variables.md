@@ -23,11 +23,10 @@ The following arguments are supported.
 
 ### GODEBUG
 
-Argument               | Description                                                                     | Default
------------------------|---------------------------------------------------------------------------------|--------
-`x509usefallbackroots` | Enforce a fallback on the X.509 trusted root certificates. Set to `1` to enable | `0`
-`netdns=go`            | Force pure Go resolver.                                                         |
-`netdns=cgo`           | Force native resolver. Set to `cgo` or `win32`.                                 |
+Argument               | Description                                                                                          | Default
+-----------------------|------------------------------------------------------------------------------------------------------|--------
+`x509usefallbackroots` | Enforce a fallback on the X.509 trusted root certificates. Set to `1` to enable.                     | `0`
+`netdns`               | Force a resolver. Set to `go` for a pure Go resolver. Set to `cgo` or `win32` for a native resolver. |
 
 ### HTTP_PROXY
 
