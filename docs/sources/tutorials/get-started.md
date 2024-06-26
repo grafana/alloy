@@ -138,7 +138,7 @@ loki.source.file "log_scrape" {
 
 This configuration creates a [loki.source.file][] component named `log_scrape`, and shows the pipeline concept of {{< param "PRODUCT_NAME" >}} in action. The `log_scrape` component does the following:
 
-1. It connects to the `local_files` components as its "source" or target.
+1. It connects to the `local_files` component as its "source" or target.
 1. It forwards the logs it scrapes to the receiver of another component called `filter_logs`.
 1. It provides extra attributes and options to tail the log files from the end so you don't ingest the entire log file history.
 
@@ -164,10 +164,8 @@ loki.process "filter_logs" {
 `loki.process` is a component that allows you to transform, filter, parse, and enrich log data.
 Within this component, you can define one or more processing stages to specify how you would like to process log entries before they're stored or forwarded.
 
-In this example, you create a `loki.process` component named `filter_logs`.
+In this example, you create a `loki.process` component named `filter_logs` and use the `stage.drop` block to drop log entries based on specified criteria.
 This component receives scraped log entries from the `log_scrape` component you created in the previous step.
-There are many ways to [transform, filter, parse, and enrich log data][parse].
-In this example, you use the `stage.drop` block to drop log entries based on specified criteria.
 
 1. You set the `source` parameter equal to an empty string.
    This tells {{< param "PRODUCT_NAME" >}} to scrape logs from the default `log_scrape` component.
@@ -201,7 +199,7 @@ This last component creates a [loki.write][] component named `grafana_loki` that
 This completes the simple configuration pipeline.
 
 {{< admonition type="tip" >}}
-The `basic_auth` is commented out because the local `docker compose` stack doesn't require it.
+The `basic_auth` block is commented out because the local `docker compose` stack doesn't require it.
 It's included in this example to show how you can configure authorization for other environments.
 For further authorization options, refer to the [loki.write][] component reference.
 
@@ -226,7 +224,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
 
    {{< /code >}}
 
-1. Call the `reload` endpoint to tell {{< param "PRODUCT_NAME" >}} to reload the configuration file without a system service restart.
+1. Call the `/-/reload` endpoint to tell {{< param "PRODUCT_NAME" >}} to reload the configuration file without a system service restart.
 
    ```bash
    curl -X POST http://localhost:12345/-/reload
