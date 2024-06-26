@@ -26,8 +26,8 @@ The following arguments are supported.
 Argument               | Description                                                                     | Default
 -----------------------|---------------------------------------------------------------------------------|--------
 `x509usefallbackroots` | Enforce a fallback on the X.509 trusted root certificates. Set to `1` to enable | `0`
-`netdns=go`            | Force pure Go resolver                                                          |
-`netdns=cgo`           | Force native resolver. Can be set to `cgo` or `win32`.                          |
+`netdns=go`            | Force pure Go resolver.                                                         |
+`netdns=cgo`           | Force native resolver. Set to `cgo` or `win32`.                                 |
 
 ### HTTP_PROXY
 
