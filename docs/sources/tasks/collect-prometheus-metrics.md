@@ -51,7 +51,7 @@ To configure a `prometheus.remote_write` component for metrics delivery, complet
 
    - _`<LABEL>`_: The label for the component, such as `default`.
      The label you use must be unique across all `prometheus.remote_write` components in the same configuration file.
-   - _`<PROMETHEUS_URL>`_ The full URL of the Prometheus-compatible endpoint where metrics will be sent, such as `https://prometheus-us-central1.grafana.net/api/prom/push`.
+   - _`<PROMETHEUS_URL>`_ The full URL of the Prometheus-compatible endpoint where metrics are sent, such as `https://prometheus-us-central1.grafana.net/api/v1/write` for Prometheus or `https://mimir-us-central1.grafana.net/api/v1/push/` for Mimir. The endpoint URL depends on the database you use.
 
 1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
