@@ -10,7 +10,7 @@ weight: 600
 
 If you [downloaded][InstallBinary] the standalone binary, you must run {{< param "PRODUCT_NAME" >}} from a terminal or command window.
 
-Refer to the [run][] documentation for more information about the flags you can use with {{< param "PRODUCT_NAME" >}}.
+Refer to the [run][] documentation for more information about the command line flags you can use when you run {{< param "PRODUCT_NAME" >}}.
 
 ## Start {{% param "PRODUCT_NAME" %}} on Linux, macOS, or FreeBSD
 
@@ -116,4 +116,4 @@ These steps assume you have a default systemd and {{< param "PRODUCT_NAME" >}} c
 
 [InstallBinary]: ../../install/binary/
 [StartLinux]: ../linux/
-[run]: ../../reference/cli/run/
+[run]: ../../../reference/cli/run/
