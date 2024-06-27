@@ -184,7 +184,7 @@ func TestGenerateProbeConfig(t *testing.T) {
 							},
 							Labels: model.LabelSet{
 								"static": "label",
-								"namespace": "default"
+								"namespace": "default",
 							},
 						},
 					},
