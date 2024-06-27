@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/send-metrics-to-prometheus/
 description: Learn how to send metrics to Prometheus
+title: Use Grafana Alloy to send metrics to Prometheus
 menuTitle: Send metrics to Prometheus
-title: Send 
 weight: 15
 ---
 # Send metrics to Prometheus
