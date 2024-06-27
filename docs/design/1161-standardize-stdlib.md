@@ -101,6 +101,48 @@ I've elected for namespaces to use dot separation (`NAMESPACE.IDENTIFIER`) as
 opposed to underscores (`NAMESPACE_IDENTIFIER`) to align with `constants` and
 component names, which both  use dot separation for namespacing.
 
+### Example future stdlib
+
+Three of the five namespaces above only have one identifier. However, there are
+many new identifiers we may want to include in the future. Here's an example of
+what these namespaces could eventually look like:
+
+> **NOTE**: These are not part of the proposal and are only provided as an
+> example.
+
+* Array functions
+    * `array.concat`
+    * `array.length` (**new**; return the length of an array)
+    * `array.contains` (**new**; check if an array contains an element)
+    * `array.distinct` (**new**; return an array with only unique elements)
+* Conversion functions
+    * `convert.nonsensitive`
+    * `convert.sensitive` (**new**; explicitly convert a string into a secret)
+    * `convert.to_number` (**new**; convert a string to a number)
+    * `convert.to_string` (**new**; convert a number to a string)
+    * `convert.to_bool` (**new**; convert a string or number to a boolean)
+* Decoding functions
+    * `decode.base64`
+    * `decode.json`
+    * `decode.yaml`
+* OS-related functions
+    * `os.env`
+    * `os.uid` (**new**; return the user ID of the current process)
+    * `os.gids` (**new**; return the group IDs of the current process)
+* String functions
+    * `string.format`
+    * `string.join`
+    * `string.json_path`
+    * `string.replace`
+    * `string.split`
+    * `string.to_lower`
+    * `string.to_upper`
+    * `string.trim`
+    * `string.trim_prefix`
+    * `string.trim_space`
+    * `string.trim_suffix`
+    * `string.contains` (**new**; check if a string contains a substring)
+
 ## Pros and cons
 
 Pros:
