@@ -2,7 +2,7 @@
 
 * Author: Robert Fratto (@rfratto)
 * Last updated: 2024-06-27
-* Discussion link: TODO
+* Discussion link: <https://github.com/grafana/alloy/pull/1161>
 
 ## Abstract
 
