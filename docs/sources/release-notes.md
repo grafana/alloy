@@ -14,6 +14,19 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
 
+## v1.3
+
+### Breaking change: `remotecfg` block updated argument name from `metadata` to `attributes`
+
+{{< admonition type="note" >}}
+This feature is in [Public preview][] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
+
+[Public preview]: https://grafana.com/docs/release-life-cycle/
+[backward compatibility]: ../introduction/backward-compatibility/
+{{< /admonition >}}
+
+The `remotecfg` block has an updated argument name from `metadata` to `attributes`.
+
 ## v1.2
 
 ### Breaking change: `remotecfg` block updated for Agent rename

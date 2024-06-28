@@ -7,8 +7,9 @@ weight: 10
 
 ## Get started with {{% param "PRODUCT_NAME" %}}
 
-This tutorial shows you how to configure Alloy to collect logs from your local machine and send them to Loki, running in a local Grafana stack.
-This process will enable you to query and visualize the logs sent to Loki using the Grafana dashboard.
+This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect logs from your local machine, filter non-essential log lines, and send them to Loki, running in a local Grafana stack.
+
+This process allows you to query and visualize the logs sent to Loki using the Grafana dashboard.
 
 To follow this tutorial, you must have a basic understanding of Alloy and telemetry collection in general.
 You should also be familiar with Prometheus and PromQL, Loki and LogQL, and basic Grafana navigation.
@@ -106,9 +107,9 @@ You use components in the `config.alloy` file to tell {{< param "PRODUCT_NAME" >
 The examples run on a single host so that you can run them on your laptop or in a Virtual Machine.
 You can try the examples using a `config.alloy` file and experiment with the examples yourself.
 
-For the following steps, create a file called `config.alloy` in your current working directory. 
+For the following steps, create a file called `config.alloy` in your current working directory.
 If you have enabled the {{< param "PRODUCT_NAME" >}} UI, you can "hot reload" a configuration from a file.
-In a later step, you will copy this file to where {{< param "PRODUCT_NAME" >}} will pick it up, and be able to reload without restarting the system service.
+In a later step, you copy this file to where {{< param "PRODUCT_NAME" >}} picks it up, and reloads without restarting the system service.
 
 ### First component: Log files
 
@@ -129,19 +130,53 @@ Paste this component next in the `config.alloy` file:
 
 ```alloy
 loki.source.file "log_scrape" {
-    targets    = local.file_match.local_files.targets
-    forward_to = [loki.write.grafana_loki.receiver]
-    tail_from_end = true
+   targets    = local.file_match.local_files.targets
+   forward_to = [loki.process.filter_logs.receiver]
+   tail_from_end = true
 }
 ```
 
 This configuration creates a [loki.source.file][] component named `log_scrape`, and shows the pipeline concept of {{< param "PRODUCT_NAME" >}} in action. The `log_scrape` component does the following:
 
-1. It connects to the `local_files` component (its "source" or target).
-1. It forwards the logs it scrapes to the "receiver" of another component called `grafana_loki` that you will define next.
-1. It provides extra attributes and options, in this case, you will tail log files from the end and not ingest the entire past history.
+1. It connects to the `local_files` component as its "source" or target.
+1. It forwards the logs it scrapes to the receiver of another component called `filter_logs`.
+1. It provides extra attributes and options to tail the log files from the end so you don't ingest the entire log file history.
 
-### Third component: Write logs to Loki
+### Third component: Filter non-essential logs
+
+Filtering non-essential logs before sending them to a data source can help you manage log volumes to reduce costs.
+The filtering strategy of each organization differs because they have different monitoring needs and setups.
+
+The following example demonstrates filtering out or dropping logs before sending them to Loki.
+
+Paste this component next in the `config.alloy` file:
+```alloy
+loki.process "filter_logs" {
+  stage.drop {
+       source = ""
+       expression  = ".*Connection closed by authenticating user root"
+       drop_counter_reason = "noisy"
+    }
+  forward_to = [loki.write.grafana_loki.receiver]
+  }
+```
+
+`loki.process` is a component that allows you to transform, filter, parse, and enrich log data.
+Within this component, you can define one or more processing stages to specify how you would like to process log entries before they're stored or forwarded.
+
+* The `filter_logs` component receives scraped log entries from the `log_scrape` component and uses the `stage.drop` block to drop log entries based on specified criteria.
+* The `source` parameter is an empty string.
+  This tells {{< param "PRODUCT_NAME" >}} to scrape logs from the default `log_scrape` component.
+* The `expression` parameter contains the expression to drop from the logs.
+  In this example, it's the log message _".*Connection closed by authenticating user root"_.
+* You can include an optional string label  `drop_counter_reason` to show the rationale for dropping log entries.
+  You can use this label to categorize and count the drops to track and analyze the reasons for dropping logs.
+* The `forward_to` parameter specifies where to send the processed logs.
+  In this example, you send the processed logs to a component you create next called `grafana_loki`.
+
+Check out the following [tutorial][] and the [`loki.process` documentation][loki.process] for more comprehensive information on processing logs.
+
+### Fourth component: Write logs to Loki
 
 Paste this component last in your configuration file:
 
@@ -162,83 +197,82 @@ This last component creates a [loki.write][] component named `grafana_loki` that
 This completes the simple configuration pipeline.
 
 {{< admonition type="tip" >}}
-The `basic_auth` is commented out because the local `docker compose` stack doesn't require it. 
-It is included in this example to show how you can configure authorization for other environments.
+The `basic_auth` block is commented out because the local `docker compose` stack doesn't require it.
+It's included in this example to show how you can configure authorization for other environments.
 For further authorization options, refer to the [loki.write][] component reference.
 
+[loki.write]: ../../reference/components/loki.write/
 {{< /admonition >}}
 
-This connects directly to the Loki instance running in the Docker container.
+With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the Loki instance running in the Docker container.
 
 ## Reload the configuration
 
-Copy your local `config.alloy` file into the default configuration file location, which depends on your OS.
+1. Copy your local `config.alloy` file into the default configuration file location.
 
-{{< code >}}
+   {{< code >}}
 
-```macos
-sudo cp config.alloy $(brew --prefix)/etc/alloy/config.alloy
-```
+   ```macos
+   sudo cp config.alloy $(brew --prefix)/etc/alloy/config.alloy
+   ```
 
-```linux
-sudo cp config.alloy /etc/alloy/config.alloy
-```
+   ```linux
+   sudo cp config.alloy /etc/alloy/config.alloy
+   ```
 
-{{< /code >}}
+   {{< /code >}}
 
-Finally, call the reload endpoint to notify {{< param "PRODUCT_NAME" >}} to the configuration change without the need
-for restarting the system service.
+1. Call the `/-/reload` endpoint to tell {{< param "PRODUCT_NAME" >}} to reload the configuration file without a system service restart.
 
-```bash
-    curl -X POST http://localhost:12345/-/reload
-```
+   ```bash
+   curl -X POST http://localhost:12345/-/reload
+   ```
 
-{{< admonition type="tip" >}}
-This step uses the Alloy UI, which is exposed on `localhost` port `12345`.
-If you chose to run Alloy in a Docker container, make sure you use the `--server.http.listen-addr=0.0.0.0:12345` argument.
-If you don’t use this argument, the [debugging UI][debug] won’t be available outside of the Docker container.
+   {{< admonition type="tip" >}}
+   This step uses the {{< param "PRODUCT_NAME" >}} UI on `localhost` port `12345`.
+   If you chose to run {{< param "PRODUCT_NAME" >}} in a Docker container, make sure you use the `--server.http.listen-addr=0.0.0.0:12345` argument.
+   If you don’t use this argument, the [debugging UI][debug] won’t be available outside of the Docker container.
 
-[debug]: ../../tasks/debug/#alloy-ui
-{{< /admonition >}}
+   [debug]: ../../tasks/debug/#alloy-ui
+   {{< /admonition >}}
 
-The alternative to using this endpoint is to reload the {{< param "PRODUCT_NAME" >}} configuration, which can
-be done as follows:
+1. Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and load the configuration file:
 
-{{< code >}}
+   {{< code >}}
 
-```macos
-brew services restart alloy
-```
+   ```macos
+   brew services restart alloy
+   ```
 
-```linux
-sudo systemctl reload alloy
-```
+   ```linux
+   sudo systemctl reload alloy
+   ```
 
-{{< /code >}}
+   {{< /code >}}
 
 ## Inspect your configuration in the {{% param "PRODUCT_NAME" %}} UI
 
 Open [http://localhost:12345] and click the Graph tab at the top.
 The graph should look similar to the following:
 
-{{< figure src="/media/docs/alloy/tutorial/healthy-config.png" alt="Logs reported by Alloy in Grafana" >}}
+{{< figure src="/media/docs/alloy/tutorial/Inspect-your-config-in-the-Alloy-UI-image.png" alt="Your configuration in the Alloy UI" >}}
 
 The UI allows you to see a visual representation of the pipeline you built with your {{< param "PRODUCT_NAME" >}} component configuration.
 We can see that the components are healthy, and you are ready to go.
 
 ## Log in to Grafana and explore Loki logs
 
-Open [http://localhost:3000/explore] to access Explore feature in Grafana.
-Select Loki as the data source and click the "Label Browser" button to select a file that {{< param "PRODUCT_NAME" >}} has sent to Loki.
+Open [http://localhost:3000/explore] to access **Explore** feature in Grafana.
+Select Loki as the data source and click the **Label Browser** button to select a file that {{< param "PRODUCT_NAME" >}} has sent to Loki.
 
-Here you can see that logs are flowing through to Loki as expected, and the end-to-end configuration was successful!
+Here you can see that logs are flowing through to Loki as expected, and the end-to-end configuration was successful.
 
 {{< figure src="/media/docs/alloy/tutorial/loki-logs.png" alt="Logs reported by Alloy in Grafana" >}}
 
 ## Conclusion
 
-Congratulations, you have fully installed and configured {{< param "PRODUCT_NAME" >}}, and sent logs from your local host to a Grafana stack.
-In the following tutorials, you will learn more about configuration concepts, metrics, and more advanced log scraping.
+Congratulations, you have installed and configured {{< param "PRODUCT_NAME" >}}, and sent logs from your local host to a Grafana stack.
+In the following tutorials, you learn more about configuration concepts and metrics.
 
 [http://localhost:3000/explore]: http://localhost:3000/explore
 [http://localhost:12345]: http://localhost:12345
@@ -253,3 +287,6 @@ In the following tutorials, you will learn more about configuration concepts, me
 [configuration]: ../../concepts/configuration-syntax/
 [install]: ../../get-started/install/binary/#install-alloy-as-a-standalone-binary
 [debugging your configuration]: ../../tasks/debug/
+[parse]: ../../reference/components/loki.process/
+[tutorial]: ../processing-logs/
+[loki.process]: ../../reference/components/loki.process/

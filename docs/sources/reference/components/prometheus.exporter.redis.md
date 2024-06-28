@@ -6,8 +6,7 @@ title: prometheus.exporter.redis
 
 # prometheus.exporter.redis
 
-The `prometheus.exporter.redis` component embeds
-[redis_exporter](https://github.com/oliver006/redis_exporter) for collecting metrics from a Redis database.
+The `prometheus.exporter.redis` component embeds the [`redis_exporter`](https://github.com/oliver006/redis_exporter) for collecting metrics from a Redis database.
 
 ## Usage
 
@@ -25,7 +24,7 @@ Omitted fields take their default values.
 | Name                          | Type           | Description                                                                                                             | Default    | Required |
 | ----------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
 | `redis_addr`                  | `string`       | Address (host and port) of the Redis instance to connect to.                                                            |            | yes      |
-| `redis_user`                  | `string`       | User name to use for authentication (Redis ACL for Redis 6.0 and newer).                                                |            | no       |
+| `redis_user`                  | `string`       | User name to use for authentication. Redis ACL for Redis 6.0 and newer.                                                 |            | no       |
 | `redis_password`              | `secret`       | Password of the Redis instance.                                                                                         |            | no       |
 | `redis_password_file`         | `string`       | Path of a file containing a password.                                                                                   |            | no       |
 | `redis_password_map_file`     | `string`       | Path of a JSON file containing a map of Redis URIs to passwords.                                                        |            | no       |
@@ -53,23 +52,24 @@ Omitted fields take their default values.
 | `export_client_port`          | `bool`         | Whether to include the client's port when exporting the client list.                                                    |            | no       |
 | `redis_metrics_only`          | `bool`         | Whether to just export metrics or to also export go runtime metrics.                                                    |            | no       |
 | `ping_on_connect`             | `bool`         | Whether to ping the Redis instance after connecting.                                                                    |            | no       |
-| `incl_system_metrics`         | `bool`         | Whether to include system metrics (e.g. `redis_total_system_memory_bytes`).                                             |            | no       |
-| `skip_tls_verification`       | `bool`         | Whether to to skip TLS verification.                                                                                    |            | no       |
+| `incl_system_metrics`         | `bool`         | Whether to include system metrics. For example `redis_total_system_memory_bytes`.                                       |            | no       |
+| `skip_tls_verification`       | `bool`         | Whether to skip TLS verification.                                                                                       |            | no       |
 
 If `redis_password_file` is defined, it will take precedence over `redis_password`.
 
-When `check_key_groups` is not set, no key groups are made.
+When `check_key_groups` isn't set, no key groups are made.
 
 The `check_key_groups_batch_size` argument name reflects key groups for backwards compatibility, but applies to both key and key groups.
 
-The `script_path` argument may also be specified as a comma-separated string of paths, though it is encouraged to use `script_paths` when using
-multiple Lua scripts.
+The `script_path` argument may also be specified as a comma-separated string of paths, though it's encouraged to use `script_paths` when using multiple Lua scripts.
 
 Any leftover key groups beyond `max_distinct_key_groups` are aggregated in the 'overflow' bucket.
 
 The `is_cluster` argument must be set to `true` when connecting to a Redis cluster and using either of the `check_keys` and `check_single_keys` arguments.
 
-Note that setting `export_client_port` increases the cardinality of all Redis metrics.
+{{< admonition type="note" >}}
+Setting `export_client_port` increases the cardinality of all Redis metrics.
+{{< /admonition >}}
 
 ## Exported fields
 
@@ -77,24 +77,20 @@ Note that setting `export_client_port` increases the cardinality of all Redis me
 
 ## Component health
 
-`prometheus.exporter.redis` is only reported as unhealthy if given
-an invalid configuration. In those cases, exported fields retain their last
-healthy values.
+`prometheus.exporter.redis` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.redis` does not expose any component-specific
-debug information.
+`prometheus.exporter.redis` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.redis` does not expose any component-specific
-debug metrics.
+`prometheus.exporter.redis` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics
-from `prometheus.exporter.redis`:
+This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.redis`:
 
 ```alloy
 prometheus.exporter.redis "example" {
@@ -121,9 +117,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- `USERNAME`: The username to use for authentication to the `remote_write` API.
+- `PASSWORD`: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

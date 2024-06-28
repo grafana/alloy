@@ -11,7 +11,7 @@ weight: 320
 You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 
 - The Monitor types (`PodMonitor`, `ServiceMonitor`, `Probe`, and `PodLogs`) are all supported natively by {{< param "PRODUCT_NAME" >}}.
-- The parts of Grafana Agent Operator that deploy the Grafana Agent itself (`GrafanaAgent`, `MetricsInstance`, and `LogsInstance` CRDs) are deprecated.
+- The parts of Grafana Agent Operator that deploy Grafana Agent, `GrafanaAgent`, `MetricsInstance`, and `LogsInstance` CRDs, are deprecated.
 
 ## Deploy {{% param "PRODUCT_NAME" %}} with Helm
 
@@ -119,13 +119,12 @@ Refer to the documentation for the relevant components for additional informatio
 - [prometheus.operator.probes][]
 - [prometheus.scrape][]
 
-## Collecting Logs
+## Collecting logs
 
-Our current recommendation is to create an additional DaemonSet deployment of {{< param "PRODUCT_NAME" >}}s to scrape logs.
+The current recommendation is to create an additional DaemonSet deployment of {{< param "PRODUCT_NAME" >}} to scrape logs.
 
-> We have components that can scrape pod logs directly from the Kubernetes API without needing a DaemonSet deployment. These are
-> still considered experimental, but if you would like to try them, see the documentation for [loki.source.kubernetes][] and
-> [loki.source.podlogs][].
+> {{< param "PRODUCT_NAME" >}} has components that can scrape Pod logs directly from the Kubernetes API without needing a DaemonSet deployment.
+> These are still considered experimental, but if you would like to try them, see the documentation for [loki.source.kubernetes][] and [loki.source.podlogs][].
 
 These values are close to what Grafana Agent Operator deploys for logs:
 

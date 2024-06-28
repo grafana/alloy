@@ -24,7 +24,7 @@ import (
 )
 
 // Generous timeout period for configuring informers
-const informerSyncTimeout = 10 * time.Second
+const informerSyncTimeout = 10 * time.Minute
 
 func init() {
 	component.Register(component.Registration{

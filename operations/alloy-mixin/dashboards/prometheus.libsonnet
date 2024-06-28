@@ -87,69 +87,44 @@ local filename = 'alloy-prometheus-remote-write.json';
   local remoteWritePanels(y_offset) = [
     panel.newRow(title='prometheus.remote_write', y=y_offset),
 
-    // WAL delay
+    // Remote write success rate
     (
-      panel.new(title='WAL delay', type='timeseries') +
-      panel.withUnit('s') +
+      panel.new(title='Remote write success rate in $cluster', type='timeseries') +
+      panel.withUnit('percentunit') +
       panel.withDescription(|||
-        How far behind prometheus.remote_write from samples recently written
-        to the WAL.
+        Percentage of samples sent by prometheus.remote_write that succeeded.
 
-        Each endpoint prometheus.remote_write is configured to send metrics
-        has its own delay. The time shown here is the sum across all
-        endpoints for the given component.
-
-        It is normal for the WAL delay to be within 1-3 scrape intervals. If
-        the WAL delay continues to increase beyond that amount, try
-        increasing the number of maximum shards.
+        Low success rates can indicate a problem with Alloy or the remote storage.
       |||) +
-      panel.withPosition({ x: 0, y: 1 + y_offset, w: 6, h: 10 }) +
+      panel.withPosition({ x: 0, y: 1 + y_offset, w: 12, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
-          expr= |||
-            sum by (instance, component_path, component_id) (
-              prometheus_remote_storage_highest_timestamp_in_seconds{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component"}
-              - ignoring(url, remote_name) group_right(instance)
-              prometheus_remote_storage_queue_highest_sent_timestamp_seconds{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}
+          expr=|||
+            (
+                1 - 
+                (
+                    sum(rate(prometheus_remote_storage_samples_failed_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval]))
+                )
+                /
+                (
+                    sum(rate(prometheus_remote_storage_samples_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval]))
+                )
             )
           ||| % $._config,
-          legendFormat='{{instance}} / {{component_path}} {{component_id}}',
-        ),
-      ])
-    ),
-
-    // Data write throughput
-    (
-      panel.new(title='Data write throughput', type='timeseries') +
-      stackedPanelMixin +
-      panel.withUnit('Bps') +
-      panel.withDescription(|||
-        Rate of data containing samples and metadata sent by
-        prometheus.remote_write.
-      |||) +
-      panel.withPosition({ x: 6, y: 1 + y_offset, w: 6, h: 10 }) +
-      panel.withQueries([
-        panel.newQuery(
-          expr= |||
-            sum without (remote_name, url) (
-                rate(prometheus_remote_storage_bytes_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval]) +
-                rate(prometheus_remote_storage_metadata_bytes_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
-            )
-          ||| % $._config,
-          legendFormat='{{instance}} / {{component_path}} {{component_id}}',
+          legendFormat='% of samples successfully sent',
         ),
       ])
     ),
 
     // Write latency
     (
-      panel.new(title='Write latency', type='timeseries') +
+      panel.new(title='Write latency in $cluster', type='timeseries') +
       panel.withUnit('s') +
       panel.withDescription(|||
         Latency of writes to the remote system made by
         prometheus.remote_write.
       |||) +
-      panel.withPosition({ x: 12, y: 1 + y_offset, w: 6, h: 10 }) +
+      panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr= |||
@@ -173,6 +148,61 @@ local filename = 'alloy-prometheus-remote-write.json';
             sum(rate(prometheus_remote_storage_sent_batch_duration_seconds_count{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component"}[$__rate_interval]))
           ||| % $._config,
           legendFormat='Average',
+        ),
+      ])
+    ),
+
+
+    // WAL delay
+    (
+      panel.new(title='WAL delay', type='timeseries') +
+      panel.withUnit('s') +
+      panel.withDescription(|||
+        How far behind prometheus.remote_write from samples recently written
+        to the WAL.
+
+        Each endpoint prometheus.remote_write is configured to send metrics
+        has its own delay. The time shown here is the sum across all
+        endpoints for the given component.
+
+        It is normal for the WAL delay to be within 1-3 scrape intervals. If
+        the WAL delay continues to increase beyond that amount, try
+        increasing the number of maximum shards.
+      |||) +
+      panel.withPosition({ x: 0, y: 11 + y_offset, w: 8, h: 10 }) +
+      panel.withQueries([
+        panel.newQuery(
+          expr= |||
+            sum by (instance, component_path, component_id) (
+              prometheus_remote_storage_highest_timestamp_in_seconds{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component"}
+              - ignoring(url, remote_name) group_right(instance)
+              prometheus_remote_storage_queue_highest_sent_timestamp_seconds{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}
+            )
+          ||| % $._config,
+          legendFormat='{{instance}} / {{component_path}} {{component_id}}',
+        ),
+      ])
+    ),
+
+    // Data write throughput
+    (
+      panel.new(title='Data write throughput', type='timeseries') +
+      stackedPanelMixin +
+      panel.withUnit('Bps') +
+      panel.withDescription(|||
+        Rate of data containing samples and metadata sent by
+        prometheus.remote_write.
+      |||) +
+      panel.withPosition({ x: 8, y: 11 + y_offset, w: 8, h: 10 }) +
+      panel.withQueries([
+        panel.newQuery(
+          expr= |||
+            sum without (remote_name, url) (
+                rate(prometheus_remote_storage_bytes_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval]) +
+                rate(prometheus_remote_storage_metadata_bytes_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
+            )
+          ||| % $._config,
+          legendFormat='{{instance}} / {{component_path}} {{component_id}}',
         ),
       ])
     ),
@@ -220,7 +250,7 @@ local filename = 'alloy-prometheus-remote-write.json';
         shards; filter to a specific URL to display more granular
         information.
       |||) +
-      panel.withPosition({ x: 18, y: 1 + y_offset, w: 6, h: 10 }) +
+      panel.withPosition({ x: 16, y: 11 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr= |||
@@ -257,7 +287,7 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withDescription(|||
         Total outgoing samples sent by prometheus.remote_write.
       |||) +
-      panel.withPosition({ x: 0, y: 11 + y_offset, w: 8, h: 10 }) +
+      panel.withPosition({ x: 0, y: 21 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr= |||
@@ -279,7 +309,7 @@ local filename = 'alloy-prometheus-remote-write.json';
         Rate of samples which prometheus.remote_write could not send due to
         non-recoverable errors.
       |||) +
-      panel.withPosition({ x: 8, y: 11 + y_offset, w: 8, h: 10 }) +
+      panel.withPosition({ x: 8, y: 21 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr= |||
@@ -301,7 +331,7 @@ local filename = 'alloy-prometheus-remote-write.json';
         Rate of samples which prometheus.remote_write attempted to resend
         after receiving a recoverable error.
       |||) +
-      panel.withPosition({ x: 16, y: 11 + y_offset, w: 8, h: 10 }) +
+      panel.withPosition({ x: 16, y: 21 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr= |||
@@ -331,7 +361,7 @@ local filename = 'alloy-prometheus-remote-write.json';
         received a sample for. Active series are garbage collected whenever a
         truncation of the WAL occurs.
       |||) +
-      panel.withPosition({ x: 0, y: 21 + y_offset, w: 8, h: 10 }) +
+      panel.withPosition({ x: 0, y: 31 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr= |||
@@ -354,7 +384,7 @@ local filename = 'alloy-prometheus-remote-write.json';
         received a sample for. Active series are garbage collected whenever a
         truncation of the WAL occurs.
       |||) +
-      panel.withPosition({ x: 8, y: 21 + y_offset, w: 8, h: 10 }) +
+      panel.withPosition({ x: 8, y: 31 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr= |||
@@ -377,7 +407,7 @@ local filename = 'alloy-prometheus-remote-write.json';
         received a sample for. Active series are garbage collected whenever a
         truncation of the WAL occurs.
       |||) +
-      panel.withPosition({ x: 16, y: 21 + y_offset, w: 8, h: 10 }) +
+      panel.withPosition({ x: 16, y: 31 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr= |||

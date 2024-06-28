@@ -25,22 +25,22 @@ prometheus.exporter.blackbox "LABEL" {
 The following arguments can be used to configure the exporter's behavior.
 Omitted fields take their default values.
 
-| Name                   | Type                 | Description                                                      | Default  | Required |
-| ---------------------- | -------------------- | ---------------------------------------------------------------- | -------- | -------- |
-| `config_file`          | `string`             | blackbox_exporter configuration file path.                       |          | no       |
-| `config`               | `string` or `secret` | blackbox_exporter configuration as inline string.                |          | no       |
-| `probe_timeout_offset` | `duration`           | Offset in seconds to subtract from timeout when probing targets. | `"0.5s"` | no       |
+| Name                   | Type                 | Description                                                        | Default  | Required |
+| ---------------------- | -------------------- | ------------------------------------------------------------------ | -------- | -------- |
+| `config_file`          | `string`             | `blackbox_exporter` configuration file path.                       |          | no       |
+| `config`               | `string` or `secret` | `blackbox_exporter` configuration as inline string.                |          | no       |
+| `probe_timeout_offset` | `duration`           | Offset in seconds to subtract from timeout when probing targets.   | `"0.5s"` | no       |
 
 Either `config_file` or `config` must be specified.
-The `config_file` argument points to a YAML file defining which blackbox_exporter modules to use.
-The `config` argument must be a YAML document as string defining which blackbox_exporter modules to use.
+The `config_file` argument points to a YAML file defining which `blackbox_exporter` modules to use.
+The `config` argument must be a YAML document as string defining which `blackbox_exporter` modules to use.
 `config` is typically loaded by using the exports of another component. For example,
 
 - `local.file.LABEL.content`
 - `remote.http.LABEL.content`
 - `remote.s3.LABEL.content`
 
-See [blackbox_exporter](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml) for details on how to generate a config file.
+Refer to [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml) for more information about generating a configuration file.
 
 ## Blocks
 
@@ -65,7 +65,7 @@ The `target` block may be specified multiple times to define multiple targets. `
 | `module`  | `string`         | Blackbox module to use to probe.    | `""`    | no       |
 | `labels`  | `map(string)`    | Labels to add to the target.        |         | no       |
 
-Labels specified in the `labels` argument will not override labels set by `blackbox_exporter`.
+Labels specified in the `labels` argument won't override labels set by `blackbox_exporter`.
 
 ## Exported fields
 
@@ -79,20 +79,20 @@ healthy values.
 
 ## Debug information
 
-`prometheus.exporter.blackbox` does not expose any component-specific
+`prometheus.exporter.blackbox` doesn't expose any component-specific
 debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.blackbox` does not expose any component-specific
+`prometheus.exporter.blackbox` doesn't expose any component-specific
 debug metrics.
 
 ## Examples
 
-### Collect metrics using a blackbox exporter config file
+### Collect metrics using a blackbox exporter configuration file
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics
-from `prometheus.exporter.blackbox`. It adds an extra label, `env="dev"`, to the metrics emitted by the `grafana` target. The `example` target does not have any added labels. 
+This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.blackbox`.
+It adds an extra label, `env="dev"`, to the metrics emitted by the `grafana` target. The `example` target doesn't have any added labels.
 
 The `config_file` argument is used to define which `blackbox_exporter` modules to use. You can use the [blackbox example config file](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml).
 
@@ -102,13 +102,13 @@ prometheus.exporter.blackbox "example" {
 
   target {
     name    = "example"
-    address = "http://example.com"
+    address = "https://example.com"
     module  = "http_2xx"
   }
 
   target {
-    name    = "grafana" 
-    address = "http://grafana.com"
+    name    = "grafana"
+    address = "https://grafana.com"
     module  = "http_2xx"
     labels = {
       "env" = "dev",
@@ -137,12 +137,12 @@ prometheus.remote_write "demo" {
 Replace the following:
 
 - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+- `USERNAME`: The username to use for authentication to the `remote_write` API.
+- `PASSWORD`: The password to use for authentication to the `remote_write` API.
 
 ### Collect metrics using an embedded configuration
 
-This example is the same above with using an embedded configuration:
+This example uses an embedded configuration:
 
 ```alloy
 prometheus.exporter.blackbox "example" {
@@ -150,13 +150,13 @@ prometheus.exporter.blackbox "example" {
 
   target {
     name    = "example"
-    address = "http://example.com"
+    address = "https://example.com"
     module  = "http_2xx"
   }
 
   target {
     name    = "grafana"
-    address = "http://grafana.com"
+    address = "https://grafana.com"
     module  = "http_2xx"
     labels = {
       "env" = "dev",
@@ -185,8 +185,8 @@ prometheus.remote_write "demo" {
 Replace the following:
 
 - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+- `USERNAME`: The username to use for authentication to the `remote_write` API.
+- `PASSWORD`: The password to use for authentication to the `remote_write` API.
 
 
 [scrape]: ../prometheus.scrape/

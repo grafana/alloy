@@ -96,7 +96,7 @@ local.file "token" {
 All block and attribute definitions are followed by a newline, which {{< param "PRODUCT_NAME" >}} calls a _terminator_, as it terminates the current statement.
 
 A newline is treated as a terminator when it follows any expression, `]`, `)`, or `}`.
-{{< param "PRODUCT_NAME" >}} ignores other newlines and you can can enter as many newlines as you want.
+{{< param "PRODUCT_NAME" >}} ignores other newlines and you can enter as many newlines as you want.
 
 [identifier]: #identifiers
 [identifier]: #identifiers

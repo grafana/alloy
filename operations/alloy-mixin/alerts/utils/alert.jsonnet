@@ -6,12 +6,16 @@
     rules: rules,
   },
 
-  newRule(name='', expr='', message='', forT=''):: std.prune({
+  newRule(name='', expr='', message='', description='', forT='', severity='warning'):: std.prune({
     alert: name,
     expr: expr,
     annotations: {
-      message: message,
+      summary: message,
+      description: description,
     },
     'for': forT,
+    labels: {
+      severity: severity,
+    },
   }),
 }

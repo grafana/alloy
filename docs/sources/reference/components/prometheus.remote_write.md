@@ -171,7 +171,8 @@ Each queue then manages a number of concurrent _shards_ which is responsible
 for sending a fraction of data to their respective endpoints. The number of
 shards is automatically raised if samples are not being sent to the endpoint
 quickly enough. The range of permitted shards can be configured with the
-`min_shards` and `max_shards` arguments.
+`min_shards` and `max_shards` arguments. Refer to  [Tuning `max_shards`](#tuning-max_shards)
+for more information about how to configure `max_shards`.
 
 Each shard has a buffer of samples it will keep in memory, controlled with the
 `capacity` argument. New metrics aren't read from the WAL unless there is at
@@ -400,13 +401,14 @@ prometheus.remote_write "default" {
   }
 }
 ```
+
 ## Technical details
 
 `prometheus.remote_write` uses [snappy][] for compression.
 
 Any labels that start with `__` will be removed before sending to the endpoint.
 
-## Data retention
+### Data retention
 
 The `prometheus.remote_write` component uses a Write Ahead Log (WAL) to prevent
 data loss during network outages. The component buffers the received metrics in
@@ -471,6 +473,59 @@ It's not unusual for the component to temporarily fall behind 2 or 3 scrape inte
 If the component falls behind more than one third of the data written since the
 last truncate interval, it is possible for the truncate loop to checkpoint data
 before being pushed to the remote_write endpoint.
+
+### Tuning `max_shards`
+
+The [`queue_config`](#queue_config-block) block allows you to configure `max_shards`. The `max_shards` is the maximum
+number of concurrent shards sending samples to the Prometheus-compatible remote write endpoint.
+For each shard, a single remote write request can send up to `max_samples_per_send` samples.
+
+{{< param "PRODUCT_NAME" >}} will try not to use too many shards, but if the queue falls behind, the remote write
+component will increase the number of shards up to `max_shards` to increase throughput. A high number of shards may
+potentially overwhelm the remote endpoint or increase {{< param "PRODUCT_NAME" >}} memory utilization. For this reason,
+it's important to tune `max_shards` to a reasonable value that is good enough to keep up with the backlog of data
+to send to the remote endpoint without overwhelming it.
+
+The maximum throughput that {{< param "PRODUCT_NAME" >}} can achieve when remote writing is equal to
+`max_shards * max_samples_per_send * <1 / average write request latency>`. For example, running {{< param "PRODUCT_NAME" >}} with the
+default configuration of 50 `max_shards` and 2000 `max_samples_per_send`, and assuming the
+average latency of a remote write request is 500ms, the maximum throughput achievable is
+about `50 * 2000 * (1s / 500ms) = 200K samples / s`.
+
+The default `max_shards` configuration is good for most use cases, especially if each {{< param "PRODUCT_NAME" >}}
+instance scrapes up to 1 million active series. However, if you run {{< param "PRODUCT_NAME" >}}
+at a large scale and each instance scrapes more than 1 million series, we recommend
+increasing the value of `max_shards`.
+
+{{< param "PRODUCT_NAME" >}} exposes a few metrics that you can use to monitor the remote write shards:
+
+* `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
+* `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards a queue is allowed to run.
+* `prometheus_remote_storage_shards_max` (gauge): The maximum number of shards a queue is allowed to run.
+* `prometheus_remote_storage_shards_desired` (gauge): The number of shards a queue wants to run to keep up with the number of incoming metrics.
+
+If you're already running {{< param "PRODUCT_NAME" >}}, a rule of thumb is to set `max_shards` to
+4x shard utilization. Using the metrics explained above, you can run the following PromQL instant query
+to compute the suggested `max_shards` value for each remote write endpoint `url`:
+
+```
+clamp_min(
+    (
+        # Calculate the 90th percentile desired shards over the last seven-day period.
+        # If you're running {{< param "PRODUCT_NAME" >}} for less than seven days, then
+        # reduce the [7d] period to cover only the time range since when you deployed it.
+        ceil(quantile_over_time(0.9, prometheus_remote_storage_shards_desired[7d]))
+
+        # Add room for spikes.
+        * 4
+    ),
+    # We recommend setting max_shards to a value of no less than 50, as in the default configuration.
+    50
+)
+```
+
+If you aren't running {{< param "PRODUCT_NAME" >}} yet, we recommend running it with the default `max_shards`
+and then using the PromQL instant query mentioned above to compute the recommended `max_shards`.
 
 ### WAL corruption
 

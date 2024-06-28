@@ -6,15 +6,14 @@ title: otelcol.receiver.jaeger
 
 # otelcol.receiver.jaeger
 
-`otelcol.receiver.jaeger` accepts Jaeger-formatted data over the network and
-forwards it to other `otelcol.*` components.
+`otelcol.receiver.jaeger` accepts Jaeger-formatted data over the network and forwards it to other `otelcol.*` components.
 
-> **NOTE**: `otelcol.receiver.jaeger` is a wrapper over the upstream
-> OpenTelemetry Collector `jaeger` receiver. Bug reports or feature requests
-> will be redirected to the upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.receiver.jaeger` is a wrapper over the upstream OpenTelemetry Collector `jaeger` receiver.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
 
-Multiple `otelcol.receiver.jaeger` components can be specified by giving them
-different labels.
+You can specify multiple `otelcol.receiver.jaeger` components by giving them different labels.
 
 ## Usage
 
@@ -37,8 +36,7 @@ otelcol.receiver.jaeger "LABEL" {
 
 ## Arguments
 
-`otelcol.receiver.jaeger` doesn't support any arguments and is configured fully
-through inner blocks.
+`otelcol.receiver.jaeger` doesn't support any arguments and is configured fully through inner blocks.
 
 ## Blocks
 
@@ -61,8 +59,8 @@ protocols > thrift_compact                        | [thrift_compact][]     | Con
 debug_metrics                                     | [debug_metrics][]      | Configures the metrics that this component generates to monitor its state. | no
 output                                            | [output][]             | Configures where to send received telemetry data.                          | yes
 
-The `>` symbol indicates deeper levels of nesting. For example, `protocols >
-grpc` refers to a `grpc` block defined inside a `protocols` block.
+The `>` symbol indicates deeper levels of nesting.
+For example, `protocols > grpc` refers to a `grpc` block defined inside a `protocols` block.
 
 [protocols]: #protocols-block
 [grpc]: #grpc-block
@@ -79,88 +77,80 @@ grpc` refers to a `grpc` block defined inside a `protocols` block.
 
 ### protocols block
 
-The `protocols` block defines a set of protocols that will be used to accept
-traces over the network.
+The `protocols` block defines a set of protocols used to accept traces over the network.
 
-`protocols` doesn't support any arguments and is configured fully through inner
-blocks.
+`protocols` doesn't support any arguments and is configured fully through inner blocks.
 
-`otelcol.receiver.jeager` requires at least one protocol block (`grpc`,
-`thrift_http`, `thrift_binary`, or `thrift_compact`) to be provided.
+`otelcol.receiver.jeager` requires at least one protocol block (`grpc`, `thrift_http`, `thrift_binary`, or `thrift_compact`).
 
 ### grpc block
 
-The `grpc` block configures a gRPC server which can accept Jaeger traces. If
-the `grpc` block isn't provided, a gRPC server isn't started.
+The `grpc` block configures a gRPC server which can accept Jaeger traces.
+If the `grpc` block isn't provided, a gRPC server isn't started.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:14250"` | no
-`transport` | `string` | Transport to use for the gRPC server. | `"tcp"` | no
-`max_recv_msg_size` | `string` | Maximum size of messages the server will accept. | `"4MiB`" | no
-`max_concurrent_streams` | `number` | Limit the number of concurrent streaming RPC calls. | | no
-`read_buffer_size` | `string` | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"` | no
-`write_buffer_size` | `string` | Size of the write buffer the gRPC server will use for writing to clients. | | no
-`include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
+Name                     | Type      | Description                                                                | Default           | Required
+-------------------------|-----------|----------------------------------------------------------------------------|-------------------|---------
+`endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"0.0.0.0:14250"` | no
+`transport`              | `string`  | Transport to use for the gRPC server.                                      | `"tcp"`           | no
+`max_recv_msg_size`      | `string`  | Maximum size of messages the server will accept.                           | `"4MiB`"          | no
+`max_concurrent_streams` | `number`  | Limit the number of concurrent streaming RPC calls.                        |                   | no
+`read_buffer_size`       | `string`  | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"`        | no
+`write_buffer_size`      | `string`  | Size of the write buffer the gRPC server will use for writing to clients.  |                   | no
+`include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers.            |                   | no
 
 ### tls block
 
-The `tls` block configures TLS settings used for a server. If the `tls` block
-isn't provided, TLS won't be used for connections to the server.
+The `tls` block configures TLS settings used for a server.
+If the `tls` block isn't provided, TLS isn't used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### keepalive block
 
-The `keepalive` block configures keepalive settings for connections to a gRPC
-server.
+The `keepalive` block configures keepalive settings for connections to a gRPC server.
 
-`keepalive` doesn't support any arguments and is configured fully through inner
-blocks.
+`keepalive` doesn't support any arguments and is configured fully through inner blocks.
 
 ### server_parameters block
 
-The `server_parameters` block controls keepalive and maximum age settings for gRPC
-servers.
+The `server_parameters` block controls keepalive and maximum age settings for gRPC servers.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`max_connection_idle` | `duration` | Maximum age for idle connections. | `"infinity"` | no
-`max_connection_age` | `duration` | Maximum age for non-idle connections. | `"infinity"` | no
-`max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections. | `"infinity"` | no
-`time` | `duration` | How often to ping inactive clients to check for liveness. | `"2h"` | no
-`timeout` | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"` | no
+Name                       | Type       | Description                                                                         | Default      | Required
+---------------------------|------------|-------------------------------------------------------------------------------------|--------------|---------
+`max_connection_idle`      | `duration` | Maximum age for idle connections.                                                   | `"infinity"` | no
+`max_connection_age`       | `duration` | Maximum age for non-idle connections.                                               | `"infinity"` | no
+`max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                   | `"infinity"` | no
+`time`                     | `duration` | How often to ping inactive clients to check for liveness.                           | `"2h"`       | no
+`timeout`                  | `duration` | Time to wait before closing inactive clients that don't respond to liveness checks. | `"20s"`      | no
 
 ### enforcement_policy block
 
-The `enforcement_policy` block configures the keepalive enforcement policy for
-gRPC servers. The server will close connections from clients that violate the
-configured policy.
+The `enforcement_policy` block configures the keepalive enforcement policy for gRPC servers.
+The server closes connections from clients that violate the configured policy.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`min_time` | `duration` | Minimum time clients should wait before sending a keepalive ping. | `"5m"` | no
-`permit_without_stream` | `boolean` | Allow clients to send keepalive pings when there are no active streams. | `false` | no
+Name                    | Type       | Description                                                             | Default | Required
+------------------------|------------|-------------------------------------------------------------------------|---------|---------
+`min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no
+`permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no
 
 ### thrift_http block
 
-The `thrift_http` block configures an HTTP server which can accept
-Thrift-formatted traces. If the `thrift_http` block isn't specified, an HTTP
-server isn't started.
+The `thrift_http` block configures an HTTP server which can accept Thrift-formatted traces.
+If the `thrift_http` block isn't specified, an HTTP server isn't started.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:14268"` | no
-`max_request_body_size` | `string` | Maximum request body size the server will allow.  | `20MiB`         | no
-`include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
+Name                    | Type      | Description                                                     | Default           | Required
+------------------------|-----------|-----------------------------------------------------------------|-------------------|---------
+`endpoint`              | `string`  | `host:port` to listen for traffic on.                           | `"0.0.0.0:14268"` | no
+`max_request_body_size` | `string`  | Maximum request body size the server will allow.                | `20MiB`           | no
+`include_metadata`      | `boolean` | Propagate incoming connection metadata to downstream consumers. |                   | no
 
 ### cors block
 
@@ -168,53 +158,51 @@ The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`allowed_origins` | `list(string)` | Allowed values for the `Origin` header. | | no
-`allowed_headers` | `list(string)` | Accepted headers from CORS requests. | `["X-Requested-With"]` | no
-`max_age` | `number` | Configures the `Access-Control-Max-Age` response header. | | no
+Name              | Type           | Description                                              | Default                | Required
+------------------|----------------|----------------------------------------------------------|------------------------|---------
+`allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no
+`allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no
+`max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no
 
-The `allowed_headers` specifies which headers are acceptable from a CORS
-request. The following headers are always implicitly allowed:
+The `allowed_headers` specifies which headers are acceptable from a CORS request.
+The following headers are always implicitly allowed:
 
 * `Accept`
 * `Accept-Language`
 * `Content-Type`
 * `Content-Language`
 
-If `allowed_headers` includes `"*"`, all headers will be permitted.
+If `allowed_headers` includes `"*"`, all headers are permitted.
 
 ### thrift_binary block
 
-The `thrift_binary` block configures a UDP server which can accept traces
-formatted to the Thrift binary protocol. If the `thrift_binary` block isn't
-provided, a UDP server isn't started.
+The `thrift_binary` block configures a UDP server which can accept traces formatted to the Thrift binary protocol.
+If the `thrift_binary` block isn't provided, a UDP server isn't started.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:6832"` | no
-`queue_size` | `number` | Maximum number of UDP messages that can be queued at once. | `1000` | no
-`max_packet_size` | `string` | Maximum UDP message size. | `"65KiB"` | no
-`workers` | `number` | Number of workers to concurrently read from the message queue. | `10` | no
-`socket_buffer_size` | `string` | Buffer to allocate for the UDP socket. | | no
+Name                 | Type     | Description                                                    | Default          | Required
+---------------------|----------|----------------------------------------------------------------|------------------|---------
+`endpoint`           | `string` | `host:port` to listen for traffic on.                          | `"0.0.0.0:6832"` | no
+`queue_size`         | `number` | Maximum number of UDP messages that can be queued at once.     | `1000`           | no
+`max_packet_size`    | `string` | Maximum UDP message size.                                      | `"65KiB"`        | no
+`workers`            | `number` | Number of workers to concurrently read from the message queue. | `10`             | no
+`socket_buffer_size` | `string` | Buffer to allocate for the UDP socket.                         |                  | no
 
 ### thrift_compact block
 
-The `thrift_compact` block configures a UDP server which can accept traces
-formatted to the Thrift compact protocol. If the `thrift_compact` block isn't
-provided, a UDP server isn't started.
+The `thrift_compact` block configures a UDP server which can accept traces formatted to the Thrift compact protocol.
+If the `thrift_compact` block isn't provided, a UDP server isn't started.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:6831"` | no
-`queue_size` | `number` | Maximum number of UDP messages that can be queued at once. | `1000` | no
-`max_packet_size` | `string` | Maximum UDP message size. | `"65KiB"` | no
-`workers` | `number` | Number of workers to concurrently read from the message queue. | `10` | no
-`socket_buffer_size` | `string` | Buffer to allocate for the UDP socket. | | no
+Name                 | Type     | Description                                                    | Default          | Required
+---------------------|----------|----------------------------------------------------------------|------------------|---------
+`endpoint`           | `string` | `host:port` to listen for traffic on.                          | `"0.0.0.0:6831"` | no
+`queue_size`         | `number` | Maximum number of UDP messages that can be queued at once.     | `1000`           | no
+`max_packet_size`    | `string` | Maximum UDP message size.                                      | `"65KiB"`        | no
+`workers`            | `number` | Number of workers to concurrently read from the message queue. | `10`             | no
+`socket_buffer_size` | `string` | Buffer to allocate for the UDP socket.                         |                  | no
 
 ### debug_metrics block
 
@@ -226,22 +214,19 @@ Name | Type | Description | Default | Required
 
 ## Exported fields
 
-`otelcol.receiver.jaeger` does not export any fields.
+`otelcol.receiver.jaeger` doesn't export any fields.
 
 ## Component health
 
-`otelcol.receiver.jaeger` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.receiver.jaeger` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.receiver.jaeger` does not expose any component-specific debug
-information.
+`otelcol.receiver.jaeger` doesn't expose any component-specific debug information.
 
 ## Example
 
-This example creates a pipeline which accepts Jaeger-formatted traces and
-writes them to an OTLP server:
+This example creates a pipeline which accepts Jaeger-formatted traces and writes them to an OTLP server:
 
 ```alloy
 otelcol.receiver.jaeger "default" {
@@ -272,7 +257,8 @@ otelcol.exporter.otlp "default" {
 
 ## Technical details
 
-`otelcol.receiver.jaeger` supports [gzip](https://en.wikipedia.org/wiki/Gzip) for compression.
+`otelcol.receiver.jaeger` supports [Gzip](https://en.wikipedia.org/wiki/Gzip) for compression.
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

@@ -6,9 +6,7 @@ title: prometheus.exporter.mssql
 
 # prometheus.exporter.mssql
 
-The `prometheus.exporter.mssql` component embeds
-[sql_exporter](https://github.com/burningalchemist/sql_exporter) for collecting stats from a Microsoft SQL Server and exposing them as
-Prometheus metrics.
+The `prometheus.exporter.mssql` component embeds [`sql_exporter`](https://github.com/burningalchemist/sql_exporter) for collecting stats from a Microsoft SQL Server and exposing them as Prometheus metrics.
 
 ## Usage
 
@@ -31,22 +29,24 @@ Omitted fields take their default values.
 | `timeout`              | `duration` | The query timeout in seconds.                                       | `"10s"` | no       |
 | `query_config`         | `string`   | MSSQL query to Prometheus metric configuration as an inline string. |         | no       |
 
-[The sql_exporter examples](https://github.com/burningalchemist/sql_exporter/blob/master/examples/azure-sql-mi/sql_exporter.yml#L21) show the format of the `connection_string` argument:
+The [`sql_exporter` examples](https://github.com/burningalchemist/sql_exporter/blob/master/examples/azure-sql-mi/sql_exporter.yml#L21) show the format of the `connection_string` argument:
 
 ```conn
 sqlserver://USERNAME_HERE:PASSWORD_HERE@SQLMI_HERE_ENDPOINT.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.SQL_MI_DOMAIN_HERE.database.windows.net&trustservercertificate=true
 ```
 
 If specified, the `query_config` argument must be a YAML document as string defining which MSSQL queries map to custom Prometheus metrics.
-`query_config` is typically loaded by using the exports of another component. For example,
+`query_config` is typically loaded by using the exports of another component.
+For example,
 
 - `local.file.LABEL.content`
 - `remote.http.LABEL.content`
 - `remote.s3.LABEL.content`
 
-See [sql_exporter](https://github.com/burningalchemist/sql_exporter#collectors) for details on how to create a configuration.
+Refer to [sql_exporter](https://github.com/burningalchemist/sql_exporter#collectors) for details on how to create a configuration.
 
 ### Authentication
+
 By default, the `USERNAME` and `PASSWORD` used within the `connection_string` argument corresponds to a SQL Server username and password.
 
 If {{< param "PRODUCT_NAME" >}} is running in the same Windows domain as the SQL Server, then you can use the parameter `authenticator=winsspi` within the `connection_string` to authenticate without any additional credentials.
@@ -55,7 +55,7 @@ If {{< param "PRODUCT_NAME" >}} is running in the same Windows domain as the SQL
 sqlserver://@<HOST>:<PORT>?authenticator=winsspi
 ```
 
-If you want to use Windows credentials to authenticate, instead of SQL Server credentials, you can use the parameter `authenticator=ntlm` within the `connection_string`. 
+If you want to use Windows credentials to authenticate, instead of SQL Server credentials, you can use the parameter `authenticator=ntlm` within the `connection_string`.
 The `USERNAME` and `PASSWORD` then corresponds to a Windows username and password.
 The Windows domain may need to be prefixed to the username with a trailing `\`.
 
@@ -65,8 +65,7 @@ sqlserver://<DOMAIN\USERNAME>:<PASSWORD>@<HOST>:<PORT>?authenticator=ntlm
 
 ## Blocks
 
-The `prometheus.exporter.mssql` component does not support any blocks, and is configured
-fully through arguments.
+The `prometheus.exporter.mssql` component does not support any blocks, and is configured fully through arguments.
 
 ## Exported fields
 
@@ -74,24 +73,20 @@ fully through arguments.
 
 ## Component health
 
-`prometheus.exporter.mssql` is only reported as unhealthy if given
-an invalid configuration. In those cases, exported fields retain their last
-healthy values.
+`prometheus.exporter.mssql` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.mssql` does not expose any component-specific
-debug information.
+`prometheus.exporter.mssql` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.mssql` does not expose any component-specific
-debug metrics.
+`prometheus.exporter.mssql` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics
-from `prometheus.exporter.mssql`:
+This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.mssql`:
 
 ```alloy
 prometheus.exporter.mssql "example" {
@@ -119,18 +114,20 @@ prometheus.remote_write "demo" {
 Replace the following:
 
 - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+- `USERNAME`: The username to use for authentication to the `remote_write` API.
+- `PASSWORD`: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 
 ## Custom metrics
+
 You can use the optional `query_config` parameter to retrieve custom Prometheus metrics for a MSSQL instance.
 
 If this is defined, the new configuration will be used to query your MSSQL instance and create whatever Prometheus metrics are defined.
 If you want additional metrics on top of the default metrics, the default configuration must be used as a base.
 
 The default configuration used by this integration is as follows:
+
 ```
 collector_name: mssql_standard
 
@@ -211,8 +208,8 @@ metrics:
     query: |
       SELECT (a.cntr_value * 1.0 / b.cntr_value) * 100.0 as BufferCacheHitRatio
       FROM sys.dm_os_performance_counters  a
-      JOIN  (SELECT cntr_value, OBJECT_NAME 
-          FROM sys.dm_os_performance_counters  
+      JOIN  (SELECT cntr_value, OBJECT_NAME
+          FROM sys.dm_os_performance_counters
           WHERE counter_name = 'Buffer cache hit ratio base'
               AND OBJECT_NAME = 'SQLServer:Buffer Manager') b ON  a.OBJECT_NAME = b.OBJECT_NAME
       WHERE a.counter_name = 'Buffer cache hit ratio'

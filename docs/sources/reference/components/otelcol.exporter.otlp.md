@@ -205,13 +205,13 @@ otelcol.exporter.otlp "tempo" {
 You can create an `otlp` exporter that sends your data to a managed service, for example, Grafana Cloud. The Tempo username and Grafana Cloud API Key are injected in this example through environment variables.
 
 ```alloy
-otelcol.exporter.otlp "grafana_cloud_tempo" {
+otelcol.exporter.otlp "grafana_cloud_traces" {
     client {
         endpoint = "tempo-xxx.grafana.net/tempo:443"
-        auth     = otelcol.auth.basic.grafana_cloud_tempo.handler
+        auth     = otelcol.auth.basic.grafana_cloud_traces.handler
     }
 }
-otelcol.auth.basic "grafana_cloud_tempo" {
+otelcol.auth.basic "grafana_cloud_traces" {
     username = env("TEMPO_USERNAME")
     password = env("GRAFANA_CLOUD_API_KEY")
 }

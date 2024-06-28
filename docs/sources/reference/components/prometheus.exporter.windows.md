@@ -132,7 +132,7 @@ Specifying `enabled_classes` is useful to limit the response to the MSMQs you sp
 
 Name | Type     | Description | Default | Required
 ---- |----------| ----------- | ------- | --------
-`enabled_classes` | `list(string)` | Comma-separated list of MSSQL WMI classes to use. | `["accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "locks", "memmgr", "sqlstats", "sqlerrorstransactions"]` | no
+`enabled_classes` | `list(string)` | Comma-separated list of MSSQL WMI classes to use. | `["accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "locks", "memmgr", "sqlstats", "sqlerrors", "transactions"]` | no
 
 
 ### network block

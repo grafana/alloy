@@ -15,7 +15,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
   [filename]:
     dashboard.new(name='Alloy / Cluster Overview', tag=$._config.dashboardTag) +
     dashboard.withDocsLink(
-      url='https://grafana.com/docs/alloy/latest/reference/cli/run/#clustered-mode',
+      url='https://grafana.com/docs/alloy/latest/reference/cli/run/#clustering',
       desc='Clustering documentation',
     ) +
     dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
