@@ -49,7 +49,7 @@ func (args *Arguments) SetToDefault() {
 func (args *Arguments) Validate() error {
 	switch strings.ToUpper(args.Type) {
 	case "SRV":
-	case "A", "AAAA", "MX":
+	case "A", "AAAA", "MX", "NS":
 		if args.Port == 0 {
 			return errors.New("a port is required in DNS-SD configs for all record types except SRV")
 		}

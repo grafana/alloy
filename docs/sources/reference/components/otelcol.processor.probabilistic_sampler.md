@@ -34,6 +34,7 @@ Name                  | Type      | Description                                 
 ----------------------|-----------|----------------------------------------------------------------------------------------------------------------------|-------------|---------
 `hash_seed`           | `uint32`  | An integer used to compute the hash algorithm.                                                                       | `0`         | no
 `sampling_percentage` | `float32` | Percentage of traces or logs sampled.                                                                                | `0`         | no
+`fail_closed`         | `bool`    | Whether to reject items with sampling-related errors.                                                                | `true`      | no
 `attribute_source`    | `string`  | Defines where to look for the attribute in `from_attribute`.                                                         | `"traceID"` | no
 `from_attribute`      | `string`  | The name of a log record attribute used for sampling purposes.                                                       | `""`        | no
 `sampling_priority`   | `string`  | The name of a log record attribute used to set a different sampling priority from the `sampling_percentage` setting. | `""`        | no
@@ -59,6 +60,21 @@ The `sampling.priority` semantic convention takes priority over trace ID hashing
 Trace ID hashing samples based on hash values determined by trace IDs.
 
 The `probabilistic_sampler` supports sampling logs according to their trace ID, or by a specific log record attribute.
+
+## Blocks
+
+The following blocks are supported inside the definition of
+`otelcol.processor.probabilistic_sampler`:
+
+Hierarchy | Block      | Description                          | Required
+----------|------------|--------------------------------------|---------
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+
+[debug_metrics]: #debug_metrics-block
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

@@ -68,6 +68,12 @@ func (sh *snmpHandler) Targets(ep integrations.Endpoint) []*targetgroup.Group {
 			})
 		}
 
+		if t.SNMPContext != "" {
+			labelSet = labelSet.Merge(model.LabelSet{
+				"__param_snmp_context": model.LabelValue(t.SNMPContext),
+			})
+		}
+
 		if t.Auth != "" {
 			labelSet = labelSet.Merge(model.LabelSet{
 				"__param_auth": model.LabelValue(t.Auth),

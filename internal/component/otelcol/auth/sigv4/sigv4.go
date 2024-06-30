@@ -3,6 +3,7 @@ package sigv4
 import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -28,11 +29,18 @@ type Arguments struct {
 	Region     string     `alloy:"region,attr,optional"`
 	Service    string     `alloy:"service,attr,optional"`
 	AssumeRole AssumeRole `alloy:"assume_role,block,optional"`
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 var (
 	_ auth.Arguments = Arguments{}
 )
+
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	args.DebugMetrics.SetToDefault()
+}
 
 // Convert implements auth.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
@@ -63,6 +71,11 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 // Exporters implements auth.Arguments.
 func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
+}
+
+// DebugMetricsConfig implements auth.Arguments.
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	return args.DebugMetrics
 }
 
 // AssumeRole replicates sigv4authextension.Config.AssumeRole

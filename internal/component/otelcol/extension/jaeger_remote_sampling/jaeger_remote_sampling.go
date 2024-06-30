@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling/internal/jaegerremotesampling"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -43,6 +44,9 @@ type Arguments struct {
 	HTTP *HTTPServerArguments `alloy:"http,block,optional"`
 
 	Source ArgumentsSource `alloy:"source,block"`
+
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 type ArgumentsSource struct {
@@ -55,6 +59,11 @@ type ArgumentsSource struct {
 var (
 	_ extension.Arguments = Arguments{}
 )
+
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	args.DebugMetrics.SetToDefault()
+}
 
 // Convert implements extension.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
@@ -78,6 +87,11 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 // Exporters implements extension.Arguments.
 func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
+}
+
+// DebugMetricsConfig implements extension.Arguments.
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	return args.DebugMetrics
 }
 
 // Validate implements syntax.Validator.

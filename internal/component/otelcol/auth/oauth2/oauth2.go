@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension"
@@ -40,9 +41,16 @@ type Arguments struct {
 	Scopes           []string                   `alloy:"scopes,attr,optional"`
 	TLSSetting       otelcol.TLSClientArguments `alloy:"tls,block,optional"`
 	Timeout          time.Duration              `alloy:"timeout,attr,optional"`
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 var _ auth.Arguments = Arguments{}
+
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	args.DebugMetrics.SetToDefault()
+}
 
 // Convert implements auth.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
@@ -67,4 +75,9 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 // Exporters implements auth.Arguments.
 func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
+}
+
+// DebugMetricsConfig implements auth.Arguments.
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	return args.DebugMetrics
 }

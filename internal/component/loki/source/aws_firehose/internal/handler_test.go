@@ -15,14 +15,14 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 const (
@@ -466,5 +466,279 @@ func keepLabelRule(src, dst string) *relabel.Config {
 		Replacement:  "$1",
 		TargetLabel:  dst,
 		Action:       relabel.Replace,
+	}
+}
+
+func TestHandlerWithStaticConfigsLabels(t *testing.T) {
+	type testcase struct {
+		// TenantID configures the X-Scope-OrgID header in the test request when present.
+		TenantID string
+
+		// Body is the payload of the request.
+		Body string
+
+		// Assert is the main assertion function ran after the request is successful.
+		Assert func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry)
+
+		// AssertMetrics is an optional assertion over the collected metrics
+		AssertMetrics      func(t *testing.T, m []*dto.MetricFamily)
+		StaticLabelsConfig string
+	}
+
+	tests := map[string]testcase{
+		"direct put data, static labels": {
+			Body: readTestData(t, "testdata/direct_put.json"),
+			StaticLabelsConfig: `
+				{
+				  "commonAttributes": {
+					"lbl_mylabel1": "myvalue1",
+					"lbl_mylabel2": "myvalue2"
+				  }
+				}
+			`,
+			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
+				r := response{}
+				require.NoError(t, json.Unmarshal(res.Body.Bytes(), &r))
+
+				require.Equal(t, 200, res.Code)
+				require.Len(t, entries, 3)
+
+				for _, e := range entries {
+					require.Equal(t, "myvalue1", string(e.Labels["mylabel1"]))
+					require.Equal(t, "myvalue2", string(e.Labels["mylabel2"]))
+				}
+			},
+		},
+		"cloudwatch logs-subscription data, static labels": {
+			Body: readTestData(t, "testdata/cw_logs_with_only_control_messages.json"),
+			StaticLabelsConfig: `
+				{
+				  "commonAttributes": {
+					"lbl_mylabel1": "myvalue1",
+					"lbl_mylabel2": "myvalue2"
+				  }
+				}
+			`,
+			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
+				r := response{}
+				require.NoError(t, json.Unmarshal(res.Body.Bytes(), &r))
+
+				require.Len(t, entries, 1)
+				// assert that all expected lines were seen
+				assertCloudwatchDataContents(t, res, entries, cwLambdaControlMessage)
+
+				require.Equal(t, "myvalue1", string(entries[0].Labels["mylabel1"]))
+				require.Equal(t, "myvalue2", string(entries[0].Labels["mylabel2"]))
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			w := log.NewSyncWriter(os.Stderr)
+			logger := log.NewLogfmtLogger(w)
+
+			testReceiver := &receiver{entries: make([]loki.Entry, 0)}
+			registry := prometheus.NewRegistry()
+			accessKey := ""
+			handler := NewHandler(testReceiver, logger, NewMetrics(registry), nil, false, accessKey)
+
+			var bodyReader io.Reader = strings.NewReader(tc.Body)
+
+			req, err := http.NewRequest("POST", "https://example.com", bodyReader)
+			req.Header.Set("X-Amz-Firehose-Request-Id", testRequestID)
+			req.Header.Set("X-Amz-Firehose-Source-Arn", testSourceARN)
+			req.Header.Set("X-Amz-Firehose-Protocol-Version", "1.0")
+			req.Header.Set(commonAttributesHeader, tc.StaticLabelsConfig)
+			req.Header.Set("User-Agent", "Amazon Kinesis Data Firehose Agent/1.0")
+			if tc.TenantID != "" {
+				req.Header.Set("X-Scope-OrgID", tc.TenantID)
+			}
+			require.NoError(t, err)
+
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, req)
+
+			// delegate assertions
+			tc.Assert(t, recorder, testReceiver.entries)
+
+			if tc.AssertMetrics != nil {
+				gatheredMetrics, err := registry.Gather()
+				require.NoError(t, err)
+				tc.AssertMetrics(t, gatheredMetrics)
+			}
+		})
+	}
+}
+
+func TestGetStaticLabelsFromRequest(t *testing.T) {
+	tests := []struct {
+		name   string
+		config string
+		want   model.LabelSet
+	}{
+		{
+			name: "single label",
+			config: `
+				{
+				  "commonAttributes": {
+					"lbl_label1": "value1"
+				  }
+				}
+			`,
+			want: model.LabelSet{
+				"label1": "value1",
+			},
+		},
+		{
+			name: "multiple labels",
+			config: `
+				{
+				  "commonAttributes": {
+					"lbl_label1": "value1",
+					"lbl_label2": "value2"
+				  }
+				}
+			`,
+			want: model.LabelSet{
+				"label1": "value1",
+				"label2": "value2",
+			},
+		},
+		{
+			name:   "empty config",
+			config: ``,
+			want:   nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := &Handler{}
+
+			req := httptest.NewRequest(http.MethodGet, "https://example.com", nil)
+			req.Header.Set(commonAttributesHeader, tt.config)
+			req.Header.Set("X-Scope-OrgID", "001")
+			got := handler.tryToGetStaticLabelsFromRequest(req, "001")
+
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestGetStaticLabelsFromRequest_NoError_InvalidData(t *testing.T) {
+	tests := []struct {
+		name            string
+		config          string
+		want            model.LabelSet
+		expectedMetrics string
+	}{
+		{
+			name:   "invalid config",
+			config: `!@#$%^&*()_`,
+			expectedMetrics: `
+				# HELP loki_source_awsfirehose_invalid_static_labels_errors Number of errors while processing AWS Firehose static labels
+				# TYPE loki_source_awsfirehose_invalid_static_labels_errors counter
+				loki_source_awsfirehose_invalid_static_labels_errors{reason="invalid_json_format",tenant_id="001"} 1
+			`,
+			want: model.LabelSet(nil),
+		},
+		{
+			name: "invalid label name",
+			config: `
+				{
+				  "commonAttributes": {
+					"lbl_l@bel1": "value1"
+				  }
+				}
+			`,
+
+			want: model.LabelSet{
+				"l_bel1": "value1",
+			},
+		},
+		{
+			name: "invalid label name, mixed case",
+			config: `
+				{
+				  "commonAttributes": {
+					"lbl_L@bEl1%": "value1"
+				  }
+				}
+			`,
+			want: model.LabelSet{
+				"l_b_el1_percent": "value1",
+			},
+		},
+		{
+			name: "invalid label name",
+			config: `
+				{
+				  "commonAttributes": {
+					"\xed\xa0\x80\x80": "value1"
+				  }
+				}
+			`,
+			expectedMetrics: `
+				# HELP loki_source_awsfirehose_invalid_static_labels_errors Number of errors while processing AWS Firehose static labels
+				# TYPE loki_source_awsfirehose_invalid_static_labels_errors counter
+				loki_source_awsfirehose_invalid_static_labels_errors{reason="invalid_json_format",tenant_id="001"} 1
+			`,
+			want: model.LabelSet(nil),
+		},
+		{
+			name: "invalid label value, invalid JSON",
+			config: `
+				{
+				  "commonAttributes": {
+					"label1": "\xed\xa0\x80\x80"
+				  }
+				}
+			`,
+			expectedMetrics: `
+				# HELP loki_source_awsfirehose_invalid_static_labels_errors Number of errors while processing AWS Firehose static labels
+				# TYPE loki_source_awsfirehose_invalid_static_labels_errors counter
+				loki_source_awsfirehose_invalid_static_labels_errors{reason="invalid_json_format",tenant_id="001"} 1
+			`,
+			want: model.LabelSet(nil),
+		},
+		{
+			name: "invalid label",
+			config: `
+				{
+				  "commonAttributes": {
+					"lbl_0mylable": "value"
+				  }
+				}
+			`,
+			expectedMetrics: `
+				# HELP loki_source_awsfirehose_invalid_static_labels_errors Number of errors while processing AWS Firehose static labels
+				# TYPE loki_source_awsfirehose_invalid_static_labels_errors counter
+				loki_source_awsfirehose_invalid_static_labels_errors{reason="invalid_label_name",tenant_id="001"} 1
+			`,
+			want: model.LabelSet{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := log.NewSyncWriter(os.Stderr)
+			logger := log.NewLogfmtLogger(w)
+
+			testReceiver := &receiver{entries: make([]loki.Entry, 0)}
+			registry := prometheus.NewRegistry()
+			accessKey := ""
+			handler := NewHandler(testReceiver, logger, NewMetrics(registry), nil, false, accessKey)
+
+			req := httptest.NewRequest(http.MethodGet, "https://example.com", nil)
+			req.Header.Set(commonAttributesHeader, tt.config)
+			req.Header.Set("X-Scope-OrgID", "001")
+			got := handler.tryToGetStaticLabelsFromRequest(req, "001")
+
+			require.Equal(t, tt.want, got)
+
+			err := testutil.GatherAndCompare(registry, strings.NewReader(tt.expectedMetrics), "loki_source_awsfirehose_invalid_static_labels_errors")
+			require.NoError(t, err)
+		})
 	}
 }

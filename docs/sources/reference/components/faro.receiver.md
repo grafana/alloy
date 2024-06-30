@@ -208,7 +208,7 @@ faro.receiver "default" {
 
 loki.write "default" {
     endpoint {
-        url = "https://LOKI_ADDRESS/api/v1/push"
+        url = "https://LOKI_ADDRESS/loki/api/v1/push"
     }
 }
 

@@ -42,15 +42,12 @@ All arguments are optional. Omitted fields take their default values.
 | `relay_packet_length`   | `int`    | Maximum relay output packet length to avoid fragmentation.                                                               | `1400`  | no       |
 
 At least one of `listen_udp`, `listen_tcp`, or `listen_unixgram` should be enabled.
-For details on how to use the mapping config file, please check the official
-[statsd_exporter docs](https://github.com/prometheus/statsd_exporter#metric-mapping-and-configuration).
-Please make sure the kernel parameter `net.core.rmem_max` is set to a value greater
-than the value specified in `read_buffer`.
+Refer to the [`statsd_exporter` documentation](https://github.com/prometheus/statsd_exporter#metric-mapping-and-configuration) more information about the mapping `config file`.
+Make sure the kernel parameter `net.core.rmem_max` is set to a value greater than the value specified in `read_buffer`.
 
 ### Blocks
 
-The `prometheus.exporter.statsd` component does not support any blocks, and is configured
-fully through arguments.
+The `prometheus.exporter.statsd` component doesn't support any blocks, and is configured fully through arguments.
 
 ## Exported fields
 
@@ -58,24 +55,20 @@ fully through arguments.
 
 ## Component health
 
-`prometheus.exporter.statsd` is only reported as unhealthy if given
-an invalid configuration. In those cases, exported fields retain their last
-healthy values.
+`prometheus.exporter.statsd` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.statsd` does not expose any component-specific
-debug information.
+`prometheus.exporter.statsd` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.statsd` does not expose any component-specific
-debug metrics.
+`prometheus.exporter.statsd` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics
-from `prometheus.exporter.statsd`:
+This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.statsd`:
 
 ```alloy
 prometheus.exporter.statsd "example" {
@@ -117,8 +110,8 @@ prometheus.remote_write "demo" {
 Replace the following:
 
 - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+- `USERNAME`: The username to use for authentication to the `remote_write` API.
+- `PASSWORD`: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

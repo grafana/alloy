@@ -9,6 +9,7 @@ const Name = "azure"
 
 type Config struct {
 	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
+	Tags               []string                 `alloy:"tags,attr,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -37,6 +38,7 @@ func (args *Config) SetToDefault() {
 func (args Config) Convert() map[string]interface{} {
 	return map[string]interface{}{
 		"resource_attributes": args.ResourceAttributes.Convert(),
+		"tags":                args.Tags,
 	}
 }
 

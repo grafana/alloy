@@ -63,6 +63,21 @@ See [Creating Prometheus labels from OTLP resource attributes][] for an example.
 [Creating Prometheus labels from OTLP resource attributes]: #creating-prometheus-labels-from-otlp-resource-attributes
 {{< /admonition >}}
 
+## Blocks
+
+The following blocks are supported inside the definition of
+`otelcol.exporter.prometheus`:
+
+Hierarchy | Block      | Description                          | Required
+----------|------------|--------------------------------------|---------
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+
+[debug_metrics]: #debug_metrics-block
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:

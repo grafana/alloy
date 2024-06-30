@@ -4,6 +4,7 @@ package bearer
 import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
@@ -31,6 +32,9 @@ type Arguments struct {
 	// Do not include the "filename" attribute - users should use local.file instead.
 	Scheme string            `alloy:"scheme,attr,optional"`
 	Token  alloytypes.Secret `alloy:"token,attr"`
+
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 var _ auth.Arguments = Arguments{}
@@ -43,6 +47,7 @@ var DefaultArguments = Arguments{
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
+	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements auth.Arguments.
@@ -61,4 +66,9 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 // Exporters implements auth.Arguments.
 func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
+}
+
+// DebugMetricsConfig implements auth.Arguments.
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	return args.DebugMetrics
 }

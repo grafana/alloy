@@ -55,6 +55,7 @@ func toTailSamplingProcessor(state *State, id component.InstanceID, cfg *tailsam
 		Output: &otelcol.ConsumerArguments{
 			Traces: ToTokenizedConsumers(nextTraces),
 		},
+		DebugMetrics: common.DefaultValue[tail_sampling.Arguments]().DebugMetrics,
 	}
 }
 

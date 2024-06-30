@@ -31,6 +31,10 @@ func (tc tokenizedConsumer) AlloyTokenize() []builder.Token {
 }
 
 func ToTokenizedConsumers(components []componentID) []otelcol.Consumer {
+	if len(components) == 0 {
+		return nil
+	}
+
 	res := make([]otelcol.Consumer, 0, len(components))
 
 	for _, component := range components {

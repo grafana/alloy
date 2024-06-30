@@ -67,5 +67,6 @@ func toFilterProcessor(state *State, id component.InstanceID, cfg *filterprocess
 			Logs:    ToTokenizedConsumers(nextLogs),
 			Traces:  ToTokenizedConsumers(nextTraces),
 		},
+		DebugMetrics: common.DefaultValue[filter.Arguments]().DebugMetrics,
 	}
 }

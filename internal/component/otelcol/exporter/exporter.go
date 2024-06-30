@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
@@ -17,7 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelexporter "go.opentelemetry.io/collector/exporter"
 	otelextension "go.opentelemetry.io/collector/extension"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
@@ -42,7 +42,7 @@ type Arguments interface {
 	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
 
 	// DebugMetricsConfig returns the configuration for debug metrics
-	DebugMetricsConfig() otelcol.DebugMetricsArguments
+	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
 }
 
 // TypeSignal is a bit field to indicate which telemetry signals the exporter supports.
@@ -163,9 +163,16 @@ func (e *Exporter) Update(args component.Arguments) error {
 		return err
 	}
 
+	debugMetricsConfig := eargs.DebugMetricsConfig()
+
 	metricOpts := []metric.Option{metric.WithReader(promExporter)}
-	if eargs.DebugMetricsConfig().DisableHighCardinalityMetrics {
+	if debugMetricsConfig.DisableHighCardinalityMetrics {
 		metricOpts = append(metricOpts, metric.WithView(views.DropHighCardinalityServerAttributes()...))
+	}
+
+	metricsLevel, err := debugMetricsConfig.Level.Convert()
+	if err != nil {
+		return err
 	}
 
 	settings := otelexporter.CreateSettings{
@@ -174,7 +181,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metricOpts...),
-			MetricsLevel:   configtelemetry.LevelDetailed,
+			MetricsLevel:   metricsLevel,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},

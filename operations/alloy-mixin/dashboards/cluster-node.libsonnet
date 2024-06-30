@@ -1,26 +1,20 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
+local templates = import './utils/templates.libsonnet';
 local filename = 'alloy-cluster-node.json';
 
 {
   local templateVariables = 
-    if $._config.enableK8sCluster then
-      [
-        dashboard.newTemplateVariable('cluster', 'label_values(alloy_component_controller_running_components, cluster)'),
-        dashboard.newTemplateVariable('namespace', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster"}, namespace)'),
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, job)'),
-        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)'),
-      ]
-    else
-      [
-        dashboard.newMultiTemplateVariable('job', 'label_values(alloy_component_controller_running_components, job)'),
-        dashboard.newMultiTemplateVariable('instance', 'label_values(alloy_component_controller_running_components{job=~"$job"}, instance)'),
-      ],
+    templates.newTemplateVariablesList(
+      filterSelector=$._config.filterSelector, 
+      enableK8sCluster=$._config.enableK8sCluster, 
+      includeInstance=true,
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
   [filename]:
     dashboard.new(name='Alloy / Cluster Node', tag=$._config.dashboardTag) +
     dashboard.withDocsLink(
-      url='https://grafana.com/docs/alloy/latest/reference/cli/run/#clustered-mode',
+      url='https://grafana.com/docs/alloy/latest/reference/cli/run/#clustering',
       desc='Clustering documentation',
     ) +
     dashboard.withDashboardsLink(tag=$._config.dashboardTag) +

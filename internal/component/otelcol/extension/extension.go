@@ -11,12 +11,12 @@ import (
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelextension "go.opentelemetry.io/collector/extension"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -38,6 +38,9 @@ type Arguments interface {
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
 	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+
+	// DebugMetricsConfig returns the configuration for debug metrics
+	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
 }
 
 // Extension is an Alloy component shim which manages an OpenTelemetry
@@ -111,13 +114,18 @@ func (e *Extension) Update(args component.Arguments) error {
 		return err
 	}
 
+	metricsLevel, err := rargs.DebugMetricsConfig().Level.Convert()
+	if err != nil {
+		return err
+	}
+
 	settings := otelextension.CreateSettings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
-			MetricsLevel:   configtelemetry.LevelDetailed,
+			MetricsLevel:   metricsLevel,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},

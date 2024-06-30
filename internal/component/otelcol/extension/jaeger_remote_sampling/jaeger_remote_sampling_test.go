@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
@@ -154,6 +155,10 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 			expected: jaeger_remote_sampling.Arguments{
 				HTTP:   &jaeger_remote_sampling.HTTPServerArguments{Endpoint: "0.0.0.0:5778"},
 				Source: jaeger_remote_sampling.ArgumentsSource{File: "remote.json"},
+				DebugMetrics: otelcolCfg.DebugMetricsArguments{
+					DisableHighCardinalityMetrics: true,
+					Level:                         otelcolCfg.LevelDetailed,
+				},
 			},
 		},
 		// defaults grpc as expected
@@ -167,6 +172,10 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 			expected: jaeger_remote_sampling.Arguments{
 				GRPC:   &jaeger_remote_sampling.GRPCServerArguments{Endpoint: "0.0.0.0:14250", Transport: "tcp"},
 				Source: jaeger_remote_sampling.ArgumentsSource{File: "remote.json"},
+				DebugMetrics: otelcolCfg.DebugMetricsArguments{
+					DisableHighCardinalityMetrics: true,
+					Level:                         otelcolCfg.LevelDetailed,
+				},
 			},
 		},
 		// leaves specified values on http
@@ -182,6 +191,10 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 			expected: jaeger_remote_sampling.Arguments{
 				HTTP:   &jaeger_remote_sampling.HTTPServerArguments{Endpoint: "blerg"},
 				Source: jaeger_remote_sampling.ArgumentsSource{File: "remote.json"},
+				DebugMetrics: otelcolCfg.DebugMetricsArguments{
+					DisableHighCardinalityMetrics: true,
+					Level:                         otelcolCfg.LevelDetailed,
+				},
 			},
 		},
 		// leaves specified values on grpc
@@ -198,6 +211,10 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 			expected: jaeger_remote_sampling.Arguments{
 				GRPC:   &jaeger_remote_sampling.GRPCServerArguments{Endpoint: "blerg", Transport: "blarg"},
 				Source: jaeger_remote_sampling.ArgumentsSource{File: "remote.json"},
+				DebugMetrics: otelcolCfg.DebugMetricsArguments{
+					DisableHighCardinalityMetrics: true,
+					Level:                         otelcolCfg.LevelDetailed,
+				},
 			},
 		},
 		// tests source grpc defaults
@@ -223,6 +240,10 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 						WriteBufferSize: 512 * 1024,
 						BalancerName:    otelcol.DefaultBalancerName,
 					},
+				},
+				DebugMetrics: otelcolCfg.DebugMetricsArguments{
+					DisableHighCardinalityMetrics: true,
+					Level:                         otelcolCfg.LevelDetailed,
 				},
 			},
 		},

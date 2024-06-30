@@ -51,5 +51,6 @@ func toSigV4AuthExtension(cfg *sigv4authextension.Config) *sigv4.Arguments {
 			SessionName: cfg.AssumeRole.SessionName,
 			STSRegion:   cfg.AssumeRole.STSRegion,
 		},
+		DebugMetrics: common.DefaultValue[sigv4.Arguments]().DebugMetrics,
 	}
 }

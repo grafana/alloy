@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
@@ -122,4 +123,10 @@ func TestNormalizeType(t *testing.T) {
 		require.Equal(t, tt.expected, actual)
 		require.True(t, typeRegexp.MatchString(actual))
 	}
+}
+
+func (fe fakeAuthArgs) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	var dma otelcolCfg.DebugMetricsArguments
+	dma.SetToDefault()
+	return dma
 }

@@ -34,11 +34,19 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				name = "test"
 				namespace = "default"
 				open_ports = "80,443"
+				kubernetes {
+					namespace = "default"
+				}
 			}
 			services {
 				name = "test2"
 				namespace = "default"
 				open_ports = "80,443"
+				kubernetes {
+					pod_labels = {
+						test = "test",
+					}
+				}
 			}
 		}
 		output { /* no-op */ }
@@ -57,6 +65,8 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Len(t, cfg.Discovery.Services, 2)
 	require.Equal(t, "test", cfg.Discovery.Services[0].Name)
 	require.Equal(t, "default", cfg.Discovery.Services[0].Namespace)
+	require.True(t, cfg.Discovery.Services[0].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, cfg.Discovery.Services[1].PodLabels["test"].IsSet())
 }
 
 func TestArguments_ConvertDefaultConfig(t *testing.T) {
@@ -156,6 +166,16 @@ func TestConvert_Discovery(t *testing.T) {
 				Namespace: "default",
 				OpenPorts: "80",
 				Path:      "/api/v1/*",
+				Kubernetes: KubernetesService{
+					Namespace:       "default",
+					PodName:         "test",
+					DeploymentName:  "test",
+					ReplicaSetName:  "test",
+					StatefulSetName: "test",
+					DaemonSetName:   "test",
+					OwnerName:       "test",
+					PodLabels:       map[string]string{"test": "test"},
+				},
 			},
 		},
 	}
@@ -167,6 +187,15 @@ func TestConvert_Discovery(t *testing.T) {
 	require.Equal(t, "default", config.Services[0].Namespace)
 	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Services[0].OpenPorts)
 	require.True(t, config.Services[0].Path.IsSet())
+	require.True(t, config.Services[0].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, config.Services[0].Metadata[services.AttrPodName].IsSet())
+	require.True(t, config.Services[0].Metadata[services.AttrDeploymentName].IsSet())
+	require.True(t, config.Services[0].Metadata[services.AttrReplicaSetName].IsSet())
+	require.True(t, config.Services[0].Metadata[services.AttrStatefulSetName].IsSet())
+	require.True(t, config.Services[0].Metadata[services.AttrDaemonSetName].IsSet())
+	require.True(t, config.Services[0].Metadata[services.AttrOwnerName].IsSet())
+	require.True(t, config.Services[0].PodLabels["test"].IsSet())
+	require.NoError(t, config.Services.Validate())
 }
 
 func TestArguments_Validate(t *testing.T) {

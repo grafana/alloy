@@ -36,8 +36,13 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []discovery.Target {
 	var targets []discovery.Target
 
-	a := args.(Arguments)
-	for _, tgt := range a.Targets {
+	snmpTargets := args.(Arguments).Targets
+	if len(snmpTargets) == 0 {
+		// Converting to SNMPTarget to avoid duplicating logic
+		snmpTargets = args.(Arguments).TargetsList.convert()
+	}
+
+	for _, tgt := range snmpTargets {
 		target := make(discovery.Target)
 		for k, v := range baseTarget {
 			target[k] = v
@@ -51,6 +56,9 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 		if tgt.WalkParams != "" {
 			target["__param_walk_params"] = tgt.WalkParams
 		}
+		if tgt.SNMPContext != "" {
+			target["__param_snmp_context"] = tgt.SNMPContext
+		}
 		if tgt.Auth != "" {
 			target["__param_auth"] = tgt.Auth
 		}
@@ -63,11 +71,12 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 
 // SNMPTarget defines a target to be used by the exporter.
 type SNMPTarget struct {
-	Name       string `alloy:",label"`
-	Target     string `alloy:"address,attr"`
-	Module     string `alloy:"module,attr,optional"`
-	Auth       string `alloy:"auth,attr,optional"`
-	WalkParams string `alloy:"walk_params,attr,optional"`
+	Name        string `alloy:",label"`
+	Target      string `alloy:"address,attr"`
+	Module      string `alloy:"module,attr,optional"`
+	Auth        string `alloy:"auth,attr,optional"`
+	WalkParams  string `alloy:"walk_params,attr,optional"`
+	SNMPContext string `alloy:"snmp_context,attr,optional"`
 }
 
 type TargetBlock []SNMPTarget
@@ -77,11 +86,12 @@ func (t TargetBlock) Convert() []snmp_exporter.SNMPTarget {
 	targets := make([]snmp_exporter.SNMPTarget, 0, len(t))
 	for _, target := range t {
 		targets = append(targets, snmp_exporter.SNMPTarget{
-			Name:       target.Name,
-			Target:     target.Target,
-			Module:     target.Module,
-			Auth:       target.Auth,
-			WalkParams: target.WalkParams,
+			Name:        target.Name,
+			Target:      target.Target,
+			Module:      target.Module,
+			Auth:        target.Auth,
+			WalkParams:  target.WalkParams,
+			SNMPContext: target.SNMPContext,
 		})
 	}
 	return targets
@@ -114,9 +124,46 @@ func (w WalkParams) Convert() map[string]snmp_config.WalkParams {
 type Arguments struct {
 	ConfigFile   string                    `alloy:"config_file,attr,optional"`
 	Config       alloytypes.OptionalSecret `alloy:"config,attr,optional"`
-	Targets      TargetBlock               `alloy:"target,block"`
+	Targets      TargetBlock               `alloy:"target,block,optional"`
 	WalkParams   WalkParams                `alloy:"walk_param,block,optional"`
 	ConfigStruct snmp_config.Config
+
+	// New way of passing targets. This allows the component to receive targets from other components.
+	TargetsList TargetsList `alloy:"targets,attr,optional"`
+}
+
+type TargetsList []map[string]string
+
+func (t TargetsList) Convert() []snmp_exporter.SNMPTarget {
+	targets := make([]snmp_exporter.SNMPTarget, 0, len(t))
+	for _, target := range t {
+		address, _ := getAddress(target)
+		targets = append(targets, snmp_exporter.SNMPTarget{
+			Name:        target["name"],
+			Target:      address,
+			Module:      target["module"],
+			Auth:        target["auth"],
+			WalkParams:  target["walk_params"],
+			SNMPContext: target["snmp_context"],
+		})
+	}
+	return targets
+}
+
+func (t TargetsList) convert() []SNMPTarget {
+	targets := make([]SNMPTarget, 0, len(t))
+	for _, target := range t {
+		address, _ := getAddress(target)
+		targets = append(targets, SNMPTarget{
+			Name:        target["name"],
+			Target:      address,
+			Module:      target["module"],
+			Auth:        target["auth"],
+			WalkParams:  target["walk_params"],
+			SNMPContext: target["snmp_context"],
+		})
+	}
+	return targets
 }
 
 // UnmarshalAlloy implements Alloy unmarshalling for Arguments.
@@ -130,6 +177,19 @@ func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 		return errors.New("config and config_file are mutually exclusive")
 	}
 
+	if len(a.Targets) != 0 && len(a.TargetsList) != 0 {
+		return fmt.Errorf("the block `target` and the attribute `targets` are mutually exclusive")
+	}
+
+	for _, target := range a.TargetsList {
+		if _, hasName := target["name"]; !hasName {
+			return fmt.Errorf("all targets must have a `name`")
+		}
+		if _, hasAddress := getAddress(target); !hasAddress {
+			return fmt.Errorf("all targets must have an `address` or an `__address__` label")
+		}
+	}
+
 	err := yaml.UnmarshalStrict([]byte(a.Config.Value), &a.ConfigStruct)
 	if err != nil {
 		return fmt.Errorf("invalid snmp_exporter config: %s", err)
@@ -140,10 +200,26 @@ func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 
 // Convert converts the component's Arguments to the integration's Config.
 func (a *Arguments) Convert() *snmp_exporter.Config {
+	var targets []snmp_exporter.SNMPTarget
+	if len(a.Targets) != 0 {
+		targets = a.Targets.Convert()
+	} else {
+		targets = a.TargetsList.Convert()
+	}
 	return &snmp_exporter.Config{
 		SnmpConfigFile: a.ConfigFile,
-		SnmpTargets:    a.Targets.Convert(),
+		SnmpTargets:    targets,
 		WalkParams:     a.WalkParams.Convert(),
 		SnmpConfig:     a.ConfigStruct,
 	}
+}
+
+func getAddress(data map[string]string) (string, bool) {
+	if value, ok := data["address"]; ok {
+		return value, true
+	}
+	if value, ok := data["__address__"]; ok {
+		return value, true
+	}
+	return "", false
 }

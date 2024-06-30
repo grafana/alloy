@@ -89,19 +89,21 @@ prometheus.scrape "integrations_blackbox" {
 }
 
 prometheus.exporter.snmp "integrations_snmp" {
-	target "network_switch_1" {
-		address     = "192.168.1.2"
-		module      = "if_mib"
-		auth        = "public"
-		walk_params = "public"
-	}
-
-	target "network_router_2" {
-		address     = "192.168.1.3"
-		module      = "mikrotik"
-		auth        = "private"
-		walk_params = "private"
-	}
+	targets = [{
+		address      = "192.168.1.2",
+		auth         = "public",
+		module       = "if_mib",
+		name         = "network_switch.1",
+		snmp_context = "dummyContext",
+		walk_params  = "public",
+	}, {
+		address      = "192.168.1.3",
+		auth         = "private",
+		module       = "mikrotik",
+		name         = "network_router_2",
+		snmp_context = "dummyContext",
+		walk_params  = "private",
+	}]
 }
 
 discovery.relabel "integrations_snmp" {

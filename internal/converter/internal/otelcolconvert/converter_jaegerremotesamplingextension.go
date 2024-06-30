@@ -69,5 +69,6 @@ func toJaegerRemoteSamplingExtension(cfg *jaegerremotesampling.Config) *jaeger_r
 			File:           cfg.Source.File,
 			ReloadInterval: cfg.Source.ReloadInterval,
 		},
+		DebugMetrics: common.DefaultValue[jaeger_remote_sampling.Arguments]().DebugMetrics,
 	}
 }

@@ -134,14 +134,14 @@ The `http` block configures the HTTP server used by the component. If the
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
+Name | Type | Description | Default         | Required
+---- | ---- | ----------- |-----------------| --------
 `endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:4318"` | no
-`max_request_body_size` | `string` | Maximum request body size the server will allow. No limit when unset. | | no
-`include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
-`traces_url_path` | `string` | The URL path to receive traces on. | `"/v1/traces"`| no
+`max_request_body_size` | `string`   | Maximum request body size the server will allow.                   | `20MiB`          | no
+`include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. |                 | no
+`traces_url_path` | `string` | The URL path to receive traces on. | `"/v1/traces"`  | no
 `metrics_url_path` | `string` | The URL path to receive metrics on. | `"/v1/metrics"` | no
-`logs_url_path` | `string` | The URL path to receive logs on. | `"/v1/logs"` | no
+`logs_url_path` | `string` | The URL path to receive logs on. | `"/v1/logs"`    | no
 
 To send telemetry signals to `otelcol.receiver.otlp` with HTTP/JSON, POST to:
 * `[endpoint][traces_url_path]` for traces.

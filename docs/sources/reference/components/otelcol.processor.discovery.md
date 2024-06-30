@@ -6,11 +6,9 @@ title: otelcol.processor.discovery
 
 # otelcol.processor.discovery
 
-`otelcol.processor.discovery` accepts traces telemetry data from other `otelcol`
-components. It can be paired with `discovery.*` components, which supply a list
-of labels for each discovered target.
-`otelcol.processor.discovery` adds resource attributes to spans which have a hostname
-matching the one in the `__address__` label provided by the `discovery.*` component.
+`otelcol.processor.discovery` accepts traces telemetry data from other `otelcol` components.
+It can be paired with `discovery.*` components, which supply a list of labels for each discovered target.
+`otelcol.processor.discovery` adds resource attributes to spans which have a hostname matching the one in the `__address__` label provided by the `discovery.*` component.
 
 {{< admonition type="note" >}}
 `otelcol.processor.discovery` is a custom component unrelated to any processors from the OpenTelemetry Collector.
@@ -30,16 +28,15 @@ adding resource attributes via `otelcol.processor.discovery`:
   only compatible with Prometheus naming conventions makes it hard to follow OpenTelemetry
   semantic conventions in `otelcol.processor.discovery`.
 
-If your use case is to add resource attributes which contain Kubernetes metadata,
-consider using `otelcol.processor.k8sattributes` instead.
+If your use case is to add resource attributes which contain Kubernetes metadata, consider using `otelcol.processor.k8sattributes` instead.
 
 ------
 The main use case for `otelcol.processor.discovery` is for users who migrate to {{< param "PRODUCT_NAME" >}}
-from Grafana Agent Static mode's `prom_sd_operation_type`/`prom_sd_pod_associations` [configuration options][Traces].
+from Grafana Agent Static mode `prom_sd_operation_type`/`prom_sd_pod_associations` [configuration options][Traces].
 
 [Prometheus data model]: https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 [OTEL sem conv]: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/README.md
-[Traces]: http://grafana.com/docs/agent/latest/static/configuration/traces-config/
+[Traces]: https://grafana.com/docs/agent/latest/static/configuration/traces-config/
 {{< /admonition >}}
 
 ## Usage
@@ -57,15 +54,15 @@ otelcol.processor.discovery "LABEL" {
 
 `otelcol.processor.discovery` supports the following arguments:
 
-Name             | Type                | Description                                                           | Default  | Required
------------------|---------------------|-----------------------------------------------------------------------|----------|---------
-`targets`        | `list(map(string))` | List of target labels to apply to the spans.                          |          | yes
-`operation_type` | `string`            | Configures whether to update a span's attribute if it already exists. | `upsert` | no
-`pod_associations` | `list(string)`    | Configures how to decide the hostname of the span. | `["ip", "net.host.ip", "k8s.pod.ip", "hostname", "connection"]` | no
+Name               | Type                | Description                                                           | Default                                                         | Required
+-------------------|---------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------|---------
+`targets`          | `list(map(string))` | List of target labels to apply to the spans.                          |                                                                 | yes
+`operation_type`   | `string`            | Configures whether to update a span's attribute if it already exists. | `upsert`                                                        | no
+`pod_associations` | `list(string)`      | Configures how to decide the hostname of the span.                    | `["ip", "net.host.ip", "k8s.pod.ip", "hostname", "connection"]` | no
 
 `targets` could come from `discovery.*` components:
 1. The `__address__` label will be matched against the IP address of incoming spans.
-   * If `__address__` contains a port, it is ignored. 
+   * If `__address__` contains a port, it is ignored.
 2. If a match is found, then relabeling rules are applied.
    * Note that labels starting with `__` will not be added to the spans.
 
@@ -82,9 +79,9 @@ The supported values for `pod_associations` are:
 * `hostname`: The hostname will be sourced from a `host.name` resource attribute.
 * `connection`: The hostname will be sourced from the context from the incoming requests (gRPC and HTTP).
 
-If multiple `pod_associations` methods are enabled, the order of evaluation is honored. 
-For example, when `pod_associations` is `["ip", "net.host.ip"]`, `"net.host.ip"` may be matched 
-only if `"ip"` has not already matched.
+If multiple `pod_associations` methods are enabled, the order of evaluation is honored.
+For example, when `pod_associations` is `["ip", "net.host.ip"]`, `"net.host.ip"` may be matched
+only if `"ip"` hasn't already matched.
 
 ## Blocks
 
@@ -119,7 +116,7 @@ configuration.
 
 ## Debug information
 
-`otelcol.processor.discovery` does not expose any component-specific debug
+`otelcol.processor.discovery` doesn't expose any component-specific debug
 information.
 
 ## Examples
@@ -166,10 +163,9 @@ otelcol.processor.discovery "default" {
 
 ### Using a preconfigured list of attributes
 
-It's not necessary to use a discovery component. In the example below, both a `test_label` and 
-a `test.label.with.dots` resource attributes will be added to a span if its IP address is 
-"1.2.2.2". The `__internal_label__` will be not be added to the span, because it begins with 
-a double underscore (`__`).
+It's not necessary to use a discovery component.
+In the example below, both a `test_label` and a `test.label.with.dots` resource attributes will be added to a span if its IP address is "1.2.2.2".
+The `__internal_label__` will be not be added to the span, because it begins with a double underscore (`__`).
 
 ```alloy
 otelcol.processor.discovery "default" {

@@ -25,6 +25,15 @@ prometheus.exporter.snmp "LABEL" {
 }
 ```
 
+or 
+
+```alloy
+prometheus.exporter.snmp "LABEL" {
+  config_file = SNMP_CONFIG_FILE_PATH
+  targets     = TARGET_LIST
+}
+```
+
 ## Arguments
 
 The following arguments can be used to configure the exporter's behavior.
@@ -34,6 +43,7 @@ Omitted fields take their default values.
 | ------------- | -------------------- | ------------------------------------------------ | ------- | -------- |
 | `config_file` | `string`             | SNMP configuration file defining custom modules. |         | no       |
 | `config`      | `string` or `secret` | SNMP configuration as inline string.             |         | no       |
+| `targets`     | `list(map(string))`  | SNMP targets.                                    |         | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
 Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter#generating-configuration) for details on how to generate a configuration file.
@@ -45,6 +55,14 @@ The `config` argument must be a YAML document as string defining which SNMP modu
 - `remote.http.LABEL.content`
 - `remote.s3.LABEL.content`
 
+The `targets` argument is an alternative to the [target][] block. This is useful when SNMP targets are supplied by another component.
+The following labels can be set to a target:
+* `name`: The name of the target (required).
+* `address` or `__address__`: The address of SNMP device (required).
+* `module`: The SNMP module to use for polling.
+* `auth`: The SNMP authentication profile to use.
+* `walk_params`: The config to use for this target.
+
 ## Blocks
 
 The following blocks are supported inside the definition of
@@ -52,7 +70,7 @@ The following blocks are supported inside the definition of
 
 | Hierarchy  | Name           | Description                                                 | Required |
 | ---------- | -------------- | ----------------------------------------------------------- | -------- |
-| target     | [target][]     | Configures an SNMP target.                                  | yes      |
+| target     | [target][]     | Configures an SNMP target.                                  | no      |
 | walk_param | [walk_param][] | SNMP connection profiles to override default SNMP settings. | no       |
 
 [target]: #target-block
@@ -63,12 +81,13 @@ The following blocks are supported inside the definition of
 The `target` block defines an individual SNMP target.
 The `target` block may be specified multiple times to define multiple targets. The label of the block is required and will be used in the target's `job` label.
 
-| Name          | Type     | Description                         | Default | Required |
-| ------------- | -------- | ----------------------------------- | ------- | -------- |
-| `address`     | `string` | The address of SNMP device.         |         | yes      |
-| `module`      | `string` | SNMP module to use for polling.     | `""`    | no       |
-| `auth`        | `string` | SNMP authentication profile to use. | `""`    | no       |
-| `walk_params` | `string` | Config to use for this target.      | `""`    | no       |
+| Name           | Type     | Description                                                           | Default | Required |
+| -------------- | -------- | --------------------------------------------------------------------- | ------- | -------- |
+| `address`      | `string` | The address of SNMP device.                                           |         | yes      |
+| `module`       | `string` | SNMP module to use for polling.                                       | `""`    | no       |
+| `auth`         | `string` | SNMP authentication profile to use.                                   | `""`    | no       |
+| `walk_params`  | `string` | Config to use for this target.                                        | `""`    | no       |
+| `snmp_context` | `string` | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
 
 ### walk_param block
 
@@ -131,6 +150,7 @@ prometheus.exporter.snmp "example" {
         retries = "2"
     }
 }
+
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
     targets    = prometheus.exporter.snmp.example.targets
@@ -169,6 +189,7 @@ prometheus.exporter.snmp "example" {
         retries = "2"
     }
 }
+
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
     targets    = prometheus.exporter.snmp.example.targets
@@ -177,23 +198,135 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
     endpoint {
-        url = PROMETHEUS_REMOTE_WRITE_URL
+        url = <PROMETHEUS_REMOTE_WRITE_URL>
 
         basic_auth {
-            username = USERNAME
-            password = PASSWORD
+            username = <USERNAME>
+            password = <PASSWORD>
         }
     }
 }
 ```
 
 Replace the following:
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the remote_write API.
+- _`<PASSWORD>`_: The password to use for authentication to the remote_write API.
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+This example uses the alternative way to pass targets:
+
+```alloy
+prometheus.exporter.snmp "example" {
+    config_file = "snmp_modules.yml"
+
+    targets = [
+        {
+            "name"        = "network_switch_1",
+            "address"     = "192.168.1.2",
+            "module"      = "if_mib",
+            "walk_params" = "public",
+        },
+        {
+            "name"        = "network_router_2",
+            "address"     = "192.168.1.3",
+            "module"      = "mikrotik",
+            "walk_params" = "private",
+        },
+    ]
+
+    walk_param "private" {
+        retries = "2"
+    }
+
+    walk_param "public" {
+        retries = "2"
+    }
+}
+
+// Configure a prometheus.scrape component to collect SNMP metrics.
+prometheus.scrape "demo" {
+    targets    = prometheus.exporter.snmp.example.targets
+    forward_to = [ /* ... */ ]
+}
+```
+
+This example uses the [`local.file` component][file] to read targets from a YAML file and send them to the `prometheus.exporter.snmp` component:
+
+```alloy
+local.file "targets" {
+  filename = "targets.yml"
+}
+
+prometheus.exporter.snmp "example" {
+    config_file = "snmp_modules.yml"
+
+    targets = yaml_decode(local.file.targets.content)
+
+    walk_param "private" {
+        retries = "2"
+    }
+
+    walk_param "public" {
+        retries = "2"
+    }
+}
+
+// Configure a prometheus.scrape component to collect SNMP metrics.
+prometheus.scrape "demo" {
+    targets    = prometheus.exporter.snmp.example.targets
+    forward_to = [ /* ... */ ]
+}
+```
+
+The YAML file in this example looks like this:
+```yaml
+- name: t1
+  address: localhost:161
+  module: default
+  auth: public_v2
+- name: t2
+  address: localhost:161
+  module: default
+  auth: public_v2
+```
+
+This example uses the [`discovery.file` component][disc] to send targets to the `prometheus.exporter.snmp` component:
+```alloy
+discovery.file "example" {
+  files = ["targets.yml"]
+}
+
+prometheus.exporter.snmp "example" {
+  config_file = "snmp_modules.yml"
+  targets = discovery.file.example.targets
+}
+
+// Configure a prometheus.scrape component to collect SNMP metrics.
+prometheus.scrape "demo" {
+    targets    = prometheus.exporter.snmp.example.targets
+    forward_to = [ /* ... */ ]
+}
+```
+
+The YAML file in this example looks like this:
+```yaml
+- targets:
+  - localhost:161
+  labels:
+    name: t1
+    module: default
+    auth: public_v2
+- targets:
+  - localhost:161
+  labels:
+    name: t2
+    module: default
+    auth: public_v2
+```
 
 [scrape]: ../prometheus.scrape/
+[file]: ../local.file/
+[disc]: ../discovery.file/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
