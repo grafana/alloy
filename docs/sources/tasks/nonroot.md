@@ -12,13 +12,15 @@ The [Alloy Docker image] contains two users:
 * A `root` user.
 * A non-root user named `alloy` with uid `473` and gid `473`.
 
-By default, the `alloy` binary runs as `root`. This is because some Alloy components (like [beyla.ebpf]) require root rights.
+By default, the `alloy` binary runs as `root`. This is because some Alloy components like [beyla.ebpf] require root rights.
 
 This documentation shows how to use the non-root user when deploying Alloy in Kubernetes.
 
 ## Configure Alloy to run as a non-root user in Kubernetes
 
-In order to run Alloy as a non-root user, configure a [security context] for the Alloy container. If you are using the [Grafana Helm chart] you can do this by adding the following snippet to `values.yaml`:
+_Disclaimer: Running Alloy as a non-root user will not work if you are using components like [beyla.ebpf] that require root rights._
+
+In order to run Alloy as a non-root user, you need to configure a [security context] for the Alloy container. If you are using the [Grafana Helm chart] you can do this by adding the following snippet to `values.yaml`:
 
 ```
 alloy:
