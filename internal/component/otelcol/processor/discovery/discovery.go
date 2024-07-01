@@ -11,8 +11,10 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	"github.com/grafana/alloy/syntax"
 )
@@ -80,7 +82,10 @@ type Component struct {
 	logger   log.Logger
 }
 
-var _ component.Component = (*Component)(nil)
+var (
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
+)
 
 // New creates a new otelcol.exporter.discovery component.
 func New(o component.Options, c Arguments) (*Component, error) {
@@ -88,7 +93,14 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		level.Warn(o.Logger).Log("msg", "non-trace output detected; this component only works for traces")
 	}
 
-	nextTraces := fanoutconsumer.Traces(c.Output.Traces)
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	liveDebuggingConsumer := livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID)
+
+	nextTraces := fanoutconsumer.Traces(append(c.Output.Traces, liveDebuggingConsumer))
 
 	consumerOpts := promsdconsumer.Options{
 		// Don't bother setting up labels - this will be done by the Update() function.
@@ -157,3 +169,5 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 	return nil
 }
+
+func (c *Component) LiveDebugging() {}

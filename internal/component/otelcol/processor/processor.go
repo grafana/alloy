@@ -14,7 +14,9 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -60,11 +62,14 @@ type Processor struct {
 
 	sched     *scheduler.Scheduler
 	collector *lazycollector.Collector
+
+	liveDebuggingConsumer *livedebuggingconsumer.Consumer
 }
 
 var (
 	_ component.Component       = (*Processor)(nil)
 	_ component.HealthComponent = (*Processor)(nil)
+	_ component.LiveDebugging   = (*Processor)(nil)
 )
 
 // New creates a new Alloy component which encapsulates an OpenTelemetry
@@ -74,6 +79,12 @@ var (
 // The registered component must be registered to export the
 // otelcol.ConsumerExports type, otherwise New will panic.
 func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Processor, error) {
+
+	debugDataPublisher, err := opts.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	consumer := lazyconsumer.New(ctx)
@@ -100,6 +111,8 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 
 		sched:     scheduler.New(opts.Logger),
 		collector: collector,
+
+		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), opts.ID),
 	}
 	if err := p.Update(args); err != nil {
 		return nil, err
@@ -163,9 +176,9 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var (
 		next        = pargs.NextConsumers()
-		nextTraces  = fanoutconsumer.Traces(next.Traces)
-		nextMetrics = fanoutconsumer.Metrics(next.Metrics)
-		nextLogs    = fanoutconsumer.Logs(next.Logs)
+		nextTraces  = fanoutconsumer.Traces(append(next.Traces, p.liveDebuggingConsumer))
+		nextMetrics = fanoutconsumer.Metrics(append(next.Metrics, p.liveDebuggingConsumer))
+		nextLogs    = fanoutconsumer.Logs(append(next.Logs, p.liveDebuggingConsumer))
 	)
 
 	// Create instances of the processor from our factory for each of our
@@ -212,3 +225,5 @@ func (p *Processor) Update(args component.Arguments) error {
 func (p *Processor) CurrentHealth() component.Health {
 	return p.sched.CurrentHealth()
 }
+
+func (p *Processor) LiveDebugging() {}
