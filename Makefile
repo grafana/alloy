@@ -96,6 +96,7 @@ PROPAGATE_VARS := \
     ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
+    BUILD_IMAGE_VERSION \
     VERSION GO_TAGS GOEXPERIMENT
 
 #
@@ -164,6 +165,13 @@ integration-test:
 binaries: alloy
 
 alloy:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
+endif
+
+alloy-boringcrypto:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -256,7 +264,7 @@ generate-winmanifest:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	go generate ./internal/winmanifest
+	GOOS=linux GOARCH=amd64 go generate ./internal/winmanifest
 endif
 #
 # Other targets
@@ -297,3 +305,9 @@ info:
 .PHONY: help
 help:
 	@awk 'BEGIN {FS="## "} /^##\s*(.*)/ { print $$2 }' $(MAKEFILE_LIST)
+
+
+magefile:
+	mage -d ./internal/cmd/build -compile ../../../build-linux-amd64  -goarch=amd64 -goos=linux
+	mage -d ./internal/cmd/build -compile ../../../build-darwin-amd64 -goarch=amd64 -goos=darwin
+	mage -d ./internal/cmd/build -compile ../../../build-darwin-arm64 -goarch=arm64 -goos=darwin
