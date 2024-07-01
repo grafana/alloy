@@ -115,6 +115,7 @@ func (p *Profiler) CopyLib(dist *Distribution, pid int) error {
 	if err != nil {
 		return fmt.Errorf("failed to open proc root %s: %w", procRoot, err)
 	}
+	defer procRootFile.Close()
 	dstLibPath := strings.TrimPrefix(dist.LibPath(), "/")
 	dstLauncherPath := strings.TrimPrefix(dist.LauncherPath(), "/")
 	if err = writeFile(procRootFile, dstLibPath, libData, false); err != nil {
