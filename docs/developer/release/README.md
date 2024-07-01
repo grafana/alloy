@@ -18,14 +18,15 @@ Once a release is scheduled, a release shepherd is determined. This person will 
 responsible for ownership of the following workflows:
 
 ## Release Candidate Publish
-0. [Ensure our OpenTelemetry Collector dependency has been updated](./0-ensure-otel-dep-updated.md)
-1. [Create Release Branch](./1-create-release-branch.md)
-2. [Cherry Pick Commits](./2-cherry-pick-commits.md)
-3. [Update Version in Code](./3-update-version-in-code.md)
-4. [Tag Release](./4-tag-release.md)
-5. [Publish Release](./6-publish-release.md)
-6. [Test Release](./7-test-release.md)
-7. [Announce Release](./9-announce-release.md)
+1. [Fix important security issues](./0_1-fix-security-issues.md)
+2. [Ensure our OpenTelemetry Collector dependency has been updated](./0_2-ensure-otel-dep-updated.md)
+3. [Create Release Branch](./1-create-release-branch.md)
+4. [Cherry Pick Commits](./2-cherry-pick-commits.md)
+5. [Update Version in Code](./3-update-version-in-code.md)
+6. [Tag Release](./4-tag-release.md)
+7. [Publish Release](./6-publish-release.md)
+8. [Test Release](./7-test-release.md)
+9. [Announce Release](./9-announce-release.md)
 
 ## Additional Release Candidate[s] Publish
 1. [Cherry Pick Commits](./2-cherry-pick-commits.md)
