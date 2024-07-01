@@ -71,6 +71,8 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 		for k, v := range static.Labels {
 			grp.Labels[model.LabelName(k)] = model.LabelValue(v)
 		}
+		// Add namespace label
+		grp.Labels["namespace"] = model.LabelValue(m.Namespace)
 		for _, t := range static.Targets {
 			grp.Targets = append(grp.Targets, model.LabelSet{
 				model.AddressLabel: model.LabelValue(t),

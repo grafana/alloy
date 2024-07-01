@@ -128,6 +128,8 @@ v1.2.0
 
 - Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)
 
+- Add namespace label with the namespace of the probe object in the static config to align with prometheus setup. (@toontijtgat2)
+
 ### Bugfixes
 
 - Fixed an issue with `prometheus.scrape` in which targets that move from one
