@@ -673,6 +673,7 @@ require (
 	go.opentelemetry.io/collector/confmap/provider/httpprovider v0.102.1 // indirect
 	go.opentelemetry.io/collector/confmap/provider/httpsprovider v0.102.1 // indirect
 	go.opentelemetry.io/collector/filter v0.102.1 // indirect
+	go.opentelemetry.io/collector/pdata/testdata v0.102.1 // indirect
 	go.opentelemetry.io/contrib/config v0.7.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.52.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.52.0 // indirect
@@ -772,17 +773,6 @@ replace (
 
 	// TODO(marctc, mattdurham): Replace node_export with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
 	github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20231004161416-702318429731
-)
-
-// Replacing for an internal fork which allows us to observe metrics produced by the Collector.
-// This is a temporary solution while a new configuration design is discussed for the collector. Related issues:
-// https://github.com/open-telemetry/opentelemetry-collector/issues/7532
-// https://github.com/open-telemetry/opentelemetry-collector/pull/7644
-// https://github.com/open-telemetry/opentelemetry-collector/pull/7696
-// https://github.com/open-telemetry/opentelemetry-collector/issues/4970
-replace (
-	go.opentelemetry.io/collector/otelcol => github.com/grafana/opentelemetry-collector/otelcol v0.0.0-20240429170914-d1e101852ba5
-	go.opentelemetry.io/collector/service => github.com/grafana/opentelemetry-collector/service v0.0.0-20240429170914-d1e101852ba5
 )
 
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3

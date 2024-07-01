@@ -42,6 +42,7 @@ import (
 
 	"github.com/grafana/alloy/internal/static/logs"
 	"github.com/grafana/alloy/internal/static/traces/automaticloggingprocessor"
+	"github.com/grafana/alloy/internal/static/traces/forked_otelcol"
 	"github.com/grafana/alloy/internal/static/traces/noopreceiver"
 	"github.com/grafana/alloy/internal/static/traces/promsdprocessor"
 	"github.com/grafana/alloy/internal/static/traces/pushreceiver"
@@ -995,7 +996,7 @@ func orderProcessors(processors []string, splitPipelines bool) [][]string {
 
 func otelcolConfigFromStringMap(otelMapStructure map[string]interface{}, factories *otelcol.Factories) (*otelcol.Config, error) {
 	configMap := confmap.NewFromStringMap(otelMapStructure)
-	otelCfg, err := otelcol.Unmarshal(configMap, *factories)
+	otelCfg, err := forked_otelcol.Unmarshal(configMap, *factories)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load OTel config: %w", err)
 	}
