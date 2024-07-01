@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 )
@@ -26,12 +27,24 @@ func (t translator) Gather() ([]*dto.MetricFamily, error) {
 	for _, m := range metrics {
 		switch *m.Name {
 		case "prometheus_agent_active_series":
+			if *m.Type != dto.MetricType_GAUGE {
+				return nil, fmt.Errorf("metric %s should be a gauge but is %s", *m.Name, dto.MetricType_name[int32(*m.Type)])
+			}
 			m.Name = &activeSeries
 		case "prometheus_agent_deleted_series":
+			if *m.Type != dto.MetricType_GAUGE {
+				return nil, fmt.Errorf("metric %s should be a gauge but is %s", *m.Name, dto.MetricType_name[int32(*m.Type)])
+			}
 			m.Name = &deletedSeries
 		case "prometheus_agent_out_of_order_samples_total":
+			if *m.Type != dto.MetricType_COUNTER {
+				return nil, fmt.Errorf("metric %s should be a counter but is %s", *m.Name, dto.MetricType_name[int32(*m.Type)])
+			}
 			m.Name = &totalCreatedSeries
 		case "prometheus_agent_samples_appended_total":
+			if *m.Type != dto.MetricType_COUNTER {
+				return nil, fmt.Errorf("metric %s should be a counter but is %s", *m.Name, dto.MetricType_name[int32(*m.Type)])
+			}
 			m.Name = &appendedSamples
 		}
 	}
