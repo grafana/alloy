@@ -78,6 +78,12 @@ The clustering page shows the following information for each cluster node:
 
 Live debugging provides a real-time stream of debugging data from a component. You can access this page from the corresponding [Component detail page](#component-detail-page).
 
+{{< admonition type="caution" >}}
+Live debugging is disabled by default to avoid accidentally displaying sensitive telemetry data. To enable live debugging, configure the [livedebugging block][livedebugging].
+
+[livedebugging]: ../../reference/config-blocks/livedebugging/
+{{< /admonition >}}
+
 Live debugging allows you to do the following:
 
 * Pause and clear the data stream.
