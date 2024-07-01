@@ -70,8 +70,8 @@ github.com/99designs/keyring v1.2.2 h1:pZd3neh/EmUzWONb35LxQfvuY7kiSXAq3HQd97+XB
 github.com/99designs/keyring v1.2.2/go.mod h1:wes/FrByc8j7lFOAGLGSNEg8f/PaI3cgTBqhFkHUrPk=
 github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 h1:bvDV9vkmnHYOMsOr4WLk+Vo07yKIzd94sVoIqshQ4bU=
 github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24/go.mod h1:8o94RPi1/7XTJvwPpRSzSUedZrtlirdB3r9Z20bi2f8=
-github.com/AlekSi/pointer v1.1.0 h1:SSDMPcXD9jSl8FPy9cRzoRaMJtm9g9ggGTxecRUbQoI=
-github.com/AlekSi/pointer v1.1.0/go.mod h1:y7BvfRI3wXPWKXEBhU71nbnIEEZX0QTSB2Bj48UJIZE=
+github.com/AlekSi/pointer v1.2.0 h1:glcy/gc4h8HnG2Z3ZECSzZ1IX1x2JxRVuDzaJwQE0+w=
+github.com/AlekSi/pointer v1.2.0/go.mod h1:gZGfd3dpW4vEc/UlyfKKi1roIqcCgwOIvb0tSNSBle0=
 github.com/AlessandroPomponio/go-gibberish v0.0.0-20191004143433-a2d4156f0396 h1:cKIHT8I2mrmw/VgdyNeACP/AvetK8AgGsiRfOC3ZjmQ=
 github.com/AlessandroPomponio/go-gibberish v0.0.0-20191004143433-a2d4156f0396/go.mod h1:2VCDG9kHYQ5vfYUqeoB7foVlcvIvB7rp9LxTELLD1qU=
 github.com/Azure/azure-amqp-common-go/v3 v3.0.0/go.mod h1:SY08giD/XbhTz07tJdpw1SoxQXHPN30+DI3Z04SYqyg=
@@ -1855,10 +1855,10 @@ github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtP
 github.com/pelletier/go-toml v1.7.0/go.mod h1:vwGMzjaWMwyfHwgIBhI2YUM4fB6nL6lVAvS1LBMMhTE=
 github.com/pelletier/go-toml/v2 v2.1.0 h1:FnwAJ4oYMvbT/34k9zzHuZNrhlz48GB3/s6at6/MHO4=
 github.com/pelletier/go-toml/v2 v2.1.0/go.mod h1:tJU2Z3ZkXwnxa4DPO899bsyIoywizdUvyaeZurnPPDc=
-github.com/percona/exporter_shared v0.7.4-0.20211108113423-8555cdbac68b h1:tPnodYuNto6iPkeBCKJKw2HLeEYCiRmN2cpcMzTs8W4=
-github.com/percona/exporter_shared v0.7.4-0.20211108113423-8555cdbac68b/go.mod h1:bweWrCdYX+iAONTNUNIIkXGDjGg8dbFL0VBxuUv0wus=
-github.com/percona/mongodb_exporter v0.39.1-0.20230706092307-28432707eb65 h1:SOB6SH1o//vt7uOWA47Nvahd0lVOLH1vjrBzEECuB+o=
-github.com/percona/mongodb_exporter v0.39.1-0.20230706092307-28432707eb65/go.mod h1:VIKFC7G2UtRRESarb2FniLKUIXrBAh/hHiHdAjCcRGs=
+github.com/percona/exporter_shared v0.7.4 h1:S+xnfK/CySiYqr4XqLiLAfO3rxgEOUFK+m6lCBi3mgc=
+github.com/percona/exporter_shared v0.7.4/go.mod h1:bweWrCdYX+iAONTNUNIIkXGDjGg8dbFL0VBxuUv0wus=
+github.com/percona/mongodb_exporter v0.40.0 h1:oCPR6lHatM6MxUlMlKSMrqrtlprI1eTFGt1VBBJn6Y8=
+github.com/percona/mongodb_exporter v0.40.0/go.mod h1:pqYLO2ULSKI+vLrP+N8HjxjJSkapO/cXuVr0TTV60gI=
 github.com/performancecopilot/speed v3.0.0+incompatible/go.mod h1:/CLtqpZ5gBg1M9iaPbIdPPGyKcA8hKdoy6hAWba7Yac=
 github.com/peterbourgon/diskv v2.0.1+incompatible/go.mod h1:uqqh8zWWbv1HBMNONnaR/tNboyR3/BZd58JJSHlUSCU=
 github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5 h1:Ii+DKncOVM8Cu1Hc+ETb5K+23HdAMvESYE3ZJ5b5cMI=
