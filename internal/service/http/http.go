@@ -113,7 +113,7 @@ func New(opts Options) *Service {
 	return &Service{
 		log:      l,
 		tracer:   t,
-		gatherer: r,
+		gatherer: &translator{internal: r},
 		opts:     opts,
 
 		publicLis: publicLis,
