@@ -16,13 +16,15 @@ type ComponentRegistry interface {
 
 type defaultComponentRegistry struct {
 	minStability featuregate.Stability
+	community    bool
 }
 
 // NewDefaultComponentRegistry creates a new [ComponentRegistry] which gets
 // components registered to github.com/grafana/alloy/internal/component.
-func NewDefaultComponentRegistry(minStability featuregate.Stability) ComponentRegistry {
+func NewDefaultComponentRegistry(minStability featuregate.Stability, community bool) ComponentRegistry {
 	return defaultComponentRegistry{
 		minStability: minStability,
+		community:    community,
 	}
 }
 
@@ -36,24 +38,30 @@ func (reg defaultComponentRegistry) Get(name string) (component.Registration, er
 	if err := featuregate.CheckAllowed(cr.Stability, reg.minStability, fmt.Sprintf("component %q", name)); err != nil {
 		return component.Registration{}, err
 	}
+	if cr.Community && !reg.community {
+		return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --community-component command-line flag to enable community components", name)
+	}
 	return cr, nil
 }
 
 type registryMap struct {
 	registrations map[string]component.Registration
 	minStability  featuregate.Stability
+	community     bool
 }
 
 // NewRegistryMap creates a new [ComponentRegistry] which uses a map to store components.
 // Currently, it is only used in tests.
 func NewRegistryMap(
 	minStability featuregate.Stability,
+	community bool,
 	registrations map[string]component.Registration,
 ) ComponentRegistry {
 
 	return &registryMap{
 		registrations: registrations,
 		minStability:  minStability,
+		community:     community,
 	}
 }
 
@@ -65,6 +73,9 @@ func (m registryMap) Get(name string) (component.Registration, error) {
 	}
 	if err := featuregate.CheckAllowed(reg.Stability, m.minStability, fmt.Sprintf("component %q", name)); err != nil {
 		return component.Registration{}, err
+	}
+	if reg.Community && !m.community {
+		return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --community-component command-line flag to enable community components", name)
 	}
 	return reg, nil
 }

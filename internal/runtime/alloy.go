@@ -106,6 +106,9 @@ type Options struct {
 	// Services are configured when LoadFile is invoked. Services are started
 	// when the Alloy controller runs after LoadFile is invoked at least once.
 	Services []service.Service
+
+	// Community enables the use of community components.
+	Community bool
 }
 
 // Runtime is the Alloy system.
@@ -192,6 +195,7 @@ func newController(o controllerOptions) *Runtime {
 			TraceProvider: tracer,
 			DataPath:      o.DataPath,
 			MinStability:  o.MinStability,
+			Community:     o.Community,
 			OnBlockNodeUpdate: func(cn controller.BlockNode) {
 				// Changed node should be queued for reevaluation.
 				f.updateQueue.Enqueue(&controller.QueuedNode{Node: cn, LastUpdatedTime: time.Now()})
@@ -208,6 +212,7 @@ func newController(o controllerOptions) *Runtime {
 					Reg:               o.Reg,
 					DataPath:          o.DataPath,
 					MinStability:      o.MinStability,
+					Community:         o.Community,
 					ID:                id,
 					ServiceMap:        serviceMap,
 					WorkerPool:        workerPool,

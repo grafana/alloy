@@ -149,6 +149,9 @@ type Registration struct {
 	// Build should construct a new component from an initial Arguments and set
 	// of options.
 	Build func(opts Options, args Arguments) (Component, error)
+
+	// Community is true if the component is a community component.
+	Community bool
 }
 
 // CloneArguments returns a new zero value of the registered Arguments type.

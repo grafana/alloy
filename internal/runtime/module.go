@@ -226,4 +226,7 @@ type moduleControllerOptions struct {
 	// WorkerPool is a worker pool that can be used to run tasks asynchronously. A default pool will be created if this
 	// is nil.
 	WorkerPool worker.Pool
+
+	// Community enables the use of community components.
+	Community bool
 }
