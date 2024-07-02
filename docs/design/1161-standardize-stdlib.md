@@ -70,7 +70,6 @@ similar identifiers together:
 * String functions
     * `string.format` (previously `format`)
     * `string.join` (previously `join`)
-    * `string.json_path` (previously `json_path`)
     * `string.replace` (previously `replace`)
     * `string.split` (previously `split`)
     * `string.to_lower` (previously `to_lower`)
@@ -83,9 +82,9 @@ similar identifiers together:
 For identifiers where a namespace has been introduced, the old identifier will
 be marked deprecated for removal for the next major release.
 
-Two identifiers have not been given a namespace because I could not easily
-identify one: `constants` and `coalesce`. Until a namespace is identified (if
-ever), these identifiers will not be deprecated.
+Some identifiers have not been given a namespace because I could not easily
+identify one: `constants`, `coalesce`, and `json_path`. Until a namespace is
+identified (if ever), these identifiers will not be deprecated.
 
 New identifiers **should** be given a namespace; namespacing makes it easier
 for the same identifier to exist in two different namespaces, such as
@@ -99,7 +98,7 @@ like today.
 
 I've elected for namespaces to use dot separation (`NAMESPACE.IDENTIFIER`) as
 opposed to underscores (`NAMESPACE_IDENTIFIER`) to align with `constants` and
-component names, which both  use dot separation for namespacing.
+component names, which both use dot separation for namespacing.
 
 ### Example future stdlib
 
@@ -132,7 +131,6 @@ what these namespaces could eventually look like:
 * String functions
     * `string.format`
     * `string.join`
-    * `string.json_path`
     * `string.replace`
     * `string.split`
     * `string.to_lower`
