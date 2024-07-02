@@ -35,11 +35,17 @@ func (reg defaultComponentRegistry) Get(name string) (component.Registration, er
 	if !exists {
 		return component.Registration{}, fmt.Errorf("cannot find the definition of component name %q", name)
 	}
-	if err := featuregate.CheckAllowed(cr.Stability, reg.minStability, fmt.Sprintf("component %q", name)); err != nil {
-		return component.Registration{}, err
+
+	if cr.Community {
+		if !reg.community {
+			return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --community-component command-line flag to enable community components", name)
+		}
+		return cr, nil // community components are not affected by feature stability
 	}
-	if cr.Community && !reg.community {
-		return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --community-component command-line flag to enable community components", name)
+
+	err := featuregate.CheckAllowed(cr.Stability, reg.minStability, fmt.Sprintf("component %q", name))
+	if err != nil {
+		return component.Registration{}, err
 	}
 	return cr, nil
 }
@@ -71,11 +77,16 @@ func (m registryMap) Get(name string) (component.Registration, error) {
 	if !ok {
 		return component.Registration{}, fmt.Errorf("cannot find the definition of component name %q", name)
 	}
-	if err := featuregate.CheckAllowed(reg.Stability, m.minStability, fmt.Sprintf("component %q", name)); err != nil {
-		return component.Registration{}, err
+	if reg.Community {
+		if !m.community {
+			return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --community-component command-line flag to enable community components", name)
+		}
+		return reg, nil // community components are not affected by feature stability
 	}
-	if reg.Community && !m.community {
-		return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --community-component command-line flag to enable community components", name)
+
+	err := featuregate.CheckAllowed(reg.Stability, m.minStability, fmt.Sprintf("component %q", name))
+	if err != nil {
+		return component.Registration{}, err
 	}
 	return reg, nil
 }

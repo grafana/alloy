@@ -197,6 +197,14 @@ func TestLoader(t *testing.T) {
 		require.NoError(t, diags.ErrorOrNil())
 	})
 
+	t.Run("Load community component with community enabled and undefined stability level", func(t *testing.T) {
+		options := newLoaderOptionsWithStability(featuregate.StabilityUndefined)
+		options.ComponentGlobals.Community = true
+		l := controller.NewLoader(options)
+		diags := applyFromContent(t, l, []byte(testFileCommunity), nil, nil)
+		require.NoError(t, diags.ErrorOrNil())
+	})
+
 	t.Run("Load community component with community disabled", func(t *testing.T) {
 		l := controller.NewLoader(newLoaderOptions())
 		diags := applyFromContent(t, l, []byte(testFileCommunity), nil, nil)

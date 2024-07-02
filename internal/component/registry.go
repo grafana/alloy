@@ -163,15 +163,19 @@ func (r Registration) CloneArguments() Arguments {
 //   - the name is in use by another component,
 //   - the name is invalid,
 //   - the component name has a suffix length mismatch with an existing component,
-//   - the component's stability level is not defined.
+//   - the component's stability level is not defined and the component is not a community component
+//   - the component's stability level is defined and the component is a community component
 //
 // NOTE: the above panics will trigger during the integration tests if the registrations are invalid.
 func Register(r Registration) {
 	if _, exist := registered[r.Name]; exist {
 		panic(fmt.Sprintf("Component name %q already registered", r.Name))
 	}
-	if r.Stability == featuregate.StabilityUndefined {
+	switch {
+	case !r.Community && r.Stability == featuregate.StabilityUndefined:
 		panic(fmt.Sprintf("Component %q has an undefined stability level - please provide stability level when registering the component", r.Name))
+	case r.Community && r.Stability != featuregate.StabilityUndefined:
+		panic(fmt.Sprintf("Community component %q has a defined stability level - community components are not affected by the stability level. It should remain `undefined`", r.Name))
 	}
 
 	parsed, err := parseComponentName(r.Name)
