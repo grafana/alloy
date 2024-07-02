@@ -64,6 +64,9 @@ type Processor struct {
 	collector *lazycollector.Collector
 
 	liveDebuggingConsumer *livedebuggingconsumer.Consumer
+	debugDataPublisher    livedebugging.DebugDataPublisher
+
+	args Arguments
 }
 
 var (
@@ -113,6 +116,7 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 		collector: collector,
 
 		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), opts.ID),
+		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	if err := p.Update(args); err != nil {
 		return nil, err
@@ -130,12 +134,12 @@ func (p *Processor) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector processor configuration and manage
 // the underlying OpenTelemetry Collector processor.
 func (p *Processor) Update(args component.Arguments) error {
-	pargs := args.(Arguments)
+	p.args = args.(Arguments)
 
 	host := scheduler.NewHost(
 		p.opts.Logger,
-		scheduler.WithHostExtensions(pargs.Extensions()),
-		scheduler.WithHostExporters(pargs.Exporters()),
+		scheduler.WithHostExtensions(p.args.Extensions()),
+		scheduler.WithHostExporters(p.args.Exporters()),
 	)
 
 	reg := prometheus.NewRegistry()
@@ -146,7 +150,7 @@ func (p *Processor) Update(args component.Arguments) error {
 		return err
 	}
 
-	metricsLevel, err := pargs.DebugMetricsConfig().Level.Convert()
+	metricsLevel, err := p.args.DebugMetricsConfig().Level.Convert()
 	if err != nil {
 		return err
 	}
@@ -169,16 +173,24 @@ func (p *Processor) Update(args component.Arguments) error {
 		},
 	}
 
-	processorConfig, err := pargs.Convert()
+	processorConfig, err := p.args.Convert()
 	if err != nil {
 		return err
 	}
 
+	next := p.args.NextConsumers()
+	traces, metrics, logs := next.Traces, next.Metrics, next.Logs
+
+	if p.debugDataPublisher.IsActive(livedebugging.ComponentID(p.opts.ID)) {
+		traces = append(traces, p.liveDebuggingConsumer)
+		metrics = append(metrics, p.liveDebuggingConsumer)
+		logs = append(logs, p.liveDebuggingConsumer)
+	}
+
 	var (
-		next        = pargs.NextConsumers()
-		nextTraces  = fanoutconsumer.Traces(append(next.Traces, p.liveDebuggingConsumer))
-		nextMetrics = fanoutconsumer.Metrics(append(next.Metrics, p.liveDebuggingConsumer))
-		nextLogs    = fanoutconsumer.Logs(append(next.Logs, p.liveDebuggingConsumer))
+		nextTraces  = fanoutconsumer.Traces(traces)
+		nextMetrics = fanoutconsumer.Metrics(metrics)
+		nextLogs    = fanoutconsumer.Logs(logs)
 	)
 
 	// Create instances of the processor from our factory for each of our
@@ -226,4 +238,6 @@ func (p *Processor) CurrentHealth() component.Health {
 	return p.sched.CurrentHealth()
 }
 
-func (p *Processor) LiveDebugging() {}
+func (p *Processor) LiveDebugging(_ int) {
+	p.Update(p.args)
+}

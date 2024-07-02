@@ -78,8 +78,13 @@ func (args *Arguments) Validate() error {
 
 // Component is the otelcol.exporter.discovery component.
 type Component struct {
-	consumer *promsdconsumer.Consumer
-	logger   log.Logger
+	consumer              *promsdconsumer.Consumer
+	logger                log.Logger
+	liveDebuggingConsumer *livedebuggingconsumer.Consumer
+	debugDataPublisher    livedebugging.DebugDataPublisher
+
+	opts component.Options
+	args Arguments
 }
 
 var (
@@ -100,14 +105,17 @@ func New(o component.Options, c Arguments) (*Component, error) {
 
 	liveDebuggingConsumer := livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID)
 
-	nextTraces := fanoutconsumer.Traces(append(c.Output.Traces, liveDebuggingConsumer))
+	traces := c.Output.Traces
+	if debugDataPublisher.(livedebugging.DebugDataPublisher).IsActive(livedebugging.ComponentID(o.ID)) {
+		traces = append(traces, liveDebuggingConsumer)
+	}
 
 	consumerOpts := promsdconsumer.Options{
 		// Don't bother setting up labels - this will be done by the Update() function.
 		HostLabels:      map[string]discovery.Target{},
 		OperationType:   c.OperationType,
 		PodAssociations: c.PodAssociations,
-		NextConsumer:    nextTraces,
+		NextConsumer:    fanoutconsumer.Traces(traces),
 	}
 	consumer, err := promsdconsumer.NewConsumer(consumerOpts, o.Logger)
 	if err != nil {
@@ -115,8 +123,11 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	res := &Component{
-		consumer: consumer,
-		logger:   o.Logger,
+		consumer:              consumer,
+		logger:                o.Logger,
+		opts:                  o,
+		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
+		liveDebuggingConsumer: liveDebuggingConsumer,
 	}
 
 	if err := res.Update(c); err != nil {
@@ -143,11 +154,11 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
-	cfg := newConfig.(Arguments)
+	c.args = newConfig.(Arguments)
 
 	hostLabels := make(map[string]discovery.Target)
 
-	for _, labels := range cfg.Targets {
+	for _, labels := range c.args.Targets {
 		host, err := promsdconsumer.GetHostFromLabels(labels)
 		if err != nil {
 			level.Warn(c.logger).Log("msg", "ignoring target, unable to find address", "err", err)
@@ -156,13 +167,18 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 		hostLabels[host] = promsdconsumer.NewTargetsWithNonInternalLabels(labels)
 	}
+	traces := c.args.Output.Traces
+	if c.debugDataPublisher.IsActive(livedebugging.ComponentID(c.opts.ID)) {
+		traces = append(traces, c.liveDebuggingConsumer)
+	}
 
 	err := c.consumer.UpdateOptions(promsdconsumer.Options{
 		HostLabels:      hostLabels,
-		OperationType:   cfg.OperationType,
-		PodAssociations: cfg.PodAssociations,
-		NextConsumer:    fanoutconsumer.Traces(cfg.Output.Traces),
+		OperationType:   c.args.OperationType,
+		PodAssociations: c.args.PodAssociations,
+		NextConsumer:    fanoutconsumer.Traces(traces),
 	})
+
 	if err != nil {
 		return fmt.Errorf("failed to update consumer options due to error: %w", err)
 	}
@@ -170,4 +186,6 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	return nil
 }
 
-func (c *Component) LiveDebugging() {}
+func (c *Component) LiveDebugging(_ int) {
+	c.Update(c.args)
+}
