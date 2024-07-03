@@ -164,6 +164,12 @@ original configuration.
 Include `--config.extra-args` to pass additional command line flags from the original format to the converter.
 Refer to [alloy convert][] for more details on how `extra-args` work.
 
+## Automatic setting of GOMEMLIMIT
+
+The `GOMEMLIMIT` variable will be automatically set if {{< param "PRODUCT_NAME" >}} can determine the appropriate value. If the `GOMEMLIMIT` value is set before running  {{< param "PRODUCT_NAME" >}} then that setting will be honored. The value will be set to 90% of the cgroup value set.
+
+This is most commonly set through Kubernetes memory limits.
+
 
 [alloy convert]: ../convert/
 [clustering]:  ../../../concepts/clustering/
