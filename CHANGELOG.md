@@ -17,7 +17,10 @@ Main (unreleased)
 ### Enhancements
 
 - Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
+
 - Add namespace field to Faro payload (@cedricziel)
+
+- Add the `targets` argument to the `prometheus.exporter.blackbox` component to support passing blackbox targets at runtime. (@wildum)
 
 ### Bugfixes
 
