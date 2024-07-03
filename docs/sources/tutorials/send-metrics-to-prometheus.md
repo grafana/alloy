@@ -57,14 +57,14 @@ The following example demonstrates filtering out or dropping metrics before send
 Paste this component next in your configuration file:
 ```alloy
 prometheus.relabel "filter_metrics" {
-   rule {
-    action = "drop"
-    source_labels =[ "env"]
-    regex = "dev"
+  rule {
+    action        = "drop"
+    source_labels = ["env"]
+    regex         = "dev"
   }
- forward_to = [prometheus.remote_write.metrics_service.receiver]
+  
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
-```
 
 1. `prometheus.relabel` is a component most commonly used to filter Prometheus metrics or standardize the label set passed to one or more downstream receivers. 
 1. In this example, you create a `prometheus.relabel` component named “filter_metrics”. 
