@@ -33,7 +33,7 @@ alloy:
     runAsGroup: 473
 ```
 
-This configuration makes the {{< param "PRODUCT_NAME" >}} binary run with uid 473 and gid 473 rather than as root.
+This configuration makes the {{< param "PRODUCT_NAME" >}} binary run with UID 473 and GID 473 rather than as root.
 
 ## Is the root user a security risk?
 
