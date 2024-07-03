@@ -2,6 +2,12 @@
 
 [Community components][cc] are components that are implemented and maintained by the community.
 
+## Community vs core components
+
+The community components category is mainly targeted at vendor-specific components for which Grafana does not offer commercial support (for example the Datadog exporter).
+
+Some vendor-agnostic components may also be accepted as community components if they are not accepted as core components.
+
 ## Before opening a proposal
 
 The first step is to ensure that the proposal meets the following criteria and does not duplicate existing proposals:
@@ -17,11 +23,16 @@ While not mandatory, it is beneficial if:
 * The component comes from [Opentelemetry's contrib repository][otel].
 * The component supports all the [platforms that Alloy supports][platforms].
 
+We are implementing a gradual rollout strategy for community components to allow for process refinement as needed.
+Even if a proposal meets all the established criteria, we may exercise caution in its acceptance to ensure a smooth integration process.
+
 ## Creating a proposal
 
 To create a proposal, submit a new issue in [Alloy's repo][issue] with the template `Community component proposal`.
 
 Make sure that the issue has the label `community-component` before submitting it.
+
+The proposal will go through our [review process][]. Make sure that you use the [review template][] in your issue.
 
 ## Implementing the component
 
@@ -52,3 +63,5 @@ The list of maintainers is kept as a comment in the component's Go file:
 [otel]: https://github.com/open-telemetry/opentelemetry-collector-contrib
 [issue]: https://github.com/grafana/alloy/issues/new/choose
 [contributing]: contributing.md
+[review process]: ../design/README.md
+[review template]: ../design/template.md

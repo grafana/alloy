@@ -14,7 +14,7 @@ While Grafana does not offer commercial support for these components, they under
 To use these community components, you need to explicitly pass the `--community-component` flag to the `run` command.
 
 {{< admonition type="warning" >}}
-__Community components__ without an owner may be eventually disabled or removed.
+__Community components__ without an owner may be eventually disabled or removed if they preventing us from being able to continue work on Alloy.
 {{< /admonition >}}
 
 [Components]: ../components/
