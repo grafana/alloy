@@ -26,7 +26,6 @@ The following arguments are supported.
 Argument                        | Description                                                                                          | Default
 --------------------------------|------------------------------------------------------------------------------------------------------|--------
 `x509usefallbackroots`          | Enforce a fallback on the X.509 trusted root certificates. Set to `1` to enable.                     | `0`
-`PPROF_MUTEX_PROFILING_PERCENT` |                                                                                                      |
 `netdns`                        | Force a resolver. Set to `go` for a pure Go resolver. Set to `cgo` or `win32` for a native resolver. |
 `netdns`                        | Show resolver debugging information. Set to `1` for basic information. Set to `2` for verbose.       |
 
