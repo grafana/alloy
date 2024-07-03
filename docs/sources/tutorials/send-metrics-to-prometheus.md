@@ -35,11 +35,10 @@ Paste this component into the top of the `config.alloy` file:
 prometheus.exporter.unix "local_system" { }
 
 prometheus.scrape "scrape_metrics" {
-  targets    = prometheus.exporter.unix.local_system.targets
-  forward_to = [prometheus.relabel.filter_metrics.receiver]
+  targets         = prometheus.exporter.unix.local_system.targets
+  forward_to      = [prometheus.relabel.filter_metrics.receiver]
   scrape_interval = "10s"
 }
-```
 This configuration defines a Prometheus exporter for a local system from which the metrics will be collected. 
 
 It also creates a [`prometheus.scrape`][prometheus.scrape] component named `scrape_metrics` which does the following:
