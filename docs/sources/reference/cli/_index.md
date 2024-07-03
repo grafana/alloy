@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/reference/cli/
 description: Learn about the Grafana Alloy command line interface
 menuTitle: Command-line interface
 title: The Grafana Alloy command-line interface
-weight: 100
+weight: 50
 ---
 
 # The {{% param "FULL_PRODUCT_NAME" %}} command-line interface
