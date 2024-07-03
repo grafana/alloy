@@ -71,7 +71,7 @@ prometheus.relabel "filter_metrics" {
 1. There are many ways to [process metrics][prometheus.relabel]. 
    Within this component, you can define rule block(s) to specify how you would like to process metrics before they are stored or forwarded. 
 1. This example assumes that you are monitoring a production environment and the metrics collected from the dev environment will not be needed for this particular use case. 
-1. To instruct {{< param "PRODUCT_NAME" >}} to drop metrics whose environment label, `[”env]”`, is equal to `”dev”`, you set the `action` parameter to `”drop”`, set the `source_labels` parameter equal to `[“env”]`, and the `regex` parameter to `“dev”`.  
+1. To instruct {{< param "PRODUCT_NAME" >}} to drop metrics whose environment label, `"env"`, is equal to `"dev"`, you set the `action` parameter to `"drop"`, set the `source_labels` parameter equal to `["env"]`, and the `regex` parameter to `"dev"`.  
 1. You use the `forward_to` parameter to specify where to send the processed metrics.
    In this case, you will send the processed metrics to a component you will create next called `metrics_service`. 
 
