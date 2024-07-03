@@ -17,11 +17,15 @@ Main (unreleased)
 ### Enhancements
 
 - Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
+
 - Add namespace field to Faro payload (@cedricziel)
+
+- Graduate automatically setting GOMEMLIMIT to Generally Available from Public Preview. (@mattdurham)
 
 ### Bugfixes
 
 - Fixed an issue with `loki.source.kubernetes_events` not starting in large clusters due to short informer sync timeout. (@nrwiersma)
+
 - Updated [ckit](https://github.com/grafana/ckit) to fix an issue with armv7 panic on startup when forming a cluster. (@imavroukakis)
 
 v1.2.0
