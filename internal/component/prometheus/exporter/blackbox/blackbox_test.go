@@ -369,7 +369,7 @@ func TestConvertTargetsList2(t *testing.T) {
 		},
 	}
 
-	res := targets.convert()
+	res := targets.convertInternal()
 	require.Equal(t, 1, len(res))
 	require.Equal(t, "target_a", res[0].Name)
 	require.Equal(t, "http://example.com", res[0].Target)
@@ -390,7 +390,7 @@ func TestConvertTargetsList2DifferentAddressLabel(t *testing.T) {
 		},
 	}
 
-	res := targets.convert()
+	res := targets.convertInternal()
 	require.Equal(t, 1, len(res))
 	require.Equal(t, "target_a", res[0].Name)
 	require.Equal(t, "http://example.com", res[0].Target)

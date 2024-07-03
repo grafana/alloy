@@ -41,7 +41,7 @@ func buildBlackboxTargets(baseTarget discovery.Target, args component.Arguments)
 	blackboxTargets := args.(Arguments).Targets
 	if len(blackboxTargets) == 0 {
 		// Converting to BlackboxTarget to avoid duplicating logic
-		blackboxTargets = args.(Arguments).TargetsList.convert()
+		blackboxTargets = args.(Arguments).TargetsList.convertInternal()
 	}
 
 	for _, tgt := range blackboxTargets {
@@ -120,7 +120,7 @@ func (t TargetsList) Convert() []blackbox_exporter.BlackboxTarget {
 	return targets
 }
 
-func (t TargetsList) convert() []BlackboxTarget {
+func (t TargetsList) convertInternal() []BlackboxTarget {
 	targets := make([]BlackboxTarget, 0, len(t))
 	for _, target := range t {
 
