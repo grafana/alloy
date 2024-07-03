@@ -125,20 +125,41 @@ The following blocks are supported inside the definition of `prometheus.exporter
 
 ### filesystem block
 
-The default values can vary by the operating system {{< param "PRODUCT_NAME" >}} runs on.
-Refer to the [integration source](https://github.com/grafana/alloy/blob/main/internal/static/integrations/node_exporter/config.go) for up-to-date values on each operating system.
+The default values vary by the operating system {{< param "PRODUCT_NAME" >}} runs on.
 
-| Name                   | Type       | Description                                                         | Default                                         | Required |
-| ---------------------- | ---------- | ------------------------------------------------------------------- | ----------------------------------------------- | -------- |
-| `fs_types_exclude`     | `string`   | Regexp of filesystem types to ignore for filesystem collector.      | (_see below_ )                                  | no       |
-| `mount_points_exclude` | `string`   | Regexp of mount points to ignore for filesystem collector.          | `"^/(dev\|proc\|sys\|var/lib/docker/.+)($\|/)"` | no       |
-| `mount_timeout`        | `duration` | How long to wait for a mount to respond before marking it as stale. | `"5s"`                                          | no       |
+| Name                   | Type       | Description                                                         | Default        | Required |
+|------------------------|------------|---------------------------------------------------------------------|----------------|----------|
+| `fs_types_exclude`     | `string`   | Regexp of filesystem types to ignore for filesystem collector.      | (_see below_ ) | no       |
+| `mount_points_exclude` | `string`   | Regexp of mount points to ignore for filesystem collector.          | (_see below_ ) | no       |
+| `mount_timeout`        | `duration` | How long to wait for a mount to respond before marking it as stale. | `"5s"`         | no       |
 
 `fs_types_exclude` defaults to the following regular expression string:
 
-```
+{{< code >}}
+```linux
 ^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
 ```
+```osx
+^(autofs|devfs)$
+```
+```bsd
+^devfs$
+```
+{{< /code >}}
+
+`mount_points_exclude` defaults to the following regular expression string:
+
+{{< code >}}
+```linux
+^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+)($|/)
+```
+```osx
+^/(dev)($|/)
+```
+```bsd
+^/(dev)($|/)
+```
+{{< /code >}}
 
 ### ipvs block
 
@@ -153,7 +174,7 @@ Refer to the [integration source](https://github.com/grafana/alloy/blob/main/int
 | `server`                 | `string`   | NTP server to use for the collector.                         | `"127.0.0.1"` | no       |
 | `server_is_local`        | `boolean`  | Certifies that the server address isn't a public NTP server. | false         | no       |
 | `ip_ttl`                 | `int`      | TTL to use while sending NTP query.                          | 1             | no       |
-| `local_offset_tolerance` | `duration` | Offset between local clock and local ntpd time to tolerate.  | `"1ms"`       | no       |
+| `local_offset_tolerance` | `duration` | Offset between local clock and local NTPD time to tolerate.  | `"1ms"`       | no       |
 | `max_distance`           | `duration` | Max accumulated distance to the root.                        | `"3466080us"` | no       |
 | `protocol_version`       | `int`      | NTP protocol version.                                        | 4             | no       |
 
