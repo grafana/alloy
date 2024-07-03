@@ -219,6 +219,12 @@ This proposal is properly backwards compatible, with the old identifiers being
 marked deprecated in favour of their namespaced equivalents (where a namespace
 was introduced).
 
+It is possible that any namespaces introduced in this proposal may collide with
+an existing custom component. Custom components shadow the stdlib, so this is
+not a breaking change, but users will have to change the name of their custom
+components that collide with a stdlib namespace before being able to use
+functions in that namespace.
+
 By default, the removal deprecated identifiers would be considered for an
 eventual 2.0 release, but they may be kept around longer based on usage.
 
