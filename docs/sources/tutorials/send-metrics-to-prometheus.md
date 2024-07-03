@@ -80,19 +80,16 @@ prometheus.relabel "filter_metrics" {
 Paste this component next in your configuration file:
 
 ```alloy
-
 prometheus.remote_write "metrics_service" {
     endpoint {
         url = "http://localhost:9090/api/v1/write"
 
-        //basic_auth {
-            //username = "admin"
-            //password = "admin"
-      // }
+        // basic_auth {
+        //   username = "admin"
+        //   password = "admin"
+        // }
     }
 }
-
-```
 This last component creates a [prometheus.remote_write][prometheus.remote_write] component named `metrics_service` that points to `http://localhost:9090/api/v1/write`.
 
 This completes the simple configuration pipeline.
