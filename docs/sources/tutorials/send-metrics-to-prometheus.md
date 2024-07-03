@@ -21,7 +21,7 @@ Complete the [previous tutorial][get started] to:
 
 ## Configure {{% param "PRODUCT_NAME" %}}
 
-Once the prerequisite steps have been completed, the next step is to configure {{< param "PRODUCT_NAME" >}}.
+Once the prerequisite steps have been completed, the next step is to configure {{< param "PRODUCT_NAME" >}} for metric collection. 
 
 Same as you did for logs, you will use the components in the `config.alloy` file to tell {{< param "PRODUCT_NAME" >}} which metrics you want to scrape, how you want to process that data, and where you want the data sent.
 
