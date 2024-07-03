@@ -5,13 +5,11 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/featuregate"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "testcomponents.community",
-		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      struct{}{},
 		Community: true,
 
