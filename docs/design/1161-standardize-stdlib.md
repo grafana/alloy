@@ -80,7 +80,7 @@ similar identifiers together:
     * `string.trim_suffix` (previously`trim_suffix`)
 
 For identifiers where a namespace has been introduced, the old identifier will
-be marked deprecated for removal for the next major release.
+be marked deprecated for removal for the next major release. The documentation will present the namespaced functions prominently and mention the old name as a deprecated alias.
 
 Some identifiers have not been given a namespace because I could not easily
 identify one: `constants`, `coalesce`, and `json_path`. Until a namespace is
