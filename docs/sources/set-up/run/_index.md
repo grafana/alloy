@@ -5,7 +5,7 @@ aliases:
 description: Learn how to run Grafana Alloy
 menuTitle: Run
 title: Run Grafana Alloy
-weight: 50
+weight: 300
 ---
 
 # Run {{% param "FULL_PRODUCT_NAME" %}}

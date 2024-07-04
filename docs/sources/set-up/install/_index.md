@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy
 menuTitle: Install
 title: Install Grafana Alloy
-weight: 50
+weight: 100
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}}

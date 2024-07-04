@@ -1,9 +1,11 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/migrate/from-flow/
+canonical: https://grafana.com/docs/alloy/latest/set-up/migrate/from-flow/
+aliases:
+  - ../tasks/migrate/from-flow/ # /docs/alloy/latest/tasks/migrate/from-flow/
 description: Learn how to migrate your configuration from Grafana Agent Flow to Grafana Alloy
-menuTitle: Migrate from Grafana Agent Flow
+menuTitle: Migrate from Agent Flow
 title: Migrate Grafana Agent Flow to Grafana Alloy
-weight: 350
+weight: 140
 ---
 
 # Migrate from Grafana Agent Flow to {{% param "FULL_PRODUCT_NAME" %}}
@@ -16,7 +18,7 @@ This procedure is only required for live migrations from a Grafana Agent Flow in
 If you want a fresh start with {{< param "PRODUCT_NAME" >}}, you can [uninstall Grafana Agent Flow][uninstall] and [install {{< param "PRODUCT_NAME" >}}][install].
 
 [uninstall]: https://grafana.com/docs/agent/latest/flow/get-started/install/
-[install]: ../../../get-started/install/
+[install]: ../../../set-up/install/
 {{< /admonition >}}
 
 ## Before you begin
@@ -76,7 +78,7 @@ When deploying {{< param "PRODUCT_NAME" >}}, be aware of the following settings:
     - Set the number of instances to match the number of instances in your Grafana Agent Flow cluster.
     - Don't enable auto-scaling until the migration is complete.
 
-[install]: ../../get-started/install
+[install]: ../../../set-up/install
 [run]: ../../../reference/cli/run
 [discovery.process]: ../../../reference/components/discovery.process/
 [pyroscope.ebpf]: ../../../reference/components/pyroscope.ebpf/

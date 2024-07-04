@@ -1,9 +1,11 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/migrate/from-operator/
+canonical: https://grafana.com/docs/alloy/latest/set-up/migrate/from-operator/
+aliases:
+  - ../tasks/migrate/from-operator/ # /docs/alloy/latest/tasks/migrate/from-operator/
 description: Migrate from Grafana Agent Operator to Grafana Alloy
-menuTitle: Migrate from Operator
+menuTitle: Migrate from Agent Operator
 title: Migrate from Grafana Agent Operator to Grafana Alloy
-weight: 320
+weight: 120
 ---
 
 # Migrate from Grafana Agent Operator to {{% param "FULL_PRODUCT_NAME" %}}

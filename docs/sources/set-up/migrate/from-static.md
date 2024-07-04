@@ -1,9 +1,11 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/migrate/from-static/
+canonical: https://grafana.com/docs/alloy/latest/set-up/migrate/from-static/
+aliases:
+  - ../tasks/migrate/from-static/ # /docs/alloy/latest/tasks/migrate/from-static/
 description: Learn how to migrate your configuration from Grafana Agent Static to Grafana Alloy
-menuTitle: Migrate from Grafana Agent Static
+menuTitle: Migrate from Agent Static
 title: Migrate Grafana Agent Static to Grafana Alloy
-weight: 340
+weight: 100
 ---
 
 # Migrate from Grafana Agent Static to {{% param "FULL_PRODUCT_NAME" %}}
@@ -381,7 +383,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Promtail Limitations]: ../from-promtail/#limitations
 [Metrics]: https://grafana.com/docs/agent/latest/static/configuration/metrics-config/
 [Logs]: https://grafana.com/docs/agent/latest/static/configuration/logs-config/
-[UI]: ../../debug/#alloy-ui
+[UI]: ../../../debug/#alloy-ui
 [otelcol.receiver.otlp]: ../../../reference/components/otelcol.receiver.otlp/
 [otelcol.processor.batch]: ../../../reference/components/otelcol.processor.batch/
 [otelcol.exporter.otlp]:../../../reference/components/otelcol.exporter.otlp/

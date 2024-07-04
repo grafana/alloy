@@ -1,9 +1,11 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/migrate/from-promtail/
+canonical: https://grafana.com/docs/alloy/latest/set-up/migrate/from-promtail/
+aliases:
+  - ../tasks/migrate/from-promtail/ # /docs/alloy/latest/tasks/migrate/from-promtail/
 description: Learn how to migrate from Promtail to Grafana Alloy
 menuTitle: Migrate from Promtail
 title: Migrate from Promtail to Grafana Alloy
-weight: 330
+weight: 300
 ---
 
 # Migrate from Promtail to {{% param "FULL_PRODUCT_NAME" %}}
