@@ -1,9 +1,11 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/configure-alloy-datadog-receiver/
+canonical: https://grafana.com/docs/alloy/latest/collect/collect-datadog-traces-metrics/
+aliases:
+  - ../tasks/configure-alloy-to-use-datadog-receiver/ # /docs/alloy/latest/tasks/configure-alloy-to-use-datadog-receiver/
 description: Learn how to configure Grafana Alloy to use the Datadog receiver
-menuTitle: Configure Alloy with the Datadog Receiver
+menuTitle: Collect Datadog traces and metrics
 title: Receive traces and metrics from Datadog-instrumented applications
-weight: 550
+weight: 200
 ---
 
 # Receive traces and metrics from Datadog-instrumented applications

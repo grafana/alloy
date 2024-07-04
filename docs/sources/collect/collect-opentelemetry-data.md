@@ -1,11 +1,14 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/collect-opentelemetry-data/
+canonical: https://grafana.com/docs/alloy/latest/collect/collect-opentelemetry-data/
+aliases:
+  - ../tasks/collect-opentelemetry-data/ # /docs/alloy/latest/tasks/collect-opentelemetry-data/
 description: Learn how to collect OpenTelemetry data
-title: Collect OpenTelemetry data
-weight: 300
+menuTitle: Collect OpenTelemetry data
+title: Collect OpenTelemetry data and forward it to any OpenTelemetry-compatible endpoint
+weight: 400
 ---
 
-# Collect OpenTelemetry data
+# Collect OpenTelemetry data and forward it to any OpenTelemetry-compatible endpoint
 
 You can configure {{< param "PRODUCT_NAME" >}} to collect [OpenTelemetry][]-compatible data and forward it to any OpenTelemetry-compatible endpoint.
 

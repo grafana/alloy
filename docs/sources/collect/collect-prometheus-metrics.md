@@ -1,11 +1,13 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/collect-prometheus-metrics/
+canonical: https://grafana.com/docs/alloy/latest/collect/collect-prometheus-metrics/
+aliases:
+  - ../tasks/collect-prometheus-metrics/ # /docs/alloy/latest/tasks/collect-prometheus-metrics/
 description: Learn how to collect and forward Prometheus metrics
-title: Collect and forward Prometheus metrics
-weight: 200
+title: Collect Prometheus metrics
+weight: 300
 ---
 
-# Collect and forward Prometheus metrics
+# Collect Prometheus metrics
 
 You can configure {{< param "PRODUCT_NAME" >}} to collect [Prometheus][] metrics and forward them to any Prometheus-compatible database.
 

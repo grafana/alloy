@@ -1,9 +1,11 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tasks/distribute-prometheus-scrape-load/
+aliases:
+  - ../../../tasks/distribute-prometheus-scrape-load/ # /docs/alloy/latest/tasks/tasks/distribute-prometheus-scrape-load/
 description: Learn how to distribute your Prometheus metrics scrape load
-menuTitle: Distribute Prometheus metrics scrape load
+menuTitle: Distribute metrics scrape load
 title: Distribute Prometheus metrics scrape load
-weight: 500
+weight: 200
 ---
 
 # Distribute Prometheus metrics scrape load

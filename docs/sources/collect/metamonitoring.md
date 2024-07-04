@@ -1,15 +1,18 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/metamonitoring/
+canonical: https://grafana.com/docs/alloy/latest/collect/metamonitoring/
+aliases:
+  - ../tasks/metamonitoring/ # /docs/alloy/latest/tasks/metamonitoring/
 description: Learn how to set up meta-monitoring for Grafana Alloy
-title: Set up meta-monitoring
-weight: 200
+menuTitle: Collect Alloy telemetry
+title: Set up meta-monitoring to collect Alloy telemetry
+weight: 175
 ---
 
-# Set up meta-monitoring
+# Set up meta-monitoring to collect {{% param "PRODUCT_NAME" %}} telemetry
 
 You can configure {{< param "PRODUCT_NAME" >}} to collect its own telemetry and forward it to the backend of your choosing.
 
-This topic describes how to collect and forward {{< param "PRODUCT_NAME" >}}'s metrics, logs and traces data.
+This topic describes how to collect and forward metrics, logs, and traces data from {{< param "PRODUCT_NAME" >}}.
 
 ## Components and configuration blocks used in this topic
 

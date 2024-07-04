@@ -1,11 +1,14 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/opentelemetry-to-lgtm-stack/
+canonical: https://grafana.com/docs/alloy/latest/collect/opentelemetry-to-lgtm-stack/
+aliases:
+  - ../tasks/opentelemetry-to-lgtm-stack/ # /docs/alloy/latest/tasks/opentelemetry-to-lgtm-stack/
 description: Learn how to collect OpenTelemetry data and forward it to the Grafana stack
-title: OpenTelemetry to Grafana stack
-weight: 350
+menuTitle: Collect OpenTelemetry data and forward to Grafana
+title: Collect OpenTelemetry data and forward to Grafana
+weight: 450
 ---
 
-# OpenTelemetry to Grafana stack
+# Collect OpenTelemetry data and forward to Grafana
 
 You can configure {{< param "PRODUCT_NAME" >}} to collect [OpenTelemetry][]-compatible data and forward it to the Grafana stack.
 

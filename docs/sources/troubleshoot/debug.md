@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/tasks/debug/
 description: Learn about debugging issues with Grafana alloy
 title: Debug Grafana Alloy
-menuTitle: Debug issues
+menuTitle: Debug
 weight: 1000
 ---
 

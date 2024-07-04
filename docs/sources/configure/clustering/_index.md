@@ -1,9 +1,11 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/configure-alloy-clustering/
+canonical: https://grafana.com/docs/alloy/latest/configure/clustering/
+aliases:
+  - ../../tasks/configure-alloy-clustering/ # /docs/alloy/latest/tasks/configure-alloy-clustering/
 description: Learn how to configure Grafana Alloy clustering in an existing installation
-menuTitle: Configure clustering
+menuTitle: Clustering
 title: Configure Grafana Alloy clustering in an existing installation
-weight: 400
+weight: 100
 ---
 
 # Configure {{% param "PRODUCT_NAME" %}} clustering in an existing installation
