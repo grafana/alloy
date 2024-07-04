@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/run/linux/
 aliases:
-  - ../get-started/run/linux/ # /docs/alloy/latest/get-started/run/linux/
+  - ../../get-started/run/linux/ # /docs/alloy/latest/get-started/run/linux/
 description: Learn how to run Grafana Alloy on Linux
 menuTitle: Linux
 title: Run Grafana Alloy on Linux

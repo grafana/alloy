@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/run/binary/
 aliases:
-  - ../get-started/run/binary/ # /docs/alloy/latest/get-started/run/binary/
+  - ../../get-started/run/binary/ # /docs/alloy/latest/get-started/run/binary/
 description: Learn how to run Grafana Alloy as a standalone binary
 menuTitle: Standalone
 title: Run Grafana Alloy as a standalone binary
