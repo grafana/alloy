@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/expressions/operators/
+canonical: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/expressions/operators/
+aliases:
+  - ../../../concepts/configuration-syntax/expressions/operators/ # /docs/alloy/latest/concepts/configuration-syntax/expressions/operators/
 description: Learn about operators
 title: Operators
 weight: 300

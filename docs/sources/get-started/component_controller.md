@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/component_controller/
+canonical: https://grafana.com/docs/alloy/latest/get-started/component_controller/
+aliases:
+  - ../concepts/component_controller/ # /docs/alloy/latest/concepts/component_controller/
 description: Learn about the component controller
 title: Component controller
 weight: 200

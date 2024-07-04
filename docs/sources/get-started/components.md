@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/components/
+canonical: https://grafana.com/docs/alloy/latest/get-started/components/
+aliases:
+  - ../concepts/components/ # /docs/alloy/latest/concepts/components/
 description: Learn about components
 title: Components
 weight: 100

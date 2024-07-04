@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/clustering/
+canonical: https://grafana.com/docs/alloy/latest/get-started/clustering/
+aliases:
+  - ../concepts/clustering/ # /docs/alloy/latest/concepts/clustering/
 description: Learn about Grafana Alloy clustering concepts
 menuTitle: Clustering
 title: Clustering

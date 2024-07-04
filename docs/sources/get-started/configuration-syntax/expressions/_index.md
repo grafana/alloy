@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/expressions/
+canonical: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/expressions/
+aliases:
+  - ../../concepts/configuration-syntax/expressions/ # /docs/alloy/latest/concepts/configuration-syntax/expressions/
 description: Learn about expressions
 title: Expressions
 weight: 400

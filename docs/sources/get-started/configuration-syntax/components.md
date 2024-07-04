@@ -1,11 +1,13 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/components/
+canonical: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/components/
+aliases:
+  - ../../concepts/configuration-syntax/components/ # /docs/alloy/latest/concepts/configuration-syntax/components/
 description: Learn about the components configuration language
-title: Components configuration
+title: Configure components
 weight: 300
 ---
 
-# Components configuration
+# Configure components
 
 Components are the defining feature of {{< param "PRODUCT_NAME" >}}.
 Components are small, reusable pieces of business logic that perform a single task like retrieving secrets or collecting Prometheus metrics, and you can wire them together to form programmable pipelines of telemetry data.

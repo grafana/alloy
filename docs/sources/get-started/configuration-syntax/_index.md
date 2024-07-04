@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/
+canonical: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/
+aliases:
+  - ../concepts/configuration-syntax/ # /docs/alloy/latest/concepts/configuration-syntax/
 description: Learn about the Alloy configuration syntax
 title: Alloy configuration syntax
 menuTitle: Configuration syntax

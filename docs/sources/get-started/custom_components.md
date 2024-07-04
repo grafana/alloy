@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/custom_components/
+canonical: https://grafana.com/docs/alloy/latest/get-started/custom_components/
+aliases:
+  - ../concepts/custom_components/ # /docs/alloy/latest/concepts/custom_components/
 description: Learn about custom components
 title: Custom components
 weight: 300

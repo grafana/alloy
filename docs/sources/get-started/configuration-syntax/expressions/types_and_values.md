@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/expressions/types_and_values/
+canonical: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/expressions/types_and_values/
+aliases:
+  - ../../../concepts/configuration-syntax/expressions/types_and_values/ # /docs/alloy/latest/concepts/configuration-syntax/expressions/types_and_values/
 description: Learn about the Alloy syntax types and values
 title: Types and values
 weight: 100

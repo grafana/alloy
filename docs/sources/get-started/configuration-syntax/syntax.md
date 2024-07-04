@@ -1,8 +1,10 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/syntax/
+canonical: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/syntax/
+aliases:
+  - ../../concepts/configuration-syntax/syntax/ # /docs/alloy/latest/concepts/configuration-syntax/syntax/
 description: Learn about the Alloy syntax
 title: Syntax
-weight: 200
+weight: 999
 ---
 
 # Syntax

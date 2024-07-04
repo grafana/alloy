@@ -1,11 +1,13 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/files/
+aliases:
+  - ../../concepts/configuration-syntax/files/ # /docs/alloy/latest/concepts/configuration-syntax/files/
 description: Learn about Alloy configuration files
-title: Files
+title: Configuration files
 weight: 100
 ---
 
-# Files
+# Configuration files
 
 {{< param "PRODUCT_NAME" >}} configuration files are plain text files with a `.alloy` file extension.
 You can refer to each {{< param "PRODUCT_NAME" >}} file as a "configuration file" or an "{{< param "PRODUCT_NAME" >}} configuration."
