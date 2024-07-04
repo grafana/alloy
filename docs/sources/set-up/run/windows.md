@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/run/windows/
+canonical: https://grafana.com/docs/alloy/latest/set-up/run/windows/
+aliases:
+  - ../get-started/run/windows/ # /docs/alloy/latest/get-started/run/windows/
 description: Learn how to run Grafana Alloy on Windows
 menuTitle: Windows
 title: Run Grafana Alloy on Windows

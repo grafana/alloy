@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/deploy/
+canonical: https://grafana.com/docs/alloy/latest/set-up/deploy/
+aliases:
+  - ../get-started/deploy/ # /docs/alloy/latest/get-started/deploy/
 description: Learn about possible deployment topologies for Grafana Alloy
 menuTitle: Deploy
 title: Deploy Grafana Alloy

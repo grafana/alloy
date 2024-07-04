@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/install/kubernetes/
+canonical: https://grafana.com/docs/alloy/latest/set-up/install/kubernetes/
+aliases:
+  - ../get-started/install/kubernetes/ # /docs/alloy/latest/get-started/install/kubernetes/
 description: Learn how to deploy Grafana Alloy on Kubernetes
 menuTitle: Kubernetes
 title: Deploy Grafana Alloy on Kubernetes

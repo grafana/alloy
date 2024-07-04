@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/install/docker/
+canonical: https://grafana.com/docs/alloy/latest/set-up/install/docker/
+aliases:
+  - ../get-started/install/docker/ # /docs/alloy/latest/get-started/install/docker/
 description: Learn how to install Grafana Alloy on Docker
 menuTitle: Docker
 title: Run Grafana Alloy in a Docker container

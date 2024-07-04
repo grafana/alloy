@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/run/
+canonical: https://grafana.com/docs/alloy/latest/set-up/run/
+aliases:
+  - ../get-started/run/ # /docs/alloy/latest/get-started/run/
 description: Learn how to run Grafana Alloy
 menuTitle: Run
 title: Run Grafana Alloy
