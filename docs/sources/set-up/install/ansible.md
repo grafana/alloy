@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/install/ansible/
 aliases:
-  - ../get-started/install/ansible/ # /docs/alloy/latest/get-started/install/ansible/
+  - ../../get-started/install/ansible/ # /docs/alloy/latest/get-started/install/ansible/
 description: Learn how to install Grafana Alloy with Ansible
 menuTitle: Ansible
 title: Install Grafana Alloy with Ansible

@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/install/windows/
 aliases:
-  - ../get-started/install/windows/ # /docs/alloy/latest/get-started/install/windows/
+  - ../../get-started/install/windows/ # /docs/alloy/latest/get-started/install/windows/
 description: Learn how to install Grafana Alloy on Windows
 menuTitle: Windows
 title: Install Grafana Alloy on Windows

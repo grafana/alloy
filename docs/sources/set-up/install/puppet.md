@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/install/puppet/
 aliases:
-  - ../get-started/install/puppet/ # /docs/alloy/latest/get-started/install/puppet/
+  - ../../get-started/install/puppet/ # /docs/alloy/latest/get-started/install/puppet/
 description: Learn how to install Grafana Alloy with Puppet
 menuTitle: Puppet
 title: Install Grafana Alloy with Puppet

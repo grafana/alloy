@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/install/binary/
 aliases:
-  - ../get-started/install/binary/ # /docs/alloy/latest/get-started/install/binary/
+  - ../../get-started/install/binary/ # /docs/alloy/latest/get-started/install/binary/
 description: Learn how to install Grafana Alloy as a standalone binary
 menuTitle: Standalone
 title: Install Grafana Alloy as a standalone binary

@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/install/chef/
 aliases:
-  - ../get-started/install/chef/ # /docs/alloy/latest/get-started/install/chef/
+  - ../../get-started/install/chef/ # /docs/alloy/latest/get-started/install/chef/
 description: Learn how to install Grafana Alloy with Chef
 menuTitle: Chef
 title: Install Grafana Alloy with Chef
