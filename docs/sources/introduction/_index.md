@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/introduction/
 description: Grafana Alloy is a flexible, high performance, vendor-neutral distribution of the OTel Collector
 menuTitle: Introduction
 title: Introduction to Grafana Alloy
-weight: 10
+weight: 100
 ---
 
 # Introduction to {{% param "FULL_PRODUCT_NAME" %}}
