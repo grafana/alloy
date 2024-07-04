@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/configure/configure-windows/
+canonical: https://grafana.com/docs/alloy/latest/configure/configure-windows/
+aliases:
+  - ../tasks/configure/configure-windows/ # /docs/alloy/latest/tasks/configure/configure-windows/
 description: Learn how to configure Grafana Alloy on Windows
 menuTitle: Windows
 title: Configure Grafana Alloy on Windows
@@ -82,4 +84,4 @@ To expose the UI to other machines, complete the following steps:
 
        To listen on all interfaces, replace `LISTEN_ADDR` with `0.0.0.0`.
 
-[UI]: ../../debug/#alloy-ui
+[UI]: ../../tasks/debug/#alloy-ui

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/configure/configure-kubernetes/
+canonical: https://grafana.com/docs/alloy/latest/configure/configure-kubernetes/
+aliases:
+  - ../tasks/configure/configure-kubernetes/ # /docs/alloy/latest/tasks/configure/configure-kubernetes/
 description: Learn how to configure Grafana Alloy on Kubernetes
 menuTitle: Kubernetes
 title: Configure Grafana Alloy on Kubernetes
@@ -21,10 +23,10 @@ consult the following guides instead:
 - [Collect OpenTelemetry data][otel],
 - or the [tasks section][tasks] for all the remaining configuration guides.
 
-[prometheus]: ../../collect-prometheus-metrics/
-[otel]: ../../collect-opentelemetry-data/
-[tasks]: ../
-[k8s-install]: ../../../get-started/install/kubernetes/
+[prometheus]: ../../tasks/collect-prometheus-metrics/
+[otel]: ../../tasks/collect-opentelemetry-data/
+[tasks]: ../../tasks/
+[k8s-install]: ../../get-started/install/kubernetes/
 
 ## Configure the Helm chart
 

@@ -1,10 +1,14 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/configure/
+canonical: https://grafana.com/docs/alloy/latest/configure/
+aliases:
+  - ../tasks/configure/ # /docs/alloy/latest/tasks/configure/
 description: Configure Grafana Alloy after it is installed
 menuTitle: Configure
 title: Configure Grafana Alloy
 weight: 90
 ---
+
+{{< docs/alias from="/docs/alloy/latest/tasks/configure/" to="/docs/alloy/latest/configure/" >}}
 
 # Configure {{% param "FULL_PRODUCT_NAME" %}}
 
@@ -19,4 +23,4 @@ This section includes information that helps you configure {{< param "PRODUCT_NA
 
 {{< section >}}
 
-[installed]: ../../get-started/install/
+[installed]: ../get-started/install/

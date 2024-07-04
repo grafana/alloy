@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/configure/configure-linux/
+canonical: https://grafana.com/docs/alloy/latest/configure/configure-linux/
+aliases:
+  - ../tasks/configure/configure-linux/ # /docs/alloy/latest/tasks/configure/configure-linux/
 description: Learn how to configure Grafana Alloy on Linux
 menuTitle: Linux
 title: Configure Grafana Alloy on Linux
@@ -80,5 +82,5 @@ To expose the UI to other machines, complete the following steps:
 
        To listen on all interfaces, replace `LISTEN_ADDR` with `0.0.0.0`.
 
-[run]:../../../reference/cli/run/
-[UI]: ../../debug/#alloy-ui
+[run]:../../reference/cli/run/
+[UI]: ../../tasks/debug/#alloy-ui

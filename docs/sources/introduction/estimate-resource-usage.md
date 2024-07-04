@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/estimate-resource-usage/
+canonical: https://grafana.com/docs/alloy/latest/introduction/estimate-resource-usage/
 aliases:
   - ../tasks/estimate-resource-usage/ # /docs/alloy/latest/tasks/estimate-resource-usage/
 description: Estimate expected Grafana Alloy resource usage
