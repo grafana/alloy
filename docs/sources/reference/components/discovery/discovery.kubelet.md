@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/dicsovery/discovery.kubelet/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.kubelet/
 aliases:
   - ../discovery.kubelet/ # /docs/alloy/latest/reference/components/discovery.kubelet/
 description: Learn about discovery.kubelet
