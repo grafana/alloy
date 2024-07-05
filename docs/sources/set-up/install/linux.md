@@ -128,4 +128,4 @@ To uninstall {{< param "PRODUCT_NAME" >}} on Linux, run the following commands i
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Run]: ../../run/linux/
-[Configure]: ../../../configure/configure-linux/
+[Configure]: ../../../configure/linux/
