@@ -55,5 +55,5 @@ If you followed [Configure the {{< param "PRODUCT_NAME" >}} service][ConfigureSe
 - [Configure {{< param "PRODUCT_NAME" >}}][ConfigureMacOS]
 
 [InstallMacOS]: ../../install/macos/
-[ConfigureMacOS]: ../../../configure/configure-macos/
-[ConfigureService]: ../../../configure/configure-macos/#configure-the-alloy-service
+[ConfigureMacOS]: ../../../configure/macos/
+[ConfigureService]: ../../../configure/macos/#configure-the-alloy-service
