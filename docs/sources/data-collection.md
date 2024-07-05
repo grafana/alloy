@@ -31,5 +31,5 @@ All newly reported data is documented in the CHANGELOG.
 
 You can use the `-disable-reporting` [command line flag][] to disable the reporting and opt-out of the data collection.
 
-[components]: ../concepts/components
+[components]: ../get-started/components
 [command line flag]: ../reference/cli/run
