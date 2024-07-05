@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.process/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.process/
+aliases:
+  - ../loki.process/ # /docs/alloy/latest/reference/components/loki.process/
 description: Learn about loki.process
 title: loki.process
 ---

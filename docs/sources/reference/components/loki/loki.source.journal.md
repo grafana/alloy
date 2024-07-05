@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.journal/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.journal/
+aliases:
+  - ../loki.source.journal/ # /docs/alloy/latest/reference/components/loki.source.journal/
 description: Learn about loki.source.journal
 title: loki.source.journal
 ---

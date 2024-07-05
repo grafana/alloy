@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.awsfirehose/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.awsfirehose/
+aliases:
+  - ../loki.source.awsfirehose/ # /docs/alloy/latest/reference/components/loki.source.awsfirehose/
 description: Learn about loki.source.awsfirehose
 title: loki.source.awsfirehose
 ---

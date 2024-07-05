@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.gcplog/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.gcplog/
+aliases:
+  - ../loki.source.gcplog/ # /docs/alloy/latest/reference/components/loki.source.gcplog/
 description: Learn about loki.source.gcplog
 title: loki.source.gcplog
 ---

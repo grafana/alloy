@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.echo/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.echo/
+aliases:
+  - ../loki.echo/ # /docs/alloy/latest/reference/components/loki.echo/
 description: Learn about loki.echo
 title: loki.echo
 ---

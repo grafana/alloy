@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.kubernetes_events/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.kubernetes_events/
+aliases:
+  - ../loki.source.kubernetes_events/ # /docs/alloy/latest/reference/components/loki.source.kubernetes_events/
 description: Learn about loki.source.kubernetes_events
 title: loki.source.kubernetes_events
 ---

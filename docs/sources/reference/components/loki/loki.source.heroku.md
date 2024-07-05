@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.heroku/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.heroku/
+aliases:
+  - ../loki.source.heroku/ # /docs/alloy/latest/reference/components/loki.source.heroku/
 description: Learn about loki.source.heroku
 title: loki.source.heroku
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.kubernetes/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.kubernetes/
+aliases:
+  - ../loki.source.kubernetes/ # /docs/alloy/latest/reference/components/loki.source.kubernetes/
 description: Learn about loki.source.kubernetes
 title: loki.source.kubernetes
 ---

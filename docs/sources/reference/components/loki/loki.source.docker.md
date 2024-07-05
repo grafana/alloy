@@ -1,5 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.docker/
+aliases:
+  - ../loki.source.docker/ # /docs/alloy/latest/reference/components/loki.source.docker/
 description: Learn about loki.source.docker
 title: loki.source.docker
 ---

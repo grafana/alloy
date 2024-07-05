@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.podlogs/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.podlogs/
+aliases:
+  - ../loki.source.podlogs/ # /docs/alloy/latest/reference/components/loki.source.podlogs/
 description: Learn about loki.source.podlogs
 title: loki.source.podlogs
 ---

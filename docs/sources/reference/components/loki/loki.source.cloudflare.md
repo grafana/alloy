@@ -1,6 +1,8 @@
 ---
 
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.cloudflare/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.cloudflare/
+aliases:
+  - ../loki.source.cloudflare/ # /docs/alloy/latest/reference/components/loki.source.cloudflare/
 description: Learn about loki.source.cloudflare
 title: loki.source.cloudflare
 ---

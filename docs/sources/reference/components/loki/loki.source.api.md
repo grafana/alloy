@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.api/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.api/
+aliases:
+  - ../loki.source.api/ # /docs/alloy/latest/reference/components/loki.source.api/
 description: Learn about loki.source.api
 title: loki.source.api
 ---

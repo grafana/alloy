@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.syslog/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.syslog/
+aliases:
+  - ../loki.source.syslog/ # /docs/alloy/latest/reference/components/loki.source.syslog/
 description: Learn about loki.source.syslog
 title: loki.source.syslog
 ---

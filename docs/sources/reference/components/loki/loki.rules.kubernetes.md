@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.rules.kubernetes/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.rules.kubernetes/
+aliases:
+  - ../loki.rules.kubernetes/ # /docs/alloy/latest/reference/components/loki.rules.kubernetes/
 title: loki.rules.kubernetes
 ---
 

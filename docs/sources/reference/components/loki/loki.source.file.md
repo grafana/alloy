@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.file/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.file/
+aliases:
+  - ../loki.source.file/ # /docs/alloy/latest/reference/components/loki.source.file/
 description: Learn about loki.source.file
 title: loki.source.file
 ---

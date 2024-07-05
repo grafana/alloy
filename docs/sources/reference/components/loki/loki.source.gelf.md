@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.gelf/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.gelf/
+aliases:
+  - ../loki.source.gelf/ # /docs/alloy/latest/reference/components/loki.source.gelf/
 description: Learn about loki.source.gelf
 title: loki.source.gelf
 ---

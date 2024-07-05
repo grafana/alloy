@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.windowsevent/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.windowsevent/
+aliases:
+  - ../loki.source.windowsevent/ # /docs/alloy/latest/reference/components/loki.source.windowsevent/
 description: Learn about loki.windowsevent
 title: loki.source.windowsevent
 ---

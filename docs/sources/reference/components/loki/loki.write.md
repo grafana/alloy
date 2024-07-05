@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.write/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.write/
+aliases:
+  - ../loki.write/ # /docs/alloy/latest/reference/components/loki.write/
 description: Learn about loki.write
 title: loki.write
 ---

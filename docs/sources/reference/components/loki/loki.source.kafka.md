@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.kafka/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.kafka/
+aliases:
+  - ../loki.source.kafka/ # /docs/alloy/latest/reference/components/loki.source.kafka/
 description: Learn about loki.source.kafka
 title: loki.source.kafka
 ---

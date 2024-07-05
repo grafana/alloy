@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.relabel/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.relabel/
+aliases:
+  - ../loki.relabel/ # /docs/alloy/latest/reference/components/loki.relabel/
 description: Learn about loki.relabel
 title: loki.relabel
 ---
