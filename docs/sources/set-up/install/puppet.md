@@ -106,4 +106,4 @@ You can replace this file with your own configuration, or create a new configura
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Puppet]: https://www.puppet.com/
-[Configure]: ../../../configure/configure-linux/
+[Configure]: ../../../configure/linux/

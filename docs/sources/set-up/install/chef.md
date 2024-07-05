@@ -98,4 +98,4 @@ You can replace this file with your own configuration or create a new configurat
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Chef]: https://www.chef.io/products/chef-infrastructure-management/
-[Configure]: ../../../configure/configure-linux/
+[Configure]: ../../../configure/linux/
