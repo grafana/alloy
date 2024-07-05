@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.triton/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.triton/
+aliases:
+  - ../discovery.triton/ # /docs/alloy/latest/reference/components/discovery.triton/
 description: Learn about discovery.triton
 title: discovery.triton
 ---

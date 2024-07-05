@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.puppetdb/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.puppetdb/
+aliases:
+  - ../discovery.puppetdb/ # /docs/alloy/latest/reference/components/discovery.puppetdb/
 description: Learn about discovery.puppetdb
 title: discovery.puppetdb
 ---

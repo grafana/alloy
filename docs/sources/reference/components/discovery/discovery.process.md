@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.process/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.process/
+aliases:
+  - ../discovery.process/ # /docs/alloy/latest/reference/components/discovery.process/
 description: Learn about discovery.process
 title: discovery.process
 ---

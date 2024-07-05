@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.uyuni/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.uyuni/
+aliases:
+  - ../discovery.uyuni/ # /docs/alloy/latest/reference/components/discovery.uyuni/
 description: Learn about discovery.uyuni
 title: discovery.uyuni
 ---

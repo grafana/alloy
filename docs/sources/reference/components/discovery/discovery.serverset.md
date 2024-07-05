@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.serverset/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.serverset/
+aliases:
+  - ../discovery.serverset/ # /docs/alloy/latest/reference/components/discovery.serverset/
 description: Learn about discovery.serverset
 title: discovery.serverset
 ---

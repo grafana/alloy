@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.relabel/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.relabel/
+aliases:
+  - ../discovery.relabel/ # /docs/alloy/latest/reference/components/discovery.relabel/
 description: Learn about discovery.relabel
 title: discovery.relabel
 ---

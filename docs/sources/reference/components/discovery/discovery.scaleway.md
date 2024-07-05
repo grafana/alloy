@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.scaleway/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.scaleway/
+aliases:
+  - ../discovery.scaleway/ # /docs/alloy/latest/reference/components/discovery.scaleway/
 description: Learn about discovery.scaleway
 title: discovery.scaleway
 ---

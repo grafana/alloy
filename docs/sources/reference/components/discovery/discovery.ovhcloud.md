@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.ovhcloud/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.ovhcloud/
+aliases:
+  - ../discovery.ovhcloud/ # /docs/alloy/latest/reference/components/discovery.ovhcloud/
 description: Learn about discovery.ovhcloud
 title: discovery.ovhcloud
 ---
