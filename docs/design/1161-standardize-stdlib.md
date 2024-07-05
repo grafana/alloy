@@ -65,8 +65,8 @@ similar identifiers together:
     * `decode.base64` (previously `decode_base64`)
     * `decode.json` (previously `decode_json`)
     * `decode.yaml` (previously `decode_yaml`)
-* OS-related functions
-    * `os.env` (previously `env`)
+* System-related functions
+    * `sys.env` (previously `env`)
 * String functions
     * `string.format` (previously `format`)
     * `string.join` (previously `join`)
@@ -126,10 +126,10 @@ what these namespaces could eventually look like:
     * `decode.base64`
     * `decode.json`
     * `decode.yaml`
-* OS-related functions
-    * `os.env`
-    * `os.uid` (**new**; return the user ID of the current process)
-    * `os.gids` (**new**; return the group IDs of the current process)
+* System-related functions
+    * `sys.env`
+    * `sys.cpu_count` (**new**; the number of CPUs on a system)
+    * `sys.memory` (**new**; the amount of memory available on a system)
 * String functions
     * `string.format`
     * `string.join`
