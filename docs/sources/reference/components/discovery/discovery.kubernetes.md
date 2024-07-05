@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.kubernetes/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.kubernetes/
+aliases:
+  - ../discovery.kubernetes/ # /docs/alloy/latest/reference/components/discovery.kubernetes/
 description: Learn about discovery.kubernetes
 title: discovery.kubernetes
 ---

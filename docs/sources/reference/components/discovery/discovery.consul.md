@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.consul/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.consul/
+aliases:
+  - ../discovery.consul/ # /docs/alloy/latest/reference/components/discovery.consul/
 description: Learn about discovery.consul
 title: discovery.consul
 ---

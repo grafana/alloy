@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.kuma/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.kuma/
+aliases:
+  - ../discovery.kuma/ # /docs/alloy/latest/reference/components/discovery.kuma/
 description: Learn about discovery.kuma
 title: discovery.kuma
 ---

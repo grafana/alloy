@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.dockerswarm/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.dockerswarm/
+aliases:
+  - ../discovery.dockerswarm/ # /docs/alloy/latest/reference/components/discovery.dockerswarm/
 description: Learn about discovery.dockerswarm
 title: discovery.dockerswarm
 ---

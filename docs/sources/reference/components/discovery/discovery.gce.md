@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.gce/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.gce/
+aliases:
+  - ../discovery.gce/ # /docs/alloy/latest/reference/components/discovery.gce/
 description: Learn about discovery.gce
 title: discovery.gce
 ---

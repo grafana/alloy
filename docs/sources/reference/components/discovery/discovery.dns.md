@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.dns/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.dns/
+aliases:
+  - ../discovery.dns/ # /docs/alloy/latest/reference/components/discovery.dns/
 description: Learn about discovery.dns
 title: discovery.dns
 ---

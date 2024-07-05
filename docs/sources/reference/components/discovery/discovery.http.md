@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.http/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/
+aliases:
+  - ../discovery.http/ # /docs/alloy/latest/reference/components/discovery.http/
 description: Learn about discovery.http
 title: discovery.http
 ---

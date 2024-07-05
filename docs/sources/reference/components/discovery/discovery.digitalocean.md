@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.digitalocean/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.digitalocean/
+aliases:
+  - ../discovery.digitalocean/ # /docs/alloy/latest/reference/components/discovery.digitalocean/
 description: Learn about discovery.digitalocean
 title: discovery.digitalocean
 ---

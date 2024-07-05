@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.eureka/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.eureka/
+aliases:
+  - ../discovery.eureka/ # /docs/alloy/latest/reference/components/discovery.eureka/
 description: Learn about discovery.eureka
 title: discovery.eureka
 ---

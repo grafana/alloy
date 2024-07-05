@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.openstack/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.openstack/
+aliases:
+  - ../discovery.openstack/ # /docs/alloy/latest/reference/components/discovery.openstack/
 description: Learn about discovery.openstack
 title: discovery.openstack
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.ec2/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.ec2/
+aliases:
+  - ../discovery.ec2/ # /docs/alloy/latest/reference/components/discovery.ec2/
 description: Learn about discovery.ec2
 title: discovery.ec2
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.ionos/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.ionos/
+aliases:
+  - ../discovery.ionos/ # /docs/alloy/latest/reference/components/discovery.ionos/
 description: Learn about discovery.ionos
 title: discovery.ionos
 ---

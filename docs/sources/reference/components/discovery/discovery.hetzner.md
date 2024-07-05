@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.hetzner/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.hetzner/
+aliases:
+  - ../discovery.hetzner/ # /docs/alloy/latest/reference/components/discovery.hetzner/
 description: Learn about discovery.hetzner
 title: discovery.hetzner
 ---

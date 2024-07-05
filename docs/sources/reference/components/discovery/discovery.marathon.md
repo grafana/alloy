@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.marathon/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.marathon/
+aliases:
+  - ../discovery.marathon/ # /docs/alloy/latest/reference/components/discovery.marathon/
 description: Learn about discovery.marathon
 title: discovery.marathon
 ---

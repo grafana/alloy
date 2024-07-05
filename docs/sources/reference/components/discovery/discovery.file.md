@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.file/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.file/
+aliases:
+  - ../discovery.file/ # /docs/alloy/latest/reference/components/discovery.file/
 description: Learn about discovery.file
 title: discovery.file
 ---

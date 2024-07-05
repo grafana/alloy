@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.nerve/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.nerve/
+aliases:
+  - ../discovery.nerve/ # /docs/alloy/latest/reference/components/discovery.nerve/
 description: Learn about discovery.nerve
 title: discovery.nerve
 ---

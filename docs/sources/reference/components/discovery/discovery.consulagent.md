@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.consulagent/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.consulagent/
+aliases:
+  - ../discovery.consulagent/ # /docs/alloy/latest/reference/components/discovery.consulagent/
 description: Learn about discovery.consulagent
 title: discovery.consulagent
 ---

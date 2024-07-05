@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.lightsail/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.lightsail/
+aliases:
+  - ../discovery.lightsail/ # /docs/alloy/latest/reference/components/discovery.lightsail/
 description: Learn about discovery.lightsail
 title: discovery.lightsail
 ---

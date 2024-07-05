@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/beyla.ebpf/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/beyla/beyla.ebpf/
+aliases:
+  - ../beyla.ebpf/ # /docs/alloy/latest/reference/components/beyla.ebpf/
 description: Learn about beyla.ebpf
 title: beyla.ebpf
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.nomad/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.nomad/
+aliases:
+  - ../discovery.nomad/ # /docs/alloy/latest/reference/components/discovery.nomad/
 description: Learn about discovery.nomad
 title: discovery.nomad
 ---

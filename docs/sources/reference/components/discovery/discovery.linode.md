@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery.linode/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.linode/
+aliases:
+  - ../discovery.linode/ # /docs/alloy/latest/reference/components/discovery.linode/
 description: Learn about discovery.linode
 title: discovery.linode
 ---

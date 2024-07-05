@@ -1,11 +1,11 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/
 description: Learn about the components in Grafana Alloy
-title: Components reference
+title: Components
 weight: 300
 ---
 
-# Components reference
+# Components
 
 This section contains reference documentation for all recognized [components][].
 
