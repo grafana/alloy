@@ -80,4 +80,4 @@ This includes any configuration files in the installation directory.
 [latest]: https://github.com/grafana/alloy/releases/latest
 [data collection]: ../../../data-collection/
 [Run]: ../../run/windows/
-[Configure]: ../../../configure/configure-windows/
+[Configure]: ../../../configure/windows/
