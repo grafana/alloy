@@ -28,9 +28,9 @@ They can contain different key-value pairs, and you can use them with a wide ran
 Some components require Targets to contain specific key-value pairs to work correctly.
 It's recommended to always check component references for details when working with Targets.
 
-[list]: ../../concepts/configuration-syntax/expressions/types_and_values/#naming-convention
-[maps]: ../../concepts/configuration-syntax/expressions/types_and_values/#naming-convention
-[string]: ../../concepts/configuration-syntax/expressions/types_and_values/#strings
+[list]: ../../get-started/configuration-syntax/expressions/types_and_values/#naming-convention
+[maps]: ../../get-started/configuration-syntax/expressions/types_and_values/#naming-convention
+[string]: ../../get-started/configuration-syntax/expressions/types_and_values/#strings
 
 <!-- NOTE: this title is used as an anchor in links. Do not change. -->
 ### Targets Exporters
@@ -159,7 +159,7 @@ The Prometheus metrics are sent between components using `MetricsReceiver`s.
 Components that can consume Prometheus metrics can be passed the `MetricsReceiver` as an argument.
 Use the following components to build your Prometheus metrics pipeline:
 
-[capsules]: ../../concepts/configuration-syntax/expressions/types_and_values/#capsules
+[capsules]: ../../get-started/configuration-syntax/expressions/types_and_values/#capsules
 
 <!-- NOTE: this title is used as an anchor in links. Do not change. -->
 ### Prometheus `MetricsReceiver` Exporters

@@ -11,4 +11,4 @@ This section contains reference documentation for all recognized [components][].
 
 {{< section >}}
 
-[components]: ../../concepts/components/
+[components]: ../../get-started/components/

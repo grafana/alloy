@@ -262,9 +262,9 @@ Replace the following:
 [discovery]: #discovery-block
 [services]: #services-block
 [output]: #output-block
-[in-memory traffic]: ../../../concepts/component_controller#in-memory-traffic
-[run command]: ../../cli/run/
-[scrape]: ../prometheus.scrape/
+[in-memory traffic]: ../../../../get-started/component_controller#in-memory-traffic
+[run command]: ../../../cli/run/
+[scrape]: ../../prometheus/prometheus.scrape/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
