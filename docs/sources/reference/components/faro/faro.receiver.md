@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/faro.receiver/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/faro/faro.receiver/
+aliases:
+  - ../faro.receiver/ # /docs/alloy/latest/reference/components/faro.receiver/
 description: Learn about the faro.receiver
 title: faro.receiver
 ---
