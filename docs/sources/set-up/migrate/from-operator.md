@@ -274,12 +274,10 @@ The [reference documentation][component documentation] should help convert those
 
 <!-- ToDo: Validate path -->
 [default values]: https://github.com/grafana/alloy/blob/main/operations/helm/charts/alloy/values.yaml
-[clustering]: ../../../concepts/clustering/
-[deployment guide]: ../../../get-started/deploy/
-<!-- ToDo: check link syntax -->
+[clustering]: ../../../get-started/clustering/
+[deployment guide]: ../../../set-up/deploy/
 [operator guide]: https://grafana.com/docs/agent/latest/operator/deploy-agent-operator-resources/#deploy-a-metricsinstance-resource
-
-[Helm chart]: ../../../get-started/install/kubernetes/
+[Helm chart]: ../../../set-up/install/kubernetes/
 [remote.kubernetes.secret]: ../../../reference/components/remote.kubernetes.secret/
 [prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
 [prometheus.operator.podmonitors]: ../../../reference/components/prometheus.operator.podmonitors/

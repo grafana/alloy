@@ -41,8 +41,11 @@ An OpenTelemetry _exporter component_ is responsible for writing (exporting) Ope
 In this task, you will use the [otelcol.exporter.otlp][] component to send OpenTelemetry data to a server using the OpenTelemetry Protocol (OTLP).
 After an exporter component is defined, you can use other {{< param "PRODUCT_NAME" >}} components to forward data to it.
 
-> Refer to the list of available [Components][] for the full list of
-> `otelcol.exporter` components that you can use to export OpenTelemetry data.
+{{< admonition type="tip" >}}
+Refer to the list of available [Components][] for the full list of `otelcol.exporter` components that you can use to export OpenTelemetry data.
+
+[Components]: ../../get-started/components/
+{{< /admonition >}}
 
 To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry data using OTLP, complete the following steps:
 
@@ -93,9 +96,14 @@ To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry da
 
 1. If you have more than one server to export metrics to, create a new `otelcol.exporter.otlp` component for each additional server.
 
-> `otelcol.exporter.otlp` sends data using OTLP over gRPC (HTTP/2).
-> To send to a server using HTTP/1.1, follow the preceding steps,
-> but use the [otelcol.exporter.otlphttp][otelcol.exporter.otlphttp] component instead.
+
+{{< admonition type="note" >}}
+`otelcol.exporter.otlp` sends data using OTLP over gRPC (HTTP/2).
+To send to a server using HTTP/1.1, follow the preceding steps, but use the [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] component instead.
+
+[otelcol.exporter.otlphttp]: ../../reference/components/otelcol.exporter.otlphttp/
+{{< /admonition >}}
+
 
 The following example demonstrates configuring `otelcol.exporter.otlp` with authentication and a component that forwards data to it:
 
@@ -142,10 +150,14 @@ Ensuring data is batched is a production-readiness step to improve data compress
 
 In this task, you will configure an [otelcol.processor.batch][] component to batch data before sending it to the exporter.
 
-> Refer to the list of available [Components][] for the full list of
-> `otelcol.processor` components that you can use to process OpenTelemetry
-> data. You can chain processors by having one processor send data to another
-> processor.
+
+{{< admonition type="note" >}}
+Refer to the list of available [Components][] for the full list of `otelcol.processor` components that you can use to process OpenTelemetry data.
+You can chain processors by having one processor send data to another processor.
+
+[Components]: ../../get-started/components/
+{{< /admonition >}}
+
 
 To configure an `otelcol.processor.batch` component, complete the following steps:
 
@@ -311,7 +323,6 @@ For more information on receiving OpenTelemetry data using the OpenTelemetry Pro
 [Configure batching]: #configure-batching
 [otelcol.auth.basic]: ../../reference/components/otelcol.auth.basic/
 [otelcol.exporter.otlp]: ../../reference/components/otelcol.exporter.otlp/
-[otelcol.exporter.otlphttp]: ../../reference/components/otelcol.exporter.otlphttp/
 [otelcol.processor.batch]: ../../reference/components/otelcol.processor.batch/
 [otelcol.receiver.otlp]: ../../reference/components/otelcol.receiver.otlp/
-[Components]: ../../concepts/components/
+[Components]: ../../get-started/components/

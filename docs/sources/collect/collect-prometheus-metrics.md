@@ -430,5 +430,5 @@ prometheus.remote_write "default" {
 [discovery.kubernetes]: ../../reference/components/discovery.kubernetes/
 [prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
 [prometheus.scrape]: ../../reference/components/prometheus.scrape/
-[Components]: ../../concepts/components/
-[Objects]: ../../concepts/configuration-syntax/expressions/types_and_values/#objects
+[Components]: ../../get-started/components/
+[Objects]: ../../get-started/configuration-syntax/expressions/types_and_values/#objects

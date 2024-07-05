@@ -60,7 +60,7 @@ To configure a `loki.write` component for logs delivery, complete the following 
      The label you use must be unique across all `loki.write` components in the same configuration file.
    - _`<LOKI_URL>`_ : The full URL of the Loki endpoint where logs will be sent, such as `https://logs-us-central1.grafana.net/loki/api/v1/push`.
 
-  1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
+1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
    ```alloy
    basic_auth {
@@ -328,5 +328,5 @@ Replace the following values:
 [loki.source.kubernetes]: ../../reference/components/loki.source.kubernetes/
 [loki.process]: ../../reference/components/loki.process/
 [loki.source.kubernetes_events]: ../../reference/components/loki.source.kubernetes_events/
-[Components]: ../../concepts/components/
+[Components]: ../../get-started/components/
 [Objects]: ../../concepts/configuration-syntax/expressions/types_and_values/#objects

@@ -21,4 +21,4 @@ This section includes information that helps you configure {{< param "PRODUCT_NA
 
 {{< section >}}
 
-[installed]: ../get-started/install/
+[installed]: ../set-up/install/

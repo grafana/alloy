@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/tasks/nonroot/
 aliases:
   - ../tasks/nonroot/ # /docs/alloy/latest/tasks/tasks/nonroot/
 description: Learn how to run the Alloy Docker container as a non-root user in Kubernetes
-menuTitle: Configure non-root
+menuTitle: Non-root user
 title: Run Alloy as a non-root user in Kubernetes
 weight: 600
 ---
@@ -47,4 +47,4 @@ However, if there was a bug in the Linux kernel that allowed Docker containers t
 [image]: https://hub.docker.com/r/grafana/alloy
 [beyla.ebpf]: ../../reference/components/beyla.ebpf
 [security context]: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
-[Grafana Helm chart]: https://grafana.com/docs/alloy/latest/tasks/configure/configure-kubernetes/#configure-the-helm-chart
+[Grafana Helm chart]: ../configure-kubernetes/#configure-the-helm-chart

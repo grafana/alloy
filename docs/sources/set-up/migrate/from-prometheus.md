@@ -205,10 +205,10 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [example]: #example
 [prometheus.scrape]: ../../../reference/components/prometheus.scrape/
 [prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
-[Components]: ../../../concepts/components/
+[Components]: ../../../get-started/components/
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
-[run alloy]: ../../../get-started/run/
-[DebuggingUI]: ../../debug/
-[configuration]: ../../../concepts/configuration-syntax/
-[UI]: ../../debug/#alloy-ui
+[run alloy]: ../../../set-up/run/
+[DebuggingUI]: ../../../troubleshoot/debug/
+[configuration]: ../../../get-started/configuration-syntax/
+[UI]: ../../../troubleshoot/debug/#alloy-ui

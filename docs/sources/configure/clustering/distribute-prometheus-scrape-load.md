@@ -40,8 +40,8 @@ To distribute Prometheus metrics scrape load with clustering:
 
    1. Compare the Debug Info sections between two different {{< param "PRODUCT_NAME" >}} to ensure that they're not scraping the same sets of targets.
 
-[Clustering]: ../../concepts/clustering/
-[configure]: ../configure/
-[Configure Prometheus metrics collection]: ../collect-prometheus-metrics/
-[Configure clustering]: ../configure-alloy-clustering/
-[UI]: ../debug/#component-detail-page
+[Clustering]: ../../clustering/
+[configure]: ../../../configure/
+[Configure Prometheus metrics collection]: ../../../collect/collect-prometheus-metrics/
+[Configure clustering]: ../../../configure/clustering/
+[UI]: ../../../troubleshoot/debug/#component-detail-page

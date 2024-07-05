@@ -340,7 +340,7 @@ You can check the pipeline graphically by visiting [http://localhost:12345/graph
 [Prometheus Remote Write]: https://prometheus.io/docs/operating/integrations/#remote-endpoints-and-storage
 [Grafana Mimir]: https://grafana.com/oss/mimir/
 [Collect open telemetry data]: ../collect-opentelemetry-data/
-[Components]: ../../concepts/components/
+[Components]: ../../get-started/components/
 [loki.write]: ../../reference/components/loki.write/
 [otelcol.auth.basic]: ../../reference/components/otelcol.auth.basic/
 [otelcol.exporter.loki]: ../../reference/components/otelcol.exporter.loki/

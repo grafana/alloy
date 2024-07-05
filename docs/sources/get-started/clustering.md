@@ -65,5 +65,5 @@ Refer to [Debugging clustering issues][debugging] for additional troubleshooting
 [pyroscope.scrape]: ../../reference/components/pyroscope.scrape/#clustering-block
 [prometheus.operator.podmonitors]: ../../reference/components/prometheus.operator.podmonitors/#clustering-block
 [prometheus.operator.servicemonitors]: ../../reference/components/prometheus.operator.servicemonitors/#clustering-block
-[clustering page]: ../../tasks/debug/#clustering-page
-[debugging]: ../../tasks/debug/#debugging-clustering-issues
+[clustering page]: ../../troubleshoot/debug/#clustering-page
+[debugging]: ../../troubleshoot/debug/#debugging-clustering-issues

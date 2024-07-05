@@ -51,7 +51,7 @@ Refer to the documentation for [run][] for more information about the options av
 Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as shown in the example.
 If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
 
-[UI]: ../../../tasks/debug/#alloy-ui
+[UI]: ../../../troubleshoot/debug/#alloy-ui
 {{< /admonition >}}
 
 ### BoringCrypto images
@@ -92,7 +92,7 @@ Refer to the documentation for [run][] for more information about the options av
 Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as shown in the example above.
 If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
 
-[UI]: ../../../tasks/debug/#alloy-ui
+[UI]: ../../../troubleshoot/debug/#alloy-ui
 {{< /admonition >}}
 
 ## Verify
@@ -103,4 +103,4 @@ To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to
 [Windows containers]: #run-a-windows-docker-container
 [Docker]: https://docker.io
 [run]: ../../../reference/cli/run/
-[UI]: ../../../tasks/debug/#alloy-ui
+[UI]: ../../../troubleshoot/debug/#alloy-ui

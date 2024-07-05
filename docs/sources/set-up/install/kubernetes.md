@@ -75,4 +75,4 @@ You have successfully deployed {{< param "PRODUCT_NAME" >}} on Kubernetes, using
 
 [Helm]: https://helm.sh
 [Artifact Hub]: https://artifacthub.io/packages/helm/grafana/alloy
-[Configure]: ../../../tasks/configure/configure-kubernetes/
+[Configure]: ../../../configure/configure-kubernetes/

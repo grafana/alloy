@@ -70,4 +70,4 @@ brew uninstall grafana/grafana/alloy
 
 [Homebrew]: https://brew.sh
 [Run]: ../../run/macos/
-[Configure]: ../../../tasks/configure/configure-macos/
+[Configure]: ../../../configure/configure-macos/

@@ -370,12 +370,12 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [loki.process]: ../../../reference/components/loki.process/
 [loki.source.file]: ../../../reference/components/loki.source.file/
 [loki.write]: ../../../reference/components/loki.write/
-[Components]: ../../../concepts/components/
+[Components]: ../../../get-started/components/
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
-[run alloy]: ../../../get-started/run/
-[DebuggingUI]: ../../debug/
-[configuration]: ../../../concepts/configuration-syntax/
+[run alloy]: ../../../set-up/run/
+[UI]: ../../../troubleshoot/debug/
+[configuration]: ../../../get-started/configuration-syntax/
 [Integrations next]: https://grafana.com/docs/agent/latest/static/configuration/integrations/integrations-next/
 [Agent Management]: https://grafana.com/docs/agent/latest/static/configuration/agent-management/
 [env]: ../../../reference/stdlib/env/

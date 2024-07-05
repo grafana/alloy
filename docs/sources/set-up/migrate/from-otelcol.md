@@ -222,10 +222,10 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [otelcol.receiver.otlp]: ../../../reference/components/otelcol.receiver.otlp/
 [otelcol.processor.memory_limiter]: ../../../reference/components/otelcol.processor.memory_limiter/
 [otelcol.exporter.otlp]: ../../../reference/components/otelcol.exporter.otlp/
-[Components]: ../../../concepts/components/
+[Components]: ../../../get-started/components/
 [Component Reference]: ../../../reference/components/
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
 [Run]: ../../../get-started/run/
-[DebuggingUI]: ../../../tasks/debug/
-[UI]: ../../../tasks/debug/#alloy-ui
+[DebuggingUI]: ../../../troubleshoot/debug/
+[UI]: ../../../troubleshoot/debug/#alloy-ui

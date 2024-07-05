@@ -154,4 +154,4 @@ otelcol.exporter.otlp "default" {
 [prometheus.scrape]: ../../reference/components/prometheus.scrape
 [logging]: ../../reference/config-blocks/logging
 [tracing]: ../../reference/config-blocks/tracing
-[Components]: ../../concepts/components
+[Components]: ../../get-started/components

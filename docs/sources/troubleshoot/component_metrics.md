@@ -25,6 +25,6 @@ For example, component-specific metrics for a `prometheus.remote_write` componen
 The [reference documentation][] for each component described the list of component-specific metrics that the component exposes.
 Not all components expose metrics.
 
-[components]: ../../../concepts/components/
-[alloy run]: ../../../reference/cli/run/
-[reference documentation]: ../../../reference/components/
+[components]: ../../get-started/components/
+[alloy run]: ../../reference/cli/run/
+[reference documentation]: ../../reference/components/

@@ -64,4 +64,4 @@ sudo journalctl -u alloy
 
 [InstallLinux]: ../../install/linux/
 [systemd]: https://systemd.io/
-[Configure]: ../../../tasks/configure/configure-linux/
+[Configure]: ../../../configure/configure-linux/

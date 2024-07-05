@@ -25,7 +25,7 @@ To expose the UI to other machines on the network on non-containerized platforms
 
 If you are running a custom installation of {{< param "PRODUCT_NAME" >}}, refer to the documentation for the [`alloy run` command][alloy run] to learn how to change the HTTP listen address, > and pass the appropriate flag when running {{< param "PRODUCT_NAME" >}}.
 
-[install]: ../../get-started/install/
+[install]: ../../set-up/install/
 [alloy run]: ../../reference/cli/run/
 {{< /admonition >}}
 
@@ -59,7 +59,12 @@ The component detail page shows the following information for each component:
 
 From there you can also go to the component documentation or to its corresponding [Live Debugging page](#live-debugging-page).
 
-> Values marked as a [secret][] are obfuscated and display as the text `(secret)`.
+
+{{< admonition type="note" >}}
+Values marked as a [secret][] are obfuscated and display as the text `(secret)`.
+
+[secret]: ../../get-started/configuration-syntax/expressions/types_and_values/#secrets
+{{< /admonition >}}
 
 ### Clustering page
 
@@ -142,6 +147,4 @@ Some issues that appear to be clustering issues may be symptoms of other issues,
 {{< /admonition >}}
 
 [logging]: ../../reference/config-blocks/logging/
-[clustering]: ../../concepts/clustering/
-[secret]: ../../concepts/configuration-syntax/expressions/types_and_values/#secrets
-
+[clustering]: ../../get-started/clustering/

@@ -56,5 +56,5 @@ As a rule of thumb, **per each 100 profiles/second**, you can expect to use appr
 
 Factors such as size of each profile and frequency of fetching them also play a role in the overall resource usage.
 
-[deploy]: ../../get-started/deploy/
-[clustering]: ../../concepts/clustering/
+[deploy]: ../../set-up/deploy/
+[clustering]: ../../get-started/clustering/

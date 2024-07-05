@@ -83,4 +83,4 @@ To expose the UI to other machines, complete the following steps:
        To listen on all interfaces, replace `LISTEN_ADDR` with `0.0.0.0`.
 
 [run]:../../reference/cli/run/
-[UI]: ../../tasks/debug/#alloy-ui
+[UI]: ../../troubleshoot/debug/#alloy-ui

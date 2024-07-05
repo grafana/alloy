@@ -186,10 +186,10 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [local.file_match]: ../../../reference/components/local.file_match/
 [loki.source.file]: ../../../reference/components/loki.source.file/
 [loki.write]: ../../../reference/components/loki.write/
-[Components]: ../../../concepts/components/
+[Components]: ../../../get-started/components/
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
-[run alloy]: ../../../get-started/run/
-[DebuggingUI]: ../../../tasks/debug/
-[configuration]: ../../../concepts/configuration-syntax/
-[UI]: ../../debug/#alloy-ui
+[run alloy]: ../../../set-up/run/
+[DebuggingUI]: ../../../troubleshoot/debug/
+[configuration]: ../../../get-started/configuration-syntax/
+[UI]: ../../../troubleshoot/debug/#alloy-ui

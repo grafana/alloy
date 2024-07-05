@@ -86,4 +86,4 @@ Main PID: 3176 (alloy-linux-amd)
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Grafana Ansible Collection]: https://github.com/grafana/grafana-ansible-collection
-[Configure]: ../../../tasks/configure/configure-linux/
+[Configure]: ../../../configure/configure-linux/

@@ -74,4 +74,4 @@ To expose the UI to other machines, complete the following steps:
 
        To listen on all interfaces, replace `127.0.0.1` with `0.0.0.0`.
 
-[UI]: ../../tasks/debug/#alloy-ui
+[UI]: ../../troubleshoot/debug/#alloy-ui

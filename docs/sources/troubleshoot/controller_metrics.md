@@ -26,5 +26,5 @@ The controller exposes the following metrics:
 * `alloy_component_dependencies_wait_seconds` (Histogram): Time spent by components waiting to be evaluated after one of their dependencies is updated.
 * `alloy_component_evaluation_queue_size` (Gauge): The current number of component evaluations waiting to be performed.
 
-[component controller]: ../../../concepts/component_controller/
-[alloy run]: ../../../reference/cli/run/
+[component controller]: ../../get-started/component_controller/
+[alloy run]: ../../reference/cli/run/

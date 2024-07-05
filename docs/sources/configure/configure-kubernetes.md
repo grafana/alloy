@@ -16,17 +16,10 @@ It assumes that:
 - You have [installed {{< param "PRODUCT_NAME" >}} on Kubernetes using the Helm chart][k8s-install].
 - You already have a new {{< param "PRODUCT_NAME" >}} configuration that you want to apply to your Helm chart installation.
 
-If instead you're looking for help in configuring {{< param "PRODUCT_NAME" >}} to perform a specific task,
-consult the following guides instead:
+Refer to [Collect and forward data][collect] for information about configuring {{< param "PRODUCT_NAME" >}} to collect and forward data.
 
-- [Collect and forward Prometheus metrics][prometheus],
-- [Collect OpenTelemetry data][otel],
-- or the [tasks section][tasks] for all the remaining configuration guides.
-
-[prometheus]: ../../tasks/collect-prometheus-metrics/
-[otel]: ../../tasks/collect-opentelemetry-data/
-[tasks]: ../../tasks/
-[k8s-install]: ../../get-started/install/kubernetes/
+[collect]: ../../collect/
+[k8s-install]: ../../set-up/install/kubernetes/
 
 ## Configure the Helm chart
 
