@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/local.file/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/local/local.file/
+aliases:
+  - ../local.file/ # /docs/alloy/latest/reference/components/local.file/
 description: Learn about local.file
 title: local.file
 ---

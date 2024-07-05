@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/local.file_match/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/local/local.file_match/
+aliases:
+  - ../local.file_match/ # /docs/alloy/latest/reference/components/local.file_match/
 description: Learn about local.file_match
 title: local.file_match
 ---
