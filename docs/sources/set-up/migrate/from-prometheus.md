@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/migrate/from-prometheus/
 aliases:
-  - ../tasks/migrate/from-prometheus/ # /docs/alloy/latest/tasks/migrate/from-prometheus/
+  - ../../tasks/migrate/from-prometheus/ # /docs/alloy/latest/tasks/migrate/from-prometheus/
 description: Learn how to migrate from Prometheus to Grafana Alloy
 menuTitle: Migrate from Prometheus
 title: Migrate from Prometheus to Grafana Alloy

@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/collect/collect-datadog-traces-metrics/
+canonical: https://grafana.com/docs/alloy/latest/collect/datadog-traces-metrics/
 aliases:
   - ../tasks/configure-alloy-to-use-datadog-receiver/ # /docs/alloy/latest/tasks/configure-alloy-to-use-datadog-receiver/
 description: Learn how to configure Grafana Alloy to use the Datadog receiver

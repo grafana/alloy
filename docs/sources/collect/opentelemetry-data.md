@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/collect/collect-opentelemetry-data/
+canonical: https://grafana.com/docs/alloy/latest/collect/opentelemetry-data/
 aliases:
   - ../tasks/collect-opentelemetry-data/ # /docs/alloy/latest/tasks/collect-opentelemetry-data/
 description: Learn how to collect OpenTelemetry data

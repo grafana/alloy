@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/migrate/from-flow/
 aliases:
-  - ../tasks/migrate/from-flow/ # /docs/alloy/latest/tasks/migrate/from-flow/
+  - ../../tasks/migrate/from-flow/ # /docs/alloy/latest/tasks/migrate/from-flow/
 description: Learn how to migrate your configuration from Grafana Agent Flow to Grafana Alloy
 menuTitle: Migrate from Agent Flow
 title: Migrate Grafana Agent Flow to Grafana Alloy

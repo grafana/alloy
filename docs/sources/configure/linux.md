@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/configure/configure-linux/
+canonical: https://grafana.com/docs/alloy/latest/configure/linux/
 aliases:
   - ../tasks/configure/configure-linux/ # /docs/alloy/latest/tasks/configure/configure-linux/
 description: Learn how to configure Grafana Alloy on Linux

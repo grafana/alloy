@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/configure/configure-macos/
+canonical: https://grafana.com/docs/alloy/latest/configure/macos/
 aliases:
   - ../tasks/configure/configure-macos/ # /docs/alloy/latest/tasks/configure/configure-macos/
 description: Learn how to configure Grafana Alloy on macOS

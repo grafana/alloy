@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/migrate/from-otelcol/
 aliases:
-  - ../tasks/migrate/from-otelcol/ # /docs/alloy/latest/tasks/migrate/from-otelcol/
+  - ../../tasks/migrate/from-otelcol/ # /docs/alloy/latest/tasks/migrate/from-otelcol/
 description: Learn how to migrate from OpenTelemetry Collector to Grafana Alloy
 menuTitle: Migrate from OpenTelemetry Collector
 title: Migrate from OpenTelemetry Collector to Grafana Alloy

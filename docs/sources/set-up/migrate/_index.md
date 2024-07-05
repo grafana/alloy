@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/migrate/
 aliases:
-  - ./tasks/migrate/ # /docs/alloy/latest/tasks/migrate/
+  - ../tasks/migrate/ # /docs/alloy/latest/tasks/migrate/
 description: How to migrate to Grafana Alloy
 menuTitle: Migrate
 title: Migrate to Grafana Alloy

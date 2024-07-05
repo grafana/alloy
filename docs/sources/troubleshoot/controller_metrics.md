@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/monitor/controller_metrics/
+canonical: https://grafana.com/docs/alloy/latest/troubleshoot/controller_metrics/
 aliases:
   - ../tasks/monitor/controller_metrics/ # /docs/alloy/latest/tasks/monitor/controller_metrics/
 description: Learn how to monitor controller metrics

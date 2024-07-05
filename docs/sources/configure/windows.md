@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/configure/configure-windows/
+canonical: https://grafana.com/docs/alloy/latest/configure/windows/
 aliases:
   - ../tasks/configure/configure-windows/ # /docs/alloy/latest/tasks/configure/configure-windows/
 description: Learn how to configure Grafana Alloy on Windows

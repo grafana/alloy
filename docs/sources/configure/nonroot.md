@@ -1,7 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/nonroot/
+canonical: https://grafana.com/docs/alloy/latest/configure/nonroot/
 aliases:
-  - ../tasks/nonroot/ # /docs/alloy/latest/tasks/tasks/nonroot/
+  - ../tasks/nonroot/ # /docs/alloy/latest/tasks/nonroot/
 description: Learn how to run the Alloy Docker container as a non-root user in Kubernetes
 menuTitle: Non-root user
 title: Run Alloy as a non-root user in Kubernetes

@@ -1,7 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/distribute-prometheus-scrape-load/
+canonical: https://grafana.com/docs/alloy/latest/configure/clustering/distribute-prometheus-scrape-load/
 aliases:
-  - ../../../tasks/distribute-prometheus-scrape-load/ # /docs/alloy/latest/tasks/tasks/distribute-prometheus-scrape-load/
+  - ../../../tasks/distribute-prometheus-scrape-load/ # /docs/alloy/latest/tasks/distribute-prometheus-scrape-load/
 description: Learn how to distribute your Prometheus metrics scrape load
 menuTitle: Distribute metrics scrape load
 title: Distribute Prometheus metrics scrape load

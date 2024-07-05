@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/configure/configure-kubernetes/
+canonical: https://grafana.com/docs/alloy/latest/configure/kubernetes/
 aliases:
   - ../tasks/configure/configure-kubernetes/ # /docs/alloy/latest/tasks/configure/configure-kubernetes/
 description: Learn how to configure Grafana Alloy on Kubernetes
