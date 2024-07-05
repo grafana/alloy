@@ -44,4 +44,4 @@ To view the logs, perform the following steps:
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [InstallWindows]: ../../install/windows/
-[Configure]: ../../../configure/configure-windows/
+[Configure]: ../../../configure/windows/
