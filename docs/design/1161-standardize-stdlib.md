@@ -61,10 +61,10 @@ similar identifiers together:
     * `array.concat` (previously `concat`)
 * Conversion functions
     * `convert.nonsensitive` (previously `nonsensitive`)
-* Decoding functions
-    * `decode.base64` (previously `decode_base64`)
-    * `decode.json` (previously `decode_json`)
-    * `decode.yaml` (previously `decode_yaml`)
+* Encoding functions
+    * `encoding.from_base64` (previously `base64_decode`)
+    * `encoding.from_json` (previously `json_decode`)
+    * `encoding.from_yaml` (previously `yaml_decode`)
 * System-related functions
     * `sys.env` (previously `env`)
 * String functions
@@ -78,6 +78,14 @@ similar identifiers together:
     * `string.trim_prefix` (previously `trim_prefix`)
     * `string.trim_space` (previously `trim_space`)
     * `string.trim_suffix` (previously`trim_suffix`)
+
+> **NOTE**: The decoding functions were placed into an `encoding` namespace to
+> leave the door open for having a single namespace for both performing
+> decoding and encoding, so that `encoding.from_base64` could coexist alongside
+> a `encoding.to_base64`.
+>
+> In this context, the namespace is used as a noun to categorize both the
+> encoding and decoding actions.
 
 For identifiers where a namespace has been introduced, the old identifier will
 be marked deprecated for removal for the next major release. The documentation
@@ -122,10 +130,10 @@ what these namespaces could eventually look like:
     * `convert.to_number` (**new**; convert a string to a number)
     * `convert.to_string` (**new**; convert a number to a string)
     * `convert.to_bool` (**new**; convert a string or number to a boolean)
-* Decoding functions
-    * `decode.base64`
-    * `decode.json`
-    * `decode.yaml`
+* Encoding functions
+    * `encoding.from_base64`
+    * `encoding.from_json`
+    * `encoding.from_yaml`
 * System-related functions
     * `sys.env`
     * `sys.cpu_count` (**new**; the number of CPUs on a system)
