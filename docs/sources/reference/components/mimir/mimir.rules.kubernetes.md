@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/mimir.rules.kubernetes/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/mimir/mimir.rules.kubernetes/
+aliases:
+  - ../mimir.rules.kubernetes/ # /docs/alloy/latest/reference/components/mimir.rules.kubernetes/
 description: Learn about mimir.rules.kubernetes
 title: mimir.rules.kubernetes
 ---
