@@ -3,13 +3,10 @@ package queue
 import (
 	"encoding/base64"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/networkqueue"
-
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/prometheus/prometheus/storage"
 
@@ -117,33 +114,6 @@ type MetadataOptions struct {
 // SetToDefault set to defaults.
 func (o *MetadataOptions) SetToDefault() {
 	*o = DefaultMetadataOptions
-}
-
-type maxTimestamp struct {
-	mtx   sync.Mutex
-	value float64
-	prometheus.Gauge
-}
-
-func (m *maxTimestamp) Set(value float64) {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-	if value > m.value {
-		m.value = value
-		m.Gauge.Set(value)
-	}
-}
-
-func (m *maxTimestamp) Get() float64 {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-	return m.value
-}
-
-func (m *maxTimestamp) Collect(c chan<- prometheus.Metric) {
-	if m.Get() > 0 {
-		m.Gauge.Collect(c)
-	}
 }
 
 type TTLError struct {

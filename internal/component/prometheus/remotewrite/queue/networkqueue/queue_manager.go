@@ -34,7 +34,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/timestamp"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/scrape"
 )
@@ -555,56 +554,11 @@ func (t *QueueManager) sendMetadataWithBackoff(ctx context.Context, metadata []p
 	return nil
 }
 
-func isSampleOld(baseTime time.Time, sampleAgeLimit time.Duration, ts int64) bool {
-	if sampleAgeLimit == 0 {
-		// If sampleAgeLimit is unset, then we never skip samples due to their age.
-		return false
-	}
-	limitTs := baseTime.Add(-sampleAgeLimit)
-	sampleTs := timestamp.Time(ts)
-	return sampleTs.Before(limitTs)
-}
-
-func isTimeSeriesOldFilter(metrics *queueManagerMetrics, baseTime time.Time, sampleAgeLimit time.Duration) func(ts prompb.TimeSeries) bool {
-	return func(ts prompb.TimeSeries) bool {
-		if sampleAgeLimit == 0 {
-			// If sampleAgeLimit is unset, then we never skip samples due to their age.
-			return false
-		}
-		switch {
-		// Only the first element should be set in the series, therefore we only check the first element.
-		case len(ts.Samples) > 0:
-			if isSampleOld(baseTime, sampleAgeLimit, ts.Samples[0].Timestamp) {
-				metrics.droppedSamplesTotal.WithLabelValues(reasonTooOld).Inc()
-				return true
-			}
-		case len(ts.Histograms) > 0:
-			if isSampleOld(baseTime, sampleAgeLimit, ts.Histograms[0].Timestamp) {
-				metrics.droppedHistogramsTotal.WithLabelValues(reasonTooOld).Inc()
-				return true
-			}
-		case len(ts.Exemplars) > 0:
-			if isSampleOld(baseTime, sampleAgeLimit, ts.Exemplars[0].Timestamp) {
-				metrics.droppedExemplarsTotal.WithLabelValues(reasonTooOld).Inc()
-				return true
-			}
-		default:
-			return false
-		}
-		return false
-	}
-}
-
 // Append queues a sample to be sent to the remote storage. Blocks until all samples are
 // enqueued on their shards or a shutdown signal is received.
 func (t *QueueManager) Append(samples []*types.TimeSeries) bool {
-	currentTime := time.Now()
 outer:
 	for _, s := range samples {
-		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), s.Timestamp) {
-			t.metrics.droppedSamplesTotal.WithLabelValues(reasonTooOld).Inc()
-			continue
-		}
 		s.SeriesLabels = processExternalLabels(s.SeriesLabels, t.externalLabels)
 		// Start with a very small backoff. This should not be t.cfg.MinBackoff
 		// as it can happen without errors, and we want to pickup work after
@@ -638,13 +592,8 @@ func (t *QueueManager) AppendExemplars(exemplars []*types.TimeSeries) bool {
 	if !t.sendExemplars {
 		return true
 	}
-	currentTime := time.Now()
 outer:
 	for _, e := range exemplars {
-		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), e.Timestamp) {
-			t.metrics.droppedExemplarsTotal.WithLabelValues(reasonTooOld).Inc()
-			continue
-		}
 		// This will only loop if the queues are being resharded.
 		backoff := t.cfg.MinBackoff
 		for {
@@ -672,13 +621,8 @@ func (t *QueueManager) AppendHistograms(histograms []*types.TimeSeries) bool {
 	if !t.sendNativeHistograms {
 		return true
 	}
-	currentTime := time.Now()
 outer:
 	for _, h := range histograms {
-		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), h.Timestamp) {
-			t.metrics.droppedHistogramsTotal.WithLabelValues(reasonTooOld).Inc()
-			continue
-		}
 
 		backoff := model.Duration(5 * time.Millisecond)
 		for {
@@ -706,13 +650,8 @@ func (t *QueueManager) AppendFloatHistograms(floatHistograms []*types.TimeSeries
 	if !t.sendNativeHistograms {
 		return true
 	}
-	currentTime := time.Now()
 outer:
 	for _, h := range floatHistograms {
-		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), h.Timestamp) {
-			t.metrics.droppedHistogramsTotal.WithLabelValues(reasonTooOld).Inc()
-			continue
-		}
 
 		backoff := model.Duration(5 * time.Millisecond)
 		for {
@@ -1210,7 +1149,7 @@ func (q *queue) tryEnqueueingBatch(done <-chan struct{}) bool {
 	}
 }
 
-func (q *queue) newBatch(capacity int) []*TimeSeries {
+func (q *queue) newBatch(capacity int) []*types.TimeSeries {
 	q.poolMtx.Lock()
 	defer q.poolMtx.Unlock()
 	batches := len(q.batchPool)
@@ -1219,7 +1158,7 @@ func (q *queue) newBatch(capacity int) []*TimeSeries {
 		q.batchPool = q.batchPool[:batches-1]
 		return batch
 	}
-	return make([]*TimeSeries, 0, capacity)
+	return make([]*types.TimeSeries, 0, capacity)
 }
 
 func (s *shards) runShard(ctx context.Context, shardID int, queue *queue) {
@@ -1309,7 +1248,7 @@ func (s *shards) runShard(ctx context.Context, shardID int, queue *queue) {
 	}
 }
 
-func (s *shards) populateTimeSeries(batch []*TimeSeries, pendingData []prompb.TimeSeries) (int, int, int) {
+func (s *shards) populateTimeSeries(batch []*types.TimeSeries, pendingData []prompb.TimeSeries) (int, int, int) {
 	var nPendingSamples, nPendingExemplars, nPendingHistograms int
 	for nPending, d := range batch {
 		pendingData[nPending].Samples = pendingData[nPending].Samples[:0]

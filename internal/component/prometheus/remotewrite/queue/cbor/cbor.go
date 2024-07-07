@@ -18,12 +18,13 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/types"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/prompb"
 )
 
 // cborwriter is the primary class for serializing and deserializing metrics.
 type cborwriter struct {
 	mut          sync.Mutex
-	fq           filequeue.MetricQueue
+	fq           filequeue.Queue
 	totalSignals int64
 	// estimatedSize tries to track how large the data size is.
 	estimatedSize int64
@@ -43,7 +44,7 @@ type cborwriter struct {
 }
 
 // newCBORWrite creates a new parquetwriter.
-func newCBORWrite(fq filequeue.MetricQueue, checkPointSize int64, flushTime time.Duration, l log.Logger, r prometheus.Registerer) *cborwriter {
+func newCBORWrite(fq filequeue.Queue, checkPointSize int64, flushTime time.Duration, l log.Logger, r prometheus.Registerer) *cborwriter {
 	encOptions := cbor.CoreDetEncOptions()
 	em, err := encOptions.EncMode()
 	if err != nil {
@@ -398,6 +399,8 @@ func makeTS(tsVal int64, maxAgeSeconds int64, pm *cborsmetric, metricType types.
 	}
 	// TODO can we instead directly use prompb.TimeSeries instead of this intermediate?
 	ts := types.TimeSeriesPool.Get().(*types.TimeSeries)
+	pts := prompb.TimeSeries{}
+	pts.Histograms[0]
 	ts.Type = metricType
 	ts.Timestamp = tsVal
 	ts.Value = pm.Value
