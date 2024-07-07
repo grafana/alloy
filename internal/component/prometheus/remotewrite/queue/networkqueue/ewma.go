@@ -1,4 +1,4 @@
-package queue
+package networkqueue
 
 import (
 	"strings"

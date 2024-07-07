@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/networkqueue"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -17,17 +18,6 @@ import (
 
 // Defaults for config blocks.
 var (
-	DefaultQueueOptions = QueueOptions{
-		Capacity:          10_000,
-		MaxShards:         50,
-		MinShards:         1,
-		MaxSamplesPerSend: 5,
-		BatchSendDeadline: 5 * time.Second,
-		MinBackoff:        30 * time.Millisecond,
-		MaxBackoff:        5 * time.Second,
-		RetryOnHTTP429:    true,
-	}
-
 	DefaultMetadataOptions = MetadataOptions{
 		Send:              true,
 		SendInterval:      1 * time.Minute,
@@ -79,15 +69,15 @@ func (r *Arguments) Validate() error {
 // EndpointOptions describes an individual location for where metrics in the WAL
 // should be delivered to using the remote_write protocol.
 type EndpointOptions struct {
-	Name                 string                  `alloy:"name,attr,optional"`
-	URL                  string                  `alloy:"url,attr"`
-	RemoteTimeout        time.Duration           `alloy:"remote_timeout,attr,optional"`
-	Headers              map[string]string       `alloy:"headers,attr,optional"`
-	SendExemplars        bool                    `alloy:"send_exemplars,attr,optional"`
-	SendNativeHistograms bool                    `alloy:"send_native_histograms,attr,optional"`
-	HTTPClientConfig     *types.HTTPClientConfig `alloy:",squash"`
-	QueueOptions         QueueOptions            `alloy:"queue_config,block,optional"`
-	MetadataOptions      MetadataOptions         `alloy:"metadata_config,block,optional"`
+	Name                 string                    `alloy:"name,attr,optional"`
+	URL                  string                    `alloy:"url,attr"`
+	RemoteTimeout        time.Duration             `alloy:"remote_timeout,attr,optional"`
+	Headers              map[string]string         `alloy:"headers,attr,optional"`
+	SendExemplars        bool                      `alloy:"send_exemplars,attr,optional"`
+	SendNativeHistograms bool                      `alloy:"send_native_histograms,attr,optional"`
+	HTTPClientConfig     *types.HTTPClientConfig   `alloy:",squash"`
+	QueueOptions         networkqueue.QueueOptions `alloy:"queue_config,block,optional"`
+	MetadataOptions      MetadataOptions           `alloy:"metadata_config,block,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -96,7 +86,7 @@ func (r *EndpointOptions) SetToDefault() {
 		RemoteTimeout:    30 * time.Second,
 		SendExemplars:    true,
 		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
-		QueueOptions:     DefaultQueueOptions,
+		QueueOptions:     networkqueue.DefaultQueueOptions,
 		MetadataOptions:  DefaultMetadataOptions,
 	}
 }
@@ -114,24 +104,6 @@ func (r *EndpointOptions) UniqueName() string {
 		return r.Name
 	}
 	return base64.RawURLEncoding.EncodeToString([]byte(r.URL))
-}
-
-// QueueOptions handles the low level queue config options for a remote_write
-type QueueOptions struct {
-	Capacity          int           `alloy:"capacity,attr,optional"`
-	MaxShards         int           `alloy:"max_shards,attr,optional"`
-	MinShards         int           `alloy:"min_shards,attr,optional"`
-	MaxSamplesPerSend int           `alloy:"max_samples_per_send,attr,optional"`
-	BatchSendDeadline time.Duration `alloy:"batch_send_deadline,attr,optional"`
-	MinBackoff        time.Duration `alloy:"min_backoff,attr,optional"`
-	MaxBackoff        time.Duration `alloy:"max_backoff,attr,optional"`
-	RetryOnHTTP429    bool          `alloy:"retry_on_http_429,attr,optional"`
-	SampleAgeLimit    time.Duration `alloy:"sample_age_limit,attr,optional"`
-}
-
-// SetToDefault implements syntax.Defaulter.
-func (r *QueueOptions) SetToDefault() {
-	*r = DefaultQueueOptions
 }
 
 // MetadataOptions configures how metadata gets sent over the remote_write

@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package queue
+package networkqueue
 
 import (
 	"context"
@@ -25,6 +25,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/otel"
@@ -32,7 +33,6 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.uber.org/atomic"
 
-	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/timestamp"
 	"github.com/prometheus/prometheus/prompb"
@@ -73,7 +73,7 @@ type queueManagerMetrics struct {
 	droppedHistogramsTotal *prometheus.CounterVec
 	enqueueRetriesTotal    prometheus.Counter
 	sentBatchDuration      prometheus.Histogram
-	highestSentTimestamp   *maxTimestamp
+	highestSentTimestamp   *types.MaxTimestamp
 	pendingSamples         prometheus.Gauge
 	pendingExemplars       prometheus.Gauge
 	pendingHistograms      prometheus.Gauge
@@ -222,7 +222,7 @@ func newQueueManagerMetrics(r prometheus.Registerer, rn, e string) *queueManager
 		Buckets:     append(prometheus.DefBuckets, 25, 60, 120, 300),
 		ConstLabels: constLabels,
 	})
-	m.highestSentTimestamp = &maxTimestamp{
+	m.highestSentTimestamp = &types.MaxTimestamp{
 		Gauge: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace:   namespace,
 			Subsystem:   subsystem,
@@ -403,7 +403,6 @@ type QueueManager struct {
 	logger               log.Logger
 	flushDeadline        time.Duration
 	cfg                  QueueOptions
-	mcfg                 MetadataOptions
 	externalLabels       []labels.Label
 	sendExemplars        bool
 	sendNativeHistograms bool
@@ -421,7 +420,7 @@ type QueueManager struct {
 
 	metrics              *queueManagerMetrics
 	interner             *pool
-	highestRecvTimestamp *maxTimestamp
+	highestRecvTimestamp *types.MaxTimestamp
 }
 
 // NewQueueManager builds a new QueueManager and starts a new
@@ -434,12 +433,11 @@ func NewQueueManager(
 	logger log.Logger,
 	samplesIn *ewmaRate,
 	cfg QueueOptions,
-	mCfg MetadataOptions,
 	externalLabels labels.Labels,
 	client WriteClient,
 	flushDeadline time.Duration,
 	interner *pool,
-	highestRecvTimestamp *maxTimestamp,
+	highestRecvTimestamp *types.MaxTimestamp,
 	enableExemplarRemoteWrite bool,
 	enableNativeHistogramRemoteWrite bool,
 ) *QueueManager {
@@ -458,7 +456,6 @@ func NewQueueManager(
 		logger:               logger,
 		flushDeadline:        flushDeadline,
 		cfg:                  cfg,
-		mcfg:                 mCfg,
 		externalLabels:       extLabelsSlice,
 		storeClient:          client,
 		sendExemplars:        enableExemplarRemoteWrite,
@@ -496,16 +493,16 @@ func (t *QueueManager) AppendMetadata(ctx context.Context, metadata []scrape.Met
 	}
 
 	pBuf := proto.NewBuffer(nil)
-	numSends := int(math.Ceil(float64(len(metadata)) / float64(t.mcfg.MaxSamplesPerSend)))
+	numSends := int(math.Ceil(float64(len(metadata)) / float64(t.cfg.MaxSamplesPerSend)))
 	for i := 0; i < numSends; i++ {
-		last := (i + 1) * t.mcfg.MaxSamplesPerSend
+		last := (i + 1) * t.cfg.MaxSamplesPerSend
 		if last > len(metadata) {
 			last = len(metadata)
 		}
-		err := t.sendMetadataWithBackoff(ctx, mm[i*t.mcfg.MaxSamplesPerSend:last], pBuf)
+		err := t.sendMetadataWithBackoff(ctx, mm[i*t.cfg.MaxSamplesPerSend:last], pBuf)
 		if err != nil {
-			t.metrics.failedMetadataTotal.Add(float64(last - (i * t.mcfg.MaxSamplesPerSend)))
-			level.Error(t.logger).Log("msg", "non-recoverable error while sending metadata", "count", last-(i*t.mcfg.MaxSamplesPerSend), "err", err)
+			t.metrics.failedMetadataTotal.Add(float64(last - (i * t.cfg.MaxSamplesPerSend)))
+			level.Error(t.logger).Log("msg", "non-recoverable error while sending metadata", "count", last-(i*t.cfg.MaxSamplesPerSend), "err", err)
 		}
 	}
 }
@@ -600,15 +597,15 @@ func isTimeSeriesOldFilter(metrics *queueManagerMetrics, baseTime time.Time, sam
 
 // Append queues a sample to be sent to the remote storage. Blocks until all samples are
 // enqueued on their shards or a shutdown signal is received.
-func (t *QueueManager) Append(samples []*TimeSeries) bool {
+func (t *QueueManager) Append(samples []*types.TimeSeries) bool {
 	currentTime := time.Now()
 outer:
 	for _, s := range samples {
-		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), s.timestamp) {
+		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), s.Timestamp) {
 			t.metrics.droppedSamplesTotal.WithLabelValues(reasonTooOld).Inc()
 			continue
 		}
-		s.seriesLabels = processExternalLabels(s.seriesLabels, t.externalLabels)
+		s.SeriesLabels = processExternalLabels(s.SeriesLabels, t.externalLabels)
 		// Start with a very small backoff. This should not be t.cfg.MinBackoff
 		// as it can happen without errors, and we want to pickup work after
 		// filling a queue/resharding as quickly as possible.
@@ -637,14 +634,14 @@ outer:
 	return true
 }
 
-func (t *QueueManager) AppendExemplars(exemplars []*TimeSeries) bool {
+func (t *QueueManager) AppendExemplars(exemplars []*types.TimeSeries) bool {
 	if !t.sendExemplars {
 		return true
 	}
 	currentTime := time.Now()
 outer:
 	for _, e := range exemplars {
-		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), e.timestamp) {
+		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), e.Timestamp) {
 			t.metrics.droppedExemplarsTotal.WithLabelValues(reasonTooOld).Inc()
 			continue
 		}
@@ -671,14 +668,14 @@ outer:
 	return true
 }
 
-func (t *QueueManager) AppendHistograms(histograms []*TimeSeries) bool {
+func (t *QueueManager) AppendHistograms(histograms []*types.TimeSeries) bool {
 	if !t.sendNativeHistograms {
 		return true
 	}
 	currentTime := time.Now()
 outer:
 	for _, h := range histograms {
-		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), h.timestamp) {
+		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), h.Timestamp) {
 			t.metrics.droppedHistogramsTotal.WithLabelValues(reasonTooOld).Inc()
 			continue
 		}
@@ -705,14 +702,14 @@ outer:
 	return true
 }
 
-func (t *QueueManager) AppendFloatHistograms(floatHistograms []*TimeSeries) bool {
+func (t *QueueManager) AppendFloatHistograms(floatHistograms []*types.TimeSeries) bool {
 	if !t.sendNativeHistograms {
 		return true
 	}
 	currentTime := time.Now()
 outer:
 	for _, h := range floatHistograms {
-		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), h.timestamp) {
+		if isSampleOld(currentTime, time.Duration(t.cfg.SampleAgeLimit), h.Timestamp) {
 			t.metrics.droppedHistogramsTotal.WithLabelValues(reasonTooOld).Inc()
 			continue
 		}
@@ -1066,11 +1063,11 @@ func (s *shards) stop() {
 // retry. A shard is full when its configured capacity has been reached,
 // specifically, when s.queues[shard] has filled its batchQueue channel and the
 // partial batch has also been filled.
-func (s *shards) enqueue(data *TimeSeries) bool {
+func (s *shards) enqueue(data *types.TimeSeries) bool {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 
-	shard := data.seriesLabels.Hash() % uint64(len(s.queues))
+	shard := data.SeriesLabels.Hash() % uint64(len(s.queues))
 	select {
 	case <-s.softShutdown:
 		return false
@@ -1079,14 +1076,14 @@ func (s *shards) enqueue(data *TimeSeries) bool {
 		if !appended {
 			return false
 		}
-		switch data.sType {
-		case tSample:
+		switch data.Type {
+		case types.Sample:
 			s.qm.metrics.pendingSamples.Inc()
 			s.enqueuedSamples.Inc()
-		case tExemplar:
+		case types.Exemplar:
 			s.qm.metrics.pendingExemplars.Inc()
 			s.enqueuedExemplars.Inc()
-		case tHistogram, tFloatHistogram:
+		case types.Histogram, types.FloatHistogram:
 			s.qm.metrics.pendingHistograms.Inc()
 			s.enqueuedHistograms.Inc()
 		}
@@ -1097,35 +1094,15 @@ func (s *shards) enqueue(data *TimeSeries) bool {
 type queue struct {
 	// batchMtx covers operations appending to or publishing the partial batch.
 	batchMtx   sync.Mutex
-	batch      []*TimeSeries
-	batchQueue chan []*TimeSeries
+	batch      []*types.TimeSeries
+	batchQueue chan []*types.TimeSeries
 
 	// Since we know there are a limited number of batches out, using a stack
 	// is easy and safe so a sync.Pool is not necessary.
 	// poolMtx covers adding and removing batches from the batchPool.
 	poolMtx   sync.Mutex
-	batchPool [][]*TimeSeries
+	batchPool [][]*types.TimeSeries
 }
-
-type TimeSeries struct {
-	seriesLabels   labels.Labels
-	value          float64
-	histogram      *histogram.Histogram
-	floatHistogram *histogram.FloatHistogram
-	timestamp      int64
-	exemplarLabels labels.Labels
-	// The type of series: sample, exemplar, or histogram.
-	sType seriesType
-}
-
-type seriesType int8
-
-const (
-	tSample seriesType = iota
-	tExemplar
-	tHistogram
-	tFloatHistogram
-)
 
 func newQueue(batchSize, capacity int) *queue {
 	batches := capacity / batchSize
@@ -1135,17 +1112,17 @@ func newQueue(batchSize, capacity int) *queue {
 		batches = 1
 	}
 	return &queue{
-		batch:      make([]*TimeSeries, 0, batchSize),
-		batchQueue: make(chan []*TimeSeries, batches),
+		batch:      make([]*types.TimeSeries, 0, batchSize),
+		batchQueue: make(chan []*types.TimeSeries, batches),
 		// batchPool should have capacity for everything in the channel + 1 for
 		// the batch being processed.
-		batchPool: make([][]*TimeSeries, 0, batches+1),
+		batchPool: make([][]*types.TimeSeries, 0, batches+1),
 	}
 }
 
 // Append the TimeSeries to the buffered batch. Returns false if it
 // cannot be added and must be retried.
-func (q *queue) Append(datum *TimeSeries) bool {
+func (q *queue) Append(datum *types.TimeSeries) bool {
 	q.batchMtx.Lock()
 	defer q.batchMtx.Unlock()
 	q.batch = append(q.batch, datum)
@@ -1164,12 +1141,12 @@ func (q *queue) Append(datum *TimeSeries) bool {
 	return true
 }
 
-func (q *queue) Chan() <-chan []*TimeSeries {
+func (q *queue) Chan() <-chan []*types.TimeSeries {
 	return q.batchQueue
 }
 
 // Batch returns the current batch and allocates a new batch.
-func (q *queue) Batch() []*TimeSeries {
+func (q *queue) Batch() []*types.TimeSeries {
 	q.batchMtx.Lock()
 	defer q.batchMtx.Unlock()
 
@@ -1184,17 +1161,17 @@ func (q *queue) Batch() []*TimeSeries {
 }
 
 // ReturnForReuse adds the batch buffer back to the internal pool.
-func (q *queue) ReturnForReuse(batch []*TimeSeries) {
+func (q *queue) ReturnForReuse(batch []*types.TimeSeries) {
 	q.poolMtx.Lock()
 	defer q.poolMtx.Unlock()
 	for _, ts := range batch {
-		ts.histogram = nil
-		ts.floatHistogram = nil
-		ts.value = 0
-		ts.timestamp = 0
-		ts.exemplarLabels = ts.exemplarLabels[:0]
-		ts.seriesLabels = ts.seriesLabels[:0]
-		tsPool.Put(ts)
+		ts.Histogram = nil
+		ts.FloatHistogram = nil
+		ts.Value = 0
+		ts.Timestamp = 0
+		ts.ExemplarLabels = ts.ExemplarLabels[:0]
+		ts.SeriesLabels = ts.SeriesLabels[:0]
+		types.TimeSeriesPool.Put(ts)
 	}
 	if len(q.batchPool) < cap(q.batchPool) {
 		q.batchPool = append(q.batchPool, batch[:0])

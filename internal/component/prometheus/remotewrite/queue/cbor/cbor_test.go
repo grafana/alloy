@@ -1,9 +1,11 @@
 package queue
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"testing"
 	"time"
+
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/types"
+	"github.com/prometheus/client_golang/prometheus"
 
 	log2 "github.com/go-kit/log"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -11,14 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParquetSample(t *testing.T) {
-
+func TestCBORSample(t *testing.T) {
 	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
 	ts := time.Now().Unix()
-	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
+	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, types.Sample)
 	require.NoError(t, err)
 	bb, err := l.serialize()
 	require.NoError(t, err)
@@ -26,18 +27,18 @@ func TestParquetSample(t *testing.T) {
 	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
-	require.Len(t, metrics[0].seriesLabels, 1)
+	require.Len(t, metrics[0].SeriesLabels, 1)
 
 	require.True(t, hasLabel(lbls, metrics, ts, 10))
 }
 
-func TestParquetSampleMultiple(t *testing.T) {
+func TestCBORSampleMultiple(t *testing.T) {
 	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
 	ts := time.Now().Unix()
-	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
+	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, types.Sample)
 	require.NoError(t, err)
 
 	lbls2 := labels.FromMap(map[string]string{
@@ -45,7 +46,7 @@ func TestParquetSampleMultiple(t *testing.T) {
 		"lbl":      "label_1",
 	})
 
-	err = l.AddMetric(lbls2, nil, ts, 11, nil, nil, tSample)
+	err = l.AddMetric(lbls2, nil, ts, 11, nil, nil, types.Sample)
 	require.NoError(t, err)
 
 	bb, err := l.serialize()
@@ -58,14 +59,14 @@ func TestParquetSampleMultiple(t *testing.T) {
 	require.True(t, hasLabel(lbls2, metrics, ts, 11))
 }
 
-func TestParquetSampleMultipleDifferent(t *testing.T) {
+func TestCBORSampleMultipleDifferent(t *testing.T) {
 	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 		"badlabel": "arrr",
 	})
 	ts := time.Now().Unix()
-	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
+	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, types.Sample)
 	require.NoError(t, err)
 
 	lbls2 := labels.FromMap(map[string]string{
@@ -74,7 +75,7 @@ func TestParquetSampleMultipleDifferent(t *testing.T) {
 		"bob":      "foo",
 	})
 
-	err = l.AddMetric(lbls2, nil, ts, 11, nil, nil, tSample)
+	err = l.AddMetric(lbls2, nil, ts, 11, nil, nil, types.Sample)
 	require.NoError(t, err)
 
 	bb, err := l.serialize()
@@ -87,14 +88,14 @@ func TestParquetSampleMultipleDifferent(t *testing.T) {
 	require.True(t, hasLabel(lbls2, metrics, ts, 11))
 }
 
-func TestParquetSampleTTL(t *testing.T) {
+func TestCBORSampleTTL(t *testing.T) {
 	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
 	ts := time.Now().Unix()
-	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, tSample)
+	err := l.AddMetric(lbls, nil, ts, 10, nil, nil, types.Sample)
 	require.NoError(t, err)
 
 	bb, err := l.serialize()
@@ -105,16 +106,16 @@ func TestParquetSampleTTL(t *testing.T) {
 	require.Len(t, metrics, 0)
 }
 
-func TestParquetExemplar(t *testing.T) {
+func TestCBORExemplar(t *testing.T) {
 	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
-	exemplarLabels := labels.FromMap(map[string]string{
+	ExemplarLabels := labels.FromMap(map[string]string{
 		"ex": "one",
 	})
 	ts := time.Now().Unix()
-	err := l.AddMetric(lbls, exemplarLabels, ts, 10, nil, nil, tExemplar)
+	err := l.AddMetric(lbls, ExemplarLabels, ts, 10, nil, nil, types.Exemplar)
 	require.NoError(t, err)
 
 	bb, err := l.serialize()
@@ -122,65 +123,65 @@ func TestParquetExemplar(t *testing.T) {
 	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
-	require.True(t, metrics[0].sType == tExemplar)
-	require.Len(t, metrics[0].seriesLabels, 1)
-	require.Len(t, metrics[0].exemplarLabels, 1)
+	require.True(t, metrics[0].Type == types.Exemplar)
+	require.Len(t, metrics[0].SeriesLabels, 1)
+	require.Len(t, metrics[0].ExemplarLabels, 1)
 
-	require.True(t, metrics[0].seriesLabels[0].Name == "__name__")
-	require.True(t, metrics[0].seriesLabels[0].Value == "test")
+	require.True(t, metrics[0].SeriesLabels[0].Name == "__name__")
+	require.True(t, metrics[0].SeriesLabels[0].Value == "test")
 
-	require.True(t, metrics[0].exemplarLabels[0].Name == "ex")
-	require.True(t, metrics[0].exemplarLabels[0].Value == "one")
+	require.True(t, metrics[0].ExemplarLabels[0].Name == "ex")
+	require.True(t, metrics[0].ExemplarLabels[0].Value == "one")
 }
 
-func TestParquetMultipleExemplar(t *testing.T) {
+func TestCBORMultipleExemplar(t *testing.T) {
 	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
-	exemplarLabels := labels.FromMap(map[string]string{
+	ExemplarLabels := labels.FromMap(map[string]string{
 		"ex": "one",
 	})
 
 	ts := time.Now().Unix()
-	err := l.AddMetric(lbls, exemplarLabels, ts, 10, nil, nil, tExemplar)
+	err := l.AddMetric(lbls, ExemplarLabels, ts, 10, nil, nil, types.Exemplar)
 	require.NoError(t, err)
 
 	lbls2 := labels.FromMap(map[string]string{
 		"__name__": "test",
 		"bob":      "arr",
 	})
-	exemplarLabels2 := labels.FromMap(map[string]string{
+	ExemplarLabels2 := labels.FromMap(map[string]string{
 		"ex":  "one",
 		"ex2": "two",
 	})
-	l.AddMetric(lbls2, exemplarLabels2, ts, 11, nil, nil, tExemplar)
+	l.AddMetric(lbls2, ExemplarLabels2, ts, 11, nil, nil, types.Exemplar)
 
 	bb, err := l.serialize()
 	require.NoError(t, err)
 	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
-	require.True(t, metrics[0].sType == tExemplar)
-	require.Len(t, metrics[0].seriesLabels, 1)
-	require.Len(t, metrics[0].exemplarLabels, 1)
+	require.True(t, metrics[0].Type == types.Exemplar)
+	require.Len(t, metrics[0].SeriesLabels, 1)
+	require.Len(t, metrics[0].ExemplarLabels, 1)
 
 	require.True(t, hasLabel(lbls, metrics, ts, 10))
-	require.True(t, hasLabelsExemplar(exemplarLabels, metrics, ts, 10))
+	require.True(t, hasLabelsExemplar(ExemplarLabels, metrics, ts, 10))
 
 	require.True(t, hasLabel(lbls2, metrics, ts, 11))
-	require.True(t, hasLabelsExemplar(exemplarLabels2, metrics, ts, 11))
+	require.True(t, hasLabelsExemplar(ExemplarLabels2, metrics, ts, 11))
 }
 
-func TestParquetExemplarNoTS(t *testing.T) {
+func TestCBORExemplarNoTS(t *testing.T) {
 	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
-	exemplarLabels := labels.FromMap(map[string]string{
+	ExemplarLabels := labels.FromMap(map[string]string{
 		"ex": "one",
 	})
-	err := l.AddMetric(lbls, exemplarLabels, 0, 10, nil, nil, tExemplar)
+	err := l.AddMetric(lbls, ExemplarLabels, 0, 10, nil, nil, types.Exemplar)
 	require.NoError(t, err)
 
 	bb, err := l.serialize()
@@ -188,28 +189,28 @@ func TestParquetExemplarNoTS(t *testing.T) {
 	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
-	require.True(t, metrics[0].timestamp == 0)
-	require.True(t, metrics[0].sType == tExemplar)
-	require.Len(t, metrics[0].seriesLabels, 1)
-	require.Len(t, metrics[0].exemplarLabels, 1)
+	require.True(t, metrics[0].Timestamp == 0)
+	require.True(t, metrics[0].Type == types.Exemplar)
+	require.Len(t, metrics[0].SeriesLabels, 1)
+	require.Len(t, metrics[0].ExemplarLabels, 1)
 
-	require.True(t, metrics[0].seriesLabels[0].Name == "__name__")
-	require.True(t, metrics[0].seriesLabels[0].Value == "test")
+	require.True(t, metrics[0].SeriesLabels[0].Name == "__name__")
+	require.True(t, metrics[0].SeriesLabels[0].Value == "test")
 
-	require.True(t, metrics[0].exemplarLabels[0].Name == "ex")
-	require.True(t, metrics[0].exemplarLabels[0].Value == "one")
+	require.True(t, metrics[0].ExemplarLabels[0].Name == "ex")
+	require.True(t, metrics[0].ExemplarLabels[0].Value == "one")
 }
 
-func TestParquetExemplarAndMetric(t *testing.T) {
+func TestCBORExemplarAndMetric(t *testing.T) {
 	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
 	})
-	exemplarLabels := labels.FromMap(map[string]string{
+	ExemplarLabels := labels.FromMap(map[string]string{
 		"ex": "one",
 	})
-	err := l.AddMetric(lbls, exemplarLabels, 0, 10, nil, nil, tExemplar)
+	err := l.AddMetric(lbls, ExemplarLabels, 0, 10, nil, nil, types.Exemplar)
 	require.NoError(t, err)
 
 	bb, err := l.serialize()
@@ -218,19 +219,19 @@ func TestParquetExemplarAndMetric(t *testing.T) {
 	metrics, err := Deserialize(bb, 100)
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
-	require.True(t, metrics[0].timestamp == 0)
-	require.True(t, metrics[0].sType == tExemplar)
-	require.Len(t, metrics[0].seriesLabels, 1)
-	require.Len(t, metrics[0].exemplarLabels, 1)
+	require.True(t, metrics[0].Timestamp == 0)
+	require.True(t, metrics[0].Type == types.Exemplar)
+	require.Len(t, metrics[0].SeriesLabels, 1)
+	require.Len(t, metrics[0].ExemplarLabels, 1)
 
-	require.True(t, metrics[0].seriesLabels[0].Name == "__name__")
-	require.True(t, metrics[0].seriesLabels[0].Value == "test")
+	require.True(t, metrics[0].SeriesLabels[0].Name == "__name__")
+	require.True(t, metrics[0].SeriesLabels[0].Value == "test")
 
-	require.True(t, metrics[0].exemplarLabels[0].Name == "ex")
-	require.True(t, metrics[0].exemplarLabels[0].Value == "one")
+	require.True(t, metrics[0].ExemplarLabels[0].Name == "ex")
+	require.True(t, metrics[0].ExemplarLabels[0].Value == "one")
 }
 
-func TestParquetHistogram(t *testing.T) {
+func TestCBORHistogram(t *testing.T) {
 	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
@@ -272,7 +273,7 @@ func TestParquetHistogram(t *testing.T) {
 		},
 	}
 	ts := time.Now().Unix()
-	err := l.AddMetric(lbls, nil, ts, 0, h, nil, tHistogram)
+	err := l.AddMetric(lbls, nil, ts, 0, h, nil, types.Histogram)
 	require.NoError(t, err)
 
 	bb, err := l.serialize()
@@ -282,12 +283,12 @@ func TestParquetHistogram(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	m := metrics[0]
-	require.True(t, m.sType == tHistogram)
-	require.Len(t, m.seriesLabels, 1)
-	require.True(t, h.Equals(m.histogram))
+	require.True(t, m.Type == types.Histogram)
+	require.Len(t, m.SeriesLabels, 1)
+	require.True(t, h.Equals(m.Histogram))
 }
 
-func TestParquetFloatHistogram(t *testing.T) {
+func TestCBORypesFloatHistogram(t *testing.T) {
 	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
 		"__name__": "test",
@@ -329,7 +330,7 @@ func TestParquetFloatHistogram(t *testing.T) {
 		},
 	}
 	ts := time.Now().Unix()
-	err := l.AddMetric(lbls, nil, ts, 0, nil, h, tFloatHistogram)
+	err := l.AddMetric(lbls, nil, ts, 0, nil, h, types.FloatHistogram)
 	require.NoError(t, err)
 
 	bb, err := l.serialize()
@@ -338,24 +339,24 @@ func TestParquetFloatHistogram(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 	m := metrics[0]
-	require.True(t, m.sType == tFloatHistogram)
-	require.Len(t, m.seriesLabels, 1)
-	require.True(t, h.Equals(m.floatHistogram))
+	require.True(t, m.Type == types.FloatHistogram)
+	require.Len(t, m.SeriesLabels, 1)
+	require.True(t, h.Equals(m.FloatHistogram))
 }
 
-func hasLabel(lbls labels.Labels, metrics []*TimeSeries, ts int64, val float64) bool {
+func hasLabel(lbls labels.Labels, metrics []*types.TimeSeries, ts int64, val float64) bool {
 	for _, m := range metrics {
-		if labels.Compare(m.seriesLabels, lbls) == 0 {
-			return ts == m.timestamp && val == m.value
+		if labels.Compare(m.SeriesLabels, lbls) == 0 {
+			return ts == m.Timestamp && val == m.Value
 		}
 	}
 	return false
 }
 
-func hasLabelsExemplar(lbls labels.Labels, metrics []*TimeSeries, ts int64, val float64) bool {
+func hasLabelsExemplar(lbls labels.Labels, metrics []*types.TimeSeries, ts int64, val float64) bool {
 	for _, m := range metrics {
-		if labels.Compare(m.exemplarLabels, lbls) == 0 {
-			return ts == m.timestamp && val == m.value
+		if labels.Compare(m.ExemplarLabels, lbls) == 0 {
+			return ts == m.Timestamp && val == m.Value
 		}
 	}
 	return false
@@ -364,12 +365,12 @@ func hasLabelsExemplar(lbls labels.Labels, metrics []*TimeSeries, ts int64, val 
 type fakeQueue struct{}
 
 func (f fakeQueue) Add(data []byte) (string, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f fakeQueue) Next(enc []byte) ([]byte, string, bool, bool) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 

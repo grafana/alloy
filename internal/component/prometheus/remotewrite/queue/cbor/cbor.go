@@ -3,41 +3,47 @@ package queue
 import (
 	"bytes"
 	"context"
-	"github.com/golang/snappy"
-	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/atomic"
 	"math"
 	"sync"
 	"time"
 
+	"github.com/golang/snappy"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/atomic"
+
 	"github.com/fxamacker/cbor/v2"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloy/logging/level"
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/filequeue"
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/types"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 )
 
 // cborwriter is the primary class for serializing and deserializing metrics.
 type cborwriter struct {
-	mut               sync.Mutex
-	fq                metricQueue
-	estimatedSize     int64
-	totalSignals      int64
-	checkpointSize    int64
-	root              *cborroot
-	bb                []byte
-	dictionary        map[string]int
-	index             int
-	l                 log.Logger
-	flushTime         time.Duration
-	metricGauge       prometheus.Gauge
-	bytesWrittenGauge prometheus.Gauge
-	stop              *atomic.Bool
-	em                cbor.EncMode
+	mut          sync.Mutex
+	fq           filequeue.MetricQueue
+	totalSignals int64
+	// estimatedSize tries to track how large the data size is.
+	estimatedSize int64
+	// checkpointSize is when to write a new entry to the queue.
+	checkpointSize int64
+	root           *cborroot
+	bb             []byte
+	// stringToIntMapping is used to map strings to an integer in the cborroot.
+	stringToIntMapping map[string]int
+	index              int
+	l                  log.Logger
+	flushTime          time.Duration
+	metricGauge        prometheus.Gauge
+	bytesWrittenGauge  prometheus.Gauge
+	stop               *atomic.Bool
+	em                 cbor.EncMode
 }
 
 // newCBORWrite creates a new parquetwriter.
-func newCBORWrite(fq metricQueue, checkPointSize int64, flushTime time.Duration, l log.Logger, r prometheus.Registerer) *cborwriter {
+func newCBORWrite(fq filequeue.MetricQueue, checkPointSize int64, flushTime time.Duration, l log.Logger, r prometheus.Registerer) *cborwriter {
 	encOptions := cbor.CoreDetEncOptions()
 	em, err := encOptions.EncMode()
 	if err != nil {
@@ -52,10 +58,10 @@ func newCBORWrite(fq metricQueue, checkPointSize int64, flushTime time.Duration,
 			Strings:    make([]string, 0),
 			TimeStamps: make(map[int64]*cbormetrictype),
 		},
-		l:          l,
-		flushTime:  flushTime,
-		dictionary: make(map[string]int),
-		bb:         make([]byte, 0),
+		l:                  l,
+		flushTime:          flushTime,
+		stringToIntMapping: make(map[string]int),
+		bb:                 make([]byte, 0),
 		metricGauge: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "alloy_queue_samples_to_wal_total",
 			Help: "Number of samples written to the wal directory",
@@ -100,7 +106,7 @@ var metricPool = sync.Pool{
 }
 
 // AddMetric is used to add a metric to the internal metrics for use with serialization.
-func (pw *cborwriter) AddMetric(lbls labels.Labels, exemplarLabls labels.Labels, ts int64, val float64, histo *histogram.Histogram, floatHisto *histogram.FloatHistogram, telemetryType seriesType) error {
+func (pw *cborwriter) AddMetric(lbls labels.Labels, exemplarLabls labels.Labels, ts int64, val float64, histo *histogram.Histogram, floatHisto *histogram.FloatHistogram, telemetryType types.SeriesType) error {
 	pw.mut.Lock()
 	defer pw.mut.Unlock()
 
@@ -121,7 +127,7 @@ func (pw *cborwriter) AddMetric(lbls labels.Labels, exemplarLabls labels.Labels,
 
 	pm.Labels = pw.addLabels(lbls, pm.Labels)
 	pm.ExemplarLabels = pw.addLabels(exemplarLabls, pm.ExemplarLabels)
-	if telemetryType == tHistogram && histo != nil {
+	if telemetryType == types.Histogram && histo != nil {
 		pm.Histogram = cborhistgram{}
 		pm.Histogram.CounterResetHint = int32(histo.CounterResetHint)
 		pm.Histogram.Schema = histo.Schema
@@ -133,7 +139,7 @@ func (pw *cborwriter) AddMetric(lbls labels.Labels, exemplarLabls labels.Labels,
 		pm.Histogram.Count = histo.Count
 		pm.Histogram.ZeroCount = histo.ZeroCount
 		pm.Histogram.ZeroThreshold = histo.ZeroThreshold
-	} else if telemetryType == tFloatHistogram && floatHisto != nil {
+	} else if telemetryType == types.FloatHistogram && floatHisto != nil {
 		pm.Histogram.CounterResetHint = int32(floatHisto.CounterResetHint)
 		pm.Histogram.Schema = floatHisto.Schema
 		pm.Value = floatHisto.Sum
@@ -147,13 +153,13 @@ func (pw *cborwriter) AddMetric(lbls labels.Labels, exemplarLabls labels.Labels,
 	}
 
 	switch telemetryType {
-	case tHistogram:
+	case types.Histogram:
 		tsNode.Histogram = append(tsNode.Histogram, pm)
-	case tFloatHistogram:
+	case types.FloatHistogram:
 		tsNode.FloatHistogram = append(tsNode.FloatHistogram, pm)
-	case tSample:
+	case types.Sample:
 		tsNode.Samples = append(tsNode.Samples, pm)
-	case tExemplar:
+	case types.Exemplar:
 		tsNode.Exemplars = append(tsNode.Exemplars, pm)
 	}
 	pw.totalSignals += 1
@@ -196,12 +202,12 @@ func (pw *cborwriter) serialize() ([]byte, error) {
 			Strings:    make([]string, 0),
 			TimeStamps: make(map[int64]*cbormetrictype),
 		}
-		clear(pw.dictionary)
+		clear(pw.stringToIntMapping)
 		pw.index = 0
 	}()
 	// Create our reverse dictionary
 	sortedDictionary := make(map[int]string)
-	for k, n := range pw.dictionary {
+	for k, n := range pw.stringToIntMapping {
 		sortedDictionary[n] = k
 	}
 	pw.root.Strings = make([]string, len(sortedDictionary))
@@ -252,17 +258,17 @@ func (pw *cborwriter) addLabels(input labels.Labels, vals []label) []label {
 	}
 
 	for i, l := range input {
-		id, found := pw.dictionary[l.Name]
+		id, found := pw.stringToIntMapping[l.Name]
 		if !found {
-			pw.dictionary[l.Name] = pw.index
+			pw.stringToIntMapping[l.Name] = pw.index
 			id = pw.index
 			pw.addEstimatedSize(int64(len(l.Name)) + 4)
 			pw.index++
 		}
 		vals[i].Name = id
-		id, found = pw.dictionary[l.Value]
+		id, found = pw.stringToIntMapping[l.Value]
 		if !found {
-			pw.dictionary[l.Value] = pw.index
+			pw.stringToIntMapping[l.Value] = pw.index
 			id = pw.index
 			pw.addEstimatedSize(int64(len(l.Name)) + 4)
 			pw.index++
@@ -328,7 +334,7 @@ var buffers = sync.Pool{
 	},
 }
 
-func Deserialize(buffer []byte, maxAgeSeconds int64) ([]*TimeSeries, error) {
+func Deserialize(buffer []byte, maxAgeSeconds int64) ([]*types.TimeSeries, error) {
 	root := &cborroot{}
 
 	out := buffers.Get().(*bytes.Buffer)
@@ -338,7 +344,6 @@ func Deserialize(buffer []byte, maxAgeSeconds int64) ([]*TimeSeries, error) {
 	}()
 	outBB := out.Bytes()
 	outBB, err := snappy.Decode(outBB, buffer)
-
 	if err != nil {
 		return nil, err
 	}
@@ -354,30 +359,30 @@ func Deserialize(buffer []byte, maxAgeSeconds int64) ([]*TimeSeries, error) {
 		return nil, err
 	}
 
-	timeSeriesArray := make([]*TimeSeries, 0)
+	timeSeriesArray := make([]*types.TimeSeries, 0)
 	for tsVal, metrics := range root.TimeStamps {
 
 		// TODO make this common func
 		for _, pm := range metrics.Exemplars {
-			ts := makeTS(tsVal, maxAgeSeconds, pm, tExemplar, root.Strings)
+			ts := makeTS(tsVal, maxAgeSeconds, pm, types.Exemplar, root.Strings)
 			if ts != nil {
 				timeSeriesArray = append(timeSeriesArray, ts)
 			}
 		}
 		for _, pm := range metrics.Samples {
-			ts := makeTS(tsVal, maxAgeSeconds, pm, tSample, root.Strings)
+			ts := makeTS(tsVal, maxAgeSeconds, pm, types.Sample, root.Strings)
 			if ts != nil {
 				timeSeriesArray = append(timeSeriesArray, ts)
 			}
 		}
 		for _, pm := range metrics.Histogram {
-			ts := makeTS(tsVal, maxAgeSeconds, pm, tHistogram, root.Strings)
+			ts := makeTS(tsVal, maxAgeSeconds, pm, types.Histogram, root.Strings)
 			if ts != nil {
 				timeSeriesArray = append(timeSeriesArray, ts)
 			}
 		}
 		for _, pm := range metrics.FloatHistogram {
-			ts := makeTS(tsVal, maxAgeSeconds, pm, tFloatHistogram, root.Strings)
+			ts := makeTS(tsVal, maxAgeSeconds, pm, types.FloatHistogram, root.Strings)
 			if ts != nil {
 				timeSeriesArray = append(timeSeriesArray, ts)
 			}
@@ -386,23 +391,20 @@ func Deserialize(buffer []byte, maxAgeSeconds int64) ([]*TimeSeries, error) {
 	return timeSeriesArray, nil
 }
 
-var tsPool = sync.Pool{New: func() any {
-	return &TimeSeries{}
-}}
-
-func makeTS(tsVal int64, maxAgeSeconds int64, pm *cborsmetric, metricType seriesType, dict []string) *TimeSeries {
-	if tsVal < time.Now().Unix()-maxAgeSeconds && metricType != tExemplar {
+func makeTS(tsVal int64, maxAgeSeconds int64, pm *cborsmetric, metricType types.SeriesType, dict []string) *types.TimeSeries {
+	if tsVal < time.Now().Unix()-maxAgeSeconds && metricType != types.Exemplar {
 		// TODO add drop metric here.
 		return nil
 	}
-	ts := tsPool.Get().(*TimeSeries)
-	ts.sType = metricType
-	ts.timestamp = tsVal
-	ts.value = pm.Value
-	ts.seriesLabels = valuesAndKeysToLabels(ts.seriesLabels, pm.Labels, dict)
-	ts.exemplarLabels = valuesAndKeysToLabels(ts.exemplarLabels, pm.ExemplarLabels, dict)
+	// TODO can we instead directly use prompb.TimeSeries instead of this intermediate?
+	ts := types.TimeSeriesPool.Get().(*types.TimeSeries)
+	ts.Type = metricType
+	ts.Timestamp = tsVal
+	ts.Value = pm.Value
+	ts.SeriesLabels = valuesAndKeysToLabels(ts.SeriesLabels, pm.Labels, dict)
+	ts.ExemplarLabels = valuesAndKeysToLabels(ts.ExemplarLabels, pm.ExemplarLabels, dict)
 
-	if ts.sType == tHistogram {
+	if ts.Type == types.Histogram {
 		h := &histogram.Histogram{}
 		h.CounterResetHint = histogram.CounterResetHint(pm.Histogram.CounterResetHint)
 		h.Schema = pm.Histogram.Schema
@@ -414,8 +416,8 @@ func makeTS(tsVal int64, maxAgeSeconds int64, pm *cborsmetric, metricType series
 		h.NegativeSpans = spanToHistogramSpan(pm.Histogram.NegativeSpans)
 		h.NegativeBuckets = pm.Histogram.NegativeBuckets
 		h.Sum = pm.Value
-		ts.histogram = h
-	} else if ts.sType == tFloatHistogram {
+		ts.Histogram = h
+	} else if ts.Type == types.FloatHistogram {
 		h := &histogram.FloatHistogram{}
 		h.CounterResetHint = histogram.CounterResetHint(pm.Histogram.CounterResetHint)
 		h.Schema = pm.Histogram.Schema
@@ -427,7 +429,7 @@ func makeTS(tsVal int64, maxAgeSeconds int64, pm *cborsmetric, metricType series
 		h.NegativeSpans = spanToHistogramSpan(pm.Histogram.NegativeSpans)
 		h.NegativeBuckets = pm.Histogram.FloatNegativeBuckets
 		h.Sum = pm.Value
-		ts.floatHistogram = h
+		ts.FloatHistogram = h
 	}
 	return ts
 }

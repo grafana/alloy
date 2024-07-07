@@ -1,4 +1,4 @@
-package queue
+package filequeue
 
 import (
 	"fmt"
@@ -9,12 +9,6 @@ import (
 	"strings"
 	"sync"
 )
-
-type metricQueue interface {
-	Add(data []byte) (string, error)
-	Next(enc []byte) ([]byte, string, bool, bool)
-	Name() string
-}
 
 type filequeue struct {
 	mut       sync.RWMutex

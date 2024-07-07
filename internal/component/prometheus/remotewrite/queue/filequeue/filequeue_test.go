@@ -1,4 +1,4 @@
-package queue
+package filequeue
 
 import (
 	"fmt"
