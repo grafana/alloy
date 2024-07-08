@@ -10,6 +10,9 @@ internal API changes are not present.
 Unreleased
 ----------
 
+0.5.0 (2024-07-08)
+------------------
+
 ### Enhancements
 
 - Only utilize spec.internalTrafficPolicy in the Service if deploying to Kubernetes 1.26 or later. (@petewall)
