@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.self/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.self/
+aliases:
+  - ../prometheus.exporter.self/ # /docs/alloy/latest/reference/components/prometheus.exporter.self/
 description: Learn about prometheus.exporter.self
 title: prometheus.exporter.self
 ---

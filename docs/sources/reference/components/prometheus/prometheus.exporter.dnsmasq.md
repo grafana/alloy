@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.dnsmasq/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.dnsmasq/
+aliases:
+  - ../prometheus.exporter.dnsmasq/ # /docs/alloy/latest/reference/components/prometheus.exporter.dnsmasq/
 description: Learn about prometheus.exporter.dnsmasq
 title: prometheus.exporter.dnsmasq
 ---

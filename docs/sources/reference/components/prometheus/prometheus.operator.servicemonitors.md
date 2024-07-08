@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.operator.servicemonitors/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.operator.servicemonitors/
+aliases:
+  - ../prometheus.operator.servicemonitors/ # /docs/alloy/latest/reference/components/prometheus.operator.servicemonitors/
 description: Learn about prometheus.operator.servicemonitors
 title: prometheus.operator.servicemonitors
 ---

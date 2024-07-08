@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.consul/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.consul/
+aliases:
+  - ../prometheus.exporter.consul/ # /docs/alloy/latest/reference/components/prometheus.exporter.consul/
 description: Learn about prometheus.exporter.consul
 title: prometheus.exporter.consul
 ---

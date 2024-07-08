@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.statsd/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.statsd/
+aliases:
+  - ../prometheus.exporter.statsd/ # /docs/alloy/latest/reference/components/prometheus.exporter.statsd/
 description: Learn about prometheus.exporter.statsd
 title: prometheus.exporter.statsd
 ---

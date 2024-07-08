@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.mongodb/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.mongodb/
+aliases:
+  - ../prometheus.exporter.mongodb/ # /docs/alloy/latest/reference/components/prometheus.exporter.mongodb/
 description: Learn about prometheus.exporter.mongodb
 title: prometheus.exporter.mongodb
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.snmp/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.snmp/
+aliases:
+  - ../prometheus.exporter.snmp/ # /docs/alloy/latest/reference/components/prometheus.exporter.snmp/
 description: Learn about prometheus.exporter.snmp
 title: prometheus.exporter.snmp
 ---

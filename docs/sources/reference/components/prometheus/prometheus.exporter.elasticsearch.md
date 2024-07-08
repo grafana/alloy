@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.elasticsearch/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.elasticsearch/
+aliases:
+  - ../prometheus.exporter.elasticsearch/ # /docs/alloy/latest/reference/components/prometheus.exporter.elasticsearch/
 description: Learn about prometheus.exporter.elasticsearch
 title: prometheus.exporter.elasticsearch
 ---

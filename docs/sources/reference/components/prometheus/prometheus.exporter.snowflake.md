@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.snowflake/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.snowflake/
+aliases:
+  - ../prometheus.exporter.snowflake/ # /docs/alloy/latest/reference/components/prometheus.exporter.snowflake/
 description: Learn about prometheus.exporter.snowflake
 title: prometheus.exporter.snowflake
 ---

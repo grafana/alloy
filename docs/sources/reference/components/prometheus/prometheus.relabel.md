@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.relabel/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.relabel/
+aliases:
+  - ../prometheus.relabel/ # /docs/alloy/latest/reference/components/prometheus.relabel/
 description: Learn about prometheus.relabel
 title: prometheus.relabel
 ---

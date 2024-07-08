@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.github/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.github/
+aliases:
+  - ../prometheus.exporter.github/ # /docs/alloy/latest/reference/components/prometheus.exporter.github/
 description: Learn about prometheus.exporter.github
 title: prometheus.exporter.github
 ---

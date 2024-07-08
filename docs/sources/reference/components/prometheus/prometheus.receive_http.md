@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.receive_http/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.receive_http/
+aliases:
+  - ../prometheus.receive_http/ # /docs/alloy/latest/reference/components/prometheus.receive_http/
 description: Learn about prometheus.receive_http
 title: prometheus.receive_http
 ---

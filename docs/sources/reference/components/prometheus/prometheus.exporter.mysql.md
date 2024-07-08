@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.mysql/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.mysql/
+aliases:
+  - ../prometheus.exporter.mysql/ # /docs/alloy/latest/reference/components/prometheus.exporter.mysql/
 description: Learn about prometheus.exporter.mysql
 title: prometheus.exporter.mysql
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.operator.podmonitors/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.operator.podmonitors/
+aliases:
+  - ../prometheus.operator.podmonitors/ # /docs/alloy/latest/reference/components/prometheus.operator.podmonitors/
 description: Learn about prometheus.operator.podmonitors
 title: prometheus.operator.podmonitors
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.unix/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.unix/
+aliases:
+  - ../prometheus.exporter.unix/ # /docs/alloy/latest/reference/components/prometheus.exporter.unix/
 description: Learn about prometheus.exporter.unix
 title: prometheus.exporter.unix
 ---

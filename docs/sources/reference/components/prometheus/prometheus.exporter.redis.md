@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.redis/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.redis/
+aliases:
+  - ../prometheus.exporter.redis/ # /docs/alloy/latest/reference/components/prometheus.exporter.redis/
 description: Learn about prometheus.exporter.redis
 title: prometheus.exporter.redis
 ---

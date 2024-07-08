@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.memcached/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.memcached/
+aliases:
+  - ../prometheus.exporter.memcached/ # /docs/alloy/latest/reference/components/prometheus.exporter.memcached/
 description: Learn about prometheus.exporter.memcached
 title: prometheus.exporter.memcached
 ---

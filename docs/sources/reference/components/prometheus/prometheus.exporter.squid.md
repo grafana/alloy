@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.squid/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.squid/
+aliases:
+  - ../prometheus.exporter.squid/ # /docs/alloy/latest/reference/components/prometheus.exporter.squid/
 description: Learn about prometheus.exporter.squid
 title: prometheus.exporter.squid
 ---

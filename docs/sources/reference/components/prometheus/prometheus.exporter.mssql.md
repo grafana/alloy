@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.mssql/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.mssql/
+aliases:
+  - ../prometheus.exporter.mssql/ # /docs/alloy/latest/reference/components/prometheus.exporter.mssql/
 description: Learn about prometheus.exporter.mssql
 title: prometheus.exporter.mssql
 ---

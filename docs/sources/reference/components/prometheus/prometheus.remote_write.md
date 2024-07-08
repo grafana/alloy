@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.remote_write/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.remote_write/
+aliases:
+  - ../prometheus.remote_write/ # /docs/alloy/latest/reference/components/prometheus.remote_write/
 description: Learn about prometheus.remote_write
 title: prometheus.remote_write
 ---

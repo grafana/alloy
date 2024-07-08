@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.gcp/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.gcp/
+aliases:
+  - ../prometheus.exporter.gcp/ # /docs/alloy/latest/reference/components/prometheus.exporter.gcp/
 description: Learn about prometheus.exporter.gcp
 title: prometheus.exporter.gcp
 ---

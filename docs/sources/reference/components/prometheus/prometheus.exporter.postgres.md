@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.postgres/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.postgres/
+aliases:
+  - ../prometheus.exporter.postgres/ # /docs/alloy/latest/reference/components/prometheus.exporter.postgres/
 description: Learn about prometheus.exporter.postgres
 title: prometheus.exporter.postgres
 ---

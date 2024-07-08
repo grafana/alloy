@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.scrape/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.scrape/
+aliases:
+  - ../prometheus.scrape/ # /docs/alloy/latest/reference/components/prometheus.scrape/
 description: Learn about prometheus.scrape
 title: prometheus.scrape
 ---
