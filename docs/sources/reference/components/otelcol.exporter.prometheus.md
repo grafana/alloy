@@ -94,11 +94,12 @@ are forwarded to the `forward_to` argument.
 The following are dropped during the conversion process:
 
 * Metrics that use the delta aggregation temporality.
-  Prometheus does not support delta metrics natively.
-  If your {{< param "PRODUCT_NAME" >}} instance ingests delta OTLP metrics,
-  consider converting them to cumulative OTLP metrics using [otelcol.processor.deltatocumulative][] prior to using `otelcol.exporter.prometheus`.
+  {{< admonition type="note" >}}
+  Prometheus does not natively support delta metrics.
+  If your {{< param "PRODUCT_NAME" >}} instance ingests delta OTLP metrics, you can convert them to cumulative OTLP metrics with [`otelcol.processor.deltatocumulative`][otelcol.processor.deltatocumulative] before you use `otelcol.exporter.prometheus`.
 
-[otelcol.processor.deltatocumulative]: ../otelcol.processor.deltatocumulative
+  [otelcol.processor.deltatocumulative]: ../otelcol.processor.deltatocumulative
+  {{< /admonition >}}
 
 ## Component health
 
