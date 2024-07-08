@@ -14,11 +14,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/service"
-	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/ckit"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
@@ -27,25 +22,37 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 	"golang.org/x/net/http2"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service"
+	http_service "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/util"
 )
 
-// tokensPerNode is used to decide how many tokens each node should be given in
-// the hash ring. All nodes must use the same value, otherwise they will have
-// different views of the ring and assign work differently.
-//
-// Using 512 tokens strikes a good balance between distribution accuracy and
-// memory consumption. A cluster of 1,000 nodes with 512 tokens per node
-// requires 12MB for the hash ring.
-//
-// Distribution accuracy measures how close a node was to being responsible for
-// exactly 1/N keys during simulation. Simulation tests used a cluster of 10
-// nodes and hashing 100,000 random keys:
-//
-//	512 tokens per node: min 96.1%, median 99.9%, max 103.2% (stddev: 197.9 hashes)
-const tokensPerNode = 512
+const (
+	// ServiceName defines the name used for the cluster service.
+	ServiceName = "cluster"
 
-// ServiceName defines the name used for the cluster service.
-const ServiceName = "cluster"
+	// tokensPerNode is used to decide how many tokens each node should be given in
+	// the hash ring. All nodes must use the same value, otherwise they will have
+	// different views of the ring and assign work differently.
+	//
+	// Using 512 tokens strikes a good balance between distribution accuracy and
+	// memory consumption. A cluster of 1,000 nodes with 512 tokens per node
+	// requires 12MB for the hash ring.
+	//
+	// Distribution accuracy measures how close a node was to being responsible for
+	// exactly 1/N keys during simulation. Simulation tests used a cluster of 10
+	// nodes and hashing 100,000 random keys:
+	//
+	//	512 tokens per node: min 96.1%, median 99.9%, max 103.2% (stddev: 197.9 hashes)
+	tokensPerNode = 512
+
+	// maxPeersToLog is the maximum number of peers to log on info level. All peers are logged on debug level.
+	maxPeersToLog = 10
+)
 
 // Options are used to configure the cluster service. Options are constant for
 // the lifetime of the cluster service.
@@ -217,7 +224,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		for i, p := range peers {
 			names[i] = p.Name
 		}
-		level.Info(s.log).Log("msg", "peers changed", "new_peers", strings.Join(names, ","))
+		s.logPeers("peers changed", toStringSlice(peers))
 
 		// Notify all components about the clustering change.
 		components := component.GetAllComponents(host, component.InfoOptions{})
@@ -246,11 +253,17 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	peers, err := s.getPeers()
 	if err != nil {
-		return fmt.Errorf("failed to get peers to join: %w", err)
+		// We can continue here as we have a rejoin goroutine try again later.
+		level.Warn(s.log).Log("msg", "failed to get peers to join at startup", "err", err)
+		peers = nil
 	}
 
-	level.Info(s.log).Log("msg", "starting cluster node", "peers", strings.Join(peers, ","),
-		"advertise_addr", s.opts.AdvertiseAddress)
+	level.Info(s.log).Log(
+		"msg", "starting cluster node",
+		"peers_count", len(peers),
+		"peers", strings.Join(peers, ","),
+		"advertise_addr", s.opts.AdvertiseAddress,
+	)
 
 	if err := s.node.Start(peers); err != nil {
 		level.Warn(s.log).Log("msg", "failed to connect to peers; bootstrapping a new cluster", "err", err)
@@ -281,8 +294,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 						level.Warn(s.log).Log("msg", "failed to refresh list of peers", "err", err)
 						continue
 					}
+					s.logPeers("rejoining peers", peers)
 
-					level.Info(s.log).Log("msg", "rejoining peers", "peers", strings.Join(peers, ","))
 					if err := s.node.Start(peers); err != nil {
 						level.Error(s.log).Log("msg", "failed to rejoin list of peers", "err", err)
 						continue
@@ -305,6 +318,13 @@ func (s *Service) getPeers() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Debug level log all the peers for troubleshooting.
+	level.Debug(s.log).Log(
+		"msg", "discovered peers",
+		"peers_count", len(peers),
+		"peers", strings.Join(peers, ","),
+	)
 
 	// Here we return the entire list because we can't take a subset.
 	if s.opts.ClusterMaxJoinPeers == 0 || len(peers) < s.opts.ClusterMaxJoinPeers {
@@ -345,6 +365,15 @@ func (s *Service) Update(newConfig any) error {
 // Data returns an instance of [Cluster].
 func (s *Service) Data() any {
 	return &sharderCluster{sharder: s.sharder}
+}
+
+func (s *Service) logPeers(msg string, peers []string) {
+	// Truncate peers list on info level.
+	level.Info(s.log).Log(
+		"msg", msg,
+		"peers_count", len(peers),
+		"peers", util.JoinWithTruncation(peers, ",", maxPeersToLog, "..."),
+	)
 }
 
 // Component is a component which subscribes to clustering updates.
@@ -393,4 +422,12 @@ func (sc *sharderCluster) Lookup(key shard.Key, replicationFactor int, op shard.
 
 func (sc *sharderCluster) Peers() []peer.Peer {
 	return sc.sharder.Peers()
+}
+
+func toStringSlice[T any](slice []T) []string {
+	s := make([]string, 0, len(slice))
+	for _, p := range slice {
+		s = append(s, fmt.Sprintf("%v", p))
+	}
+	return s
 }
