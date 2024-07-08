@@ -251,7 +251,7 @@ steps:
 
 2. Find a way to detect and report usage of deprecated identifiers to a user.
 
-3. Add standard library usage to usage stats, so usage of deprecated
+3. Add standard library usage stats, so usage of deprecated
    identifiers can be tracked over time, allowing maintainers to make an
    informed decision for if they can be removed alongside a major release.
 
