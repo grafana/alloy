@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/remote.vault/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/remote/remote.vault/
+aliases:
+  - ../remote.vault/ # /docs/alloy/latest/reference/components/remote.vault/
 description: Learn about remote.vault
 title: remote.vault
 ---

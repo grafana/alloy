@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/remote.http/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/remote/remote.http/
+aliases:
+  - ../remote.http/ # /docs/alloy/latest/reference/components/remote.http/
 description: Learn about remote.http
 title: remote.http
 ---

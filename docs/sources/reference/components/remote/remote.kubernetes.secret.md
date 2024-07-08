@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/remote.kubernetes.secret/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/remote/remote.kubernetes.secret/
+aliases:
+  - ../remote.kubernetes.secret/ # /docs/alloy/latest/reference/components/remote.kubernetes.secret/
 description: Learn about remote.kubernetes.secret
 title: remote.kubernetes.secret
 ---

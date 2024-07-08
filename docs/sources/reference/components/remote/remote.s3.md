@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/remote.s3/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/remote/remote.s3/
+aliases:
+  - ../remote.s3/ # /docs/alloy/latest/reference/components/remote.s3/
 description: Learn about remote.s3
 title: remote.s3
 ---

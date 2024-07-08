@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/remote.kubernetes.configmap/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/remote/remote.kubernetes.configmap/
+aliases:
+  - ../remote.kubernetes.configmap/ # /docs/alloy/latest/reference/components/remote.kubernetes.configmap/
 description: Learn about remote.kubernetes.configmap
 title: remote.kubernetes.configmap
 ---
