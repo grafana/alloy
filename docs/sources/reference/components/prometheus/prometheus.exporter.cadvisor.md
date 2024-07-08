@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.cadvisor/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.cadvisor/
+aliases:
+  - ../prometheus.exporter.cadvisor/ # /docs/alloy/latest/reference/components/prometheus.exporter.cadvisor/
 description: Learn about the prometheus.exporter.cadvisor
 title: prometheus.exporter.cadvisor
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.catchpoint/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.catchpoint/
+aliases:
+  - ../prometheus.exporter.catchpoint/ # /docs/alloy/latest/reference/components/prometheus.exporter.catchpoint/
 description: Learn about prometheus.exporter.catchpoint
 title: prometheus.exporter.catchpoint
 ---

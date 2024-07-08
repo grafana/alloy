@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.blackbox/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.blackbox/
+aliases:
+  - ../prometheus.exporter.blackbox/ # /docs/alloy/latest/reference/components/prometheus.exporter.blackbox/
 description: Learn about prometheus.exporter.blackbox
 title: prometheus.exporter.blackbox
 ---

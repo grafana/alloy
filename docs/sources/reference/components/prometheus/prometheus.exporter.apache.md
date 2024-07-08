@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.apache/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.apache/
+aliases:
+  - ../prometheus.exporter.apache/ # /docs/alloy/latest/reference/components/prometheus.exporter.apache/
 description: Learn about prometheus.exporter.apache
 title: prometheus.exporter.apache
 ---

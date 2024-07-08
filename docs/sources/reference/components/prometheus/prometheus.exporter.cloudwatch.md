@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.cloudwatch/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.cloudwatch/
+aliases:
+  - ../prometheus.exporter.cloudwatch/ # /docs/alloy/latest/reference/components/prometheus.exporter.cloudwatch/
 description: Learn about prometheus.exporter.cloudwatch
 title: prometheus.exporter.cloudwatch
 ---

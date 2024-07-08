@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.azure/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.azure/
+aliases:
+  - ../prometheus.exporter.azure/ # /docs/alloy/latest/reference/components/prometheus.exporter.azure/
 description: Learn about prometheus.exporter.azure
 title: prometheus.exporter.azure
 ---
