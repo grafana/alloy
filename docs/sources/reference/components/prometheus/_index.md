@@ -7,6 +7,6 @@ weight: 100
 
 # prometheus
 
-This section contains reference documentation for the prometheus components.
+This section contains reference documentation for the `prometheus` components.
 
 {{< section >}}

@@ -7,6 +7,6 @@ weight: 100
 
 # local
 
-This section contains reference documentation for the local components.
+This section contains reference documentation for the `local` components.
 
 {{< section >}}

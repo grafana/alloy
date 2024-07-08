@@ -7,6 +7,6 @@ weight: 100
 
 # faro
 
-This section contains reference documentation for the faro components.
+This section contains reference documentation for the `faro` components.
 
 {{< section >}}

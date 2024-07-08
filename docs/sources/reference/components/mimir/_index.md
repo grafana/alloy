@@ -7,6 +7,6 @@ weight: 100
 
 # mimir
 
-This section contains reference documentation for the mimir components.
+This section contains reference documentation for the `mimir` components.
 
 {{< section >}}

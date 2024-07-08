@@ -7,6 +7,6 @@ weight: 100
 
 # remote
 
-This section contains reference documentation for the remote components.
+This section contains reference documentation for the `remote` components.
 
 {{< section >}}

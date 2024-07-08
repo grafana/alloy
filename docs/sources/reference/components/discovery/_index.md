@@ -7,6 +7,6 @@ weight: 100
 
 # discovery
 
-This section contains reference documentation for the discovery components.
+This section contains reference documentation for the `discovery` components.
 
 {{< section >}}

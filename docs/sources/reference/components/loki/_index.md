@@ -7,6 +7,6 @@ weight: 100
 
 # loki
 
-This section contains reference documentation for the loki components.
+This section contains reference documentation for the `loki` components.
 
 {{< section >}}

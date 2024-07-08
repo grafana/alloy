@@ -7,6 +7,6 @@ weight: 100
 
 # pyroscope
 
-This section contains reference documentation for the pyroscope components.
+This section contains reference documentation for the `pyroscope` components.
 
 {{< section >}}

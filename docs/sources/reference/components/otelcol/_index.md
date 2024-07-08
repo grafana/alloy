@@ -7,6 +7,6 @@ weight: 100
 
 # otelcol
 
-This section contains reference documentation for the otelcol components.
+This section contains reference documentation for the `otelcol` components.
 
 {{< section >}}
