@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/loki.source.docker/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.docker/
 aliases:
   - ../loki.source.docker/ # /docs/alloy/latest/reference/components/loki.source.docker/
 description: Learn about loki.source.docker

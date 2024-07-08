@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.host_info/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.connector.host_info/
 aliases:
   - ../otelcol.connector.host_info/ # /docs/alloy/latest/reference/components/otelcol.connector.host_info/
 description: Learn about otelcol.connector.host_info
