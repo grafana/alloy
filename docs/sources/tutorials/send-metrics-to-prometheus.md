@@ -39,6 +39,8 @@ prometheus.scrape "scrape_metrics" {
   forward_to      = [prometheus.relabel.filter_metrics.receiver]
   scrape_interval = "10s"
 }
+```
+
 This configuration defines a Prometheus exporter for a local system from which the metrics will be collected. 
 
 It also creates a [`prometheus.scrape`][prometheus.scrape] component named `scrape_metrics` which does the following:
@@ -64,6 +66,7 @@ prometheus.relabel "filter_metrics" {
   
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
+```
 
 1. `prometheus.relabel` is a component most commonly used to filter Prometheus metrics or standardize the label set passed to one or more downstream receivers. 
 1. In this example, you create a `prometheus.relabel` component named “filter_metrics”. 
@@ -90,6 +93,8 @@ prometheus.remote_write "metrics_service" {
         // }
     }
 }
+```
+
 This last component creates a [prometheus.remote_write][prometheus.remote_write] component named `metrics_service` that points to `http://localhost:9090/api/v1/write`.
 
 This completes the simple configuration pipeline.
