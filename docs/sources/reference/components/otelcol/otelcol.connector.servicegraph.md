@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.servicegraph/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.connector.servicegraph/
+aliases:
+  - ../otelcol.connector.servicegraph/ # /docs/alloy/latest/reference/components/otelcol.connector.servicegraph/
 description: Learn about otelcol.connector.servicegraph
 title: otelcol.connector.servicegraph
 ---

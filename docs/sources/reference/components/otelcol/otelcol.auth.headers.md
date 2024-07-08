@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.auth.headers/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.auth.headers/
+aliases:
+  - ../otelcol.auth.headers/ # /docs/alloy/latest/reference/components/otelcol.auth.headers/
 description: Learn about otelcol.auth.headers
 title: otelcol.auth.headers
 ---

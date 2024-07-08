@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.logging/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.logging/
+aliases:
+  - ../otelcol.exporter.logging/ # /docs/alloy/latest/reference/components/otelcol.exporter.logging/
 description: Learn about otelcol.exporter.logging
 title: otelcol.exporter.logging
 ---

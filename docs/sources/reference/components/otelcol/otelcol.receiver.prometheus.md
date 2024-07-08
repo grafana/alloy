@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.prometheus/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.prometheus/
+aliases:
+  - ../otelcol.receiver.prometheus/ # /docs/alloy/latest/reference/otelcol.receiver.prometheus/
 description: Learn about otelcol.receiver.prometheus
 title: otelcol.receiver.prometheus
 ---

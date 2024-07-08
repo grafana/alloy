@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.resourcedetection/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.resourcedetection/
+aliases:
+  - ../otelcol.processor.resourcedetection/ # /docs/alloy/latest/reference/otelcol.processor.resourcedetection/
 title: otelcol.processor.resourcedetection
 description: Learn about otelcol.processor.resourcedetection
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.awss3/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.awss3/
+aliases:
+  - ../otelcol.exporter.awss3/ # /docs/alloy/latest/reference/components/otelcol.exporter.awss3/
 description: Learn about otelcol.exporter.awss3
 title: otelcol.exporter.awss3
 ---

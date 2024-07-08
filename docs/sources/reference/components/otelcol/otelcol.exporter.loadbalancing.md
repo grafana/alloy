@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.loadbalancing/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.loadbalancing/
+aliases:
+  - ../otelcol.exporter.loadbalancing/ # /docs/alloy/latest/reference/components/otelcol.exporter.loadbalancing/
 description: Learn about otelcol.exporter.loadbalancing
 title: otelcol.exporter.loadbalancing
 ---

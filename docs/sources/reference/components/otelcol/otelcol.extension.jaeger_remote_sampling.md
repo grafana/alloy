@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.extension.jaeger_remote_sampling/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.extension.jaeger_remote_sampling/
+aliases:
+  - ../otelcol.extension.jaeger_remote_sampling/ # /docs/alloy/latest/reference/otelcol.extension.jaeger_remote_sampling/
 description: Learn about otelcol.extension.jaeger_remote_sampling
 title: otelcol.extension.jaeger_remote_sampling
 ---

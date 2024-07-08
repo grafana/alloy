@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.zipkin/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.zipkin/
+aliases:
+  - ../otelcol.receiver.zipkin/ # /docs/alloy/latest/reference/otelcol.receiver.zipkin/
 description: Learn about otelcol.receiver.zipkin
 title: otelcol.receiver.zipkin
 ---

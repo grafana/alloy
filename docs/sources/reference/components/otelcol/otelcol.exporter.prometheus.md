@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.prometheus/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.prometheus/
+aliases:
+  - ../otelcol.exporter.prometheus/ # /docs/alloy/latest/reference/components/otelcol.exporter.prometheus/
 description: Learn about otelcol.exporter.prometheus
 title: otelcol.exporter.prometheus
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.datadog/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.datadog/
+aliases:
+  - ../otelcol.receiver.datadog/ # /docs/alloy/latest/reference/otelcol.receiver.datadog/
 description: Learn about otelcol.receiver.datadog
 title: otelcol.receiver.datadog
 ---

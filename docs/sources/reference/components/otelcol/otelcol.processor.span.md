@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.span/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.span/
+aliases:
+  - ../otelcol.processor.span/ # /docs/alloy/latest/reference/otelcol.processor.span/
 description: Learn about otelcol.processor.span
 title: otelcol.processor.span
 ---

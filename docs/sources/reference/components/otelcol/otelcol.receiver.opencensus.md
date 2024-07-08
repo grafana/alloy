@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.opencensus/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.opencensus/
+aliases:
+  - ../otelcol.receiver.opencensus/ # /docs/alloy/latest/reference/otelcol.receiver.opencensus/
 description: Learn about otelcol.receiver.opencensus
 title: otelcol.receiver.opencensus
 ---

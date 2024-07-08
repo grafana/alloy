@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.jaeger/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.jaeger/
+aliases:
+  - ../otelcol.receiver.jaeger/ # /docs/alloy/latest/reference/otelcol.receiver.jaeger/
 description: Learn about otelcol.receiver.jaeger
 title: otelcol.receiver.jaeger
 ---

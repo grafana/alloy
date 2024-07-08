@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.file_stats/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.file_stats/
+aliases:
+  - ../otelcol.receiver.file_stats/ # /docs/alloy/latest/reference/otelcol.receiver.file_stats/
 title: otelcol.receiver.file_stats
 description: Learn about otelcol.receiver.file_stats
 ---

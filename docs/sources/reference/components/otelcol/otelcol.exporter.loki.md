@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.loki/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.loki/
+aliases:
+  - ../otelcol.exporter.loki/ # /docs/alloy/latest/reference/components/otelcol.exporter.loki/
 description: Learn about otelcol.exporter.loki
 title: otelcol.exporter.loki
 ---

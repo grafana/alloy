@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.auth.bearer/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.auth.bearer/
+aliases:
+  - ../otelcol.auth.bearer/ # /docs/alloy/latest/reference/components/otelcol.auth.bearer/
 description: Learn about otelcol.auth.bearer
 title: otelcol.auth.bearer
 ---

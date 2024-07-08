@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.transform/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.transform/
+aliases:
+  - ../otelcol.processor.transform/ # /docs/alloy/latest/reference/otelcol.processor.transform/
 description: Learn about otelcol.processor.transform
 title: otelcol.processor.transform
 ---

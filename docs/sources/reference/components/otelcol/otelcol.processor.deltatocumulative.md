@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.deltatocumulative/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.deltatocumulative/
+aliases:
+  - ../otelcol.processor.deltatocumulative/ # /docs/alloy/latest/reference/otelcol.processor.deltatocumulative/
 description: Learn about otelcol.processor.deltatocumulative
 title: otelcol.processor.deltatocumulative
 ---

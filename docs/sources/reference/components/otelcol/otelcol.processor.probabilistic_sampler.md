@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.probabilistic_sampler/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.probabilistic_sampler/
+aliases:
+  - ../otelcol.processor.probabilistic_sampler/ # /docs/alloy/latest/reference/otelcol.processor.probabilistic_sampler/
 description: Learn about telcol.processor.probabilistic_sampler
 title: otelcol.processor.probabilistic_sampler
 ---

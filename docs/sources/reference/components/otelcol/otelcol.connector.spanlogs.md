@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.spanlogs/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.connector.spanlogs/
+aliases:
+  - ../otelcol.connector.spanlogs/ # /docs/alloy/latest/reference/components/otelcol.connector.spanlogs/
 description: Learn about otelcol.connector.spanlogs
 title: otelcol.connector.spanlogs
 ---

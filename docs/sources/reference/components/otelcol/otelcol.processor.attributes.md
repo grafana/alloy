@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.attributes/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.attributes/
+aliases:
+  - ../otelcol.processor.attributes/ # /docs/alloy/latest/reference/otelcol.processor.attributes/
 description: Learn about otelcol.processor.attributes
 title: otelcol.processor.attributes
 ---

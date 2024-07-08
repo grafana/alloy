@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.otlphttp/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.otlphttp/
+aliases:
+  - ../otelcol.exporter.otlphttp/ # /docs/alloy/latest/reference/components/otelcol.exporter.otlphttp/
 description: Learn about otelcol.exporter.otlphttp
 title: otelcol.exporter.otlphttp
 ---

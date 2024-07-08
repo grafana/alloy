@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.k8sattributes/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.k8sattributes/
+aliases:
+  - ../otelcol.processor.k8sattributes/ # /docs/alloy/latest/reference/otelcol.processor.k8sattributes/
 description: Learn about otelcol.processor.k8sattributes
 title: otelcol.processor.k8sattributes
 ---

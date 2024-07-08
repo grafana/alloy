@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.batch/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/
+aliases:
+  - ../otelcol.processor.batch/ # /docs/alloy/latest/reference/otelcol.processor.batch/
 description: Learn about otelcol.processor.batch
 title: otelcol.processor.batch
 ---

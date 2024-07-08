@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.connector.spanmetrics/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.connector.spanmetrics/
+aliases:
+  - ../otelcol.connector.spanmetrics/ # /docs/alloy/latest/reference/components/otelcol.connector.spanmetrics/
 description: Learn about otelcol.connector.spanmetrics
 title: otelcol.connector.spanmetrics
 ---

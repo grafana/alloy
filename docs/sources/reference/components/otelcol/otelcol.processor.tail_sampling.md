@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.tail_sampling/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.tail_sampling/
+aliases:
+  - ../otelcol.processor.tail_sampling/ # /docs/alloy/latest/reference/otelcol.processor.tail_sampling/
 description: Learn about otelcol.processor.tail_sampling
 title: otelcol.processor.tail_sampling
 ---

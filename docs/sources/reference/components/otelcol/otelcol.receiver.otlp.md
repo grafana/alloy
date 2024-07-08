@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.otlp/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.otlp/
+aliases:
+  - ../otelcol.receiver.otlp/ # /docs/alloy/latest/reference/otelcol.receiver.otlp/
 description: Learn about otelcol.receiver.otlp
 title: otelcol.receiver.otlp
 ---

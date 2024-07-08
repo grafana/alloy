@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.filter/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.filter/
+aliases:
+  - ../otelcol.processor.filter/ # /docs/alloy/latest/reference/otelcol.processor.filter/
 description: Learn about otelcol.processor.filter
 title: otelcol.processor.filter
 ---

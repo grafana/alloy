@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.kafka/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.kafka/
+aliases:
+  - ../otelcol.exporter.kafka/ # /docs/alloy/latest/reference/components/otelcol.exporter.kafka/
 description: Learn about otelcol.exporter.kafka
 title: otelcol.exporter.kafka
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.auth.sigv4/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.auth.sigv4/
+aliases:
+  - ../otelcol.auth.sigv4/ # /docs/alloy/latest/reference/components/otelcol.auth.sigv4/
 description: Learn about otelcol.auth.sigv4
 title: otelcol.auth.sigv4
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.receiver.vcenter/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.vcenter/
+aliases:
+  - ../otelcol.receiver.vcenter/ # /docs/alloy/latest/reference/otelcol.receiver.vcenter/
 title: otelcol.receiver.vcenter
 description: Learn about otelcol.receiver.vcenter
 ---

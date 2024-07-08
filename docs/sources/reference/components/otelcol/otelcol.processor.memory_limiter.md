@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.processor.memory_limiter/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.memory_limiter/
+aliases:
+  - ../otelcol.processor.memory_limiter/ # /docs/alloy/latest/reference/otelcol.processor.memory_limiter/
 description: Learn about otelcol.processor.memory_limiter
 title: otelcol.processor.memory_limiter
 ---
