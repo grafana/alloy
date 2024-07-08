@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/collect/opentelemetry-to-lgtm-stack/
 aliases:
-  - ../tasks/opentelemetry-to-lgtm-stack/ # /docs/alloy/latest/tasks/opentelemetry-to-lgtm-stack/
+  - ../tasks/collect-opentelemetry-to-lgtm-stack/ # /docs/alloy/latest/tasks/collect-opentelemetry-to-lgtm-stack/
 description: Learn how to collect OpenTelemetry data and forward it to the Grafana stack
 menuTitle: Collect OpenTelemetry data and forward to Grafana
 title: Collect OpenTelemetry data and forward to Grafana
@@ -339,7 +339,7 @@ You can check the pipeline graphically by visiting [http://localhost:12345/graph
 [Grafana Cloud Portal]: https://grafana.com/docs/grafana-cloud/account-management/cloud-portal#your-grafana-cloud-stack
 [Prometheus Remote Write]: https://prometheus.io/docs/operating/integrations/#remote-endpoints-and-storage
 [Grafana Mimir]: https://grafana.com/oss/mimir/
-[Collect open telemetry data]: ../collect-opentelemetry-data/
+[Collect open telemetry data]: ../opentelemetry-data/
 [Components]: ../../get-started/components/
 [loki.write]: ../../reference/components/loki.write/
 [otelcol.auth.basic]: ../../reference/components/otelcol.auth.basic/
