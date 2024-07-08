@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope.write/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.write/
+aliases:
+  - ../pyroscope.write/ # /docs/alloy/latest/reference/components/pyroscope.write/
 description: Learn about pyroscope.write
 title: pyroscope.write
 ---

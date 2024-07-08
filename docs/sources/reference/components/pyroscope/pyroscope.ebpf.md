@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope.ebpf/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.ebpf/
+aliases:
+  - ../pyroscope.ebpf/ # /docs/alloy/latest/reference/components/pyroscope.ebpf/
 description: Learn about pyroscope.ebpf
 title: pyroscope.ebpf
 ---

@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope.java/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.java/
+aliases:
+  - ../pyroscope.java/ # /docs/alloy/latest/reference/components/pyroscope.java/
 description: Learn about pyroscope.java
 title: pyroscope.java
 ---

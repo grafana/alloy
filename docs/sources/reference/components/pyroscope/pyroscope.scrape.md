@@ -1,5 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope.scrape/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.scrape/
+aliases:
+  - ../pyroscope.scrape/ # /docs/alloy/latest/reference/components/pyroscope.scrape/
 description: Learn about pyroscope.scrape
 title: pyroscope.scrape
 ---
