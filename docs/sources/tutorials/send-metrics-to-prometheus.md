@@ -39,6 +39,8 @@ prometheus.scrape "scrape_metrics" {
   forward_to      = [prometheus.relabel.filter_metrics.receiver]
   scrape_interval = "10s"
 }
+```
+
 This configuration defines a Prometheus exporter for a local system from which the metrics will be collected. 
 
 It also creates a [`prometheus.scrape`][prometheus.scrape] component named `scrape_metrics` which does the following:
@@ -54,6 +56,7 @@ Filtering non-essential metrics before sending them to a data source can help yo
 The following example demonstrates filtering out or dropping metrics before sending them to Prometheus. 
 
 Paste this component next in your configuration file:
+
 ```alloy
 prometheus.relabel "filter_metrics" {
   rule {
@@ -64,6 +67,7 @@ prometheus.relabel "filter_metrics" {
   
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
+```
 
 1. `prometheus.relabel` is a component most commonly used to filter Prometheus metrics or standardize the label set passed to one or more downstream receivers. 
 1. In this example, you create a `prometheus.relabel` component named “filter_metrics”. 
@@ -90,6 +94,8 @@ prometheus.remote_write "metrics_service" {
         // }
     }
 }
+```
+
 This last component creates a [prometheus.remote_write][prometheus.remote_write] component named `metrics_service` that points to `http://localhost:9090/api/v1/write`.
 
 This completes the simple configuration pipeline.
@@ -121,6 +127,7 @@ sudo cp config.alloy /etc/alloy/config.alloy
 {{< /code >}}
 
 Finally, call the reload endpoint to notify {{< param "PRODUCT_NAME" >}} to the configuration change without the need for restarting the system service.
+
 ```bash
     curl -X POST http://localhost:12345/-/reload
 ```
