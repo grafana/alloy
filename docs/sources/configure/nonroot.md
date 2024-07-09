@@ -47,4 +47,4 @@ However, if there was a bug in the Linux kernel that allowed Docker containers t
 [image]: https://hub.docker.com/r/grafana/alloy
 [beyla.ebpf]: ../../reference/components/beyla.ebpf
 [security context]: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
-[Grafana Helm chart]: ../configure-kubernetes/#configure-the-helm-chart
+[Grafana Helm chart]: ../../configure/kubernetes/#configure-the-helm-chart
