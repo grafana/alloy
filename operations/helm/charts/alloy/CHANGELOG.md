@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Flexible validation of StatefulSet deployment type for better integration with Gatekeeper. (@hainenber)
+
 0.5.0 (2024-07-08)
 ------------------
 

@@ -1,4 +1,5 @@
-{{- if eq .Values.controller.type "statefulset" }}
+{{- $sts := list "StatefulSet" "statefulset" -}}
+{{- if has .Values.controller.type $sts }}
 {{- if .Values.enableStatefulSetAutoDeletePVC }}
 {{- fail "Value 'enableStatefulSetAutoDeletePVC' should be nested inside 'controller' options." }}
 {{- end }}
