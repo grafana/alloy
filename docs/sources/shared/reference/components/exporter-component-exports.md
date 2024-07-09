@@ -14,5 +14,5 @@ For example, the `targets` can either be passed to a `discovery.relabel` compone
 
 The exported targets use the configured [in-memory traffic][] address specified by the [run command][].
 
-[in-memory traffic]: ../../../concepts/component_controller/#in-memory-traffic
-[run command]: ../../../reference/cli/run/
+[in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
+[run command]: ../../../cli/run/
