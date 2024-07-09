@@ -23,7 +23,7 @@ func init() {
 
 func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
 	a := args.(Arguments)
-	exporterConfig, err := ConvertToYACE(a)
+	exporterConfig, err := ConvertToYACE(a, opts.Logger)
 	if err != nil {
 		return nil, "", fmt.Errorf("invalid cloudwatch exporter configuration: %w", err)
 	}
@@ -31,8 +31,10 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 	fipsEnabled := !a.FIPSDisabled
 
 	if a.DecoupledScrape.Enabled {
-		return cloudwatch_exporter.NewDecoupledCloudwatchExporter(opts.ID, opts.Logger, exporterConfig, a.DecoupledScrape.ScrapeInterval, fipsEnabled, a.Debug), getHash(a), nil
+		exp, err := cloudwatch_exporter.NewDecoupledCloudwatchExporter(opts.ID, opts.Logger, exporterConfig, a.DecoupledScrape.ScrapeInterval, fipsEnabled, a.Debug, a.UseAWSSDKVersion2)
+		return exp, getHash(a), err
 	}
 
-	return cloudwatch_exporter.NewCloudwatchExporter(opts.ID, opts.Logger, exporterConfig, fipsEnabled, a.Debug), getHash(a), nil
+	exp, err := cloudwatch_exporter.NewCloudwatchExporter(opts.ID, opts.Logger, exporterConfig, fipsEnabled, a.Debug, a.UseAWSSDKVersion2)
+	return exp, getHash(a), err
 }

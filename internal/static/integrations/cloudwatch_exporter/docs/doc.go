@@ -61,7 +61,7 @@ func generateServicesDocSection() string {
 	var sb strings.Builder
 	for _, supportedSvc := range yaceConf.SupportedServices {
 		sb.WriteString(
-			fmt.Sprintf("- Namespace: `%s` or Alias: `%s`\n", supportedSvc.Namespace, supportedSvc.Alias),
+			fmt.Sprintf("- Namespace: `%s`\n", supportedSvc.Namespace),
 		)
 	}
 	doc := strings.Replace(docTemplate, servicesListReplacement, sb.String(), 1)
