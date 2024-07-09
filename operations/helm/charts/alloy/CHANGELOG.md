@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add PodDisruptionBudget to the Helm chart. (@itspooya)
+
 0.5.0 (2024-07-08)
 ------------------
 
