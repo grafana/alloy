@@ -22,7 +22,7 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 Multiple `otelcol.exporter.logging` components can be specified by giving them
 different labels.
 
-[logging config block]: ../../config-blocks/logging/
+[logging config block]: ../../../config-blocks/logging/
 
 ## Usage
 

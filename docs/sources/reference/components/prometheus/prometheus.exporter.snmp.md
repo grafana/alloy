@@ -327,8 +327,8 @@ The YAML file in this example looks like this:
 ```
 
 [scrape]: ../prometheus.scrape/
-[file]: ../local.file/
-[disc]: ../discovery.file/
+[file]: ../../local/local.file/
+[disc]: ../../discovery/discovery.file/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

@@ -31,7 +31,7 @@ in Kubernetes in order for {{< param "PRODUCT_NAME" >}} to access it via the Kub
 of a cluster of {{< param "PRODUCT_NAME" >}} instances, only a single instance from the cluster
 will update rules using the Mimir API.
 
-[clustered mode]: ../../../concepts/clustering/
+[clustered mode]: ../../../../get-started/clustering/
 {{< /admonition >}}
 
 [Kubernetes label selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors

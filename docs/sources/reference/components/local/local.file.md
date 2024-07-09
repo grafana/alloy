@@ -34,7 +34,7 @@ Name             | Type       | Description                                     
 `poll_frequency` | `duration` | How often to poll for file changes                 | `"1m"`       | no
 `is_secret`      | `bool`     | Marks the file as containing a [secret][]          | `false`      | no
 
-[secret]: ../../../concepts/configuration-syntax/expressions/types_and_values/#secrets
+[secret]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#secrets
 
 {{< docs/shared lookup="reference/components/local-file-arguments-text.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

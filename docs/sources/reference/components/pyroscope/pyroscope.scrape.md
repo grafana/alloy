@@ -30,7 +30,7 @@ The scraped performance profiles can be forwarded to components such as `pyrosco
 
 Multiple `pyroscope.scrape` components can be specified by giving them different labels.
 
-[debug UI]: ../../../tasks/debug/
+[debug UI]: ../../../../troubleshoot/debug/
 
 ## Usage
 
@@ -383,7 +383,7 @@ When clustering mode is enabled, all {{< param "PRODUCT_NAME" >}} instances part
 
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, this block is a no-op.
 
-[using clustering]: ../../../concepts/clustering/
+[using clustering]: ../../../../get-started/clustering/
 
 ## Common configuration
 

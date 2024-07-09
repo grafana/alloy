@@ -128,7 +128,7 @@ nonsensitive(remote.kubernetes.secret.LABEL.data.KEY_NAME)
 
 Using `nonsensitive` allows for using the exports of `remote.kubernetes.secret` for attributes in components that do not support secrets.
 
-[nonsensitive]: ../../stdlib/nonsensitive/
+[nonsensitive]: ../../../stdlib/nonsensitive/
 
 ## Component health
 

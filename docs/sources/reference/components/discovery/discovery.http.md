@@ -30,7 +30,7 @@ Example response body:
 
 It is possible to use additional fields in the JSON to pass parameters to [prometheus.scrape][] such as the `metricsPath` and `scrape_interval`.
 
-[prometheus.scrape]: ../prometheus.scrape/#technical-details
+[prometheus.scrape]: ../../prometheus/prometheus.scrape/#technical-details
 
 As an example, the following will provide a target with a custom `metricsPath`, scrape interval, and timeout value:
 

@@ -167,7 +167,7 @@ Name                 | Type       | Description                                 
 `max_read_frequency` | `duration` | Maximum backoff time in the backup read mechanism.                                                                 | `"1s"`    | no
 `drain_timeout`      | `duration` | Maximum time the WAL drain procedure can take, before being forcefully stopped.                                    | `"30s"`   | no
 
-[run]: ../../cli/run/
+[run]: ../../../cli/run/
 
 ## Exported fields
 

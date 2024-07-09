@@ -186,7 +186,7 @@ fully consistent like hashmod sharding is).
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op, and
 `prometheus.operator.probes` scrapes every target it receives in its arguments.
 
-[clustered mode]: ../../cli/run/#clustering
+[clustered mode]: ../../../cli/run/#clustering
 
 ## Exported fields
 

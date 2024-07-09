@@ -283,7 +283,7 @@ Some values in the {{< param "PRODUCT_NAME" >}} syntax strings are [escaped][]:
 * `\` is escaped with `\\`
 * `"` is escaped with `\"`
 
-[escaped]: ../../../concepts/configuration-syntax/expressions/types_and_values/#strings
+[escaped]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#strings
 
 
 [OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.85.0/pkg/ottl/README.md

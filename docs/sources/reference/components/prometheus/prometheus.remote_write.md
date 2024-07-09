@@ -577,5 +577,5 @@ Refer to the linked documentation for more details.
 
 [snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)
 [WAL block]: #wal-block
-[Stop]: ../../../get-started
-[run]: ../../cli/run/
+[Stop]: ../../../../set-up/run/
+[run]: ../../../cli/run/

@@ -174,7 +174,7 @@ fully consistent like hashmod sharding is).
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and
 `prometheus.scrape` scrapes every target it receives in its arguments.
 
-[using clustering]: ../../../concepts/clustering/
+[using clustering]: ../../../../get-started/clustering/
 
 ## Exported fields
 
@@ -277,8 +277,8 @@ The`scrape_classic_histograms` argument controls whether the component should
 also scrape the 'classic' histogram equivalent of a native histogram, if it is
 present.
 
-[in-memory traffic]: ../../../concepts/component_controller/#in-memory-traffic
-[run command]: ../../cli/run/
+[in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
+[run command]: ../../../cli/run/
 
 ## Example
 

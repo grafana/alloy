@@ -161,7 +161,7 @@ The data path is inside the directory configured by the `--storage.path` [comman
 In Grafana Agent Static's [eventhandler integration][eventhandler-integration], a `cache_path` argument is used to configure a positions file.
 In {{< param "PRODUCT_NAME" >}}, this argument is no longer necessary.
 
-[cmd-args]: ../../cli/run/
+[cmd-args]: ../../../cli/run/
 [eventhandler-integration]: https://grafana.com/docs/agent/latest/static/configuration/integrations/integrations-next/eventhandler-config/
 
 ## Example

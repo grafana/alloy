@@ -43,7 +43,7 @@ Name             | Type       | Description                                     
 `path` must include a full path to a file. This does not support reading of directories.
 {{< /admonition >}}
 
-[secret]: ../../../concepts/configuration-syntax/expressions/types_and_values/#secrets
+[secret]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#secrets
 
 ## Blocks
 

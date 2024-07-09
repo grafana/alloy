@@ -240,8 +240,8 @@ Replace the following:
   * If authentication is required to send logs to the Loki server, refer to the
     documentation of [otelcol.exporter.otlp][] for more information.
 
-[loki.write]: ../loki.write/
-[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
+[loki.write]: ../../loki/loki.write/
+[otelcol.exporter.otlp]: ../../otelcol/otelcol.exporter.otlp/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

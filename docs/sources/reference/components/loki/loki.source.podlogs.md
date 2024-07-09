@@ -231,7 +231,7 @@ cluster to distribute the load of log collection between all cluster nodes.
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and
 `loki.source.podlogs` collects logs based on every PodLogs resource discovered.
 
-[using clustering]: ../../../concepts/clustering/
+[using clustering]: ../../../../get-started/clustering/
 
 ## Exported fields
 

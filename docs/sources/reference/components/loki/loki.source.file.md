@@ -150,7 +150,7 @@ The data path is inside the directory configured by the `--storage.path` [comman
 If a file is removed from the `targets` list, its positions file entry is also removed.
 When it's added back on, `loki.source.file` starts reading it from the beginning.
 
-[cmd-args]: ../../cli/run/
+[cmd-args]: ../../../cli/run/
 
 ## Examples
 

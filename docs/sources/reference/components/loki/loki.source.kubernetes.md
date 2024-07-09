@@ -145,7 +145,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 `loki.source.kubernetes` collects logs from every target it receives in its
 arguments.
 
-[using clustering]: ../../../concepts/clustering/
+[using clustering]: ../../../../get-started/clustering/
 
 ## Exported fields
 
