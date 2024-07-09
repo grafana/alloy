@@ -377,8 +377,8 @@ github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.0 h1:MaTOKZE
 github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.0/go.mod h1:BRuiq4shgrokCvNWSXVHz1hhH5sNSLW0ZruTV0jiNMQ=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.49.0 h1:VfU15izXQjz4m9y1DkbY79iylIiuPwWtrram4cSpWEI=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.49.0/go.mod h1:1o/W6JFUuREj2ExoQ21vHJgO7wakvjhol91M9eknFgs=
-github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.27.0 h1:64jRTsqBcIqlA4N7ZFYy+ysGPE7Rz/nJgU2fwv2cymk=
-github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.27.0/go.mod h1:JsJDZFHwLGZu6dxhV9EV1gJrMnCeE4GEXubSZA59xdA=
+github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.26.0 h1:dPCRgAL4WD9tSMaDglRNGOiAtSTjkwNiUW5GDpWFfHA=
+github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.26.0/go.mod h1:4Ae1NCLK6ghmjzd45Tc33GgCKhUWD2ORAlULtMO1Cbs=
 github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.29.10 h1:MNECBvcQiQxwBsVwZKShXRc1mrYawtj39jIxPXWeAQY=
 github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.29.10/go.mod h1:/tT3hQYAj8aGFmy4hYqeR8I5R1uFVaIlHwj6jNU+ohs=
 github.com/aws/aws-sdk-go-v2/service/shield v1.24.0 h1:DasZw37v6ciRecoPkslCl8rHmoPfzfwpnR48pxWJaGg=
