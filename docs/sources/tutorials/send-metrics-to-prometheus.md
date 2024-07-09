@@ -5,31 +5,31 @@ title: Use Grafana Alloy to send metrics to Prometheus
 menuTitle: Send metrics to Prometheus
 weight: 15
 ---
-# Use Grafana Alloy to send metrics to Prometheus
-In the [Get started with {{< param "PRODUCT_NAME" >}} tutorial][get started], you learned how to configure {{< param "PRODUCT_NAME" >}} to collect and process logs from your local machine and send them to Loki, running in the local Grafana stack. 
+# Use {{% param "FULL_PRODUCT_NAME" %}} to send metrics to Prometheus
 
-As a next step, you will collect and process metrics from the same machine using {{< param "PRODUCT_NAME" >}} and send them to Prometheus, running in the same Grafana stack. 
+In the [Get started with {{< param "PRODUCT_NAME" >}} tutorial][get started], you learned how to configure {{< param "PRODUCT_NAME" >}} to collect and process logs from your local machine and send them to Loki.
 
-This process will enable you to query and visualize the metrics sent to Prometheus using the Grafana dashboard.
+This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local computer, send them to Prometheus, and use a Grafana dashboard to visualize the results.
 
-## Prerequisites
+## Before you begin
 
-Complete the [previous tutorial][get started] to:
+To complete this tutorial you must complete the [previous tutorial][get started] to:
+
 1. Install {{< param "PRODUCT_NAME" >}} and start the service in your environment.
 1. Set up a local Grafana instance.
 1. Create a `config.alloy` file.
 
 ## Configure {{% param "PRODUCT_NAME" %}}
 
-Once the prerequisite steps have been completed, the next step is to configure {{< param "PRODUCT_NAME" >}} for metric collection. 
+After you have completed the prerequisite steps, you can configure {{< param "PRODUCT_NAME" >}} to collect metrics.
 
-Same as you did for logs, you will use the components in the `config.alloy` file to tell {{< param "PRODUCT_NAME" >}} which metrics you want to scrape, how you want to process that data, and where you want the data sent.
+You use the components in the `config.alloy` file to tell {{< param "PRODUCT_NAME" >}} which metrics you want to scrape, how you want to process that data, and where you want the data sent.
 
-Add the following to the `config.alloy` file you created in the prerequisite steps.  
+The following steps build on the `config.alloy` file you created in the previous tutorial.
 
 ### First component: Scraping
 
-Paste this component into the top of the `config.alloy` file:
+Paste the following component configuration at the top of your `config.alloy` file:
 
 ```alloy
 prometheus.exporter.unix "local_system" { }
@@ -41,21 +41,20 @@ prometheus.scrape "scrape_metrics" {
 }
 ```
 
-This configuration defines a Prometheus exporter for a local system from which the metrics will be collected. 
+This configuration creates a [`prometheus.scrape`][prometheus.scrape] component named `scrape_metrics` which does the following:
 
-It also creates a [`prometheus.scrape`][prometheus.scrape] component named `scrape_metrics` which does the following:
-
-1. It connects to the `local_system` component (its "source" or target).
-1. It forwards the metrics it scrapes to the "receiver" of another component called `filter_metrics` which you will define next.
-1. It tells {{< param "PRODUCT_NAME" >}} to scrape metrics every 10 seconds. 
+1. It connects to the `local_system` component as its "source" or target.
+1. It forwards the metrics it scrapes to the receiver of another component called `filter_metrics`.
+1. It tells {{< param "PRODUCT_NAME" >}} to scrape metrics every 10 seconds.
 
 ### Second component: Filter metrics
 
-Filtering non-essential metrics before sending them to a data source can help you reduce costs and enable you to focus on the data that matters most. The filtering strategy of each organization will differ as they have different monitoring needs and setups. 
+Filtering non-essential metrics before sending them to a data source can help you reduce costs and allow you to focus on the data that matters most.
+The filtering strategy of each organization differs because they have different monitoring needs and setups.
 
-The following example demonstrates filtering out or dropping metrics before sending them to Prometheus. 
+The following example demonstrates filtering out or dropping metrics before sending them to Prometheus.
 
-Paste this component next in your configuration file:
+Paste this component configuration below the previous component in your `config.alloy` file:
 
 ```alloy
 prometheus.relabel "filter_metrics" {
@@ -64,24 +63,22 @@ prometheus.relabel "filter_metrics" {
     source_labels = ["env"]
     regex         = "dev"
   }
-  
+
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
 ```
 
-1. `prometheus.relabel` is a component most commonly used to filter Prometheus metrics or standardize the label set passed to one or more downstream receivers. 
-1. In this example, you create a `prometheus.relabel` component named “filter_metrics”. 
-   This component receives scraped metrics from the `scrape_metrics` component you created in the previous step. 
-1. There are many ways to [process metrics][prometheus.relabel]. 
-   Within this component, you can define rule block(s) to specify how you would like to process metrics before they are stored or forwarded. 
-1. This example assumes that you are monitoring a production environment and the metrics collected from the dev environment will not be needed for this particular use case. 
-1. To instruct {{< param "PRODUCT_NAME" >}} to drop metrics whose environment label, `"env"`, is equal to `"dev"`, you set the `action` parameter to `"drop"`, set the `source_labels` parameter equal to `["env"]`, and the `regex` parameter to `"dev"`.  
-1. You use the `forward_to` parameter to specify where to send the processed metrics.
-   In this case, you will send the processed metrics to a component you will create next called `metrics_service`. 
+The [`prometheus.relabel`][prometheus.relabel] component allows you rewrite the label set of each metric sent to the receiver. Within this component, you can define rule blocks to specify how you would like to process metrics before they're sorted or forwarded.
+
+This configuration creates a [`prometheus.relabel`][prometheus.relabel] component named `filter_metrics`. This component does the following:
+
+* It receives scraped metrics from the `scrape_metrics` component.
+* It tells {{< param "PRODUCT_NAME" >}} to drop metrics that have an `"env"` label equal to `"dev"`.
+* It forwards the processed metrics to the receiver of another component called `metrics_service`.
 
 ### Third component: Write metrics to Prometheus
 
-Paste this component next in your configuration file:
+Paste this component configuration below the previous component in your `config.alloy` file:
 
 ```alloy
 prometheus.remote_write "metrics_service" {
@@ -96,13 +93,13 @@ prometheus.remote_write "metrics_service" {
 }
 ```
 
-This last component creates a [prometheus.remote_write][prometheus.remote_write] component named `metrics_service` that points to `http://localhost:9090/api/v1/write`.
+This final component creates a [`prometheus.remote_write`][prometheus.remote_write] component named `metrics_service` that points to `http://localhost:9090/api/v1/write`.
 
 This completes the simple configuration pipeline.
 
 {{< admonition type="tip" >}}
-The `basic_auth` is commented out because the local `docker compose` stack doesn't require it. 
-It is included in this example to show how you can configure authorization for other environments.
+The `basic_auth` is commented out because the local `docker compose` stack doesn't require it.
+It's included in this example to show how you can configure authorization for other environments.
 
 For further authorization options, refer to the [`prometheus.remote_write`][prometheus.remote_write] component documentation.
 
@@ -111,9 +108,9 @@ For further authorization options, refer to the [`prometheus.remote_write`][prom
 
 This connects directly to the Prometheus instance running in the Docker container.
 
-## Reload the Configuration
+## Reload the configuration
 
-Copy your local `config.alloy` file into the default configuration file location, which depends on your OS.
+Copy your local `config.alloy` file into the default configuration file location.
 
 {{< code >}}
 
@@ -126,14 +123,14 @@ sudo cp config.alloy /etc/alloy/config.alloy
 ```
 {{< /code >}}
 
-Finally, call the reload endpoint to notify {{< param "PRODUCT_NAME" >}} to the configuration change without the need for restarting the system service.
+Call the `/-/reload` endpoint to tell {{< param "PRODUCT_NAME" >}} to reload the configuration file without a system service restart.
 
 ```bash
     curl -X POST http://localhost:12345/-/reload
 ```
 
 {{< admonition type="tip" >}}
-This step uses the {{< param "PRODUCT_NAME" >}} UI, which is exposed on `localhost` port `12345`.
+This step uses the {{< param "PRODUCT_NAME" >}} UI, on `localhost` port `12345`.
 If you choose to run Alloy in a Docker container, make sure you use the `--server.http.listen-addr=0.0.0.0:12345` argument.
 
 If you don’t use this argument, the [debugging UI][debug] won’t be available outside of the Docker container.
@@ -141,31 +138,33 @@ If you don’t use this argument, the [debugging UI][debug] won’t be available
 [debug]: ../../tasks/debug/#alloy-ui
 {{< /admonition >}}
 
-The alternative to using this endpoint is to reload the {{< param "PRODUCT_NAME" >}} configuration, which can be done as follows:
+1. Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and load the configuration file:
 
-{{< code >}}
+   {{< code >}}
 
-```macos
-brew services restart alloy
-```
+   ```macos
+   brew services restart alloy
+   ```
 
-```linux
-sudo systemctl reload alloy
-```
+   ```linux
+   sudo systemctl reload alloy
+   ```
 
-{{< /code >}}
+   {{< /code >}}
+
 
 ## Inspect your configuration in the {{% param "PRODUCT_NAME" %}} UI
 
 Open <http://localhost:12345> and click the Graph tab at the top.
-The graph should look similar to the following: 
+The graph should look similar to the following:
+
 {{< figure src="/media/docs/alloy/tutorial/Metrics-inspect-your-config.png" alt="Your configuration in the Alloy UI" >}}
 
 The {{< param "PRODUCT_NAME" >}} UI shows you a visual representation of the pipeline you built with your {{< param "PRODUCT_NAME" >}} component configuration.
 
 You can see that the components are healthy, and you are ready to go.
 
-## Log into Grafana and explore metrics in Prometheus 
+## Log into Grafana and explore metrics in Prometheus
 
 Open <http://localhost:3000/explore> to access the Explore feature in Grafana.
 
@@ -175,8 +174,9 @@ Here you can see that metrics are flowing through to Prometheus as expected, and
 
 {{< figure src="/media/docs/alloy/tutorial/Metrics_visualization.png" alt="Your data flowing through Prometheus." >}}
 
-## Conclusion
-Well done. You have configured {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local host and send them to a Grafana stack. 
+## Summary
+
+You have configured {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local host and send them to a Grafana stack.
 
 [get started]: ../get-started/
 [prometheus.scrape]: ../../reference/components/prometheus.scrape/
