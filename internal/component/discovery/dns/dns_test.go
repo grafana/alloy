@@ -5,10 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/discovery/dns"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestAlloyUnmarshal(t *testing.T) {
@@ -71,7 +73,7 @@ func TestConvert(t *testing.T) {
 		Names:           []string{"example.com", "example2.com"},
 	}
 
-	converted := args.Convert()
+	converted := args.Convert().(*dns.SDConfig)
 	assert.Equal(t, model.Duration(5*time.Minute), converted.RefreshInterval)
 	assert.Equal(t, 8181, converted.Port)
 	assert.Equal(t, "A", converted.Type)

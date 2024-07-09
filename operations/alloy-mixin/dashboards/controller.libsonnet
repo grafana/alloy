@@ -1,24 +1,25 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
+local templates = import './utils/templates.libsonnet';
 local filename = 'alloy-controller.json';
 
 {
+  local templateVariables = 
+    templates.newTemplateVariablesList(
+      filterSelector=$._config.filterSelector, 
+      enableK8sCluster=$._config.enableK8sCluster, 
+      includeInstance=false,
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
+
   [filename]:
-    dashboard.new(name='Alloy / Controller') +
+    dashboard.new(name='Alloy / Controller', tag=$._config.dashboardTag) +
     dashboard.withDocsLink(
       url='https://grafana.com/docs/alloy/latest/concepts/component_controller/',
       desc='Component controller documentation',
     ) +
-    dashboard.withDashboardsLink() +
+    dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
     dashboard.withUID(std.md5(filename)) +
-    dashboard.withTemplateVariablesMixin([
-      dashboard.newTemplateVariable('cluster', |||
-        label_values(alloy_component_controller_running_components, cluster)
-      |||),
-      dashboard.newTemplateVariable('namespace', |||
-        label_values(alloy_component_controller_running_components{cluster="$cluster"}, namespace)
-      |||),
-    ]) +
+    dashboard.withTemplateVariablesMixin(templateVariables) +
     // TODO(@tpaschalis) Make the annotation optional.
     dashboard.withAnnotations([
       dashboard.newLokiAnnotation('Deployments', '{cluster="$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
@@ -34,7 +35,9 @@ local filename = 'alloy-controller.json';
         panel.withPosition({ x: 0, y: 0, w: 10, h: 4 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='count(alloy_component_controller_evaluating{cluster="$cluster", namespace="$namespace"})',
+            expr= |||
+              count(group(alloy_component_controller_running_components{%(groupSelector)s}) by (instance))
+            ||| % $._config,
           ),
         ])
       ),
@@ -49,7 +52,9 @@ local filename = 'alloy-controller.json';
         panel.withPosition({ x: 0, y: 4, w: 10, h: 4 }) +
         panel.withQueries([
           panel.newQuery(
-            expr='sum(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace"})',
+            expr= |||
+              sum(alloy_component_controller_running_components{%(groupSelector)s})
+            ||| % $._config,
           ),
         ])
       ),
@@ -72,10 +77,10 @@ local filename = 'alloy-controller.json';
         panel.withPosition({ x: 0, y: 8, w: 10, h: 4 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              sum(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace",health_type="healthy"}) /
-              sum(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace"})
-            |||,
+            expr= |||
+              sum(alloy_component_controller_running_components{%(groupSelector)s,health_type="healthy"}) /
+              sum(alloy_component_controller_running_components{%(groupSelector)s})
+            ||| % $._config,
           ),
         ])
       ),
@@ -157,19 +162,27 @@ local filename = 'alloy-controller.json';
         panel.withQueries([
           panel.newInstantQuery(
             legendFormat='Healthy',
-            expr='sum(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace", health_type="healthy"}) or vector(0)',
+            expr= |||
+              sum(alloy_component_controller_running_components{%(groupSelector)s, health_type="healthy"}) or vector(0)
+            ||| % $._config,
           ),
           panel.newInstantQuery(
             legendFormat='Unhealthy',
-            expr='sum(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace", health_type="unhealthy"}) or vector(0)',
+            expr= |||
+              sum(alloy_component_controller_running_components{%(groupSelector)s, health_type="unhealthy"}) or vector(0)
+            ||| % $._config,
           ),
           panel.newInstantQuery(
             legendFormat='Unknown',
-            expr='sum(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace", health_type="unknown"}) or vector(0)',
+            expr= |||
+              sum(alloy_component_controller_running_components{%(groupSelector)s, health_type="unknown"}) or vector(0)
+            ||| % $._config,
           ),
           panel.newInstantQuery(
             legendFormat='Exited',
-            expr='sum(alloy_component_controller_running_components{cluster="$cluster", namespace="$namespace", health_type="exited"}) or vector(0)',
+            expr= |||
+              sum(alloy_component_controller_running_components{%(groupSelector)s, health_type="exited"}) or vector(0)
+            ||| % $._config,
           ),
         ])
       ),
@@ -194,7 +207,9 @@ local filename = 'alloy-controller.json';
         panel.withMultiTooltip() +
         panel.withQueries([
           panel.newQuery(
-            expr='sum by (instance) (rate(alloy_component_evaluation_seconds_count{cluster="$cluster", namespace="$namespace"}[$__rate_interval]))',
+            expr= |||
+              sum by (instance) (rate(alloy_component_evaluation_seconds_count{%(groupSelector)s}[$__rate_interval]))
+            ||| % $._config,
           ),
         ])
       ),
@@ -218,33 +233,33 @@ local filename = 'alloy-controller.json';
         panel.withPosition({ x: 8, y: 12, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              histogram_quantile(0.99, sum(rate(alloy_component_evaluation_seconds{cluster="$cluster",namespace="$namespace"}[$__rate_interval])))
+            expr= |||
+              histogram_quantile(0.99, sum(rate(alloy_component_evaluation_seconds{%(groupSelector)s}[$__rate_interval])))
               or
-              histogram_quantile(0.99, sum by (le) (rate(alloy_component_evaluation_seconds_bucket{cluster="$cluster",namespace="$namespace"}[$__rate_interval])))
-            |||,
+              histogram_quantile(0.99, sum by (le) (rate(alloy_component_evaluation_seconds_bucket{%(groupSelector)s}[$__rate_interval])))
+            ||| % $._config,
             legendFormat='99th percentile',
           ),
           panel.newQuery(
-            expr=|||
-              histogram_quantile(0.50, sum(rate(alloy_component_evaluation_seconds{cluster="$cluster",namespace="$namespace"}[$__rate_interval])))
+            expr= |||
+              histogram_quantile(0.50, sum(rate(alloy_component_evaluation_seconds{%(groupSelector)s}[$__rate_interval])))
               or
-              histogram_quantile(0.50, sum by (le) (rate(alloy_component_evaluation_seconds_bucket{cluster="$cluster",namespace="$namespace"}[$__rate_interval])))
-            |||,
+              histogram_quantile(0.50, sum by (le) (rate(alloy_component_evaluation_seconds_bucket{%(groupSelector)s}[$__rate_interval])))
+            ||| % $._config,
             legendFormat='50th percentile',
           ),
           panel.newQuery(
-            expr=|||
+            expr= |||
               (
-                histogram_sum(sum(rate(alloy_component_evaluation_seconds{cluster="$cluster",namespace="$namespace"}[$__rate_interval]))) /
-                histogram_count(sum(rate(alloy_component_evaluation_seconds{cluster="$cluster",namespace="$namespace"}[$__rate_interval])))
+                histogram_sum(sum(rate(alloy_component_evaluation_seconds{%(groupSelector)s}[$__rate_interval]))) /
+                histogram_count(sum(rate(alloy_component_evaluation_seconds{%(groupSelector)s}[$__rate_interval])))
               )
               or
               (
-                sum(rate(alloy_component_evaluation_seconds_sum{cluster="$cluster",namespace="$namespace"}[$__rate_interval])) /
-                sum(rate(alloy_component_evaluation_seconds_count{cluster="$cluster",namespace="$namespace"}[$__rate_interval]))
+                sum(rate(alloy_component_evaluation_seconds_sum{%(groupSelector)s}[$__rate_interval])) /
+                sum(rate(alloy_component_evaluation_seconds_count{%(groupSelector)s}[$__rate_interval]))
               )
-            |||,
+            ||| % $._config,
             legendFormat='Average',
           ),
         ])
@@ -263,10 +278,10 @@ local filename = 'alloy-controller.json';
         panel.withPosition({ x: 16, y: 12, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              sum by (component_path, component_id) (rate(alloy_component_evaluation_slow_seconds{cluster="$cluster", namespace="$namespace"}[$__rate_interval]))
-              / scalar(sum(rate(alloy_component_evaluation_seconds_sum{cluster="$cluster", namespace="$namespace"}[$__rate_interval])))
-            |||,
+            expr= |||
+              sum by (component_path, component_id) (rate(alloy_component_evaluation_slow_seconds{%(groupSelector)s}[$__rate_interval]))
+              / scalar(sum(rate(alloy_component_evaluation_seconds_sum{%(groupSelector)s}[$__rate_interval])))
+            ||| % $._config,
             legendFormat='{{component path}} {{component_id}}',
           ),
         ])
@@ -286,11 +301,11 @@ local filename = 'alloy-controller.json';
         panel.withPosition({ x: 0, y: 22, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              sum(increase(alloy_component_evaluation_seconds{cluster="$cluster", namespace="$namespace"}[$__rate_interval]))
+            expr= |||
+              sum(increase(alloy_component_evaluation_seconds{%(groupSelector)s}[$__rate_interval]))
               or ignoring (le)
-              sum by (le) (increase(alloy_component_evaluation_seconds_bucket{cluster="$cluster", namespace="$namespace"}[$__rate_interval]))
-            |||,
+              sum by (le) (increase(alloy_component_evaluation_seconds_bucket{%(groupSelector)s}[$__rate_interval]))
+            ||| % $._config,
             format='heatmap',
             legendFormat='{{le}}',
           ),
@@ -311,11 +326,11 @@ local filename = 'alloy-controller.json';
         panel.withPosition({ x: 8, y: 22, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
-              sum(increase(alloy_component_dependencies_wait_seconds{cluster="$cluster", namespace="$namespace"}[$__rate_interval]))
+            expr= |||
+              sum(increase(alloy_component_dependencies_wait_seconds{%(groupSelector)s}[$__rate_interval]))
               or ignoring (le)
-              sum by (le) (increase(alloy_component_dependencies_wait_seconds_bucket{cluster="$cluster", namespace="$namespace"}[$__rate_interval]))
-            |||,
+              sum by (le) (increase(alloy_component_dependencies_wait_seconds_bucket{%(groupSelector)s}[$__rate_interval]))
+            ||| % $._config,
             format='heatmap',
             legendFormat='{{le}}',
           ),

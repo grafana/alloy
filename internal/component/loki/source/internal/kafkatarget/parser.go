@@ -2,10 +2,11 @@ package kafkatarget
 
 import (
 	"github.com/IBM/sarama"
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/loki/pkg/logproto"
+	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 // KafkaTargetMessageParser implements MessageParser. It doesn't modify the content of the original `message.Value`.

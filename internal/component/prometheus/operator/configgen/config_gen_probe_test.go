@@ -7,9 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/util"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -21,6 +18,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // see https://github.com/prometheus-operator/prometheus-operator/blob/aa8222d7e9b66e9293ed11c9291ea70173021029/pkg/prometheus/promcfg_test.go#L423
@@ -78,12 +79,14 @@ func TestGenerateProbeConfig(t *testing.T) {
   replacement: foo.bar
 `),
 			expected: &config.ScrapeConfig{
-				JobName:         "probe/operator/myprobe",
-				HonorTimestamps: true,
-				ScrapeInterval:  model.Duration(time.Minute),
-				ScrapeTimeout:   model.Duration(10 * time.Second),
-				MetricsPath:     "",
-				Scheme:          "http",
+				JobName:           "probe/operator/myprobe",
+				HonorTimestamps:   true,
+				ScrapeInterval:    model.Duration(time.Minute),
+				ScrapeTimeout:     model.Duration(10 * time.Second),
+				ScrapeProtocols:   config.DefaultScrapeProtocols,
+				EnableCompression: true,
+				MetricsPath:       "",
+				Scheme:            "http",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -156,13 +159,15 @@ func TestGenerateProbeConfig(t *testing.T) {
   action: replace
 `),
 			expected: &config.ScrapeConfig{
-				JobName:         "probe/default/testprobe1",
-				HonorTimestamps: true,
-				ScrapeInterval:  model.Duration(time.Minute),
-				ScrapeTimeout:   model.Duration(10 * time.Second),
-				MetricsPath:     "/probe",
-				Scheme:          "http",
-				Params:          url.Values{"module": []string{"http_2xx"}},
+				JobName:           "probe/default/testprobe1",
+				HonorTimestamps:   true,
+				ScrapeInterval:    model.Duration(time.Minute),
+				ScrapeTimeout:     model.Duration(10 * time.Second),
+				ScrapeProtocols:   config.DefaultScrapeProtocols,
+				EnableCompression: true,
+				MetricsPath:       "/probe",
+				Scheme:            "http",
+				Params:            url.Values{"module": []string{"http_2xx"}},
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,

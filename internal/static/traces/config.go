@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter"
@@ -39,6 +38,8 @@ import (
 	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
 
+	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
+
 	"github.com/grafana/alloy/internal/static/logs"
 	"github.com/grafana/alloy/internal/static/traces/automaticloggingprocessor"
 	"github.com/grafana/alloy/internal/static/traces/noopreceiver"
@@ -48,6 +49,7 @@ import (
 	"github.com/grafana/alloy/internal/static/traces/servicegraphprocessor"
 	"github.com/grafana/alloy/internal/static/traces/spanmetricsprocessor"
 	"github.com/grafana/alloy/internal/util"
+	_ "github.com/grafana/alloy/internal/util/otelfeaturegatefix" // Gracefully handle duplicate OTEL feature gates
 )
 
 const (

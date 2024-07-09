@@ -4,11 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/discovery/ovhcloud"
-	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	prom_ovh "github.com/prometheus/prometheus/discovery/ovhcloud"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/discovery/ovhcloud"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestUnmarshal(t *testing.T) {

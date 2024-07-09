@@ -4,11 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/config"
-	"github.com/grafana/alloy/syntax"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/linode"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestAlloyConfig(t *testing.T) {
@@ -40,7 +42,7 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	promArgs := alloyArgs.Convert()
+	promArgs := alloyArgs.Convert().(*prom_discovery.SDConfig)
 	require.Equal(t, 8080, promArgs.Port)
 	require.Equal(t, model.Duration(15*time.Second), promArgs.RefreshInterval)
 	require.Equal(t, ";", promArgs.TagSeparator)

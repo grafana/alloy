@@ -98,8 +98,10 @@ heroku            | [heroku][]            |                                     
 system            | [system][]            |                                                   | no
 openshift         | [openshift][]         |                                                   | no
 kubernetes_node   | [kubernetes_node][]   |                                                   | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [output]: #output
+[debug_metrics]: #debug_metrics-block
 [ec2]: #ec2
 [ecs]: #ecs
 [eks]: #eks
@@ -119,6 +121,10 @@ kubernetes_node   | [kubernetes_node][]   |                                     
 ### output
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### ec2
 
@@ -310,6 +316,14 @@ The `azure` block supports the following blocks:
 Block                                              | Description                                  | Required
 ---------------------------------------------------|----------------------------------------------|---------
 [resource_attributes](#azure--resource_attributes) | Configures which resource attributes to add. | no
+
+
+The `azure` block supports the following attributes:
+
+
+Attribute    | Type           | Description                                                                         | Default | Required
+-------------|----------------|-------------------------------------------------------------------------------------|---------|---------
+`tags` | `list(string)` | A list of regex's to match tag keys to add as resource attributes can be specified. | `[]`    | no
 
 #### azure > resource_attributes
 

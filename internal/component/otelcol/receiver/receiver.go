@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
@@ -17,7 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/extension"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
@@ -45,7 +45,7 @@ type Arguments interface {
 	NextConsumers() *otelcol.ConsumerArguments
 
 	// DebugMetricsConfig returns the configuration for debug metrics
-	DebugMetricsConfig() otelcol.DebugMetricsArguments
+	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
 }
 
 // Receiver is an Alloy component shim which manages an OpenTelemetry Collector
@@ -123,9 +123,15 @@ func (r *Receiver) Update(args component.Arguments) error {
 		return err
 	}
 
+	debugMetricsCfg := rargs.DebugMetricsConfig()
 	metricOpts := []metric.Option{metric.WithReader(promExporter)}
-	if rargs.DebugMetricsConfig().DisableHighCardinalityMetrics {
+	if debugMetricsCfg.DisableHighCardinalityMetrics {
 		metricOpts = append(metricOpts, metric.WithView(views.DropHighCardinalityServerAttributes()...))
+	}
+
+	metricsLevel, err := debugMetricsCfg.Level.Convert()
+	if err != nil {
+		return err
 	}
 
 	settings := otelreceiver.CreateSettings{
@@ -134,7 +140,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 
 			TracerProvider: r.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metricOpts...),
-			MetricsLevel:   configtelemetry.LevelDetailed,
+			MetricsLevel:   metricsLevel,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},

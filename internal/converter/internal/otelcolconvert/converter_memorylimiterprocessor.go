@@ -61,5 +61,6 @@ func toMemoryLimiterProcessor(state *State, id component.InstanceID, cfg *memory
 			Logs:    ToTokenizedConsumers(nextLogs),
 			Traces:  ToTokenizedConsumers(nextTraces),
 		},
+		DebugMetrics: common.DefaultValue[memorylimiter.Arguments]().DebugMetrics,
 	}
 }

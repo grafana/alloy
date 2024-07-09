@@ -206,6 +206,7 @@ func (t *transaction) getOrCreateMetricFamily(scope scopeID, mn string) (*metric
 	return curMf, true
 }
 
+// AppendExemplar implements storage.Appender.
 func (t *transaction) AppendExemplar(_ storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
 	select {
 	case <-t.ctx.Done():

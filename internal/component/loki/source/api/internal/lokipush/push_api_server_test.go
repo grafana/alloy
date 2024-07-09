@@ -16,19 +16,20 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/loki/pkg/push"
+	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/phayes/freeport"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	frelabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/syntax"
-	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/loki/pkg/logproto"
-	"github.com/grafana/loki/pkg/push"
-	"github.com/phayes/freeport"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
 )
 
 const localhost = "127.0.0.1"

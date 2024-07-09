@@ -7,14 +7,15 @@ import (
 
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
+	promcfg "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	promaws "github.com/prometheus/prometheus/discovery/aws"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	promcfg "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	promaws "github.com/prometheus/prometheus/discovery/aws"
 )
 
 func init() {
@@ -88,10 +89,9 @@ func (args *LightsailArguments) Validate() error {
 	return nil
 }
 
-// New creates a new discovery.lightsail component.
+// NewLightsail creates a new discovery.lightsail component.
 func NewLightsail(opts component.Options, args LightsailArguments) (component.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
-		conf := args.(LightsailArguments).Convert()
-		return promaws.NewLightsailDiscovery(conf, opts.Logger), nil
+	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
+		return args.(LightsailArguments).Convert(), nil
 	})
 }

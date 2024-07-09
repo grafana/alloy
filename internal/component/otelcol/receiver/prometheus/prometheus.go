@@ -5,7 +5,6 @@ import (
 	"context"
 	"os"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus/internal"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -20,7 +20,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 	metricNoop "go.opentelemetry.io/otel/metric/noop"
 	traceNoop "go.opentelemetry.io/otel/trace/noop"
@@ -43,6 +42,13 @@ func init() {
 type Arguments struct {
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	args.DebugMetrics.SetToDefault()
 }
 
 // Exports are the set of fields exposed by the otelcol.receiver.prometheus
@@ -117,19 +123,19 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		gcInterval = 5 * time.Minute
 	)
 
-	cTypeStr := strings.ReplaceAll(strings.ReplaceAll(c.opts.ID, ".", "_"), "/", "_")
+	metricsLevel, err := cfg.DebugMetrics.Level.Convert()
+	if err != nil {
+		return err
+	}
 
 	settings := otelreceiver.CreateSettings{
-
-		ID: otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
-
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
 
 			// TODO(tpaschalis): expose tracing and logging statistics.
 			TracerProvider: traceNoop.NewTracerProvider(),
 			MeterProvider:  metricNoop.NewMeterProvider(),
-			MetricsLevel:   configtelemetry.LevelDetailed,
+			MetricsLevel:   metricsLevel,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},

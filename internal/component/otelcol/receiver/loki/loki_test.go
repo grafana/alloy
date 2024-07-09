@@ -5,16 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/plog"
+
 	lokiapi "github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	"github.com/grafana/loki/pkg/logproto"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/pdata/plog"
 )
 
 func Test(t *testing.T) {

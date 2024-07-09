@@ -5,12 +5,13 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/puppetdb"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/common/model"
-	prom_discovery "github.com/prometheus/prometheus/discovery/puppetdb"
 )
 
 func init() {
@@ -21,7 +22,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -61,7 +62,7 @@ func (args *Arguments) Validate() error {
 	return args.HTTPClientConfig.Validate()
 }
 
-func (args *Arguments) Convert() *prom_discovery.SDConfig {
+func (args Arguments) Convert() discovery.DiscovererConfig {
 	httpClient := &args.HTTPClientConfig
 
 	return &prom_discovery.SDConfig{
@@ -72,12 +73,4 @@ func (args *Arguments) Convert() *prom_discovery.SDConfig {
 		RefreshInterval:   model.Duration(args.RefreshInterval),
 		HTTPClientConfig:  *httpClient.Convert(),
 	}
-}
-
-// New returns a new instance of a discovery.puppetdb component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
-		newArgs := args.(Arguments)
-		return prom_discovery.NewDiscovery(newArgs.Convert(), opts.Logger)
-	})
 }

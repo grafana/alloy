@@ -4,11 +4,7 @@ description: Learn about pyroscope.write
 title: pyroscope.write
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # pyroscope.write
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.write` receives performance profiles from other components and forwards them to a series of user-supplied endpoints using [Pyroscope' Push API](/oss/pyroscope/).
 

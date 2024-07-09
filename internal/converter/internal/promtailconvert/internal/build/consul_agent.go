@@ -3,11 +3,12 @@ package build
 import (
 	"time"
 
+	promtail_consulagent "github.com/grafana/loki/v3/clients/pkg/promtail/discovery/consulagent"
+
 	"github.com/grafana/alloy/internal/component/discovery/consulagent"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	promtail_consulagent "github.com/grafana/loki/clients/pkg/promtail/discovery/consulagent"
 )
 
 func (s *ScrapeConfigBuilder) AppendConsulAgentSDs() {

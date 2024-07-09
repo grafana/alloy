@@ -4,12 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/config"
-	"github.com/grafana/alloy/syntax"
 	promcfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/openstack"
+	prom_discovery "github.com/prometheus/prometheus/discovery/openstack"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestUnmarshal(t *testing.T) {
@@ -86,7 +88,7 @@ func TestConvert(t *testing.T) {
 			Cert: "cert",
 		},
 	}
-	converted := args.Convert()
+	converted := args.Convert().(*prom_discovery.SDConfig)
 
 	require.Equal(t, "http://openstack", converted.IdentityEndpoint)
 	require.Equal(t, "exampleuser", converted.Username)

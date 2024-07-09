@@ -32,6 +32,7 @@ func TestMarshal_UnmarshalConfig_RetainSecrets(t *testing.T) {
 scrape_configs:
 - job_name: local_scrape
   follow_redirects: true
+  enable_compression: true
   enable_http2: true
   honor_timestamps: true
   metrics_path: /metrics
@@ -89,6 +90,7 @@ func TestMarshal_UnmarshalConfig_ScrubSecrets(t *testing.T) {
 scrape_configs:
 - job_name: local_scrape
   follow_redirects: true
+  enable_compression: true
   enable_http2: true
   honor_timestamps: true
   metrics_path: /metrics

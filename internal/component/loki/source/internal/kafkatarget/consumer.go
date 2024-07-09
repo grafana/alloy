@@ -12,10 +12,10 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
 
-	"github.com/grafana/loki/clients/pkg/promtail/targets/target"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var defaultBackOff = backoff.Config{

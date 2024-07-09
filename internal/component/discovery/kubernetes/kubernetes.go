@@ -2,11 +2,12 @@
 package kubernetes
 
 import (
+	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 )
 
 func init() {
@@ -17,7 +18,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -49,8 +50,7 @@ func (args *Arguments) Validate() error {
 	return args.HTTPClientConfig.Validate()
 }
 
-// Convert converts Arguments to the Prometheus SD type.
-func (args *Arguments) Convert() *promk8s.SDConfig {
+func (args Arguments) Convert() discovery.DiscovererConfig {
 	selectors := make([]promk8s.SelectorConfig, len(args.Selectors))
 	for i, s := range args.Selectors {
 		selectors[i] = *s.convert()
@@ -102,12 +102,4 @@ func (am *AttachMetadataConfig) convert() *promk8s.AttachMetadataConfig {
 	return &promk8s.AttachMetadataConfig{
 		Node: am.Node,
 	}
-}
-
-// New returns a new instance of a discovery.kubernetes component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
-		newArgs := args.(Arguments)
-		return promk8s.New(opts.Logger, newArgs.Convert())
-	})
 }

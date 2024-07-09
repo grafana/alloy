@@ -21,8 +21,8 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 
-	"github.com/grafana/loki/pkg/logproto"
-	lokiflag "github.com/grafana/loki/pkg/util/flagext"
+	"github.com/grafana/loki/v3/pkg/logproto"
+	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
 )
 
 var testLimitsConfig = limit.Config{

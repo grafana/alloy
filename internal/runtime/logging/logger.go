@@ -8,10 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/slogadapter"
-	"github.com/grafana/loki/pkg/logproto"
-	"github.com/prometheus/common/model"
 )
 
 type EnabledAware interface {

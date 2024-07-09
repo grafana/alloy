@@ -21,6 +21,7 @@ func TestUnmarshalAlloy(t *testing.T) {
 			module = "if_mib"
 			walk_params = "public"
 			auth = "public_v2"
+			snmp_context = "testcontext"
 		}
 		target "network_router_2" {
 			address = "192.168.1.3"
@@ -45,12 +46,64 @@ func TestUnmarshalAlloy(t *testing.T) {
 	require.Contains(t, "if_mib", args.Targets[0].Module)
 	require.Contains(t, "public", args.Targets[0].WalkParams)
 	require.Contains(t, "public_v2", args.Targets[0].Auth)
+	require.Contains(t, "testcontext", args.Targets[0].SNMPContext)
 
 	require.Contains(t, "network_router_2", args.Targets[1].Name)
 	require.Contains(t, "192.168.1.3", args.Targets[1].Target)
 	require.Contains(t, "mikrotik", args.Targets[1].Module)
 	require.Contains(t, "private", args.Targets[1].WalkParams)
 	require.Empty(t, args.Targets[1].Auth)
+
+	require.Equal(t, 2, len(args.WalkParams))
+
+	require.Contains(t, "private", args.WalkParams[0].Name)
+	require.Equal(t, 1, args.WalkParams[0].Retries)
+	require.Contains(t, "public", args.WalkParams[1].Name)
+	require.Equal(t, 2, args.WalkParams[1].Retries)
+}
+
+func TestUnmarshalAlloyTargets(t *testing.T) {
+	alloyCfg := `
+		config_file = "modules.yml"
+		targets = [
+			{
+				"name" = "network_switch_1", 
+				"address" = "192.168.1.2", 
+				"module" = "if_mib",
+				"walk_params" = "public",
+				"auth" = "public_v2",
+			},
+			{
+				"name" = "network_router_2", 
+				"address" = "192.168.1.3", 
+				"module" = "mikrotik",
+				"walk_params" = "private",
+			},
+		  ]
+		walk_param "private" {
+			retries = 1
+		}
+		walk_param "public" {
+			retries = 2
+		}		
+`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.NoError(t, err)
+	require.Equal(t, "modules.yml", args.ConfigFile)
+	require.Equal(t, 2, len(args.TargetsList))
+
+	require.Contains(t, "network_switch_1", args.TargetsList[0]["name"])
+	require.Contains(t, "192.168.1.2", args.TargetsList[0]["address"])
+	require.Contains(t, "if_mib", args.TargetsList[0]["module"])
+	require.Contains(t, "public", args.TargetsList[0]["walk_params"])
+	require.Contains(t, "public_v2", args.TargetsList[0]["auth"])
+
+	require.Contains(t, "network_router_2", args.TargetsList[1]["name"])
+	require.Contains(t, "192.168.1.3", args.TargetsList[1]["address"])
+	require.Contains(t, "mikrotik", args.TargetsList[1]["module"])
+	require.Contains(t, "private", args.TargetsList[1]["walk_params"])
+	require.Empty(t, args.TargetsList[1]["auth"])
 
 	require.Equal(t, 2, len(args.WalkParams))
 
@@ -88,10 +141,11 @@ func TestConvertConfigWithInlineConfig(t *testing.T) {
 
 func TestConvertTargets(t *testing.T) {
 	targets := TargetBlock{{
-		Name:   "network_switch_1",
-		Target: "192.168.1.2",
-		Module: "if_mib",
-		Auth:   "public_v2",
+		Name:        "network_switch_1",
+		Target:      "192.168.1.2",
+		Module:      "if_mib",
+		Auth:        "public_v2",
+		SNMPContext: "testcontext",
 	}}
 
 	res := targets.Convert()
@@ -100,6 +154,125 @@ func TestConvertTargets(t *testing.T) {
 	require.Equal(t, "192.168.1.2", res[0].Target)
 	require.Equal(t, "if_mib", res[0].Module)
 	require.Equal(t, "public_v2", res[0].Auth)
+	require.Equal(t, "testcontext", res[0].SNMPContext)
+}
+
+func TestConvertTargetsList(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "network_switch_1",
+			"address":     "192.168.1.2",
+			"module":      "if_mib",
+			"auth":        "public_v2",
+			"walk_params": "1.3.6.1.2.1.2",
+		},
+	}
+
+	res := targets.Convert()
+	require.Equal(t, 1, len(res))
+	require.Equal(t, "network_switch_1", res[0].Name)
+	require.Equal(t, "192.168.1.2", res[0].Target)
+	require.Equal(t, "if_mib", res[0].Module)
+	require.Equal(t, "public_v2", res[0].Auth)
+	require.Equal(t, "1.3.6.1.2.1.2", res[0].WalkParams)
+}
+
+func TestConvertTargetsListAlternativeAddress(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "network_switch_1",
+			"address":     "192.168.1.2",
+			"__address__": "192.168.1.3",
+			"module":      "if_mib",
+			"auth":        "public_v2",
+			"walk_params": "1.3.6.1.2.1.2",
+		},
+	}
+
+	res := targets.Convert()
+	require.Equal(t, 1, len(res))
+	require.Equal(t, "network_switch_1", res[0].Name)
+	require.Equal(t, "192.168.1.2", res[0].Target)
+	require.Equal(t, "if_mib", res[0].Module)
+	require.Equal(t, "public_v2", res[0].Auth)
+	require.Equal(t, "1.3.6.1.2.1.2", res[0].WalkParams)
+}
+
+func TestConvertTargetsListAddressOverride(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "network_switch_1",
+			"__address__": "192.168.1.2",
+			"module":      "if_mib",
+			"auth":        "public_v2",
+			"walk_params": "1.3.6.1.2.1.2",
+		},
+	}
+
+	res := targets.Convert()
+	require.Equal(t, 1, len(res))
+	require.Equal(t, "network_switch_1", res[0].Name)
+	require.Equal(t, "192.168.1.2", res[0].Target)
+	require.Equal(t, "if_mib", res[0].Module)
+	require.Equal(t, "public_v2", res[0].Auth)
+	require.Equal(t, "1.3.6.1.2.1.2", res[0].WalkParams)
+}
+
+func TestValidateTargetMissingName(t *testing.T) {
+	alloyCfg := `
+		config_file = "modules.yml"
+		targets = [
+			{
+				"address" = "192.168.1.2", 
+				"module" = "if_mib",
+				"walk_params" = "public",
+				"auth" = "public_v2",
+			},
+		  ]		
+`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.ErrorContains(t, err, "all targets must have a `name`")
+}
+
+func TestValidateTargetMissingAddress(t *testing.T) {
+	alloyCfg := `
+		config_file = "modules.yml"
+		targets = [
+			{
+				"name" = "t1",
+				"module" = "if_mib",
+				"walk_params" = "public",
+				"auth" = "public_v2",
+			},
+		  ]		
+`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.ErrorContains(t, err, "all targets must have an `address`")
+}
+
+func TestValidateTargetsMutualExclusivity(t *testing.T) {
+	alloyCfg := `
+		config_file = "modules.yml"
+		targets = [
+			{
+				"name" = "t1",
+				"address" = "192.168.1.2", 
+				"module" = "if_mib",
+				"walk_params" = "public",
+				"auth" = "public_v2",
+			},
+		  ]		
+		target "t2" {
+			address = "192.168.1.3"
+			module = "mikrotik"
+			walk_params = "private"
+		}
+`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.ErrorContains(t, err, "the block `target` and the attribute `targets` are mutually exclusive")
 }
 
 func TestConvertWalkParams(t *testing.T) {

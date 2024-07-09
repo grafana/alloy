@@ -12,11 +12,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/pkg/logproto"
-	"github.com/grafana/loki/pkg/util"
+	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/v3/pkg/util"
 	"github.com/grafana/tail"
 	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
@@ -24,6 +21,11 @@ import (
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/ianaindex"
 	"golang.org/x/text/transform"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/common/loki/utils"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 type tailer struct {
@@ -308,10 +310,17 @@ func (t *tailer) Stop() {
 			level.Error(t.logger).Log("msg", "error marking file position when stopping tailer", "path", t.path, "error", err)
 		}
 
-		// Stop the underlying tailer
+		// Stop the underlying tailer to prevent resource leak.
 		err = t.tail.Stop()
 		if err != nil {
-			level.Error(t.logger).Log("msg", "error stopping tailer", "path", t.path, "error", err)
+			if utils.IsEphemeralOrFileClosed(err) {
+				// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
+				// when files are rotating while being read and the tailer would have stopped correctly anyway.
+				level.Debug(t.logger).Log("msg", "tailer stopped with file I/O error", "path", t.path, "error", err)
+			} else {
+				// Log as error for other reasons, as a resource leak may have happened.
+				level.Error(t.logger).Log("msg", "error stopping tailer", "path", t.path, "error", err)
+			}
 		}
 		// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
 		<-t.done

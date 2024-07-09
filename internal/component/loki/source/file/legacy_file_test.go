@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	"github.com/grafana/loki/pkg/loghttp/push"
+	"github.com/grafana/loki/v3/pkg/loghttp/push"
 	"gopkg.in/yaml.v2"
 
 	logkit "github.com/go-kit/log"

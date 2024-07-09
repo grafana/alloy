@@ -106,7 +106,7 @@ If `--cluster.advertise-interfaces` isn't explicitly set, {{< param "PRODUCT_NAM
 {{< param "PRODUCT_NAME" >}} will fail to start if it can't determine the advertised address.
 Since Windows doesn't use the interface names `eth0` or `en0`, Windows users must explicitly pass at least one valid network interface for `--cluster.advertise-interfaces` or a value for `--cluster.advertise-address`.
 
-The comma-separated list of addresses provided in `--cluster.join-addresses` can either be IP addresses with an optional port, or DNS records to lookup.
+The comma-separated list of addresses provided in `--cluster.join-addresses` can either be IP addresses with an optional port, or DNS SRV records to lookup.
 The ports on the list of addresses default to the port used for the HTTP listener if not explicitly provided.
 We recommend that you align the port numbers on as many nodes as possible to simplify the deployment process.
 

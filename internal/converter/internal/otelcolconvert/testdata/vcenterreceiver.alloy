@@ -16,8 +16,7 @@ otelcol.receiver.vcenter "default" {
 	}
 
 	output {
-		metrics = []
-		traces  = [otelcol.exporter.otlp.default.input]
+		traces = [otelcol.exporter.otlp.default.input]
 	}
 }
 

@@ -126,7 +126,8 @@ var testCases = []testCase{
 }
 
 func TestDetectingMovedTargets(t *testing.T) {
-	for _, tc := range testCases {
+	for i := range testCases {
+		tc := testCases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			alloyMetricsReg := client.NewRegistry()
@@ -150,7 +151,7 @@ func TestDetectingMovedTargets(t *testing.T) {
 			promManagerMutex.Lock()
 			s, err := New(opts, args)
 			promManagerMutex.Unlock()
-			
+
 			require.NoError(t, err)
 			ctx, cancelRun := context.WithTimeout(context.Background(), testTimeout)
 			runErr := make(chan error)
@@ -178,10 +179,7 @@ func TestDetectingMovedTargets(t *testing.T) {
 			waitForStalenessInjections(t, appender, tc.expectedStalenessInjections)
 
 			cancelRun()
-			select {
-			case err := <-runErr:
-				require.NoError(t, err)
-			}
+			require.NoError(t, <-runErr)
 		})
 	}
 }

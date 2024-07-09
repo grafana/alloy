@@ -40,11 +40,19 @@ func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*
 		err  error
 	)
 
+	authConfig, err := opts.Auth.Convert()
+	if err != nil {
+		return nil, DownloadFailedError{
+			Repository: opts.Repository,
+			Inner:      err,
+		}
+	}
+
 	if !isRepoCloned(storagePath) {
 		repo, err = git.PlainCloneContext(ctx, storagePath, false, &git.CloneOptions{
 			URL:               opts.Repository,
 			ReferenceName:     plumbing.HEAD,
-			Auth:              opts.Auth.Convert(),
+			Auth:              authConfig,
 			RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 			Tags:              git.AllTags,
 		})
@@ -69,7 +77,7 @@ func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*
 	pullRepoErr := wt.PullContext(ctx, &git.PullOptions{
 		RemoteName: "origin",
 		Force:      true,
-		Auth:       opts.Auth.Convert(),
+		Auth:       authConfig,
 	})
 	if pullRepoErr != nil && !errors.Is(pullRepoErr, git.NoErrAlreadyUpToDate) {
 		workTree, err := repo.Worktree()
@@ -88,10 +96,10 @@ func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*
 
 	checkoutErr := checkout(opts.Revision, repo)
 	if checkoutErr != nil {
-		return nil, UpdateFailedError{
-			Repository: opts.Repository,
-			Inner:      checkoutErr,
+		if errors.Is(checkoutErr, plumbing.ErrReferenceNotFound) {
+			return nil, InvalidRevisionError{opts.Revision}
 		}
+		return nil, checkoutErr
 	}
 
 	return &GitRepo{
@@ -109,10 +117,18 @@ func isRepoCloned(dir string) bool {
 // Update updates the repository by pulling new content and re-checking out to
 // latest version of Revision.
 func (repo *GitRepo) Update(ctx context.Context) error {
+	authConfig, err := repo.opts.Auth.Convert()
+	if err != nil {
+		return UpdateFailedError{
+			Repository: repo.opts.Repository,
+			Inner:      err,
+		}
+	}
+
 	pullRepoErr := repo.workTree.PullContext(ctx, &git.PullOptions{
 		RemoteName: "origin",
 		Force:      true,
-		Auth:       repo.opts.Auth.Convert(),
+		Auth:       authConfig,
 	})
 	if pullRepoErr != nil && !errors.Is(pullRepoErr, git.NoErrAlreadyUpToDate) {
 		return UpdateFailedError{

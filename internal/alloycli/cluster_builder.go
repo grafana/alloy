@@ -45,7 +45,6 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 
 		EnableClustering:    opts.EnableClustering,
 		NodeName:            opts.NodeName,
-		AdvertiseAddress:    opts.AdvertiseAddress,
 		RejoinInterval:      opts.RejoinInterval,
 		ClusterMaxJoinPeers: opts.ClusterMaxJoinPeers,
 		ClusterName:         opts.ClusterName,
@@ -59,28 +58,10 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		config.NodeName = hostname
 	}
 
-	if config.AdvertiseAddress == "" {
-		advertiseAddress := fmt.Sprintf("%s:%d", net.ParseIP("127.0.0.1"), listenPort)
-		if opts.EnableClustering {
-			advertiseInterfaces := opts.AdvertiseInterfaces
-			if useAllInterfaces(advertiseInterfaces) {
-				advertiseInterfaces = nil
-			}
-			addr, err := advertise.FirstAddress(advertiseInterfaces)
-			if err != nil {
-				level.Warn(opts.Log).Log("msg", "could not find advertise address using network interfaces", opts.AdvertiseInterfaces,
-					"falling back to localhost", "err", err)
-			} else if addr.Is4() {
-				advertiseAddress = fmt.Sprintf("%s:%d", addr.String(), listenPort)
-			} else if addr.Is6() {
-				advertiseAddress = fmt.Sprintf("[%s]:%d", addr.String(), listenPort)
-			} else {
-				return nil, fmt.Errorf("type unknown for address: %s", addr.String())
-			}
-		}
-		config.AdvertiseAddress = advertiseAddress
-	} else {
-		config.AdvertiseAddress = appendDefaultPort(config.AdvertiseAddress, listenPort)
+	var err error
+	config.AdvertiseAddress, err = getAdvertiseAddress(opts, listenPort)
+	if err != nil {
+		return nil, err
 	}
 
 	switch {
@@ -110,6 +91,29 @@ func useAllInterfaces(interfaces []string) bool {
 	return len(interfaces) == 1 && interfaces[0] == "all"
 }
 
+func getAdvertiseAddress(opts clusterOptions, listenPort int) (string, error) {
+	if opts.AdvertiseAddress != "" {
+		return appendDefaultPort(opts.AdvertiseAddress, listenPort), nil
+	}
+	advertiseAddress := net.JoinHostPort("127.0.0.1", strconv.Itoa(listenPort))
+	if opts.EnableClustering {
+		advertiseInterfaces := opts.AdvertiseInterfaces
+		if useAllInterfaces(advertiseInterfaces) {
+			advertiseInterfaces = nil
+		}
+		addr, err := advertise.FirstAddress(advertiseInterfaces)
+		if err != nil {
+			level.Warn(opts.Log).Log("msg", "could not find advertise address using network interfaces", opts.AdvertiseInterfaces,
+				"falling back to localhost", "err", err)
+		} else if !addr.Is4() && !addr.Is6() {
+			return "", fmt.Errorf("type unknown for address: %s", addr.String())
+		} else {
+			advertiseAddress = net.JoinHostPort(addr.String(), strconv.Itoa(listenPort))
+		}
+	}
+	return advertiseAddress, nil
+}
+
 func findPort(addr string, defaultPort int) int {
 	_, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
@@ -128,7 +132,7 @@ func appendDefaultPort(addr string, port int) string {
 		// No error means there was a port in the string
 		return addr
 	}
-	return fmt.Sprintf("%s:%d", addr, port)
+	return net.JoinHostPort(addr, strconv.Itoa(port))
 }
 
 type discoverFunc func() ([]string, error)

@@ -8,7 +8,21 @@ logging {
 	level = "debug"
 
 	// Forward internal logs to the local Loki instance.
-	write_to = [loki.write.loki.receiver]
+	write_to = [loki.relabel.alloy_logs.receiver]
+}
+
+loki.relabel "alloy_logs"{
+	rule {
+		target_label = "instance"
+		replacement = constants.hostname
+	}
+
+	rule {
+		target_label = "job"
+		replacement = "integrations/self"
+	}
+
+	forward_to = [loki.write.loki.receiver]
 }
 
 tracing {

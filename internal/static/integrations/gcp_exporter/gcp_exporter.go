@@ -22,6 +22,7 @@ import (
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v2"
 
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -85,7 +86,11 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 	}
 
 	var gcpCollectors []prometheus.Collector
+	var counterStores []*SelfPruningDeltaStore[collectors.ConstMetric]
+	var histogramStores []*SelfPruningDeltaStore[collectors.HistogramMetric]
 	for _, projectID := range c.ProjectIDs {
+		counterStore := NewSelfPruningDeltaStore[collectors.ConstMetric](l, delta.NewInMemoryCounterStore(l, 30*time.Minute))
+		histogramStore := NewSelfPruningDeltaStore[collectors.HistogramMetric](l, delta.NewInMemoryHistogramStore(l, 30*time.Minute))
 		monitoringCollector, err := collectors.NewMonitoringCollector(
 			projectID,
 			svc,
@@ -106,17 +111,39 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 				AggregateDeltas: true,
 			},
 			l,
-			delta.NewInMemoryCounterStore(l, 30*time.Minute),
-			delta.NewInMemoryHistogramStore(l, 30*time.Minute),
+			counterStore,
+			histogramStore,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create monitoring collector: %w", err)
 		}
+		counterStores = append(counterStores, counterStore)
+		histogramStores = append(histogramStores, histogramStore)
 		gcpCollectors = append(gcpCollectors, monitoringCollector)
 	}
 
+	run := func(ctx context.Context) error {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				level.Debug(l).Log("msg", "Starting delta store pruning", "number_of_stores", len(counterStores)+len(histogramStores))
+				for _, store := range counterStores {
+					store.Prune(ctx)
+				}
+				for _, store := range histogramStores {
+					store.Prune(ctx)
+				}
+				level.Debug(l).Log("msg", "Finished delta store pruning", "number_of_stores", len(counterStores)+len(histogramStores))
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+	}
+
 	return integrations.NewCollectorIntegration(
-		c.Name(), integrations.WithCollectors(gcpCollectors...),
+		c.Name(), integrations.WithCollectors(gcpCollectors...), integrations.WithRunner(run),
 	), nil
 }
 

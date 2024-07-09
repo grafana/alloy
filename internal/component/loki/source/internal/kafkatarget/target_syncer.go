@@ -13,14 +13,13 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
-	"github.com/grafana/loki/clients/pkg/promtail/targets/target"
-
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var TopicPollInterval = 30 * time.Second

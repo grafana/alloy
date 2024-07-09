@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/go-kit/log/level"
-	"github.com/stretchr/testify/require"
 	"log/slog"
 	"strings"
 	"testing"
 	"testing/slogtest"
+
+	"github.com/go-kit/log/level"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDefferredSlogTester(t *testing.T) {

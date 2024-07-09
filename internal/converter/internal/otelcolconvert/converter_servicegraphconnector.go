@@ -64,5 +64,6 @@ func toServicegraphConnector(state *State, id component.InstanceID, cfg *service
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
 		},
+		DebugMetrics: common.DefaultValue[servicegraph.Arguments]().DebugMetrics,
 	}
 }

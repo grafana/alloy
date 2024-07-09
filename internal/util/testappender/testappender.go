@@ -5,7 +5,6 @@ package testappender
 import (
 	"fmt"
 
-	"github.com/grafana/alloy/internal/util/testappender/internal/dtobuilder"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -14,6 +13,8 @@ import (
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
+
+	"github.com/grafana/alloy/internal/util/testappender/internal/dtobuilder"
 )
 
 // Appender implements storage.Appender. It keeps track of samples, metadata,
@@ -205,6 +206,11 @@ func (app *Appender) Rollback() error {
 
 	app.rollbackCalled = true
 	return nil
+}
+
+// AppendCTZeroSample implements storage.Appender.
+func (app *Appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, ct int64) (storage.SeriesRef, error) {
+	panic("this test appender does not yet implement AppendCTZeroSample")
 }
 
 // MetricFamilies returns the generated slice of *dto.MetricsFamily.

@@ -8,9 +8,7 @@ otelcol.receiver.otlp "trace_config_1_default" {
 	}
 
 	output {
-		metrics = []
-		logs    = []
-		traces  = [otelcol.processor.attributes.trace_config_1_default.input]
+		traces = [otelcol.processor.attributes.trace_config_1_default.input]
 	}
 }
 
@@ -21,9 +19,7 @@ otelcol.processor.attributes "trace_config_1_default" {
 	}
 
 	output {
-		metrics = []
-		logs    = []
-		traces  = [otelcol.exporter.otlp.trace_config_1_default_0.input]
+		traces = [otelcol.exporter.otlp.trace_config_1_default_0.input]
 	}
 }
 
@@ -47,9 +43,7 @@ otelcol.receiver.otlp "trace_config_2_default" {
 	}
 
 	output {
-		metrics = []
-		logs    = []
-		traces  = [otelcol.processor.attributes.trace_config_2_default.input]
+		traces = [otelcol.processor.attributes.trace_config_2_default.input]
 	}
 }
 
@@ -61,9 +55,7 @@ otelcol.processor.attributes "trace_config_2_default" {
 	}
 
 	output {
-		metrics = []
-		logs    = []
-		traces  = [otelcol.exporter.otlp.trace_config_2_default_0.input]
+		traces = [otelcol.exporter.otlp.trace_config_2_default_0.input]
 	}
 }
 

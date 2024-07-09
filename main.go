@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/grafana/alloy/internal/alloycli"
-	"github.com/grafana/alloy/internal/build"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/grafana/alloy/internal/alloycli"
+	"github.com/grafana/alloy/internal/build"
+
 	// Register Prometheus SD components
-	_ "github.com/grafana/loki/clients/pkg/promtail/discovery/consulagent"
+	_ "github.com/grafana/loki/v3/clients/pkg/promtail/discovery/consulagent"
 	_ "github.com/prometheus/prometheus/discovery/install"
 
 	// Register integrations

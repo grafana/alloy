@@ -60,6 +60,7 @@ func toHeadersSetterExtension(cfg *headerssetterextension.Config) *headers.Argum
 	}
 
 	return &headers.Arguments{
-		Headers: res,
+		Headers:      res,
+		DebugMetrics: common.DefaultValue[headers.Arguments]().DebugMetrics,
 	}
 }

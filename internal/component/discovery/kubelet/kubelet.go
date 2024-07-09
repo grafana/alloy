@@ -13,17 +13,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/common/config"
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/featuregate"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/discovery/refresh"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/util/strutil"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 const (
@@ -97,17 +97,12 @@ func (args *Arguments) Validate() error {
 
 // New returns a new instance of a discovery.kubelet component.
 func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
+	return discovery.New(opts, args, func(args component.Arguments) (discovery.DiscovererConfig, error) {
 		newArgs := args.(Arguments)
-		kubeletDiscovery, err := NewKubeletDiscovery(newArgs)
-		if err != nil {
-			return nil, err
-		}
-		interval := defaultKubeletRefreshInterval
-		if newArgs.Interval != 0 {
-			interval = newArgs.Interval
-		}
-		return refresh.NewDiscovery(opts.Logger, "kubelet", interval, kubeletDiscovery.Refresh), nil
+		return &kubeletDiscoveryConfig{
+			args: newArgs,
+			opts: opts,
+		}, nil
 	})
 }
 

@@ -43,5 +43,5 @@ type InvalidRevisionError struct {
 
 // Error returns the error string, denoting the invalid revision.
 func (err InvalidRevisionError) Error() string {
-	return fmt.Sprintf("invalid revision %s", err.Revision)
+	return fmt.Sprintf("invalid revision \"%s\"", err.Revision)
 }

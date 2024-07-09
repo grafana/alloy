@@ -26,7 +26,7 @@ there is also a set of metrics-only functions:
 * [Booleans][OTTL booleans]:
   * `not true`
   * `not IsMatch(name, "http_.*")`
-* [Boolean Expressions][OTTL boolean expressions] consisting of a `where` followed by one or more booleans:
+* [Boolean Expressions][OTTL boolean expressions] consisting of a `where` followed by one or more boolean values:
   * `set(attributes["whose_fault"], "ours") where attributes["http.status"] == 500`
   * `set(attributes["whose_fault"], "theirs") where attributes["http.status"] == 400 or attributes["http.status"] == 404`
 * [Math expressions][OTTL math expressions]:
@@ -52,28 +52,27 @@ Raw strings are generally more convenient for writing OTTL statements.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-`otelcol.processor.transform` is a wrapper over the upstream
-OpenTelemetry Collector `transform` processor. If necessary, bug reports or feature requests
-will be redirected to the upstream repository.
+`otelcol.processor.transform` is a wrapper over the upstream OpenTelemetry Collector `transform` processor.
+If necessary, bug reports or feature requests will be redirected to the upstream repository.
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.transform` components by giving them different labels.
 
 {{< admonition type="warning" >}}
-`otelcol.processor.transform` allows you to modify all aspects of your telemetry. Some specific risks are given below,
-but this is not an exhaustive list. It is important to understand your data before using this processor.
+`otelcol.processor.transform` allows you to modify all aspects of your telemetry.
+Some specific risks are given below, but this is not an exhaustive list.
+It is important to understand your data before using this processor.
 
 - [Unsound Transformations][]: Transformations between metric data types are not defined in the [metrics data model][].
-To use these functions, you must understand the incoming data and know that it can be meaningfully converted
-to a new metric data type or can be used to create new metrics.
+To use these functions, you must understand the incoming data and know that it can be meaningfully converted to a new metric data type or can be used to create new metrics.
   - Although OTTL allows you to use the `set` function with `metric.data_type`,
     its implementation in the transform processor is a [no-op][].
     To modify a data type, you must use a specific function such as `convert_gauge_to_sum`.
 - [Identity Conflict][]: Transformation of metrics can potentially affect a metric's identity,
-  leading to an Identity Crisis. Be especially cautious when transforming a metric name and when reducing or changing
-  existing attributes. Adding new attributes is safe.
-- [Orphaned Telemetry][]: The processor allows you to modify `span_id`, `trace_id`, and `parent_span_id` for traces
-  and `span_id`, and `trace_id` logs.  Modifying these fields could lead to orphaned spans or logs.
+  leading to an Identity Crisis. Be especially cautious when transforming a metric name and when reducing or changing existing attributes.
+  Adding new attributes is safe.
+- [Orphaned Telemetry][]: The processor allows you to modify `span_id`, `trace_id`, and `parent_span_id` for traces and `span_id`, and `trace_id` logs.
+  Modifying these fields could lead to orphaned spans or logs.
 
 [Unsound Transformations]: https://github.com/open-telemetry/opentelemetry-collector/blob/{{< param "OTEL_VERSION" >}}/docs/standard-warnings.md#unsound-transformations
 [Identity Conflict]: https://github.com/open-telemetry/opentelemetry-collector/blob/{{< param "OTEL_VERSION" >}}/docs/standard-warnings.md#identity-conflict
@@ -98,8 +97,8 @@ otelcol.processor.transform "LABEL" {
 
 `otelcol.processor.transform` supports the following arguments:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
+Name         | Type     | Description                                                        | Default       | Required
+-------------|----------|--------------------------------------------------------------------|---------------|---------
 `error_mode` | `string` | How to react to errors if they occur while processing a statement. | `"propagate"` | no
 
 The supported values for `error_mode` are:
@@ -118,11 +117,13 @@ trace_statements | [trace_statements][] | Statements which transform traces. | n
 metric_statements | [metric_statements][] | Statements which transform metrics. | no
 log_statements | [log_statements][] | Statements which transform logs. | no
 output | [output][] | Configures where to send received telemetry data. | yes
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [trace_statements]: #trace_statements-block
 [metric_statements]: #metric_statements-block
 [log_statements]: #log_statements-block
 [output]: #output-block
+[debug_metrics]: #debug_metrics-block
 
 [OTTL Context]: #ottl-context
 
@@ -131,10 +132,10 @@ output | [output][] | Configures where to send received telemetry data. | yes
 The `trace_statements` block specifies statements which transform trace telemetry signals.
 Multiple `trace_statements` blocks can be specified.
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`context` | `string` | OTTL Context to use when interpreting the associated statements. | | yes
-`statements` | `list(string)` | A list of OTTL statements. | | yes
+Name         | Type           | Description                                                      | Default | Required
+-------------|----------------|------------------------------------------------------------------|---------|---------
+`context`    | `string`       | OTTL Context to use when interpreting the associated statements. |         | yes
+`statements` | `list(string)` | A list of OTTL statements.                                       |         | yes
 
 The supported values for `context` are:
 * `resource`: Use when interacting only with OTLP resources (for example, resource attributes).
@@ -142,17 +143,17 @@ The supported values for `context` are:
 * `span`: Use when interacting only with OTLP spans.
 * `spanevent`: Use when interacting only with OTLP span events.
 
-See [OTTL Context][] for more information about how ot use contexts.
+Refer to [OTTL Context][] for more information about how to use contexts.
 
 ### metric_statements block
 
 The `metric_statements` block specifies statements which transform metric telemetry signals.
 Multiple `metric_statements` blocks can be specified.
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`context` | `string` | OTTL Context to use when interpreting the associated statements. | | yes
-`statements` | `list(string)` | A list of OTTL statements. | | yes
+Name         | Type           | Description                                                      | Default | Required
+-------------|----------------|------------------------------------------------------------------|---------|---------
+`context`    | `string`       | OTTL Context to use when interpreting the associated statements. |         | yes
+`statements` | `list(string)` | A list of OTTL statements.                                       |         | yes
 
 The supported values for `context` are:
 * `resource`: Use when interacting only with OTLP resources (for example, resource attributes).
@@ -167,23 +168,22 @@ Refer to [OTTL Context][] for more information about how to use contexts.
 The `log_statements` block specifies statements which transform log telemetry signals.
 Multiple `log_statements` blocks can be specified.
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`context` | `string` | OTTL Context to use when interpreting the associated statements. | | yes
-`statements` | `list(string)` | A list of OTTL statements. | | yes
+Name         | Type           | Description                                                      | Default | Required
+-------------|----------------|------------------------------------------------------------------|---------|---------
+`context`    | `string`       | OTTL Context to use when interpreting the associated statements. |         | yes
+`statements` | `list(string)` | A list of OTTL statements.                                       |         | yes
 
 The supported values for `context` are:
 * `resource`: Use when interacting only with OTLP resources (for example, resource attributes).
 * `scope`: Use when interacting only with OTLP instrumentation scope (for example, the name of the instrumentation scope).
 * `log`: Use when interacting only with OTLP logs.
 
-See [OTTL Context][] for more information about how ot use contexts.
+Refer to [OTTL Context][] for more information about how to use contexts.
 
 ### OTTL Context
 
 Each context allows the transformation of its type of telemetry.
-For example, statements associated with a `resource` context will be able to transform the resource's
-`attributes` and `dropped_attributes_count`.
+For example, statements associated with a `resource` context will be able to transform the resource's `attributes` and `dropped_attributes_count`.
 
 Each type of `context` defines its own paths and enums specific to that context.
 Refer to the OpenTelemetry documentation for a list of paths and enums for each context:
@@ -203,8 +203,7 @@ Contexts __NEVER__ supply access to individual items "lower" in the protobuf def
 - Similarly, statements associated to a `span` __WILL NOT__ be able to access individual SpanEvents, but can access the entire SpanEvents slice.
 
 For practical purposes, this means that a context cannot make decisions on its telemetry based on telemetry "lower" in the structure.
-For example, __the following context statement is not possible__ because it attempts to use individual datapoint
-attributes in the condition of a statement associated to a `metric`:
+For example, __the following context statement is not possible__ because it attempts to use individual datapoint attributes in the condition of a statement associated to a `metric`:
 
 ```alloy
 metric_statements {
@@ -246,12 +245,16 @@ span using the `span` context, it is more efficient to use the `resource` contex
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
 `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,

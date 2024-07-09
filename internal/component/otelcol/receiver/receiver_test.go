@@ -7,6 +7,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
@@ -196,8 +197,8 @@ func (fa fakeReceiverArgs) NextConsumers() *otelcol.ConsumerArguments {
 	return fa.Output
 }
 
-func (fa fakeReceiverArgs) DebugMetricsConfig() otelcol.DebugMetricsArguments {
-	var args otelcol.DebugMetricsArguments
+func (fa fakeReceiverArgs) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	var args otelcolCfg.DebugMetricsArguments
 	args.SetToDefault()
 	return args
 }

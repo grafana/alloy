@@ -4,6 +4,7 @@ package file_stats
 
 import (
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver"
@@ -46,7 +47,7 @@ func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
 }
 
 // DebugMetricsConfig implements receiver.Arguments.
-func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
 }
 

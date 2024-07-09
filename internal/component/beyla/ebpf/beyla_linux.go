@@ -90,14 +90,69 @@ func (args Services) Convert() (services.DefinitionCriteria, error) {
 		if err != nil {
 			return nil, err
 		}
+		kubernetes, err := s.Kubernetes.Convert()
+		if err != nil {
+			return nil, err
+		}
+		podLabels := map[string]*services.RegexpAttr{}
+		for k, v := range s.Kubernetes.PodLabels {
+			label, err := stringToRegexpAttr(v)
+			if err != nil {
+				return nil, err
+			}
+			podLabels[k] = &label
+		}
+
 		attrs = append(attrs, services.Attributes{
 			Name:      s.Name,
 			Namespace: s.Namespace,
 			OpenPorts: ports,
 			Path:      paths,
+			Metadata:  kubernetes,
+			PodLabels: podLabels,
 		})
 	}
 	return attrs, nil
+}
+
+func (args KubernetesService) Convert() (map[string]*services.RegexpAttr, error) {
+	namespace, err := stringToRegexpAttr(args.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	podName, err := stringToRegexpAttr(args.PodName)
+	if err != nil {
+		return nil, err
+	}
+	deploymentName, err := stringToRegexpAttr(args.DeploymentName)
+	if err != nil {
+		return nil, err
+	}
+	replicaSetName, err := stringToRegexpAttr(args.ReplicaSetName)
+	if err != nil {
+		return nil, err
+	}
+	statefulSetName, err := stringToRegexpAttr(args.StatefulSetName)
+	if err != nil {
+		return nil, err
+	}
+	dataaemonSetName, err := stringToRegexpAttr(args.DaemonSetName)
+	if err != nil {
+		return nil, err
+	}
+	ownerName, err := stringToRegexpAttr(args.OwnerName)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]*services.RegexpAttr{
+		services.AttrNamespace:       &namespace,
+		services.AttrPodName:         &podName,
+		services.AttrDeploymentName:  &deploymentName,
+		services.AttrReplicaSetName:  &replicaSetName,
+		services.AttrStatefulSetName: &statefulSetName,
+		services.AttrDaemonSetName:   &dataaemonSetName,
+		services.AttrOwnerName:       &ownerName,
+	}, nil
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {

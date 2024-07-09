@@ -5,6 +5,11 @@ import (
 	"flag"
 	"fmt"
 
+	promtail_config "github.com/grafana/loki/v3/clients/pkg/promtail/config"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/limit"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/file"
+	prom_config "github.com/prometheus/prometheus/config"
+
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
@@ -15,10 +20,6 @@ import (
 	"github.com/grafana/alloy/internal/static/logs"
 	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/grafana/alloy/syntax/token/builder"
-	promtail_config "github.com/grafana/loki/clients/pkg/promtail/config"
-	"github.com/grafana/loki/clients/pkg/promtail/limit"
-	"github.com/grafana/loki/clients/pkg/promtail/targets/file"
-	prom_config "github.com/prometheus/prometheus/config"
 
 	_ "github.com/grafana/alloy/internal/static/integrations/install" // Install integrations
 )

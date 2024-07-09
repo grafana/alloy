@@ -13,7 +13,6 @@ import (
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
-	"github.com/prometheus/prometheus/model/textparse"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"k8s.io/utils/ptr"
 )
@@ -153,15 +152,15 @@ func (b *builder) buildFamiliesFromMetadata() {
 	}
 }
 
-func textParseToMetricType(tp textparse.MetricType) dto.MetricType {
+func textParseToMetricType(tp model.MetricType) dto.MetricType {
 	switch tp {
-	case textparse.MetricTypeCounter:
+	case model.MetricTypeCounter:
 		return dto.MetricType_COUNTER
-	case textparse.MetricTypeGauge:
+	case model.MetricTypeGauge:
 		return dto.MetricType_GAUGE
-	case textparse.MetricTypeHistogram:
+	case model.MetricTypeHistogram:
 		return dto.MetricType_HISTOGRAM
-	case textparse.MetricTypeSummary:
+	case model.MetricTypeSummary:
 		return dto.MetricType_SUMMARY
 	default:
 		// There are other values for m.Type, but they're all

@@ -7,15 +7,16 @@ import (
 
 	"golang.org/x/exp/maps"
 
+	prom_config "github.com/prometheus/prometheus/config"
+	prom_discovery "github.com/prometheus/prometheus/discovery"
+	"github.com/prometheus/prometheus/storage"
+
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
 	"github.com/grafana/alloy/internal/service/cluster"
-	prom_config "github.com/prometheus/prometheus/config"
-	prom_discovery "github.com/prometheus/prometheus/discovery"
-	"github.com/prometheus/prometheus/storage"
 )
 
 func AppendPrometheusScrape(pb *build.PrometheusBlocks, scrapeConfig *prom_config.ScrapeConfig, forwardTo []storage.Appendable, targets []discovery.Target, label string) {
@@ -57,6 +58,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		ScrapeClassicHistograms:   scrapeConfig.ScrapeClassicHistograms,
 		ScrapeInterval:            time.Duration(scrapeConfig.ScrapeInterval),
 		ScrapeTimeout:             time.Duration(scrapeConfig.ScrapeTimeout),
+		ScrapeProtocols:           convertScrapeProtocols(scrapeConfig.ScrapeProtocols),
 		MetricsPath:               scrapeConfig.MetricsPath,
 		Scheme:                    scrapeConfig.Scheme,
 		BodySizeLimit:             scrapeConfig.BodySizeLimit,
@@ -93,6 +95,14 @@ func getScrapeTargets(staticConfig prom_discovery.StaticConfig) []discovery.Targ
 	}
 
 	return targets
+}
+
+func convertScrapeProtocols(protocols []prom_config.ScrapeProtocol) []string {
+	result := make([]string, 0, len(protocols))
+	for _, protocol := range protocols {
+		result = append(result, string(protocol))
+	}
+	return result
 }
 
 func ValidateScrapeTargets(staticConfig prom_discovery.StaticConfig) diag.Diagnostics {

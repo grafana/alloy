@@ -91,7 +91,20 @@ h6 {
 }
 
 .content .docsLink {
-  display: block;
+  display: inline-block;
+  width: fit-content;
+  height: fit-content;
+  font-size: 10px;
+  padding: 5px;
+  color: #ffffff;
+  background-color: rgb(56, 133, 220);
+  border: 1px solid rgb(56, 133, 220);
+  border-radius: 3px;
+  margin-right: 5px;
+}
+
+.content .debugLink {
+  display: inline-block;
   width: fit-content;
   height: fit-content;
   font-size: 10px;
@@ -101,9 +114,15 @@ h6 {
   background-color: rgb(56, 133, 220);
   border: 1px solid rgb(56, 133, 220);
   border-radius: 3px;
+  margin-right: 10px;
 }
 
 .docsLink a {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.debugLink a {
   color: #ffffff;
   text-decoration: none;
 }

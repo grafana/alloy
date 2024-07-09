@@ -4,9 +4,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bmatcuk/doublestar"
 	"github.com/go-kit/log"
 
-	"github.com/bmatcuk/doublestar"
+	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -38,7 +39,13 @@ func (w *watch) getPaths() ([]discovery.Target, error) {
 		}
 		fi, err := os.Stat(abs)
 		if err != nil {
-			level.Error(w.log).Log("msg", "error getting os stat", "path", abs, "err", err)
+			// On some filesystems we can get errors accessing the discovered paths. Don't log these as errors.
+			// local.file_match will retry on the next sync period if the access is blocked temporarily only.
+			if utils.IsEphemeralOrFileClosed(err) {
+				level.Debug(w.log).Log("msg", "I/O error when getting os stat", "path", abs, "err", err)
+			} else {
+				level.Error(w.log).Log("msg", "error getting os stat", "path", abs, "err", err)
+			}
 			continue
 		}
 		if fi.IsDir() {

@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"time"
 
+	promcfg "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	promcfg "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
 )
 
 func init() {
@@ -21,7 +22,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -61,8 +62,7 @@ func (args *Arguments) Validate() error {
 	return args.TLSConfig.Validate()
 }
 
-// Convert converts Arguments into the SDConfig type.
-func (args *Arguments) Convert() *SDConfig {
+func (args Arguments) Convert() discovery.DiscovererConfig {
 	return &SDConfig{
 		RefreshInterval: model.Duration(args.RefreshInterval),
 		Server:          args.Server,
@@ -76,12 +76,4 @@ func (args *Arguments) Convert() *SDConfig {
 		ServiceTags:     args.ServiceTags,
 		TLSConfig:       *args.TLSConfig.Convert(),
 	}
-}
-
-// New returns a new instance of a discovery.consulagent component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
-		newArgs := args.(Arguments)
-		return NewDiscovery(newArgs.Convert(), opts.Logger)
-	})
 }

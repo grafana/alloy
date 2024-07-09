@@ -118,9 +118,11 @@ Hierarchy | Block      | Description                               | Required
 ----------|------------|-------------------------------------------|---------
 store     | [store][]  | Configures the in-memory store for spans. | no
 output    | [output][] | Configures where to send telemetry data.  | yes
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [store]: #store-block
 [output]: #output-block
+[debug_metrics]: #debug_metrics-block
 
 ### store block
 
@@ -134,6 +136,10 @@ Name        | Type       | Description                                   | Defau
 ### output block
 
 {{< docs/shared lookup="reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
@@ -169,7 +175,7 @@ otelcol.receiver.otlp "default" {
   }
 
   output {
-    traces  = [otelcol.connector.servicegraph.default.input,otelcol.exporter.otlp.grafana_cloud_tempo.input]
+    traces  = [otelcol.connector.servicegraph.default.input,otelcol.exporter.otlp.grafana_cloud_traces.input]
   }
 }
 
@@ -195,14 +201,14 @@ prometheus.remote_write "mimir" {
   }
 }
 
-otelcol.exporter.otlp "grafana_cloud_tempo" {
+otelcol.exporter.otlp "grafana_cloud_traces" {
   client {
     endpoint = "https://tempo-xxx.grafana.net/tempo"
-    auth     = otelcol.auth.basic.grafana_cloud_tempo.handler
+    auth     = otelcol.auth.basic.grafana_cloud_traces.handler
   }
 }
 
-otelcol.auth.basic "grafana_cloud_tempo" {
+otelcol.auth.basic "grafana_cloud_traces" {
   username = env("TEMPO_USERNAME")
   password = env("GRAFANA_CLOUD_API_KEY")
 }

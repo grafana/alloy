@@ -27,11 +27,12 @@ var DefaultConfig = Config{
 
 // SNMPTarget defines a target device to be used by the integration.
 type SNMPTarget struct {
-	Name       string `yaml:"name"`
-	Target     string `yaml:"address"`
-	Module     string `yaml:"module"`
-	Auth       string `yaml:"auth"`
-	WalkParams string `yaml:"walk_params,omitempty"`
+	Name        string `yaml:"name"`
+	Target      string `yaml:"address"`
+	Module      string `yaml:"module"`
+	Auth        string `yaml:"auth"`
+	WalkParams  string `yaml:"walk_params,omitempty"`
+	SNMPContext string `yaml:"snmp_context,omitempty"`
 }
 
 // Config configures the SNMP integration.
@@ -155,6 +156,13 @@ func NewSNMPMetrics(reg prometheus.Registerer) collector.Metrics {
 				Help:      "Number of SNMP packet retries.",
 			},
 		),
+		SNMPInflight: promauto.With(reg).NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "request_in_flight",
+				Help:      "Current number of SNMP scrapes being requested.",
+			},
+		),
 	}
 }
 
@@ -191,6 +199,9 @@ func (i *Integration) ScrapeConfigs() []config.ScrapeConfig {
 		}
 		if target.WalkParams != "" {
 			queryParams.Add("walk_params", target.WalkParams)
+		}
+		if target.SNMPContext != "" {
+			queryParams.Add("snmp_context", target.SNMPContext)
 		}
 		res = append(res, config.ScrapeConfig{
 			JobName:     i.sh.cfg.Name() + "/" + target.Name,

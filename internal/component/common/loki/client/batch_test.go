@@ -9,8 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/loki/v3/pkg/logproto"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/loki/pkg/logproto"
 )
 
 func TestBatch_MaxStreams(t *testing.T) {

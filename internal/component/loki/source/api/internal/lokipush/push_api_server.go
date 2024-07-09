@@ -11,19 +11,20 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/component/common/loki"
-	fnet "github.com/grafana/alloy/internal/component/common/net"
-	frelabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/dskit/tenant"
-	"github.com/grafana/loki/pkg/loghttp/push"
-	"github.com/grafana/loki/pkg/logproto"
-	util_log "github.com/grafana/loki/pkg/util/log"
+	"github.com/grafana/loki/v3/pkg/loghttp/push"
+	"github.com/grafana/loki/v3/pkg/logproto"
+	util_log "github.com/grafana/loki/v3/pkg/util/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	promql_parser "github.com/prometheus/prometheus/promql/parser"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	frelabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 type PushAPIServer struct {
@@ -137,7 +138,15 @@ func (s *PushAPIServer) getRelabelRules() []*relabel.Config {
 func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	logger := util_log.WithContext(r.Context(), util_log.Logger)
 	userID, _ := tenant.TenantID(r.Context())
-	req, err := push.ParseRequest(logger, userID, r, nil, nil, push.ParseLokiRequest)
+	req, err := push.ParseRequest(
+		logger,
+		userID,
+		r,
+		nil, // tenants retention
+		nil, // limits
+		push.ParseLokiRequest,
+		nil, // usage tracker
+	)
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "failed to parse incoming push request", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)

@@ -42,7 +42,8 @@ func (basicAuthConverterConverter) ConvertAndAppend(state *State, id component.I
 
 func toBasicAuthExtension(cfg *basicauthextension.Config) *basic.Arguments {
 	return &basic.Arguments{
-		Username: cfg.ClientAuth.Username,
-		Password: alloytypes.Secret(string(cfg.ClientAuth.Password)),
+		Username:     cfg.ClientAuth.Username,
+		Password:     alloytypes.Secret(string(cfg.ClientAuth.Password)),
+		DebugMetrics: common.DefaultValue[basic.Arguments]().DebugMetrics,
 	}
 }

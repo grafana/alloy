@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/vcs"
 	"github.com/stretchr/testify/require"
 )
 
@@ -317,3 +318,53 @@ const contentsMore = `declare "add" {
         value = argument.a.value + argument.b.value + 1
     }
 }`
+
+func TestNoPanicWithNonexistentRevision(t *testing.T) {
+	testRepo := t.TempDir()
+
+	main := `
+import.git "testImport" {
+	repository = "` + testRepo + `"
+  	path = "math.alloy"
+    pull_frequency = "1s"
+    revision = "nonexistent"
+}
+
+testImport.add "cc" {
+	a = 1
+    b = 1
+}
+`
+	runGit(t, testRepo, "init", testRepo)
+
+	runGit(t, testRepo, "checkout", "-b", "testor")
+
+	math := filepath.Join(testRepo, "math.alloy")
+	err := os.WriteFile(math, []byte(contents), 0666)
+	require.NoError(t, err)
+
+	runGit(t, testRepo, "add", ".")
+
+	runGit(t, testRepo, "commit", "-m \"test\"")
+
+	defer verifyNoGoroutineLeaks(t)
+	ctrl, f := setup(t, main)
+	err = ctrl.LoadSource(f, nil)
+	expectedErr := vcs.InvalidRevisionError{
+		Revision: "nonexistent",
+	}
+	require.ErrorContains(t, err, expectedErr.Error())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	defer func() {
+		cancel()
+		wg.Wait()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ctrl.Run(ctx)
+	}()
+}

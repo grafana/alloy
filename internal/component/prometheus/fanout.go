@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -14,6 +13,8 @@ import (
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
+
+	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
 var _ storage.Appendable = (*Fanout)(nil)
@@ -215,6 +216,23 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 	var multiErr error
 	for _, x := range a.children {
 		_, err := x.AppendHistogram(ref, l, t, h, fh)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return ref, multiErr
+}
+
+func (a *appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+	if a.start.IsZero() {
+		a.start = time.Now()
+	}
+	if ref == 0 {
+		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
+	}
+	var multiErr error
+	for _, x := range a.children {
+		_, err := x.AppendCTZeroSample(ref, l, t, ct)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}

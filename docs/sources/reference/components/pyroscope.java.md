@@ -4,11 +4,7 @@ description: Learn about pyroscope.java
 title: pyroscope.java
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # pyroscope.java
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.java` continuously profiles Java processes running on the local Linux OS using [async-profiler](https://github.com/async-profiler/async-profiler).
 
@@ -57,12 +53,12 @@ If you change the `tmp_dir` configuration to something other than `/tmp`, then y
 
 #### `targets` argument
 
-The special `__process_pid__` label _must always_ be present and corresponds to the process PID that is used for profiling.
+The special `__process_pid__` label _must always_ be present and corresponds to the process PID that's used for profiling.
 
 Labels starting with a double underscore (`__`) are treated as _internal_, and are removed prior to scraping.
 
 The special label `service_name` is required and must always be present.
-If it is not specified, `pyroscope.scrape` will attempt to infer it from either of the following sources, in this order:
+If it's not specified, `pyroscope.scrape` will attempt to infer it from either of the following sources, in this order:
 1. `__meta_kubernetes_pod_annotation_pyroscope_io_service_name` which is a `pyroscope.io/service_name` pod annotation.
 2. `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`
 3. `__meta_docker_container_name`
@@ -94,7 +90,7 @@ Name          | Type       | Description                                        
 `alloc`       | `string`   | Allocation profiling sampling configuration  It is passed as `--alloc` arg to async-profiler.            | "512k"  | no
 `lock`        | `string`   | Lock profiling sampling configuration. It is passed as `--lock` arg to async-profiler.                   | "10ms"  | no
 
-For more information on async-profiler configuration, see [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options)
+Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
 
 ## Exported fields
 

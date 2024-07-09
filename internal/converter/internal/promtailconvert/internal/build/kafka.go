@@ -1,11 +1,12 @@
 package build
 
 import (
+	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+
 	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/kafka"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 )
 
 func (s *ScrapeConfigBuilder) AppendKafka() {

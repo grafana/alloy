@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/prometheus/common/model"
+	prom_config "github.com/prometheus/prometheus/config"
+	"github.com/prometheus/prometheus/model/relabel"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
@@ -47,9 +51,6 @@ import (
 	snmp_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/snmp_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/windows_exporter"
 	"github.com/grafana/alloy/syntax/scanner"
-	"github.com/prometheus/common/model"
-	prom_config "github.com/prometheus/prometheus/config"
-	"github.com/prometheus/prometheus/model/relabel"
 )
 
 func (b *ConfigBuilder) appendIntegrations() {
@@ -171,6 +172,9 @@ func (b *ConfigBuilder) appendExporter(commonConfig *int_config.Common, name str
 	if commonConfig.ScrapeTimeout == 0 {
 		scrapeConfig.ScrapeTimeout = b.cfg.Integrations.ConfigV1.PrometheusGlobalConfig.ScrapeTimeout
 	}
+
+	// NOTE: We use the default value, since Agent static mode doesn't support setting this.
+	scrapeConfig.ScrapeProtocols = prom_config.DefaultScrapeProtocols
 
 	scrapeConfigs := []*prom_config.ScrapeConfig{&scrapeConfig}
 
@@ -304,6 +308,8 @@ func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, 
 	scrapeConfig.MetricRelabelConfigs = commonConfig.Autoscrape.MetricRelabelConfigs
 	scrapeConfig.ScrapeInterval = commonConfig.Autoscrape.ScrapeInterval
 	scrapeConfig.ScrapeTimeout = commonConfig.Autoscrape.ScrapeTimeout
+	// NOTE: We use the default value, since Agent static mode doesn't support setting this.
+	scrapeConfig.ScrapeProtocols = prom_config.DefaultScrapeProtocols
 
 	scrapeConfigs := []*prom_config.ScrapeConfig{&scrapeConfig}
 

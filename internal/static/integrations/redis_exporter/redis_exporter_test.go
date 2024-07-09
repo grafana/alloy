@@ -8,8 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/grafana/alloy/internal/static/config"
 	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/static/config"
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
@@ -180,7 +181,7 @@ func TestRedisCases(t *testing.T) {
 				foundMetricNames[name] = false
 			}
 
-			p := textparse.NewPromParser(body)
+			p := textparse.NewPromParser(body, nil)
 			for {
 				entry, err := p.Next()
 				if err == io.EOF {

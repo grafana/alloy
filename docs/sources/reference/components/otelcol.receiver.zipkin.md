@@ -34,7 +34,7 @@ Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `parse_string_tags` | `bool` | Parse string tags and binary annotations into non-string types. | `false` | no
 `endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:9411"` | no
-`max_request_body_size` | `string` | Maximum request body size the HTTP server will allow. No limit when unset. | | no
+`max_request_body_size` | `string`   | Maximum request body size the server will allow.                   | `20MiB`          | no
 `include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
 
 If `parse_string_tags` is `true`, string tags and binary annotations are

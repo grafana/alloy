@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
-	util_log "github.com/grafana/loki/pkg/util/log"
+	util_log "github.com/grafana/loki/v3/pkg/util/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 var testEvtLogMsgYamlDefaults = `

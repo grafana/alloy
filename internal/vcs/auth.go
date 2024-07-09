@@ -16,20 +16,18 @@ type GitAuthConfig struct {
 
 // Convert converts HTTPClientConfig to the native Prometheus type. If h is
 // nil, the default client config is returned.
-func (h *GitAuthConfig) Convert() transport.AuthMethod {
+func (h *GitAuthConfig) Convert() (transport.AuthMethod, error) {
 	if h == nil {
-		return nil
+		return nil, nil
 	}
-
 	if h.BasicAuth != nil {
-		return h.BasicAuth.Convert()
+		return h.BasicAuth.Convert(), nil
 	}
 
 	if h.SSHKey != nil {
-		key, _ := h.SSHKey.Convert()
-		return key
+		return h.SSHKey.Convert()
 	}
-	return nil
+	return nil, nil
 }
 
 type BasicAuth struct {

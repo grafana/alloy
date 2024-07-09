@@ -54,6 +54,7 @@ exclude > attribute    | [attribute][]    | A list of attributes to match agains
 exclude > resource     | [resource][]     | A list of items to match the resources against.                    | no
 exclude > library      | [library][]      | A list of items to match the implementation library against.       | no
 exclude > log_severity | [log_severity][] | How to match against a log record's SeverityNumber, if defined.    | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `include > attribute`
 refers to an `attribute` block defined inside an `include` block.
@@ -69,6 +70,7 @@ If both an `include` block and an `exclude`block are specified, the `include` pr
 [resource]: #resource-block
 [library]: #library-block
 [log_severity]: #log_severity-block
+[debug_metrics]: #debug_metrics-block
 
 ### action block
 
@@ -204,6 +206,10 @@ For example, adding a `span_names` filter could cause the component to error if 
 ### output block
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

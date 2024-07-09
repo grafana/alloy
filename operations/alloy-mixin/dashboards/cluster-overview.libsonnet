@@ -1,25 +1,26 @@
 local dashboard = import './utils/dashboard.jsonnet';
 local panel = import './utils/panel.jsonnet';
 local filename = 'alloy-cluster-overview.json';
+local templates = import './utils/templates.libsonnet';
 local cluster_node_filename = 'alloy-cluster-node.json';
 
 {
+  local templateVariables = 
+    templates.newTemplateVariablesList(
+      filterSelector=$._config.filterSelector, 
+      enableK8sCluster=$._config.enableK8sCluster, 
+      includeInstance=false,
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
+
   [filename]:
-    dashboard.new(name='Alloy / Cluster Overview') +
+    dashboard.new(name='Alloy / Cluster Overview', tag=$._config.dashboardTag) +
     dashboard.withDocsLink(
-      url='https://grafana.com/docs/alloy/latest/reference/cli/run/#clustered-mode',
+      url='https://grafana.com/docs/alloy/latest/reference/cli/run/#clustering',
       desc='Clustering documentation',
     ) +
-    dashboard.withDashboardsLink() +
+    dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
     dashboard.withUID(std.md5(filename)) +
-    dashboard.withTemplateVariablesMixin([
-      dashboard.newTemplateVariable('cluster', |||
-        label_values(alloy_component_controller_running_components, cluster)
-      |||),
-      dashboard.newTemplateVariable('namespace', |||
-        label_values(alloy_component_controller_running_components{cluster="$cluster"}, namespace)
-      |||),
-    ]) +
+    dashboard.withTemplateVariablesMixin(templateVariables) +
     // TODO(@tpaschalis) Make the annotation optional.
     dashboard.withAnnotations([
       dashboard.newLokiAnnotation('Deployments', '{cluster="$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
@@ -31,7 +32,9 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withPosition({ h: 9, w: 8, x: 0, y: 0 }) +
         panel.withQueries([
           panel.newInstantQuery(
-            expr='count(cluster_node_info{cluster="$cluster", namespace="$namespace"})'
+            expr= |||
+              count(cluster_node_info{%(groupSelector)s})
+            ||| % $._config
           ),
         ])
       ),
@@ -44,7 +47,9 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withPosition({ h: 9, w: 16, x: 8, y: 0 }) +
         panel.withQueries([
           panel.newInstantQuery(
-            expr='cluster_node_info{cluster="$cluster", namespace="$namespace"}',
+            expr= |||
+              cluster_node_info{%(groupSelector)s}
+            ||| % $._config,
             format='table',
           ),
         ]) +
@@ -97,7 +102,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
                     {
                       targetBlank: false,
                       title: 'Detail dashboard for node',
-                      url: '/d/%(uid)s/alloy-cluster-node?var-instance=${__data.fields.instance}&var-datasource=${datasource}&var-loki_datasource=${loki_datasource}&var-cluster=${cluster}&var-namespace=${namespace}' % { uid: std.md5(cluster_node_filename) },
+                      url: '/d/%(uid)s/alloy-cluster-node?var-instance=${__data.fields.instance}&var-datasource=${datasource}&var-loki_datasource=${loki_datasource}&var-job=${job}&var-cluster=${cluster}&var-namespace=${namespace}' % { uid: std.md5(cluster_node_filename) },
                     },
                   ],
                 },
@@ -122,14 +127,14 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withPosition({ h: 9, w: 8, x: 0, y: 9 }) +
         panel.withQueries([
           panel.newInstantQuery(
-            expr=|||
+            expr= |||
               clamp((
-                sum(stddev by (state) (cluster_node_peers{cluster="$cluster", namespace="$namespace"}) != 0) or
-                (sum(abs(sum without (state) (cluster_node_peers{cluster="$cluster", namespace="$namespace"})) - scalar(count(cluster_node_info{cluster="$cluster", namespace="$namespace"})) != 0))
+                sum(stddev by (state) (cluster_node_peers{%(groupSelector)s}) != 0) or
+                (sum(abs(sum without (state) (cluster_node_peers{%(groupSelector)s})) - scalar(count(cluster_node_info{%(groupSelector)s})) != 0))
                 ),
                 1, 1
               )
-            |||,
+            ||| % $._config,
             format='time_series'
           ),
         ]) +
@@ -191,14 +196,14 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         panel.withPosition({ h: 9, w: 16, x: 8, y: 9 }) +
         panel.withQueries([
           panel.newQuery(
-            expr=|||
+            expr= |||
               ceil(clamp((
-                sum(stddev by (state) (cluster_node_peers{cluster="$cluster", namespace="$namespace"})) or
-                (sum(abs(sum without (state) (cluster_node_peers{cluster="$cluster", namespace="$namespace"})) - scalar(count(cluster_node_info{cluster="$cluster", namespace="$namespace"}))))
+                sum(stddev by (state) (cluster_node_peers{%(groupSelector)s})) or
+                (sum(abs(sum without (state) (cluster_node_peers{%(groupSelector)s})) - scalar(count(cluster_node_info{%(groupSelector)s}))))
                 ),
                 0, 1
               ))
-            |||,
+            ||| % $._config,
             legendFormat='Converged'
           ),
         ]) +

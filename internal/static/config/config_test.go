@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-
 	"net/url"
 	"os"
 	"path"
@@ -10,16 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/static/config/encoder"
-	"github.com/grafana/alloy/internal/static/metrics"
-	"github.com/grafana/alloy/internal/static/metrics/instance"
-	"github.com/grafana/alloy/internal/util"
 	commonCfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	promCfg "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/static/config/encoder"
+	"github.com/grafana/alloy/internal/static/metrics"
+	"github.com/grafana/alloy/internal/static/metrics/instance"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // TestConfig_FlagDefaults makes sure that default values of flags are kept
@@ -77,6 +77,7 @@ metrics:
 		Prometheus: promCfg.GlobalConfig{
 			ScrapeInterval:     model.Duration(1 * time.Minute),
 			ScrapeTimeout:      model.Duration(33 * time.Second),
+			ScrapeProtocols:    promCfg.DefaultScrapeProtocols,
 			EvaluationInterval: model.Duration(1 * time.Minute),
 		},
 	}
@@ -99,6 +100,7 @@ metrics:
 		Prometheus: promCfg.GlobalConfig{
 			ScrapeInterval:     model.Duration(1 * time.Minute),
 			ScrapeTimeout:      model.Duration(33 * time.Second),
+			ScrapeProtocols:    promCfg.DefaultScrapeProtocols,
 			EvaluationInterval: model.Duration(1 * time.Minute),
 		},
 	}

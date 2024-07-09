@@ -7,18 +7,20 @@ package auth
 
 import (
 	"context"
+	"fmt"
+	"hash/fnv"
 	"os"
 	"strings"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelextension "go.opentelemetry.io/collector/extension"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -40,6 +42,9 @@ type Arguments interface {
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
 	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+
+	// DebugMetricsConfig returns the configuration for debug metrics
+	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
 }
 
 // Exports is a common Exports type for Alloy components which expose
@@ -135,13 +140,18 @@ func (a *Auth) Update(args component.Arguments) error {
 		return err
 	}
 
+	metricsLevel, err := rargs.DebugMetricsConfig().Level.Convert()
+	if err != nil {
+		return err
+	}
+
 	settings := otelextension.CreateSettings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(a.opts.Logger),
 
 			TracerProvider: a.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
-			MetricsLevel:   configtelemetry.LevelDetailed,
+			MetricsLevel:   metricsLevel,
 
 			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},
@@ -168,7 +178,7 @@ func (a *Auth) Update(args component.Arguments) error {
 		components = append(components, ext)
 	}
 
-	cTypeStr := strings.ReplaceAll(strings.ReplaceAll(a.opts.ID, ".", "_"), "/", "_")
+	cTypeStr := NormalizeType(a.opts.ID)
 
 	// Inform listeners that our handler changed.
 	a.opts.OnStateChange(Exports{
@@ -186,4 +196,20 @@ func (a *Auth) Update(args component.Arguments) error {
 // CurrentHealth implements component.HealthComponent.
 func (a *Auth) CurrentHealth() component.Health {
 	return a.sched.CurrentHealth()
+}
+
+func getHash(in string) string {
+	fnvHash := fnv.New32()
+	fnvHash.Write([]byte(in))
+	return fmt.Sprintf("%x", fnvHash.Sum(nil))
+}
+
+func NormalizeType(in string) string {
+	res := strings.ReplaceAll(strings.ReplaceAll(in, ".", "_"), "/", "_")
+
+	if len(res) > 63 {
+		res = res[:40] + getHash(res)
+	}
+
+	return res
 }

@@ -4,13 +4,15 @@ import (
 	"testing"
 	"time"
 
+	promConfig "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	prom_discovery "github.com/prometheus/prometheus/discovery/marathon"
+	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
+
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	promConfig "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func TestAlloyUnmarshalWithAuthToken(t *testing.T) {
@@ -79,7 +81,7 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	promArgs := alloyArgs.Convert()
+	promArgs := alloyArgs.Convert().(*prom_discovery.SDConfig)
 	require.ElementsMatch(t, []string{"serv1", "serv2"}, promArgs.Servers)
 	assert.Equal(t, model.Duration(time.Minute), promArgs.RefreshInterval)
 	assert.Equal(t, promConfig.Secret("auth_token"), promArgs.AuthToken)

@@ -8,6 +8,7 @@ import (
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -34,7 +35,7 @@ type Arguments struct {
 	HTTP *HTTPConfigArguments `alloy:"http,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
-	DebugMetrics otelcol.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -156,6 +157,6 @@ func (args *HTTPConfigArguments) SetToDefault() {
 }
 
 // DebugMetricsConfig implements receiver.Arguments.
-func (args Arguments) DebugMetricsConfig() otelcol.DebugMetricsArguments {
+func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
 }

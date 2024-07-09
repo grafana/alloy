@@ -84,7 +84,7 @@ protocol > otlp > client > tls       | [tls][]           | Configures TLS for th
 protocol > otlp > client > keepalive | [keepalive][]     | Configures keepalive settings for the gRPC client.                         | no
 protocol > otlp > queue              | [queue][]         | Configures batching of data before sending.                                | no
 protocol > otlp > retry              | [retry][]         | Configures retry mechanism for failed requests.                            | no
-debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `resolver > static`
 refers to a `static` block defined inside a `resolver` block.

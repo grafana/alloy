@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/grafana/loki/clients/pkg/promtail/api"
-	"github.com/grafana/loki/pkg/logproto"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
+	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"

@@ -9,13 +9,14 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-logfmt/logfmt"
+	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/pkg/logproto"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
 )
 
 type exporter interface {

@@ -56,6 +56,7 @@ func toAttributesProcessor(state *State, id component.InstanceID, cfg *attribute
 			Metrics: ToTokenizedConsumers(nextMetrics),
 			Logs:    ToTokenizedConsumers(nextLogs),
 			Traces:  ToTokenizedConsumers(nextTraces)},
+		DebugMetrics: common.DefaultValue[attributes.Arguments]().DebugMetrics,
 	}
 }
 

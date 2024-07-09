@@ -5,18 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestAlloyConfig(t *testing.T) {
@@ -161,12 +162,18 @@ func TestIterationHandlesUpdate(t *testing.T) {
 		newArgs := Arguments{Address: "http://localhost:8080/"}
 		newArgs.SetToDefault()
 
+		var wg sync.WaitGroup
+		wg.Add(1)
+
 		c := newComponentForTesting(t, reg, logger)
 		go func() {
+			defer wg.Done()
 			require.NoError(t, c.iteration(context.Background(), leader, state, health))
 		}()
 
 		require.NoError(t, c.Update(newArgs))
+		wg.Wait()
+
 		require.Error(t, health.getErr())
 		require.True(t, state.restartCalled.Load())
 	})
@@ -182,12 +189,18 @@ func TestIterationHandlesUpdate(t *testing.T) {
 		newArgs := Arguments{Address: "http://localhost:8080/"}
 		newArgs.SetToDefault()
 
+		var wg sync.WaitGroup
+		wg.Add(1)
+
 		c := newComponentForTesting(t, reg, logger)
 		go func() {
+			defer wg.Done()
 			require.NoError(t, c.iteration(context.Background(), leader, state, health))
 		}()
 
 		require.NoError(t, c.Update(newArgs))
+		wg.Wait()
+
 		require.NoError(t, health.getErr())
 		require.True(t, state.restartCalled.Load())
 	})

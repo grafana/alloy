@@ -6,19 +6,19 @@ title: otelcol.auth.oauth2
 
 # otelcol.auth.oauth2
 
-`otelcol.auth.oauth2` exposes a `handler` that can be used by other `otelcol`
-components to authenticate requests using OAuth 2.0.
+`otelcol.auth.oauth2` exposes a `handler` that can be used by other `otelcol` components to authenticate requests using OAuth 2.0.
 
 The authorization tokens can be used by HTTP and gRPC based OpenTelemetry exporters.
-This component can fetch and refresh expired tokens automatically. For further details about
-OAuth 2.0 Client Credentials flow (2-legged workflow) see [this document](https://datatracker.ietf.org/doc/html/rfc6749#section-4.4).
+This component can fetch and refresh expired tokens automatically.
+Refer to the [OAuth 2.0 Authorization Framework](https://datatracker.ietf.org/doc/html/rfc6749#section-4.4) for more information about the Auth 2.0 Client Credentials flow.
 
-> **NOTE**: `otelcol.auth.oauth2` is a wrapper over the upstream OpenTelemetry
-> Collector `oauth2client` extension. Bug reports or feature requests will be
-> redirected to the upstream repository, if necessary.
 
-Multiple `otelcol.auth.oauth2` components can be specified by giving them
-different labels.
+{{< admonition type="note" >}}
+`otelcol.auth.oauth2` is a wrapper over the upstream OpenTelemetry Collector `oauth2client` extension.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
+
+You can specify multiple `otelcol.auth.oauth2` components by giving them different labels.
 
 ## Usage
 
@@ -48,26 +48,30 @@ The `timeout` argument is used both for requesting initial tokens and for refres
 At least one of the `client_id` and `client_id_file` pair of arguments must be
 set. In case both are set, `client_id_file` takes precedence.
 
-Similarly, at least one of the `client_secret` and `client_secret_file` pair of
-arguments must be set. In case both are set, `client_secret_file` also takes
-precedence.
+Similarly, at least one of the `client_secret` and `client_secret_file` pair of arguments must be set.
+If both are set, `client_secret_file` also takes precedence.
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.auth.oauth2`:
+The following blocks are supported inside the definition of `otelcol.auth.oauth2`:
 
 Hierarchy | Block   | Description                        | Required
 ----------|---------|------------------------------------|---------
 tls       | [tls][] | TLS settings for the token client. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [tls]: #tls-block
+[debug_metrics]: #debug_metrics-block
 
 ### tls block
 
 The `tls` block configures TLS settings used for connecting to the token client. If the `tls` block isn't provided, TLS won't be used for communication.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
@@ -79,12 +83,11 @@ Name      | Type                       | Description
 
 ## Component health
 
-`otelcol.auth.oauth2` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.auth.oauth2` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.auth.oauth2` does not expose any component-specific debug information.
+`otelcol.auth.oauth2` doesn't expose any component-specific debug information.
 
 ## Example
 

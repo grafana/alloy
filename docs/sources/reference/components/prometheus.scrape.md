@@ -37,47 +37,59 @@ time), the component reports an error.
 
 The following arguments are supported:
 
-Name                          | Type                    | Description                                                                                            | Default        | Required
-------------------------------|-------------------------|--------------------------------------------------------------------------------------------------------|----------------|---------
-`targets`                     | `list(map(string))`     | List of targets to scrape.                                                                             |                | yes
-`forward_to`                  | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                          |                | yes
-`job_name`                    | `string`                | The value to use for the job label if not already set.                                                 | component name | no
-`extra_metrics`               | `bool`                  | Whether extra metrics should be generated for scrape targets.                                          | `false`        | no
-`enable_protobuf_negotiation` | `bool`                  | Whether to enable protobuf negotiation with the client.                                                | `false`        | no
-`honor_labels`                | `bool`                  | Indicator whether the scraped metrics should remain unmodified.                                        | `false`        | no
-`honor_timestamps`            | `bool`                  | Indicator whether the scraped timestamps should be respected.                                          | `true`         | no
-`track_timestamps_staleness`  | `bool`                  | Indicator whether to track the staleness of the scraped timestamps.                                    | `false`        | no
-`params`                      | `map(list(string))`     | A set of query parameters with which the target is scraped.                                            |                | no
-`scrape_classic_histograms`   | `bool`                  | Whether to scrape a classic histogram that is also exposed as a native histogram.                      | `false`        | no
-`scrape_interval`             | `duration`              | How frequently to scrape the targets of this scrape configuration.                                     | `"60s"`        | no
-`scrape_timeout`              | `duration`              | The timeout for scraping targets of this configuration.                                                | `"10s"`        | no
-`metrics_path`                | `string`                | The HTTP resource path on which to fetch metrics from targets.                                         | `/metrics`     | no
-`scheme`                      | `string`                | The URL scheme with which to fetch metrics from targets.                                               |                | no
-`body_size_limit`             | `int`                   | An uncompressed response body larger than this many bytes causes the scrape to fail. 0 means no limit. |                | no
-`sample_limit`                | `uint`                  | More than this many samples post metric-relabeling causes the scrape to fail                           |                | no
-`target_limit`                | `uint`                  | More than this many targets after the target relabeling causes the scrapes to fail.                    |                | no
-`label_limit`                 | `uint`                  | More than this many labels post metric-relabeling causes the scrape to fail.                           |                | no
-`label_name_length_limit`     | `uint`                  | More than this label name length post metric-relabeling causes the scrape to fail.                     |                | no
-`label_value_length_limit`    | `uint`                  | More than this label value length post metric-relabeling causes the scrape to fail.                    |                | no
-`bearer_token_file`           | `string`                | File containing a bearer token to authenticate with.                                                   |                | no
-`bearer_token`                | `secret`                | Bearer token to authenticate with.                                                                     |                | no
-`enable_http2`                | `bool`                  | Whether HTTP2 is supported for requests.                                                               | `true`         | no
-`follow_redirects`            | `bool`                  | Whether redirects returned by the server should be followed.                                           | `true`         | no
-`proxy_url`                   | `string`                | HTTP proxy to send requests through.                                                                   |                | no
-`no_proxy`                    | `string`                | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.       |                | no
-`proxy_from_environment`      | `bool`                  | Use the proxy URL indicated by environment variables.                                                  | `false`        | no
-`proxy_connect_header`        | `map(list(secret))`     | Specifies headers to send to proxies during CONNECT requests.                                          |                | no
+| Name                          | Type                    | Description                                                                                            | Default                                                                   | Required |
+|-------------------------------|-------------------------|--------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|----------|
+| `targets`                     | `list(map(string))`     | List of targets to scrape.                                                                             |                                                                           | yes      |
+| `forward_to`                  | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                          |                                                                           | yes      |
+| `job_name`                    | `string`                | The value to use for the job label if not already set.                                                 | component name                                                            | no       |
+| `extra_metrics`               | `bool`                  | Whether extra metrics should be generated for scrape targets.                                          | `false`                                                                   | no       |
+| `enable_protobuf_negotiation` | `bool`                  | Deprecated: use `scrape_protocols` instead.                                                            | `false`                                                                   | no       |
+| `honor_labels`                | `bool`                  | Indicator whether the scraped metrics should remain unmodified.                                        | `false`                                                                   | no       |
+| `honor_timestamps`            | `bool`                  | Indicator whether the scraped timestamps should be respected.                                          | `true`                                                                    | no       |
+| `track_timestamps_staleness`  | `bool`                  | Indicator whether to track the staleness of the scraped timestamps.                                    | `false`                                                                   | no       |
+| `params`                      | `map(list(string))`     | A set of query parameters with which the target is scraped.                                            |                                                                           | no       |
+| `scrape_classic_histograms`   | `bool`                  | Whether to scrape a classic histogram that is also exposed as a native histogram.                      | `false`                                                                   | no       |
+| `scrape_interval`             | `duration`              | How frequently to scrape the targets of this scrape configuration.                                     | `"60s"`                                                                   | no       |
+| `scrape_timeout`              | `duration`              | The timeout for scraping targets of this configuration.                                                | `"10s"`                                                                   | no       |
+| `scrape_protocols`            | `list(string)`          | The protocols to negotiate during a scrape, in order of preference. See below for available values.    | `["OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]` | no       |
+| `metrics_path`                | `string`                | The HTTP resource path on which to fetch metrics from targets.                                         | `/metrics`                                                                | no       |
+| `scheme`                      | `string`                | The URL scheme with which to fetch metrics from targets.                                               |                                                                           | no       |
+| `body_size_limit`             | `int`                   | An uncompressed response body larger than this many bytes causes the scrape to fail. 0 means no limit. |                                                                           | no       |
+| `sample_limit`                | `uint`                  | More than this many samples post metric-relabeling causes the scrape to fail                           |                                                                           | no       |
+| `target_limit`                | `uint`                  | More than this many targets after the target relabeling causes the scrapes to fail.                    |                                                                           | no       |
+| `label_limit`                 | `uint`                  | More than this many labels post metric-relabeling causes the scrape to fail.                           |                                                                           | no       |
+| `label_name_length_limit`     | `uint`                  | More than this label name length post metric-relabeling causes the scrape to fail.                     |                                                                           | no       |
+| `label_value_length_limit`    | `uint`                  | More than this label value length post metric-relabeling causes the scrape to fail.                    |                                                                           | no       |
+| `bearer_token_file`           | `string`                | File containing a bearer token to authenticate with.                                                   |                                                                           | no       |
+| `bearer_token`                | `secret`                | Bearer token to authenticate with.                                                                     |                                                                           | no       |
+| `enable_http2`                | `bool`                  | Whether HTTP2 is supported for requests.                                                               | `true`                                                                    | no       |
+| `follow_redirects`            | `bool`                  | Whether redirects returned by the server should be followed.                                           | `true`                                                                    | no       |
+| `proxy_url`                   | `string`                | HTTP proxy to send requests through.                                                                   |                                                                           | no       |
+| `no_proxy`                    | `string`                | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.       |                                                                           | no       |
+| `proxy_from_environment`      | `bool`                  | Use the proxy URL indicated by environment variables.                                                  | `false`                                                                   | no       |
+| `proxy_connect_header`        | `map(list(secret))`     | Specifies headers to send to proxies during CONNECT requests.                                          |                                                                           | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
  - [`bearer_token` argument](#arguments).
  - [`bearer_token_file` argument](#arguments).
  - [`basic_auth` block][basic_auth].
  - [`authorization` block][authorization].
  - [`oauth2` block][oauth2].
 
+`scrape_protocols` controls the preferred order of protocols to negotiate during
+a scrape. The following values are supported:
+
+- `OpenMetricsText1.0.0`
+- `OpenMetricsText0.0.1`
+- `PrometheusProto`
+- `PrometheusText0.0.4`
+
+If you were using the now deprecated `enable_protobuf_negotiation` argument, switch 
+to using `scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]` instead.
+
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`track_timestamps_staleness` controls whether Prometheus tracks [staleness][prom-staleness] of metrics which with an explicit timestamp present in scraped data.
+`track_timestamps_staleness` controls whether Prometheus tracks [staleness][prom-staleness] of metrics with an explicit timestamp present in scraped data.
 * An "explicit timestamp" is an optional timestamp in the [Prometheus metrics exposition format][prom-text-exposition-format]. For example, this sample has a timestamp of `1395066363000`:
   ```
   http_requests_total{method="post",code="200"} 1027 1395066363000
@@ -249,9 +261,18 @@ processed. When the target is behaving normally, the `up` metric is set to
 `1`.
 
 To enable scraping of Prometheus' native histograms over gRPC, the
-`enable_protobuf_negotiation` must be set to true. The
-`scrape_classic_histograms` argument controls whether the component should also
-scrape the 'classic' histogram equivalent of a native histogram, if it is
+`scrape_protocols` should specify `PrometheusProto` as the first protocol to
+negotiate, for example:
+
+```alloy
+prometheus.scrape "prometheus" {
+  ...
+  scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
+}
+```
+
+The`scrape_classic_histograms` argument controls whether the component should
+also scrape the 'classic' histogram equivalent of a native histogram, if it is
 present.
 
 [in-memory traffic]: ../../../concepts/component_controller/#in-memory-traffic

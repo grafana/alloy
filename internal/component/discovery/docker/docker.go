@@ -6,12 +6,13 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/discovery/moby"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/discovery/moby"
 )
 
 func init() {
@@ -22,7 +23,7 @@ func init() {
 		Exports:   discovery.Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			return discovery.NewFromConvertibleConfig(opts, args.(Arguments))
 		},
 	})
 }
@@ -80,14 +81,13 @@ func (args *Arguments) Validate() error {
 	return args.HTTPClientConfig.Validate()
 }
 
-// Convert converts Arguments to the upstream Prometheus SD type.
-func (args Arguments) Convert() moby.DockerSDConfig {
+func (args Arguments) Convert() discovery.DiscovererConfig {
 	filters := make([]moby.Filter, len(args.Filters))
 	for i, filter := range args.Filters {
 		filters[i] = filter.Convert()
 	}
 
-	return moby.DockerSDConfig{
+	return &moby.DockerSDConfig{
 		HTTPClientConfig: *args.HTTPClientConfig.Convert(),
 
 		Host:               args.Host,
@@ -97,12 +97,4 @@ func (args Arguments) Convert() moby.DockerSDConfig {
 
 		RefreshInterval: model.Duration(args.RefreshInterval),
 	}
-}
-
-// New returns a new instance of a discovery.docker component.
-func New(opts component.Options, args Arguments) (*discovery.Component, error) {
-	return discovery.New(opts, args, func(args component.Arguments) (discovery.Discoverer, error) {
-		conf := args.(Arguments).Convert()
-		return moby.NewDockerDiscovery(&conf, opts.Logger)
-	})
 }

@@ -4,13 +4,15 @@ import (
 	"testing"
 	"time"
 
+	promConfig "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	promdiscovery "github.com/prometheus/prometheus/discovery/moby"
+	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
+
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	promConfig "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func TestAlloyUnmarshal(t *testing.T) {
@@ -60,7 +62,7 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	promArgs := alloyArgs.Convert()
+	promArgs := alloyArgs.Convert().(*promdiscovery.DockerSwarmSDConfig)
 	assert.Equal(t, 2, len(promArgs.Filters))
 	assert.Equal(t, "n1", promArgs.Filters[0].Name)
 	require.ElementsMatch(t, []string{"v11", "v12"}, promArgs.Filters[0].Values)

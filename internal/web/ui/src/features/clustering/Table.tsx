@@ -1,10 +1,10 @@
-import React from 'react';
+import { CSSProperties } from 'react';
 
 import styles from './Table.module.css';
 
 interface Props {
   tableHeaders: string[];
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   renderTableData: () => JSX.Element[];
 }
 

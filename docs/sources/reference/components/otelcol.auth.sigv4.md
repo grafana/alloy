@@ -60,8 +60,10 @@ The following blocks are supported inside the definition of
 Hierarchy   | Block           | Description                        | Required
 ------------|-----------------|------------------------------------|---------
 assume_role | [assume_role][] | Configuration for assuming a role. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [assume_role]: #assume_role-block
+[debug_metrics]: #debug_metrics-block
 
 ### assume_role block
 
@@ -76,6 +78,10 @@ Name           | Type     | Description                                         
 If the `assume_role` block is specified in the config and `sts_region` is not set, then `sts_region` will default to the value for `region`.
 
 For cross region authentication, `region` and `sts_region` can be set different to different values.
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

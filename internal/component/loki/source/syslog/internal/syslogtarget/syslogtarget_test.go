@@ -18,8 +18,8 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/clients/pkg/promtail/targets/syslog/syslogparser"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/syslog/syslogparser"
 	"github.com/influxdata/go-syslog/v3"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"

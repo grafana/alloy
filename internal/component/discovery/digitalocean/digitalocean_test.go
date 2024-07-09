@@ -5,12 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/config"
-	"github.com/grafana/alloy/syntax"
-	prom_common_config "github.com/prometheus/common/config"
+	promcommonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
+	promdiscovery "github.com/prometheus/prometheus/discovery/digitalocean"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
+
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestAlloyUnmarshal(t *testing.T) {
@@ -81,10 +83,10 @@ func TestConvert(t *testing.T) {
 		EnableHTTP2:     false,
 	}
 
-	converted := args.Convert()
+	converted := args.Convert().(*promdiscovery.SDConfig)
 	assert.Equal(t, model.Duration(5*time.Minute), converted.RefreshInterval)
 	assert.Equal(t, 8181, converted.Port)
-	assert.Equal(t, prom_common_config.Secret("token"), converted.HTTPClientConfig.BearerToken)
+	assert.Equal(t, promcommonconfig.Secret("token"), converted.HTTPClientConfig.BearerToken)
 	assert.Equal(t, "http://example:8080", converted.HTTPClientConfig.ProxyURL.String())
 	assert.Equal(t, false, converted.HTTPClientConfig.FollowRedirects)
 	assert.Equal(t, false, converted.HTTPClientConfig.EnableHTTP2)
