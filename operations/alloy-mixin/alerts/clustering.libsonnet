@@ -12,7 +12,8 @@ local alert = import './utils/alert.jsonnet';
             'stddev by (cluster, namespace, job) (sum without (state) (cluster_node_peers)) != 0' 
           else 
             'stddev by (job) (sum without (state) (cluster_node_peers)) != 0',
-          'Cluster is not converging: nodes report different number of peers in the cluster.',
+          'Cluster is not converging.',
+          'Cluster is not converging: nodes report different number of peers in the cluster. Job is {{ $labels.job }}',
           '10m',
         ),
 
@@ -32,7 +33,8 @@ local alert = import './utils/alert.jsonnet';
             count by (job) (cluster_node_info)
           |||
           ,
-          'Nodes report different number of peers vs. the count of observed Alloy metrics. Some Alloy metrics may be missing or the cluster is in a split brain state.',
+          'Nodes report different number of peers vs. the count of observed Alloy metrics.',
+          'Nodes report different number of peers vs. the count of observed Alloy metrics. Some Alloy metrics may be missing or the cluster is in a split brain state. Job is {{ $labels.job }}',          
           '15m',
         ),
 
@@ -42,7 +44,8 @@ local alert = import './utils/alert.jsonnet';
           |||
             cluster_node_gossip_health_score > 0
           |||,
-          'Cluster node is reporting a gossip protocol health score > 0.',
+          'Cluster unhealthy.',
+          'Cluster node is reporting a gossip protocol health score > 0. Job is {{ $labels.job }}',
           '10m',
         ),
 
@@ -54,7 +57,8 @@ local alert = import './utils/alert.jsonnet';
           else
             'sum by (job) (rate(cluster_node_gossip_received_events_total{event="node_conflict"}[2m])) > 0'
           ,
-          'A node tried to join the cluster with a name conflicting with an existing peer.',
+          'Cluster Node Name Conflict.',
+          'A node tried to join the cluster with a name conflicting with an existing peer. Job is {{ $labels.job }}',          
           '10m',
         ),
 
@@ -67,6 +71,7 @@ local alert = import './utils/alert.jsonnet';
             'sum by (job, instance) (cluster_node_peers{state="terminating"}) > 0'
           ,
           'Cluster node stuck in Terminating state.',
+          'There is a node within the cluster that is stuck in Terminating state. Job is {{ $labels.job }}',
           '10m',
         ),
 
@@ -83,7 +88,8 @@ local alert = import './utils/alert.jsonnet';
             ) > 1
           |||
           ,
-          'Cluster nodes are not using the same configuration file.',
+          'Cluster configuration drifting.',
+          'Cluster nodes are not using the same configuration file. Job is {{ $labels.job }}',
           '5m',
         ),
       ]

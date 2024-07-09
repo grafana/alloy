@@ -198,21 +198,6 @@ func (ag *collectorClient) GetConfig(ctx context.Context, req *connect.Request[c
 
 	panic("getConfigFunc not set")
 }
-func (ag *collectorClient) GetCollector(context.Context, *connect.Request[collectorv1.GetCollectorRequest]) (*connect.Response[collectorv1.Collector], error) {
-	return nil, nil
-}
-func (ag *collectorClient) CreateCollector(context.Context, *connect.Request[collectorv1.CreateCollectorRequest]) (*connect.Response[collectorv1.Collector], error) {
-	return nil, nil
-}
-func (ag *collectorClient) UpdateCollector(context.Context, *connect.Request[collectorv1.UpdateCollectorRequest]) (*connect.Response[collectorv1.Collector], error) {
-	return nil, nil
-}
-func (ag *collectorClient) DeleteCollector(context.Context, *connect.Request[collectorv1.DeleteCollectorRequest]) (*connect.Response[collectorv1.DeleteCollectorResponse], error) {
-	return nil, nil
-}
-func (ag *collectorClient) ListCollectors(context.Context, *connect.Request[collectorv1.ListCollectorsRequest]) (*connect.Response[collectorv1.Collectors], error) {
-	return nil, nil
-}
 
 type serviceController struct {
 	f *alloy_runtime.Runtime

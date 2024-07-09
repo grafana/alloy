@@ -42,6 +42,41 @@ func TestUnmarshalAlloy(t *testing.T) {
 	require.Contains(t, "http_2xx", args.Targets[1].Module)
 }
 
+func TestUnmarshalAlloyTargets(t *testing.T) {
+	alloyCfg := `
+		config_file = "modules.yml"
+		targets = [
+			{
+				"name" = "target_a", 
+				"address" = "http://example.com", 
+				"module" = "http_2xx",
+				"some_label1" = "a",
+				"some_label2" = "b",
+			},
+			{
+				"name" = "target_b", 
+				"address" = "http://grafana.com", 
+				"module" = "http_2xx",
+			},
+		  ]	
+`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.NoError(t, err)
+	require.Equal(t, "modules.yml", args.ConfigFile)
+	require.Equal(t, 2, len(args.TargetsList))
+
+	require.Contains(t, "target_a", args.TargetsList[0]["name"])
+	require.Contains(t, "http://example.com", args.TargetsList[0]["address"])
+	require.Contains(t, "http_2xx", args.TargetsList[0]["module"])
+	require.Contains(t, "a", args.TargetsList[0]["some_label1"])
+	require.Contains(t, "b", args.TargetsList[0]["some_label2"])
+
+	require.Contains(t, "target_b", args.TargetsList[1]["name"])
+	require.Contains(t, "http://grafana.com", args.TargetsList[1]["address"])
+	require.Contains(t, "http_2xx", args.TargetsList[1]["module"])
+}
+
 func TestUnmarshalAlloyWithInlineConfig(t *testing.T) {
 	alloyCfg := `
 		config = "{ modules: { http_2xx: { prober: http, timeout: 5s } } }"
@@ -282,4 +317,137 @@ func TestBuildBlackboxTargetsWithExtraLabels(t *testing.T) {
 	require.Equal(t, 1, len(targets))
 	require.Equal(t, "integrations/blackbox/target_a", targets[0]["job"])
 	require.Equal(t, "prometheus.exporter.blackbox.default", targets[0]["instance"])
+}
+
+// Test convert from TargetsList to []blackbox_exporter.BlackboxTarget
+func TestConvertTargetsList(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "target_a",
+			"address":     "http://example.com",
+			"module":      "http_2xx",
+			"some_label1": "a",
+			"some_label2": "b",
+		},
+	}
+
+	res := targets.Convert()
+	require.Equal(t, 1, len(res))
+	require.Equal(t, "target_a", res[0].Name)
+	require.Equal(t, "http://example.com", res[0].Target)
+	require.Equal(t, "http_2xx", res[0].Module)
+}
+
+// Test convert from TargetsList to []blackbox_exporter.BlackboxTarget
+func TestConvertTargetsListDifferentAddressLabel(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "target_a",
+			"__address__": "http://example.com",
+			"module":      "http_2xx",
+			"some_label1": "a",
+			"some_label2": "b",
+		},
+	}
+
+	res := targets.Convert()
+	require.Equal(t, 1, len(res))
+	require.Equal(t, "target_a", res[0].Name)
+	require.Equal(t, "http://example.com", res[0].Target)
+	require.Equal(t, "http_2xx", res[0].Module)
+}
+
+// Test convert from TargetsList to []BlackboxTarget
+func TestConvertTargetsList2(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "target_a",
+			"address":     "http://example.com",
+			"module":      "http_2xx",
+			"some_label1": "a",
+			"some_label2": "b",
+		},
+	}
+
+	res := targets.convertInternal()
+	require.Equal(t, 1, len(res))
+	require.Equal(t, "target_a", res[0].Name)
+	require.Equal(t, "http://example.com", res[0].Target)
+	require.Equal(t, "http_2xx", res[0].Module)
+	require.Equal(t, "a", res[0].Labels["some_label1"])
+	require.Equal(t, "b", res[0].Labels["some_label2"])
+}
+
+// Test convert from TargetsList to []BlackboxTarget
+func TestConvertTargetsList2DifferentAddressLabel(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "target_a",
+			"__address__": "http://example.com",
+			"module":      "http_2xx",
+			"some_label1": "a",
+			"some_label2": "b",
+		},
+	}
+
+	res := targets.convertInternal()
+	require.Equal(t, 1, len(res))
+	require.Equal(t, "target_a", res[0].Name)
+	require.Equal(t, "http://example.com", res[0].Target)
+	require.Equal(t, "http_2xx", res[0].Module)
+	require.Equal(t, "a", res[0].Labels["some_label1"])
+	require.Equal(t, "b", res[0].Labels["some_label2"])
+}
+
+func TestValidateTargetMissingName(t *testing.T) {
+	targets := TargetsList{
+		{
+			"address":     "http://example.com",
+			"module":      "http_2xx",
+			"some_label1": "a",
+			"some_label2": "b",
+		},
+	}
+	args := Arguments{
+		ConfigFile:  "modules.yml",
+		TargetsList: targets,
+	}
+	require.ErrorContains(t, args.Validate(), "all targets must have a `name`")
+}
+
+func TestValidateTargetMissingAddress(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "target_a",
+			"module":      "http_2xx",
+			"some_label1": "a",
+			"some_label2": "b",
+		},
+	}
+	args := Arguments{
+		ConfigFile:  "modules.yml",
+		TargetsList: targets,
+	}
+	require.ErrorContains(t, args.Validate(), "all targets must have an `address` or an `__address__` label")
+}
+
+func TestValidateTargetsMutualExclusivity(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":    "target_a",
+			"address": "http://example.com",
+			"module":  "http_2xx",
+		},
+	}
+	targetBlock := TargetBlock{{
+		Name:   "network_switch_1",
+		Target: "192.168.1.2",
+		Module: "if_mib",
+	}}
+	args := Arguments{
+		ConfigFile:  "modules.yml",
+		TargetsList: targets,
+		Targets:     targetBlock,
+	}
+	require.ErrorContains(t, args.Validate(), "the block `target` and the attribute `targets` are mutually exclusive")
 }

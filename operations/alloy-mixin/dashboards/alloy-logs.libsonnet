@@ -4,15 +4,16 @@ local logsDashboard = import 'github.com/grafana/jsonnet-libs/logs-lib/logs/main
 {
 
   local labels = if $._config.enableK8sCluster then ['cluster', 'namespace', 'job', 'instance', 'level'] else ['job', 'instance', 'level'],
+  local dashboardName = 'alloy-logs.json',
 
   grafanaDashboards+:
     if $._config.enableLokiLogs then {
       local alloyLogs =
         logsDashboard.new(
-          'Alloy logs overview',
+          'Alloy / Logs Overview',
           datasourceName='loki_datasource',
           datasourceRegex='',
-          filterSelector=$._config.filterSelector,
+          filterSelector=$._config.logsFilterSelector,
           labels=labels,
           formatParser=null,
           showLogsVolume=true
@@ -27,9 +28,11 @@ local logsDashboard = import 'github.com/grafana/jsonnet-libs/logs-lib/logs/main
           dashboards+:
             {
               logs+: g.dashboard.withLinksMixin($.grafanaDashboards['alloy-resources.json'].links)                     
-                     + g.dashboard.withRefresh('10s'),
+                     + g.dashboard.withRefresh('10s')
+                     + g.dashboard.withTagsMixin($._config.dashboardTag)
+                     + g.dashboard.withUid(std.md5(dashboardName)),
             },
         },
-      'alloy-logs.json': alloyLogs.dashboards.logs,
+      [dashboardName]: alloyLogs.dashboards.logs,
     } else {},
 }

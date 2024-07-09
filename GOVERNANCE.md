@@ -20,7 +20,7 @@ The Grafana Alloy developers and community are expected to follow the values def
 
 ## Projects
 
-Each project must have a [`MAINTAINERS.md`][maintainers] file with at least one maintainer. Where a project has a release process, access and documentation should be such that more than one person can perform a release. Where a project has a release process, access and documentation should be such that more than one person can perform a release. Releases should be announced on the [GitHub Discussions][discussions] page. Any new projects should be first proposed on the [team mailing list][team] following the voting procedures listed below.
+Each project must have a [`MAINTAINERS.md`][maintainers] file with at least one maintainer. Where a project has a release process, access and documentation should be such that more than one person can perform a release. Where a project has a release process, access and documentation should be such that more than one person can perform a release. Releases should be announced on the [Community][community] site. Any new projects should be first proposed on the [team mailing list][team] following the voting procedures listed below.
 
 ## Decision making
 
@@ -58,7 +58,7 @@ The current team members are:
 
 Maintainers lead one or more project(s) or parts thereof and serve as a point of conflict resolution amongst the contributors to this project. Ideally, maintainers are also team members, but exceptions are possible for suitable maintainers that, for whatever reason, are not yet team members.
 
-Changes in maintainership have to be announced on the [GitHub Discussions][discussions] page. They are decided by [rough consensus](#consensus) and formalized by changing the [`MAINTAINERS.md`][maintainers] file of the respective repository.
+Changes in maintainership have to be announced on the [Community][community] site. They are decided by [rough consensus](#consensus) and formalized by changing the [`MAINTAINERS.md`][maintainers] file of the respective repository.
 
 Maintainers are granted commit rights to all projects covered by this governance.
 
@@ -68,7 +68,7 @@ A project may have multiple maintainers, as long as the responsibilities are cle
 
 ### Technical decisions
 
-Technical decisions that only affect a single project are made informally by the maintainer of this project, and [rough consensus](#consensus) is assumed. Technical decisions that span multiple parts of the project should be discussed and made on the [GitHub discussions page][discussions].
+Technical decisions that only affect a single project are made informally by the maintainer of this project, and [rough consensus](#consensus) is assumed. Technical decisions that span multiple parts of the project should be discussed and made on the issue.
 
 Decisions are usually made by [rough consensus](#consensus). If no consensus can be reached, the matter may be resolved by [majority vote](#majority-vote).
 
@@ -78,7 +78,7 @@ Changes to this document are made by Grafana Labs.
 
 ### Other matters
 
-Any matter that needs a decision may be called to a vote by any member if they deem it necessary. For private or personnel matters, discussion and voting takes place on the [team mailing list][team], otherwise on the [GitHub discussions page][discussions].
+Any matter that needs a decision may be called to a vote by any member if they deem it necessary. For private or personnel matters, discussion and voting takes place on the [team mailing list][team], otherwise on the related issue.
 
 ## Voting
 
@@ -90,7 +90,7 @@ For all votes, voting must be open for at least one week. The end date should be
 
 In all cases, all and only [team members](#team-members) are eligible to vote, with the sole exception of the forced removal of a team member, in which said member is not eligible to vote.
 
-Discussion and votes on personnel matters (including but not limited to team membership and maintainership) are held in private on the [team mailing list][team]. All other discussion and votes are held in public on the [GitHub discussions page][discussions].
+Discussion and votes on personnel matters (including but not limited to team membership and maintainership) are held in private on the [team mailing list][team]. All other discussion and votes are held in public on the related issue.
 
 For public discussions, anyone interested is encouraged to participate. Formal power to object or vote is limited to [team members](#team-members).
 
@@ -98,7 +98,7 @@ For public discussions, anyone interested is encouraged to participate. Formal p
 
 The default decision making mechanism for the Grafana Alloy project is [rough][rough] consensus. This means that any decision on technical issues is considered supported by the [team][team] as long as nobody objects or the objection has been considered but not necessarily accommodated.
 
-Silence on any consensus decision is implicit agreement and equivalent to explicit agreement. Explicit agreement may be stated at will. Decisions may, but do not need to be called out and put up for decision on the [GitHub discussions page][discussions] at any time and by anyone.
+Silence on any consensus decision is implicit agreement and equivalent to explicit agreement. Explicit agreement may be stated at will. Decisions may, but do not need to be called out and put up for decision at any time and by anyone.
 
 Consensus decisions can never override or go against the spirit of an earlier explicit vote.
 
@@ -133,7 +133,7 @@ If there are multiple alternatives, members may vote for one or more alternative
 The new member is
 
 - added to the list of [team members](#team-members). Ideally by sending a PR of their own, at least approving said PR.
-- announced on the [GitHub discussions page][discussions] by an existing team member. Ideally, the new member replies in this thread, acknowledging team membership.
+- announced on the [Community site][community] by an existing team member. Ideally, the new member replies in this thread, acknowledging team membership.
 - added to the projects with commit rights.
 - added to the [team mailing list][team].
 
@@ -154,4 +154,4 @@ If needed, we reserve the right to publicly announce removal.
 [maintainers]: https://github.com/grafana/alloy/blob/main/MAINTAINERS.md
 [rough]: https://tools.ietf.org/html/rfc7282
 [team]: https://groups.google.com/forum/#!forum/grafana-alloy-team
-[discussions]: https://github.com/grafana/alloy/discussions
+[community]: https://community.grafana.com/c/grafana-alloy

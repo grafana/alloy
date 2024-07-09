@@ -14,6 +14,20 @@ Unreleased
 
 - Allow granular configuration `clusterRole`'s permissions. (@hainenber)
 
+0.5.0 (2024-07-08)
+------------------
+
+### Enhancements
+
+- Only utilize spec.internalTrafficPolicy in the Service if deploying to Kubernetes 1.26 or later. (@petewall)
+
+0.4.0 (2024-06-26)
+------------------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.2.0. (@ptodev)
+
 0.3.2 (2024-05-30)
 ------------------
 

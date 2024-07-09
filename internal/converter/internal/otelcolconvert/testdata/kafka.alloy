@@ -11,8 +11,8 @@ otelcol.receiver.kafka "default" {
 		sasl {
 			username  = "fakeusername"
 			password  = "fakepassword"
-			mechanism = "somemechanism"
-			version   = 5
+			mechanism = "AWS_MSK_IAM"
+			version   = 1
 
 			aws_msk {
 				region      = "us-east-1"
@@ -33,14 +33,56 @@ otelcol.receiver.kafka "default" {
 	}
 
 	output {
-		metrics = [otelcol.exporter.otlp.default.input]
-		logs    = [otelcol.exporter.otlp.default.input]
-		traces  = [otelcol.exporter.otlp.default.input]
+		metrics = [otelcol.exporter.kafka.default.input]
+		logs    = [otelcol.exporter.kafka.default.input]
+		traces  = [otelcol.exporter.kafka.default.input]
 	}
 }
 
-otelcol.exporter.otlp "default" {
-	client {
-		endpoint = "database:4317"
+otelcol.exporter.kafka "default" {
+	protocol_version                         = "2.0.0"
+	brokers                                  = ["redpanda:9092"]
+	resolve_canonical_bootstrap_servers_only = true
+	client_id                                = "otelcol"
+	topic_from_attribute                     = "my_topic"
+	encoding                                 = "otlp_json"
+	partition_traces_by_id                   = true
+	partition_metrics_by_resource_attributes = true
+	timeout                                  = "11s"
+
+	authentication {
+		plaintext {
+			username = "fakeusername"
+			password = "fakepassword"
+		}
+
+		sasl {
+			username  = "fakeusername"
+			password  = "fakepassword"
+			mechanism = "SCRAM-SHA-256"
+			version   = 1
+
+			aws_msk {
+				region      = "us-east-1"
+				broker_addr = "broker:9092"
+			}
+		}
+
+		tls {
+			insecure = true
+		}
+
+		kerberos {
+			service_name = "someservice"
+			realm        = "myrealm"
+			username     = "fakeusername"
+			password     = "fakepassword"
+		}
+	}
+
+	producer {
+		max_message_bytes  = 1000001
+		compression        = "snappy"
+		flush_max_messages = 11
 	}
 }

@@ -2,6 +2,7 @@
 package stdlib
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -91,6 +92,14 @@ var Identifiers = map[string]interface{}{
 			return nil, err
 		}
 		return res, nil
+	},
+
+	"base64_decode": func(in string) (interface{}, error) {
+		decoded, err := base64.StdEncoding.DecodeString(in)
+		if err != nil {
+			return nil, err
+		}
+		return decoded, nil
 	},
 
 	"json_path": func(jsonString string, path string) (interface{}, error) {

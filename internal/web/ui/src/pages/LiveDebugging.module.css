@@ -1,0 +1,107 @@
+  .filter {
+    margin-right: 20px;
+    margin-top: 14px;
+    width: 300px;
+  }
+  
+  .slider {
+    width: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    margin-right: 10px;
+  }
+
+  .sliderLabel {
+    display: inline-block;
+    margin-left: 10px;
+    white-space: nowrap;
+  }
+
+  .debugLink {
+    display: inline-block;
+    margin-left: 10px;
+    margin-bottom: 5px;
+  }
+  
+  .debugLink button {
+    font-size: .8em;
+    line-height: 30px;
+    width: 100px;
+    margin-left: auto;
+    margin-top: 6px;
+    padding: 0 15px;
+    text-decoration: none;
+    background: none;
+    background-color: #3885dc;
+    border: 1px solid #3885dc;
+    border-radius: 3px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .debugLink button:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(220, 220, 220, 0.5);
+  }
+  
+  .debugLink .stopButton {
+    background-color: #E0226E;
+    color: #ffffff;
+    border-color: #E0226E;
+  }
+  
+  .debugLink .stopButton:hover {
+    background-color: rgb(179, 27, 88);
+    border-color: rgb(179, 27, 88);
+  }
+  
+  .debugLink .clearButton {
+    background-color: #FF9900; 
+    color: #ffffff;
+    border-color: #FF9900; 
+  }
+  
+  .debugLink .clearButton:hover {
+    background-color:rgb(204, 122, 0); 
+    border-color: rgb(204, 122, 0); 
+  }
+  
+  .debugLink .resumeButton {
+    background-color: #1B855E;
+    color: #ffffff;
+    border-color: #1B855E;
+  }
+  
+  .debugLink .resumeButton:hover {
+    background-color: rgb(21, 106, 75);
+    border-color: rgb(21, 106, 75);
+  }
+  
+  .debugLink .copyButton {
+    background-color: #3871DC;
+    color: #ffffff;
+    border-color: #3871DC;
+  }
+  
+  .debugLink .copyButton:hover {
+    background-color: rgb(44, 90, 176);
+    border-color: rgb(44, 90, 176);
+  }
+
+  
+  .logLine {
+    white-space: pre-wrap;
+    color: #24292e;
+    font-family: monospace;
+  }
+  
+  .autoScroll .logLine:nth-child(odd) {
+    background-color: white;
+  }
+  
+  .autoScroll .logLine:nth-child(even) {
+    background-color: rgb(250, 250, 250);
+  }

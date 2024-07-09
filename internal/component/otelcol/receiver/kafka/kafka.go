@@ -11,9 +11,7 @@ import (
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/mitchellh/mapstructure"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -44,11 +42,11 @@ type Arguments struct {
 
 	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
 
-	Authentication   AuthenticationArguments `alloy:"authentication,block,optional"`
-	Metadata         MetadataArguments       `alloy:"metadata,block,optional"`
-	AutoCommit       AutoCommitArguments     `alloy:"autocommit,block,optional"`
-	MessageMarking   MessageMarkingArguments `alloy:"message_marking,block,optional"`
-	HeaderExtraction HeaderExtraction        `alloy:"header_extraction,block,optional"`
+	Authentication   otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
+	Metadata         otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
+	AutoCommit       AutoCommitArguments                  `alloy:"autocommit,block,optional"`
+	MessageMarking   MessageMarkingArguments              `alloy:"message_marking,block,optional"`
+	HeaderExtraction HeaderExtraction                     `alloy:"header_extraction,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -140,153 +138,6 @@ func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.I
 // NextConsumers implements receiver.Arguments.
 func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
 	return args.Output
-}
-
-// AuthenticationArguments configures how to authenticate to the Kafka broker.
-type AuthenticationArguments struct {
-	Plaintext *PlaintextArguments         `alloy:"plaintext,block,optional"`
-	SASL      *SASLArguments              `alloy:"sasl,block,optional"`
-	TLS       *otelcol.TLSClientArguments `alloy:"tls,block,optional"`
-	Kerberos  *KerberosArguments          `alloy:"kerberos,block,optional"`
-}
-
-// Convert converts args into the upstream type.
-func (args AuthenticationArguments) Convert() map[string]interface{} {
-	auth := make(map[string]interface{})
-
-	if args.Plaintext != nil {
-		conv := args.Plaintext.Convert()
-		auth["plain_text"] = &conv
-	}
-	if args.SASL != nil {
-		conv := args.SASL.Convert()
-		auth["sasl"] = &conv
-	}
-	if args.TLS != nil {
-		auth["tls"] = args.TLS.Convert()
-	}
-	if args.Kerberos != nil {
-		conv := args.Kerberos.Convert()
-		auth["kerberos"] = &conv
-	}
-
-	return auth
-}
-
-// PlaintextArguments configures plaintext authentication against the Kafka
-// broker.
-type PlaintextArguments struct {
-	Username string            `alloy:"username,attr"`
-	Password alloytypes.Secret `alloy:"password,attr"`
-}
-
-// Convert converts args into the upstream type.
-func (args PlaintextArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
-		"username": args.Username,
-		"password": string(args.Password),
-	}
-}
-
-// SASLArguments configures SASL authentication against the Kafka broker.
-type SASLArguments struct {
-	Username  string            `alloy:"username,attr"`
-	Password  alloytypes.Secret `alloy:"password,attr"`
-	Mechanism string            `alloy:"mechanism,attr"`
-	Version   int               `alloy:"version,attr,optional"`
-	AWSMSK    AWSMSKArguments   `alloy:"aws_msk,block,optional"`
-}
-
-// Convert converts args into the upstream type.
-func (args SASLArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
-		"username":  args.Username,
-		"password":  string(args.Password),
-		"mechanism": args.Mechanism,
-		"version":   args.Version,
-		"aws_msk":   args.AWSMSK.Convert(),
-	}
-}
-
-// AWSMSKArguments exposes additional SASL authentication measures required to
-// use the AWS_MSK_IAM mechanism.
-type AWSMSKArguments struct {
-	Region     string `alloy:"region,attr"`
-	BrokerAddr string `alloy:"broker_addr,attr"`
-}
-
-// Convert converts args into the upstream type.
-func (args AWSMSKArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
-		"region":      args.Region,
-		"broker_addr": args.BrokerAddr,
-	}
-}
-
-// KerberosArguments configures Kerberos authentication against the Kafka
-// broker.
-type KerberosArguments struct {
-	ServiceName string            `alloy:"service_name,attr,optional"`
-	Realm       string            `alloy:"realm,attr,optional"`
-	UseKeyTab   bool              `alloy:"use_keytab,attr,optional"`
-	Username    string            `alloy:"username,attr"`
-	Password    alloytypes.Secret `alloy:"password,attr,optional"`
-	ConfigPath  string            `alloy:"config_file,attr,optional"`
-	KeyTabPath  string            `alloy:"keytab_file,attr,optional"`
-}
-
-// Convert converts args into the upstream type.
-func (args KerberosArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
-		"service_name": args.ServiceName,
-		"realm":        args.Realm,
-		"use_keytab":   args.UseKeyTab,
-		"username":     args.Username,
-		"password":     string(args.Password),
-		"config_file":  args.ConfigPath,
-		"keytab_file":  args.KeyTabPath,
-	}
-}
-
-// MetadataArguments configures how the otelcol.receiver.kafka component will
-// retrieve metadata from the Kafka broker.
-type MetadataArguments struct {
-	IncludeAllTopics bool                   `alloy:"include_all_topics,attr,optional"`
-	Retry            MetadataRetryArguments `alloy:"retry,block,optional"`
-}
-
-func (args *MetadataArguments) SetToDefault() {
-	*args = MetadataArguments{
-		IncludeAllTopics: true,
-		Retry: MetadataRetryArguments{
-			MaxRetries: 3,
-			Backoff:    250 * time.Millisecond,
-		},
-	}
-}
-
-// Convert converts args into the upstream type.
-func (args MetadataArguments) Convert() kafkaexporter.Metadata {
-	return kafkaexporter.Metadata{
-		Full:  args.IncludeAllTopics,
-		Retry: args.Retry.Convert(),
-	}
-}
-
-// MetadataRetryArguments configures how to retry retrieving metadata from the
-// Kafka broker. Retrying is useful to avoid race conditions when the Kafka
-// broker is starting at the same time as the otelcol.receiver.kafka component.
-type MetadataRetryArguments struct {
-	MaxRetries int           `alloy:"max_retries,attr,optional"`
-	Backoff    time.Duration `alloy:"backoff,attr,optional"`
-}
-
-// Convert converts args into the upstream type.
-func (args MetadataRetryArguments) Convert() kafkaexporter.MetadataRetry {
-	return kafkaexporter.MetadataRetry{
-		Max:     args.MaxRetries,
-		Backoff: args.Backoff,
-	}
 }
 
 // AutoCommitArguments configures how to automatically commit updated topic

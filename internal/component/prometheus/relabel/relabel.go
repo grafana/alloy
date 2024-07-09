@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	lru "github.com/hashicorp/golang-lru/v2"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -22,9 +23,11 @@ import (
 	"go.uber.org/atomic"
 )
 
+const name = "prometheus.relabel"
+
 func init() {
 	component.Register(component.Registration{
-		Name:      "prometheus.relabel",
+		Name:      name,
 		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
@@ -85,12 +88,15 @@ type Component struct {
 	exited           atomic.Bool
 	ls               labelstore.LabelStore
 
+	debugDataPublisher livedebugging.DebugDataPublisher
+
 	cacheMut sync.RWMutex
 	cache    *lru.Cache[uint64, *labelAndID]
 }
 
 var (
-	_ component.Component = (*Component)(nil)
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
 )
 
 // New creates a new prometheus.relabel component.
@@ -99,14 +105,21 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	data, err := o.GetServiceData(labelstore.ServiceName)
 	if err != nil {
 		return nil, err
 	}
 	c := &Component{
-		opts:  o,
-		cache: cache,
-		ls:    data.(labelstore.LabelStore),
+		opts:               o,
+		cache:              cache,
+		ls:                 data.(labelstore.LabelStore),
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	c.metricsProcessed = prometheus_client.NewCounter(prometheus_client.CounterOpts{
 		Name: "alloy_prometheus_relabel_metrics_processed",
@@ -259,6 +272,12 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	// Set the cache size to the cache.len
 	// TODO(@mattdurham): Instead of setting this each time could collect on demand for better performance.
 	c.cacheSize.Set(float64(c.cache.Len()))
+
+	componentID := livedebugging.ComponentID(c.opts.ID)
+	if c.debugDataPublisher.IsActive(componentID) {
+		c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", lbls.String(), relabelled.String()))
+	}
+
 	return relabelled
 }
 
@@ -298,6 +317,8 @@ func (c *Component) addToCache(originalID uint64, lbls labels.Labels, keep bool)
 		id:     newGlobal,
 	})
 }
+
+func (c *Component) LiveDebugging() {}
 
 // labelAndID stores both the globalrefid for the label and the id itself. We store the id so that it doesn't have
 // to be recalculated again.

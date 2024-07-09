@@ -57,7 +57,14 @@ services:
       context: ../../..
     ports:
       - "9001:9001"
+
   redis:
     image: redis:6.0.9-alpine
     ports:
       - "6379:6379"
+
+  snmp-simulator:
+    image: tandrup/snmpsim:v0.4
+    container_name: snmpsim
+    ports:
+      - "161:161/udp"

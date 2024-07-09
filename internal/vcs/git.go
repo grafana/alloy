@@ -96,10 +96,10 @@ func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*
 
 	checkoutErr := checkout(opts.Revision, repo)
 	if checkoutErr != nil {
-		return nil, UpdateFailedError{
-			Repository: opts.Repository,
-			Inner:      checkoutErr,
+		if errors.Is(checkoutErr, plumbing.ErrReferenceNotFound) {
+			return nil, InvalidRevisionError{opts.Revision}
 		}
+		return nil, checkoutErr
 	}
 
 	return &GitRepo{

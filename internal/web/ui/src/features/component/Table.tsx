@@ -1,4 +1,4 @@
-import React from 'react';
+import { CSSProperties } from 'react';
 
 import TableHead from './TableHead';
 import { SortOrder } from './types';
@@ -7,7 +7,7 @@ import styles from './Table.module.css';
 
 interface Props {
   tableHeaders: string[];
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   handleSorting?: (sortField: string, sortOrder: SortOrder) => void;
   renderTableData: () => JSX.Element[];
 }

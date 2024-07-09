@@ -1,8 +1,8 @@
-import React from 'react';
+import { CSSProperties } from 'react';
 
 // Object for react-syntax-highlighter's custom theme
 export const style: {
-  [key: string]: React.CSSProperties;
+  [key: string]: CSSProperties;
 } = {
   'code[class*="language-"]': {
     color: 'black',

@@ -317,6 +317,14 @@ Block                                              | Description                
 ---------------------------------------------------|----------------------------------------------|---------
 [resource_attributes](#azure--resource_attributes) | Configures which resource attributes to add. | no
 
+
+The `azure` block supports the following attributes:
+
+
+Attribute    | Type           | Description                                                                         | Default | Required
+-------------|----------------|-------------------------------------------------------------------------------------|---------|---------
+`tags` | `list(string)` | A list of regex's to match tag keys to add as resource attributes can be specified. | `[]`    | no
+
 #### azure > resource_attributes
 
 The `resource_attributes` block supports the following blocks:

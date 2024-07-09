@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/tutorials/
 description: Learn how to use Grafana Alloy
 title: Tutorials
-weight: 100
+weight: 200
 ---
 
 # Tutorials

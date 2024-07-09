@@ -220,7 +220,7 @@ type Measurement struct {
 	Context   MeasurementContext `json:"context,omitempty"`
 }
 
-// KeyVal representation of the exception object
+// KeyVal representation of the measurement object
 func (m Measurement) KeyVal() *KeyVal {
 	kv := NewKeyVal()
 
@@ -238,6 +238,8 @@ func (m Measurement) KeyVal() *KeyVal {
 	}
 	MergeKeyVal(kv, m.Trace.KeyVal())
 	MergeKeyValWithPrefix(kv, KeyValFromMap(m.Context), "context_")
+	MergeKeyValWithPrefix(kv, KeyValFromFloatMap(m.Values), "value_")
+
 	return kv
 }
 
@@ -352,6 +354,7 @@ func (p Page) KeyVal() *KeyVal {
 // App holds metadata about the application event originates from
 type App struct {
 	Name        string `json:"name,omitempty"`
+	Namespace   string `json:"namespace,omitempty"`
 	Release     string `json:"release,omitempty"`
 	Version     string `json:"version,omitempty"`
 	Environment string `json:"environment,omitempty"`
@@ -384,6 +387,7 @@ func (e Event) KeyVal() *KeyVal {
 func (a App) KeyVal() *KeyVal {
 	kv := NewKeyVal()
 	KeyValAdd(kv, "name", a.Name)
+	KeyValAdd(kv, "namespace", a.Namespace)
 	KeyValAdd(kv, "release", a.Release)
 	KeyValAdd(kv, "version", a.Version)
 	KeyValAdd(kv, "environment", a.Environment)

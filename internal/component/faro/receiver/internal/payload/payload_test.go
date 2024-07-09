@@ -139,4 +139,24 @@ func TestUnmarshalPayloadJSON(t *testing.T) {
 			},
 		},
 	}, payload.Measurements)
+
+	kv := payload.Measurements[0].KeyVal()
+	expectedKv := NewKeyVal()
+	expectedKv.Set("kind", "measurement")
+	expectedKv.Set("type", "foobar")
+	expectedKv.Set("ttfb", 14.000000)
+	expectedKv.Set("ttfcp", 22.120000)
+	expectedKv.Set("ttfp", 20.120000)
+	expectedKv.Set("traceID", "abcd")
+	expectedKv.Set("spanID", "def")
+	expectedKv.Set("context_hello", "world")
+	expectedKv.Set("value_ttfb", 14)
+	expectedKv.Set("value_ttfcp", 22.12)
+	expectedKv.Set("value_ttfp", 20.12)
+	expectedPair := kv.Oldest()
+	for pair := kv.Oldest(); pair != nil; pair = pair.Next() {
+		require.Equal(t, expectedPair.Key, pair.Key)
+		require.Equal(t, expectedPair.Value, pair.Value)
+		expectedPair = expectedPair.Next()
+	}
 }
