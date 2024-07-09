@@ -17,7 +17,7 @@ A good predictor for the size of an {{< param "PRODUCT_NAME" >}} deployment is t
 
 - Familiarize yourself with how to [configure][] existing {{< param "PRODUCT_NAME" >}} installations.
 - [Configure Prometheus metrics collection][].
-- [Configure clustering][].
+- [Configure clustering][clustering].
 - Ensure that all of your clustered {{< param "PRODUCT_NAME" >}}s have the same configuration file.
 
 ## Steps
@@ -42,6 +42,5 @@ To distribute Prometheus metrics scrape load with clustering:
 
 [Clustering]: ../../clustering/
 [configure]: ../../../configure/
-[Configure Prometheus metrics collection]: ../../../collect/collect-prometheus-metrics/
-[Configure clustering]: ../../../configure/clustering/
+[Configure Prometheus metrics collection]: ../../../collect/prometheus-metrics/
 [UI]: ../../../troubleshoot/debug/#component-detail-page
