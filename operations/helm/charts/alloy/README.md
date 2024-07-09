@@ -85,6 +85,10 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.nodeSelector | object | `{}` | nodeSelector to apply to Grafana Alloy pods. |
 | controller.parallelRollout | bool | `true` | Whether to deploy pods in parallel. Only used when controller.type is 'statefulset'. |
 | controller.podAnnotations | object | `{}` | Extra pod annotations to add. |
+| controller.podDisruptionBudget | object | `{"enabled":false,"maxUnavailable":null,"minAvailable":null}` | PodDisruptionBudget configuration. |
+| controller.podDisruptionBudget.enabled | bool | `false` | Whether to create a PodDisruptionBudget for the controller. |
+| controller.podDisruptionBudget.maxUnavailable | string | `nil` | Maximum number of pods that can be unavailable during a disruption. Note: Only one of minAvailable or maxUnavailable should be set. |
+| controller.podDisruptionBudget.minAvailable | string | `nil` | Minimum number of pods that must be available during a disruption. Note: Only one of minAvailable or maxUnavailable should be set. |
 | controller.podLabels | object | `{}` | Extra pod labels to add. |
 | controller.priorityClassName | string | `""` | priorityClassName to apply to Grafana Alloy pods. |
 | controller.replicas | int | `1` | Number of pods to deploy. Ignored when controller.type is 'daemonset'. |
