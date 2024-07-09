@@ -52,15 +52,14 @@ type Component struct {
 	log  log.Logger
 	opts component.Options
 
+	mut         sync.RWMutex
 	walStore    *agent.DB
 	walOpts     *agent.Options
 	remoteStore *remote.Storage
 	storage     storage.Storage
 	exited      atomic.Bool
 	ls          labelstore.LabelStore
-
-	mut sync.RWMutex
-	cfg Arguments
+	cfg         Arguments
 
 	receiver *prometheus.Interceptor
 }
@@ -131,8 +130,8 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	// Need to detect if the underlying agent.db information has changed.
-	if c.walOpts.MinWALTime != cfg.WALOptions.MinKeepaliveTime.Milliseconds() || c.walOpts.MaxWALTime != cfg.WALOptions.MaxKeepaliveTime.Milliseconds() || c.walOpts.TruncateFrequency != cfg.WALOptions.TruncateFrequency {
+	// Need to detect if the underlying agent wal tsdb information has changed.
+	if !c.walConfigsEqual(cfg) {
 		err := c.buildRemote(cfg)
 		if err != nil {
 			return err
@@ -159,7 +158,23 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	return nil
 }
 
+func (c *Component) walConfigsEqual(cfg Arguments) bool {
+	if c.walOpts.MinWALTime != cfg.WALOptions.MinKeepaliveTime.Milliseconds() {
+		return false
+	}
+	if c.walOpts.MaxWALTime != cfg.WALOptions.MaxKeepaliveTime.Milliseconds() {
+		return false
+	}
+	if c.walOpts.TruncateFrequency != cfg.WALOptions.TruncateFrequency {
+		return false
+	}
+	return true
+}
+
+// buildRemote is used when the agent.TSDB needs to be rebuilt. Since the TSDB does not handle live reloading we have to close everything down cleanly.
+// Then bring it all back up.
 func (c *Component) buildRemote(args Arguments) error {
+	// This only called from New and Update which already has the mutex held.
 	if c.walStore != nil {
 		// Lets do the hard thing of tearing it all down and rebuilding.
 		err := c.storage.Close()
