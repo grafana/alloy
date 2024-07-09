@@ -11,7 +11,7 @@ __Community components__ are [components][Components] implemented and maintained
 
 While Grafana does not offer commercial support for these components, they undergo acceptance and review by {{< param "PRODUCT_NAME" >}}'s team before being added to the repository.
 
-To use these community components, you need to explicitly pass the `--community-component` flag to the `run` command.
+To use these community components, you need to explicitly pass the `--feature.community-components.enabled` flag to the `run` command.
 
 {{< admonition type="warning" >}}
 __Community components__ without an owner may be eventually disabled or removed if they preventing us from being able to continue work on Alloy.

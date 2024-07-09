@@ -142,7 +142,7 @@ depending on the nature of the reload error.
 		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
-	cmd.Flags().BoolVar(&r.community, "community-component", r.community, "Enable community components.")
+	cmd.Flags().BoolVar(&r.community, "feature.community-components.enabled", r.community, "Enable community components.")
 	return cmd
 }
 

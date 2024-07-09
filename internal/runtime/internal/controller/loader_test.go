@@ -208,7 +208,7 @@ func TestLoader(t *testing.T) {
 	t.Run("Load community component with community disabled", func(t *testing.T) {
 		l := controller.NewLoader(newLoaderOptions())
 		diags := applyFromContent(t, l, []byte(testFileCommunity), nil, nil)
-		require.ErrorContains(t, diags.ErrorOrNil(), "the component \"testcomponents.community\" is a community component. Use the --community-component command-line flag to enable community components")
+		require.ErrorContains(t, diags.ErrorOrNil(), "the component \"testcomponents.community\" is a community component. Use the --feature.community-components.enabled command-line flag to enable community components")
 	})
 
 	t.Run("Partial load with invalid reference", func(t *testing.T) {

@@ -15,4 +15,4 @@ declare "a" {
 a "cc" {}
 
 -- error --
-the component "testcomponents.community" is a community component. Use the --community-component command-line flag to enable community components
+the component "testcomponents.community" is a community component. Use the --feature.community-components.enabled command-line flag to enable community components

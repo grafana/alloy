@@ -38,7 +38,7 @@ func (reg defaultComponentRegistry) Get(name string) (component.Registration, er
 
 	if cr.Community {
 		if !reg.community {
-			return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --community-component command-line flag to enable community components", name)
+			return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --feature.community-components.enabled command-line flag to enable community components", name)
 		}
 		return cr, nil // community components are not affected by feature stability
 	}
@@ -79,7 +79,7 @@ func (m registryMap) Get(name string) (component.Registration, error) {
 	}
 	if reg.Community {
 		if !m.community {
-			return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --community-component command-line flag to enable community components", name)
+			return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --feature.community-components.enabled command-line flag to enable community components", name)
 		}
 		return reg, nil // community components are not affected by feature stability
 	}
