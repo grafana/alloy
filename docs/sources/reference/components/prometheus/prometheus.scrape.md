@@ -350,8 +350,8 @@ Special labels added after a scrape
 
 `prometheus.scrape` can accept arguments from the following components:
 
-- Components that export [Targets](../../compatibility/#targets-exporters)
-- Components that export [Prometheus `MetricsReceiver`](../../compatibility/#prometheus-metricsreceiver-exporters)
+- Components that export [Targets](../../../compatibility/#targets-exporters)
+- Components that export [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-exporters)
 
 
 {{< admonition type="note" >}}

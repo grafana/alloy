@@ -231,7 +231,7 @@ otelcol.exporter.otlp "default" {
 
 `otelcol.receiver.vcenter` can accept arguments from the following components:
 
-- Components that export [OpenTelemetry `otelcol.Consumer`](../../compatibility/#opentelemetry-otelcolconsumer-exporters)
+- Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
 
 
 {{< admonition type="note" >}}

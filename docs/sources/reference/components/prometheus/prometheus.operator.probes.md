@@ -263,7 +263,7 @@ prometheus.operator.probes "probes" {
 
 `prometheus.operator.probes` can accept arguments from the following components:
 
-- Components that export [Prometheus `MetricsReceiver`](../../compatibility/#prometheus-metricsreceiver-exporters)
+- Components that export [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-exporters)
 
 
 {{< admonition type="note" >}}

@@ -204,7 +204,7 @@ loki.write "local" {
 
 `loki.source.cloudflare` can accept arguments from the following components:
 
-- Components that export [Loki `LogsReceiver`](../../compatibility/#loki-logsreceiver-exporters)
+- Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
 
 
 {{< admonition type="note" >}}

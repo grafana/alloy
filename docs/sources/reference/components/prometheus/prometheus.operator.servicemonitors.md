@@ -263,7 +263,7 @@ prometheus.operator.servicemonitors "services" {
 
 `prometheus.operator.servicemonitors` can accept arguments from the following components:
 
-- Components that export [Prometheus `MetricsReceiver`](../../compatibility/#prometheus-metricsreceiver-exporters)
+- Components that export [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-exporters)
 
 
 {{< admonition type="note" >}}

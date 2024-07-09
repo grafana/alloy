@@ -99,7 +99,7 @@ Replace the following:
 
 `discovery.nerve` has exports that can be consumed by the following components:
 
-- Components that consume [Targets](../../compatibility/#targets-consumers)
+- Components that consume [Targets](../../../compatibility/#targets-consumers)
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

@@ -140,7 +140,7 @@ loki.write "example" {
 
 `loki.source.azure_event_hubs` can accept arguments from the following components:
 
-- Components that export [Loki `LogsReceiver`](../../compatibility/#loki-logsreceiver-exporters)
+- Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
 
 
 {{< admonition type="note" >}}

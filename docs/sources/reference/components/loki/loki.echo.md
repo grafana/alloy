@@ -64,7 +64,7 @@ loki.echo "example" { }
 
 `loki.echo` has exports that can be consumed by the following components:
 
-- Components that consume [Loki `LogsReceiver`](../../compatibility/#loki-logsreceiver-consumers)
+- Components that consume [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-consumers)
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
