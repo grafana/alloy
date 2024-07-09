@@ -55,9 +55,9 @@ The list of maintainers is kept as a comment in the component's Go file:
 * Any maintainer can step out of the role by opening a pull request to remove their GitHub handle from code owners for the component.
 
 
-[cc]: ../sources/concepts/community_components.md
+[cc]: ../sources/get-started/community_components.md
 [cc dir]: https://grafana.com/docs/alloy/latest/reference/community_components
-[module]: ../sources/concepts/modules.md
+[module]: ../sources/get-started/modules.md
 [license]: ../../LICENSE
 [platforms]: ../sources/introduction/supported-platforms.md
 [otel]: https://github.com/open-telemetry/opentelemetry-collector-contrib

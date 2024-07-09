@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/concepts/community_components/
+canonical: https://grafana.com/docs/alloy/latest/get-started/community_components/
 description: Learn about community components
 title: Community components
 weight: 100
