@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Added live debugging support to `otelcol.processor.*` components. (@wildum)
 
+- Add automatic system attributes for `version` and `os` to `remotecfg`. (@erikbaranowski)
+
 ### Bugfixes
 
 - Fixed an issue with `loki.source.kubernetes_events` not starting in large clusters due to short informer sync timeout. (@nrwiersma)
