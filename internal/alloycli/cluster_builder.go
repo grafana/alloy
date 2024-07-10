@@ -186,7 +186,7 @@ func buildJoinAddresses(providedAddr []string, log log.Logger) ([]string, error)
 		// Otherwise, do a DNS lookup and return all the records found.
 		_, srvs, err := net.LookupSRV("", "", addr)
 		if err != nil {
-			level.Debug(log).Log("msg", "failed to resolve SRV records", "addr", addr, "err", err)
+			level.Warn(log).Log("msg", "failed to resolve SRV records", "addr", addr, "err", err)
 			deferredErr = errors.Join(deferredErr, err)
 		} else {
 			level.Debug(log).Log("msg", "found cluster join addresses via SRV records", "addr", addr, "count", len(srvs))
