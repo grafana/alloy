@@ -34,6 +34,10 @@ Main (unreleased)
   discovery did not result in a fatal failure at startup and could lead to
   potential split-brain issues. (@thampiotr)
 
+### Other
+
+- Use Go 1.22.5 for builds. (@mattdurham)
+
 v1.2.0
 -----------------
 
