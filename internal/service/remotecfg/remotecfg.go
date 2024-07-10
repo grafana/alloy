@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1/collectorv1connect"
 	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -52,6 +54,8 @@ type Service struct {
 	ticker            *jitter.Ticker
 	dataPath          string
 	currentConfigHash string
+	systemAttrs       map[string]string
+	attrs             map[string]string
 	metrics           *metrics
 }
 
@@ -131,9 +135,22 @@ func New(opts Options) (*Service, error) {
 		return nil, err
 	}
 
+	systemAttrs, err := getSystemAttributes()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Service{
-		opts:   opts,
-		ticker: jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
+		opts:        opts,
+		systemAttrs: systemAttrs,
+		ticker:      jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
+	}, nil
+}
+
+func getSystemAttributes() (map[string]string, error) {
+	return map[string]string{
+		"version": build.Version,
+		"os":      runtime.GOOS,
 	}, nil
 }
 
@@ -259,6 +276,10 @@ func (s *Service) Update(newConfig any) error {
 			newArgs.URL,
 		)
 	}
+	s.attrs = s.systemAttrs
+	for k, v := range newArgs.Attributes {
+		s.attrs[k] = v
+	}
 	s.args = newArgs // Update the args as the last step to avoid polluting any comparisons
 	s.mut.Unlock()
 
@@ -329,7 +350,7 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 	s.mut.RLock()
 	req := connect.NewRequest(&collectorv1.GetConfigRequest{
 		Id:         s.args.ID,
-		Attributes: s.args.Attributes,
+		Attributes: s.attrs,
 	})
 	client := s.asClient
 	s.mut.RUnlock()
