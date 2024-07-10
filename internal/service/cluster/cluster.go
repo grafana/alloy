@@ -253,6 +253,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		return fmt.Errorf("failed to get peers to join at startup: %w", err)
 	}
 
+	// We log on info level including all the peers (without any abbreviation), as it's happening only on startup and
+	// won't spam too much in most cases. In other cases we should either abbreviate the list or log on debug level.
 	level.Info(s.log).Log(
 		"msg", "starting cluster node",
 		"peers_count", len(peers),
