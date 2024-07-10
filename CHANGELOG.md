@@ -10,7 +10,13 @@ internal API changes are not present.
 v1.2.1
 -----------------
 
-## Other
+## Bugfixes
+
+- Fixed a clustering mode issue where a failure to perform static peers
+  discovery did not result in a fatal failure at startup and could lead to
+  potential split-brain issues. (@thampiotr)
+
+### Other
 
 - Use Go 1.22.5 for builds. (@mattdurham)
 
