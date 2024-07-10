@@ -1,6 +1,7 @@
 package alloycli
 
 import (
+	"errors"
 	"fmt"
 	stdlog "log"
 	"net"
@@ -14,7 +15,6 @@ import (
 	"github.com/hashicorp/go-discover/provider/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/multierr"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
@@ -41,7 +41,7 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 	listenPort := findPort(opts.ListenAddress, 80)
 
 	config := cluster.Options{
-		Log:     log.With(opts.Log, "service", "cluster"),
+		Log:     opts.Log,
 		Metrics: opts.Metrics,
 		Tracer:  opts.Tracer,
 
@@ -168,7 +168,7 @@ func buildJoinAddresses(providedAddr []string, log log.Logger) ([]string, error)
 		// If it's a host:port, use it as is.
 		_, _, err := net.SplitHostPort(addr)
 		if err != nil {
-			deferredErr = multierr.Append(deferredErr, err)
+			deferredErr = errors.Join(deferredErr, err)
 		} else {
 			level.Debug(log).Log("msg", "found a host:port cluster join address", "addr", addr)
 			result = append(result, addr)
@@ -187,7 +187,7 @@ func buildJoinAddresses(providedAddr []string, log log.Logger) ([]string, error)
 		_, srvs, err := net.LookupSRV("", "", addr)
 		if err != nil {
 			level.Debug(log).Log("msg", "failed to resolve SRV records", "addr", addr, "err", err)
-			deferredErr = multierr.Append(deferredErr, err)
+			deferredErr = errors.Join(deferredErr, err)
 		} else {
 			level.Debug(log).Log("msg", "found cluster join addresses via SRV records", "addr", addr, "count", len(srvs))
 			for _, srv := range srvs {

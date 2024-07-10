@@ -220,10 +220,6 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		spanCtx, span := tracer.Start(ctx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
 		defer span.End()
 
-		names := make([]string, len(peers))
-		for i, p := range peers {
-			names[i] = p.Name
-		}
 		s.logPeers("peers changed", toStringSlice(peers))
 
 		// Notify all components about the clustering change.
