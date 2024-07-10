@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -276,11 +277,12 @@ func (s *Service) Update(newConfig any) error {
 			newArgs.URL,
 		)
 	}
+	// Combine the new attributes on top of the system attributes
 	s.attrs = s.systemAttrs
-	for k, v := range newArgs.Attributes {
-		s.attrs[k] = v
-	}
-	s.args = newArgs // Update the args as the last step to avoid polluting any comparisons
+	maps.Copy(s.attrs, newArgs.Attributes)
+
+	// Update the args as the last step to avoid polluting any comparisons
+	s.args = newArgs
 	s.mut.Unlock()
 
 	// If we've already called Run, then immediately trigger an API call with
