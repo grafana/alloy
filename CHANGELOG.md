@@ -27,7 +27,10 @@ Main (unreleased)
 ### Bugfixes
 
 - Fixed an issue with `loki.source.kubernetes_events` not starting in large clusters due to short informer sync timeout. (@nrwiersma)
+
 - Updated [ckit](https://github.com/grafana/ckit) to fix an issue with armv7 panic on startup when forming a cluster. (@imavroukakis)
+
+- Switch to using Prometheus Agent WAL which fixes issue with [failed scrapes not being deletable](https://github.com/grafana/alloy/issues/546). (@mattdurham)
 
 v1.2.0
 -----------------
