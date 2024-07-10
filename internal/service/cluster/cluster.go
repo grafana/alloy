@@ -249,9 +249,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	peers, err := s.getPeers()
 	if err != nil {
-		// We can continue here as we have a rejoin goroutine try again later.
-		level.Warn(s.log).Log("msg", "failed to get peers to join at startup", "err", err)
-		peers = nil
+		// Fail fast on startup if we can't discover peers to prevent a split brain and give a clear signal to the user.
+		return fmt.Errorf("failed to get peers to join at startup: %w", err)
 	}
 
 	level.Info(s.log).Log(
