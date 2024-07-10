@@ -1,11 +1,14 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/get-started/
-description: Get started with Grafana Alloy
-title: Get started with Grafana Alloy
-weight: 10
+canonical: https://grafana.com/docs/alloy/latest/tutorials/send-logs-to-loki/
+aliases:
+  - ./get-started/ #/docs/alloy/latest/tutorials/get-started/
+description: Learn how to use Grafana Alloy to send logs to Loki
+menuTitle: Send logs to Loki
+title: Use Grafana Alloy to send logs to Loki
+weight: 100
 ---
 
-## Get started with {{% param "FULL_PRODUCT_NAME" %}}
+## Use {{% param "FULL_PRODUCT_NAME" %}} to send logs to Loki
 
 This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect logs from your local computer, filter non-essential log lines, send them to Loki, and use a Grafana dashboard to query and visualize the results.
 
@@ -15,7 +18,6 @@ To complete this tutorial:
 
 * You must have a basic understanding of Alloy and telemetry collection in general.
 * You should be familiar with Prometheus, PromQL, Loki, LogQL, and basic Grafana navigation.
-* You don't need to understand the {{< param "PRODUCT_NAME" >}} [configuration syntax][configuration] concepts.
 
 ## Install {{% param "PRODUCT_NAME" %}} and start the service
 
@@ -39,7 +41,9 @@ Install  and run {{< param "PRODUCT_NAME" >}} on macOS.
 
 ## Set up a local Grafana instance
 
-To allow {{< param "PRODUCT_NAME" >}} to write data to Loki running in the local Grafana stack, you can use the following Docker Compose file to set up a local Grafana instance alongside Loki and Prometheus, which are pre-configured as data sources.
+In this tutorial, you configure {{< param "PRODUCT_NAME" >}} to collect logs from your local computer and send them to Loki.
+You can use the following Docker Compose file to set up a local Grafana instance.
+This Docker Compose file includes Loki and Prometheus configured as data sources.
 
 ```yaml
 version: '3'
@@ -93,11 +97,11 @@ services:
       - "3000:3000"
 ```
 
-Run `docker compose up` to start your Docker container and open [http://localhost:3000](http://localhost:3000) in your browser to view the Grafana UI.
+Run `docker compose up` to start your Docker container and open <http://localhost:3000> in your browser to view the Grafana UI.
 
- {{< admonition type="note" >}}
+{{< admonition type="note" >}}
 If you the following error when you start your Docker container, `docker: 'compose' is not a docker command`, use the command `docker-compose up` to start your Docker container.
- {{< /admonition >}}
+{{< /admonition >}}
 
 ## Configure {{% param "PRODUCT_NAME" %}}
 
@@ -105,13 +109,11 @@ After the local Grafana instance is setup, the next step is to configure {{< par
 You use components in the `config.alloy` file to tell {{< param "PRODUCT_NAME" >}} which logs you want to scrape, how you want to process that data, and where you want the data sent.
 
 The examples run on a single host so that you can run them on your laptop or in a Virtual Machine.
-You can try the examples using a `config.alloy` file and experiment with the examples yourself.
-
-For the following steps, create a file called `config.alloy` in your current working directory.
+You can try the examples using a `config.alloy` file and experiment with the examples.
 
 ### First component: Log files
 
-Paste the following component configuration at the top of your `config.alloy` file:
+Create a file called `config.alloy` in your current working directory and paste the following component configuration at the top of the file:
 
 ```alloy
 local.file_match "local_files" {
@@ -122,12 +124,12 @@ local.file_match "local_files" {
 
 This configuration creates a [local.file_match][] component named `local_files` which does the following:
 
-1. It tells {{< param "PRODUCT_NAME" >}} which files to source.
-1. It checks for new files every 5 seconds.
+* It tells {{< param "PRODUCT_NAME" >}} which files to source.
+* It checks for new files every 5 seconds.
 
 ### Second component: Scraping
 
-Paste this component configuration below the previous component in your `config.alloy` file:
+Paste the following component configuration below the previous component in your `config.alloy` file:
 
 ```alloy
 loki.source.file "log_scrape" {
@@ -137,20 +139,19 @@ loki.source.file "log_scrape" {
 }
 ```
 
-This configuration creates a [loki.source.file][] component named `log_scrape`, and shows the pipeline concept of {{< param "PRODUCT_NAME" >}} in action. This component does the following:
+This configuration creates a [loki.source.file][] component named `log_scrape` which does the following:
 
-1. It connects to the `local_files` component as its "source" or target.
-1. It forwards the logs it scrapes to the receiver of another component called `filter_logs`.
-1. It provides extra attributes and options to tail the log files from the end so you don't ingest the entire log file history.
+* It connects to the `local_files` component as its source or target.
+* It forwards the logs it scrapes to the receiver of another component called `filter_logs`.
+* It provides extra attributes and options to tail the log files from the end so you don't ingest the entire log file history.
 
 ### Third component: Filter non-essential logs
 
 Filtering non-essential logs before sending them to a data source can help you manage log volumes to reduce costs.
-The filtering strategy of each organization differs because they have different monitoring needs and setups.
 
-The following example demonstrates filtering out or dropping logs before sending them to Loki.
+The following example demonstrates how you can filter out or drop logs before sending them to Loki.
 
-Paste this component configuration below the previous component in your `config.alloy` file:
+Paste the following component configuration below the previous component in your `config.alloy` file:
 
 ```alloy
 loki.process "filter_logs" {
@@ -166,7 +167,7 @@ loki.process "filter_logs" {
 The `loki.process` component allows you to transform, filter, parse, and enrich log data.
 Within this component, you can define one or more processing stages to specify how you would like to process log entries before they're stored or forwarded.
 
-This configuration creates a `filter_logs` component. This component does the following:
+This configuration creates a [loki.process][] component named `filter_logs` which does the following:
 
 * It receives scraped log entries from the default `log_scrape` component.
 * It uses the `stage.drop` block to define what to drop from the scraped logs.
@@ -174,7 +175,7 @@ This configuration creates a `filter_logs` component. This component does the fo
 * It uses an optional string label `drop_counter_reason` to show the reason for dropping the log entries.
 * It forwards the processed logs to the receiver of another component called `grafana_loki`.
 
-The following [tutorial][] and the [`loki.process` documentation][loki.process] provide more comprehensive information on processing logs.
+The [`loki.process` documentation][loki.process] provides more comprehensive information on processing logs.
 
 ### Fourth component: Write logs to Loki
 
@@ -202,14 +203,14 @@ The `basic_auth` block is commented out because the local `docker compose` stack
 It's included in this example to show how you can configure authorization for other environments.
 For further authorization options, refer to the [loki.write][] component reference.
 
-[loki.write]: ../../reference/components/loki.write/
+[loki.write]: ../../reference/components/loki/loki.write/
 {{< /admonition >}}
 
 With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the Loki instance running in the Docker container.
 
 ## Reload the configuration
 
-1. Copy your local `config.alloy` file into the default configuration file location.
+1. Copy your local `config.alloy` file into the default {{< param "PRODUCT_NAME" >}} configuration file location.
 
    {{< code >}}
 
@@ -234,7 +235,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
    If you chose to run {{< param "PRODUCT_NAME" >}} in a Docker container, make sure you use the `--server.http.listen-addr=0.0.0.0:12345` argument.
    If you don’t use this argument, the [debugging UI][debug] won’t be available outside of the Docker container.
 
-   [debug]: ../../tasks/debug/#alloy-ui
+   [debug]: ../../troubleshoot/debug/#alloy-ui
    {{< /admonition >}}
 
 1. Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and load the configuration file:
@@ -253,18 +254,19 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
 
 ## Inspect your configuration in the {{% param "PRODUCT_NAME" %}} UI
 
-Open <http://localhost:12345> and click the Graph tab at the top.
+Open <http://localhost:12345> and click the **Graph** tab at the top.
 The graph should look similar to the following:
 
 {{< figure src="/media/docs/alloy/tutorial/Inspect-your-config-in-the-Alloy-UI-image.png" alt="Your configuration in the Alloy UI" >}}
 
 The {{< param "PRODUCT_NAME" >}} UI shows you a visual representation of the pipeline you built with your {{< param "PRODUCT_NAME" >}} component configuration.
 
-You can see that the components are healthy, and you are ready to go.
+You can see that the components are healthy, and you are ready to explore the logs in Grafana.
 
 ## Log in to Grafana and explore Loki logs
 
 Open <http://localhost:3000/explore> to access **Explore** feature in Grafana.
+
 Select Loki as the data source and click the **Label Browser** button to select a file that {{< param "PRODUCT_NAME" >}} has sent to Loki.
 
 Here you can see that logs are flowing through to Loki as expected, and the end-to-end configuration was successful.
@@ -273,21 +275,22 @@ Here you can see that logs are flowing through to Loki as expected, and the end-
 
 ## Summary
 
-You have installed and configured {{< param "PRODUCT_NAME" >}}, and sent logs from your local host to a Grafana stack.
+You have installed and configured {{< param "PRODUCT_NAME" >}}, and sent logs from your local host to your local Grafana stack.
 
-In the following tutorials, you learn more about configuration concepts and metrics.
+In the [next tutorial][], you learn more about configuration concepts and metrics.
 
-[MacOS Install]: ../../get-started/install/macos/
-[Linux Install]: ../../get-started/install/linux/
-[Run on Linux]: ../../get-started/run/linux/
-[Run on MacOS]: ../../get-started/run/macos/
-[local.file_match]: ../../reference/components/local.file_match/
-[loki.write]: ../../reference/components/loki.write/
-[loki.source.file]: ../../reference/components/loki.source.file/
+[MacOS Install]: ../../set-up/install/macos/
+[Linux Install]: ../../set-up/install/linux/
+[Run on Linux]: ../../set-up/run/linux/
+[Run on MacOS]: ../../set-up/run/macos/
+[local.file_match]: ../../reference/components/local/local.file_match/
+[loki.write]: ../../reference/components/loki/loki.write/
+[loki.source.file]: ../../reference/components/loki/loki.source.file/
+[loki.process]: ../../reference/components/loki/loki.process/
 [alloy]: https://grafana.com/docs/alloy/latest/
 [configuration]: ../../concepts/configuration-syntax/
 [install]: ../../get-started/install/binary/#install-alloy-as-a-standalone-binary
-[debugging your configuration]: ../../tasks/debug/
-[parse]: ../../reference/components/loki.process/
-[tutorial]: ../processing-logs/
-[loki.process]: ../../reference/components/loki.process/
+[debugging your configuration]: ../../troubleshoot/debug/
+[parse]: ../../reference/components/loki/loki.process/
+[next tutorial]: ../send-metrics-to-prometheus/
+[loki.process]: ../../reference/components/loki/loki.process/
