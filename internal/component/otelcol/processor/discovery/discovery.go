@@ -11,8 +11,10 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	"github.com/grafana/alloy/syntax"
 )
@@ -76,11 +78,19 @@ func (args *Arguments) Validate() error {
 
 // Component is the otelcol.exporter.discovery component.
 type Component struct {
-	consumer *promsdconsumer.Consumer
-	logger   log.Logger
+	consumer              *promsdconsumer.Consumer
+	logger                log.Logger
+	liveDebuggingConsumer *livedebuggingconsumer.Consumer
+	debugDataPublisher    livedebugging.DebugDataPublisher
+
+	opts component.Options
+	args Arguments
 }
 
-var _ component.Component = (*Component)(nil)
+var (
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
+)
 
 // New creates a new otelcol.exporter.discovery component.
 func New(o component.Options, c Arguments) (*Component, error) {
@@ -88,14 +98,24 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		level.Warn(o.Logger).Log("msg", "non-trace output detected; this component only works for traces")
 	}
 
-	nextTraces := fanoutconsumer.Traces(c.Output.Traces)
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	liveDebuggingConsumer := livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID)
+
+	traces := c.Output.Traces
+	if debugDataPublisher.(livedebugging.DebugDataPublisher).IsActive(livedebugging.ComponentID(o.ID)) {
+		traces = append(traces, liveDebuggingConsumer)
+	}
 
 	consumerOpts := promsdconsumer.Options{
 		// Don't bother setting up labels - this will be done by the Update() function.
 		HostLabels:      map[string]discovery.Target{},
 		OperationType:   c.OperationType,
 		PodAssociations: c.PodAssociations,
-		NextConsumer:    nextTraces,
+		NextConsumer:    fanoutconsumer.Traces(traces),
 	}
 	consumer, err := promsdconsumer.NewConsumer(consumerOpts, o.Logger)
 	if err != nil {
@@ -103,8 +123,11 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	res := &Component{
-		consumer: consumer,
-		logger:   o.Logger,
+		consumer:              consumer,
+		logger:                o.Logger,
+		opts:                  o,
+		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
+		liveDebuggingConsumer: liveDebuggingConsumer,
 	}
 
 	if err := res.Update(c); err != nil {
@@ -131,11 +154,11 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
-	cfg := newConfig.(Arguments)
+	c.args = newConfig.(Arguments)
 
 	hostLabels := make(map[string]discovery.Target)
 
-	for _, labels := range cfg.Targets {
+	for _, labels := range c.args.Targets {
 		host, err := promsdconsumer.GetHostFromLabels(labels)
 		if err != nil {
 			level.Warn(c.logger).Log("msg", "ignoring target, unable to find address", "err", err)
@@ -144,16 +167,25 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 		hostLabels[host] = promsdconsumer.NewTargetsWithNonInternalLabels(labels)
 	}
+	traces := c.args.Output.Traces
+	if c.debugDataPublisher.IsActive(livedebugging.ComponentID(c.opts.ID)) {
+		traces = append(traces, c.liveDebuggingConsumer)
+	}
 
 	err := c.consumer.UpdateOptions(promsdconsumer.Options{
 		HostLabels:      hostLabels,
-		OperationType:   cfg.OperationType,
-		PodAssociations: cfg.PodAssociations,
-		NextConsumer:    fanoutconsumer.Traces(cfg.Output.Traces),
+		OperationType:   c.args.OperationType,
+		PodAssociations: c.args.PodAssociations,
+		NextConsumer:    fanoutconsumer.Traces(traces),
 	})
+
 	if err != nil {
 		return fmt.Errorf("failed to update consumer options due to error: %w", err)
 	}
 
 	return nil
+}
+
+func (c *Component) LiveDebugging(_ int) {
+	c.Update(c.args)
 }
