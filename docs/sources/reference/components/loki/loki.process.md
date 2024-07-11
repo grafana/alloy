@@ -1478,6 +1478,11 @@ custom format.
 | Timezone offset     | -0700, -070000 (with seconds), -07, 07:00, -07:00:00 (with seconds)                                                      |
 | Timezone ISO-8601   | Z0700 (Z for UTC or time offset), Z070000, Z07, Z07:00, Z07:00:00                                                        |
 
+{{< admonition type="note" >}}
+In `format`, you can only use the exact reference values specified in the table above.
+For example, to indicate a year, the value in `format` must be `06` or `2006` and not something like `23` or `2023`.
+{{< /admonition >}}
+
 The `fallback_formats` field defines one or more format fields to try and parse
 the timestamp with, if parsing with `format` fails.
 
@@ -1501,6 +1506,15 @@ it as a RFC3339 format, and sets it as the log entry's timestamp.
 stage.timestamp {
     source = "time"
     format = "RFC3339"
+}
+```
+
+The following example could parse a timestamp such as `2024-12-20T09:14:58,381+02:00`:
+
+```alloy
+stage.timestamp {
+    source = "time"
+    format = "2008-01-02T03:04:05,000-07:00"
 }
 ```
 
