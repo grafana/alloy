@@ -35,6 +35,8 @@ Main (unreleased)
 - (_Public preview_) Added rate limiting of cluster state changes to reduce the
   number of unnecessary, intermediate state updates. (@thampiotr)
 
+- Allow activating `wall` mode for Java Async Profiler (@slbucur)
+
 ### Bugfixes
 
 - Fixed a clustering mode issue where a fatal startup failure of the clustering service
