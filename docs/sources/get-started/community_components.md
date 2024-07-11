@@ -16,7 +16,7 @@ To use these community components, you must explicitly pass the `--feature.commu
 __Community components__ don't have a stability level. They are not covered by our [backward compatibility strategy][backward-compatibility].
 
 {{< admonition type="warning" >}}
-__Community components__ without an owner may be eventually disabled or removed if they preventing us from being able to continue work on Alloy.
+__Community components__ without a maintainer may be disabled or removed if the components prevent or block the development of {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
 [Components]: ../components/
