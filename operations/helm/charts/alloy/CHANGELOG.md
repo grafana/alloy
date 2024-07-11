@@ -10,7 +10,7 @@ internal API changes are not present.
 Unreleased
 ----------
 
-0.5.0 (2023-07-11)
+0.5.1 (2023-07-11)
 ------------------
 
 ### Other changes
