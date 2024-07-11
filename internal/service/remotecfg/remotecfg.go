@@ -136,23 +136,18 @@ func New(opts Options) (*Service, error) {
 		return nil, err
 	}
 
-	systemAttrs, err := getSystemAttributes()
-	if err != nil {
-		return nil, err
-	}
-
 	return &Service{
 		opts:        opts,
-		systemAttrs: systemAttrs,
+		systemAttrs: getSystemAttributes(),
 		ticker:      jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
 	}, nil
 }
 
-func getSystemAttributes() (map[string]string, error) {
+func getSystemAttributes() map[string]string {
 	return map[string]string{
 		"version": build.Version,
 		"os":      runtime.GOOS,
-	}, nil
+	}
 }
 
 func (s *Service) registerMetrics() {
@@ -278,7 +273,7 @@ func (s *Service) Update(newConfig any) error {
 		)
 	}
 	// Combine the new attributes on top of the system attributes
-	s.attrs = s.systemAttrs
+	s.attrs = maps.Clone(s.systemAttrs)
 	maps.Copy(s.attrs, newArgs.Attributes)
 
 	// Update the args as the last step to avoid polluting any comparisons
