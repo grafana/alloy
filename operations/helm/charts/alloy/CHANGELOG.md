@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Features
+
+- Allow granular configuration `clusterRole`'s permissions. (@hainenber)
+
 0.5.0 (2024-07-08)
 ------------------
 
