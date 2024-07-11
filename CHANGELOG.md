@@ -18,7 +18,8 @@ Main (unreleased)
 
 - Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
 - Add namespace field to Faro payload (@cedricziel)
-- Add namespace label with the namespace of the probe object in the static config to align with prometheus setup. (@toontijtgat2)
+
+- Added a `namespace` label to probes scraped by the `prometheus.operator.probes` component to align with the upstream Prometheus Operator setup. (@toontijtgat2)
 
 ### Bugfixes
 
