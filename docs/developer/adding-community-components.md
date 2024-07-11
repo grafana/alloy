@@ -48,7 +48,7 @@ The documentation should also follow the same pattern as the core components but
 
 Community component maintainers may be pinged on GitHub issues and Pull Requests related to their components. They are expected to help keeping their component and the documentation up to date with the project (e.g. if it's a component from [OpenTelemetry's contrib repository][otel], the implementation should match the current OTel version of the project).
 
-Failing to keep the component up to date may result in the component being disabled or removed.
+Failing to keep the component up to date may result in the component being deprecated, disabled, or removed.
 
 The list of maintainers is kept as a comment in the component's Go file:
 * Anyone can volunteer to become a maintainer by opening a pull request to add themselves as code owner for the component.
