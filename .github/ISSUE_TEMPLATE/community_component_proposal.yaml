@@ -1,6 +1,6 @@
 name: Community component proposal
 description: Propose a new community component.
-labels: ["community-component"]
+labels: ["community-component", "proposal"]
 body:
   - type: markdown
     attributes:
@@ -14,6 +14,9 @@ body:
       description: What is the name of the component you want to add?
     validations:
       required: true
+  - type: checkboxes
+    attributes:
+      label: Are you willing to be the maintainer for this component in Alloy? 
   - type: textarea
     attributes:
       label: Community component description

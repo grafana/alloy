@@ -32,7 +32,7 @@ To create a proposal, submit a new issue in [Alloy's repo][issue] with the templ
 
 Make sure that the issue has the label `community-component` before submitting it.
 
-The proposal will go through our [review process][]. Make sure that you use the [review template][] in your issue.
+The proposal will go through our [review process][].
 
 ## Implementing the component
 

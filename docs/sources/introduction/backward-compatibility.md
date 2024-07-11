@@ -33,6 +33,8 @@ We strive to maintain backward compatibility, but there are situations that may 
 
 * **Upstream changes**: Much of the functionality of {{< param "PRODUCT_NAME" >}} is built on top of other software, such as OpenTelemetry Collector and Prometheus. If upstream software breaks compatibility, we may need to reflect this in {{< param "PRODUCT_NAME" >}}.
 
+* **Community components**: Community components are components implemented and maintained by the community. They are not covered by our backward compatibility strategy.
+
 We try, whenever possible, to resolve these issues without breaking compatibility.
 
 [semantic versioning]: https://semver.org/
