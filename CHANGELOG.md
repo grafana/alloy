@@ -7,6 +7,15 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.2.1
+-----------------
+
+### Bugfixes
+
+- Fixed a clustering mode issue where a failure to perform static peers
+  discovery did not result in a fatal failure at startup and could lead to
+  potential split-brain issues. (@thampiotr)
+
 v1.2.0
 -----------------
 
