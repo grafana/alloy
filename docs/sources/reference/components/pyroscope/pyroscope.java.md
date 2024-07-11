@@ -84,13 +84,14 @@ The `profiling_config` block describes how async-profiler is invoked.
 
 The following arguments are supported:
 
-Name          | Type       | Description                                                                                              | Default | Required
---------------|------------|----------------------------------------------------------------------------------------------------------|---------|---------
-`interval`    | `duration` | How frequently to collect profiles from the targets.                                                     | "60s"   | no
-`cpu`         | `bool`     | A flag to enable cpu profiling, using `itimer` async-profiler event.                                     | true    | no
-`sample_rate` | `int`      | CPU profiling sample rate. It is converted from Hz to interval and passed as `-i` arg to async-profiler. | 100     | no
-`alloc`       | `string`   | Allocation profiling sampling configuration  It is passed as `--alloc` arg to async-profiler.            | "512k"  | no
-`lock`        | `string`   | Lock profiling sampling configuration. It is passed as `--lock` arg to async-profiler.                   | "10ms"  | no
+Name          | Type       | Description                                                                                                                                                                                                                          | Default | Required
+--------------|------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|---------
+`interval`    | `duration` | How frequently to collect profiles from the targets.                                                                                                                                                                                 | "60s"   | no
+`cpu`         | `bool`     | A flag to enable cpu profiling, using `itimer` async-profiler event.                                                                                                                                                                 | true    | no
+`sample_rate` | `int`      | CPU profiling sample rate. It is converted from Hz to interval and passed as `-i` arg to async-profiler.                                                                                                                             | 100     | no
+`alloc`       | `string`   | Allocation profiling sampling configuration  It is passed as `--alloc` arg to async-profiler.                                                                                                                                        | "512k"  | no
+`lock`        | `string`   | Lock profiling sampling configuration. It is passed as `--lock` arg to async-profiler.                                                                                                                                               | "10ms"  | no
+`wall`        | `bool`     | Activates the `wall` mode when `cpu` profiling is enabled. This sample all threads equally every given period of time regardless of thread status: Running, Sleeping or Blocked. It is passed as `-e wall -t` arg to async-profiler. | false   | no
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
 

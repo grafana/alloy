@@ -183,7 +183,12 @@ func (p *profilingLoop) start() error {
 		"-o", "jfr",
 	)
 	if cfg.CPU {
-		argv = append(argv, "-e", "itimer")
+		if cfg.Wall {
+			argv = append(argv, "-e", "wall", "-t")
+		} else {
+			argv = append(argv, "-e", "itimer")
+		}
+
 		profilingInterval := time.Second.Nanoseconds() / int64(cfg.SampleRate)
 		argv = append(argv, "-i", strconv.FormatInt(profilingInterval, 10))
 	}

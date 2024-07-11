@@ -21,6 +21,7 @@ type ProfilingConfig struct {
 	Alloc      string        `alloy:"alloc,attr,optional"`
 	Lock       string        `alloy:"lock,attr,optional"`
 	CPU        bool          `alloy:"cpu,attr,optional"`
+	Wall       bool          `alloy:"wall,attr,optional"`
 }
 
 func (rc *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
@@ -38,6 +39,7 @@ func defaultArguments() Arguments {
 			Alloc:      "10ms",
 			Lock:       "512k",
 			CPU:        true,
+			Wall:       false,
 		},
 	}
 }
