@@ -24,6 +24,17 @@ Main (unreleased)
 
 - Added live debugging support to `otelcol.processor.*` components. (@wildum)
 
+- Added live debugging support to `otelcol.receiver.*` components. (@wildum)
+
+- Added a `namespace` label to probes scraped by the `prometheus.operator.probes` component to align with the upstream Prometheus Operator setup. (@toontijtgat2)
+
+- (_Public preview_) Added rate limiting of cluster state changes to reduce the
+  number of unnecessary, intermediate state updates. (@thampiotr)
+
+
+v1.2.1
+-----------------
+
 ### Bugfixes
 
 - Fixed an issue with `loki.source.kubernetes_events` not starting in large clusters due to short informer sync timeout. (@nrwiersma)
@@ -37,9 +48,6 @@ Main (unreleased)
 ### Other
 
 - Use Go 1.22.5 for builds. (@mattdurham)
-
-- (_Public preview_) Added rate limiting of cluster state changes to reduce the
-  number of unnecessary, intermediate state updates. (@thampiotr)
 
 v1.2.0
 -----------------
