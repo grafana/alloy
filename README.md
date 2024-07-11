@@ -9,8 +9,8 @@
 </p>
 
 Grafana Alloy is an open source OpenTelemetry Collector distribution with
-built-in Prometheus pipelines and support for metrics, logs, traces, and 
-profiles. 
+built-in Prometheus pipelines and support for metrics, logs, traces, and
+profiles.
 
 <p>
 <img src="docs/sources/assets/alloy_screenshot.png">
@@ -128,13 +128,13 @@ To engage with the Alloy community:
   Grafana Slack, visit <https://slack.grafana.com/> and join the `#alloy`
   channel.
 
-* Ask questions on the [Discussions page][discussions].
+* Ask questions on the [Grafana community site][community].
 
 * [File an issue][issue] for bugs, issues, and feature suggestions.
 
 * Attend the monthly [community call][community-call].
 
-[discussions]: https://github.com/grafana/alloy/discussions
+[community]: https://community.grafana.com/c/grafana-alloy
 [issue]: https://github.com/grafana/alloy/issues/new
 [community-call]: https://docs.google.com/document/d/1TqaZD1JPfNadZ4V81OCBPCG_TksDYGlNlGdMnTWUSpo
 

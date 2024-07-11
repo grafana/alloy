@@ -7,7 +7,7 @@ body:
       value: |
         Thank you for opening a proposal for Grafana Alloy.
 
-        Please do not use GitHub issues for support questions. If you need help or support, ask a question in [GitHub Discussions](https://github.com/grafana/alloy/discussions) or join the `#alloy` channel on the [Grafana Slack](https://slack.grafana.com/).
+        Please do not use GitHub issues for support questions. If you need help or support, ask a question on [Grafana Community](https://community.grafana.com/c/grafana-alloy) or join the `#alloy` channel on the [Grafana Slack](https://slack.grafana.com/).
   - type: textarea
     attributes:
       label: Background

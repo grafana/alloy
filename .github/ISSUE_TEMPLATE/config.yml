@@ -1,10 +1,10 @@
-# NOTE(rfratto): this file *must* have the .yml extension otherwise GitHub doesn't 
+# NOTE(rfratto): this file *must* have the .yml extension otherwise GitHub doesn't
 # recognize it.
 blank_issues_enabled: true
 contact_links:
   - name: Grafana Alloy community support
-    url: https://github.com/grafana/alloy/discussions
-    about: If you need help or support, ask questions in GitHub Discussions.
+    url: https://community.grafana.com/c/grafana-alloy
+    about: If you need help or support, ask questions on Grafana Community.
   - name: Grafana Alloy Slack
     url: https://slack.grafana.com/
     about: "Join the #alloy slack channel to chat about Grafana Alloy in real-time."

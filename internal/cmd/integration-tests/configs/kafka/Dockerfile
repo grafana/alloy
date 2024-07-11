@@ -1,7 +1,8 @@
-FROM golang:1.22.3 as build
+FROM golang:1.22.5 as build
 WORKDIR /app/
 COPY go.mod go.sum ./
 COPY syntax/go.mod syntax/go.sum ./syntax/
+COPY internal/etc/datadogreceiver/go.mod internal/etc/datadogreceiver/go.sum ./internal/etc/datadogreceiver/
 RUN go mod download
 COPY ./internal/cmd/integration-tests/configs/kafka/ ./
 RUN CGO_ENABLED=0 go build -o main main.go

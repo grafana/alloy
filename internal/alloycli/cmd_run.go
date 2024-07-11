@@ -19,6 +19,13 @@ import (
 	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
+	"github.com/grafana/ckit/advertise"
+	"github.com/grafana/ckit/peer"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
+	"golang.org/x/exp/maps"
+
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
 	"github.com/grafana/alloy/internal/component"
@@ -39,12 +46,6 @@ import (
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
 	"github.com/grafana/alloy/syntax/diag"
-	"github.com/grafana/ckit/advertise"
-	"github.com/grafana/ckit/peer"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/spf13/cobra"
-	"go.opentelemetry.io/otel"
-	"golang.org/x/exp/maps"
 
 	// Install Components
 	_ "github.com/grafana/alloy/internal/component/all"
@@ -233,7 +234,7 @@ func (fr *alloyRun) Run(configPath string) error {
 	)
 
 	clusterService, err := buildClusterService(clusterOptions{
-		Log:     l,
+		Log:     log.With(l, "service", "cluster"),
 		Tracer:  t,
 		Metrics: reg,
 

@@ -10,6 +10,50 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes to non-GA functionality
+
+- Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
+
+### Enhancements
+
+- Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
+
+- Add namespace field to Faro payload (@cedricziel)
+
+- Add the `targets` argument to the `prometheus.exporter.blackbox` component to support passing blackbox targets at runtime. (@wildum)
+
+- Added live debugging support to `otelcol.processor.*` components. (@wildum)
+
+- Added live debugging support to `otelcol.receiver.*` components. (@wildum)
+
+- Added a `namespace` label to probes scraped by the `prometheus.operator.probes` component to align with the upstream Prometheus Operator setup. (@toontijtgat2)
+
+v1.2.1
+-----------------
+
+### Bugfixes
+
+- Fixed an issue with `loki.source.kubernetes_events` not starting in large clusters due to short informer sync timeout. (@nrwiersma)
+
+- Updated [ckit](https://github.com/grafana/ckit) to fix an issue with armv7 panic on startup when forming a cluster. (@imavroukakis)
+
+- Fixed a clustering mode issue where a failure to perform static peers
+  discovery did not result in a fatal failure at startup and could lead to
+  potential split-brain issues. (@thampiotr)
+
+### Other
+
+- Use Go 1.22.5 for builds. (@mattdurham)
+
+
+v1.2.0
+-----------------
+
+### Security fixes
+- Fixes the following vulnerabilities (@ptodev):
+  - [CVE-2024-35255](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-35255)
+  - [CVE-2024-36129](https://avd.aquasec.com/nvd/2024/cve-2024-36129/)
+
 ### Breaking changes
 
 - Updated OpenTelemetry to v0.102.1. (@mattdurham)
@@ -39,6 +83,11 @@ Main (unreleased)
 - (_Experimental_) Add a `otelcol.processor.deltatocumulative` component to convert metrics from
   delta temporality to cumulative by accumulating samples in memory. (@rfratto)
 
+- (_Experimental_) Add an `otelcol.receiver.datadog` component to receive
+  metrics and traces from Datadog. (@carrieedwards, @jesusvazquez, @alexgreenbank, @fedetorres93)
+
+- Add a `prometheus.exporter.catchpoint` component to collect metrics from Catchpoint. (@bominrahmani)
+
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
@@ -48,6 +97,8 @@ Main (unreleased)
   control the preferred order of scrape protocols. (@thampiotr)
 
 - Add support for configuring CPU profile's duration scraped by `pyroscope.scrape`. (@hainenber)
+
+- `prometheus.exporter.snowflake`: Add support for RSA key-pair authentication. (@Caleb-Hurshman)
 
 - Improved filesystem error handling when working with `loki.source.file` and `local.file_match`,
   which removes some false-positive error log messages on Windows (@thampiotr)
@@ -79,6 +130,8 @@ Main (unreleased)
 - Add an initial lower limit of 10 seconds for the the `poll_frequency`
   argument in the `remotecfg` block. (@tpaschalis)
 
+- Add a constant jitter to `remotecfg` service's polling. (@tpaschalis)
+
 - Added support for NS records to `discovery.dns`. (@djcode)
 
 - Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart)
@@ -96,7 +149,7 @@ Main (unreleased)
 - A new `snmp_context` configuration argument for `prometheus.exporter.snmp`
   which overrides the `context_name` parameter in the SNMP configuration file. (@ptodev)
 
-- Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)  
+- Add extra configuration options for `beyla.ebpf` to select Kubernetes objects to monitor. (@marctc)
 
 ### Bugfixes
 
@@ -174,6 +227,7 @@ v1.1.0
 ### Enhancements
 
 - Update `prometheus.exporter.kafka` with the following functionalities (@wildum):
+
   * GSSAPI config
   * enable/disable PA_FX_FAST
   * set a TLS server name
@@ -255,6 +309,7 @@ v1.1.0
   Modern container runtimes allow binding to unprivileged ports as non-root. (@BlackDex)
 
 - Upgrading from OpenTelemetry v0.96.0 to v0.99.0.
+
   - `otelcol.processor.batch`: Prevent starting unnecessary goroutines.
     https://github.com/open-telemetry/opentelemetry-collector/issues/9739
   - `otelcol.exporter.otlp`: Checks for port in the config validation for the otlpexporter.

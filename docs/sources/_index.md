@@ -4,7 +4,7 @@ title: Grafana Alloy
 description: Grafana Alloy is a a vendor-neutral distribution of the OTel Collector
 weight: 350
 cascade:
-  ALLOY_RELEASE: v1.2.0
+  ALLOY_RELEASE: v1.3.0
   OTEL_VERSION: v0.87.0
   FULL_PRODUCT_NAME: Grafana Alloy
   PRODUCT_NAME: Alloy
@@ -20,25 +20,25 @@ cards:
   title_class: pt-0 lh-1
   items:
     - title: Install Alloy
-      href: ./get-started/install/
+      href: ./set-up/install/
       description: Learn how to install and uninstall Alloy on Docker, Kubernetes, Linux, macOS, or Windows.
     - title: Run Alloy
-      href: ./get-started/run/
+      href: ./set-up/run/
       description: Learn how to start, restart, and stop Alloy after you have installed it.
     - title: Configure Alloy
-      href: ./tasks/configure/
+      href: ./configure/
       description: Learn how to configure Alloy on Kubernetes, Linux, macOS, or Windows.
     - title: Migrate to Alloy
-      href: ./tasks/migrate/
+      href: ./set-up/migrate/
       description: Learn how to migrate to Alloy from Grafana Agent Operator, Prometheus, Promtail, Grafana Agent Static, or Grafana Agent Flow.
     - title: Collect OpenTelemetry data
-      href: ./tasks/collect-opentelemetry-data/
+      href: ./collect/opentelemetry-data/
       description: You can configure Alloy to collect OpenTelemetry-compatible data and forward it to any OpenTelemetry-compatible endpoint. Learn how to configure OpenTelemetry data delivery, configure batching, and receive OpenTelemetry data over OTLP.
     - title: Collect and forward Prometheus metrics
-      href: ./tasks/collect-prometheus-metrics/
+      href: ./collect/prometheus-metrics/
       description: You can configure Alloy to collect Prometheus metrics and forward them to any Prometheus-compatible database. Learn how to configure metrics delivery and collect metrics from Kubernetes Pods.
     - title: Concepts
-      href: ./concepts/
+      href: ./get-started/
       description: Learn about components, modules, clustering, and the Alloy configuration syntax.
     - title: Reference
       href: ./reference/
