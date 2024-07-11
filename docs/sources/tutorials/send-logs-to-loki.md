@@ -16,7 +16,7 @@ This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect
 
 To complete this tutorial:
 
-* You must have a basic understanding of Alloy and telemetry collection in general.
+* You must have a basic understanding of {{< param "PRODUCT_NAME" >}} and telemetry collection in general.
 * You should be familiar with Prometheus, PromQL, Loki, LogQL, and basic Grafana navigation.
 
 ## Install {{% param "PRODUCT_NAME" %}} and start the service
