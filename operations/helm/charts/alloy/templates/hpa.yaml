@@ -1,5 +1,6 @@
+{{- $sts := list "StatefulSet" "statefulset" -}}
 {{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
-{{- if and (or (eq .Values.controller.type "deployment") (eq .Values.controller.type "statefulset" ))  .Values.controller.autoscaling.enabled }}
+{{- if and (or (eq .Values.controller.type "deployment") (has .Values.controller.type $sts ))  .Values.controller.autoscaling.enabled }}
 {{- if not (empty .Values.controller.autoscaling.targetMemoryUtilizationPercentage)}}
   {{- $_ := $values.resources.requests | required ".Values.alloy.resources.requests is required when using autoscaling." -}}
   {{- $_ := $values.resources.requests.memory | required ".Values.alloy.resources.requests.memory is required when using autoscaling based on memory utilization." -}}

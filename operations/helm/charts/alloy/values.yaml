@@ -157,7 +157,7 @@ configReloader:
 
 controller:
   # -- Type of controller to use for deploying Grafana Alloy in the cluster.
-  # Must be one of 'daemonset', 'deployment', or 'statefulset'.
+  # Must be one of 'daemonset', 'deployment', 'statefulset' or 'StatefulSet'.
   type: 'daemonset'
 
   # -- Number of pods to deploy. Ignored when controller.type is 'daemonset'.
@@ -167,7 +167,7 @@ controller:
   extraAnnotations: {}
 
   # -- Whether to deploy pods in parallel. Only used when controller.type is
-  # 'statefulset'.
+  # 'statefulset' or 'StatefulSet'.
   parallelRollout: true
 
   # -- Configures Pods to use the host network. When set to true, the ports that will be used must be specified.
@@ -200,7 +200,7 @@ controller:
   # -- Extra pod labels to add.
   podLabels: {}
 
-  # -- Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'.
+  # -- Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset' or 'StatefulSet'.
   enableStatefulSetAutoDeletePVC: false
 
   autoscaling:
@@ -244,7 +244,7 @@ controller:
     # -- Extra volumes to add to the Grafana Alloy pod.
     extra: []
 
-  # -- volumeClaimTemplates to add when controller.type is 'statefulset'.
+  # -- volumeClaimTemplates to add when controller.type is 'statefulset' or 'StatefulSet'.
   volumeClaimTemplates: []
 
   ## -- Additional init containers to run.

@@ -76,23 +76,23 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.autoscaling.targetCPUUtilizationPercentage | int | `0` | Average CPU utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetCPUUtilizationPercentage` to 0 will disable CPU scaling. |
 | controller.autoscaling.targetMemoryUtilizationPercentage | int | `80` | Average Memory utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetMemoryUtilizationPercentage` to 0 will disable Memory scaling. |
 | controller.dnsPolicy | string | `"ClusterFirst"` | Configures the DNS policy for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy |
-| controller.enableStatefulSetAutoDeletePVC | bool | `false` | Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'. |
+| controller.enableStatefulSetAutoDeletePVC | bool | `false` | Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset' or 'StatefulSet'. |
 | controller.extraAnnotations | object | `{}` | Annotations to add to controller. |
 | controller.extraContainers | list | `[]` | Additional containers to run alongside the Alloy container and initContainers. |
 | controller.hostNetwork | bool | `false` | Configures Pods to use the host network. When set to true, the ports that will be used must be specified. |
 | controller.hostPID | bool | `false` | Configures Pods to use the host PID namespace. |
 | controller.initContainers | list | `[]` |  |
 | controller.nodeSelector | object | `{}` | nodeSelector to apply to Grafana Alloy pods. |
-| controller.parallelRollout | bool | `true` | Whether to deploy pods in parallel. Only used when controller.type is 'statefulset'. |
+| controller.parallelRollout | bool | `true` | Whether to deploy pods in parallel. Only used when controller.type is 'statefulset' or 'StatefulSet'. |
 | controller.podAnnotations | object | `{}` | Extra pod annotations to add. |
 | controller.podLabels | object | `{}` | Extra pod labels to add. |
 | controller.priorityClassName | string | `""` | priorityClassName to apply to Grafana Alloy pods. |
 | controller.replicas | int | `1` | Number of pods to deploy. Ignored when controller.type is 'daemonset'. |
 | controller.tolerations | list | `[]` | Tolerations to apply to Grafana Alloy pods. |
 | controller.topologySpreadConstraints | list | `[]` | Topology Spread Constraints to apply to Grafana Alloy pods. |
-| controller.type | string | `"daemonset"` | Type of controller to use for deploying Grafana Alloy in the cluster. Must be one of 'daemonset', 'deployment', or 'statefulset'. |
+| controller.type | string | `"daemonset"` | Type of controller to use for deploying Grafana Alloy in the cluster. Must be one of 'daemonset', 'deployment', 'statefulset' or 'StatefulSet'. |
 | controller.updateStrategy | object | `{}` | Update strategy for updating deployed Pods. |
-| controller.volumeClaimTemplates | list | `[]` | volumeClaimTemplates to add when controller.type is 'statefulset'. |
+| controller.volumeClaimTemplates | list | `[]` | volumeClaimTemplates to add when controller.type is 'statefulset' or 'StatefulSet'. |
 | controller.volumes.extra | list | `[]` | Extra volumes to add to the Grafana Alloy pod. |
 | crds.create | bool | `true` | Whether to install CRDs for monitoring. |
 | fullnameOverride | string | `nil` | Overrides the chart's computed fullname. Used to change the full prefix of resource names. |
