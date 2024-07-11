@@ -136,12 +136,13 @@ func newModule(o *moduleOptions) *module {
 			ComponentRegistry: o.ComponentRegistry,
 			WorkerPool:        o.WorkerPool,
 			Options: Options{
-				ControllerID: o.ID,
-				Tracer:       o.Tracer,
-				Reg:          o.Reg,
-				Logger:       o.Logger,
-				DataPath:     o.DataPath,
-				MinStability: o.MinStability,
+				ControllerID:         o.ID,
+				Tracer:               o.Tracer,
+				Reg:                  o.Reg,
+				Logger:               o.Logger,
+				DataPath:             o.DataPath,
+				MinStability:         o.MinStability,
+				EnableCommunityComps: o.EnableCommunityComps,
 				OnExportsChange: func(exports map[string]any) {
 					if o.export != nil {
 						o.export(exports)
