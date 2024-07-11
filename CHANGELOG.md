@@ -38,6 +38,9 @@ Main (unreleased)
 
 - Use Go 1.22.5 for builds. (@mattdurham)
 
+- (_Public preview_) Added rate limiting of cluster state changes to reduce the
+  number of unnecessary, intermediate state updates. (@thampiotr)
+
 v1.2.0
 -----------------
 
