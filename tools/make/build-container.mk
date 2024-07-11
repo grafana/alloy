@@ -34,7 +34,7 @@
 # variable names should be passed through to the container.
 
 USE_CONTAINER       ?= 0
-BUILD_IMAGE_VERSION ?= v0.1.2
+BUILD_IMAGE_VERSION ?= v0.1.3
 BUILD_IMAGE         ?= grafana/alloy-build-image:$(BUILD_IMAGE_VERSION)
 DOCKER_OPTS         ?= -it
 
