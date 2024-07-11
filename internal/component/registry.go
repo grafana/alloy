@@ -137,6 +137,9 @@ type Registration struct {
 	// This field must be set to a non-zero value.
 	Stability featuregate.Stability
 
+	// Community is true if the component is a community component.
+	Community bool
+
 	// An example Arguments value that the registered component expects to
 	// receive as input. Components should provide the zero value of their
 	// Arguments type here.
@@ -149,9 +152,6 @@ type Registration struct {
 	// Build should construct a new component from an initial Arguments and set
 	// of options.
 	Build func(opts Options, args Arguments) (Component, error)
-
-	// Community is true if the component is a community component.
-	Community bool
 }
 
 // CloneArguments returns a new zero value of the registered Arguments type.
