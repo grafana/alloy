@@ -175,7 +175,7 @@ func Register(r Registration) {
 	case !r.Community && r.Stability == featuregate.StabilityUndefined:
 		panic(fmt.Sprintf("Component %q has an undefined stability level - please provide stability level when registering the component", r.Name))
 	case r.Community && r.Stability != featuregate.StabilityUndefined:
-		panic(fmt.Sprintf("Community component %q has a defined stability level - community components are not affected by the stability level. It should remain `undefined`", r.Name))
+		panic(fmt.Sprintf("Community component %q has a defined stability level - community components are not subject to this stability level setting. It should remain `undefined`", r.Name))
 	}
 
 	parsed, err := parseComponentName(r.Name)
