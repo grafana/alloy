@@ -63,17 +63,17 @@ type DialFunc func(ctx context.Context, network, address string) (net.Conn, erro
 // ComponentGlobals are used by BuiltinComponentNodes to build managed components. All
 // BuiltinComponentNodes should use the same ComponentGlobals.
 type ComponentGlobals struct {
-	Logger              *logging.Logger                        // Logger shared between all managed components.
-	TraceProvider       trace.TracerProvider                   // Tracer shared between all managed components.
-	DataPath            string                                 // Shared directory where component data may be stored
-	MinStability        featuregate.Stability                  // Minimum allowed stability level for features
-	OnBlockNodeUpdate   func(cn BlockNode)                     // Informs controller that we need to reevaluate
-	OnExportsChange     func(exports map[string]any)           // Invoked when the managed component updated its exports
-	Registerer          prometheus.Registerer                  // Registerer for serving Alloy and component metrics
-	ControllerID        string                                 // ID of controller.
-	NewModuleController func(id string) ModuleController       // Func to generate a module controller.
-	GetServiceData      func(name string) (interface{}, error) // Get data for a service.
-	Community           bool                                   // Enables the use of community components.
+	Logger               *logging.Logger                        // Logger shared between all managed components.
+	TraceProvider        trace.TracerProvider                   // Tracer shared between all managed components.
+	DataPath             string                                 // Shared directory where component data may be stored
+	MinStability         featuregate.Stability                  // Minimum allowed stability level for features
+	OnBlockNodeUpdate    func(cn BlockNode)                     // Informs controller that we need to reevaluate
+	OnExportsChange      func(exports map[string]any)           // Invoked when the managed component updated its exports
+	Registerer           prometheus.Registerer                  // Registerer for serving Alloy and component metrics
+	ControllerID         string                                 // ID of controller.
+	NewModuleController  func(id string) ModuleController       // Func to generate a module controller.
+	GetServiceData       func(name string) (interface{}, error) // Get data for a service.
+	EnableCommunityComps bool                                   // Enables the use of community components.
 }
 
 // BuiltinComponentNode is a controller node which manages a builtin component.

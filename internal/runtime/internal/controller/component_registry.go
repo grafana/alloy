@@ -21,10 +21,10 @@ type defaultComponentRegistry struct {
 
 // NewDefaultComponentRegistry creates a new [ComponentRegistry] which gets
 // components registered to github.com/grafana/alloy/internal/component.
-func NewDefaultComponentRegistry(minStability featuregate.Stability, community bool) ComponentRegistry {
+func NewDefaultComponentRegistry(minStability featuregate.Stability, enableCommunityComps bool) ComponentRegistry {
 	return defaultComponentRegistry{
 		minStability: minStability,
-		community:    community,
+		community:    enableCommunityComps,
 	}
 }
 

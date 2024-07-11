@@ -142,7 +142,7 @@ depending on the nature of the reload error.
 		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
-	cmd.Flags().BoolVar(&r.community, "feature.community-components.enabled", r.community, "Enable community components.")
+	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	return cmd
 }
 
@@ -166,7 +166,7 @@ type alloyRun struct {
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
-	community                    bool
+	enableCommunityComps         bool
 }
 
 func (fr *alloyRun) Run(configPath string) error {
@@ -293,12 +293,12 @@ func (fr *alloyRun) Run(configPath string) error {
 	alloyseed.Init(fr.storagePath, l)
 
 	f := alloy_runtime.New(alloy_runtime.Options{
-		Logger:       l,
-		Tracer:       t,
-		DataPath:     fr.storagePath,
-		Reg:          reg,
-		MinStability: fr.minStability,
-		Community:    fr.community,
+		Logger:               l,
+		Tracer:               t,
+		DataPath:             fr.storagePath,
+		Reg:                  reg,
+		MinStability:         fr.minStability,
+		EnableCommunityComps: fr.enableCommunityComps,
 		Services: []service.Service{
 			clusterService,
 			httpService,

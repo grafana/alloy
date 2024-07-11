@@ -227,6 +227,6 @@ type moduleControllerOptions struct {
 	// is nil.
 	WorkerPool worker.Pool
 
-	// Community enables the use of community components.
-	Community bool
+	// EnableCommunityComps enables the use of community components.
+	EnableCommunityComps bool
 }
