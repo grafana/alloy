@@ -218,7 +218,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	defer cancel()
 
 	limiter := rate.NewLimiter(rate.Every(stateUpdateMinInterval), 1)
-	s.node.Observe(ckit.FuncObserver(func(_ []peer.Peer) (reregister bool) {
+	s.node.Observe(ckit.FuncObserver(func(peers []peer.Peer) (reregister bool) {
 		tracer := s.tracer.Tracer("")
 		spanCtx, span := tracer.Start(ctx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
 		defer span.End()
@@ -233,6 +233,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 				span.RecordError(err)
 			}
 			span.End()
+
+			// Grab a fresh view of the peers for logging, since we may have waited a bit for the limiter to permit.
+			peers = s.node.Peers()
 		}
 
 		if ctx.Err() != nil {
@@ -240,8 +243,6 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			return false
 		}
 
-		// Grab a fresh view of the peers for logging, since we may have waited a bit for the limiter to permit.
-		peers := s.node.Peers()
 		s.logPeers("peers changed", toStringSlice(peers))
 		span.SetAttributes(attribute.Int("peers_count", len(peers)))
 
