@@ -32,6 +32,11 @@ Main (unreleased)
 
 - Updated [ckit](https://github.com/grafana/ckit) to fix an issue with armv7 panic on startup when forming a cluster. (@imavroukakis)
 
+v1.2.1
+-----------------
+
+### Bugfixes
+
 - Fixed a clustering mode issue where a failure to perform static peers
   discovery did not result in a fatal failure at startup and could lead to
   potential split-brain issues. (@thampiotr)
@@ -39,6 +44,7 @@ Main (unreleased)
 ### Other
 
 - Use Go 1.22.5 for builds. (@mattdurham)
+
 
 v1.2.0
 -----------------
