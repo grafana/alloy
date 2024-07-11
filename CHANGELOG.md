@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Added live debugging support to `otelcol.processor.*` components. (@wildum)
 
+- Added live debugging support to `otelcol.receiver.*` components. (@wildum)
+
 - Added a `namespace` label to probes scraped by the `prometheus.operator.probes` component to align with the upstream Prometheus Operator setup. (@toontijtgat2)
 
 ### Bugfixes
