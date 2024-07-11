@@ -28,16 +28,14 @@ Main (unreleased)
 
 - Added a `namespace` label to probes scraped by the `prometheus.operator.probes` component to align with the upstream Prometheus Operator setup. (@toontijtgat2)
 
+v1.2.1
+-----------------
+
 ### Bugfixes
 
 - Fixed an issue with `loki.source.kubernetes_events` not starting in large clusters due to short informer sync timeout. (@nrwiersma)
 
 - Updated [ckit](https://github.com/grafana/ckit) to fix an issue with armv7 panic on startup when forming a cluster. (@imavroukakis)
-
-v1.2.1
------------------
-
-### Bugfixes
 
 - Fixed a clustering mode issue where a failure to perform static peers
   discovery did not result in a fatal failure at startup and could lead to
