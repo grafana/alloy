@@ -14,6 +14,10 @@ Main (unreleased)
 
 - Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
 
+### Features
+
+- Added community components support, enabling community members to implement and maintain components. (@wildum)
+
 ### Enhancements
 
 - Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
