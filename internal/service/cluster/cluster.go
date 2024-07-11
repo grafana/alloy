@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 	"golang.org/x/net/http2"
+	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -52,6 +53,10 @@ const (
 
 	// maxPeersToLog is the maximum number of peers to log on info level. All peers are logged on debug level.
 	maxPeersToLog = 10
+
+	// peersUpdateMinInterval is the minimum time interval between propagating peer changes to Alloy components.
+	// This allows to rate limit the number of updates when the cluster is frequently changing (e.g. during rollout).
+	peersUpdateMinInterval = time.Second
 )
 
 // Options are used to configure the cluster service. Options are constant for
@@ -210,23 +215,39 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	s.node.Observe(ckit.FuncObserver(func(peers []peer.Peer) (reregister bool) {
+	limiter := rate.NewLimiter(rate.Every(peersUpdateMinInterval), 1)
+	s.node.Observe(ckit.FuncObserver(func(_ []peer.Peer) (reregister bool) {
+		tracer := s.tracer.Tracer("")
+		spanCtx, span := tracer.Start(ctx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
+		defer span.End()
+
+		// Limit how often we notify components about peer changes. At start up we may receive N updates in a period
+		// of less than one second. This leads to a lot of unnecessary processing.
+		{
+			_, span := tracer.Start(spanCtx, "RateLimitWait", trace.WithSpanKind(trace.SpanKindInternal))
+			if err := limiter.Wait(ctx); err != nil {
+				// This should never happen, but it should be safe to just ignore it and continue.
+				level.Warn(s.log).Log("msg", "failed to wait for rate limiter on peers update", "err", err)
+				span.RecordError(err)
+			}
+			span.End()
+		}
+
 		if ctx.Err() != nil {
 			// Unregister our observer if we exited.
 			return false
 		}
 
-		tracer := s.tracer.Tracer("")
-		spanCtx, span := tracer.Start(ctx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
-		defer span.End()
-
+		// Grab a fresh view of the peers for logging, since we may have waited a bit for the limiter to permit.
+		peers := s.node.Peers()
 		s.logPeers("peers changed", toStringSlice(peers))
+		span.SetAttributes(attribute.Int("peers_count", len(peers)))
 
 		// Notify all components about the clustering change.
 		components := component.GetAllComponents(host, component.InfoOptions{})
 		for _, component := range components {
 			if ctx.Err() != nil {
-				// Stop early if we exited so we don't do unnecessary work notifying
+				// Stop early if we exited, so we don't do unnecessary work notifying
 				// consumers that do not need to be notified.
 				break
 			}
