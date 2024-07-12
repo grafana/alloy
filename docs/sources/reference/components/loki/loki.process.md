@@ -1479,8 +1479,8 @@ custom format.
 | Timezone ISO-8601   | Z0700 (Z for UTC or time offset), Z070000, Z07, Z07:00, Z07:00:00                                                        |
 
 {{< admonition type="note" >}}
-In `format`, you can only use the exact reference values specified in the table above.
-For example, to indicate a year, the value in `format` must be `06` or `2006` and not something like `23` or `2023`.
+If you define a custom timestamp, the `format` value for each timestamp component must be one of the values specified in the table above.
+For example, to indicate the year, the `format` value must be `06` or `2006` and not any other value like `23` or `2023`.
 {{< /admonition >}}
 
 The `fallback_formats` field defines one or more format fields to try and parse
@@ -1509,7 +1509,7 @@ stage.timestamp {
 }
 ```
 
-The following example could parse a timestamp such as `2024-12-20T09:14:58,381+02:00`:
+The following example would parse a timestamp such as `2024-12-20T09:14:58,381+02:00`:
 
 ```alloy
 stage.timestamp {
