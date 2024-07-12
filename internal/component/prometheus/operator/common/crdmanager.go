@@ -194,13 +194,11 @@ func filterTargets(m map[string][]*targetgroup.Group, c cluster.Cluster) map[str
 			// as each node does this consistently.
 			for _, t := range group.Targets {
 				peers, err := c.Lookup(shard.StringKey(nonMetaLabelString(t)), 1, shard.OpReadWrite)
-				if err != nil {
-					// This can only fail in case we ask for more owners than the
-					// available peers. This should never happen, but in any case we fall
+				if len(peers) == 0 || err != nil {
+					// If the cluster found no peers or returned an error, we fall
 					// back to owning the target ourselves.
 					g2.Targets = append(g2.Targets, t)
-				}
-				if peers[0].Self {
+				} else if peers[0].Self {
 					g2.Targets = append(g2.Targets, t)
 				}
 			}

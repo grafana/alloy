@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -273,8 +274,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	peers, err := s.getPeers()
 	if err != nil {
-		// Fail fast on startup if we can't discover peers to prevent a split brain and give a clear signal to the user.
-		return fmt.Errorf("failed to get peers to join at startup: %w", err)
+		// Fatal failure on startup if we can't discover peers to prevent a split brain and give a clear signal to the user.
+		// NOTE: currently returning error from `Run` will not be handled correctly: https://github.com/grafana/alloy/issues/843
+		level.Error(s.log).Log("msg", "fatal error: failed to get peers to join at startup - this is likely a configuration error", "err", err)
+		os.Exit(1)
 	}
 
 	// We log on info level including all the peers (without any abbreviation), as it's happening only on startup and
@@ -291,7 +294,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 		err := s.node.Start(nil)
 		if err != nil {
-			return fmt.Errorf("failed to bootstrap a fresh cluster with no peers: %w", err)
+			// Fatal failure on startup if we can't start a new cluster.
+			// NOTE: currently returning error from `Run` will not be handled correctly: https://github.com/grafana/alloy/issues/843
+			level.Error(s.log).Log("msg", "failed to bootstrap a fresh cluster with no peers", "err", err)
+			os.Exit(1)
 		}
 	}
 

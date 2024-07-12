@@ -35,6 +35,11 @@ Main (unreleased)
 - (_Public preview_) Added rate limiting of cluster state changes to reduce the
   number of unnecessary, intermediate state updates. (@thampiotr)
 
+### Bugfixes
+
+- Fixed a clustering mode issue where a fatal startup failure of the clustering service
+  would exit the service silently, without also exiting the Alloy process. (@thampiotr)
+
 v1.2.1
 -----------------
 
