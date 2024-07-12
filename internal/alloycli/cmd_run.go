@@ -250,6 +250,8 @@ func (fr *alloyRun) Run(configPath string) error {
 		AdvertiseInterfaces: fr.clusterAdvInterfaces,
 		ClusterMaxJoinPeers: fr.ClusterMaxJoinPeers,
 		ClusterName:         fr.clusterName,
+		//TODO(alloy/#1274): graduate to GA once we have more confidence in this feature
+		EnableStateUpdatesLimiter: fr.minStability.Permits(featuregate.StabilityPublicPreview),
 	})
 	if err != nil {
 		return err

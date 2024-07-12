@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 	"golang.org/x/net/http2"
+	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -52,6 +53,11 @@ const (
 
 	// maxPeersToLog is the maximum number of peers to log on info level. All peers are logged on debug level.
 	maxPeersToLog = 10
+
+	// stateUpdateMinInterval is the minimum time interval between propagating peer changes to Alloy components.
+	// This allows to rate limit the number of updates when the cluster is frequently changing (e.g. during rollout).
+	// This is only used when Options.EnableStateUpdatesLimiter is set to true.
+	stateUpdateMinInterval = time.Second
 )
 
 // Options are used to configure the cluster service. Options are constant for
@@ -66,11 +72,12 @@ type Options struct {
 	// possible for other nodes to join the cluster.
 	EnableClustering bool
 
-	NodeName            string        // Name to use for this node in the cluster.
-	AdvertiseAddress    string        // Address to advertise to other nodes in the cluster.
-	RejoinInterval      time.Duration // How frequently to rejoin the cluster to address split brain issues.
-	ClusterMaxJoinPeers int           // Number of initial peers to join from the discovered set.
-	ClusterName         string        // Name to prevent nodes without this identifier from joining the cluster.
+	NodeName                  string        // Name to use for this node in the cluster.
+	AdvertiseAddress          string        // Address to advertise to other nodes in the cluster.
+	RejoinInterval            time.Duration // How frequently to rejoin the cluster to address split brain issues.
+	ClusterMaxJoinPeers       int           // Number of initial peers to join from the discovered set.
+	ClusterName               string        // Name to prevent nodes without this identifier from joining the cluster.
+	EnableStateUpdatesLimiter bool          // Enables rate limiting of state updates to components.
 
 	// Function to discover peers to join. If this function is nil or returns an
 	// empty slice, no peers will be joined.
@@ -210,23 +217,40 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	limiter := rate.NewLimiter(rate.Every(stateUpdateMinInterval), 1)
 	s.node.Observe(ckit.FuncObserver(func(peers []peer.Peer) (reregister bool) {
+		tracer := s.tracer.Tracer("")
+		spanCtx, span := tracer.Start(ctx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
+		defer span.End()
+
+		if s.opts.EnableStateUpdatesLimiter {
+			// Limit how often we notify components about peer changes. At start up we may receive N updates in a period
+			// of less than one second. This leads to a lot of unnecessary processing.
+			_, span := tracer.Start(spanCtx, "RateLimitWait", trace.WithSpanKind(trace.SpanKindInternal))
+			if err := limiter.Wait(ctx); err != nil {
+				// This should never happen, but it should be safe to just ignore it and continue.
+				level.Warn(s.log).Log("msg", "failed to wait for rate limiter on peers update", "err", err)
+				span.RecordError(err)
+			}
+			span.End()
+			// NOTE: after waiting for the limiter, the `peers` may be slightly outdated, but that's fine as the
+			// most up-to-date peers will be dispatched to the Observer by ckit eventually. The intermediate updates
+			// will be skipped, which is exactly what we want here.
+		}
+
 		if ctx.Err() != nil {
 			// Unregister our observer if we exited.
 			return false
 		}
 
-		tracer := s.tracer.Tracer("")
-		spanCtx, span := tracer.Start(ctx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
-		defer span.End()
-
 		s.logPeers("peers changed", toStringSlice(peers))
+		span.SetAttributes(attribute.Int("peers_count", len(peers)))
 
 		// Notify all components about the clustering change.
 		components := component.GetAllComponents(host, component.InfoOptions{})
 		for _, component := range components {
 			if ctx.Err() != nil {
-				// Stop early if we exited so we don't do unnecessary work notifying
+				// Stop early if we exited, so we don't do unnecessary work notifying
 				// consumers that do not need to be notified.
 				break
 			}

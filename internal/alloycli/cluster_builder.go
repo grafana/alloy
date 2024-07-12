@@ -25,16 +25,17 @@ type clusterOptions struct {
 	Metrics prometheus.Registerer
 	Tracer  trace.TracerProvider
 
-	EnableClustering    bool
-	NodeName            string
-	AdvertiseAddress    string
-	ListenAddress       string
-	JoinPeers           []string
-	DiscoverPeers       string
-	RejoinInterval      time.Duration
-	AdvertiseInterfaces []string
-	ClusterMaxJoinPeers int
-	ClusterName         string
+	EnableClustering          bool
+	NodeName                  string
+	AdvertiseAddress          string
+	ListenAddress             string
+	JoinPeers                 []string
+	DiscoverPeers             string
+	RejoinInterval            time.Duration
+	AdvertiseInterfaces       []string
+	ClusterMaxJoinPeers       int
+	ClusterName               string
+	EnableStateUpdatesLimiter bool
 }
 
 func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
@@ -45,11 +46,12 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		Metrics: opts.Metrics,
 		Tracer:  opts.Tracer,
 
-		EnableClustering:    opts.EnableClustering,
-		NodeName:            opts.NodeName,
-		RejoinInterval:      opts.RejoinInterval,
-		ClusterMaxJoinPeers: opts.ClusterMaxJoinPeers,
-		ClusterName:         opts.ClusterName,
+		EnableClustering:          opts.EnableClustering,
+		NodeName:                  opts.NodeName,
+		RejoinInterval:            opts.RejoinInterval,
+		ClusterMaxJoinPeers:       opts.ClusterMaxJoinPeers,
+		ClusterName:               opts.ClusterName,
+		EnableStateUpdatesLimiter: opts.EnableStateUpdatesLimiter,
 	}
 
 	if config.NodeName == "" {

@@ -32,6 +32,9 @@ Main (unreleased)
 
 - Added a `namespace` label to probes scraped by the `prometheus.operator.probes` component to align with the upstream Prometheus Operator setup. (@toontijtgat2)
 
+- (_Public preview_) Added rate limiting of cluster state changes to reduce the
+  number of unnecessary, intermediate state updates. (@thampiotr)
+
 v1.2.1
 -----------------
 
@@ -48,7 +51,6 @@ v1.2.1
 ### Other
 
 - Use Go 1.22.5 for builds. (@mattdurham)
-
 
 v1.2.0
 -----------------
