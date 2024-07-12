@@ -364,12 +364,12 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [debugging]: #debugging
 [example]: #example
 [Static]: https://grafana.com/docs/agent/latest/static
-[prometheus.scrape]: ../../../reference/components/prometheus/prometheus.scrape/
-[prometheus.remote_write]: ../../../reference/components/prometheus/prometheus.remote_write/
-[local.file_match]: ../../../reference/components/local/local.file_match/
-[loki.process]: ../../../reference/components/loki/loki.process/
-[loki.source.file]: ../../../reference/components/loki/loki.source.file/
-[loki.write]: ../../../reference/components/loki/loki.write/
+[prometheus.scrape]: ../../../reference/components/prometheus.scrape/
+[prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
+[local.file_match]: ../../../reference/components/local.file_match/
+[loki.process]: ../../../reference/components/loki.process/
+[loki.source.file]: ../../../reference/components/loki.source.file/
+[loki.write]: ../../../reference/components/loki.write/
 [Components]: ../../../get-started/components/
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
@@ -384,6 +384,6 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Metrics]: https://grafana.com/docs/agent/latest/static/configuration/metrics-config/
 [Logs]: https://grafana.com/docs/agent/latest/static/configuration/logs-config/
 [UI]: ../../../debug/#alloy-ui
-[otelcol.receiver.otlp]: ../../../reference/components/otelcol/otelcol.receiver.otlp/
-[otelcol.processor.batch]: ../../../reference/components/otelcol/otelcol.processor.batch/
-[otelcol.exporter.otlp]:../../../reference/components/otelcol/otelcol.exporter.otlp/
+[otelcol.receiver.otlp]: ../../../reference/components/otelcol.receiver.otlp/
+[otelcol.processor.batch]: ../../../reference/components/otelcol.processor.batch/
+[otelcol.exporter.otlp]:../../../reference/components/otelcol.exporter.otlp/
