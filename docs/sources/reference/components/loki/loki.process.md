@@ -1475,7 +1475,7 @@ custom format.
 | Fraction of second  | .000 (ms zero prefixed), .000000 (μs), .000000000 (ns), .999 (ms without trailing zeroes), .999999 (μs), .999999999 (ns) |
 | 12-hour period      | pm, PM                                                                                                                   |
 | Timezone name       | MST                                                                                                                      |
-| Timezone offset     | -0700, -070000 (with seconds), -07, 07:00, -07:00:00 (with seconds)                                                      |
+| Timezone offset     | -0700, -070000 (with seconds), -07, -07:00, -07:00:00 (with seconds)                                                     |
 | Timezone ISO-8601   | Z0700 (Z for UTC or time offset), Z070000, Z07, Z07:00, Z07:00:00                                                        |
 
 {{< admonition type="note" >}}
@@ -1514,7 +1514,7 @@ The following example would parse a timestamp such as `2024-12-20T09:14:58,381+0
 ```alloy
 stage.timestamp {
     source = "time"
-    format = "2008-01-02T03:04:05,000-07:00"
+    format = "2006-01-02T15:04:05,000-07:00"
 }
 ```
 
