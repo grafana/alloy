@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -72,6 +73,8 @@ type metrics struct {
 // ServiceName defines the name used for the remotecfg service.
 const ServiceName = "remotecfg"
 
+const reservedAttributeNamespace = "collector_system_attribute_"
+
 // Options are used to configure the remotecfg service. Options are
 // constant for the lifetime of the remotecfg service.
 type Options struct {
@@ -110,6 +113,12 @@ func (a *Arguments) Validate() error {
 		return fmt.Errorf("poll_frequency must be at least \"10s\", got %q", a.PollFrequency)
 	}
 
+	for k := range a.Attributes {
+		if strings.HasPrefix(k, reservedAttributeNamespace) {
+			return fmt.Errorf("%s is a reserved namespace for remotecfg attribute keys", reservedAttributeNamespace)
+		}
+	}
+
 	// We must explicitly Validate because HTTPClientConfig is squashed and it
 	// won't run otherwise
 	if a.HTTPClientConfig != nil {
@@ -145,8 +154,8 @@ func New(opts Options) (*Service, error) {
 
 func getSystemAttributes() map[string]string {
 	return map[string]string{
-		"version": build.Version,
-		"os":      runtime.GOOS,
+		reservedAttributeNamespace + "version": build.Version,
+		reservedAttributeNamespace + "os":      runtime.GOOS,
 	}
 }
 
