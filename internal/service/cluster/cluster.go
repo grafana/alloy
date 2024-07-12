@@ -233,9 +233,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 				span.RecordError(err)
 			}
 			span.End()
-
-			// Grab a fresh view of the peers for logging, since we may have waited a bit for the limiter to permit.
-			peers = s.node.Peers()
+			// NOTE: after waiting for the limiter, the `peers` may be slightly outdated, but that's fine as the
+			// most up-to-date peers will be dispatched to the Observer by ckit eventually. The intermediate updates
+			// will be skipped, which is exactly what we want here.
 		}
 
 		if ctx.Err() != nil {
