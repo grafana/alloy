@@ -1,0 +1,18 @@
+Use of a nested declare community component without specifying the flag propagates the error
+
+-- main.alloy --
+
+declare "a" {
+
+  declare "b" {
+    testcomponents.community "com" {}
+  }
+
+  b "cc" {}
+
+}
+
+a "cc" {}
+
+-- error --
+the component "testcomponents.community" is a community component. Use the --feature.community-components.enabled command-line flag to enable community components

@@ -136,12 +136,13 @@ func newModule(o *moduleOptions) *module {
 			ComponentRegistry: o.ComponentRegistry,
 			WorkerPool:        o.WorkerPool,
 			Options: Options{
-				ControllerID: o.ID,
-				Tracer:       o.Tracer,
-				Reg:          o.Reg,
-				Logger:       o.Logger,
-				DataPath:     o.DataPath,
-				MinStability: o.MinStability,
+				ControllerID:         o.ID,
+				Tracer:               o.Tracer,
+				Reg:                  o.Reg,
+				Logger:               o.Logger,
+				DataPath:             o.DataPath,
+				MinStability:         o.MinStability,
+				EnableCommunityComps: o.EnableCommunityComps,
 				OnExportsChange: func(exports map[string]any) {
 					if o.export != nil {
 						o.export(exports)
@@ -226,4 +227,7 @@ type moduleControllerOptions struct {
 	// WorkerPool is a worker pool that can be used to run tasks asynchronously. A default pool will be created if this
 	// is nil.
 	WorkerPool worker.Pool
+
+	// EnableCommunityComps enables the use of community components.
+	EnableCommunityComps bool
 }

@@ -78,7 +78,7 @@ func NewLoader(opts LoaderOptions) *Loader {
 	parent, id := splitPath(globals.ControllerID)
 
 	if reg == nil {
-		reg = NewDefaultComponentRegistry(opts.ComponentGlobals.MinStability)
+		reg = NewDefaultComponentRegistry(opts.ComponentGlobals.MinStability, opts.ComponentGlobals.EnableCommunityComps)
 	}
 
 	l := &Loader{
