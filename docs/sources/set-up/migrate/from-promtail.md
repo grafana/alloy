@@ -183,9 +183,9 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Promtail]: https://www.grafana.com/docs/loki/<LOKI_VERSION>/clients/promtail/
 [debugging]: #debugging
 [expanded in the configuration file]: https://www.grafana.com/docs/loki/<LOKI_VERSION>/clients/promtail/configuration/#use-environment-variables-in-the-configuration
-[local.file_match]: ../../../reference/components/local/local.file_match/
-[loki.source.file]: ../../../reference/components/loki/loki.source.file/
-[loki.write]: ../../../reference/components/loki/loki.write/
+[local.file_match]: ../../../reference/components/local.file_match/
+[loki.source.file]: ../../../reference/components/loki.source.file/
+[loki.write]: ../../../reference/components/loki.write/
 [Components]: ../../../get-started/components/
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
