@@ -166,5 +166,5 @@ Some of the components used here are experimental. In order to run them, you nee
 [Datadog Agent]: https://docs.datadoghq.com/agent/
 [Prometheus]: https://prometheus.io
 [OTLP]: https://opentelemetry.io/docs/specs/otlp/
-[otelcol.exporter.otlp]: ../../reference/components/otelcol/otelcol.exporter.otlp
+[otelcol.exporter.otlp]: ../../reference/components/otelcol.exporter.otlp
 [Components]: ../../get-started/components
