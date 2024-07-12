@@ -42,6 +42,10 @@ func TestLoader(t *testing.T) {
 		}
 	`
 
+	testFileCommunity := `
+		testcomponents.community "com" {}
+	`
+
 	testConfig := `
 		logging {
 			level = "debug"
@@ -183,6 +187,28 @@ func TestLoader(t *testing.T) {
 		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityUndefined))
 		diags := applyFromContent(t, l, []byte(testFile), nil, nil)
 		require.ErrorContains(t, diags.ErrorOrNil(), "stability levels must be defined: got \"public-preview\" as stability of component \"testcomponents.tick\" and <invalid_stability_level> as the minimum stability level")
+	})
+
+	t.Run("Load community component with community enabled", func(t *testing.T) {
+		options := newLoaderOptions()
+		options.ComponentGlobals.EnableCommunityComps = true
+		l := controller.NewLoader(options)
+		diags := applyFromContent(t, l, []byte(testFileCommunity), nil, nil)
+		require.NoError(t, diags.ErrorOrNil())
+	})
+
+	t.Run("Load community component with community enabled and undefined stability level", func(t *testing.T) {
+		options := newLoaderOptionsWithStability(featuregate.StabilityUndefined)
+		options.ComponentGlobals.EnableCommunityComps = true
+		l := controller.NewLoader(options)
+		diags := applyFromContent(t, l, []byte(testFileCommunity), nil, nil)
+		require.NoError(t, diags.ErrorOrNil())
+	})
+
+	t.Run("Load community component with community disabled", func(t *testing.T) {
+		l := controller.NewLoader(newLoaderOptions())
+		diags := applyFromContent(t, l, []byte(testFileCommunity), nil, nil)
+		require.ErrorContains(t, diags.ErrorOrNil(), "the component \"testcomponents.community\" is a community component. Use the --feature.community-components.enabled command-line flag to enable community components")
 	})
 
 	t.Run("Partial load with invalid reference", func(t *testing.T) {

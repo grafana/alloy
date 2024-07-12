@@ -58,11 +58,27 @@ func (s *liveDebugging) Publish(componentID ComponentID, data string) {
 func (s *liveDebugging) IsActive(componentID ComponentID) bool {
 	s.loadMut.RLock()
 	defer s.loadMut.RUnlock()
-	_, exist := s.callbacks[componentID]
-	return exist
+	callbacks, exist := s.callbacks[componentID]
+	return exist && len(callbacks) > 0
 }
 
 func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID ComponentID, callback func(string)) error {
+	err := s.addCallback(callbackID, componentID, callback)
+	if err != nil {
+		return err
+	}
+	s.notifyComponent(componentID)
+	return nil
+}
+
+func (s *liveDebugging) DeleteCallback(callbackID CallbackID, componentID ComponentID) {
+	defer s.notifyComponent(componentID)
+	s.loadMut.Lock()
+	defer s.loadMut.Unlock()
+	delete(s.callbacks[componentID], callbackID)
+}
+
+func (s *liveDebugging) addCallback(callbackID CallbackID, componentID ComponentID, callback func(string)) error {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 
@@ -90,10 +106,18 @@ func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID Component
 	return nil
 }
 
-func (s *liveDebugging) DeleteCallback(callbackID CallbackID, componentID ComponentID) {
-	s.loadMut.Lock()
-	defer s.loadMut.Unlock()
-	delete(s.callbacks[componentID], callbackID)
+func (s *liveDebugging) notifyComponent(componentID ComponentID) {
+	s.loadMut.RLock()
+	defer s.loadMut.RUnlock()
+
+	info, err := s.host.GetComponent(component.ParseID(string(componentID)), component.InfoOptions{})
+	if err != nil {
+		return
+	}
+	if component, ok := info.Component.(component.LiveDebugging); ok {
+		// notify the component of the change
+		component.LiveDebugging(len(s.callbacks[componentID]))
+	}
 }
 
 func (s *liveDebugging) SetServiceHost(h service.Host) {
