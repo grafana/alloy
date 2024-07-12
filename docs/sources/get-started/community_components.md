@@ -9,7 +9,7 @@ weight: 100
 
 __Community components__ are [components][Components] implemented and maintained by the community.
 
-While Grafana does not offer commercial support for these components, they undergo acceptance and review by the {{< param "PRODUCT_NAME" >}} development team before being added to the repository.
+While Grafana does not offer commercial support for these components, they still undergo acceptance and review by the {{< param "PRODUCT_NAME" >}} development team before being added to the repository.
 
 To use these community components, you must explicitly pass the `--feature.community-components.enabled` flag to the `run` command.
 
