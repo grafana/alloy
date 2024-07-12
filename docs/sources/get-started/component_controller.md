@@ -110,6 +110,6 @@ removing components no longer defined in the configuration file and creating new
 All components managed by the controller are reevaluated after reloading.
 
 [DAG]: https://en.wikipedia.org/wiki/Directed_acyclic_graph
-[prometheus.exporter.unix]: ../../reference/components/prometheus/prometheus.exporter.unix
+[prometheus.exporter.unix]: ../../reference/components/prometheus.exporter.unix
 [run]: ../../reference/cli/run/
 [Components]: ../components/
