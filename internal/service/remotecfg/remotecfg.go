@@ -115,7 +115,7 @@ func (a *Arguments) Validate() error {
 
 	for k := range a.Attributes {
 		if strings.HasPrefix(k, reservedAttributeNamespace) {
-			return fmt.Errorf("%s is a reserved namespace for remotecfg attribute keys", reservedAttributeNamespace)
+			return fmt.Errorf("%q is a reserved namespace for remotecfg attribute keys", reservedAttributeNamespace)
 		}
 	}
 
