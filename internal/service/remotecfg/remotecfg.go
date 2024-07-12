@@ -73,7 +73,8 @@ type metrics struct {
 // ServiceName defines the name used for the remotecfg service.
 const ServiceName = "remotecfg"
 
-const reservedAttributeNamespace = "collector_system_attribute_"
+const reservedAttributeNamespace = "collector_system_attribute"
+const namespaceDelimiter = "_"
 
 // Options are used to configure the remotecfg service. Options are
 // constant for the lifetime of the remotecfg service.
@@ -114,7 +115,7 @@ func (a *Arguments) Validate() error {
 	}
 
 	for k := range a.Attributes {
-		if strings.HasPrefix(k, reservedAttributeNamespace) {
+		if strings.HasPrefix(k, reservedAttributeNamespace+namespaceDelimiter) {
 			return fmt.Errorf("%q is a reserved namespace for remotecfg attribute keys", reservedAttributeNamespace)
 		}
 	}
@@ -154,8 +155,8 @@ func New(opts Options) (*Service, error) {
 
 func getSystemAttributes() map[string]string {
 	return map[string]string{
-		reservedAttributeNamespace + "version": build.Version,
-		reservedAttributeNamespace + "os":      runtime.GOOS,
+		reservedAttributeNamespace + namespaceDelimiter + "version": build.Version,
+		reservedAttributeNamespace + namespaceDelimiter + "os":      runtime.GOOS,
 	}
 }
 
