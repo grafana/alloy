@@ -42,7 +42,7 @@ An {{< param "PRODUCT_NAME" >}} configuration file contains three elements:
 
 1. **Blocks**
 
-   Block are used to configure components with groups of attributes or nested blocks.
+   Blocks are used to configure components with groups of attributes or nested blocks.
    The following example block can be used to configure the logging output of {{< param "PRODUCT_NAME" >}}:
 
     ```alloy
