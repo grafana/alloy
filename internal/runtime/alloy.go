@@ -106,6 +106,9 @@ type Options struct {
 	// Services are configured when LoadFile is invoked. Services are started
 	// when the Alloy controller runs after LoadFile is invoked at least once.
 	Services []service.Service
+
+	// EnableCommunityComps enables the use of community components.
+	EnableCommunityComps bool
 }
 
 // Runtime is the Alloy system.
@@ -188,10 +191,11 @@ func newController(o controllerOptions) *Runtime {
 
 	f.loader = controller.NewLoader(controller.LoaderOptions{
 		ComponentGlobals: controller.ComponentGlobals{
-			Logger:        log,
-			TraceProvider: tracer,
-			DataPath:      o.DataPath,
-			MinStability:  o.MinStability,
+			Logger:               log,
+			TraceProvider:        tracer,
+			DataPath:             o.DataPath,
+			MinStability:         o.MinStability,
+			EnableCommunityComps: o.EnableCommunityComps,
 			OnBlockNodeUpdate: func(cn controller.BlockNode) {
 				// Changed node should be queued for reevaluation.
 				f.updateQueue.Enqueue(&controller.QueuedNode{Node: cn, LastUpdatedTime: time.Now()})
@@ -201,16 +205,17 @@ func newController(o controllerOptions) *Runtime {
 			ControllerID:    o.ControllerID,
 			NewModuleController: func(id string) controller.ModuleController {
 				return newModuleController(&moduleControllerOptions{
-					ComponentRegistry: o.ComponentRegistry,
-					ModuleRegistry:    o.ModuleRegistry,
-					Logger:            log,
-					Tracer:            tracer,
-					Reg:               o.Reg,
-					DataPath:          o.DataPath,
-					MinStability:      o.MinStability,
-					ID:                id,
-					ServiceMap:        serviceMap,
-					WorkerPool:        workerPool,
+					ComponentRegistry:    o.ComponentRegistry,
+					ModuleRegistry:       o.ModuleRegistry,
+					Logger:               log,
+					Tracer:               tracer,
+					Reg:                  o.Reg,
+					DataPath:             o.DataPath,
+					MinStability:         o.MinStability,
+					EnableCommunityComps: o.EnableCommunityComps,
+					ID:                   id,
+					ServiceMap:           serviceMap,
+					WorkerPool:           workerPool,
 				})
 			},
 			GetServiceData: func(name string) (interface{}, error) {

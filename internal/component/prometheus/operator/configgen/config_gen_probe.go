@@ -71,6 +71,10 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 		for k, v := range static.Labels {
 			grp.Labels[model.LabelName(k)] = model.LabelValue(v)
 		}
+		// Add a namespace label if not already set. See https://github.com/prometheus-operator/prometheus-operator/commit/ffce8d01ff798135d5bbfcba1a88a87a418ee9fc.
+		if _, ok := grp.Labels["namespace"]; !ok {
+			grp.Labels["namespace"] = model.LabelValue(m.Namespace)
+		}
 		for _, t := range static.Targets {
 			grp.Targets = append(grp.Targets, model.LabelSet{
 				model.AddressLabel: model.LabelValue(t),
