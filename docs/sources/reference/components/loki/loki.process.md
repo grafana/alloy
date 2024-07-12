@@ -1475,8 +1475,13 @@ custom format.
 | Fraction of second  | .000 (ms zero prefixed), .000000 (μs), .000000000 (ns), .999 (ms without trailing zeroes), .999999 (μs), .999999999 (ns) |
 | 12-hour period      | pm, PM                                                                                                                   |
 | Timezone name       | MST                                                                                                                      |
-| Timezone offset     | -0700, -070000 (with seconds), -07, 07:00, -07:00:00 (with seconds)                                                      |
+| Timezone offset     | -0700, -070000 (with seconds), -07, -07:00, -07:00:00 (with seconds)                                                     |
 | Timezone ISO-8601   | Z0700 (Z for UTC or time offset), Z070000, Z07, Z07:00, Z07:00:00                                                        |
+
+{{< admonition type="note" >}}
+If you define a custom timestamp, the `format` value for each timestamp component must be one of the values specified in the table above.
+For example, to indicate the year, the `format` value must be `06` or `2006` and not any other value like `23` or `2023`.
+{{< /admonition >}}
 
 The `fallback_formats` field defines one or more format fields to try and parse
 the timestamp with, if parsing with `format` fails.
@@ -1501,6 +1506,15 @@ it as a RFC3339 format, and sets it as the log entry's timestamp.
 stage.timestamp {
     source = "time"
     format = "RFC3339"
+}
+```
+
+The following example would parse a timestamp such as `2024-12-20T09:14:58,381+02:00`:
+
+```alloy
+stage.timestamp {
+    source = "time"
+    format = "2006-01-02T15:04:05,000-07:00"
 }
 ```
 
