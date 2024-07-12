@@ -103,4 +103,4 @@ A newline is treated as a terminator when it follows any expression, `]`, `)`, o
 [identifier]: #identifiers
 [identifier]: #identifiers
 [expression]: ../expressions/
-[type]: ../expressions/types_and_values/
+[type]: ../expressions/types_and_values
