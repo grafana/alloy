@@ -150,8 +150,8 @@ otelcol.exporter.otlp "default" {
 }
 ```
 
-[prometheus.exporter.self]: ../../reference/components/prometheus/prometheus.exporter.self/
-[prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/
+[prometheus.exporter.self]: ../../reference/components/prometheus.exporter.self/
+[prometheus.scrape]: ../../reference/components/prometheus.scrape/
 [logging]: ../../reference/config-blocks/logging/
 [tracing]: ../../reference/config-blocks/tracing/
 [Components]: ../../get-started/components/
