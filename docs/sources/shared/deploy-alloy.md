@@ -118,4 +118,4 @@ The Pod’s controller, network configuration, enabled capabilities, and availab
 * Scenarios where the {{< param "PRODUCT_NAME" >}} deployment size grows so large it can become a noisy neighbor
 
 <!-- ToDo: Check URL path -->
-[clustering]: ../../concepts/clustering/
+[clustering]: ../../configure/clustering/

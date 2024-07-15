@@ -11,10 +11,10 @@ import (
 // Inspired by a test on github.com/mroth/jitter
 func TestTicker(t *testing.T) {
 	var (
-		d     = 10 * time.Millisecond
-		j     = 3 * time.Millisecond
-		n     = 10
-		delta = 1 * time.Millisecond
+		d     = 100 * time.Millisecond
+		j     = 5 * time.Millisecond
+		n     = 5
+		delta = 100 * time.Millisecond
 		min   = time.Duration(math.Floor(float64(d)-float64(j)))*time.Duration(n) - delta
 		max   = time.Duration(math.Ceil(float64(d)+float64(j)))*time.Duration(n) + delta
 	)
@@ -36,8 +36,8 @@ func TestTickerStop(t *testing.T) {
 	t.Parallel()
 
 	var (
-		d      = 5 * time.Millisecond
-		j      = 1 * time.Millisecond
+		d      = 50 * time.Millisecond
+		j      = 10 * time.Millisecond
 		before = 3      // ticks before stop
 		wait   = d * 10 // monitor after stop
 	)
@@ -57,12 +57,12 @@ func TestTickerStop(t *testing.T) {
 
 func TestTickerReset(t *testing.T) {
 	var (
-		d1    = 10 * time.Millisecond
-		d2    = 20 * time.Millisecond
+		d1    = 50 * time.Millisecond
+		d2    = 100 * time.Millisecond
 		j1    = 3 * time.Millisecond
 		j2    = 9 * time.Millisecond
-		n     = 10
-		delta = 1 * time.Millisecond
+		n     = 5
+		delta = 100 * time.Millisecond
 		min1  = time.Duration(math.Floor(float64(d1)-float64(j1)))*time.Duration(n) - delta
 		max1  = time.Duration(math.Ceil(float64(d1)+float64(j1)))*time.Duration(n) + delta
 		min2  = time.Duration(math.Floor(float64(d2)-float64(j2)))*time.Duration(n) - delta

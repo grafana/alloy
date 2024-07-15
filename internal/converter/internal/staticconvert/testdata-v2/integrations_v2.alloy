@@ -684,14 +684,13 @@ prometheus.scrape "integrations_apache2" {
 }
 
 prometheus.exporter.blackbox "integrations_blackbox" {
-	config = "modules:\n  http_2xx:\n    prober: http\n    timeout: 5s\n    http:\n      method: POST\n      headers:\n        Content-Type: application/json\n      body: '{}'\n      preferred_ip_protocol: ip4\n"
-
-	target {
-		name    = "example"
-		address = "http://example.com"
-		module  = "http_2xx"
-	}
+	config               = "modules:\n  http_2xx:\n    prober: http\n    timeout: 5s\n    http:\n      method: POST\n      headers:\n        Content-Type: application/json\n      body: '{}'\n      preferred_ip_protocol: ip4\n"
 	probe_timeout_offset = "0s"
+	targets              = [{
+		address = "http://example.com",
+		module  = "http_2xx",
+		name    = "example",
+	}]
 }
 
 discovery.relabel "integrations_blackbox" {
