@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
@@ -177,7 +178,7 @@ func (f fakeHost) NewController(id string) service.Controller {
 		MinStability:    featuregate.StabilityGenerallyAvailable,
 		Reg:             prometheus.NewRegistry(),
 		OnExportsChange: func(map[string]interface{}) {},
-		Services:        []service.Service{},
+		Services:        []service.Service{livedebugging.New()},
 	})
 
 	return serviceController{ctrl}
