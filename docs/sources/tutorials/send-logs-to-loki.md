@@ -100,7 +100,7 @@ services:
 Run `docker compose up` to start your Docker container and open <http://localhost:3000> in your browser to view the Grafana UI.
 
 {{< admonition type="note" >}}
-If you the following error when you start your Docker container, `docker: 'compose' is not a docker command`, use the command `docker-compose up` to start your Docker container.
+If you encounter the following error when you start your Docker container, `docker: 'compose' is not a docker command`, use the command `docker-compose up` to start your Docker container.
 {{< /admonition >}}
 
 ## Configure {{% param "PRODUCT_NAME" %}}
