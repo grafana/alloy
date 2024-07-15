@@ -99,11 +99,11 @@ Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab
 #### `event` argument
 
 Sets the CPU profiling event:
-* `itimer` - default, uses the [`setitimer(ITIMER_PROF)`](http://man7.org/linux/man-pages/man2/setitimer.2.html) 
-   syscall which generates a signal every time a process consumes CPU 
-* `cpu` - uses PMU-case sampling (like Intel PEBS or AMD IBS), can be more accurate than `itimer`, but it's not available in every platform.
-* `wall` - This sample all threads equally every given period of time regardless of thread status: Running, Sleeping or Blocked.
-   For instance, this can be helpful when profiling application start-up time or IO intensive processes.
+* `itimer` - Default. Uses the [`setitimer(ITIMER_PROF)`](http://man7.org/linux/man-pages/man2/setitimer.2.html) 
+   syscall, which generates a signal every time a process consumes CPU. 
+* `cpu` - Uses PMU-case sampling (like Intel PEBS or AMD IBS), can be more accurate than `itimer`, but it's not available on every platform.
+* `wall` - This samples all threads equally every given period of time regardless of thread status: Running, Sleeping, or Blocked.
+   For example, this can be helpful when profiling application start-up time or IO-intensive processes.
 
 #### `per_thread` argument  
 Sets per thread mode on async profiler. Profile threads separately, each stack trace will end with a frame that denotes a single thread.
