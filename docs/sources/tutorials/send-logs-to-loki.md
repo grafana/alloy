@@ -10,7 +10,7 @@ weight: 100
 
 ## Use {{% param "FULL_PRODUCT_NAME" %}} to send logs to Loki
 
-This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect logs from your local computer, filter non-essential log lines, send them to Loki, and use a Grafana dashboard to query and visualize the results.
+This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect logs from your local machine, filter non-essential log lines, send them to Loki, and use a Grafana dashboard to query and visualize the results.
 
 ## Before you begin
 
@@ -41,7 +41,7 @@ Install  and run {{< param "PRODUCT_NAME" >}} on macOS.
 
 ## Set up a local Grafana instance
 
-In this tutorial, you configure {{< param "PRODUCT_NAME" >}} to collect logs from your local computer and send them to Loki.
+In this tutorial, you configure {{< param "PRODUCT_NAME" >}} to collect logs from your local machine and send them to Loki.
 You can use the following Docker Compose file to set up a local Grafana instance.
 This Docker Compose file includes Loki and Prometheus configured as data sources.
 

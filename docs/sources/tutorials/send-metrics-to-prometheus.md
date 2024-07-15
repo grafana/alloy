@@ -9,7 +9,7 @@ weight: 150
 
 In the [previous tutorial][], you learned how to configure {{< param "PRODUCT_NAME" >}} to collect and process logs from your local machine and send them to Loki.
 
-This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local computer, send them to Prometheus, and use a Grafana dashboard to query and visualize the results.
+This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local machine, send them to Prometheus, and use a Grafana dashboard to query and visualize the results.
 
 ## Before you begin
 
@@ -70,7 +70,8 @@ prometheus.relabel "filter_metrics" {
 }
 ```
 
-The [`prometheus.relabel`][prometheus.relabel] component allows you rewrite the label set of each metric sent to the receiver.
+The [`prometheus.relabel`][prometheus.relabel] component most commonly used to filter Prometheus metrics or standardize the label set passed to one or more downstream receivers.
+You can use this component to rewrite the label set of each metric sent to the receiver.
 Within this component, you can define rule blocks to specify how you would like to process metrics before they're sorted or forwarded.
 
 This configuration creates a [`prometheus.relabel`][prometheus.relabel] component named `filter_metrics` which does the following:
