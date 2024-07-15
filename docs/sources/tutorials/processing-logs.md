@@ -1,11 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/processing-logs/
 description: Learn how to process logs
-title: Processing Logs
+menuTitle: Processing Logs
+title: Processing logs with Grafana Alloy
 weight: 300
 ---
 
-# Processing Logs
+# Processing logs with {{% param "FULL_PRODUCT_NAME" %}}
 
 This tutorial assumes you are familiar with setting up and connecting components.
 It covers using `loki.source.api` to receive logs over HTTP, processing and filtering them, and sending them to Loki.

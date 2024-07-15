@@ -1,11 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/logs-and-relabeling-basics/
 description: Learn how to relabel metrics and collect logs
-title: Logs and relabeling basics
+menuTitle: Logs and relabeling basics
+title: Logs and relabeling basics in Grafana Alloy
 weight: 250
 ---
 
-# Logs and relabeling basics
+# Logs and relabeling basics in {{% param "FULL_PRODUCT_NAME" %}}
 
 This tutorial covers some basic metric relabeling, and shows you how to send logs to Loki.
 
