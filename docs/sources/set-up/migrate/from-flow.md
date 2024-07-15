@@ -58,7 +58,7 @@ Before migrating, modify your Grafana Agent Flow configuration to remove or repl
 [import.git]: ../../../reference/config-blocks/import.git/
 [import.http]: ../../../reference/config-blocks/import.http/
 [import.string]: ../../../reference/config-blocks/import.string/
-[otelcol.receiver.vcenter]: ../../../reference/components/otelcol.receiver.vcenter/
+[otelcol.receiver.vcenter]: ../../../reference/components/otelcol/otelcol.receiver.vcenter/
 
 ### Deploy {{% param "PRODUCT_NAME" %}} with a default configuration
 
@@ -91,7 +91,7 @@ When deploying {{< param "PRODUCT_NAME" >}}, be aware of the following settings:
 [pyroscope.java]: ../../../reference/components/pyroscope.java/
 [pyroscope.scrape]: ../../../reference/components/pyroscope.scrape/
 [pyroscope.write]: ../../../reference/components/pyroscope.write/
-[otelcol.receiver.vcenter]: ../../../reference/components/otelcol.receiver.vcenter/
+[otelcol.receiver.vcenter]: ../../../reference/components/otelcol/otelcol.receiver.vcenter/
 
 ### Migrate Grafana Agent Flow data to {{% param "PRODUCT_NAME" %}}
 
