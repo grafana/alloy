@@ -14,6 +14,8 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/internal/importsource"
@@ -22,7 +24,6 @@ import (
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/vm"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // ImportConfigNode imports declare and import blocks via a managed import source.
@@ -365,15 +366,12 @@ func (cn *ImportConfigNode) Run(ctx context.Context) error {
 
 	err = cn.run(errChan, updateTasks)
 
-	var exitMsg string
+	// Note: logging of this error is handled by the scheduler.
 	if err != nil {
-		level.Error(cn.logger).Log("msg", "import exited with error", "err", err)
-		exitMsg = fmt.Sprintf("import shut down with error: %s", err)
+		cn.setRunHealth(component.HealthTypeExited, fmt.Sprintf("import shut down with error: %s", err))
 	} else {
-		level.Info(cn.logger).Log("msg", "import exited")
-		exitMsg = "import shut down normally"
+		cn.setRunHealth(component.HealthTypeExited, "import shut down cleanly")
 	}
-	cn.setRunHealth(component.HealthTypeExited, exitMsg)
 	return err
 }
 

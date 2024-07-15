@@ -51,6 +51,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/atomic"
+
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
@@ -58,8 +61,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
-	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/atomic"
 )
 
 // Options holds static options for an Alloy controller.
@@ -180,7 +181,7 @@ func newController(o controllerOptions) *Runtime {
 		opts:   o,
 
 		updateQueue: controller.NewQueue(),
-		sched:       controller.NewScheduler(),
+		sched:       controller.NewScheduler(log),
 
 		modules: o.ModuleRegistry,
 
