@@ -219,9 +219,9 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [OpenTelemetry Collector]: https://opentelemetry.io/docs/collector/configuration/
 [debugging]: #debugging
 [example]: #example
-[otelcol.receiver.otlp]: ../../../reference/components/otelcol.receiver.otlp/
-[otelcol.processor.memory_limiter]: ../../../reference/components/otelcol.processor.memory_limiter/
-[otelcol.exporter.otlp]: ../../../reference/components/otelcol.exporter.otlp/
+[otelcol.receiver.otlp]: ../../../reference/components/otelcol/otelcol.receiver.otlp/
+[otelcol.processor.memory_limiter]: ../../../reference/components/otelcol/otelcol.processor.memory_limiter/
+[otelcol.exporter.otlp]: ../../../reference/components/otelcol/otelcol.exporter.otlp/
 [Components]: ../../../get-started/components/
 [Component Reference]: ../../../reference/components/
 [convert]: ../../../reference/cli/convert/

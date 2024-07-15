@@ -203,8 +203,8 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Prometheus]: https://prometheus.io/docs/prometheus/latest/configuration/configuration/
 [debugging]: #debugging
 [example]: #example
-[prometheus.scrape]: ../../../reference/components/prometheus.scrape/
-[prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
+[prometheus.scrape]: ../../../reference/components/prometheus/prometheus.scrape/
+[prometheus.remote_write]: ../../../reference/components/prometheus/prometheus.remote_write/
 [Components]: ../../../get-started/components/
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
