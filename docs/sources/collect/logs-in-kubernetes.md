@@ -142,7 +142,7 @@ local.file_match "node_logs" {
       __path__  = "/var/log/syslog",
       job       = "node/syslog",
       node_name = env("HOSTNAME"),
-      cluster   = <CLUSTER_NAME>
+      cluster   = <CLUSTER_NAME>,
   }]
 }
 
