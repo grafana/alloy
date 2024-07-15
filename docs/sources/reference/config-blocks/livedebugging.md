@@ -38,4 +38,4 @@ The following arguments are supported:
 | --------- | ------ | ----------------------------------- | ------- | -------- |
 | `enabled` | `bool` | Enables the live debugging feature. | `false` | no       |
 
-[debug]: ../../../tasks/debug/
+[debug]: ../../../troubleshoot/debug/
