@@ -39,6 +39,9 @@ Main (unreleased)
 - (_Public preview_) Added rate limiting of cluster state changes to reduce the
   number of unnecessary, intermediate state updates. (@thampiotr)
 
+- Add a `otelcol.processor.groupbyattrs` component to reassociate collected metrics that match specified attributes
+  from opentelemetry. (@kehindesalaam)
+
 ### Bugfixes
 
 - Fixed a clustering mode issue where a fatal startup failure of the clustering service
