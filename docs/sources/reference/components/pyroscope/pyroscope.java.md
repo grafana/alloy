@@ -106,7 +106,7 @@ Sets the CPU profiling event:
    For example, this can be helpful when profiling application start-up time or IO-intensive processes.
 
 #### `per_thread` argument  
-Sets per thread mode on async profiler. Threads are profiled separately, each stack trace will end with a frame that denotes a single thread.
+Sets per thread mode on async profiler. Threads are profiled separately and each stack trace will end with a frame that denotes a single thread.
 
 The Wall-clock profiler (`event=wall`) is most useful in per-thread mode.
 
