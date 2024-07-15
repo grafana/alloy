@@ -101,7 +101,7 @@ To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry da
 `otelcol.exporter.otlp` sends data using OTLP over gRPC (HTTP/2).
 To send to a server using HTTP/1.1, follow the preceding steps, but use the [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] component instead.
 
-[otelcol.exporter.otlphttp]: ../../reference/components/otelcol.exporter.otlphttp/
+[otelcol.exporter.otlphttp]: ../../reference/components/otelcol/otelcol.exporter.otlphttp/
 {{< /admonition >}}
 
 
@@ -321,8 +321,9 @@ For more information on receiving OpenTelemetry data using the OpenTelemetry Pro
 [OpenTelemetry]: https://opentelemetry.io
 [Configure an OpenTelemetry Protocol exporter]: #configure-an-opentelemetry-protocol-exporter
 [Configure batching]: #configure-batching
-[otelcol.auth.basic]: ../../reference/components/otelcol.auth.basic/
-[otelcol.exporter.otlp]: ../../reference/components/otelcol.exporter.otlp/
-[otelcol.processor.batch]: ../../reference/components/otelcol.processor.batch/
-[otelcol.receiver.otlp]: ../../reference/components/otelcol.receiver.otlp/
+[otelcol.auth.basic]: ../../reference/components/otelcol/otelcol.auth.basic/
+[otelcol.exporter.otlp]: ../../reference/components/otelcol/otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../../reference/components/otelcol/otelcol.exporter.otlphttp/
+[otelcol.processor.batch]: ../../reference/components/otelcol/otelcol.processor.batch/
+[otelcol.receiver.otlp]: ../../reference/components/otelcol/otelcol.receiver.otlp/
 [Components]: ../../get-started/components/
