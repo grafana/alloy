@@ -30,6 +30,8 @@ Main (unreleased)
 
 - Added live debugging support to `otelcol.receiver.*` components. (@wildum)
 
+- Added live debugging support to `loki.process`. (@wildum)
+
 - Added a `namespace` label to probes scraped by the `prometheus.operator.probes` component to align with the upstream Prometheus Operator setup. (@toontijtgat2)
 
 - (_Public preview_) Added rate limiting of cluster state changes to reduce the
