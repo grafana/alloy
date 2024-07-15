@@ -26,6 +26,8 @@ Main (unreleased)
 
 - Add the `targets` argument to the `prometheus.exporter.blackbox` component to support passing blackbox targets at runtime. (@wildum)
 
+- Add concurrent metric collection to `prometheus.exporter.snowflake` to speed up collection times (@Caleb-Hurshman)
+
 - Added live debugging support to `otelcol.processor.*` components. (@wildum)
 
 - Added live debugging support to `otelcol.receiver.*` components. (@wildum)
