@@ -26,9 +26,13 @@ Main (unreleased)
 
 - Add the `targets` argument to the `prometheus.exporter.blackbox` component to support passing blackbox targets at runtime. (@wildum)
 
+- Add concurrent metric collection to `prometheus.exporter.snowflake` to speed up collection times (@Caleb-Hurshman)
+
 - Added live debugging support to `otelcol.processor.*` components. (@wildum)
 
 - Added live debugging support to `otelcol.receiver.*` components. (@wildum)
+
+- Added live debugging support to `loki.process`. (@wildum)
 
 - Added a `namespace` label to probes scraped by the `prometheus.operator.probes` component to align with the upstream Prometheus Operator setup. (@toontijtgat2)
 
