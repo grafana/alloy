@@ -14,6 +14,10 @@ Main (unreleased)
 
 - Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
 
+### Features
+
+- Added community components support, enabling community members to implement and maintain components. (@wildum)
+
 ### Enhancements
 
 - Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
@@ -22,11 +26,23 @@ Main (unreleased)
 
 - Add the `targets` argument to the `prometheus.exporter.blackbox` component to support passing blackbox targets at runtime. (@wildum)
 
+- Add concurrent metric collection to `prometheus.exporter.snowflake` to speed up collection times (@Caleb-Hurshman)
+
 - Added live debugging support to `otelcol.processor.*` components. (@wildum)
 
 - Added live debugging support to `otelcol.receiver.*` components. (@wildum)
 
+- Added live debugging support to `loki.process`. (@wildum)
+
 - Added a `namespace` label to probes scraped by the `prometheus.operator.probes` component to align with the upstream Prometheus Operator setup. (@toontijtgat2)
+
+- (_Public preview_) Added rate limiting of cluster state changes to reduce the
+  number of unnecessary, intermediate state updates. (@thampiotr)
+
+### Bugfixes
+
+- Fixed a clustering mode issue where a fatal startup failure of the clustering service
+  would exit the service silently, without also exiting the Alloy process. (@thampiotr)
 
 v1.2.1
 -----------------
@@ -44,7 +60,6 @@ v1.2.1
 ### Other
 
 - Use Go 1.22.5 for builds. (@mattdurham)
-
 
 v1.2.0
 -----------------

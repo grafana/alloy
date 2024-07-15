@@ -4,6 +4,7 @@ package process
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
@@ -75,9 +77,10 @@ func TestJSONLabelsStage(t *testing.T) {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1, ch2},
@@ -162,9 +165,10 @@ stage.label_keep {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1, ch2},
@@ -257,9 +261,10 @@ stage.labels {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1, ch2},
@@ -423,9 +428,10 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1, ch2},
@@ -486,4 +492,13 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 	// Run everything for a while
 	time.Sleep(1 * time.Second)
 	require.WithinDuration(t, time.Now(), lastSend.Load().(time.Time), 300*time.Millisecond)
+}
+
+func getServiceData(name string) (interface{}, error) {
+	switch name {
+	case livedebugging.ServiceName:
+		return livedebugging.NewLiveDebugging(), nil
+	default:
+		return nil, fmt.Errorf("service not found %s", name)
+	}
 }
