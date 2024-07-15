@@ -44,6 +44,10 @@ Main (unreleased)
 - Fixed a clustering mode issue where a fatal startup failure of the clustering service
   would exit the service silently, without also exiting the Alloy process. (@thampiotr)
 
+- Fix a bug which prevented config reloads to work if a Loki `metrics` stage is in the pipeline. 
+  Previously, the reload would fail for `loki.process` without an error in the logs and the metrics
+  from the `metrics` stage would get stuck at the same values. (@ptodev)
+
 v1.2.1
 -----------------
 
