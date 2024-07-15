@@ -148,6 +148,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+	componentID := livedebugging.ComponentID(c.opts.ID)
 	for {
 		select {
 		case <-ctx.Done():
@@ -158,7 +159,6 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 			case <-ctx.Done():
 				return
 			case c.processIn <- entry.Clone():
-				componentID := livedebugging.ComponentID(c.opts.ID)
 				if c.debugDataPublisher.IsActive(componentID) {
 					c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[IN]: entry: %s, labels: %s", entry.Line, entry.Labels.String()))
 				}
@@ -174,6 +174,7 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 
 func (c *Component) handleOut(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+	componentID := livedebugging.ComponentID(c.opts.ID)
 	for {
 		select {
 		case <-ctx.Done():
@@ -187,7 +188,6 @@ func (c *Component) handleOut(ctx context.Context, wg *sync.WaitGroup) {
 				case <-ctx.Done():
 					return
 				case f.Chan() <- entry:
-					componentID := livedebugging.ComponentID(c.opts.ID)
 					if c.debugDataPublisher.IsActive(componentID) {
 						c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[OUT]: entry: %s, labels: %s", entry.Line, entry.Labels.String()))
 					}
