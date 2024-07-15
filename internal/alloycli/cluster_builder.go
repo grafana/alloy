@@ -1,6 +1,7 @@
 package alloycli
 
 import (
+	"errors"
 	"fmt"
 	stdlog "log"
 	"net"
@@ -9,13 +10,14 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/ckit/advertise"
 	"github.com/hashicorp/go-discover"
 	"github.com/hashicorp/go-discover/provider/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/cluster"
 )
 
 type clusterOptions struct {
@@ -23,16 +25,17 @@ type clusterOptions struct {
 	Metrics prometheus.Registerer
 	Tracer  trace.TracerProvider
 
-	EnableClustering    bool
-	NodeName            string
-	AdvertiseAddress    string
-	ListenAddress       string
-	JoinPeers           []string
-	DiscoverPeers       string
-	RejoinInterval      time.Duration
-	AdvertiseInterfaces []string
-	ClusterMaxJoinPeers int
-	ClusterName         string
+	EnableClustering          bool
+	NodeName                  string
+	AdvertiseAddress          string
+	ListenAddress             string
+	JoinPeers                 []string
+	DiscoverPeers             string
+	RejoinInterval            time.Duration
+	AdvertiseInterfaces       []string
+	ClusterMaxJoinPeers       int
+	ClusterName               string
+	EnableStateUpdatesLimiter bool
 }
 
 func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
@@ -43,11 +46,12 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		Metrics: opts.Metrics,
 		Tracer:  opts.Tracer,
 
-		EnableClustering:    opts.EnableClustering,
-		NodeName:            opts.NodeName,
-		RejoinInterval:      opts.RejoinInterval,
-		ClusterMaxJoinPeers: opts.ClusterMaxJoinPeers,
-		ClusterName:         opts.ClusterName,
+		EnableClustering:          opts.EnableClustering,
+		NodeName:                  opts.NodeName,
+		RejoinInterval:            opts.RejoinInterval,
+		ClusterMaxJoinPeers:       opts.ClusterMaxJoinPeers,
+		ClusterName:               opts.ClusterName,
+		EnableStateUpdatesLimiter: opts.EnableStateUpdatesLimiter,
 	}
 
 	if config.NodeName == "" {
@@ -69,7 +73,7 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		return nil, fmt.Errorf("at most one of join peers and discover peers may be set")
 
 	case len(opts.JoinPeers) > 0:
-		config.DiscoverPeers = newStaticDiscovery(opts.JoinPeers, listenPort)
+		config.DiscoverPeers = newStaticDiscovery(opts.JoinPeers, listenPort, opts.Log)
 
 	case opts.DiscoverPeers != "":
 		discoverFunc, err := newDynamicDiscovery(config.Log, opts.DiscoverPeers, listenPort)
@@ -137,46 +141,66 @@ func appendDefaultPort(addr string, port int) string {
 
 type discoverFunc func() ([]string, error)
 
-func newStaticDiscovery(peers []string, defaultPort int) discoverFunc {
+func newStaticDiscovery(providedAddr []string, defaultPort int, log log.Logger) discoverFunc {
 	return func() ([]string, error) {
-		var addrs []string
-
-		for _, addr := range peers {
-			addrs = appendJoinAddr(addrs, addr)
+		addresses, err := buildJoinAddresses(providedAddr, log)
+		if err != nil {
+			return nil, fmt.Errorf("static peer discovery: %w", err)
 		}
-
-		for i := range addrs {
+		for i := range addresses {
 			// Default to using the same advertise port as the local node. This may
 			// break in some cases, so the user should make sure the port numbers
 			// align on as many nodes as possible.
-			addrs[i] = appendDefaultPort(addrs[i], defaultPort)
+			addresses[i] = appendDefaultPort(addresses[i], defaultPort)
 		}
-
-		return addrs, nil
+		return addresses, nil
 	}
 }
 
-func appendJoinAddr(addrs []string, in string) []string {
-	_, _, err := net.SplitHostPort(in)
-	if err == nil {
-		addrs = append(addrs, in)
-		return addrs
+func buildJoinAddresses(providedAddr []string, log log.Logger) ([]string, error) {
+	// Currently we don't consider it an error to not have any join addresses.
+	if len(providedAddr) == 0 {
+		return nil, nil
 	}
+	var (
+		result      []string
+		deferredErr error
+	)
+	for _, addr := range providedAddr {
+		// If it's a host:port, use it as is.
+		_, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			deferredErr = errors.Join(deferredErr, err)
+		} else {
+			level.Debug(log).Log("msg", "found a host:port cluster join address", "addr", addr)
+			result = append(result, addr)
+			break
+		}
 
-	ip := net.ParseIP(in)
-	if ip != nil {
-		addrs = append(addrs, ip.String())
-		return addrs
-	}
+		// If it's an IP address, use it.
+		ip := net.ParseIP(addr)
+		if ip != nil {
+			level.Debug(log).Log("msg", "found an IP cluster join address", "addr", addr)
+			result = append(result, ip.String())
+			break
+		}
 
-	_, srvs, err := net.LookupSRV("", "", in)
-	if err == nil {
-		for _, srv := range srvs {
-			addrs = append(addrs, srv.Target)
+		// Otherwise, do a DNS lookup and return all the records found.
+		_, srvs, err := net.LookupSRV("", "", addr)
+		if err != nil {
+			level.Warn(log).Log("msg", "failed to resolve SRV records", "addr", addr, "err", err)
+			deferredErr = errors.Join(deferredErr, err)
+		} else {
+			level.Debug(log).Log("msg", "found cluster join addresses via SRV records", "addr", addr, "count", len(srvs))
+			for _, srv := range srvs {
+				result = append(result, srv.Target)
+			}
 		}
 	}
-
-	return addrs
+	if len(result) == 0 {
+		return nil, fmt.Errorf("failed to find any valid join addresses: %w", deferredErr)
+	}
+	return result, nil
 }
 
 func newDynamicDiscovery(l log.Logger, config string, defaultPort int) (discoverFunc, error) {

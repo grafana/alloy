@@ -29,6 +29,9 @@ func TestAddCallback(t *testing.T) {
 
 	require.NoError(t, livedebugging.AddCallback(callbackID, "fake.liveDebugging", callback))
 
+	component, _ := livedebugging.host.GetComponent(component.ParseID("fake.liveDebugging"), component.InfoOptions{})
+	require.Equal(t, 1, component.Component.(*fakeComponentLiveDebugging).ConsumersCount)
+
 	err = livedebugging.AddCallback(callbackID, "fake.noLiveDebugging", callback)
 	require.ErrorContains(t, err, "the component \"fake.noLiveDebugging\" does not support live debugging")
 
@@ -104,22 +107,27 @@ func TestDeleteCallback(t *testing.T) {
 	callback1 := func(data string) {}
 	callback2 := func(data string) {}
 
+	component, _ := livedebugging.host.GetComponent(component.ParseID("fake.liveDebugging"), component.InfoOptions{})
+
 	require.NoError(t, livedebugging.AddCallback(callbackID1, componentID, callback1))
+	require.Equal(t, 1, component.Component.(*fakeComponentLiveDebugging).ConsumersCount)
 	require.NoError(t, livedebugging.AddCallback(callbackID2, componentID, callback2))
+	require.Equal(t, 2, component.Component.(*fakeComponentLiveDebugging).ConsumersCount)
 	require.Len(t, livedebugging.callbacks[componentID], 2)
 
 	// Deleting callbacks that don't exist should not panic
 	require.NotPanics(t, func() { livedebugging.DeleteCallback(callbackID1, "fakeComponentID") })
 	require.NotPanics(t, func() { livedebugging.DeleteCallback("fakeCallbackID", componentID) })
 
-	livedebugging.AddCallback(callbackID1, componentID, callback1)
-	livedebugging.AddCallback(callbackID2, componentID, callback2)
-
 	livedebugging.DeleteCallback(callbackID1, componentID)
 	require.Len(t, livedebugging.callbacks[componentID], 1)
+	require.Equal(t, 1, component.Component.(*fakeComponentLiveDebugging).ConsumersCount)
 
 	livedebugging.DeleteCallback(callbackID2, componentID)
 	require.Empty(t, livedebugging.callbacks[componentID])
+	require.Equal(t, 0, component.Component.(*fakeComponentLiveDebugging).ConsumersCount)
+
+	require.False(t, livedebugging.IsActive(ComponentID("fake.liveDebugging")))
 }
 
 func setupServiceHost(liveDebugging *liveDebugging) {
@@ -155,9 +163,12 @@ func (h *fakeServiceHost) GetComponent(id component.ID, opts component.InfoOptio
 }
 
 type fakeComponentLiveDebugging struct {
+	ConsumersCount int
 }
 
-func (f *fakeComponentLiveDebugging) LiveDebugging() {}
+func (f *fakeComponentLiveDebugging) LiveDebugging(consumers int) {
+	f.ConsumersCount = consumers
+}
 
 func (f *fakeComponentLiveDebugging) Run(ctx context.Context) error {
 	<-ctx.Done()

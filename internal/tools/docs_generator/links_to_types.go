@@ -76,7 +76,12 @@ func (l *LinksToTypesGenerator) endMarker() string {
 }
 
 func (l *LinksToTypesGenerator) pathToComponentMarkdown() string {
-	return fmt.Sprintf("../../../docs/sources/reference/components/%s.md", l.component)
+	namespaceGuess := strings.Split(l.component, ".")
+	if len(namespaceGuess) == 1 {
+		panic(fmt.Sprintf("component %q does not seem to have a conventional namespace", l.component))
+	}
+	namespace := namespaceGuess[0]
+	return fmt.Sprintf("../../../docs/sources/reference/components/%s/%s.md", namespace, l.component)
 }
 
 func outputComponentsSection(name string, meta metadata.Metadata) string {
@@ -84,7 +89,7 @@ func outputComponentsSection(name string, meta metadata.Metadata) string {
 	for _, outputDataType := range meta.AllTypesExported() {
 		if list := allComponentsThatAccept(outputDataType); len(list) > 0 {
 			section += fmt.Sprintf(
-				"- Components that consume [%s](../../compatibility/%s)\n",
+				"- Components that consume [%s](../../../compatibility/%s)\n",
 				outputDataType.Name,
 				anchorFor(outputDataType.Name, "consumers"),
 			)
@@ -101,7 +106,7 @@ func acceptingComponentsSection(componentName string, meta metadata.Metadata) st
 	for _, acceptedDataType := range meta.AllTypesAccepted() {
 		if list := allComponentsThatExport(acceptedDataType); len(list) > 0 {
 			section += fmt.Sprintf(
-				"- Components that export [%s](../../compatibility/%s)\n",
+				"- Components that export [%s](../../../compatibility/%s)\n",
 				acceptedDataType.Name,
 				anchorFor(acceptedDataType.Name, "exporters"),
 			)

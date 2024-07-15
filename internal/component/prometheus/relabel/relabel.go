@@ -318,7 +318,7 @@ func (c *Component) addToCache(originalID uint64, lbls labels.Labels, keep bool)
 	})
 }
 
-func (c *Component) LiveDebugging() {}
+func (c *Component) LiveDebugging(_ int) {}
 
 // labelAndID stores both the globalrefid for the label and the id itself. We store the id so that it doesn't have
 // to be recalculated again.

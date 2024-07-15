@@ -293,6 +293,40 @@ func TestDeclare(t *testing.T) {
 			`,
 			expected: 10,
 		},
+		{
+			name: "CommunityComponent",
+			config: `
+			declare "com" {
+				argument "input" {
+					optional = false
+				}
+
+				testcomponents.community "default" {}
+			
+				testcomponents.passthrough "pt" {
+					input = argument.input.value
+					lag = "1ms"
+				}
+			
+				export "output" {
+					value = testcomponents.passthrough.pt.output
+				}
+			}
+			testcomponents.count "inc" {
+				frequency = "10ms"
+				max = 10
+			}
+		
+			com "myModule" {
+				input = testcomponents.count.inc.count
+			}
+		
+			testcomponents.summation "sum" {
+				input = com.myModule.output
+			}
+			`,
+			expected: 10,
+		},
 	}
 
 	for _, tc := range tt {
