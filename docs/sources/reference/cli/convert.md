@@ -110,12 +110,12 @@ Refer to [Migrate from Grafana Agent Static to {{< param "PRODUCT_NAME" >}}][mig
 [relabel_config]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#relabel_config
 [metric_relabel_configs]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#metric_relabel_configs
 [remote_write]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#remote_write
-[migrate otelcol]: ../../../tasks/migrate/from-otelcol/
-[migrate prometheus]: ../../../tasks/migrate/from-prometheus/
+[migrate otelcol]: ../../../set-up/migrate/from-otelcol/
+[migrate prometheus]: ../../../set-up/migrate/from-prometheus/
 [Promtail v2.8.x]: https://grafana.com/docs/loki/v2.8.x/clients/promtail/
 [Prometheus v2.45]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/
 [Promtail features]: https://grafana.com/docs/loki/v2.8.x/clients/promtail/configuration/
-[migrate promtail]: ../../../tasks/migrate/from-promtail/
+[migrate promtail]: ../../../set-up/migrate/from-promtail/
 [Grafana Agent Static]: https://grafana.com/docs/agent/latest/static/
 [integrations-next]: https://grafana.com/docs/agent/latest/static/configuration/integrations/integrations-next/
-[migrate static]: ../../../tasks/migrate/from-static/
+[migrate static]: ../../../set-up/migrate/from-static/
