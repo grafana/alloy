@@ -105,7 +105,7 @@ If you encounter the following error when you start your Docker container, `dock
 
 ## Configure {{% param "PRODUCT_NAME" %}}
 
-After the local Grafana instance is setup, the next step is to configure {{< param "PRODUCT_NAME" >}}.
+After the local Grafana instance is set up, the next step is to configure {{< param "PRODUCT_NAME" >}}.
 You use components in the `config.alloy` file to tell {{< param "PRODUCT_NAME" >}} which logs you want to scrape, how you want to process that data, and where you want the data sent.
 
 The examples run on a single host so that you can run them on your laptop or in a Virtual Machine.
