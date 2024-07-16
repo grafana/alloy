@@ -38,7 +38,15 @@ Argument                   | Description                                     | D
 
 ### GOMEMLIMIT
 
-Normally the [Go runtime][runtime] will release memory back to the Operating System when requested. In certain environments this may cause issues such as Out of Memory errors. The `GOMEMLIMIT` variable is a numeric value in bytes with an optional unit suffix. The supported suffixes include B, KiB, MiB, GiB, and TiB. This should not be treated has a hard limit. The process can use more memory if that memory is required. A rough number is to set `GOMEMLIMIT` to 90% of the maximum amount of memory usage. For example if you wanted to keep memory usage below `10GiB` then use `GOMEMLIMIT=8GiB`.
+Usually, the [Go runtime][runtime] will release memory back to the operating system when requested.
+In some environments, this may cause issues such as Out Of Memory (OOM) errors.
+You can use the `GOMEMLIMIT` environment variable to set a soft memory cap and limit the maximum memory {{< param "PRODUCT_NAME" >}} can use.
+You can set `GOMEMLIMIT` to a numeric value in bytes with an optional unit suffix.
+The supported unit suffixes are `B`, `KiB`, `MiB`, `GiB`, and `TiB`.
+Don't treat the `GOMEMLIMIT` environment variable as a hard memory limit.
+{{< param "PRODUCT_NAME" >}}  processes can use more memory if that memory is required.
+A rough number is to set `GOMEMLIMIT` to is 90% of the maximum memory required.
+For example, if you want to keep memory usage below `10GiB`, use `GOMEMLIMIT=8GiB`.
 
 #### Automatic setting of GOMEMLIMIT
 
