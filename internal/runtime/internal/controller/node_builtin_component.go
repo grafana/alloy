@@ -13,15 +13,15 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
-	"github.com/prometheus/client_golang/prometheus"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // ComponentID is a fully-qualified name of a component. Each element in
@@ -316,17 +316,12 @@ func (cn *BuiltinComponentNode) Run(ctx context.Context) error {
 	cn.setRunHealth(component.HealthTypeHealthy, "started component")
 	err := cn.managed.Run(ctx)
 
-	var exitMsg string
-	logger := cn.managedOpts.Logger
+	// Note: logging of this error is handled by the scheduler.
 	if err != nil {
-		level.Error(logger).Log("msg", "component exited with error", "err", err)
-		exitMsg = fmt.Sprintf("component shut down with error: %s", err)
+		cn.setRunHealth(component.HealthTypeExited, fmt.Sprintf("component shut down with error: %s", err))
 	} else {
-		level.Info(logger).Log("msg", "component exited")
-		exitMsg = "component shut down normally"
+		cn.setRunHealth(component.HealthTypeExited, "component shut down cleanly")
 	}
-
-	cn.setRunHealth(component.HealthTypeExited, exitMsg)
 	return err
 }
 
