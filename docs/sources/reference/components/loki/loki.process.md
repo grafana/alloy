@@ -641,6 +641,10 @@ The following blocks are supported inside the definition of `stage.metrics`:
 | metric.gauge     | [metric.gauge][]     | Defines a `gauge` metric.     | no       |
 | metric.histogram | [metric.histogram][] | Defines a `histogram` metric. | no       |
 
+{{< admonition type="note" >}}
+The metrics will be reset if you reload the {{< param "PRODUCT_NAME" >}} configuration file.
+{{< /admonition >}}
+
 [metric.counter]: #metriccounter-block
 [metric.gauge]: #metricgauge-block
 [metric.histogram]: #metrichistogram-block
