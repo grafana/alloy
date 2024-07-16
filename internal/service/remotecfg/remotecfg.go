@@ -73,8 +73,8 @@ type metrics struct {
 // ServiceName defines the name used for the remotecfg service.
 const ServiceName = "remotecfg"
 
-const reservedAttributeNamespace = "collector_system_attribute"
-const namespaceDelimiter = "_"
+const reservedAttributeNamespace = "collector"
+const namespaceDelimiter = "."
 
 // Options are used to configure the remotecfg service. Options are
 // constant for the lifetime of the remotecfg service.

@@ -51,10 +51,10 @@ The `id` and `attributes` fields are used in the periodic request sent to the
 remote endpoint so that the API can decide what configuration to serve.
 
 The `attribute` map keys can include any custom value with the exception of a
-reserved prefix `collector_system_attribute_`. This reserved label prefix is
+reserved prefix `collector.`. This reserved label prefix is
 used for automatic system attributes which cannot be overridden.
-* `collector_system_attribute_os`: The operating system where alloy is running.
-* `collector_system_attribute_version`: The version of alloy.
+* `collector.os`: The operating system where alloy is running.
+* `collector.version`: The version of alloy.
 
 The `poll_frequency` must be set to at least `"10s"`.
 
