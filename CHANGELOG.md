@@ -35,7 +35,7 @@ Main (unreleased)
 - (_Public preview_) Added rate limiting of cluster state changes to reduce the
   number of unnecessary, intermediate state updates. (@thampiotr)
 
-- Allow setting the CPU profiling event for Java Async Profiler (@slbucur)
+- Allow setting the CPU profiling event for Java Async Profiler in `pyroscope.java` component (@slbucur)
 
 ### Bugfixes
 
