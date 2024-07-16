@@ -37,7 +37,7 @@ func (arg *Arguments) Validate() error {
 	case "itimer", "cpu", "wall":
 		return nil
 	default:
-		return fmt.Errorf("invalid event: '%s'. Event but be one of 'itimer', 'cpu' or 'wall'", arg.ProfilingConfig.Event)
+		return fmt.Errorf("invalid event: '%s'. Event must be one of 'itimer', 'cpu' or 'wall'", arg.ProfilingConfig.Event)
 	}
 }
 
