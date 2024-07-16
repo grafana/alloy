@@ -642,7 +642,7 @@ The following blocks are supported inside the definition of `stage.metrics`:
 | metric.histogram | [metric.histogram][] | Defines a `histogram` metric. | no       |
 
 {{< admonition type="note" >}}
-The metrics will be reset if you reload the {{< param "PRODUCT_ROOT_NAME" >}} configuration file.
+The metrics will be reset if you reload the {{< param "PRODUCT_NAME" >}} configuration file.
 {{< /admonition >}}
 
 [metric.counter]: #metriccounter-block
