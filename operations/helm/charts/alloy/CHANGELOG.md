@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add Vertical Pod Autoscaler support (@QuentinBisson)
+
 0.12.5 (2025-03-13)
 ----------
 ### Enhancements
