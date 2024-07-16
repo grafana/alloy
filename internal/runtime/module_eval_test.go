@@ -332,10 +332,11 @@ func testOptions(t *testing.T) runtime.Options {
 	require.NotNil(t, otelService)
 
 	return runtime.Options{
-		Logger:       s,
-		DataPath:     t.TempDir(),
-		MinStability: featuregate.StabilityPublicPreview,
-		Reg:          nil,
+		Logger:               s,
+		DataPath:             t.TempDir(),
+		MinStability:         featuregate.StabilityPublicPreview,
+		EnableCommunityComps: true,
+		Reg:                  nil,
 		Services: []service.Service{
 			http_service.New(http_service.Options{}),
 			clusterService,

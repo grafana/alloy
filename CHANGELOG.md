@@ -14,6 +14,10 @@ Main (unreleased)
 
 - Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
 
+### Features
+
+- Added community components support, enabling community members to implement and maintain components. (@wildum)
+
 ### Enhancements
 
 - Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
@@ -26,6 +30,21 @@ Main (unreleased)
 
 - Add automatic system attributes for `version` and `os` to `remotecfg`. (@erikbaranowski)
 
+- Added live debugging support to `otelcol.receiver.*` components. (@wildum)
+
+- Added a `namespace` label to probes scraped by the `prometheus.operator.probes` component to align with the upstream Prometheus Operator setup. (@toontijtgat2)
+
+- (_Public preview_) Added rate limiting of cluster state changes to reduce the
+  number of unnecessary, intermediate state updates. (@thampiotr)
+
+### Bugfixes
+
+- Fixed a clustering mode issue where a fatal startup failure of the clustering service
+  would exit the service silently, without also exiting the Alloy process. (@thampiotr)
+
+v1.2.1
+-----------------
+
 ### Bugfixes
 
 - Fixed an issue with `loki.source.kubernetes_events` not starting in large clusters due to short informer sync timeout. (@nrwiersma)
@@ -35,6 +54,10 @@ Main (unreleased)
 - Fixed a clustering mode issue where a failure to perform static peers
   discovery did not result in a fatal failure at startup and could lead to
   potential split-brain issues. (@thampiotr)
+
+### Other
+
+- Use Go 1.22.5 for builds. (@mattdurham)
 
 v1.2.0
 -----------------

@@ -50,11 +50,11 @@ If not set, the self-reported `id` that {{< param "PRODUCT_NAME" >}} uses is a r
 The `id` and `attributes` fields are used in the periodic request sent to the
 remote endpoint so that the API can decide what configuration to serve.
 
-The `attribute` map keys can include any custom value with the exception of a
-reserved prefix `collector.`. This reserved label prefix is
-used for automatic system attributes which cannot be overridden.
-* `collector.os`: The operating system where alloy is running.
-* `collector.version`: The version of alloy.
+The `attribute` map keys can include any custom value with the exception of the reserved prefix `collector.`.
+This reserved label prefix is used for automatic system attributes which can't be overridden.
+
+* `collector.os`: The operating system where {{< param "PRODUCT_NAME" >}} is running.
+* `collector.version`: The version of {{< param "PRODUCT_NAME" >}}.
 
 The `poll_frequency` must be set to at least `"10s"`.
 
