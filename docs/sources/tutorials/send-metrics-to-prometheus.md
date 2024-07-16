@@ -9,7 +9,7 @@ weight: 150
 
 In the [previous tutorial][], you learned how to configure {{< param "PRODUCT_NAME" >}} to collect and process logs from your local machine and send them to Loki.
 
-This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local machine, send them to Prometheus, and use a Grafana dashboard to query and visualize the results.
+This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect and process metrics from your local machine, send them to Prometheus, and use Grafana to explore the results.
 
 ## Before you begin
 

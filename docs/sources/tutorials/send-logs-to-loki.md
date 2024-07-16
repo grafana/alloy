@@ -10,7 +10,7 @@ weight: 100
 
 ## Use {{% param "FULL_PRODUCT_NAME" %}} to send logs to Loki
 
-This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect logs from your local machine, filter non-essential log lines, send them to Loki, and use a Grafana dashboard to query and visualize the results.
+This tutorial shows you how to configure {{< param "PRODUCT_NAME" >}} to collect logs from your local machine, filter non-essential log lines, send them to Loki, and use Grafana to explore the results.
 
 ## Before you begin
 
