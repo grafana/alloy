@@ -19,9 +19,9 @@ You can specify multiple `pyroscope.ebpf` components by giving them different la
 
 ## Supported languages
 
-This eBPF profiler only collects CPU profiles. Generally natively compiled languages like C/C++, Go, Rust are supported (also see [Troubleshooting]({{< relref "#troubleshooting" >}}) for additional requirements).
+This eBPF profiler only collects CPU profiles. Generally, natively compiled languages like C/C++, Go, and Rust are supported. Refer to [Troubleshooting unknown symbols](#troubleshooting-unknown-symbols) for additional requirements.
 
-The only high-level language supported is Python (as long as `python_enabled=true`). Other high-level languages like Java, Ruby, PHP, JavaScript, etc. will require some additional work in order to correctly show stack traces of methods in these languages. Currently their CPU usage will be displayed belonging to the runtime's methods instead.
+Python is the only supported high-level language, as long as `python_enabled=true`. Other high-level languages like Java, Ruby, PHP, and JavaScript require additional work to show stack traces of methods in these languages correctly. Currently, their CPU usage will be reported belonging to the runtime's methods instead.
 
 ## Usage
 
@@ -119,7 +119,7 @@ If it's not specified, it's attempted to be inferred from multiple sources:
 
 If `service_name` isn't specified and couldn't be inferred, it's set to `unspecified`.
 
-## Troubleshooting unknown symbols {#troubleshooting}
+## Troubleshooting unknown symbols
 
 Symbols are extracted from various sources, including:
 
