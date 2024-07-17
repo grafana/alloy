@@ -6,9 +6,6 @@ description: Learn how to install Grafana Alloy with Puppet
 menuTitle: Puppet
 title: Install Grafana Alloy with Puppet
 weight: 560
-_build:
-  list: false
-noindex: true
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} with Puppet
@@ -27,7 +24,7 @@ You can use Puppet to install and manage {{< param "PRODUCT_NAME" >}}.
 
 To add {{< param "PRODUCT_NAME" >}} to a host:
 
-1. Ensure that the following module dependencies are declared and installed:
+1. Make sure that the following module dependencies are declared and installed:
 
     ```json
     {
