@@ -8,7 +8,7 @@ title: pyroscope.ebpf
 
 # pyroscope.ebpf
 
-`pyroscope.ebpf` configures an ebpf profiling job for the current host.
+`pyroscope.ebpf` configures an eBPF profiling job for the current host.
 The collected performance profiles are forwarded to the list of receivers passed in `forward_to`.
 
 {{< admonition type="note" >}}
@@ -16,6 +16,12 @@ To use the  `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}}
 {{< /admonition >}}
 
 You can specify multiple `pyroscope.ebpf` components by giving them different labels, however it's not recommended as it can lead to additional memory and CPU usage.
+
+## Supported languages
+
+This eBPF profiler only collects CPU profiles. Generally natively compiled languages like C/C++, Go, Rust are supported (also see [Troubleshooting]({{< relref "#troubleshooting" >}}) for additional requirements).
+
+The only high-level language supported is Python (as long as `python_enabled=true`). Other high-level languages like Java, Ruby, PHP, JavaScript, etc. will require some additional work in order to correctly show stack traces of methods in these languages. Currently their CPU usage will be displayed belonging to the runtime's methods instead.
 
 ## Usage
 
@@ -28,7 +34,7 @@ pyroscope.ebpf "LABEL" {
 
 ## Arguments
 
-The component configures and starts a new ebpf profiling job to collect performance profiles from the current host.
+The component configures and starts a new eBPF profiling job to collect performance profiles from the current host.
 
 You can use the following arguments to configure a `pyroscope.ebpf`.
 Only the `forward_to` and `targets` fields are required.
@@ -71,7 +77,7 @@ Name                      | Type                     | Description              
 * `pyroscope_ebpf_active_targets` (gauge): Number of active targets the component tracks.
 * `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
 * `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
-* `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the ebpf component.
+* `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the eBPF component.
 
 ## Profile collecting behavior
 
@@ -113,7 +119,7 @@ If it's not specified, it's attempted to be inferred from multiple sources:
 
 If `service_name` isn't specified and couldn't be inferred, it's set to `unspecified`.
 
-## Troubleshooting unknown symbols
+## Troubleshooting unknown symbols {#troubleshooting}
 
 Symbols are extracted from various sources, including:
 
@@ -171,13 +177,6 @@ If your profiles show many shallow stack traces, typically 1-2 frames deep, your
 
 To compile your code with frame pointers, include the `-fno-omit-frame-pointer` flag in your compiler options.
 
-### Profiling interpreted languages
-
-Profiling interpreted languages like Python, Ruby, JavaScript, etc., isn't ideal using this implementation.
-The JIT-compiled methods in these languages are typically not in ELF file format, demanding additional steps for profiling.
-For instance, using perf-map-agent and enabling frame pointers for Java.
-
-Interpreted methods will display the interpreter function’s name rather than the actual function.
 
 ## Example
 
