@@ -1,18 +1,21 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/processing-logs/
 description: Learn how to process logs
-title: Processing Logs
-weight: 40
+menuTitle: Processing Logs
+title: Processing logs with Grafana Alloy
+weight: 300
 ---
 
-# Processing Logs
+# Processing logs with {{% param "FULL_PRODUCT_NAME" %}}
 
 This tutorial assumes you are familiar with setting up and connecting components.
 It covers using `loki.source.api` to receive logs over HTTP, processing and filtering them, and sending them to Loki.
 
-## Prerequisites
+## Before you begin
 
-Complete the [Logs and relabeling basics][logs] tutorial.
+To complete this tutorial:
+
+* You must complete the [Logs and relabeling basics][logs] tutorial.
 
 ## Receive logs over HTTP and Process
 
@@ -349,7 +352,7 @@ curl localhost:9999/loki/api/v1/raw -XPOST -H "Content-Type: application/json" -
 ```
 
 Now that you have sent some logs, its time to see how they look in Grafana.
-Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`.
+Navigate to [http://localhost:3000/explore](http://localhost:3000/explore) and switch the Datasource to `Loki`.
 Try querying for `{source="demo-api"}` and see if you can find the logs you sent.
 
 Try playing around with the values of `"level"`, `"message"`, `"timestamp"`, and `"is_secret"` and see how the logs change.
@@ -412,11 +415,10 @@ loki.write "local_loki" {
 {{< /collapse >}}
 
 [logs]: ../logs-and-relabeling-basics/
-[loki.source.api]: ../../reference/components/loki.source.api/
-[loki.process#stage.drop]: ../../reference/components/loki.process/#stagedrop-block
-[loki.process#stage.json]: ../../reference/components/loki.process/#stagejson-block
-[loki.process#stage.labels]: ../../reference/components/loki.process/#stagelabels-block
-[localhost:3000/explore]: http://localhost:3000/explore
-[discovery.docker]: ../../reference/components/discovery.docker/
-[loki.source.docker]: ../../reference/components/loki.source.docker/
-[discovery.relabel]: ../../reference/components/discovery.relabel/
+[loki.source.api]: ../../reference/components/loki/loki.source.api/
+[loki.process#stage.drop]: ../../reference/components/loki/loki.process/#stagedrop-block
+[loki.process#stage.json]: ../../reference/components/loki/loki.process/#stagejson-block
+[loki.process#stage.labels]: ../../reference/components/loki/loki.process/#stagelabels-block
+[discovery.docker]: ../../reference/components/discovery/discovery.docker/
+[loki.source.docker]: ../../reference/components/loki/loki.source.docker/
+[discovery.relabel]: ../../reference/components/discovery/discovery.relabel/
