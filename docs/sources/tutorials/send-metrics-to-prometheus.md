@@ -159,7 +159,7 @@ If you don’t use this argument, the [debugging UI][debug] won’t be available
 
 ## Inspect your configuration in the {{% param "PRODUCT_NAME" %}} UI
 
-Open <http://localhost:12345> and click the **Graph** tab at the top.
+Open [http://localhost:12345](http://localhost:12345) and click the **Graph** tab at the top.
 The graph should look similar to the following:
 
 {{< figure src="/media/docs/alloy/tutorial/Metrics-inspect-your-config.png" alt="Your configuration in the Alloy UI" >}}
@@ -170,7 +170,7 @@ You can see that the components are healthy, and you are ready to explore the me
 
 ## Log into Grafana and explore metrics in Prometheus
 
-Open <http://localhost:3000/explore> to access the **Explore** feature in Grafana.
+Open [http://localhost:3000/explore](http://localhost:3000/explore) to access the **Explore** feature in Grafana.
 
 Select Prometheus as the data source and click the **Metrics Browser** button to select the metric, labels, and values for your labels.
 

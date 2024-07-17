@@ -97,7 +97,7 @@ services:
       - "3000:3000"
 ```
 
-Run `docker compose up` to start your Docker container and open <http://localhost:3000> in your browser to view the Grafana UI.
+Run `docker compose up` to start your Docker container and open [http://localhost:3000](http://localhost:3000) in your browser to view the Grafana UI.
 
 {{< admonition type="note" >}}
 If you encounter the following error when you start your Docker container, `docker: 'compose' is not a docker command`, use the command `docker-compose up` to start your Docker container.
@@ -254,7 +254,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
 
 ## Inspect your configuration in the {{% param "PRODUCT_NAME" %}} UI
 
-Open <http://localhost:12345> and click the **Graph** tab at the top.
+Open [http://localhost:12345](http://localhost:12345) and click the **Graph** tab at the top.
 The graph should look similar to the following:
 
 {{< figure src="/media/docs/alloy/tutorial/Inspect-your-config-in-the-Alloy-UI-image.png" alt="Your configuration in the Alloy UI" >}}
@@ -265,7 +265,7 @@ You can see that the components are healthy, and you are ready to explore the lo
 
 ## Log in to Grafana and explore Loki logs
 
-Open <http://localhost:3000/explore> to access **Explore** feature in Grafana.
+Open [http://localhost:3000/explore](http://localhost:3000/explore) to access **Explore** feature in Grafana.
 
 Select Loki as the data source and click the **Label Browser** button to select a file that {{< param "PRODUCT_NAME" >}} has sent to Loki.
 
