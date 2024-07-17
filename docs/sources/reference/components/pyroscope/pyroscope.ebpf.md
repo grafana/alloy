@@ -19,7 +19,7 @@ You can specify multiple `pyroscope.ebpf` components by giving them different la
 
 ## Supported languages
 
-This eBPF profiler only collects CPU profiles. Generally, natively compiled languages like C/C++, Go, and Rust are supported. Refer to [Troubleshooting unknown symbols](#troubleshooting-unknown-symbols) for additional requirements.
+This eBPF profiler only collects CPU profiles. Generally, natively compiled languages like C/C++, Go, and Rust are supported. Refer to [Troubleshooting unknown symbols][troubleshooting] for additional requirements.
 
 Python is the only supported high-level language, as long as `python_enabled=true`. Other high-level languages like Java, Ruby, PHP, and JavaScript require additional work to show stack traces of methods in these languages correctly. Currently, their CPU usage will be reported belonging to the runtime's methods instead.
 
@@ -127,7 +127,7 @@ Symbols are extracted from various sources, including:
 - The `.symtab` and `.dynsym` sections in the debug ELF file.
 - The `.gopclntab` section in Go language ELF files.
 
-The search for debug files follows [gdb algorithm](https://sourceware.org/gdb/onlinedocs/gdb/Separate-Debug-Files.html).
+The search for debug files follows [gdb algorithm].
 For example, if the profiler wants to find the debug file for `/lib/x86_64-linux-gnu/libc.so.6` with a `.gnu_debuglink` set to `libc.so.6.debug` and a build ID `0123456789abcdef`.
 The following paths are examined:
 
@@ -277,6 +277,10 @@ pyroscope.ebpf "default" {
   targets      = discovery.relabel.local_containers.output
 }
 ```
+
+[troubleshooting]: #troubleshooting-unknown-symbols
+[gdb algorithm]: https://sourceware.org/gdb/onlinedocs/gdb/Separate-Debug-Files.html
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
