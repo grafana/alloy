@@ -18,8 +18,9 @@ The component exposes metrics that can be collected by a Prometheus scrape compo
 
 {{< admonition type="note" >}}
 To run this component, {{< param "PRODUCT_NAME" >}} requires administrative (`sudo`) privileges, or at least it needs to be granted the `CAP_SYS_ADMIN` and `CAP_SYS_PTRACE` capability.
-In Kubernetes environments, app armour must be disabled for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
+In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
+
 
 ## Usage
 
