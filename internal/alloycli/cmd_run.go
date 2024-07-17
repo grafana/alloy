@@ -252,6 +252,8 @@ func (fr *alloyRun) Run(configPath string) error {
 		ClusterName:         fr.clusterName,
 		//TODO(alloy/#1274): graduate to GA once we have more confidence in this feature
 		EnableStateUpdatesLimiter: fr.minStability.Permits(featuregate.StabilityPublicPreview),
+		//TODO(alloy/#1274): graduate to GA once we have more confidence in this feature
+		EnableDiscoveryV2: fr.minStability.Permits(featuregate.StabilityPublicPreview),
 	})
 	if err != nil {
 		return err
