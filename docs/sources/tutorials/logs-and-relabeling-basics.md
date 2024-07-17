@@ -262,7 +262,7 @@ echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/alloy-logs/log.l
 echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/log.log
 ```
 
-Navigate to <localhost:3000/explore> and switch the Datasource to `Loki`.
+Navigate to [http://localhost:3000/explore](http://localhost:3000/explore) and switch the Datasource to `Loki`.
 Try querying for `{level!=""}` to see the new labels in action.
 
 {{< figure src="/media/docs/alloy/screenshot-log-line-levels.png" alt="Grafana Explore view of example log lines, now with the extracted 'level' label" >}}
