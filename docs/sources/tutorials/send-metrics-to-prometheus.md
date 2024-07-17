@@ -70,7 +70,7 @@ prometheus.relabel "filter_metrics" {
 }
 ```
 
-The [`prometheus.relabel`][prometheus.relabel] component most commonly used to filter Prometheus metrics or standardize the label set passed to one or more downstream receivers.
+The [`prometheus.relabel`][prometheus.relabel] component is commonly used to filter Prometheus metrics or standardize the label set passed to one or more downstream receivers.
 You can use this component to rewrite the label set of each metric sent to the receiver.
 Within this component, you can define rule blocks to specify how you would like to process metrics before they're stored or forwarded.
 
