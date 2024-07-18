@@ -31,17 +31,17 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/types"
 	"github.com/prometheus/client_golang/prometheus"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/common/sigv4"
 	"github.com/prometheus/common/version"
+	"github.com/prometheus/prometheus/prompb"
+	"github.com/prometheus/prometheus/storage/remote/azuread"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/prometheus/prometheus/prompb"
-	"github.com/prometheus/prometheus/storage/remote/azuread"
 )
 
 const maxErrMsgLen = 1024
@@ -139,7 +139,7 @@ func NewReadClient(name string, conf *ClientConfig) (ReadClient, error) {
 }
 
 // NewWriteClient creates a new client for remote write.
-func NewWriteClient(name string, conf *ClientConfig) (WriteClient, error) {
+func NewWriteClient(name string, conf *ClientConfig) (types.WriteClient, error) {
 	httpClient, err := config_util.NewClientFromConfig(conf.HTTPClientConfig, "remote_storage_write_client")
 	if err != nil {
 		return nil, err

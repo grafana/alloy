@@ -80,8 +80,8 @@ func metricTypeToMetricTypeProto(t textparse.MetricType) prompb.MetricMetadata_M
 }
 
 var noReferenceReleases = promauto.NewCounter(prometheus.CounterOpts{
-	Namespace: namespace,
-	Subsystem: subsystem,
+	Namespace: Namespace,
+	Subsystem: Subsystem,
 	Name:      "string_interner_zero_reference_releases_total",
 	Help:      "The number of times release has been called for strings that are not interned.",
 })

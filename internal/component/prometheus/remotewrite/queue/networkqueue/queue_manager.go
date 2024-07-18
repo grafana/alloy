@@ -88,8 +88,8 @@ type queueManagerMetrics struct {
 
 // String constants for instrumentation.
 const (
-	remoteName = "remote_name"
-	endpoint   = "url"
+	RemoteName = "remote_name"
+	EndPoint   = "url"
 )
 
 func newQueueManagerMetrics(r prometheus.Registerer, rn, e string) *queueManagerMetrics {
@@ -97,125 +97,125 @@ func newQueueManagerMetrics(r prometheus.Registerer, rn, e string) *queueManager
 		reg: r,
 	}
 	constLabels := prometheus.Labels{
-		remoteName: rn,
-		endpoint:   e,
+		RemoteName: rn,
+		EndPoint:   e,
 	}
 
 	m.samplesTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "samples_total",
 		Help:        "Total number of samples sent to remote storage.",
 		ConstLabels: constLabels,
 	})
 	m.exemplarsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "exemplars_total",
 		Help:        "Total number of exemplars sent to remote storage.",
 		ConstLabels: constLabels,
 	})
 	m.histogramsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "histograms_total",
 		Help:        "Total number of histograms sent to remote storage.",
 		ConstLabels: constLabels,
 	})
 	m.metadataTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "metadata_total",
 		Help:        "Total number of metadata entries sent to remote storage.",
 		ConstLabels: constLabels,
 	})
 	m.failedSamplesTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "samples_failed_total",
 		Help:        "Total number of samples which failed on send to remote storage, non-recoverable errors.",
 		ConstLabels: constLabels,
 	})
 	m.failedExemplarsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "exemplars_failed_total",
 		Help:        "Total number of exemplars which failed on send to remote storage, non-recoverable errors.",
 		ConstLabels: constLabels,
 	})
 	m.failedHistogramsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "histograms_failed_total",
 		Help:        "Total number of histograms which failed on send to remote storage, non-recoverable errors.",
 		ConstLabels: constLabels,
 	})
 	m.failedMetadataTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "metadata_failed_total",
 		Help:        "Total number of metadata entries which failed on send to remote storage, non-recoverable errors.",
 		ConstLabels: constLabels,
 	})
 	m.retriedSamplesTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "samples_retried_total",
 		Help:        "Total number of samples which failed on send to remote storage but were retried because the send error was recoverable.",
 		ConstLabels: constLabels,
 	})
 	m.retriedExemplarsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "exemplars_retried_total",
 		Help:        "Total number of exemplars which failed on send to remote storage but were retried because the send error was recoverable.",
 		ConstLabels: constLabels,
 	})
 	m.retriedHistogramsTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "histograms_retried_total",
 		Help:        "Total number of histograms which failed on send to remote storage but were retried because the send error was recoverable.",
 		ConstLabels: constLabels,
 	})
 	m.retriedMetadataTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "metadata_retried_total",
 		Help:        "Total number of metadata entries which failed on send to remote storage but were retried because the send error was recoverable.",
 		ConstLabels: constLabels,
 	})
 	m.droppedSamplesTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "samples_dropped_total",
 		Help:        "Total number of samples which were dropped after being read from the WAL before being sent via remote write, either via relabelling, due to being too old or unintentionally because of an unknown reference ID.",
 		ConstLabels: constLabels,
 	}, []string{"reason"})
 	m.droppedExemplarsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "exemplars_dropped_total",
 		Help:        "Total number of exemplars which were dropped after being read from the WAL before being sent via remote write, either via relabelling, due to being too old or unintentionally because of an unknown reference ID.",
 		ConstLabels: constLabels,
 	}, []string{"reason"})
 	m.droppedHistogramsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "histograms_dropped_total",
 		Help:        "Total number of histograms which were dropped after being read from the WAL before being sent via remote write, either via relabelling, due to being too old or unintentionally because of an unknown reference ID.",
 		ConstLabels: constLabels,
 	}, []string{"reason"})
 	m.enqueueRetriesTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "enqueue_retries_total",
 		Help:        "Total number of times enqueue has failed because a shards queue was full.",
 		ConstLabels: constLabels,
 	})
 	m.sentBatchDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "sent_batch_duration_seconds",
 		Help:        "Duration of send calls to the remote storage.",
 		Buckets:     append(prometheus.DefBuckets, 25, 60, 120, 300),
@@ -223,86 +223,86 @@ func newQueueManagerMetrics(r prometheus.Registerer, rn, e string) *queueManager
 	})
 	m.highestSentTimestamp = &types.MaxTimestamp{
 		Gauge: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace:   namespace,
-			Subsystem:   subsystem,
+			Namespace:   types.Namespace,
+			Subsystem:   types.Subsystem,
 			Name:        "queue_highest_sent_timestamp_seconds",
 			Help:        "Timestamp from a WAL sample, the highest timestamp successfully sent by this queue, in seconds since epoch.",
 			ConstLabels: constLabels,
 		}),
 	}
 	m.pendingSamples = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "samples_pending",
 		Help:        "The number of samples pending in the queues shards to be sent to the remote storage.",
 		ConstLabels: constLabels,
 	})
 	m.pendingExemplars = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "exemplars_pending",
 		Help:        "The number of exemplars pending in the queues shards to be sent to the remote storage.",
 		ConstLabels: constLabels,
 	})
 	m.pendingHistograms = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "histograms_pending",
 		Help:        "The number of histograms pending in the queues shards to be sent to the remote storage.",
 		ConstLabels: constLabels,
 	})
 	m.shardCapacity = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "shard_capacity",
 		Help:        "The capacity of each shard of the queue used for parallel sending to the remote storage.",
 		ConstLabels: constLabels,
 	})
 	m.numShards = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "shards",
 		Help:        "The number of shards used for parallel sending to the remote storage.",
 		ConstLabels: constLabels,
 	})
 	m.maxNumShards = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "shards_max",
 		Help:        "The maximum number of shards that the queue is allowed to run.",
 		ConstLabels: constLabels,
 	})
 	m.minNumShards = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "shards_min",
 		Help:        "The minimum number of shards that the queue is allowed to run.",
 		ConstLabels: constLabels,
 	})
 	m.desiredNumShards = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "shards_desired",
 		Help:        "The number of shards that the queues shard calculation wants to run based on the rate of samples in vs. samples out.",
 		ConstLabels: constLabels,
 	})
 	m.sentBytesTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "bytes_total",
 		Help:        "The total number of bytes of data (not metadata) sent by the queue after compression. Note that when exemplars over remote write is enabled the exemplars included in a remote write request count towards this metric.",
 		ConstLabels: constLabels,
 	})
 	m.metadataBytesTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "metadata_bytes_total",
 		Help:        "The total number of bytes of metadata sent by the queue after compression.",
 		ConstLabels: constLabels,
 	})
 	m.maxSamplesPerSend = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
+		Namespace:   types.Namespace,
+		Subsystem:   types.Subsystem,
 		Name:        "max_samples_per_send",
 		Help:        "The maximum number of samples to be sent, in a single request, to the remote storage. Note that, when sending of exemplars over remote write is enabled, exemplars count towards this limt.",
 		ConstLabels: constLabels,
@@ -381,17 +381,6 @@ func (m *queueManagerMetrics) unregister() {
 	}
 }
 
-// WriteClient defines an interface for sending a batch of samples to an
-// external timeseries database.
-type WriteClient interface {
-	// Store stores the given samples in the remote storage.
-	Store(context.Context, []byte, int) error
-	// Name uniquely identifies the remote storage.
-	Name() string
-	// Endpoint is the remote read or write endpoint for the storage client.
-	Endpoint() string
-}
-
 // QueueManager manages a queue of samples to be sent to the Storage
 // indicated by the provided WriteClient. Implements writeTo interface
 // used by WAL Watcher.
@@ -407,7 +396,7 @@ type QueueManager struct {
 	sendNativeHistograms bool
 
 	clientMtx   sync.RWMutex
-	storeClient WriteClient
+	storeClient types.WriteClient
 
 	shards      *shards
 	numShards   int
@@ -433,7 +422,7 @@ func NewQueueManager(
 	samplesIn *ewmaRate,
 	cfg QueueOptions,
 	externalLabels labels.Labels,
-	client WriteClient,
+	client types.WriteClient,
 	flushDeadline time.Duration,
 	interner *pool,
 	highestRecvTimestamp *types.MaxTimestamp,
@@ -450,7 +439,7 @@ func NewQueueManager(
 		extLabelsSlice = append(extLabelsSlice, l)
 	})
 
-	logger = log.With(logger, remoteName, client.Name(), endpoint, client.Endpoint())
+	logger = log.With(logger, RemoteName, client.Name(), EndPoint, client.Endpoint())
 	t := &QueueManager{
 		logger:               logger,
 		flushDeadline:        flushDeadline,
@@ -712,13 +701,13 @@ func (t *QueueManager) Stop() {
 
 // SetClient updates the client used by a queue. Used when only client specific
 // fields are updated to avoid restarting the queue.
-func (t *QueueManager) SetClient(c WriteClient) {
+func (t *QueueManager) SetClient(c types.WriteClient) {
 	t.clientMtx.Lock()
 	t.storeClient = c
 	t.clientMtx.Unlock()
 }
 
-func (t *QueueManager) client() WriteClient {
+func (t *QueueManager) client() types.WriteClient {
 	t.clientMtx.RLock()
 	defer t.clientMtx.RUnlock()
 	return t.storeClient
@@ -1263,11 +1252,11 @@ func (s *shards) populateTimeSeries(batch []*types.TimeSeries, pendingData []pro
 		// retries endlessly, so once we reach max samples, if we can never send to the endpoint we'll
 		// stop reading from the queue. This makes it safe to reference pendingSamples by index.
 		pendingData[nPending].Labels = labelsToLabelsProto(d.seriesLabels, pendingData[nPending].Labels)
-		switch d.sType {
-		case tSample:
+		switch d.Type {
+		case types.Sample:
 			pendingData[nPending].Samples = append(pendingData[nPending].Samples, prompb.Sample{
-				Value:     d.value,
-				Timestamp: d.timestamp,
+				Value:     d.Value,
+				Timestamp: d.Timestamp,
 			})
 			nPendingSamples++
 		case tExemplar:
