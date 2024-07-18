@@ -28,7 +28,7 @@ We recommend you start looking towards horizontal scaling around the 1 million a
 
 ### Using Kubernetes StatefulSets
 
-Deploying {{< param "PRODUCT_NAME" >}} as a StatefulSet is the recommended option for metrics collection.
+Deploying {{< param "PRODUCT_NAME" >}} as a StatefulSet is the recommended option for Prometheus metrics collection.
 The persistent Pod identifiers make it possible to consistently match volumes with pods so that you can use them for the WAL directory.
 
 You can also use a Kubernetes Deployment in cases where persistent storage isn't required, such as a traces-only pipeline.
@@ -53,14 +53,14 @@ You can also use a Kubernetes Deployment in cases where persistent storage isn't
 
 ## As a host daemon
 
-Deploying one {{< param "PRODUCT_NAME" >}} instance per machine is required for collecting machine-level metrics and logs, such as node_exporter hardware and network metrics or journald system logs.
+Deploying one {{< param "PRODUCT_NAME" >}} instance per machine is required for collecting machine-level Prometheus metrics and logs, such as node_exporter hardware and network metrics or journald system logs.
 
 {{< figure src="/media/docs/alloy/host-diagram-alloy.png" alt="Alloy as a host daemon">}}
 
 Each {{< param "PRODUCT_NAME" >}} instance requires you to open an outgoing connection for each remote endpoint it’s shipping data to.
 This can lead to NAT port exhaustion on the egress infrastructure.
 Each egress IP can support up to (65535 - 1024 = 64511) outgoing connections on different ports.
-So, if all {{< param "PRODUCT_NAME" >}}s are shipping metrics and log data, an egress IP can support up to 32,255 collectors.
+So, if all {{< param "PRODUCT_NAME" >}}s are sending Prometheus metrics and log data, an egress IP can support up to 32,255 collectors.
 
 ### Using Kubernetes DaemonSets
 
@@ -80,7 +80,7 @@ The simplest use case of the host daemon topology is a Kubernetes DaemonSet, and
 
 ### Use for
 
-* Collecting machine-level metrics and logs (for example, node_exporter hardware metrics, Kubernetes Pod logs)
+* Collecting machine-level Prometheus metrics and logs (for example, node_exporter hardware metrics, Kubernetes Pod logs)
 
 ### Don’t use for
 
@@ -122,8 +122,7 @@ The Pod’s controller, network configuration, enabled capabilities, and availab
 
 [clustering]: ../../configure/clustering/
 
-
-## Processing different types of telemetry in different {{< param "PRODUCT_NAME" >}} instances
+## Process different types of telemetry in different {{< param "PRODUCT_NAME" >}} instances
 
 If the load on {{< param "PRODUCT_NAME" >}} is small, you can process all necessary telemetry signals in the same {{< param "PRODUCT_NAME" >}} process.
 For example, a single {{< param "PRODUCT_NAME" >}} deployment can process all of the incoming metrics, logs, traces, and profiles.
