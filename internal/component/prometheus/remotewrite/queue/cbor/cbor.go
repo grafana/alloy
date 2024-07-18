@@ -1,4 +1,4 @@
-package queue
+package cbor
 
 import (
 	"bytes"
@@ -18,7 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/types"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/prompb"
 )
 
 // cborwriter is the primary class for serializing and deserializing metrics.
@@ -399,8 +398,6 @@ func makeTS(tsVal int64, maxAgeSeconds int64, pm *cborsmetric, metricType types.
 	}
 	// TODO can we instead directly use prompb.TimeSeries instead of this intermediate?
 	ts := types.TimeSeriesPool.Get().(*types.TimeSeries)
-	pts := prompb.TimeSeries{}
-	pts.Histograms[0]
 	ts.Type = metricType
 	ts.Timestamp = tsVal
 	ts.Value = pm.Value
