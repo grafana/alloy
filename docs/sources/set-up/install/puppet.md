@@ -40,7 +40,7 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
 1. Create a new [Puppet][] manifest with the following class to add the Grafana package repositories, install the `alloy` package, and run the service:
 
     ```ruby
-    class grafana_agent::grafana_agent_flow () {
+    class grafana_alloy::grafana_alloy () {
       case $::os['family'] {
         'debian': {
           apt::source { 'grafana':
