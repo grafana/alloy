@@ -66,6 +66,7 @@ Name                     | Type                | Description                    
 `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |               | no
 `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`       | no
 `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |               | no
+`external_labels`        | `map(string)`       | Labels to add to each rule.                                                                      | `{}` | no
 
  At most, one of the following can be provided:
  - [`bearer_token` argument](#arguments).
@@ -96,6 +97,8 @@ If `prometheus_http_prefix` is set to `/mimir`, `mimir.rules.kubernetes` contact
 This is useful if you configure Mimir to use a different [prefix][gem-path-prefix] for its Prometheus endpoints than the default one.
 
 `prometheus_http_prefix` is ignored if `use_legacy_routes` is set to `true`.
+
+`external_labels` will override label values if labels with the same names already exist inside the rule.
 
 ## Blocks
 
@@ -234,8 +237,8 @@ mimir.rules.kubernetes "local" {
 }
 ```
 
-This example creates a `mimir.rules.kubernetes` component that loads discovered
-rules to Grafana Cloud.
+This example creates a `mimir.rules.kubernetes` component that loads discovered rules to Grafana Cloud. 
+It will also add a `"label1"` label to each rule. If that label already exists, its value will be overridden with `"value1"`.
 
 ```alloy
 mimir.rules.kubernetes "default" {
@@ -246,6 +249,7 @@ mimir.rules.kubernetes "default" {
         // Alternatively, load the password from a file:
         // password_file = "GRAFANA_CLOUD_API_KEY_PATH"
     }
+    external_labels = {"label1" = "value1"}
 }
 ```
 
