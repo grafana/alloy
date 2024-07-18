@@ -23,7 +23,7 @@ This topology allows you to use a smaller number of collectors to coordinate ser
 {{< figure src="/media/docs/alloy/collection-diagram-alloy.png" alt="Centralized collection with Alloy">}}
 
 Using this topology requires deploying {{< param "PRODUCT_NAME" >}} on separate infrastructure, and making sure that they can discover and reach these applications over the network.
-The main predictor for the size of an {{< param "PRODUCT_NAME" >}} deployment is the number of active metrics series it's scraping. A rule of thumb is approximately 10 KB of memory for each series.
+The main predictor for the size of an {{< param "PRODUCT_NAME" >}} deployment is the number of active Prometheus metrics series it's scraping. A rule of thumb is approximately 10 KB of memory for each series.
 We recommend you start looking towards horizontal scaling around the 1 million active series mark.
 
 ### Using Kubernetes StatefulSets
