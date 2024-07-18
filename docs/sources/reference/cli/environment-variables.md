@@ -50,9 +50,7 @@ For example, if you want to keep memory usage below `10GiB`, use `GOMEMLIMIT=8Gi
 
 #### Automatically set GOMEMLIMIT
 
-The `GOMEMLIMIT` environment variable is set automatically {{< param "PRODUCT_NAME" >}} can determine the appropriate value.
-If you set the `GOMEMLIMIT` environment variable before you run  {{< param "PRODUCT_NAME" >}} then that setting will be used.
-The variable value is set to 90% of the `cgroup` value set.
+The `GOMEMLIMIT` environment variable is either automatically set to 90% of an available `cgroup` value, or you can explicitly set the  `GOMEMLIMIT` environment variable before you run  {{< param "PRODUCT_NAME" >}}.
 No changes will occur if the limit cannot be determined and you did not explicitly define a  `GOMEMLIMIT` value.
 
 [runtime]: https://pkg.go.dev/runtime
