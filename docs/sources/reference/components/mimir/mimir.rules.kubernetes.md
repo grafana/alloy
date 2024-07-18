@@ -238,7 +238,7 @@ mimir.rules.kubernetes "local" {
 ```
 
 This example creates a `mimir.rules.kubernetes` component that loads discovered rules to Grafana Cloud. 
-It will also add a `"label1"` label to each rule. If that label already exists, its value will be overridden with `"value1"`.
+It also adds a `"label1"` label to each rule. If that label already exists, it is overwritten with `"value1"`.
 
 ```alloy
 mimir.rules.kubernetes "default" {
