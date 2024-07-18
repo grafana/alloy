@@ -48,7 +48,7 @@ Don't treat the `GOMEMLIMIT` environment variable as a hard memory limit.
 A rough number is to set `GOMEMLIMIT` to is 90% of the maximum memory required.
 For example, if you want to keep memory usage below `10GiB`, use `GOMEMLIMIT=8GiB`.
 
-#### Automatic setting of GOMEMLIMIT
+#### Automatically set GOMEMLIMIT
 
 The `GOMEMLIMIT` environment variable is set automatically {{< param "PRODUCT_NAME" >}} can determine the appropriate value.
 If you set the `GOMEMLIMIT` environment variable before you run  {{< param "PRODUCT_NAME" >}} then that setting will be used.
