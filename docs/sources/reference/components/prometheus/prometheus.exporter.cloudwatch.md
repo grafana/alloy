@@ -279,7 +279,7 @@ on how to explore metrics, to easily pick the ones you need.
 controls how far back in time CloudWatch metrics are considered during each {{< param "PRODUCT_NAME" >}} scrape.
 If both settings are configured, the time parameters when calling CloudWatch APIs works as follows:
 
-{{< figure src="/media/docs/alloy/cloudwatch-period-and-length-time-model-2.png" >}}
+{{< figure src="/media/docs/alloy/cloudwatch-period-and-length-time-model-2.png" alt="An example of a Cloudwatch period and length time model" >}}
 
 As noted above, if across multiple metrics under the same static or discovery job, there's different `period`
 and/or `length`
@@ -293,7 +293,7 @@ If all metrics within a job (discovery or static) have the same `period` value c
 requested
 for metrics from the scrape time, to `period`s seconds in the past. The values of these are exported to Prometheus.
 
-{{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" >}}
+{{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" alt="An example of a Cloudwatch single period and time model" >}}
 
 On the other hand, if metrics with different `period`s are configured under an individual job, this works differently.
 First, two variables are calculated aggregating all periods: `length`, taking the maximum value of all periods, and
@@ -301,7 +301,7 @@ the new `period` value, taking the minimum of all periods. Then, CloudWatch APIs
 `now - length` to `now`, aggregating each in samples for `period` seconds. For each metric, the most recent sample
 is exported to CloudWatch.
 
-{{< figure src="/media/docs/alloy/cloudwatch-multiple-period-time-model.png" >}}
+{{< figure src="/media/docs/alloy/cloudwatch-multiple-period-time-model.png" alt="An example of a Cloudwatch multiple period and time model" >}}
 
 ### role block
 
