@@ -16,6 +16,7 @@ type Arguments struct {
 	HTTPClientConfig     config.HTTPClientConfig `alloy:",squash"`
 	SyncInterval         time.Duration           `alloy:"sync_interval,attr,optional"`
 	MimirNameSpacePrefix string                  `alloy:"mimir_namespace_prefix,attr,optional"`
+	ExternalLabels       map[string]string       `alloy:"external_labels,attr,optional"`
 
 	RuleSelector          kubernetes.LabelSelector `alloy:"rule_selector,block,optional"`
 	RuleNamespaceSelector kubernetes.LabelSelector `alloy:"rule_namespace_selector,block,optional"`

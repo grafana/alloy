@@ -41,6 +41,8 @@ Main (unreleased)
 
 - Allow setting the CPU profiling event for Java Async Profiler in `pyroscope.java` component (@slbucur)
 
+- `mimir.rules.kubernetes` is now able to add extra labels to the Prometheus rules. (@psychomantys)
+
 ### Bugfixes
 
 - Fixed a clustering mode issue where a fatal startup failure of the clustering service
