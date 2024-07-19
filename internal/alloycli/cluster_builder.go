@@ -170,7 +170,8 @@ func buildJoinAddresses(providedAddr []string, log log.Logger) ([]string, error)
 		// If it's a host:port, use it as is.
 		_, _, err := net.SplitHostPort(addr)
 		if err != nil {
-			deferredErr = errors.Join(deferredErr, err)
+			wrappedErr := fmt.Errorf("failed to extract host and port: %w", err)
+			deferredErr = errors.Join(deferredErr, wrappedErr)
 		} else {
 			level.Debug(log).Log("msg", "found a host:port cluster join address", "addr", addr)
 			result = append(result, addr)
@@ -189,7 +190,8 @@ func buildJoinAddresses(providedAddr []string, log log.Logger) ([]string, error)
 		_, srvs, err := net.LookupSRV("", "", addr)
 		if err != nil {
 			level.Warn(log).Log("msg", "failed to resolve SRV records", "addr", addr, "err", err)
-			deferredErr = errors.Join(deferredErr, err)
+			wrappedErr := fmt.Errorf("failed to resolve SRV records: %w", err)
+			deferredErr = errors.Join(deferredErr, wrappedErr)
 		} else {
 			level.Debug(log).Log("msg", "found cluster join addresses via SRV records", "addr", addr, "count", len(srvs))
 			for _, srv := range srvs {
