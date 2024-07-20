@@ -26,8 +26,16 @@ func (args *DatadogAPIArguments) Convert() *datadogexporter.APIConfig {
 	}
 }
 
+func (args *DatadogAPIArguments) SetToDefault() {
+	*args = DatadogAPIArguments{
+		Site: "datadoghq.com",
+	}
+}
+
 // HostMetadataConfig holds information used for populating the infrastructure list,
 // the host map and providing host tags functionality within the Datadog app.
+// see https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.102.0/exporter/datadogexporter/config.go#L391
+// for more
 type DatadogHostMetadataArguments struct {
 	Enabled        bool                           `alloy:"enabled,attr,optional"`
 	HostnameSource datadogexporter.HostnameSource `alloy:"hostname_source,attr,optional"`
@@ -44,6 +52,13 @@ func (args *DatadogHostMetadataArguments) Convert() *datadogexporter.HostMetadat
 		Enabled:        args.Enabled,
 		HostnameSource: args.HostnameSource,
 		Tags:           args.Tags,
+	}
+}
+
+func (args *DatadogHostMetadataArguments) SetToDefault() {
+	*args = DatadogHostMetadataArguments{
+		Enabled:        true,
+		HostnameSource: datadogexporter.HostnameSourceConfigOrSystem,
 	}
 }
 
@@ -77,6 +92,13 @@ func (args *DatadogTracesArguments) Convert() *datadogexporter.TracesConfig {
 	}
 }
 
+func (args *DatadogTracesArguments) SetToDefault() {
+	*args = DatadogTracesArguments{
+		Endpoint:        "https://trace.agent.datadoghq.com",
+		IgnoreResources: []string{},
+	}
+}
+
 // MetricsExporterConfig holds the configuration settings for the Datadog metrics exporter
 type DatadogMetricsArguments struct {
 	DeltaTTL                           int64                     `alloy:"delta_ttl,attr,optional"`
@@ -103,6 +125,26 @@ func (args *DatadogMetricsArguments) Convert() *datadogexporter.MetricsConfig {
 		HistConfig:    *args.HistConfig.Convert(),
 		SumConfig:     *args.SumConfig.Convert(),
 		SummaryConfig: *args.SummaryConfig.Convert(),
+	}
+}
+
+func (args *DatadogMetricsArguments) SetToDefault() {
+	*args = DatadogMetricsArguments{
+		Endpoint:                           "https://api.datadoghq.com",
+		DeltaTTL:                           3600,
+		ResourceAttributesAsTags:           false,
+		InstrumentationScopeMetadataAsTags: false,
+		HistConfig: DatadogHistogramArguments{
+			Mode:             "distributions",
+			SendAggregations: false,
+		},
+		SumConfig: DatadogSumArguments{
+			CumulativeMonotonicMode:        datadogexporter.CumulativeMonotonicSumModeToDelta,
+			InitialCumulativeMonotonicMode: datadogexporter.InitialValueModeAuto,
+		},
+		SummaryConfig: DatadogSummaryArguments{
+			Mode: datadogexporter.SummaryModeGauges,
+		},
 	}
 }
 

@@ -57,6 +57,13 @@ func (args *Arguments) SetToDefault() {
 	args.Queue.SetToDefault()
 	args.Retry.SetToDefault()
 	args.Client.SetToDefault()
+
+	args.APISettings.SetToDefault()
+	args.Traces.SetToDefault()
+	args.Metrics.SetToDefault()
+	args.HostMetadata.SetToDefault()
+
+	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements exporter.Arguments.

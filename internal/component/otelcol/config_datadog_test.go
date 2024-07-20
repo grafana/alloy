@@ -9,6 +9,78 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestUnmarshalDatadogHostMetadataArguments(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		cfg       string
+		expectErr bool
+	}{
+		{
+			name: "valid host metadata arguments config",
+			cfg: `
+				enabled = true
+				hostname_source = "first_resource"
+				tags = ["abc", "def", "ghi"]
+			`,
+		},
+		{
+			name: "invalid api config",
+			cfg: `
+				tags = "abc"
+				`,
+			expectErr: true,
+		},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var sl otelcol.DatadogHostMetadataArguments
+			err := syntax.Unmarshal([]byte(tt.cfg), &sl)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestUnmarshalDatadogAPIConfig(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		cfg       string
+		expectErr bool
+	}{
+		{
+			name: "valid api config",
+			cfg: `
+				api_key = "abc"
+				fail_on_invalid_key = true
+				site = "https://example.com"
+			`,
+		},
+		{
+			name: "invalid api config",
+			cfg: `
+				fail_on_invalid_key = true
+				site = "https://example.com"
+				`,
+			expectErr: true,
+		},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var sl otelcol.DatadogAPIArguments
+			err := syntax.Unmarshal([]byte(tt.cfg), &sl)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
 func TestUnmarshalDatadogTraceConfig(t *testing.T) {
 	for _, tt := range []struct {
 		name      string
