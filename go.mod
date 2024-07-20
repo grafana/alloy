@@ -259,10 +259,11 @@ require (
 
 require (
 	github.com/Shopify/sarama v1.38.1
+	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3
 	github.com/fxamacker/cbor/v2 v2.6.0
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
 	github.com/parquet-go/parquet-go v0.20.1
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0
+	golang.design/x/chann v0.1.2
 )
 
 require (
@@ -381,7 +382,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
 	github.com/eapache/go-resiliency v1.6.0 // indirect
-	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/efficientgo/tools/core v0.0.0-20220817170617-6c25e3b627dd // indirect
@@ -668,6 +668,7 @@ require (
 	go.opentelemetry.io/collector/confmap/provider/httpsprovider v0.96.0 // indirect
 	go.opentelemetry.io/contrib/config v0.4.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.47.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 // indirect
 	go.opentelemetry.io/contrib/propagators/b3 v1.24.0 // indirect
 	go.opentelemetry.io/otel/bridge/opencensus v1.24.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.24.0 // indirect

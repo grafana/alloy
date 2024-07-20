@@ -65,16 +65,10 @@ func newCBORWrite(fq filequeue.Queue, checkPointSize int64, flushTime time.Durat
 		metricGauge: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "alloy_queue_samples_to_wal_total",
 			Help: "Number of samples written to the wal directory",
-			ConstLabels: map[string]string{
-				"name": fq.Name(),
-			},
 		}),
 		bytesWrittenGauge: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "alloy_queue_bytes_written_total",
 			Help: "Number of bytes written to the wal directory",
-			ConstLabels: map[string]string{
-				"name": fq.Name(),
-			},
 		}),
 		stop: atomic.NewBool(false),
 		em:   em,

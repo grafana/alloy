@@ -3,16 +3,22 @@ package networkqueue
 import (
 	"context"
 	"net/http"
+	"sync"
 	"time"
+
+	"github.com/go-kit/log"
+	"golang.design/x/chann"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/types"
-	"github.com/prometheus/prometheus/prompb"
 )
 
 type simple struct {
-	connectionCount int
+	mut             sync.Mutex
+	connectionCount uint64
 	loops           []*loop
+	metadata        *loop
+	logger          log.Logger
 }
 
 var _ types.WriteClient = (*simple)(nil)
@@ -29,23 +35,25 @@ type ConnectionConfig struct {
 	FlushDuration           time.Duration
 }
 
-func New(ctx context.Context, cc ConnectionConfig, connectionCount int) (*simple, error) {
+func New(ctx context.Context, cc ConnectionConfig, connectionCount uint64, logger log.Logger) (types.WriteClient, error) {
 	s := &simple{
 		connectionCount: connectionCount,
 		loops:           make([]*loop, 0),
+		logger:          logger,
 	}
 
 	// start kicks off a number of concurrent connections.
-	for i := 0; i < s.connectionCount; i++ {
+	var i uint64
+	for ; i < s.connectionCount; i++ {
 		l := &loop{
-			queue:      make(chan []byte),
 			batchCount: cc.BatchCount,
 			flushTimer: cc.FlushDuration,
-			series:     make([]prompb.TimeSeries, 0),
 			client:     &http.Client{},
 			cfg:        cc,
 			pbuf:       proto.NewBuffer(nil),
 			buf:        make([]byte, 0),
+			log:        logger,
+			ch:         chann.New[[]byte](chann.Cap(cc.BatchCount * 2)),
 		}
 		s.loops = append(s.loops, l)
 		go l.runLoop(ctx)
@@ -53,11 +61,12 @@ func New(ctx context.Context, cc ConnectionConfig, connectionCount int) (*simple
 	return s, nil
 }
 
-func (s *simple) Queue(hash int64, buf []byte) bool {
-	queueNum := hash % int64(s.connectionCount)
-	if s.loops[queueNum].isFull() {
-		return false
-	}
-	s.loops[queueNum].queue <- buf
-	return true
+func (s *simple) Queue(ctx context.Context, hash uint64, buf []byte) bool {
+	queueNum := hash % s.connectionCount
+
+	return s.loops[queueNum].Push(ctx, buf)
+}
+
+func (s *simple) QueueMetadata(ctx context.Context, buf []byte) bool {
+	return s.metadata.Push(ctx, buf)
 }

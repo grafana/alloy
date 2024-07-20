@@ -1,44 +1,51 @@
 package queue
 
 import (
-	"encoding/base64"
-	"fmt"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
-	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/networkqueue"
-
 	"github.com/prometheus/prometheus/storage"
-
-	types "github.com/grafana/alloy/internal/component/common/config"
-)
-
-// Defaults for config blocks.
-var (
-	DefaultMetadataOptions = MetadataOptions{
-		Send:              true,
-		SendInterval:      1 * time.Minute,
-		MaxSamplesPerSend: 2000,
-	}
 )
 
 func defaultArgs() Arguments {
 	return Arguments{
-		TTL:       2 * time.Hour,
-		Evict:     1 * time.Hour,
-		BatchSize: 32 * 1024 * 1024,
-		FlushTime: 30 * time.Second,
+		TTL:            2 * time.Hour,
+		Evict:          1 * time.Hour,
+		BatchSizeBytes: 32 * 1024 * 1024,
+		FlushTime:      5 * time.Second,
+		Connection: ConnectionConfig{
+			Timeout:                 15 * time.Second,
+			RetryBackoff:            1 * time.Second,
+			MaxRetryBackoffAttempts: 0,
+			BatchCount:              1_000,
+			FlushDuration:           1 * time.Second,
+			QueueCount:              4,
+		},
 	}
 }
 
 type Arguments struct {
-	TTL            time.Duration          `alloy:"ttl,attr,optional"`
-	Evict          time.Duration          `alloy:"evict_interval,attr,optional"`
-	BatchSize      int64                  `alloy:"batch_size,attr,optional"`
-	Endpoints      []EndpointOptions      `alloy:"endpoint,block,optional"`
-	WALOptions     remotewrite.WALOptions `alloy:"wal,block,optional"`
-	ExternalLabels map[string]string      `alloy:"external_labels,attr,optional"`
-	FlushTime      time.Duration          `alloy:"flush_time,attr,optional"`
+	TTL            time.Duration     `alloy:"ttl,attr,optional"`
+	Evict          time.Duration     `alloy:"evict_interval,attr,optional"`
+	BatchSizeBytes int               `alloy:"batch_size_bytes,attr,optional"`
+	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
+	FlushTime      time.Duration     `alloy:"flush_time,attr,optional"`
+	Connection     ConnectionConfig  `alloy:"endpoint,block"`
+}
+
+type ConnectionConfig struct {
+	URL                     string        `alloy:"url,attr"`
+	BasicAuth               BasicAuth     `alloy:"basic_auth,block,optional"`
+	Timeout                 time.Duration `alloy:"write_timeout,attr,optional"`
+	RetryBackoff            time.Duration `alloy:"retry_backoff,attr,optional"`
+	MaxRetryBackoffAttempts time.Duration `alloy:"max_retry_backoff,attr,optional"`
+	BatchCount              int           `alloy:"batch_count,attr,optional"`
+	FlushDuration           time.Duration `alloy:"flush_duration,attr,optional"`
+	QueueCount              uint          `alloy:"queue_count,attr,optional"`
+}
+
+type BasicAuth struct {
+	Username string `alloy:"username,attr,optional"`
+	Password string `alloy:"password,attr,optional"`
 }
 
 type Exports struct {
@@ -51,71 +58,5 @@ func (rc *Arguments) SetToDefault() {
 }
 
 func (r *Arguments) Validate() error {
-	names := make(map[string]struct{})
-	for _, e := range r.Endpoints {
-		name := e.UniqueName()
-		_, found := names[name]
-		if found {
-			return fmt.Errorf("non-unique name found %s", name)
-		}
-		names[name] = struct{}{}
-	}
 	return nil
-}
-
-// EndpointOptions describes an individual location for where metrics in the WAL
-// should be delivered to using the remote_write protocol.
-type EndpointOptions struct {
-	Name                 string                    `alloy:"name,attr,optional"`
-	URL                  string                    `alloy:"url,attr"`
-	RemoteTimeout        time.Duration             `alloy:"remote_timeout,attr,optional"`
-	Headers              map[string]string         `alloy:"headers,attr,optional"`
-	SendExemplars        bool                      `alloy:"send_exemplars,attr,optional"`
-	SendNativeHistograms bool                      `alloy:"send_native_histograms,attr,optional"`
-	HTTPClientConfig     *types.HTTPClientConfig   `alloy:",squash"`
-	QueueOptions         networkqueue.QueueOptions `alloy:"queue_config,block,optional"`
-	MetadataOptions      MetadataOptions           `alloy:"metadata_config,block,optional"`
-}
-
-// SetToDefault implements syntax.Defaulter.
-func (r *EndpointOptions) SetToDefault() {
-	*r = EndpointOptions{
-		RemoteTimeout:    30 * time.Second,
-		SendExemplars:    true,
-		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
-		QueueOptions:     networkqueue.DefaultQueueOptions,
-		MetadataOptions:  DefaultMetadataOptions,
-	}
-}
-
-func (r *EndpointOptions) Validate() error {
-	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
-	if r.HTTPClientConfig != nil {
-		return r.HTTPClientConfig.Validate()
-	}
-	return nil
-}
-
-func (r *EndpointOptions) UniqueName() string {
-	if r.Name != "" {
-		return r.Name
-	}
-	return base64.RawURLEncoding.EncodeToString([]byte(r.URL))
-}
-
-// MetadataOptions configures how metadata gets sent over the remote_write
-// protocol.
-type MetadataOptions struct {
-	Send              bool          `alloy:"send,attr,optional"`
-	SendInterval      time.Duration `alloy:"send_interval,attr,optional"`
-	MaxSamplesPerSend int           `alloy:"max_samples_per_send,attr,optional"`
-}
-
-// SetToDefault set to defaults.
-func (o *MetadataOptions) SetToDefault() {
-	*o = DefaultMetadataOptions
-}
-
-type TTLError struct {
-	error
 }

@@ -1,6 +1,8 @@
 package filequeue
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,16 +10,21 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"golang.design/x/chann"
 )
 
 type filequeue struct {
 	mut       sync.RWMutex
 	directory string
-	maxindex  int
-	name      string
+	maxIndex  int
+	logger    log.Logger
+	ch        *chann.Chann[string]
 }
 
-func newFileQueue(directory string, name string) (*filequeue, error) {
+func NewQueue(directory string, logger log.Logger) (Queue, error) {
 	err := os.MkdirAll(directory, 0777)
 	if err != nil {
 		return nil, err
@@ -25,22 +32,29 @@ func newFileQueue(directory string, name string) (*filequeue, error) {
 
 	matches, _ := filepath.Glob(filepath.Join(directory, "*.committed"))
 	ids := make([]int, len(matches))
+	names := make([]string, 0)
+
 	for i, x := range matches {
 		id, err := strconv.Atoi(strings.ReplaceAll(filepath.Base(x), ".committed", ""))
 		if err != nil {
 			continue
 		}
+		names = append(names, x)
 		ids[i] = id
 	}
 	sort.Ints(ids)
-	currentindex := 0
+	var currentIndex int
 	if len(ids) > 0 {
-		currentindex = ids[len(ids)-1]
+		currentIndex = ids[len(ids)-1]
 	}
 	q := &filequeue{
 		directory: directory,
-		maxindex:  currentindex,
-		name:      name,
+		maxIndex:  currentIndex,
+		logger:    logger,
+		ch:        chann.New[string](),
+	}
+	for _, id := range ids {
+		q.ch.In() <- filepath.Join(directory, fmt.Sprintf("%d.committed", id))
 	}
 	return q, nil
 }
@@ -49,55 +63,32 @@ func newFileQueue(directory string, name string) (*filequeue, error) {
 func (q *filequeue) Add(data []byte) (string, error) {
 	q.mut.Lock()
 	defer q.mut.Unlock()
-
-	q.maxindex++
-	name := filepath.Join(q.directory, fmt.Sprintf("%d.committed", q.maxindex))
+	q.maxIndex++
+	name := filepath.Join(q.directory, fmt.Sprintf("%d.committed", q.maxIndex))
+	level.Debug(q.logger).Log("msg", "adding bytes", "len", len(data), "name", name)
 	err := q.writeFile(name, data)
+	// In is an unbounded queue.
+	q.ch.In() <- name
 	return name, err
 }
 
-// Name is a unique name for this file queue.
-func (q *filequeue) Name() string {
-	q.mut.Lock()
-	defer q.mut.Unlock()
+func (q *filequeue) Next(ctx context.Context, enc []byte) ([]byte, string, error) {
+	select {
+	case name := <-q.ch.Out():
+		buf, err := q.readFile(name, enc)
+		level.Debug(q.logger).Log("msg", "reading bytes", "len", len(buf), "name", name)
 
-	return q.name
-}
-
-// Next retrieves the next file. If there are no files it will return false.
-func (q *filequeue) Next(enc []byte) ([]byte, string, bool, bool) {
-	q.mut.Lock()
-	defer q.mut.Unlock()
-
-	matches, err := filepath.Glob(filepath.Join(q.directory, "*.committed"))
-	if err != nil {
-		return nil, "", false, false
-	}
-	if len(matches) == 0 {
-		return nil, "", false, false
-	}
-	ids := make([]int, len(matches))
-	for i, x := range matches {
-		id, err := strconv.Atoi(strings.ReplaceAll(filepath.Base(x), ".committed", ""))
 		if err != nil {
-			continue
+			return nil, "", err
 		}
-		ids[i] = id
+		return buf, name, nil
+	case <-ctx.Done():
+		q.ch.Close()
+		return nil, "", errors.New("context done")
 	}
-
-	sort.Ints(ids)
-	name := filepath.Join(q.directory, fmt.Sprintf("%d.committed", ids[0]))
-	enc, err = q.readFile(name, enc)
-	if err != nil {
-		return nil, "", false, false
-	}
-	return enc, name, true, len(ids) > 1
 }
 
 func (q *filequeue) Delete(name string) {
-	q.mut.Lock()
-	defer q.mut.Unlock()
-
 	_ = os.Remove(name)
 }
 
