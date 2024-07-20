@@ -30,6 +30,7 @@ type loop struct {
 	log        log.Logger
 	lastSend   time.Time
 	ch         *chann.Chann[[]byte]
+	seriesBuf  []prompb.TimeSeries
 }
 
 func (l *loop) runLoop(ctx context.Context) {
@@ -103,17 +104,17 @@ func (l *loop) resetSeries() {
 func (l *loop) send(series [][]byte, retryCount int) sendResult {
 	result := sendResult{}
 	l.pbuf.Reset()
-	tmp := make([]prompb.TimeSeries, len(series))
-	for i, tsBuf := range series {
+	l.seriesBuf = l.seriesBuf[:0]
+	for _, tsBuf := range series {
 		ts := prompb.TimeSeries{}
-		err := ts.Unmarshal(tsBuf)
+		err := proto.Unmarshal(tsBuf, &ts)
 		if err != nil {
 			continue
 		}
-		tmp[i] = ts
+		l.seriesBuf = append(l.seriesBuf, ts)
 	}
 	req := &prompb.WriteRequest{
-		Timeseries: tmp,
+		Timeseries: l.seriesBuf,
 	}
 	err := l.pbuf.Marshal(req)
 	if err != nil {

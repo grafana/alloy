@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/prometheus/prompb"
 	"golang.design/x/chann"
 
 	"github.com/gogo/protobuf/proto"
@@ -54,6 +55,7 @@ func New(ctx context.Context, cc ConnectionConfig, connectionCount uint64, logge
 			buf:        make([]byte, 0),
 			log:        logger,
 			ch:         chann.New[[]byte](chann.Cap(cc.BatchCount * 2)),
+			seriesBuf:  make([]prompb.TimeSeries, 0),
 		}
 		s.loops = append(s.loops, l)
 		go l.runLoop(ctx)
