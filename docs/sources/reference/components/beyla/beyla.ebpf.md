@@ -18,8 +18,9 @@ The component exposes metrics that can be collected by a Prometheus scrape compo
 
 {{< admonition type="note" >}}
 To run this component, {{< param "PRODUCT_NAME" >}} requires administrative (`sudo`) privileges, or at least it needs to be granted the `CAP_SYS_ADMIN` and `CAP_SYS_PTRACE` capability.
-In Kubernetes environments, app armour must be disabled for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
+In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
+
 
 ## Usage
 
@@ -51,11 +52,10 @@ Hierarchy               | Block          | Description                          
 ------------------------|----------------|----------------------------------------------------------------------------------------------------|---------
 routes                  | [routes][]     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
 attributes              | [attributes][] | Configures the Beyla attributes for the component.                                                 | no
-attributes > kubernetes | [kubernetes][] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
+attributes > kubernetes | [kubernetes attributes][] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
 discovery               | [discovery][]  | Configures the discovery for instrumentable processes matching a given criteria.                   | no
 discovery > services    | [services][]   | Configures the discovery for the component.                                                        | no
 discovery > services > kubernetes    | [kubernetes services][]   | Configures the discovery for the component.                                | no
-
 output                  | [output][]     | Configures where to send received telemetry data.                                                  | yes
 
 The `>` symbol indicates deeper levels of nesting.
@@ -260,7 +260,8 @@ Replace the following:
 [eBPF]: https://ebpf.io/
 [routes]: #routes-block
 [attributes]: #attributes-block
-[kubernetes]: #kubernetes-block
+[kubernetes attributes]: #kubernetes-attributes-block
+[kubernetes services]: #kubernetes-services-block
 [discovery]: #discovery-block
 [services]: #services-block
 [output]: #output-block

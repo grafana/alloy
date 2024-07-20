@@ -42,7 +42,7 @@ In this task, you will use the [prometheus.exporter.self][] and [prometheus.scra
 1. Add the following `prometheus.scrape` component to your configuration file.
    ```alloy
    prometheus.scrape "<SCRAPE_LABEL>" {
-     targets    = prometheus.exporter.<SELF_LABEL>.default.targets
+     targets    = prometheus.exporter.self.<SELF_LABEL>.targets
      forward_to = [<METRICS_RECEIVER_LIST>]
    }
    ```
@@ -150,8 +150,8 @@ otelcol.exporter.otlp "default" {
 }
 ```
 
-[prometheus.exporter.self]: ../../reference/components/prometheus.exporter.self/
-[prometheus.scrape]: ../../reference/components/prometheus.scrape/
+[prometheus.exporter.self]: ../../reference/components/prometheus/prometheus.exporter.self/
+[prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/
 [logging]: ../../reference/config-blocks/logging/
 [tracing]: ../../reference/config-blocks/tracing/
 [Components]: ../../get-started/components/

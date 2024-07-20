@@ -213,6 +213,7 @@ func TestComponents_Using_Services(t *testing.T) {
 
 		registry = controller.NewRegistryMap(
 			featuregate.StabilityGenerallyAvailable,
+			true,
 			map[string]component.Registration{
 				"service_consumer": {
 					Name:      "service_consumer",
@@ -275,6 +276,7 @@ func TestComponents_Using_Services_In_Modules(t *testing.T) {
 
 		registry = controller.NewRegistryMap(
 			featuregate.StabilityGenerallyAvailable,
+			true,
 			map[string]component.Registration{
 				"module_loader": {
 					Name:      "module_loader",

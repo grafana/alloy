@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
@@ -211,7 +211,6 @@ func (cn *CustomComponentNode) evaluate(evalScope *vm.Scope) error {
 func (cn *CustomComponentNode) Run(ctx context.Context) error {
 	cn.mut.RLock()
 	managed := cn.managed
-	logger := cn.logger
 	cn.mut.RUnlock()
 
 	if managed == nil {
@@ -220,12 +219,13 @@ func (cn *CustomComponentNode) Run(ctx context.Context) error {
 
 	cn.setRunHealth(component.HealthTypeHealthy, "started custom component")
 	err := managed.Run(ctx)
-	if err != nil {
-		level.Error(logger).Log("msg", "error running custom component", "id", cn.nodeID, "err", err)
-	}
 
-	level.Info(logger).Log("msg", "custom component exited")
-	cn.setRunHealth(component.HealthTypeExited, "custom component shut down")
+	// Note: logging of this error is handled by the scheduler.
+	if err != nil {
+		cn.setRunHealth(component.HealthTypeExited, fmt.Sprintf("custom component shut down with error: %s", err))
+	} else {
+		cn.setRunHealth(component.HealthTypeExited, "custom component shut down cleanly")
+	}
 	return err
 }
 

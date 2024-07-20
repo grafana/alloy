@@ -16,13 +16,15 @@ type ComponentRegistry interface {
 
 type defaultComponentRegistry struct {
 	minStability featuregate.Stability
+	community    bool
 }
 
 // NewDefaultComponentRegistry creates a new [ComponentRegistry] which gets
 // components registered to github.com/grafana/alloy/internal/component.
-func NewDefaultComponentRegistry(minStability featuregate.Stability) ComponentRegistry {
+func NewDefaultComponentRegistry(minStability featuregate.Stability, enableCommunityComps bool) ComponentRegistry {
 	return defaultComponentRegistry{
 		minStability: minStability,
+		community:    enableCommunityComps,
 	}
 }
 
@@ -33,7 +35,16 @@ func (reg defaultComponentRegistry) Get(name string) (component.Registration, er
 	if !exists {
 		return component.Registration{}, fmt.Errorf("cannot find the definition of component name %q", name)
 	}
-	if err := featuregate.CheckAllowed(cr.Stability, reg.minStability, fmt.Sprintf("component %q", name)); err != nil {
+
+	if cr.Community {
+		if !reg.community {
+			return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --feature.community-components.enabled command-line flag to enable community components", name)
+		}
+		return cr, nil // community components are not affected by feature stability
+	}
+
+	err := featuregate.CheckAllowed(cr.Stability, reg.minStability, fmt.Sprintf("component %q", name))
+	if err != nil {
 		return component.Registration{}, err
 	}
 	return cr, nil
@@ -42,18 +53,21 @@ func (reg defaultComponentRegistry) Get(name string) (component.Registration, er
 type registryMap struct {
 	registrations map[string]component.Registration
 	minStability  featuregate.Stability
+	community     bool
 }
 
 // NewRegistryMap creates a new [ComponentRegistry] which uses a map to store components.
 // Currently, it is only used in tests.
 func NewRegistryMap(
 	minStability featuregate.Stability,
+	community bool,
 	registrations map[string]component.Registration,
 ) ComponentRegistry {
 
 	return &registryMap{
 		registrations: registrations,
 		minStability:  minStability,
+		community:     community,
 	}
 }
 
@@ -63,7 +77,15 @@ func (m registryMap) Get(name string) (component.Registration, error) {
 	if !ok {
 		return component.Registration{}, fmt.Errorf("cannot find the definition of component name %q", name)
 	}
-	if err := featuregate.CheckAllowed(reg.Stability, m.minStability, fmt.Sprintf("component %q", name)); err != nil {
+	if reg.Community {
+		if !m.community {
+			return component.Registration{}, fmt.Errorf("the component %q is a community component. Use the --feature.community-components.enabled command-line flag to enable community components", name)
+		}
+		return reg, nil // community components are not affected by feature stability
+	}
+
+	err := featuregate.CheckAllowed(reg.Stability, m.minStability, fmt.Sprintf("component %q", name))
+	if err != nil {
 		return component.Registration{}, err
 	}
 	return reg, nil

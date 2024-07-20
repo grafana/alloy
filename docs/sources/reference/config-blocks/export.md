@@ -58,5 +58,5 @@ declare "pods_and_nodes" {
 }
 ```
 
-[custom component]: ../../../concepts/custom_components/
+[custom component]: ../../../get-started/custom_components/
 [declare]: ../declare/

@@ -55,6 +55,7 @@ The following flags are supported:
 * `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
 * `--stability.level`: The minimum permitted stability level of functionality to run. Supported values: `experimental`, `public-preview`, `generally-available` (default `"generally-available"`).
+* `--feature.community-components.enabled`: Enable community components (default `false`).
 
 ## Update the configuration file
 
@@ -166,10 +167,10 @@ Refer to [alloy convert][] for more details on how `extra-args` work.
 
 
 [alloy convert]: ../convert/
-[clustering]:  ../../../concepts/clustering/
+[clustering]:  ../../../get-started/clustering/
 [go-discover]: https://github.com/hashicorp/go-discover
-[in-memory HTTP traffic]: ../../../concepts/component_controller/#in-memory-traffic
+[in-memory HTTP traffic]: ../../../get-started/component_controller/#in-memory-traffic
 [data collection]: ../../../data-collection/
-[components]: ../../concepts/components/
-[component controller]: ../../../concepts/component_controller/
-[UI]: ../../../tasks/debug/#clustering-page
+[components]: ../../get-started/components/
+[component controller]: ../../../get-started/component_controller/
+[UI]: ../../../troubleshoot/debug/#clustering-page
