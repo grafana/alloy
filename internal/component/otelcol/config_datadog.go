@@ -1,6 +1,7 @@
 package otelcol
 
 import (
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -8,9 +9,9 @@ import (
 
 // DatadogAPISettings holds the configuration settings for the Datadog API.
 type DatadogAPIArguments struct {
-	Key              string `alloy:"api_key,attr"`
-	Site             string `alloy:"site,attr,optional"` // Default value of exporter is "datadoghq.com"
-	FailOnInvalidKey bool   `alloy:"fail_on_invalid_key,attr,optional"`
+	Key              alloytypes.Secret `alloy:"api_key,attr"`
+	Site             string            `alloy:"site,attr,optional"` // Default value of exporter is "datadoghq.com"
+	FailOnInvalidKey bool              `alloy:"fail_on_invalid_key,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
