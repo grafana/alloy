@@ -1,4 +1,4 @@
-// Package otlphttp provides an otelcol.exporter.otlphttp component.
+// Package datadog provides an otelcol.exporter.datadog component.
 // This is a wrapper on the upstream component, found here: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.102.0/exporter/datadogexporter
 // This wrapper is using version: v0.102.0
 // Maintainers for the Grafana Alloy wrapper:
@@ -15,7 +15,6 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -29,7 +28,6 @@ const (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.datadog",
-		Stability: featuregate.StabilityExperimental,
 		Community: true,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},

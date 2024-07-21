@@ -308,7 +308,7 @@ otelcol.exporter.datadog "default" {
 
 ## Compatible components
 
-`otelcol.exporter.kafka` has exports that can be consumed by the following components:
+`otelcol.exporter.datadog` has exports that can be consumed by the following components:
 
 - Components that consume [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-consumers)
 
