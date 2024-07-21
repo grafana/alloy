@@ -172,13 +172,9 @@ func TestConfigConversion(t *testing.T) {
 					api_key = "abc"
 					site = "ap1.datadoghq.com"
 				}
-
+				// endpoint overwritten for traces only
 				traces {
-        			endpoint = "https://trace.agent.ap1.datadoghq.com"
-    			}
-
-    			metrics {
-        			endpoint = "https://api.ap1.datadoghq.com"
+        			endpoint = "https://trace.agent.datadoghq.com"
     			}
 			`,
 			expected: datadogexporter.Config{
@@ -200,7 +196,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				Traces: datadogexporter.TracesConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
-						Endpoint: "https://trace.agent.ap1.datadoghq.com",
+						Endpoint: "https://trace.agent.datadoghq.com",
 					},
 					IgnoreResources: []string{},
 				},

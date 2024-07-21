@@ -66,14 +66,15 @@ func (args *DatadogHostMetadataArguments) SetToDefault() {
 // TracesConfig holds the configuration settings for the Datadog trace exporter
 // See https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter#TracesConfig for more
 type DatadogTracesArguments struct {
-	Endpoint               string            `alloy:"endpoint,attr,optional"`
-	IgnoreResources        []string          `alloy:"ignore_resources,attr,optional"`
-	SpanNameRemappings     map[string]string `alloy:"span_name_remappings,attr,optional"`
-	SpanNameAsResourceName bool              `alloy:"span_name_as_resource_name,attr,optional"`
-	ComputeStatsBySpanKind bool              `alloy:"compute_stats_by_span_kind,attr,optional"`
-	PeerTagsAggregation    bool              `alloy:"peer_tags_aggregation,attr,optional"`
-	PeerTags               []string          `alloy:"peer_tags,attr,optional"`
-	TraceBuffer            int               `alloy:"trace_buffer,attr,optional"`
+	Endpoint                  string            `alloy:"endpoint,attr,optional"`
+	IgnoreResources           []string          `alloy:"ignore_resources,attr,optional"`
+	SpanNameRemappings        map[string]string `alloy:"span_name_remappings,attr,optional"`
+	SpanNameAsResourceName    bool              `alloy:"span_name_as_resource_name,attr,optional"`
+	ComputeStatsBySpanKind    bool              `alloy:"compute_stats_by_span_kind,attr,optional"`
+	ComputeTopLevelBySpanKind bool              `alloy:"compute_top_level_by_span_kind,attr,optional"`
+	PeerTagsAggregation       bool              `alloy:"peer_tags_aggregation,attr,optional"`
+	PeerTags                  []string          `alloy:"peer_tags,attr,optional"`
+	TraceBuffer               int               `alloy:"trace_buffer,attr,optional"`
 }
 
 func (args *DatadogTracesArguments) Convert() *datadogexporter.TracesConfig {
@@ -82,20 +83,20 @@ func (args *DatadogTracesArguments) Convert() *datadogexporter.TracesConfig {
 	}
 
 	return &datadogexporter.TracesConfig{
-		TCPAddrConfig:          confignet.TCPAddrConfig{Endpoint: args.Endpoint},
-		IgnoreResources:        args.IgnoreResources,
-		SpanNameRemappings:     args.SpanNameRemappings,
-		SpanNameAsResourceName: args.SpanNameAsResourceName,
-		ComputeStatsBySpanKind: args.ComputeStatsBySpanKind,
-		PeerTagsAggregation:    args.PeerTagsAggregation,
-		PeerTags:               args.PeerTags,
-		TraceBuffer:            args.TraceBuffer,
+		TCPAddrConfig:             confignet.TCPAddrConfig{Endpoint: args.Endpoint},
+		IgnoreResources:           args.IgnoreResources,
+		SpanNameRemappings:        args.SpanNameRemappings,
+		SpanNameAsResourceName:    args.SpanNameAsResourceName,
+		ComputeStatsBySpanKind:    args.ComputeStatsBySpanKind,
+		ComputeTopLevelBySpanKind: args.ComputeTopLevelBySpanKind,
+		PeerTagsAggregation:       args.PeerTagsAggregation,
+		PeerTags:                  args.PeerTags,
+		TraceBuffer:               args.TraceBuffer,
 	}
 }
 
 func (args *DatadogTracesArguments) SetToDefault() {
 	*args = DatadogTracesArguments{
-		Endpoint:        "https://trace.agent.datadoghq.com",
 		IgnoreResources: []string{},
 	}
 }
@@ -131,7 +132,6 @@ func (args *DatadogMetricsArguments) Convert() *datadogexporter.MetricsConfig {
 
 func (args *DatadogMetricsArguments) SetToDefault() {
 	*args = DatadogMetricsArguments{
-		Endpoint:                           "https://api.datadoghq.com",
 		DeltaTTL:                           3600,
 		ResourceAttributesAsTags:           false,
 		InstrumentationScopeMetadataAsTags: false,
@@ -166,6 +166,13 @@ func (args *DatadogHistogramArguments) Convert() *datadogexporter.HistogramConfi
 	}
 }
 
+func (args *DatadogHistogramArguments) SetToDefault() {
+	*args = DatadogHistogramArguments{
+		Mode:             "distributions",
+		SendAggregations: false,
+	}
+}
+
 // SumConfig holds Sum specific configuration settings
 type DatadogSumArguments struct {
 	CumulativeMonotonicMode        datadogexporter.CumulativeMonotonicSumMode `alloy:"cumulative_monotonic_mode,attr,optional"`
@@ -184,6 +191,13 @@ func (args *DatadogSumArguments) Convert() *datadogexporter.SumConfig {
 	}
 }
 
+func (args *DatadogSumArguments) SetToDefault() {
+	*args = DatadogSumArguments{
+		CumulativeMonotonicMode:        datadogexporter.CumulativeMonotonicSumModeToDelta,
+		InitialCumulativeMonotonicMode: datadogexporter.InitialValueModeAuto,
+	}
+}
+
 // SummaryConfig holds Summary specific configuration settings
 type DatadogSummaryArguments struct {
 	Mode datadogexporter.SummaryMode `alloy:"mode,attr,optional"`
@@ -197,5 +211,11 @@ func (args *DatadogSummaryArguments) Convert() *datadogexporter.SummaryConfig {
 
 	return &datadogexporter.SummaryConfig{
 		Mode: args.Mode,
+	}
+}
+
+func (args *DatadogSummaryArguments) SetToDefault() {
+	*args = DatadogSummaryArguments{
+		Mode: datadogexporter.SummaryModeGauges,
 	}
 }

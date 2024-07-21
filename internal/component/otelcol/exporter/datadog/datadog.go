@@ -1,9 +1,14 @@
 // Package otlphttp provides an otelcol.exporter.otlphttp component.
+// This is a wrapper on the upstream component, found here: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.102.0/exporter/datadogexporter
+// This wrapper is using version: v0.102.0
+// Maintainers for the Grafana Alloy wrapper:
+//	- @polyrain
 
 package datadog
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -16,10 +21,16 @@ import (
 	otelextension "go.opentelemetry.io/collector/extension"
 )
 
+const (
+	DATADOG_TRACE_ENDPOINT   = "https://trace.agent.%s"
+	DATADOG_METRICS_ENDPOINT = "https://api.%s"
+)
+
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.datadog",
 		Stability: featuregate.StabilityExperimental,
+		Community: true,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -55,20 +66,29 @@ var _ exporter.Arguments = Arguments{}
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
+	args.APISettings.SetToDefault()
+	args.Metrics.SetToDefault()
+	args.Traces.SetToDefault()
+	args.HostMetadata.SetToDefault()
+
 	args.Queue.SetToDefault()
 	args.Retry.SetToDefault()
 	args.Client.SetToDefault()
-
-	args.APISettings.SetToDefault()
-	args.Traces.SetToDefault()
-	args.Metrics.SetToDefault()
-	args.HostMetadata.SetToDefault()
-
 	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	// Bubble down the API site to the metrics/traces settings. We do it this way
+	// as if we set a default, we can't tell if they specifically overrided this field as
+	// SetToDefault is called before Convert, and we need to set other defaults.
+	if args.Traces.Endpoint == "" {
+		args.Traces.Endpoint = fmt.Sprintf(DATADOG_TRACE_ENDPOINT, args.APISettings.Site)
+	}
+	if args.Metrics.Endpoint == "" {
+		args.Metrics.Endpoint = fmt.Sprintf(DATADOG_METRICS_ENDPOINT, args.APISettings.Site)
+	}
+
 	return &datadogexporter.Config{
 		ClientConfig:  *(*otelcol.HTTPClientArguments)(&args.Client).Convert(),
 		QueueSettings: *args.Queue.Convert(),
