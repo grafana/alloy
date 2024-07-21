@@ -16,7 +16,7 @@ import (
 	"golang.design/x/chann"
 )
 
-type filequeue struct {
+type queue struct {
 	mut       sync.RWMutex
 	directory string
 	maxIndex  int
@@ -24,7 +24,7 @@ type filequeue struct {
 	ch        *chann.Chann[string]
 }
 
-func NewQueue(directory string, logger log.Logger) (Queue, error) {
+func NewQueue(directory string, logger log.Logger) (Storage, error) {
 	err := os.MkdirAll(directory, 0777)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func NewQueue(directory string, logger log.Logger) (Queue, error) {
 	if len(ids) > 0 {
 		currentIndex = ids[len(ids)-1]
 	}
-	q := &filequeue{
+	q := &queue{
 		directory: directory,
 		maxIndex:  currentIndex,
 		logger:    logger,
@@ -60,7 +60,7 @@ func NewQueue(directory string, logger log.Logger) (Queue, error) {
 }
 
 // Add a committed file to the queue.
-func (q *filequeue) Add(data []byte) (string, error) {
+func (q *queue) Add(data []byte) (string, error) {
 	q.mut.Lock()
 	defer q.mut.Unlock()
 	q.maxIndex++
@@ -72,7 +72,7 @@ func (q *filequeue) Add(data []byte) (string, error) {
 	return name, err
 }
 
-func (q *filequeue) Next(ctx context.Context, enc []byte) ([]byte, string, error) {
+func (q *queue) Next(ctx context.Context, enc []byte) ([]byte, string, error) {
 	select {
 	case name := <-q.ch.Out():
 		buf, err := q.readFile(name, enc)
@@ -88,15 +88,15 @@ func (q *filequeue) Next(ctx context.Context, enc []byte) ([]byte, string, error
 	}
 }
 
-func (q *filequeue) Delete(name string) {
+func (q *queue) Delete(name string) {
 	_ = os.Remove(name)
 }
 
-func (q *filequeue) writeFile(name string, data []byte) error {
+func (q *queue) writeFile(name string, data []byte) error {
 	return os.WriteFile(name, data, 0644)
 }
 
-func (q *filequeue) readFile(name string, enc []byte) ([]byte, error) {
+func (q *queue) readFile(name string, enc []byte) ([]byte, error) {
 	bb, err := os.ReadFile(name)
 	if err != nil {
 		return enc, err

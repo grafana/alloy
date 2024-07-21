@@ -57,7 +57,7 @@ type Queue struct {
 	args   Arguments
 	opts   component.Options
 	s      *cbor.Serializer
-	fq     filequeue.Queue
+	fq     filequeue.queue
 	client types.WriteClient
 	log    log.Logger
 }

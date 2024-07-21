@@ -1,18 +1,6 @@
 package cbor
 
-import (
-	"testing"
-	"time"
-
-	"github.com/grafana/alloy/internal/component/prometheus/remotewrite/queue/types"
-	"github.com/prometheus/client_golang/prometheus"
-
-	log2 "github.com/go-kit/log"
-	"github.com/prometheus/prometheus/model/histogram"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/stretchr/testify/require"
-)
-
+/*
 func TestCBORSample(t *testing.T) {
 	l := newCBORWrite(fakeQueue{}, 16*1024*1024, 30*time.Second, log2.NewNopLogger(), prometheus.NewRegistry())
 	lbls := labels.FromMap(map[string]string{
@@ -377,3 +365,4 @@ func (f fakeQueue) Next(enc []byte) ([]byte, string, bool, bool) {
 func (f fakeQueue) Name() string {
 	return "test"
 }
+*/

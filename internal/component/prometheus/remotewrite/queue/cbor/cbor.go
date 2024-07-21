@@ -23,7 +23,7 @@ import (
 // cborwriter is the primary class for serializing and deserializing metrics.
 type cborwriter struct {
 	mut          sync.Mutex
-	fq           filequeue.Queue
+	fq           filequeue.Storage
 	totalSignals int64
 	// estimatedSize tries to track how large the data size is.
 	estimatedSize int64
@@ -42,8 +42,8 @@ type cborwriter struct {
 	em                 cbor.EncMode
 }
 
-// newCBORWrite creates a new parquetwriter.
-func newCBORWrite(fq filequeue.Queue, checkPointSize int64, flushTime time.Duration, l log.Logger, r prometheus.Registerer) *cborwriter {
+// newCBORWrite creates a new cbor writer.
+func newCBORWrite(fq filequeue.Storage, checkPointSize int64, flushTime time.Duration, l log.Logger, r prometheus.Registerer) *cborwriter {
 	encOptions := cbor.CoreDetEncOptions()
 	em, err := encOptions.EncMode()
 	if err != nil {
