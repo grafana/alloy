@@ -3,6 +3,7 @@ package alloycli
 import (
 	"errors"
 	"fmt"
+	"io"
 	stdlog "log"
 	"net"
 	"os"
@@ -218,7 +219,7 @@ func newDynamicDiscovery(l log.Logger, config string, defaultPort int) (discover
 	}
 
 	return func() ([]string, error) {
-		addrs, err := discoverer.Addrs(config, stdlog.New(log.NewStdlibAdapter(l), "", 0))
+		addrs, err := discoverer.Addrs(config, stdlog.New(io.Discard, "", 0))
 		if err != nil {
 			return nil, fmt.Errorf("discovering peers: %w", err)
 		}
