@@ -10,7 +10,7 @@ title: prometheus.exporter.cloudwatch
 
 The `prometheus.exporter.cloudwatch` component
 embeds [`yet-another-cloudwatch-exporter`](https://github.com/nerdswords/yet-another-cloudwatch-exporter), letting you
-collect [CloudWatch metrics](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html),
+collect [Amazon CloudWatch metrics](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html),
 translate them to a prometheus-compatible format and remote write them.
 
 This component lets you scrape CloudWatch metrics in a set of configurations we call _jobs_. There are
@@ -190,7 +190,7 @@ different `search_tags`.
 | Name                          | Type           | Description                                                                                                                                                                                                                                                | Default | Required |
 | ----------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                                       |         | yes      |
-| `type`                        | `string`       | Cloudwatch service alias (`"alb"`, `"ec2"`, etc) or namespace name (`"AWS/EC2"`, `"AWS/S3"`, etc). Refer to [supported-services][] for a complete list.                                                                                                    |         | yes      |
+| `type`                        | `string`       | CloudWatch service alias (`"alb"`, `"ec2"`, etc) or namespace name (`"AWS/EC2"`, `"AWS/S3"`, etc). Refer to [supported-services][] for a complete list.                                                                                                    |         | yes      |
 | `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                               | `{}`    | no       |
 | `search_tags`                 | `map(string)`  | List of key / value pairs to use for tag filtering (all must match). Value can be a regex.                                                                                                                                                                 | `{}`    | no       |
 | `dimension_name_requirements` | `list(string)` | List of metric dimensions to query. Before querying metric values, the total list of metrics will be filtered to only those that contain exactly this list of dimensions. An empty or undefined list results in all dimension combinations being included. | `{}`    | no       |
@@ -279,7 +279,7 @@ on how to explore metrics, to easily pick the ones you need.
 controls how far back in time CloudWatch metrics are considered during each {{< param "PRODUCT_NAME" >}} scrape.
 If both settings are configured, the time parameters when calling CloudWatch APIs works as follows:
 
-{{< figure src="/media/docs/alloy/cloudwatch-period-and-length-time-model-2.png" alt="An example of a Cloudwatch period and length time model" >}}
+{{< figure src="/media/docs/alloy/cloudwatch-period-and-length-time-model-2.png" alt="An example of a CloudWatch period and length time model" >}}
 
 As noted above, if across multiple metrics under the same static or discovery job, there's different `period`
 and/or `length`
@@ -293,7 +293,7 @@ If all metrics within a job (discovery or static) have the same `period` value c
 requested
 for metrics from the scrape time, to `period`s seconds in the past. The values of these are exported to Prometheus.
 
-{{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" alt="An example of a Cloudwatch single period and time model" >}}
+{{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" alt="An example of a CloudWatch single period and time model" >}}
 
 On the other hand, if metrics with different `period`s are configured under an individual job, this works differently.
 First, two variables are calculated aggregating all periods: `length`, taking the maximum value of all periods, and
@@ -301,7 +301,7 @@ the new `period` value, taking the minimum of all periods. Then, CloudWatch APIs
 `now - length` to `now`, aggregating each in samples for `period` seconds. For each metric, the most recent sample
 is exported to CloudWatch.
 
-{{< figure src="/media/docs/alloy/cloudwatch-multiple-period-time-model.png" alt="An example of a Cloudwatch multiple period and time model" >}}
+{{< figure src="/media/docs/alloy/cloudwatch-multiple-period-time-model.png" alt="An example of a CloudWatch multiple period and time model" >}}
 
 ### role block
 
