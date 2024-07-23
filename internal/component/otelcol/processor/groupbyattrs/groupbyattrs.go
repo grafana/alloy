@@ -9,7 +9,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/groupbyattrsprocessor"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 )
@@ -17,12 +16,12 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.processor.groupbyattrs",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Exports:   otelcol.ConsumerExports{},
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			fact := k8sattributesprocessor.NewFactory()
+			fact := groupbyattrsprocessor.NewFactory()
 			return processor.New(opts, fact, args.(Arguments))
 		},
 	})
@@ -62,10 +61,6 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return args.convertImpl()
-}
-
-func (args Arguments) convertImpl() (*groupbyattrsprocessor.Config, error) {
 	return &groupbyattrsprocessor.Config{
 		GroupByKeys: args.Keys,
 	}, nil
