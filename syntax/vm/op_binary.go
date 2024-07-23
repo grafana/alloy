@@ -128,7 +128,7 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 		lhsNum, rhsNum := lhs.Number(), rhs.Number()
 		switch fitNumberKinds(lhsNum.Kind(), rhsNum.Kind()) {
 		case value.NumberKindUint:
-			return value.Uint(intPow(lhsNum.Uint(), rhsNum.Uint())), nil
+			return value.Uint(uintPow(lhsNum.Uint(), rhsNum.Uint())), nil
 		case value.NumberKindInt:
 			return value.Int(intPow(lhsNum.Int(), rhsNum.Int())), nil
 		case value.NumberKindFloat:
@@ -348,12 +348,23 @@ var numberKindPrec = map[value.NumberKind]int{
 	value.NumberKindFloat: 2,
 }
 
-func intPow[Number int64 | uint64](n, m Number) Number {
+func intPow(n, m int64) int64 {
 	if m == 0 {
 		return 1
 	}
 	result := n
-	for i := Number(2); i <= m; i++ {
+	for i := int64(2); i <= m; i++ {
+		result *= n
+	}
+	return result
+}
+
+func uintPow(n, m uint64) uint64 {
+	if m == 0 {
+		return 1
+	}
+	result := n
+	for i := uint64(2); i <= m; i++ {
 		result *= n
 	}
 	return result

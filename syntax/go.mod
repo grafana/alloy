@@ -1,6 +1,6 @@
 module github.com/grafana/alloy/syntax
 
-go 1.21.0
+go 1.23
 
 require (
 	github.com/fatih/color v1.15.0
