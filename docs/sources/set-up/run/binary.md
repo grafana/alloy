@@ -107,7 +107,7 @@ These steps assume you have a default systemd and {{< param "PRODUCT_NAME" >}} c
 
 By default, {{% param "PRODUCT_NAME" %}} writes the output to `stdout` and errors to `stderr`.
 
-To write the logs to a file, you can use the redirection operator for your operating system. For example, the following command combines the standard output and standard errors into a single text file:
+To write the output and error logs to a file, you can use the redirection operator for your operating system. For example, the following command combines the standard output and standard errors into a single text file:
 
 {{< code >}}
 
