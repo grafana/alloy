@@ -30,6 +30,8 @@ Main (unreleased)
 
 - Added live debugging support to `otelcol.processor.*` components. (@wildum)
 
+- Add automatic system attributes for `version` and `os` to `remotecfg`. (@erikbaranowski)
+
 - Added live debugging support to `otelcol.receiver.*` components. (@wildum)
 
 - Added live debugging support to `loki.process`. (@wildum)
