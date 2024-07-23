@@ -14,24 +14,11 @@ If you [downloaded][InstallBinary] the standalone binary, you must run {{< param
 
 Refer to the [run][] documentation for more information about the command line flags you can use when you run {{< param "PRODUCT_NAME" >}}.
 
-## Start {{% param "PRODUCT_NAME" %}} on Linux, macOS, or FreeBSD
+## Start {{% param "PRODUCT_NAME" %}}
 
-To start {{< param "PRODUCT_NAME" >}} on Linux, macOS, or FreeBSD, run the following command in a terminal window:
+To start {{< param "PRODUCT_NAME" >}}, run the following command in a terminal or command window:
 
 ```shell
-<BINARY_PATH> run <CONFIG_PATH>
-```
-
-Replace the following:
-
-* _`<BINARY_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary file.
-* _`<CONFIG_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} configuration file.
-
-## Start {{% param "PRODUCT_NAME" %}} on Windows
-
-To start {{< param "PRODUCT_NAME" >}} on Windows, run the following commands in a command prompt:
-
-```cmd
 <BINARY_PATH> run <CONFIG_PATH>
 ```
 
@@ -115,6 +102,34 @@ These steps assume you have a default systemd and {{< param "PRODUCT_NAME" >}} c
    ```
 
 1. Use the [Linux][StartLinux] systemd commands to manage your standalone Linux installation of {{< param "PRODUCT_NAME" >}}.
+
+## View {{% param "PRODUCT_NAME" %}} logs
+
+By default, {{% param "PRODUCT_NAME" %}} writes the output to `stdout` and errors to `stderr`.
+
+To write the logs to a file, you can use the redirection operator for your operating system. For example, the following command combines the standard output and standard errors into a single text file:
+
+{{< code >}}
+
+```linux
+<BINARY_PATH> run <CONFIG_PATH> &> <OUTPUT_FILE>
+```
+
+```macos
+<BINARY_PATH> run <CONFIG_PATH> &> <OUTPUT_FILE>
+```
+
+```windows
+<BINARY_PATH> run <CONFIG_PATH> 1> <OUTPUT_FILE> 2>&1
+```
+
+{{< /code >}}
+
+Replace the following:
+
+* _`<BINARY_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary file.
+* _`<CONFIG_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} configuration file.
+* _`<OUTPUT_FILE>`_: The output filename.
 
 [InstallBinary]: ../../install/binary/
 [StartLinux]: ../linux/
