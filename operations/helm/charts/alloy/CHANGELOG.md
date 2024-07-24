@@ -15,7 +15,7 @@ Unreleased
 
 ### Enhancements
 
-- Add PodDisruptionBudget to the Helm chart. (@itspooya)
+- Add PodDisruptionBudget to the Helm chart. (@itspouya)
 
 
 0.5.1 (2023-07-11)
