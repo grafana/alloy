@@ -1,0 +1,5 @@
+controller:
+  type: statefulset
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
