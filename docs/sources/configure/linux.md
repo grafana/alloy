@@ -77,7 +77,7 @@ To expose the UI to other machines, complete the following steps:
 
    Replace the following:
 
-   * _`<LISTEN_ADDR>`_: An address which other machines on the network have access to.
+   * _`<LISTEN_ADDR>`_: An IP address which other machines on the network have access to.
      For example, the IP address of the machine {{< param "PRODUCT_NAME" >}} is running on.
 
      To listen on all interfaces, replace _`<LISTEN_ADDR>`_ with `0.0.0.0`.
