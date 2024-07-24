@@ -50,7 +50,7 @@ To stop {{< param "PRODUCT_NAME" >}}, run the following command in a terminal wi
 sudo systemctl stop alloy
 ```
 
-## View {{% param "PRODUCT_NAME" %}} logs on Linux
+## View {{% param "PRODUCT_NAME" %}} logs
 
 To view {{< param "PRODUCT_NAME" >}} log files, run the following command in a terminal window:
 
