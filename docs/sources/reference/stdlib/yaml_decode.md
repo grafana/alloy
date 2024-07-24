@@ -36,4 +36,4 @@ null
 "Hello, world!"
 ```
 
-[`local.file`]: ../../components/local.file/
+[`local.file`]: ../../components/local/local.file/

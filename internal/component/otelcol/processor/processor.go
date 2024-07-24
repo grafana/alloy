@@ -14,7 +14,9 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -60,11 +62,17 @@ type Processor struct {
 
 	sched     *scheduler.Scheduler
 	collector *lazycollector.Collector
+
+	liveDebuggingConsumer *livedebuggingconsumer.Consumer
+	debugDataPublisher    livedebugging.DebugDataPublisher
+
+	args Arguments
 }
 
 var (
 	_ component.Component       = (*Processor)(nil)
 	_ component.HealthComponent = (*Processor)(nil)
+	_ component.LiveDebugging   = (*Processor)(nil)
 )
 
 // New creates a new Alloy component which encapsulates an OpenTelemetry
@@ -74,6 +82,12 @@ var (
 // The registered component must be registered to export the
 // otelcol.ConsumerExports type, otherwise New will panic.
 func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Processor, error) {
+
+	debugDataPublisher, err := opts.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	consumer := lazyconsumer.New(ctx)
@@ -100,6 +114,9 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 
 		sched:     scheduler.New(opts.Logger),
 		collector: collector,
+
+		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), opts.ID),
+		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	if err := p.Update(args); err != nil {
 		return nil, err
@@ -117,12 +134,12 @@ func (p *Processor) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector processor configuration and manage
 // the underlying OpenTelemetry Collector processor.
 func (p *Processor) Update(args component.Arguments) error {
-	pargs := args.(Arguments)
+	p.args = args.(Arguments)
 
 	host := scheduler.NewHost(
 		p.opts.Logger,
-		scheduler.WithHostExtensions(pargs.Extensions()),
-		scheduler.WithHostExporters(pargs.Exporters()),
+		scheduler.WithHostExtensions(p.args.Extensions()),
+		scheduler.WithHostExporters(p.args.Exporters()),
 	)
 
 	reg := prometheus.NewRegistry()
@@ -133,7 +150,7 @@ func (p *Processor) Update(args component.Arguments) error {
 		return err
 	}
 
-	metricsLevel, err := pargs.DebugMetricsConfig().Level.Convert()
+	metricsLevel, err := p.args.DebugMetricsConfig().Level.Convert()
 	if err != nil {
 		return err
 	}
@@ -156,16 +173,24 @@ func (p *Processor) Update(args component.Arguments) error {
 		},
 	}
 
-	processorConfig, err := pargs.Convert()
+	processorConfig, err := p.args.Convert()
 	if err != nil {
 		return err
 	}
 
+	next := p.args.NextConsumers()
+	traces, metrics, logs := next.Traces, next.Metrics, next.Logs
+
+	if p.debugDataPublisher.IsActive(livedebugging.ComponentID(p.opts.ID)) {
+		traces = append(traces, p.liveDebuggingConsumer)
+		metrics = append(metrics, p.liveDebuggingConsumer)
+		logs = append(logs, p.liveDebuggingConsumer)
+	}
+
 	var (
-		next        = pargs.NextConsumers()
-		nextTraces  = fanoutconsumer.Traces(next.Traces)
-		nextMetrics = fanoutconsumer.Metrics(next.Metrics)
-		nextLogs    = fanoutconsumer.Logs(next.Logs)
+		nextTraces  = fanoutconsumer.Traces(traces)
+		nextMetrics = fanoutconsumer.Metrics(metrics)
+		nextLogs    = fanoutconsumer.Logs(logs)
 	)
 
 	// Create instances of the processor from our factory for each of our
@@ -211,4 +236,8 @@ func (p *Processor) Update(args component.Arguments) error {
 // CurrentHealth implements component.HealthComponent.
 func (p *Processor) CurrentHealth() component.Health {
 	return p.sched.CurrentHealth()
+}
+
+func (p *Processor) LiveDebugging(_ int) {
+	p.Update(p.args)
 }

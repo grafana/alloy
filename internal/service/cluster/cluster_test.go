@@ -2,8 +2,10 @@ package cluster
 
 import (
 	"math/rand"
+	"os"
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,6 +48,7 @@ func TestGetPeers(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := &Service{
+				log:     log.NewLogfmtLogger(os.Stdout),
 				opts:    test.opts,
 				randGen: rand.New(rand.NewSource(1)), // Seeded random generator to have consistent results in tests.
 			}

@@ -17,6 +17,7 @@ Unreleased
 
 - Add PodDisruptionBudget to the Helm chart. (@itspooya)
 
+
 0.5.1 (2023-07-11)
 ------------------
 

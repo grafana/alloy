@@ -14,6 +14,7 @@ import (
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -186,4 +187,114 @@ func TestEventLoop(t *testing.T) {
 		require.NoError(t, err)
 		return len(rules) == 0
 	}, time.Second, 10*time.Millisecond)
+}
+
+func TestAdditionalLabels(t *testing.T) {
+	nsIndexer := cache.NewIndexer(
+		cache.DeletionHandlingMetaNamespaceKeyFunc,
+		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+	)
+	nsLister := coreListers.NewNamespaceLister(nsIndexer)
+
+	ruleIndexer := cache.NewIndexer(
+		cache.DeletionHandlingMetaNamespaceKeyFunc,
+		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+	)
+	ruleLister := promListers.NewPrometheusRuleLister(ruleIndexer)
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "namespace",
+			UID:  types.UID("33f8860c-bd06-4c0d-a0b1-a114d6b9937b"),
+		},
+	}
+
+	rule := &v1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+			UID:       types.UID("64aab764-c95e-4ee9-a932-cd63ba57e6cf"),
+		},
+		Spec: v1.PrometheusRuleSpec{
+			Groups: []v1.RuleGroup{
+				{
+					Name: "group1",
+					Rules: []v1.Rule{
+						{
+							Alert: "alert1",
+							Expr:  intstr.FromString("expr1"),
+						},
+						{
+							Alert: "alert2",
+							Expr:  intstr.FromString("expr2"),
+							Labels: map[string]string{
+								//This label should get overridden.
+								"foo": "lalalala",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	processor := &eventProcessor{
+		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		stopChan:          make(chan struct{}),
+		health:            &fakeHealthReporter{},
+		mimirClient:       newFakeMimirClient(),
+		namespaceLister:   nsLister,
+		ruleLister:        ruleLister,
+		namespaceSelector: labels.Everything(),
+		ruleSelector:      labels.Everything(),
+		namespacePrefix:   "alloy",
+		metrics:           newMetrics(),
+		logger:            log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
+		externalLabels:    map[string]string{"foo": "bar"},
+	}
+
+	ctx := context.Background()
+
+	// Do an initial sync of the Mimir ruler state before starting the event processing loop.
+	require.NoError(t, processor.syncMimir(ctx))
+	go processor.run(ctx)
+	defer processor.stop()
+
+	eventHandler := kubernetes.NewQueuedEventHandler(processor.logger, processor.queue)
+
+	// Add a namespace and rule to kubernetes
+	require.NoError(t, nsIndexer.Add(ns))
+	require.NoError(t, ruleIndexer.Add(rule))
+	eventHandler.OnAdd(rule, false)
+
+	// Wait for the rule to be added to mimir
+	rules := map[string][]rulefmt.RuleGroup{}
+	require.Eventually(t, func() bool {
+		var err error
+		rules, err = processor.mimirClient.ListRules(ctx, "")
+		require.NoError(t, err)
+		require.Equal(t, 1, len(rules))
+		return len(rules) == 1
+	}, time.Second, 10*time.Millisecond)
+
+	// The map of rules has only one element.
+	for ruleName, rule := range rules {
+		require.Equal(t, "alloy/namespace/name/64aab764-c95e-4ee9-a932-cd63ba57e6cf", ruleName)
+
+		ruleBuf, err := yaml.Marshal(rule)
+		require.NoError(t, err)
+
+		expectedRule := `- name: group1
+  rules:
+  - alert: alert1
+    expr: expr1
+    labels:
+      foo: bar
+  - alert: alert2
+    expr: expr2
+    labels:
+      foo: bar
+`
+		require.YAMLEq(t, expectedRule, string(ruleBuf))
+	}
 }

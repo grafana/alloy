@@ -25,4 +25,4 @@ Strings resulting from calls to `nonsensitive` are displayed in plain text in th
 "Hello, world!"
 ```
 
-[secret]: ../../../concepts/configuration-syntax/expressions/types_and_values/#secrets
+[secret]: ../../../get-started/configuration-syntax/expressions/types_and_values/#secrets

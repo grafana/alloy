@@ -37,5 +37,5 @@ value
 ```
 
 [jsonpath]: https://goessner.net/articles/JsonPath/
-[`local.file`]: ../../components/local.file/
-[`remote.http`]: ../../components/remote.http/
+[`local.file`]: ../../components/local/local.file/
+[`remote.http`]: ../../components/remote/remote.http/

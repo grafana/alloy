@@ -4,12 +4,15 @@ package process
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -21,9 +24,12 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
+
+const logline = `{"log":"log message\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z","extra":"{\"user\":\"smith\"}"}`
 
 func TestJSONLabelsStage(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
@@ -75,9 +81,10 @@ func TestJSONLabelsStage(t *testing.T) {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1, ch2},
@@ -92,7 +99,6 @@ func TestJSONLabelsStage(t *testing.T) {
 
 	// Send a log entry to the component's receiver.
 	ts := time.Now()
-	logline := `{"log":"log message\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z","extra":"{\"user\":\"smith\"}"}`
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
 		Entry: logproto.Entry{
@@ -162,9 +168,10 @@ stage.label_keep {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1, ch2},
@@ -257,9 +264,10 @@ stage.labels {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1, ch2},
@@ -423,9 +431,10 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1, ch2},
@@ -455,7 +464,6 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 	go func() {
 		for {
 			ts := time.Now()
-			logline := `{"log":"log message\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z","extra":"{\"user\":\"smith\"}"}`
 			logEntry := loki.Entry{
 				Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
 				Entry: logproto.Entry{
@@ -486,4 +494,200 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 	// Run everything for a while
 	time.Sleep(1 * time.Second)
 	require.WithinDuration(t, time.Now(), lastSend.Load().(time.Time), 300*time.Millisecond)
+}
+
+func getServiceData(name string) (interface{}, error) {
+	switch name {
+	case livedebugging.ServiceName:
+		return livedebugging.NewLiveDebugging(), nil
+	default:
+		return nil, fmt.Errorf("service not found %s", name)
+	}
+}
+
+func TestMetricsStageRefresh(t *testing.T) {
+	tester := newTester(t)
+	defer tester.stop()
+
+	forwardArgs := `
+	// This will be filled later
+	forward_to = []`
+
+	numLogsToSend := 3
+
+	cfgWithMetric := `
+	stage.metrics { 
+        metric.counter {
+          name = "paulin_test"
+          action = "inc"
+          match_all = true
+        }
+	}` + forwardArgs
+
+	cfgWithMetric_Metrics := `
+	# HELP loki_process_custom_paulin_test
+	# TYPE loki_process_custom_paulin_test counter
+	loki_process_custom_paulin_test{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	`
+
+	// The component will be reconfigured so that it has a metric.
+	t.Run("config with a metric", func(t *testing.T) {
+		tester.updateAndTest(numLogsToSend, cfgWithMetric,
+			"",
+			fmt.Sprintf(cfgWithMetric_Metrics, numLogsToSend))
+	})
+
+	// The component will be "updated" with the same config.
+	// We expect the metric to stay the same before logs are sent - the component should be smart enough to
+	// know that the new config is the same as the old one and it should just keep running as it is.
+	// If it resets the metric, this could cause issues with some users who have a sidecar "autoreloader"
+	// which reloads the collector config every X seconds.
+	// Those users wouldn't expect their metrics to be reset every time the config is reloaded.
+	t.Run("config with the same metric", func(t *testing.T) {
+		tester.updateAndTest(numLogsToSend, cfgWithMetric,
+			fmt.Sprintf(cfgWithMetric_Metrics, numLogsToSend),
+			fmt.Sprintf(cfgWithMetric_Metrics, 2*numLogsToSend))
+	})
+
+	// Use a config which has no metrics stage.
+	// This should cause the metric to disappear.
+	cfgWithNoStages := forwardArgs
+	t.Run("config with no metrics stage", func(t *testing.T) {
+		tester.updateAndTest(numLogsToSend, cfgWithNoStages, "", "")
+	})
+
+	// Use a config which has a metric with a different name,
+	// as well as a metric with the same name as the one in the previous config.
+	// We try having a metric with the same name as before so that we can see if there
+	// is some sort of double registration error for that metric.
+	cfgWithTwoMetrics := `
+	stage.metrics { 
+		metric.counter {
+		  name = "paulin_test_3"
+		  action = "inc"
+		  match_all = true
+		}
+        metric.counter {
+          name = "paulin_test"
+          action = "inc"
+          match_all = true
+        }
+	}` + forwardArgs
+
+	expectedMetrics3 := `
+	# HELP loki_process_custom_paulin_test_3
+	# TYPE loki_process_custom_paulin_test_3 counter
+	loki_process_custom_paulin_test_3{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	# HELP loki_process_custom_paulin_test
+	# TYPE loki_process_custom_paulin_test counter
+	loki_process_custom_paulin_test{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	`
+
+	t.Run("config with a new and old metric", func(t *testing.T) {
+		tester.updateAndTest(numLogsToSend, cfgWithTwoMetrics,
+			"",
+			fmt.Sprintf(expectedMetrics3, numLogsToSend, numLogsToSend))
+	})
+}
+
+type tester struct {
+	t            *testing.T
+	component    *Component
+	registry     *prometheus.Registry
+	cancelFunc   context.CancelFunc
+	logReceiver  loki.LogsReceiver
+	logTimestamp time.Time
+	logEntry     loki.Entry
+	wantLabelSet model.LabelSet
+}
+
+// Create the component, so that it can process and forward logs.
+func newTester(t *testing.T) *tester {
+	reg := prometheus.NewRegistry()
+
+	opts := component.Options{
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     reg,
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+
+	initialCfg := `forward_to = []`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(initialCfg), &args)
+	require.NoError(t, err)
+
+	logReceiver := loki.NewLogsReceiver()
+	args.ForwardTo = []loki.LogsReceiver{logReceiver}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go c.Run(ctx)
+
+	logTimestamp := time.Now()
+
+	return &tester{
+		t:            t,
+		component:    c,
+		registry:     reg,
+		cancelFunc:   cancel,
+		logReceiver:  logReceiver,
+		logTimestamp: logTimestamp,
+		logEntry: loki.Entry{
+			Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
+			Entry: logproto.Entry{
+				Timestamp: logTimestamp,
+				Line:      logline,
+			},
+		},
+		wantLabelSet: model.LabelSet{
+			"filename": "/var/log/pods/agent/agent/1.log",
+			"foo":      "bar",
+		},
+	}
+}
+
+func (t *tester) stop() {
+	t.cancelFunc()
+}
+
+func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSendingLogs, expectedMetricsAfterSendingLogs string) {
+	var args Arguments
+	err := syntax.Unmarshal([]byte(cfg), &args)
+	require.NoError(t.t, err)
+
+	args.ForwardTo = []loki.LogsReceiver{t.logReceiver}
+
+	t.component.Update(args)
+
+	// Check the component metrics.
+	if err := testutil.GatherAndCompare(t.registry,
+		strings.NewReader(expectedMetricsBeforeSendingLogs)); err != nil {
+		require.NoError(t.t, err)
+	}
+
+	// Send logs.
+	for i := 0; i < numLogsToSend; i++ {
+		t.component.receiver.Chan() <- t.logEntry
+	}
+
+	// Receive logs.
+	for i := 0; i < numLogsToSend; i++ {
+		select {
+		case logEntry := <-t.logReceiver.Chan():
+			require.True(t.t, t.logTimestamp.Equal(logEntry.Timestamp))
+			require.Equal(t.t, logline, logEntry.Line)
+			require.Equal(t.t, t.wantLabelSet, logEntry.Labels)
+		case <-time.After(5 * time.Second):
+			require.FailNow(t.t, "failed waiting for log line")
+		}
+	}
+
+	// Check the component metrics.
+	if err := testutil.GatherAndCompare(t.registry,
+		strings.NewReader(expectedMetricsAfterSendingLogs)); err != nil {
+		require.NoError(t.t, err)
+	}
 }

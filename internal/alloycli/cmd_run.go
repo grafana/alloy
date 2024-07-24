@@ -19,6 +19,13 @@ import (
 	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
+	"github.com/grafana/ckit/advertise"
+	"github.com/grafana/ckit/peer"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
+	"golang.org/x/exp/maps"
+
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
 	"github.com/grafana/alloy/internal/component"
@@ -39,12 +46,6 @@ import (
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
 	"github.com/grafana/alloy/syntax/diag"
-	"github.com/grafana/ckit/advertise"
-	"github.com/grafana/ckit/peer"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/spf13/cobra"
-	"go.opentelemetry.io/otel"
-	"golang.org/x/exp/maps"
 
 	// Install Components
 	_ "github.com/grafana/alloy/internal/component/all"
@@ -141,6 +142,7 @@ depending on the nature of the reload error.
 		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
+	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	return cmd
 }
 
@@ -164,6 +166,7 @@ type alloyRun struct {
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
+	enableCommunityComps         bool
 }
 
 func (fr *alloyRun) Run(configPath string) error {
@@ -233,7 +236,7 @@ func (fr *alloyRun) Run(configPath string) error {
 	)
 
 	clusterService, err := buildClusterService(clusterOptions{
-		Log:     l,
+		Log:     log.With(l, "service", "cluster"),
 		Tracer:  t,
 		Metrics: reg,
 
@@ -247,6 +250,8 @@ func (fr *alloyRun) Run(configPath string) error {
 		AdvertiseInterfaces: fr.clusterAdvInterfaces,
 		ClusterMaxJoinPeers: fr.ClusterMaxJoinPeers,
 		ClusterName:         fr.clusterName,
+		//TODO(alloy/#1274): graduate to GA once we have more confidence in this feature
+		EnableStateUpdatesLimiter: fr.minStability.Permits(featuregate.StabilityPublicPreview),
 	})
 	if err != nil {
 		return err
@@ -290,11 +295,12 @@ func (fr *alloyRun) Run(configPath string) error {
 	alloyseed.Init(fr.storagePath, l)
 
 	f := alloy_runtime.New(alloy_runtime.Options{
-		Logger:       l,
-		Tracer:       t,
-		DataPath:     fr.storagePath,
-		Reg:          reg,
-		MinStability: fr.minStability,
+		Logger:               l,
+		Tracer:               t,
+		DataPath:             fr.storagePath,
+		Reg:                  reg,
+		MinStability:         fr.minStability,
+		EnableCommunityComps: fr.enableCommunityComps,
 		Services: []service.Service{
 			clusterService,
 			httpService,
