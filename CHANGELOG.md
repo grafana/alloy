@@ -19,6 +19,7 @@ Main (unreleased)
 - Added community components support, enabling community members to implement and maintain components. (@wildum)
 
 ### Enhancements
+- Added custom metrics capability to oracle exporter. (@EHSchmitt4395)
 
 - Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
 
@@ -50,7 +51,7 @@ Main (unreleased)
 - Fixed a clustering mode issue where a fatal startup failure of the clustering service
   would exit the service silently, without also exiting the Alloy process. (@thampiotr)
 
-- Fix a bug which prevented config reloads to work if a Loki `metrics` stage is in the pipeline. 
+- Fix a bug which prevented config reloads to work if a Loki `metrics` stage is in the pipeline.
   Previously, the reload would fail for `loki.process` without an error in the logs and the metrics
   from the `metrics` stage would get stuck at the same values. (@ptodev)
 
