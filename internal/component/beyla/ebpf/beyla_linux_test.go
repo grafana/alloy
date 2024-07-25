@@ -53,6 +53,10 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 					}
 				}
 			}
+			exclude_services {
+				name = "test3"
+				namespace = "default"
+			}
 		}
 		prometheus {
 			features = ["application", "network"]
@@ -77,6 +81,9 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "default", cfg.Discovery.Services[0].Namespace)
 	require.True(t, cfg.Discovery.Services[0].Metadata[services.AttrNamespace].IsSet())
 	require.True(t, cfg.Discovery.Services[1].PodLabels["test"].IsSet())
+	require.Len(t, cfg.Discovery.ExcludeServices, 1)
+	require.Equal(t, "test3", cfg.Discovery.ExcludeServices[0].Name)
+	require.Equal(t, "default", cfg.Discovery.ExcludeServices[0].Namespace)
 	require.Equal(t, []string{"application", "network"}, cfg.Prometheus.Features)
 	require.Equal(t, []string{"redis", "sql"}, cfg.Prometheus.Instrumentations)
 }
@@ -197,6 +204,12 @@ func TestConvert_Discovery(t *testing.T) {
 				},
 			},
 		},
+		ExcludeServices: []Service{
+			{
+				Name:      "test",
+				Namespace: "default",
+			},
+		},
 	}
 	config, err := args.Convert()
 
@@ -218,6 +231,9 @@ func TestConvert_Discovery(t *testing.T) {
 	require.True(t, config.Services[2].Metadata[services.AttrOwnerName].IsSet())
 	require.True(t, config.Services[2].PodLabels["test"].IsSet())
 	require.NoError(t, config.Services.Validate())
+	require.Len(t, config.ExcludeServices, 1)
+	require.Equal(t, "test", config.ExcludeServices[0].Name)
+	require.Equal(t, "default", config.ExcludeServices[0].Namespace)
 }
 
 func TestConvert_Prometheus(t *testing.T) {

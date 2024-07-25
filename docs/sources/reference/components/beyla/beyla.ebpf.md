@@ -57,8 +57,10 @@ routes                  | [routes][]     | Configures the routes to match HTTP p
 attributes              | [attributes][] | Configures the Beyla attributes for the component.                                                 | no
 attributes > kubernetes | [kubernetes attributes][] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
 discovery               | [discovery][]  | Configures the discovery for instrumentable processes matching a given criteria.                   | no
-discovery > services    | [services][]   | Configures the discovery for the component.                                                        | no
-discovery > services > kubernetes    | [kubernetes services][]   | Configures the discovery for the component.                                | no
+discovery > services    | [services][]   | Configures the services to discover for the component.                                                        | no
+discovery > services > kubernetes    | [kubernetes services][]   | Configures the Kubernetes services to discover for the component.                                | no
+discovery > exclude_services    | [services][]   | Configures the services to exclude for the component.                                                        | no
+discovery > exclude_services > kubernetes    | [kubernetes services][]   | Configures the Kubernetes services to exclude for the component.                                | no
 prometheus              | [prometheus][] | Configures which metrics Beyla collects.                                                           | no
 network                 | [network][]    | Configures network metrics options for Beyla.                                                     | no
 output                  | [output][]     | Configures where to send received telemetry data.                                                  | yes
@@ -168,10 +170,10 @@ Name               | Type           | Description                               
 
 This block configures which metrics Beyla collects.
 
-Name              | Type           | Description                                                                                   | Default | Required
-------------------|----------------|-----------------------------------------------------------------------------------------------|---------|---------
-`features`        | `list(string)` | List of features to enable for the Prometheus metrics.                                        | `["application"]`    | no
-`instrumentations`| `list(string)` | List of instrumentations to enable for the Prometheus metrics.                                | `["*"]`    | no
+Name              | Type           | Description                                                    | Default | Required
+------------------|----------------|----------------------------------------------------------------|---------|---------
+`features`        | `list(string)` | List of features to enable for the Prometheus metrics.         | `["application"]`    | no
+`instrumentations`| `list(string)` | List of instrumentations to enable for the Prometheus metrics. | `["*"]`    | no
 
 `features` is a list of features to enable for the Prometheus metrics. The following features are available:
 
@@ -194,9 +196,9 @@ Name              | Type           | Description                                
 
 This block configures network metrics options for Beyla.
 
-Name              | Type           | Description                                                                                   | Default | Required
-------------------|----------------|-----------------------------------------------------------------------------------------------|---------|---------
-`enabled`         | `bool`         | Enable network metrics collection.                                                            | `true`  | no
+Name              | Type           | Description                                             | Default | Required
+------------------|----------------|---------------------------------------------------------|---------|---------
+`enabled`         | `bool`         | Enable network metrics collection.                      | `true`  | no
 
 
 ### output block

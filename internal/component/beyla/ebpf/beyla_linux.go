@@ -79,8 +79,13 @@ func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 	if err != nil {
 		return services.DiscoveryConfig{}, err
 	}
+	excludeSrv, err := args.ExcludeServices.Convert()
+	if err != nil {
+		return services.DiscoveryConfig{Services: srv}, err
+	}
 	return services.DiscoveryConfig{
-		Services: srv,
+		Services:        srv,
+		ExcludeServices: excludeSrv,
 	}, nil
 }
 
@@ -275,7 +280,7 @@ func (c *Component) baseTarget() (discovery.Target, error) {
 		model.SchemeLabel:      "http",
 		model.MetricsPathLabel: path.Join(httpData.HTTPPathForComponent(c.opts.ID), "metrics"),
 		"instance":             defaultInstance(),
-		// "job":                  "beyla",
+		"job":                  "beyla",
 	}, nil
 }
 

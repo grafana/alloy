@@ -54,7 +54,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.6
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla v1.6.1-0.20240725132531-b18a308a9f36
+	github.com/grafana/beyla v1.6.1-0.20240725151015-6c2f6de5a3b4
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
 	github.com/grafana/ckit v0.0.0-20240624165704-36f3407a8eaa
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
