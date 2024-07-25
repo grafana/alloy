@@ -61,7 +61,7 @@ type KubernetesService struct {
 
 type Discovery struct {
 	Services        Services `alloy:"services,block"`
-	ExcludeServices Services `alloy:"exclude_services,block"`
+	ExcludeServices Services `alloy:"exclude_services,block,optional"`
 }
 
 type Prometheus struct {
