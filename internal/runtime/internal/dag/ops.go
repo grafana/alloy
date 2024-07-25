@@ -11,7 +11,9 @@ import (
 // as many edges as possible while maintaining the same "reachability" as the
 // original graph: any node N reachable from node S will still be reachable
 // after a reduction.
-func Reduce(g *Graph) {
+// edgesToPreserve allows the caller to specify a set of edges that
+// must not be removed during the transitive reduction.
+func Reduce(g *Graph, edgesToPreserve map[Edge]struct{}) {
 	// A direct edge between two vertices can be removed if that same target
 	// vertex is indirectly reachable through another edge.
 	//
@@ -24,7 +26,9 @@ func Reduce(g *Graph) {
 			// edges if they exist. This is a safe operation because other is still
 			// reachable by source via its (source, direct) edge.
 			for indirect := range g.outEdges[direct] {
-				g.RemoveEdge(Edge{From: source, To: indirect})
+				if _, ok := edgesToPreserve[Edge{From: source, To: indirect}]; !ok {
+					g.RemoveEdge(Edge{From: source, To: indirect})
+				}
 			}
 			return nil
 		})

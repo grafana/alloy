@@ -314,8 +314,19 @@ func (l *Loader) loadNewGraph(args map[string]any, componentBlocks []*ast.BlockS
 	// Copy the original graph, this is so we can have access to the original graph for things like displaying a UI or
 	// debug information.
 	l.originalGraph = g.Clone()
-	// Perform a transitive reduction of the graph to clean it up.
-	dag.Reduce(&g)
+
+	// Perform a transitive reduction of the graph to clean it up but keep direct edges between
+	// customComponents and importConfigNodes because if they are removed the component
+	// may not get re-evaluated when the importConfigNode is updated.
+	customComponentToImportEdges := map[dag.Edge]struct{}{}
+	for _, e := range g.Edges() {
+		if _, ok := e.From.(*CustomComponentNode); ok {
+			if _, ok := e.To.(*ImportConfigNode); ok {
+				customComponentToImportEdges[e] = struct{}{}
+			}
+		}
+	}
+	dag.Reduce(&g, customComponentToImportEdges)
 
 	return g, diags
 }
