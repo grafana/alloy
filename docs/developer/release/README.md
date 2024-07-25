@@ -42,7 +42,7 @@ responsible for ownership of the following workflows:
 4. [Publish Release](./6-publish-release.md)
 5. [Test Release](./7-test-release.md)
 6. [Update Helm Charts](./8-update-helm-charts.md)
-7. [Update Homebrew](./8-update-homebrew.md)
+7. [Update Homebrew](./9-update-homebrew.md)
 8. [Announce Release](./10-announce-release.md)
 9. [Update OTEL Contrib](./11-update-otel.md)
 
@@ -52,7 +52,7 @@ responsible for ownership of the following workflows:
 3. [Tag Release](./4-tag-release.md)
 4. [Publish Release](./6-publish-release.md)
 5. [Update Helm Charts](./8-update-helm-charts.md)
-6. [Update Homebrew](./8-update-homebrew.md)
+6. [Update Homebrew](./9-update-homebrew.md)
 7. [Announce Release](./10-announce-release.md)
 
 ## Patch Release Publish (older version)
