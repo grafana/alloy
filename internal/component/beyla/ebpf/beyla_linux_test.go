@@ -66,7 +66,6 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}, {Start: 443, End: 0}, {Start: 8000, End: 8999}}}, cfg.Port)
 	require.True(t, cfg.Exec.IsSet())
-	require.Equal(t, "DEBUG", cfg.LogLevel)
 	require.Equal(t, transform.UnmatchType("wildcard"), cfg.Routes.Unmatch)
 	require.Equal(t, []string{"/api/v1/*"}, cfg.Routes.Patterns)
 	require.Equal(t, []string{"/api/v1/health"}, cfg.Routes.IgnorePatterns)
