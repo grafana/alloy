@@ -31,10 +31,11 @@ func init() {
 
 // Arguments configures the otelcol.processor.tail_sampling component.
 type Arguments struct {
-	PolicyCfgs              []PolicyConfig `alloy:"policy,block"`
-	DecisionWait            time.Duration  `alloy:"decision_wait,attr,optional"`
-	NumTraces               uint64         `alloy:"num_traces,attr,optional"`
-	ExpectedNewTracesPerSec uint64         `alloy:"expected_new_traces_per_sec,attr,optional"`
+	PolicyCfgs              []PolicyConfig      `alloy:"policy,block"`
+	DecisionWait            time.Duration       `alloy:"decision_wait,attr,optional"`
+	NumTraces               uint64              `alloy:"num_traces,attr,optional"`
+	ExpectedNewTracesPerSec uint64              `alloy:"expected_new_traces_per_sec,attr,optional"`
+	DecisionCache           DecisionCacheConfig `alloy:"decision_cache,attr,optional"`
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 	// DebugMetrics configures component internal metrics. Optional.
@@ -83,6 +84,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		NumTraces:               args.NumTraces,
 		ExpectedNewTracesPerSec: args.ExpectedNewTracesPerSec,
 		PolicyCfgs:              otelPolicyCfgs,
+		DecisionCache:           args.DecisionCache.Convert(),
 	}, nil
 }
 

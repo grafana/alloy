@@ -9,4 +9,4 @@ The supported values for `balancer_name` are listed in the gRPC documentation on
 * `round_robin`: Connects to all the addresses it sees and sends an RPC to each backend one at a time in order.
   For example, the first RPC is sent to backend-1, the second RPC is sent to backend-2, and the third RPC is sent to backend-1.
 
-[Load balancing]: https://github.com/grpc/grpc-go/blob/master/examples/features/load_balancing/README.md#pick_first
+[Load balancing]: https://github.com/grpc/grpc-go/blob/master/examples/features/load_balancing/README.md
