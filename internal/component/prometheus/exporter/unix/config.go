@@ -85,7 +85,7 @@ type Arguments struct {
 	Disk        DiskStatsConfig   `alloy:"disk,block,optional"`
 	EthTool     EthToolConfig     `alloy:"ethtool,block,optional"`
 	Filesystem  FilesystemConfig  `alloy:"filesystem,block,optional"`
-	HWmon       HWmonConfig       `alloy:"hwmon,block,optional"`
+	HwMon       HwMonConfig       `alloy:"hwmon,block,optional"`
 	IPVS        IPVSConfig        `alloy:"ipvs,block,optional"`
 	NTP         NTPConfig         `alloy:"ntp,block,optional"`
 	Netclass    NetclassConfig    `alloy:"netclass,block,optional"`

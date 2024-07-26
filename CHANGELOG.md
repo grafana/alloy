@@ -47,6 +47,8 @@ Main (unreleased)
 
 - `mimir.rules.kubernetes` is now able to add extra labels to the Prometheus rules. (@psychomantys)
 
+- `prometheus.exporter.unix component` now exposes hwmon collector config. (@dtrejod)
+
 ### Bugfixes
 
 - Fixed a clustering mode issue where a fatal startup failure of the clustering service
