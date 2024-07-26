@@ -44,6 +44,10 @@ func TestOnDiskCache(t *testing.T) {
 	client := &collectorClient{}
 	env.svc.asClient = client
 
+	var registerCalled, unregisterCalled atomic.Bool
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.unregisterCollectorFunc = buildUnregisterCollectorFunc(&unregisterCalled)
+
 	// Mock client to return an unparseable response.
 	client.getConfigFunc = buildGetConfigHandler("unparseable config")
 
