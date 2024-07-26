@@ -88,6 +88,7 @@ type Options struct {
 type Arguments struct {
 	URL              string                   `alloy:"url,attr,optional"`
 	ID               string                   `alloy:"id,attr,optional"`
+	Name             string                   `alloy:"name,attr,optional"`
 	Attributes       map[string]string        `alloy:"attributes,attr,optional"`
 	PollFrequency    time.Duration            `alloy:"poll_frequency,attr,optional"`
 	HTTPClientConfig *config.HTTPClientConfig `alloy:",squash"`
@@ -226,6 +227,9 @@ var _ service.Service = (*Service)(nil)
 func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.ctrl = host.NewController(ServiceName)
 
+	s.registerCollector()
+	defer s.unregisterCollector()
+
 	s.fetch()
 
 	// Run the service's own controller.
@@ -307,6 +311,39 @@ func (s *Service) fetch() {
 		s.fetchLocal()
 	}
 }
+
+func (s *Service) registerCollector() error {
+	s.mut.RLock()
+	req := connect.NewRequest(&collectorv1.RegisterCollectorRequest{
+		Id:         s.args.ID,
+		Attributes: s.attrs,
+		Name:       s.args.Name,
+	})
+	client := s.asClient
+	s.mut.RUnlock()
+
+	_, err := client.RegisterCollector(context.Background(), req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) unregisterCollector() error {
+	s.mut.RLock()
+	req := connect.NewRequest(&collectorv1.UnregisterCollectorRequest{
+		Id: s.args.ID,
+	})
+	client := s.asClient
+	s.mut.RUnlock()
+
+	_, err := client.UnregisterCollector(context.Background(), req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Service) fetchRemote() error {
 	if !s.isEnabled() {
 		return nil

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -62,7 +63,7 @@ func TestOnDiskCache(t *testing.T) {
 }
 
 func TestAPIResponse(t *testing.T) {
-	ctx := componenttest.TestContext(t)
+	ctx, cancel := context.WithCancel(context.Background())
 	url := "https://example.com/"
 	cfg1 := `loki.process "default" { forward_to = [] }`
 	cfg2 := `loki.process "updated" { forward_to = [] }`
@@ -78,14 +79,19 @@ func TestAPIResponse(t *testing.T) {
 	env.svc.asClient = client
 
 	// Mock client to return a valid response.
+	var registerCalled, unregisterCalled atomic.Bool
 	client.mut.Lock()
 	client.getConfigFunc = buildGetConfigHandler(cfg1)
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.unregisterCollectorFunc = buildUnregisterCollectorFunc(&unregisterCalled)
 	client.mut.Unlock()
 
 	// Run the service.
 	go func() {
 		require.NoError(t, env.Run(ctx))
 	}()
+
+	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
 
 	// As the API response was successful, verify that the service has loaded
 	// the valid response.
@@ -102,6 +108,9 @@ func TestAPIResponse(t *testing.T) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfg2)), env.svc.getCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
+
+	cancel()
+	require.Eventually(t, func() bool { return unregisterCalled.Load() }, 1*time.Second, 10*time.Millisecond)
 }
 
 func buildGetConfigHandler(in string) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
@@ -112,6 +121,24 @@ func buildGetConfigHandler(in string) func(context.Context, *connect.Request[col
 			},
 		}
 		return rsp, nil
+	}
+}
+
+func buildRegisterCollectorFunc(called *atomic.Bool) func(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error) {
+	return func(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error) {
+		called.Store(true)
+		return &connect.Response[collectorv1.RegisterCollectorResponse]{
+			Msg: &collectorv1.RegisterCollectorResponse{},
+		}, nil
+	}
+}
+
+func buildUnregisterCollectorFunc(called *atomic.Bool) func(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
+	return func(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
+		called.Store(true)
+		return &connect.Response[collectorv1.UnregisterCollectorResponse]{
+			Msg: &collectorv1.UnregisterCollectorResponse{},
+		}, nil
 	}
 }
 
@@ -185,8 +212,10 @@ func (f fakeHost) NewController(id string) service.Controller {
 }
 
 type collectorClient struct {
-	mut           sync.RWMutex
-	getConfigFunc func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error)
+	mut                     sync.RWMutex
+	getConfigFunc           func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error)
+	registerCollectorFunc   func(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error)
+	unregisterCollectorFunc func(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error)
 }
 
 func (ag *collectorClient) GetConfig(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
@@ -198,6 +227,28 @@ func (ag *collectorClient) GetConfig(ctx context.Context, req *connect.Request[c
 	}
 
 	panic("getConfigFunc not set")
+}
+
+func (ag *collectorClient) RegisterCollector(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error) {
+	ag.mut.RLock()
+	defer ag.mut.RUnlock()
+
+	if ag.registerCollectorFunc != nil {
+		return ag.registerCollectorFunc(ctx, req)
+	}
+
+	panic("registerCollectorFunc not set")
+}
+
+func (ag *collectorClient) UnregisterCollector(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
+	ag.mut.RLock()
+	defer ag.mut.RUnlock()
+
+	if ag.unregisterCollectorFunc != nil {
+		return ag.unregisterCollectorFunc(ctx, req)
+	}
+
+	panic("unregisterCollectorFunc not set")
 }
 
 type serviceController struct {
