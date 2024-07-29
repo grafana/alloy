@@ -180,8 +180,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	svc, ok := host.GetService(remotecfg.ServiceName)
 	if !ok {
 		// This will never happen as the service dependency is explicit.
-		level.Error(s.log).Log("msg", "failed to get the remotecfg service when setting up the http service")
-		os.Exit(1)
+		return fmt.Errorf("failed to get the remotecfg service when setting up the http service")
 	}
 	remotecfgHost := svc.(*remotecfg.Service).Data().(remotecfg.Data).Host
 
