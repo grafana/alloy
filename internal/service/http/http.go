@@ -132,7 +132,7 @@ func (s *Service) Definition() service.Definition {
 	return service.Definition{
 		Name:       ServiceName,
 		ConfigType: Arguments{},
-		DependsOn:  []string{remotecfg.ServiceName}, // http requires remotecfg to be up to wire lookups to its controller.
+		DependsOn:  nil, //[]string{remotecfg.ServiceName}, // http requires remotecfg to be up to wire lookups to its controller.
 		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
