@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/featuregate"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util/jitter"
@@ -49,7 +50,8 @@ type Service struct {
 	opts Options
 	args Arguments
 
-	ctrl service.Controller
+	ctrlMut sync.RWMutex
+	ctrl    service.Controller
 
 	mut               sync.RWMutex
 	asClient          collectorv1connect.CollectorServiceClient
@@ -205,9 +207,21 @@ func (s *Service) registerMetrics() {
 	s.metrics = mets
 }
 
-// Data is a no-op for the remotecfg service.
+// Data returns an instance of [Data]. Calls to Data are cachable by the
+// caller.
+// Data must only be called after Run.
 func (s *Service) Data() any {
-	return nil
+	s.ctrlMut.RLock()
+	host := s.ctrl.(alloy_runtime.ServiceController).GetHost()
+	s.ctrlMut.RUnlock()
+	return Data{Host: host}
+}
+
+// Data includes information associated with the HTTP service.
+type Data struct {
+	// Host exposes the Host of the isolated controller that is created by the
+	// remotecfg service.
+	Host service.Host
 }
 
 // Definition returns the definition of the remotecfg service.
@@ -225,13 +239,18 @@ var _ service.Service = (*Service)(nil)
 // Run implements [service.Service] and starts the remotecfg service. It will
 // run until the provided context is canceled or there is a fatal error.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
+	s.ctrlMut.Lock()
 	s.ctrl = host.NewController(ServiceName)
+	s.ctrlMut.Unlock()
 
 	s.fetch()
 	s.registerCollector()
 
 	// Run the service's own controller.
 	go func() {
+		s.ctrlMut.RLock()
+		defer s.ctrlMut.RUnlock()
+
 		s.ctrl.Run(ctx)
 	}()
 
