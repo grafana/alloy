@@ -67,20 +67,20 @@ This prevents other machines on the network from being able to access the [UI fo
 To expose the UI to other machines, complete the following steps:
 
 1. Follow [Pass additional command-line flags](#pass-additional-command-line-flags)
-   to edit command line flags passed to {{< param "PRODUCT_NAME" >}}, including the
-   following customizations:
+   to edit command line flags passed to {{< param "PRODUCT_NAME" >}}
 
-    1. Add the following command line argument to `CUSTOM_ARGS`:
+1. Add the following command line argument to `CUSTOM_ARGS`:
 
-       ```shell
-       --server.http.listen-addr=LISTEN_ADDR:12345
-       ```
+   ```shell
+   --server.http.listen-addr=<LISTEN_ADDR>:12345
+   ```
 
-       Replace `LISTEN_ADDR` with an address which other machines on the
-       network have access to, like the network IP address of the machine
-       {{< param "PRODUCT_NAME" >}} is running on.
+   Replace the following:
 
-       To listen on all interfaces, replace `LISTEN_ADDR` with `0.0.0.0`.
+   * _`<LISTEN_ADDR>`_: An IP address which other machines on the network have access to.
+     For example, the IP address of the machine {{< param "PRODUCT_NAME" >}} is running on.
+
+     To listen on all interfaces, replace _`<LISTEN_ADDR>`_ with `0.0.0.0`.
 
 [run]:../../reference/cli/run/
 [UI]: ../../troubleshoot/debug/#alloy-ui
