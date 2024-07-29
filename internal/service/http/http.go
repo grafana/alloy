@@ -21,6 +21,7 @@ import (
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/static/server"
 	"github.com/grafana/ckit/memconn"
 	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof" // Register godeltaprof handler
@@ -79,7 +80,8 @@ type Service struct {
 
 	memLis *memconn.Listener
 
-	componentHttpPathPrefix string
+	componentHttpPathPrefix          string
+	componentHttpPathPrefixRemotecfg string
 }
 
 var _ service.Service = (*Service)(nil)
@@ -120,7 +122,8 @@ func New(opts Options) *Service {
 		tcpLis:    tcpLis,
 		memLis:    memconn.NewListener(l),
 
-		componentHttpPathPrefix: "/api/v0/component/",
+		componentHttpPathPrefix:          "/api/v0/component/",
+		componentHttpPathPrefixRemotecfg: "/api/v0/component/remotecfg",
 	}
 }
 
@@ -129,7 +132,7 @@ func (s *Service) Definition() service.Definition {
 	return service.Definition{
 		Name:       ServiceName,
 		ConfigType: Arguments{},
-		DependsOn:  nil, // http has no dependencies.
+		DependsOn:  []string{remotecfg.ServiceName}, // http requires remotecfg to be up to wire lookups to its controller.
 		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
@@ -174,7 +177,18 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
 	}
 
-	r.PathPrefix(s.componentHttpPathPrefix).Handler(s.componentHandler(host))
+	svc, ok := host.GetService(remotecfg.ServiceName)
+	if !ok {
+		// This will never happen as the service dependency is explicit.
+		level.Error(s.log).Log("msg", "failed to get the remotecfg service when setting up the http service")
+		os.Exit(1)
+	}
+	remotecfgHost := svc.(*remotecfg.Service).Data().(remotecfg.Data).Host
+
+	// NOTE(@tpaschalis) These need to be kept in order for the longer
+	// remotecfg prefix to be invoked correctly.
+	r.PathPrefix(s.componentHttpPathPrefixRemotecfg).Handler(s.componentHandler(remotecfgHost, s.componentHttpPathPrefixRemotecfg))
+	r.PathPrefix(s.componentHttpPathPrefix).Handler(s.componentHandler(host, s.componentHttpPathPrefix))
 
 	if s.opts.ReadyFunc != nil {
 		r.HandleFunc("/-/ready", func(w http.ResponseWriter, _ *http.Request) {
@@ -265,10 +279,10 @@ func (s *Service) getServiceRoutes(host service.Host) []serviceRoute {
 	return routes
 }
 
-func (s *Service) componentHandler(host service.Host) http.HandlerFunc {
+func (s *Service) componentHandler(host service.Host, pathPrefix string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Trim the path prefix to get our full path.
-		trimmedPath := strings.TrimPrefix(r.URL.Path, s.componentHttpPathPrefix)
+		trimmedPath := strings.TrimPrefix(r.URL.Path, pathPrefix)
 
 		// splitURLPath should only fail given an unexpected path.
 		componentID, componentPath, err := splitURLPath(host, trimmedPath)
