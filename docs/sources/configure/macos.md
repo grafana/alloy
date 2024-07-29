@@ -64,14 +64,11 @@ This prevents other machines on the network from being able to access the [UI fo
 To expose the UI to other machines, complete the following steps:
 
 1. Follow [Configure the {{< param "PRODUCT_NAME" >}} service](#configure-the-alloy-service)
-   to edit command line flags passed to {{< param "PRODUCT_NAME" >}}, including the
-   following customizations:
+   to edit command line flags passed to {{< param "PRODUCT_NAME" >}}.
 
-    1. Modify the line inside the `service` block containing
-       `--server.http.listen-addr=127.0.0.1:12345`, replacing `127.0.0.1` with
-       the address which other machines on the network have access to, like the
-       network IP address of the machine {{< param "PRODUCT_NAME" >}} is running on.
+1. Modify the line inside the `service` block containing `--server.http.listen-addr=127.0.0.1:12345`, replacing `127.0.0.1` with the IP address which other machines on the network have access to.
+   For example, the IP address of the machine {{< param "PRODUCT_NAME" >}} is running on.
 
-       To listen on all interfaces, replace `127.0.0.1` with `0.0.0.0`.
+   To listen on all interfaces, replace `127.0.0.1` with `0.0.0.0`.
 
 [UI]: ../../troubleshoot/debug/#alloy-ui

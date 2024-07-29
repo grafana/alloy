@@ -44,7 +44,7 @@ To stop {{< param "PRODUCT_NAME" >}}, run the following command in a terminal wi
 brew services stop  alloy
 ```
 
-## View {{% param "PRODUCT_NAME" %}} logs on macOS
+## View {{% param "PRODUCT_NAME" %}} logs
 
 By default, logs are written to `$(brew --prefix)/var/log/alloy.log` and `$(brew --prefix)/var/log/alloy.err.log`.
 
