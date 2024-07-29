@@ -425,6 +425,8 @@ v1.1.0
   - `otelcol.connector.spanmetrics`: Add `metrics_expiration` option to enable expiration of metrics if spans are not received within a certain time frame.
     By default, the expiration is disabled (set to 0).
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/30559
+  - `otelcol.connector.spanmetrics`: Produce delta temporality span metrics with StartTimeUnixNano and TimeUnixNano values representing an uninterrupted series.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/31780
   - `otelcol.connector.spanmetrics`: Change default value of `metrics_flush_interval` from 15s to 60s.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31776
   - `otelcol.connector.spanmetrics`: Discard counter span metric exemplars after each flush interval to avoid unbounded memory growth.

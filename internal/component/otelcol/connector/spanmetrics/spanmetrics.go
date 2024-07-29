@@ -70,6 +70,9 @@ type Arguments struct {
 	// Default value (0) means that the metrics will never expire.
 	MetricsExpiration time.Duration `alloy:"metrics_expiration,attr,optional"`
 
+	// TimestampCacheSize controls the size of the cache used to keep track of delta metrics' TimestampUnixNano the last time it was flushed
+	TimestampCacheSize int `alloy:"metric_timestamp_cache_size,attr,optional"`
+
 	// Namespace is the namespace of the metrics emitted by the connector.
 	Namespace string `alloy:"namespace,attr,optional"`
 
@@ -104,6 +107,7 @@ var DefaultArguments = Arguments{
 	MetricsFlushInterval:     60 * time.Second,
 	MetricsExpiration:        0,
 	ResourceMetricsCacheSize: 1000,
+	TimestampCacheSize:       1000,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -175,11 +179,14 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	excludeDimensions := append([]string(nil), args.ExcludeDimensions...)
 
+	timestampCacheSize := args.TimestampCacheSize
+
 	return &spanmetricsconnector.Config{
 		Dimensions:                   dimensions,
 		ExcludeDimensions:            excludeDimensions,
 		DimensionsCacheSize:          args.DimensionsCacheSize,
 		ResourceMetricsCacheSize:     args.ResourceMetricsCacheSize,
+		TimestampCacheSize:           &timestampCacheSize,
 		ResourceMetricsKeyAttributes: args.ResourceMetricsKeyAttributes,
 		AggregationTemporality:       aggregationTemporality,
 		Histogram:                    *histogram,
