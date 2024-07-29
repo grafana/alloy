@@ -126,6 +126,8 @@ func (a *Arguments) Convert() *node_integration.Config {
 		FilesystemFSTypesExclude:         a.Filesystem.FSTypesExclude,
 		FilesystemMountPointsExclude:     a.Filesystem.MountPointsExclude,
 		FilesystemMountTimeout:           a.Filesystem.MountTimeout,
+		HwMonChipInclude:                 a.HwMon.ChipInclude,
+		HwMonChipExclude:                 a.HwMon.ChipExclude,
 		IPVSBackendLabels:                a.IPVS.BackendLabels,
 		NTPIPTTL:                         a.NTP.IPTTL,
 		NTPLocalOffsetTolerance:          a.NTP.LocalOffsetTolerance,
