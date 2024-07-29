@@ -166,6 +166,13 @@ func (l *Logger) addRecord(r slog.Record, df *deferredSlogHandler) {
 	})
 }
 
+// SlogHandler exposes the Logger instance as a slog.Handler interface for
+// easier integration with external components that do not directly use Logger
+// (for example, Beyla)
+func (l *Logger) SlogHandler() slog.Handler {
+	return l.deferredSlog
+}
+
 type lokiWriter struct {
 	f []loki.LogsReceiver
 }

@@ -11,10 +11,12 @@ import (
 
 	"github.com/go-kit/log"
 	gokitlevel "github.com/go-kit/log/level"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	alloylevel "github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/stretchr/testify/require"
 )
 
 /* Most recent performance results on M2 Macbook Air:
@@ -164,6 +166,30 @@ func TestLevels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSlogHandler(t *testing.T) {
+	buffer := bytes.NewBuffer(nil)
+	alloyLogger, err := logging.New(buffer, logging.Options{
+		Level:  logging.LevelInfo,
+		Format: logging.FormatDefault,
+	})
+	require.NoError(t, err)
+	logger := slog.New(alloyLogger.SlogHandler())
+
+	logger.Debug("ignored log")
+	logger.Info("hello")
+	logger.Info("how are you", "arg1", 1, "arg2", "2")
+	logger = logger.With("subtest", "withArgs")
+	logger.Debug("ignored log")
+	logger.Warn("hello")
+	logger.Info("how are you", "arg1", 1, "arg2", "2")
+
+	assert.Regexp(t, `^ts=[\d\-\:\.TZ]+ level=info source=[\w/]+/internal/runtime/logging/logger_test.go:\d+ msg=hello
+ts=[\d\-\:\.TZ]+ level=info source=[\w/]+/internal/runtime/logging/logger_test.go:\d+ msg="how are you" arg1=1 arg2=2
+ts=[\d\-\:\.TZ]+ level=warn source=[\w/]+/internal/runtime/logging/logger_test.go:\d+ msg=hello subtest=withArgs
+ts=[\d\-\:\.TZ]+ level=info source=[\w/]+/internal/runtime/logging/logger_test.go:\d+ msg="how are you" subtest=withArgs arg1=1 arg2=2
+$`, buffer.String())
 }
 
 // Test_lokiWriter_nil ensures that writing to a lokiWriter doesn't panic when
