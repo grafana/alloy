@@ -14,10 +14,10 @@ You can install {{< param "PRODUCT_NAME" >}} on Docker, Kubernetes, Linux, macOS
 
 The following architectures are supported:
 
-- Linux: AMD64, ARM64
-- Windows: AMD64
-- macOS: AMD64 (Intel), ARM64 (Apple Silicon)
-- FreeBSD: AMD64
+- **Linux**: AMD64, ARM64
+- **Windows**: AMD64
+- **macOS**: AMD64 on Intel, ARM64 on Apple Silicon
+- **FreeBSD**: AMD64
 
 {{< admonition type="note" >}}
 Installing {{< param "PRODUCT_NAME" >}} on other operating systems is possible, but isn't recommended or supported.
@@ -28,6 +28,6 @@ Installing {{< param "PRODUCT_NAME" >}} on other operating systems is possible, 
 ## Data collection
 
 By default, {{< param "PRODUCT_NAME" >}} sends anonymous usage information to Grafana Labs.
-Refer to [data collection][] for more information about what data is collected and how you can opt-out.
+Refer to [data collection][] for more information about what data Grafana collects and how you can opt-out.
 
 [data collection]: "../../../../data-collection/
