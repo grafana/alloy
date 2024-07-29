@@ -69,19 +69,19 @@ the [UI for debugging][UI].
 
 To expose the UI to other machines, complete the following steps:
 
-1. Follow [Change command-line arguments](#change-command-line-arguments)
-   to edit command line flags passed to {{< param "PRODUCT_NAME" >}}, including the following customizations:
+1. Follow [Change command-line arguments](#change-command-line-arguments) to edit command line flags passed to {{< param "PRODUCT_NAME" >}}.
 
-    1. Add the following command line argument:
+1. Add the following command line argument:
 
-       ```shell
-       --server.http.listen-addr=LISTEN_ADDR:12345
-       ```
+   ```shell
+   --server.http.listen-addr=LISTEN_ADDR:12345
+   ```
 
-       Replace `LISTEN_ADDR` with an address which other machines on the
-       network have access to, like the network IP address of the machine
-       {{< param "PRODUCT_NAME" >}} is running on.
+   Replace the following:
 
-       To listen on all interfaces, replace `LISTEN_ADDR` with `0.0.0.0`.
+   * _`<LISTEN_ADDR>`_: An IP address which other machines on the network have access to.
+     For example, the IP address of the machine {{< param "PRODUCT_NAME" >}} is running on.
+
+     To listen on all interfaces, replace _`<LISTEN_ADDR>`_ with `0.0.0.0`.
 
 [UI]: ../../troubleshoot/debug/#alloy-ui
