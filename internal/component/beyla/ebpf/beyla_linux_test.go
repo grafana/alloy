@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/beyla/pkg/beyla"
 	"github.com/grafana/beyla/pkg/kubeflags"
 	"github.com/grafana/beyla/pkg/services"
 	"github.com/grafana/beyla/pkg/transform"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestArguments_UnmarshalSyntax(t *testing.T) {
@@ -307,6 +308,26 @@ func TestArguments_Validate(t *testing.T) {
 				ExecutableName: "test",
 			},
 			expected: nil,
+		},
+		{
+			name: "invalid Prometheus instrumentation",
+			args: Arguments{
+				Port: "849",
+				Prometheus: Prometheus{
+					Instrumentations: []string{"*", "kafka", "redis", "superprotocol"},
+				},
+			},
+			expected: errors.New("invalid prometheus.instrumentations entry: superprotocol"),
+		},
+		{
+			name: "invalid Prometheus feature",
+			args: Arguments{
+				Port: "849",
+				Prometheus: Prometheus{
+					Features: []string{"application_service_graph", "tralara"},
+				},
+			},
+			expected: errors.New("invalid prometheus.features entry: tralara"),
 		},
 	}
 

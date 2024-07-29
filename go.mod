@@ -54,7 +54,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.6
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla v1.6.1-0.20240725151015-6c2f6de5a3b4
+	github.com/grafana/beyla v1.6.1-0.20240729115555-7e6c73d3dad6
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
 	github.com/grafana/ckit v0.0.0-20240624165704-36f3407a8eaa
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
@@ -809,14 +809,3 @@ exclude (
 replace go.opentelemetry.io/collector => github.com/grafana/opentelemetry-collector v0.4.1-0.20240429170914-d1e101852ba5
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
-
-// Replaces required for Beyla to implement metric expiration
-// Remove once this PR is merged upstream:
-// https://github.com/open-telemetry/opentelemetry-specification/pull/4135
-replace (
-	go.opentelemetry.io/otel => github.com/grafana/opentelemetry-go v1.28.0-grafana.2
-	go.opentelemetry.io/otel/metric => github.com/grafana/opentelemetry-go/metric v1.28.0-grafana.2
-	go.opentelemetry.io/otel/sdk => github.com/grafana/opentelemetry-go/sdk v1.28.0-grafana.2
-	go.opentelemetry.io/otel/sdk/metric => github.com/grafana/opentelemetry-go/sdk/metric v1.28.0-grafana.2
-	go.opentelemetry.io/otel/trace => github.com/grafana/opentelemetry-go/trace v1.28.0-grafana.2
-)

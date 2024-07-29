@@ -61,7 +61,7 @@ discovery > services    | [services][]   | Configures the services to discover f
 discovery > services > kubernetes    | [kubernetes services][]   | Configures the Kubernetes services to discover for the component.                                | no
 discovery > exclude_services    | [services][]   | Configures the services to exclude for the component.                                                        | no
 discovery > exclude_services > kubernetes    | [kubernetes services][]   | Configures the Kubernetes services to exclude for the component.                                | no
-prometheus              | [prometheus][] | Configures which metrics Beyla collects.                                                           | no
+prometheus              | [prometheus][] | Configures which Prometheus metrics Beyla exposes.                                                           | no
 network                 | [network][]    | Configures network metrics options for Beyla.                                                     | no
 output                  | [output][]     | Configures where to send received telemetry data.                                                  | yes
 
@@ -97,7 +97,7 @@ If set to `false`, the Kubernetes metadata decorator will be disabled.
 
 If set to `autodetect`, Beyla will try to automatically detect if it is running inside Kubernetes, and enable the metadata decoration if that's the case.
 
-`cluster_name` if not set, Beyla tries to detect the cluster name from the Kubernetes API.
+If `cluster_name` is not set, Beyla tries to detect the cluster name from the Kubernetes API.
 
 ### routes block
 
@@ -180,8 +180,8 @@ Name              | Type           | Description                                
 - `application` exports application-level metrics.
 - `application_span`exports application-level metrics in traces span metrics format.
 - `application_service_graph` exports application-level service graph metrics.
--  `application_process` exports metrics about the processes that run the instrumented application.
-- `network`, exports network-level metrics.
+- `application_process` exports metrics about the processes that run the instrumented application.
+- `network` exports network-level metrics.
 
 `instrumentations` is a list of instrumentations to enable for the Prometheus metrics. The following instrumentations are available:
 
@@ -198,7 +198,7 @@ This block configures network metrics options for Beyla.
 
 Name              | Type           | Description                                             | Default | Required
 ------------------|----------------|---------------------------------------------------------|---------|---------
-`enabled`         | `bool`         | Enable network metrics collection.                      | `true`  | no
+`enabled`         | `bool`         | Enable network metrics collection.                      | `false` | no
 
 
 ### output block

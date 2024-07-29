@@ -13,6 +13,7 @@ Main (unreleased)
 ### Breaking changes to non-GA functionality
 
 - Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
+- The `beyla.ebpf.routes.unmatched` configuration option default changed from unset to `heuristic` (@marctc) 
 
 ### Features
 

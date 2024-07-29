@@ -12,12 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/otelcol"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/beyla/pkg/beyla"
 	"github.com/grafana/beyla/pkg/components"
 	"github.com/grafana/beyla/pkg/export/prom"
@@ -27,6 +21,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	http_service "github.com/grafana/alloy/internal/service/http"
 )
 
 func init() {
@@ -344,6 +345,24 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 func (args *Arguments) Validate() error {
 	if args.Port == "" && args.ExecutableName == "" && len(args.Discovery.Services) == 0 {
 		return fmt.Errorf("you need to define at least open_port, executable_name, or services in the discovery section")
+	}
+	validInstrumentations := map[string]struct{}{"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}}
+	for _, instrumentation := range args.Prometheus.Instrumentations {
+		if _, ok := validInstrumentations[instrumentation]; !ok {
+			return fmt.Errorf("invalid prometheus.instrumentations entry: %s", instrumentation)
+		}
+	}
+	validFeatures := map[string]struct{}{
+		"application": {},
+		"application_span": {},
+		"application_service_graph": {},
+		"application_process": {},
+		"network": {},
+	}
+	for _, feature := range args.Prometheus.Features {
+		if _, ok := validFeatures[feature]; !ok {
+			return fmt.Errorf("invalid prometheus.features entry: %s", feature)
+		}
 	}
 	return nil
 }
