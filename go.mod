@@ -3,6 +3,12 @@ module github.com/grafana/alloy
 go 1.22.5
 
 require (
+github.com/KimMachineGun/automemlimit v0.6.0
+	github.com/Shopify/sarama v1.38.1
+	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.29.5
+	github.com/ettle/strcase v0.2.0
+	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
+	github.com/magefile/mage v1.15.0
 	cloud.google.com/go/pubsub v1.36.1
 	connectrpc.com/connect v1.14.0
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
