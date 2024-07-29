@@ -3,7 +3,7 @@
 This guide outlines best practices for writing reference documentation for Alloy
 components.
 
-Component reference documentation is stored in [docs/sources/alloy/reference/components][docs source],
+Component reference documentation is stored in [docs/sources/reference/components][docs source],
 and published to [Grafana's documentation website][hosted docs].
 
 Documentation for a component should follow best practices as much as possible

@@ -17,6 +17,7 @@ Main (unreleased)
 ### Features
 
 - Added community components support, enabling community members to implement and maintain components. (@wildum)
+- Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
 
 ### Enhancements
 
