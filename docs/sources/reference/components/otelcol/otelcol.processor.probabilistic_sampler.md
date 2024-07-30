@@ -63,7 +63,7 @@ You can set `mode` to `"proportional"`, `"equalizing"`, or `"hash_seed"`.
 The default is `"proportional"` unless either `hash_seed` is configured or `attribute_source` is set to `record`.
 For more information on modes, refer to the upstream Collector's [Mode Selection documentation][mode-selection-upstream] section.
 
-[mode-selection-upstream]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.105.0/processor/probabilisticsamplerprocessor/README.md#mode-selection
+[mode-selection-upstream]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/processor/probabilisticsamplerprocessor/README.md#mode-selection
 
 `hash_seed` determines an integer to compute the hash algorithm. This argument could be used for both traces and logs.
 When used for logs, it computes the hash of a log record.
