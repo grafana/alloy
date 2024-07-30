@@ -1,6 +1,6 @@
 otelcol.receiver.otlp "otlp_metrics" {
   http {
-    endpoint = "0.0.0.0:4317"
+    endpoint = "0.0.0.0:4318"
   }
 
   output {
