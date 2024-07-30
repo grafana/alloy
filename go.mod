@@ -201,15 +201,15 @@ require (
 	go.opentelemetry.io/collector/exporter/debugexporter v0.105.0
 	go.opentelemetry.io/collector/exporter/loggingexporter v0.102.1
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.105.0
-	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.104.0
+	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.105.0
 	go.opentelemetry.io/collector/extension v0.105.0
 	go.opentelemetry.io/collector/extension/auth v0.105.0
 	go.opentelemetry.io/collector/featuregate v1.12.0
 	go.opentelemetry.io/collector/otelcol v0.105.0
 	go.opentelemetry.io/collector/pdata v1.12.0
 	go.opentelemetry.io/collector/processor v0.105.0
-	go.opentelemetry.io/collector/processor/batchprocessor v0.104.0
-	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.104.0
+	go.opentelemetry.io/collector/processor/batchprocessor v0.105.0
+	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.105.0
 	go.opentelemetry.io/collector/receiver v0.105.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.105.0
 	go.opentelemetry.io/collector/semconv v0.105.0
