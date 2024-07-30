@@ -19,7 +19,11 @@ import (
 	"github.com/grafana/dskit/backoff"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configgrpc"
+	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/receiver/otlpreceiver"
 	"gotest.tools/assert"
 )
 
@@ -122,6 +126,43 @@ func getFreeAddr(t *testing.T) string {
 	require.NoError(t, err)
 
 	return fmt.Sprintf("localhost:%d", portNumber)
+}
+
+func TestUnmarshalDefault(t *testing.T) {
+	alloyCfg := `
+		http {}
+		grpc {}
+		output {}
+	`
+	var args otlp.Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.NoError(t, err)
+
+	actual, err := args.Convert()
+	require.NoError(t, err)
+
+	expected := otlpreceiver.Config{
+		Protocols: otlpreceiver.Protocols{
+			GRPC: &configgrpc.ServerConfig{
+				NetAddr: confignet.AddrConfig{
+					Endpoint:  "localhost:4317",
+					Transport: "tcp",
+				},
+				ReadBufferSize: 524288,
+			},
+			HTTP: &otlpreceiver.HTTPConfig{
+				ServerConfig: &confighttp.ServerConfig{
+					Endpoint:              "localhost:4318",
+					CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate"},
+				},
+				TracesURLPath:  "/v1/traces",
+				MetricsURLPath: "/v1/metrics",
+				LogsURLPath:    "/v1/logs",
+			},
+		},
+	}
+
+	require.Equal(t, &expected, actual)
 }
 
 func TestUnmarshalGrpc(t *testing.T) {

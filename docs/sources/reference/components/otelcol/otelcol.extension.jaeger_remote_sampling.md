@@ -73,11 +73,12 @@ The `http` block configures an HTTP server which serves the Jaeger remote sampli
 
 The following arguments are supported:
 
-Name                    | Type       | Description                                                        | Default          | Required
-------------------------|------------|--------------------------------------------------------------------|------------------|---------
-`endpoint`              | `string`   | `host:port` to listen for traffic on.                              | `"0.0.0.0:5778"` | no
-`max_request_body_size` | `string`   | Maximum request body size the server will allow.                   | `20MiB`          | no
-`include_metadata`      | `boolean`  | Propagate incoming connection metadata to downstream consumers.    |                  | no
+Name                     | Type           | Description                                                     | Default          | Required
+-------------------------|----------------|-----------------------------------------------------------------|------------------|---------
+`endpoint`               | `string`       | `host:port` to listen for traffic on.                           | `"localhost:5778"` | no
+`max_request_body_size`  | `string`       | Maximum request body size the server will allow.                | `20MiB`          | no
+`include_metadata`       | `boolean`      | Propagate incoming connection metadata to downstream consumers. |                  | no
+`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.         | `["", "gzip", "zstd", "zlib", "snappy", "deflate"]` | no
 
 ### tls block
 
@@ -117,7 +118,7 @@ The following arguments are supported:
 
 Name                     | Type      | Description                                                                | Default           | Required
 -------------------------|-----------|----------------------------------------------------------------------------|-------------------|---------
-`endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"0.0.0.0:14250"` | no
+`endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"localhost:14250"` | no
 `transport`              | `string`  | Transport to use for the gRPC server.                                      | `"tcp"`           | no
 `max_recv_msg_size`      | `string`  | Maximum size of messages the server will accept.                           | `"4MiB"`          | no
 `max_concurrent_streams` | `number`  | Limit the number of concurrent streaming RPC calls.                        |                   | no
@@ -182,17 +183,16 @@ The `remote` block configures the gRPC client used by the component.
 
 The following arguments are supported:
 
-Name                | Type                       | Description                                                                      | Default      | Required
---------------------|----------------------------|----------------------------------------------------------------------------------|--------------|---------
-`endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |              | yes
-`compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`     | no
-`read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |              | no
-`write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"`   | no
-`wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`      | no
-`headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`         | no
-`balancer_name`     | `string`                   | Which gRPC client-side load balancer to use for requests.                        | `pick_first` | no
-`authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |              | no
-`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |              | no
+Name                | Type                       | Description                                                                      | Default       | Required
+--------------------|----------------------------|----------------------------------------------------------------------------------|---------------|---------
+`endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |               | yes
+`compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`      | no
+`read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |               | no
+`write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"`    | no
+`wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`       | no
+`headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`          | no
+`authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |               | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
