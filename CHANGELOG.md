@@ -12,7 +12,8 @@ Main (unreleased)
 
 ### Breaking changes
 
-- `otelcol.receiver.otlp` will now configure `endpoint` using `localhost` by default instead of `0.0.0.0`. 
+- `otelcol.receiver.otlp`, `otelcol.receiver.jaeger`, `otelcol.extension.jaeger_remote_sampling`, `otelcol.receiver.zipkin` 
+  will now configure `endpoint` using `localhost` by default instead of `0.0.0.0`. 
   This may break the receiver in containerized environments like Kubernetes. 
   If you depend on `0.0.0.0`, configure the `endpoint` attribute to explicitly use `0.0.0.0`.
 - [`otelcol.exporter.otlp`,`otelcol.exporter.loadbalancing`]: Change the default gRPC load balancing strategy.
@@ -108,7 +109,8 @@ Main (unreleased)
   - [`otelcol.processor.attributes`] Add an option to extract value from a client address 
     by specifying `client.address` value in the `from_context` field.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/34048
-
+  - `otelcol.connector.spanmetrics`: Produce delta temporality span metrics with StartTimeUnixNano and TimeUnixNano values representing an uninterrupted series.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/31780
 
 ### Bugfixes
 
@@ -425,8 +427,6 @@ v1.1.0
   - `otelcol.connector.spanmetrics`: Add `metrics_expiration` option to enable expiration of metrics if spans are not received within a certain time frame.
     By default, the expiration is disabled (set to 0).
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/30559
-  - `otelcol.connector.spanmetrics`: Produce delta temporality span metrics with StartTimeUnixNano and TimeUnixNano values representing an uninterrupted series.
-    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/31780
   - `otelcol.connector.spanmetrics`: Change default value of `metrics_flush_interval` from 15s to 60s.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31776
   - `otelcol.connector.spanmetrics`: Discard counter span metric exemplars after each flush interval to avoid unbounded memory growth.

@@ -75,7 +75,7 @@ The following arguments are supported:
 
 Name                     | Type           | Description                                                     | Default          | Required
 -------------------------|----------------|-----------------------------------------------------------------|------------------|---------
-`endpoint`               | `string`       | `host:port` to listen for traffic on.                           | `"0.0.0.0:5778"` | no
+`endpoint`               | `string`       | `host:port` to listen for traffic on.                           | `"localhost:5778"` | no
 `max_request_body_size`  | `string`       | Maximum request body size the server will allow.                | `20MiB`          | no
 `include_metadata`       | `boolean`      | Propagate incoming connection metadata to downstream consumers. |                  | no
 `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.         | `["", "gzip", "zstd", "zlib", "snappy", "deflate"]` | no
@@ -118,7 +118,7 @@ The following arguments are supported:
 
 Name                     | Type      | Description                                                                | Default           | Required
 -------------------------|-----------|----------------------------------------------------------------------------|-------------------|---------
-`endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"0.0.0.0:14250"` | no
+`endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"localhost:14250"` | no
 `transport`              | `string`  | Transport to use for the gRPC server.                                      | `"tcp"`           | no
 `max_recv_msg_size`      | `string`  | Maximum size of messages the server will accept.                           | `"4MiB"`          | no
 `max_concurrent_streams` | `number`  | Limit the number of concurrent streaming RPC calls.                        |                   | no
