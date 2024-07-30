@@ -59,7 +59,7 @@ Name                  | Type      | Description                                 
 `from_attribute`      | `string`  | The name of a log record attribute used for sampling purposes.                                                       | `""`             | no
 `sampling_priority`   | `string`  | The name of a log record attribute used to set a different sampling priority from the `sampling_percentage` setting. | `""`             | no
 
-`mode` can be set to either `"proportional"`, `"equalizing"`, or `"hash_seed"`.
+You can set `mode` to `"proportional"`, `"equalizing"`, or `"hash_seed"`.
 The default is `"proportional"` unless either `hash_seed` is configured or `attribute_source` is set to `record`.
 For more information on modes, refer to the [Sampling Modes](#sampling-modes) section.
 

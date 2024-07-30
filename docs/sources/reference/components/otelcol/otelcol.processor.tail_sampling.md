@@ -126,7 +126,7 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 
 ### decision_cache block
 
-The `decision_cache` block configures amount of trace IDs to be kept in an LRU cache, 
+The `decision_cache` block configures the number of trace IDs to be kept in an LRU cache, 
 persisting the "keep" decisions for traces that may have already been released from memory. 
 
 The following arguments are supported:
