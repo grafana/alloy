@@ -1,11 +1,17 @@
+---
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.groupbyattrs/
+description: Learn about otelcol.processor.groupbyattrs
+title: otelcol.processor.groupbyattrs
+---
+
 # otelcol.processor.groupbyattrs
 
 `otelcol.processor.groupbyattrs` accepts telemetry data from other `otelcol`
-components and reassociates spans, log records and metric datapoints to a Resource that matches with the specified attributes. It groups telemetry data by specified attributes.
+components and reassociates spans, log records, and metric datapoints to a resource that matches the specified attributes. It groups telemetry data by specified attributes.
 
 {{% admonition type="note" %}}
 `otelcol.processor.groupbyattrs` is a wrapper over the upstream OpenTelemetry
-Collector `groupbyattrs` processor.  If necessary, bug reports or feature requests
+Collector `groupbyattrs` processor. If necessary, bug reports or feature requests
 will be redirected to the upstream repository.
 {{% /admonition %}}
 
@@ -41,7 +47,7 @@ The following fields are exported and can be referenced by other components:
 
 Name    | Type               | Description
 --------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+`input` | `otelcol.Consumer` |  Accepts `otelcol.Consumer` data for metrics, logs, or traces.
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,
 logs, or traces).
@@ -81,8 +87,8 @@ otelcol.processor.groupbyattrs "default" {
 ```
 
 ## Notes
-- The data points with different data types would not be merged under the same metric (e.g a gauge and sum metric would not be merged).
-- The data points without the specified keys would remain under their respective resources.
-- New resources would inherit the attributes of the original resource and the specified attributes in the keys array.
-- The grouping attributes in the keys array would be removed from the output metrics.
-- If the keys array is empty, the processor would perform compaction and re-associate all spans with matching Resource and InstrumentationLibrary.
+- The data points with different data types aren't merged under the same metric. For example, a gauge and sum metric would not be merged.
+- The data points without the specified keys remain under their respective resources.
+- New resources inherit the attributes of the original resource and the specified attributes in the keys array.
+- The grouping attributes in the keys array are removed from the output metrics.
+- If the keys array is empty, the processor performs compaction and reassociates all spans with matching Resource and InstrumentationLibrary.
