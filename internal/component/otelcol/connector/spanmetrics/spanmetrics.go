@@ -218,7 +218,7 @@ func (Arguments) ConnectorType() int {
 	return connector.ConnectorTracesToMetrics
 }
 
-// DebugMetricsConfig implements receiver.Arguments.
+// DebugMetricsConfig implements connector.Arguments.
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
 }

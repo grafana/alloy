@@ -1,7 +1,9 @@
-// Package logging provides an otelcol.exporter.logging component.
-package logging
+package debug
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -9,52 +11,78 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
-	loggingexporter "go.opentelemetry.io/collector/exporter/loggingexporter"
+	"go.opentelemetry.io/collector/exporter/debugexporter"
 	otelextension "go.opentelemetry.io/collector/extension"
 )
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "otelcol.exporter.logging",
-		Stability: featuregate.StabilityGenerallyAvailable,
+		Name:      "otelcol.exporter.debug",
+		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			fact := loggingexporter.NewFactory()
+			fact := debugexporter.NewFactory()
 			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
 		},
 	})
 }
 
-// Arguments configures the otelcol.exporter.logging component.
 type Arguments struct {
-	Verbosity          configtelemetry.Level `alloy:"verbosity,attr,optional"`
-	SamplingInitial    int                   `alloy:"sampling_initial,attr,optional"`
-	SamplingThereafter int                   `alloy:"sampling_thereafter,attr,optional"`
+	Verbosity          string `alloy:"verbosity,attr,optional"`
+	SamplingInitial    int    `alloy:"sampling_initial,attr,optional"`
+	SamplingThereafter int    `alloy:"sampling_thereafter,attr,optional"`
+	UseInternalLogger  bool   `alloy:"use_internal_logger,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
+func (args Arguments) convertVerbosity() (configtelemetry.Level, error) {
+	var verbosity configtelemetry.Level
+	// The upstream Collector accepts any casing, so let's accept any casing too.
+	switch strings.ToLower(args.Verbosity) {
+	case "basic":
+		verbosity = configtelemetry.LevelBasic
+	case "normal":
+		verbosity = configtelemetry.LevelNormal
+	case "detailed":
+		verbosity = configtelemetry.LevelDetailed
+	default:
+		// Invalid verbosity
+		// debugexporter only supports basic, normal and detailed levels
+		return verbosity, fmt.Errorf("invalid verbosity %q", args.Verbosity)
+	}
+
+	return verbosity, nil
+}
+
 var _ exporter.Arguments = Arguments{}
 
-// SetToDefault implements syntax.Defaulter.
+// SetToDefault implements river.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
-		Verbosity:          configtelemetry.LevelNormal,
+		Verbosity:          "basic",
 		SamplingInitial:    2,
-		SamplingThereafter: 500,
+		SamplingThereafter: 1,
+		UseInternalLogger:  true,
 	}
 	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return &loggingexporter.Config{
-		Verbosity:          args.Verbosity,
+	verbosity, err := args.convertVerbosity()
+	if err != nil {
+		return nil, fmt.Errorf("error in conversion to config arguments, %v", err)
+	}
+
+	return &debugexporter.Config{
+		Verbosity:          verbosity,
 		SamplingInitial:    args.SamplingInitial,
-		SamplingThereafter: args.SamplingInitial,
+		SamplingThereafter: args.SamplingThereafter,
+		UseInternalLogger:  args.UseInternalLogger,
 	}, nil
 }
 

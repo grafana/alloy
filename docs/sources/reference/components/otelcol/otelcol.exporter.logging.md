@@ -8,6 +8,13 @@ title: otelcol.exporter.logging
 
 # otelcol.exporter.logging
 
+{{< admonition type="warning" >}}
+The OpenTelemetry Collector `logging` exporter is deprecated.
+It will be removed from the upstream Collector repository in September 2024.
+`otelcol.exporter.logging` may also be removed in a future Alloy version.
+Use `otelcol.exporter.debug` instead.
+{{< /admonition >}}
+
 `otelcol.exporter.logging` accepts telemetry data from other `otelcol` components
 and writes them to the console.
 
@@ -83,27 +90,21 @@ information.
 
 ## Example
 
-This example scrapes prometheus unix metrics and writes them to the console:
+This example receives OTLP metrics, logs, and traces and writes them to the console:
 
 ```alloy
-prometheus.exporter.unix "default" { }
+otelcol.receiver.otlp "default" {
+    grpc {}
+    http {}
 
-prometheus.scrape "default" {
-    targets    = prometheus.exporter.unix.default.targets
-    forward_to = [otelcol.receiver.prometheus.default.receiver]
-}
-
-otelcol.receiver.prometheus "default" {
     output {
         metrics = [otelcol.exporter.logging.default.input]
+        logs    = [otelcol.exporter.logging.default.input]
+        traces  = [otelcol.exporter.logging.default.input]
     }
 }
 
-otelcol.exporter.logging "default" {
-    verbosity           = "detailed"
-    sampling_initial    = 1
-    sampling_thereafter = 1
-}
+otelcol.exporter.logging "default" {}
 ```
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
