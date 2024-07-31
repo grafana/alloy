@@ -227,10 +227,8 @@ var _ service.Service = (*Service)(nil)
 func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.ctrl = host.NewController(ServiceName)
 
-	s.registerCollector()
-	defer s.unregisterCollector()
-
 	s.fetch()
+	s.registerCollector()
 
 	// Run the service's own controller.
 	go func() {
@@ -292,6 +290,7 @@ func (s *Service) Update(newConfig any) error {
 
 	// Update the args as the last step to avoid polluting any comparisons
 	s.args = newArgs
+	s.registerCollector()
 	s.mut.Unlock()
 
 	// If we've already called Run, then immediately trigger an API call with
@@ -313,31 +312,14 @@ func (s *Service) fetch() {
 }
 
 func (s *Service) registerCollector() error {
-	s.mut.RLock()
 	req := connect.NewRequest(&collectorv1.RegisterCollectorRequest{
 		Id:         s.args.ID,
 		Attributes: s.attrs,
 		Name:       s.args.Name,
 	})
 	client := s.asClient
-	s.mut.RUnlock()
 
 	_, err := client.RegisterCollector(context.Background(), req)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *Service) unregisterCollector() error {
-	s.mut.RLock()
-	req := connect.NewRequest(&collectorv1.UnregisterCollectorRequest{
-		Id: s.args.ID,
-	})
-	client := s.asClient
-	s.mut.RUnlock()
-
-	_, err := client.UnregisterCollector(context.Background(), req)
 	if err != nil {
 		return err
 	}

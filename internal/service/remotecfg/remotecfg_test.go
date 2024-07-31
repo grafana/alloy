@@ -44,9 +44,8 @@ func TestOnDiskCache(t *testing.T) {
 	client := &collectorClient{}
 	env.svc.asClient = client
 
-	var registerCalled, unregisterCalled atomic.Bool
+	var registerCalled atomic.Bool
 	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
-	client.unregisterCollectorFunc = buildUnregisterCollectorFunc(&unregisterCalled)
 
 	// Mock client to return an unparseable response.
 	client.getConfigFunc = buildGetConfigHandler("unparseable config")
@@ -83,11 +82,10 @@ func TestAPIResponse(t *testing.T) {
 	env.svc.asClient = client
 
 	// Mock client to return a valid response.
-	var registerCalled, unregisterCalled atomic.Bool
+	var registerCalled atomic.Bool
 	client.mut.Lock()
 	client.getConfigFunc = buildGetConfigHandler(cfg1)
 	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
-	client.unregisterCollectorFunc = buildUnregisterCollectorFunc(&unregisterCalled)
 	client.mut.Unlock()
 
 	// Run the service.
@@ -114,7 +112,6 @@ func TestAPIResponse(t *testing.T) {
 	}, 1*time.Second, 10*time.Millisecond)
 
 	cancel()
-	require.Eventually(t, func() bool { return unregisterCalled.Load() }, 1*time.Second, 10*time.Millisecond)
 }
 
 func buildGetConfigHandler(in string) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
@@ -133,15 +130,6 @@ func buildRegisterCollectorFunc(called *atomic.Bool) func(ctx context.Context, r
 		called.Store(true)
 		return &connect.Response[collectorv1.RegisterCollectorResponse]{
 			Msg: &collectorv1.RegisterCollectorResponse{},
-		}, nil
-	}
-}
-
-func buildUnregisterCollectorFunc(called *atomic.Bool) func(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
-	return func(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
-		called.Store(true)
-		return &connect.Response[collectorv1.UnregisterCollectorResponse]{
-			Msg: &collectorv1.UnregisterCollectorResponse{},
 		}, nil
 	}
 }
@@ -216,10 +204,9 @@ func (f fakeHost) NewController(id string) service.Controller {
 }
 
 type collectorClient struct {
-	mut                     sync.RWMutex
-	getConfigFunc           func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error)
-	registerCollectorFunc   func(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error)
-	unregisterCollectorFunc func(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error)
+	mut                   sync.RWMutex
+	getConfigFunc         func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error)
+	registerCollectorFunc func(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error)
 }
 
 func (ag *collectorClient) GetConfig(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
@@ -245,14 +232,7 @@ func (ag *collectorClient) RegisterCollector(ctx context.Context, req *connect.R
 }
 
 func (ag *collectorClient) UnregisterCollector(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
-	ag.mut.RLock()
-	defer ag.mut.RUnlock()
-
-	if ag.unregisterCollectorFunc != nil {
-		return ag.unregisterCollectorFunc(ctx, req)
-	}
-
-	panic("unregisterCollectorFunc not set")
+	panic("unregisterCollector isn't wired yet")
 }
 
 type serviceController struct {
