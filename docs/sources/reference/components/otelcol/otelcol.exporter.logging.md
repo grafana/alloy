@@ -93,24 +93,18 @@ information.
 This example scrapes prometheus unix metrics and writes them to the console:
 
 ```alloy
-prometheus.exporter.unix "default" { }
+otelcol.receiver.otlp "default" {
+    grpc {}
+    http {}
 
-prometheus.scrape "default" {
-    targets    = prometheus.exporter.unix.default.targets
-    forward_to = [otelcol.receiver.prometheus.default.receiver]
-}
-
-otelcol.receiver.prometheus "default" {
     output {
         metrics = [otelcol.exporter.logging.default.input]
+        logs    = [otelcol.exporter.logging.default.input]
+        traces  = [otelcol.exporter.logging.default.input]
     }
 }
 
-otelcol.exporter.logging "default" {
-    verbosity           = "detailed"
-    sampling_initial    = 1
-    sampling_thereafter = 1
-}
+otelcol.exporter.logging "default" {}
 ```
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
