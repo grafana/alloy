@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +19,7 @@ import (
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1/collectorv1connect"
 	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -52,6 +56,8 @@ type Service struct {
 	ticker            *jitter.Ticker
 	dataPath          string
 	currentConfigHash string
+	systemAttrs       map[string]string
+	attrs             map[string]string
 	metrics           *metrics
 }
 
@@ -66,6 +72,9 @@ type metrics struct {
 
 // ServiceName defines the name used for the remotecfg service.
 const ServiceName = "remotecfg"
+
+const reservedAttributeNamespace = "collector"
+const namespaceDelimiter = "."
 
 // Options are used to configure the remotecfg service. Options are
 // constant for the lifetime of the remotecfg service.
@@ -105,6 +114,12 @@ func (a *Arguments) Validate() error {
 		return fmt.Errorf("poll_frequency must be at least \"10s\", got %q", a.PollFrequency)
 	}
 
+	for k := range a.Attributes {
+		if strings.HasPrefix(k, reservedAttributeNamespace+namespaceDelimiter) {
+			return fmt.Errorf("%q is a reserved namespace for remotecfg attribute keys", reservedAttributeNamespace)
+		}
+	}
+
 	// We must explicitly Validate because HTTPClientConfig is squashed and it
 	// won't run otherwise
 	if a.HTTPClientConfig != nil {
@@ -132,9 +147,17 @@ func New(opts Options) (*Service, error) {
 	}
 
 	return &Service{
-		opts:   opts,
-		ticker: jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
+		opts:        opts,
+		systemAttrs: getSystemAttributes(),
+		ticker:      jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
 	}, nil
+}
+
+func getSystemAttributes() map[string]string {
+	return map[string]string{
+		reservedAttributeNamespace + namespaceDelimiter + "version": build.Version,
+		reservedAttributeNamespace + namespaceDelimiter + "os":      runtime.GOOS,
+	}
 }
 
 func (s *Service) registerMetrics() {
@@ -259,7 +282,12 @@ func (s *Service) Update(newConfig any) error {
 			newArgs.URL,
 		)
 	}
-	s.args = newArgs // Update the args as the last step to avoid polluting any comparisons
+	// Combine the new attributes on top of the system attributes
+	s.attrs = maps.Clone(s.systemAttrs)
+	maps.Copy(s.attrs, newArgs.Attributes)
+
+	// Update the args as the last step to avoid polluting any comparisons
+	s.args = newArgs
 	s.mut.Unlock()
 
 	// If we've already called Run, then immediately trigger an API call with
@@ -329,7 +357,7 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 	s.mut.RLock()
 	req := connect.NewRequest(&collectorv1.GetConfigRequest{
 		Id:         s.args.ID,
-		Attributes: s.args.Attributes,
+		Attributes: s.attrs,
 	})
 	client := s.asClient
 	s.mut.RUnlock()

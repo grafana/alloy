@@ -57,6 +57,10 @@ func TestDefaultArguments_UnmarshalAlloy(t *testing.T) {
 
 	var defaultArgs opencensus.Arguments
 	defaultArgs.SetToDefault()
+
+	// Check the gRPC arguments
+	require.Equal(t, otelArgs.NetAddr.Endpoint, "localhost:55678")
+
 	// Check the gRPC arguments
 	require.Equal(t, defaultArgs.GRPC.Endpoint, otelArgs.NetAddr.Endpoint)
 	require.Equal(t, int(defaultArgs.GRPC.ReadBufferSize), otelArgs.ReadBufferSize)

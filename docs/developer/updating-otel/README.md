@@ -99,19 +99,19 @@ for an example on how to update Alloy.
 
 ### Testing a tracing pipeline locally
 
-You can use the resources in the [Tempo repository](https://github.com/grafana/tempo/tree/main/example/docker-compose/agent) to create a local source of traces using k6. You can also start your own Tempo and Grafana instances.
+Firstly, start a K6 trace generator to simulate an application instrumented for tracing:
+```
+cd docs/developer/updating-otel/k6-trace-gen/
+docker compose up -d
+```
 
-1. Comment out the "agent" and "prometheus" sections in the [docker-compose](https://github.com/grafana/tempo/blob/main/example/docker-compose/agent/docker-compose.yaml). We don't need this - instead, we will start our own locally built Alloy collector.
-2. Change the "k6-tracing" endpoint to send traces on the localhost, outside of the Docker container.
-   * For example, use `ENDPOINT=host.docker.internal:4320`.
-   * Then our local Alloy should be configured to accept traces on `0.0.0.0:4320`.
-3. Optionally, e.g. if you prefer Grafana Cloud, comment out the "tempo" and "grafana" sections of the docker-compose file.
-4. Add a second k6 instance if needed - for example, if multiple receivers are configured.
+K6 will be configured to send traces on `ENDPOINT=host.docker.internal:4320`.
+This means that the local Alloy instance must be configured to accept traces on `0.0.0.0:4320`.
 
-The "otelcol"
-[components](https://grafana.com/docs/alloy/latest/reference/components/) are
-the only components which use OTel. Try to test as many of them as possible
-using a config file like this one:
+The ["otelcol" components][otelcol-components]  are the only components which use OTel. 
+Try to test as many of them as possible using a config file like this one:
+
+[otelcol-components](https://grafana.com/docs/alloy/latest/reference/components/otelcol/)
 
 <details>
   <summary>Example Alloy config</summary>
