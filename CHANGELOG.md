@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
 
+- The default value of the argument `unmatched` in the block `routes` of the component `beyla.ebpf` was changed from `unset` to `heuristic` (@marctc) 
+
 ### Features
 
 - Added community components support, enabling community members to implement and maintain components. (@wildum)
@@ -111,6 +113,12 @@ Main (unreleased)
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/34048
   - `otelcol.connector.spanmetrics`: Produce delta temporality span metrics with StartTimeUnixNano and TimeUnixNano values representing an uninterrupted series.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/31780
+
+- Upgrade Beyla component v1.6.3 to v1.7.0
+  - Reporting application process metrics
+  - New supported protocols: SQL, Redis, Kafka
+  - Several bugfixes
+  - Full list of changes: https://github.com/grafana/beyla/releases/tag/v1.7.0
 
 ### Bugfixes
 
