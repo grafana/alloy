@@ -53,27 +53,46 @@ func TestPeerDiscovery(t *testing.T) {
 			expectedCreateErrContain: "at most one of join peers and discover peers may be set",
 		},
 		{
-			//TODO(thampiotr): there is an inconsistency here: when given host:port, we resolve to it without looking
-			// up the IP addresses. But when given a host only without the port, we look up the IP addresses with the DNS.
-			name: "static host:port",
+			name: "static host:port resolves to IP addresses with the specified port",
 			args: Options{
 				JoinPeers:   []string{"host:1234"},
 				DefaultPort: 8888,
 				Logger:      logger,
 				Tracer:      tracer,
+				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
+					return "", []*net.SRV{
+						{Target: "10.10.10.10", Port: 7777},
+						{Target: "10.10.10.12", Port: 9999},
+					}, nil
+				},
 			},
-			expected: []string{"host:1234"},
+			expected: []string{"10.10.10.10:1234", "10.10.10.12:1234"},
 		},
 		{
-			//TODO(thampiotr): this returns only one right now, but I think it should return multiple
-			name: "multiple static host:ports given",
+			name: "mixed host:port and host given",
 			args: Options{
-				JoinPeers:   []string{"host1:1234", "host2:1234"},
+				JoinPeers:   []string{"host1:1234", "host2"},
 				DefaultPort: 8888,
 				Logger:      logger,
 				Tracer:      tracer,
+				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
+					switch name {
+					case "host1":
+						return "", []*net.SRV{
+							{Target: "10.10.10.10", Port: 7777},
+							{Target: "10.10.10.12", Port: 9999},
+						}, nil
+					case "host2":
+						return "", []*net.SRV{
+							{Target: "10.10.10.20", Port: 7777},
+							{Target: "10.10.10.21", Port: 9999},
+						}, nil
+					default:
+						return "", nil, fmt.Errorf("unexpected name %q", name)
+					}
+				},
 			},
-			expected: []string{"host1:1234"},
+			expected: []string{"10.10.10.10:1234", "10.10.10.12:1234", "10.10.10.20:8888", "10.10.10.21:8888"},
 		},
 		{
 			name: "static ip address with port",
@@ -82,6 +101,10 @@ func TestPeerDiscovery(t *testing.T) {
 				DefaultPort: 12345,
 				Logger:      logger,
 				Tracer:      tracer,
+				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
+					t.Fatalf("unexpected call with %q", name)
+					return "", nil, nil
+				},
 			},
 			expected: []string{"10.10.10.10:8888"},
 		},
@@ -96,7 +119,6 @@ func TestPeerDiscovery(t *testing.T) {
 			expected: []string{"10.10.10.10:12345"},
 		},
 		{
-			//TODO(thampiotr): the error message is not very informative in this case
 			name: "invalid ip address",
 			args: Options{
 				JoinPeers:   []string{"10.301.10.10"},
@@ -104,10 +126,9 @@ func TestPeerDiscovery(t *testing.T) {
 				Logger:      logger,
 				Tracer:      tracer,
 			},
-			expectedErrContain: "lookup 10.301.10.10: no such host",
+			expectedErrContain: "could not parse as an IP or IP:port address: \"10.301.10.10\"",
 		},
 		{
-			//TODO(thampiotr): should we support multiple?
 			name: "multiple ip addresses",
 			args: Options{
 				JoinPeers:   []string{"10.10.10.10", "11.11.11.11"},
@@ -115,10 +136,9 @@ func TestPeerDiscovery(t *testing.T) {
 				Logger:      logger,
 				Tracer:      tracer,
 			},
-			expected: []string{"10.10.10.10:12345"},
+			expected: []string{"10.10.10.10:12345", "11.11.11.11:12345"},
 		},
 		{
-			//TODO(thampiotr): should we drop the invalid ones only or error?
 			name: "multiple ip addresses with some invalid",
 			args: Options{
 				JoinPeers:   []string{"10.10.10.10", "11.311.11.11", "22.22.22.22"},
@@ -126,7 +146,17 @@ func TestPeerDiscovery(t *testing.T) {
 				Logger:      logger,
 				Tracer:      tracer,
 			},
-			expected: []string{"10.10.10.10:12345"},
+			expected: []string{"10.10.10.10:12345", "22.22.22.22:12345"},
+		},
+		{
+			name: "multiple ip addresses with some having a port",
+			args: Options{
+				JoinPeers:   []string{"10.10.10.10", "11.211.11.11:7777", "22.22.22.22"},
+				DefaultPort: 12345,
+				Logger:      logger,
+				Tracer:      tracer,
+			},
+			expected: []string{"10.10.10.10:12345", "11.211.11.11:7777", "22.22.22.22:12345"},
 		},
 		{
 			name: "no DNS records found",
@@ -163,10 +193,7 @@ func TestPeerDiscovery(t *testing.T) {
 				Tracer:      tracer,
 				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
 					return "", []*net.SRV{
-						{
-							Target: "10.10.10.10",
-							Port:   12345,
-						},
+						{Target: "10.10.10.10", Port: 12345},
 					}, nil
 				},
 			},
@@ -181,18 +208,9 @@ func TestPeerDiscovery(t *testing.T) {
 				Tracer:      tracer,
 				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
 					return "", []*net.SRV{
-						{
-							Target: "10.10.10.10",
-							Port:   12345,
-						},
-						{
-							Target: "10.10.10.11",
-							Port:   12346,
-						},
-						{
-							Target: "10.10.10.12",
-							Port:   12347,
-						},
+						{Target: "10.10.10.10", Port: 12345},
+						{Target: "10.10.10.11", Port: 12346},
+						{Target: "10.10.10.12", Port: 12347},
 					}, nil
 				},
 			},
@@ -206,29 +224,22 @@ func TestPeerDiscovery(t *testing.T) {
 				Logger:      logger,
 				Tracer:      tracer,
 				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
-					if name == "host1" {
+					switch name {
+					case "host1":
 						return "", []*net.SRV{
-							{
-								Target: "10.10.10.10",
-								Port:   12345,
-							},
-							{
-								Target: "10.10.10.10",
-								Port:   12346,
-							},
+							{Target: "10.10.10.10", Port: 12345},
+							{Target: "10.10.10.10", Port: 12346},
 						}, nil
-					} else {
+					case "host2":
 						return "", []*net.SRV{
-							{
-								Target: "10.10.10.11",
-								Port:   12346,
-							},
+							{Target: "10.10.10.11", Port: 12346},
 						}, nil
+					default:
+						return "", nil, fmt.Errorf("unexpected name %q", name)
 					}
 				},
 			},
-			//TODO(thampiotr): This is likely wrong, we should not have duplicate results.
-			expected: []string{"10.10.10.10:8888", "10.10.10.10:8888", "10.10.10.11:8888"},
+			expected: []string{"10.10.10.10:8888", "10.10.10.11:8888"},
 		},
 		{
 			name: "one SRV record lookup fails, another succeeds",
@@ -238,23 +249,19 @@ func TestPeerDiscovery(t *testing.T) {
 				Logger:      logger,
 				Tracer:      tracer,
 				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
-					if name == "host1" {
-						return "", []*net.SRV{}, fmt.Errorf("DNS lookup test error")
-					} else {
+					switch name {
+					case "host2":
 						return "", []*net.SRV{
-							{
-								Target: "10.10.10.10",
-								Port:   12345,
-							},
-							{
-								Target: "10.10.10.10",
-								Port:   12346,
-							},
+							{Target: "10.10.10.10", Port: 12345},
+							{Target: "10.10.10.10", Port: 12346},
 						}, nil
+					default:
+						return "", []*net.SRV{}, fmt.Errorf("DNS lookup test error")
 					}
 				},
 			},
-			expected: []string{"10.10.10.10:8888", "10.10.10.10:8888"},
+			// NOTE: due to deduplication, only one result is returned here.
+			expected: []string{"10.10.10.10:8888"},
 		},
 		{
 			name: "go discovery factory error",
@@ -345,6 +352,7 @@ func TestPeerDiscovery(t *testing.T) {
 
 			actual, err := fn()
 			if tt.expectedErrContain != "" {
+				logger.Log("actual_err", err)
 				require.ErrorContains(t, err, tt.expectedErrContain)
 				return
 			} else {

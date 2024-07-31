@@ -3,6 +3,7 @@ package discovery
 import (
 	"fmt"
 	stdlog "log"
+	"strconv"
 
 	"github.com/go-kit/log"
 	"github.com/hashicorp/go-discover"
@@ -11,7 +12,13 @@ import (
 
 // newWithGoDiscovery creates a new peer discovery function that uses the github.com/hashicorp/go-discover library to
 // discover peer addresses that can be used for clustering.
-func newWithGoDiscovery(l log.Logger, config string, defaultPort int, factory goDiscoverFactory) (DiscoverFn, error) {
+func newWithGoDiscovery(opt Options) (DiscoverFn, error) {
+	// Default to discover.New if no factory is provided.
+	factory := opt.goDiscoverFactory
+	if factory == nil {
+		factory = discover.New
+	}
+
 	providers := make(map[string]discover.Provider, len(discover.Providers)+1)
 	for k, v := range discover.Providers {
 		providers[k] = v
@@ -26,16 +33,14 @@ func newWithGoDiscovery(l log.Logger, config string, defaultPort int, factory go
 	}
 
 	return func() ([]string, error) {
-		addrs, err := discoverer.Addrs(config, stdlog.New(log.NewStdlibAdapter(l), "", 0))
+		addrs, err := discoverer.Addrs(opt.DiscoverPeers, stdlog.New(log.NewStdlibAdapter(opt.Logger), "", 0))
 		if err != nil {
 			return nil, fmt.Errorf("discovering peers: %w", err)
 		}
 
 		for i := range addrs {
-			// Default to using the same advertise port as the local node. This may
-			// break in some cases, so the user should make sure the port numbers
-			// align on as many nodes as possible.
-			addrs[i] = appendDefaultPort(addrs[i], defaultPort)
+			// Default to using the same advertise port as the local node.
+			addrs[i] = appendPortIfAbsent(addrs[i], strconv.Itoa(opt.DefaultPort))
 		}
 
 		return addrs, nil

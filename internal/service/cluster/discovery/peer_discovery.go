@@ -3,6 +3,7 @@ package discovery
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/go-kit/log"
 	godiscover "github.com/hashicorp/go-discover"
@@ -46,23 +47,15 @@ func NewPeerDiscoveryFn(opts Options) (DiscoverFn, error) {
 		return nil, fmt.Errorf("at most one of join peers and discover peers may be set, "+
 			"got join peers %q and discover peers %q", opts.JoinPeers, opts.DiscoverPeers)
 	}
-	srvLookupFn := net.LookupSRV
-	if opts.lookupSRVFn != nil {
-		srvLookupFn = opts.lookupSRVFn
-	}
-	discoverFactory := godiscover.New
-	if opts.goDiscoverFactory != nil {
-		discoverFactory = opts.goDiscoverFactory
-	}
 
 	switch {
 	case len(opts.JoinPeers) > 0:
-		level.Info(opts.Logger).Log("msg", "using provided peers for discovery", "join_peers", opts.JoinPeers)
-		return newWithJoinPeers(opts.JoinPeers, opts.DefaultPort, opts.Logger, srvLookupFn), nil
+		level.Info(opts.Logger).Log("msg", "using provided peers for discovery", "join_peers", strings.Join(opts.JoinPeers, ", "))
+		return newWithJoinPeers(opts), nil
 	case opts.DiscoverPeers != "":
 		// opts.DiscoverPeers is not logged to avoid leaking sensitive information.
 		level.Info(opts.Logger).Log("msg", "using go-discovery to discover peers")
-		return newWithGoDiscovery(opts.Logger, opts.DiscoverPeers, opts.DefaultPort, discoverFactory)
+		return newWithGoDiscovery(opts)
 	default:
 		// Here, both JoinPeers and DiscoverPeers are empty. This is desirable when
 		// starting a seed node that other nodes connect to, so we don't require
