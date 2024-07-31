@@ -132,6 +132,9 @@ Main (unreleased)
   Previously, the reload would fail for `loki.process` without an error in the logs and the metrics
   from the `metrics` stage would get stuck at the same values. (@ptodev)
 
+- Fix a bug in `discovery.kubernetes` where old `targets` would continue to be exported to downstream components,
+  even if the component is configured to not discover them. (@ptodev)
+
 v1.2.1
 -----------------
 

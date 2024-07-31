@@ -226,6 +226,12 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 				haveUpdates = false
 			}
 		case <-ctx.Done():
+			// Clear the cache
+			//TODO: Write a unit test which changes the config, reloads the component,
+			// and checks that the targets which should no longer be exported are removed.
+			// For example, remove certain namespaces from the config and make sure there is no
+			// __meta_kubernetes_namespace label whose value is set to the removed namespace.
+			cache = map[string]*targetgroup.Group{}
 			// shut down the discoverer - send latest targets and wait for discoverer goroutine to exit
 			send()
 			<-runExited
