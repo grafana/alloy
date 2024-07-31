@@ -51,6 +51,7 @@ The following flags are supported:
 * `--cluster.advertise-interfaces`: List of interfaces used to infer an address to advertise. Set to `all` to use all available network interfaces on the system. (default `"eth0,en0"`).
 * `--cluster.max-join-peers`: Number of peers to join from the discovered set (default `5`).
 * `--cluster.name`: Name to prevent nodes without this identifier from joining the cluster (default `""`).
+* `--cluster.use-discovery-v1`: Use the older, v1 version of cluster peer discovery mechanism (default `false`). Note that this flag will be deprecated in the future and eventually removed.
 * `--config.format`: The format of the source file. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, `static` (default `"alloy"`).
 * `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
@@ -136,6 +137,9 @@ The `--cluster.name` flag can be used to prevent clusters from accidentally merg
 When `--cluster.name` is provided, nodes will only join peers who share the same cluster name value.
 By default, the cluster name is empty, and any node that doesn't set the flag can join.
 Attempting to join a cluster with a wrong `--cluster.name` will result in a "failed to join memberlist" error.
+
+The `--cluster.use-discovery-v1` flag can be used to switch back to the older, v1 version of the cluster peer discovery mechanism
+in case of any issues with the newer version. This flag will be deprecated in the future and eventually removed.
 
 ### Clustering states
 
