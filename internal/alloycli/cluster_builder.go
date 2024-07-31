@@ -71,7 +71,7 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 	}
 
 	// New, refactored and improved peer discovery.
-	// TODO(alloy/#1274): Remove the old peer discovery code once this becomes GA.
+	// TODO(alloy/#1274): Remove the old peer discovery code once this becomes default.
 	if opts.EnableDiscoveryV2 {
 		config.DiscoverPeers, err = discovery.NewPeerDiscoveryFn(discovery.Options{
 			JoinPeers:     opts.JoinPeers,
