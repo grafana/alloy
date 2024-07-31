@@ -62,7 +62,7 @@ func runCommand() *cobra.Command {
 		enablePprof:           true,
 		configFormat:          "alloy",
 		clusterAdvInterfaces:  advertise.DefaultInterfaces,
-		clusterMaxJoinPeers:   5,
+		ClusterMaxJoinPeers:   5,
 		clusterRejoinInterval: 60 * time.Second,
 	}
 
@@ -128,13 +128,9 @@ depending on the nature of the reload error.
 	cmd.Flags().
 		DurationVar(&r.clusterRejoinInterval, "cluster.rejoin-interval", r.clusterRejoinInterval, "How often to rejoin the list of peers")
 	cmd.Flags().
-		IntVar(&r.clusterMaxJoinPeers, "cluster.max-join-peers", r.clusterMaxJoinPeers, "Number of peers to join from the discovered set")
+		IntVar(&r.ClusterMaxJoinPeers, "cluster.max-join-peers", r.ClusterMaxJoinPeers, "Number of peers to join from the discovered set")
 	cmd.Flags().
 		StringVar(&r.clusterName, "cluster.name", r.clusterName, "The name of the cluster to join")
-	// TODO(alloy/#1274): make this flag a no-op once we have more confidence in this feature, and add issue to
-	// remove it in the next major release
-	cmd.Flags().
-		BoolVar(&r.clusterUseDiscoveryV1, "cluster.use-discovery-v1", r.clusterUseDiscoveryV1, "Use the older, v1 version of cluster peers discovery. Note that this flag will be deprecated in the future and eventually removed.")
 
 	// Config flags
 	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
@@ -165,9 +161,8 @@ type alloyRun struct {
 	clusterDiscoverPeers         string
 	clusterAdvInterfaces         []string
 	clusterRejoinInterval        time.Duration
-	clusterMaxJoinPeers          int
+	ClusterMaxJoinPeers          int
 	clusterName                  string
-	clusterUseDiscoveryV1        bool
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
@@ -253,11 +248,10 @@ func (fr *alloyRun) Run(configPath string) error {
 		DiscoverPeers:       fr.clusterDiscoverPeers,
 		RejoinInterval:      fr.clusterRejoinInterval,
 		AdvertiseInterfaces: fr.clusterAdvInterfaces,
-		ClusterMaxJoinPeers: fr.clusterMaxJoinPeers,
+		ClusterMaxJoinPeers: fr.ClusterMaxJoinPeers,
 		ClusterName:         fr.clusterName,
 		//TODO(alloy/#1274): graduate to GA once we have more confidence in this feature
 		EnableStateUpdatesLimiter: fr.minStability.Permits(featuregate.StabilityPublicPreview),
-		EnableDiscoveryV2:         !fr.clusterUseDiscoveryV1,
 	})
 	if err != nil {
 		return err
