@@ -311,7 +311,7 @@ Replace the following:
 [kubernetes services]: #kubernetes-services-block
 [discovery]: #discovery-block
 [services]: #services-block
-[prometheus]: #prometheus-block
+[metrics]: #metrics-block
 [network]: #network-block
 [output]: #output-block
 [in-memory traffic]: ../../../../get-started/component_controller#in-memory-traffic
