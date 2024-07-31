@@ -57,6 +57,8 @@ Main (unreleased)
 
 - Allow setting the CPU profiling event for Java Async Profiler in `pyroscope.java` component (@slbucur)
 
+- Update windows_exporter to v0.26.2. (@jkroepke)
+
 - `mimir.rules.kubernetes` is now able to add extra labels to the Prometheus rules. (@psychomantys)
 
 - Upgrade from OpenTelemetry v0.102.1 to v0.105.0.
