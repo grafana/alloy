@@ -167,10 +167,10 @@ The default values vary by the operating system {{< param "PRODUCT_NAME" >}} run
 
 ### hwmon block
 
-| Name               | Type       | Description                                                           | Default  | Required |
-|--------------------|------------|-----------------------------------------------------------------------|----------|----------|
-| `chip_include`     | `string`   | Regexp of hwmon chip to (include mutually exclusive to chip-exclude). |          | no       |
-| `chip_exclude`     | `string`   | Regexp of hwmon chip to (include mutually exclusive to chip-include). |          | no       |
+| Name               | Type       | Description                                                                        | Default  | Required |
+|--------------------|------------|------------------------------------------------------------------------------------|----------|----------|
+| `chip_include`     | `string`   | Regular expression of hwmon chip to include. Mutually exclusive to `chip-exclude`. |          | no       |
+| `chip_exclude`     | `string`   | Regular expression of hwmon chip to exclude. Mutually exclusive to `chip-include`. |          | no       |
 
 ### ipvs block
 
