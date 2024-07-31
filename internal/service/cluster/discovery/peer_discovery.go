@@ -7,6 +7,8 @@ import (
 	"github.com/go-kit/log"
 	godiscover "github.com/hashicorp/go-discover"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 type DiscoverFn func() ([]string, error)
@@ -55,13 +57,17 @@ func NewPeerDiscoveryFn(opts Options) (DiscoverFn, error) {
 
 	switch {
 	case len(opts.JoinPeers) > 0:
-		return newStaticDiscovery(opts.JoinPeers, opts.DefaultPort, opts.Logger, srvLookupFn), nil
+		level.Info(opts.Logger).Log("msg", "using provided peers for discovery", "join_peers", opts.JoinPeers)
+		return newWithJoinPeers(opts.JoinPeers, opts.DefaultPort, opts.Logger, srvLookupFn), nil
 	case opts.DiscoverPeers != "":
-		return newDynamicDiscovery(opts.Logger, opts.DiscoverPeers, opts.DefaultPort, discoverFactory)
+		// opts.DiscoverPeers is not logged to avoid leaking sensitive information.
+		level.Info(opts.Logger).Log("msg", "using go-discovery to discover peers")
+		return newWithGoDiscovery(opts.Logger, opts.DiscoverPeers, opts.DefaultPort, discoverFactory)
 	default:
 		// Here, both JoinPeers and DiscoverPeers are empty. This is desirable when
 		// starting a seed node that other nodes connect to, so we don't require
 		// one of the fields to be set.
+		level.Info(opts.Logger).Log("msg", "no peer discovery configured: both join and discover peers are empty")
 		return nil, nil
 	}
 }

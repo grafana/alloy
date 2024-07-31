@@ -9,7 +9,9 @@ import (
 	"github.com/hashicorp/go-discover/provider/k8s"
 )
 
-func newDynamicDiscovery(l log.Logger, config string, defaultPort int, factory goDiscoverFactory) (DiscoverFn, error) {
+// newWithGoDiscovery creates a new peer discovery function that uses the github.com/hashicorp/go-discover library to
+// discover peer addresses that can be used for clustering.
+func newWithGoDiscovery(l log.Logger, config string, defaultPort int, factory goDiscoverFactory) (DiscoverFn, error) {
 	providers := make(map[string]discover.Provider, len(discover.Providers)+1)
 	for k, v := range discover.Providers {
 		providers[k] = v

@@ -309,6 +309,28 @@ func TestPeerDiscovery(t *testing.T) {
 			},
 			expectedErrContain: "unknown provider gce",
 		},
+		{
+			name: "go discovery k8s provider added by default",
+			args: Options{
+				DiscoverPeers: "provider=k8s",
+				Logger:        logger,
+				Tracer:        tracer,
+				goDiscoverFactory: func(opts ...godiscover.Option) (*godiscover.Discover, error) {
+					d, err := godiscover.New(opts...)
+					if err != nil {
+						return nil, err
+					}
+					if _, ok := d.Providers["k8s"]; !ok {
+						return nil, fmt.Errorf("k8s provider not found")
+					}
+					return &godiscover.Discover{
+						Providers: map[string]godiscover.Provider{
+							"k8s": &testProvider{},
+						},
+					}, nil
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -346,7 +368,10 @@ type testProvider struct {
 	fn func() ([]string, error)
 }
 
-func (t testProvider) Addrs(args map[string]string, l *stdlog.Logger) ([]string, error) {
+func (t testProvider) Addrs(_ map[string]string, _ *stdlog.Logger) ([]string, error) {
+	if t.fn == nil {
+		return nil, nil
+	}
 	return t.fn()
 }
 
