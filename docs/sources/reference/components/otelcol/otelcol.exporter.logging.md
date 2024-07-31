@@ -90,7 +90,7 @@ information.
 
 ## Example
 
-This example scrapes prometheus unix metrics and writes them to the console:
+This example receives OTLP metrics, logs, and traces and writes them to the console:
 
 ```alloy
 otelcol.receiver.otlp "default" {

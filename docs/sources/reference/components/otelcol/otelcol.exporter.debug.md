@@ -85,11 +85,11 @@ Attributes:
 ```
 
 {{< admonition type="note" >}}
-All instances of `\n`  in the `"detailed"` example have been replaced with new lines.
+All instances of `\n` in the `"detailed"` example have been replaced with new lines.
 {{< /admonition >}}
 
 Setting `use_internal_logger` to `false` is useful if you would like to see actual new lines instead of `\n` in the collector logs.
-However, by not using the internal logger you wouldn't see metadata in the log such as `component_id=otelcol.exporter.debug.default`.
+However, by not using the internal logger you wouldn't see metadata in the log line such as `component_id=otelcol.exporter.debug.default`.
 Multiline logs may also be harder to parse.
 
 ## Blocks
@@ -133,27 +133,21 @@ information.
 
 ## Example
 
-This example scrapes Prometheus UNIX metrics and writes them to the console:
+This example receives OTLP metrics, logs, and traces and writes them to the console:
 
-```river
-prometheus.exporter.unix "default" { }
+```alloy
+otelcol.receiver.otlp "default" {
+    grpc {}
+    http {}
 
-prometheus.scrape "default" {
-    targets    = prometheus.exporter.unix.default.targets
-    forward_to = [otelcol.receiver.prometheus.default.receiver]
-}
-
-otelcol.receiver.prometheus "default" {
     output {
         metrics = [otelcol.exporter.debug.default.input]
+        logs    = [otelcol.exporter.debug.default.input]
+        traces  = [otelcol.exporter.debug.default.input]
     }
 }
 
-otelcol.exporter.debug "default" {
-    verbosity           = "detailed"
-    sampling_initial    = 1
-    sampling_thereafter = 1
-}
+otelcol.exporter.debug "default" {}
 ```
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
