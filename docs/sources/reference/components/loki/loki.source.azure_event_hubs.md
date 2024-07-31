@@ -13,7 +13,7 @@ title: loki.source.azure_event_hubs
 endpoint on Event Hubs. For more information, see
 the [Azure Event Hubs documentation](https://learn.microsoft.com/en-us/azure/event-hubs/azure-event-hubs-kafka-overview).
 
-To learn more about streaming Azure logs to an Azure Event Hubs, refer to 
+To learn more about streaming Azure logs to an Azure Event Hubs, refer to
 Microsoft's tutorial on how to [Stream Azure Active Directory logs to an Azure event hub](https://learn.microsoft.com/en-us/azure/active-directory/reports-monitoring/tutorial-azure-monitor-stream-logs-to-event-hub).
 
 Note that an Apache Kafka endpoint is not available within the Basic pricing plan. For more information, see
@@ -51,7 +51,6 @@ Name                        | Type                 | Description                
 `forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                          |                                  | yes
 `relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                          | `{}`                             | no
 `disallow_custom_messages`  | `bool`               | Whether to ignore messages that don't match the [schema](https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/resource-logs-schema) for Azure resource logs. | `false` | no
-`relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                          | `{}`                             | no
 
 The `fully_qualified_namespace` argument must refer to a full `HOST:PORT` that points to your event hub, such as `NAMESPACE.servicebus.windows.net:9093`.
 The `assignor` argument must be set to one of `"range"`, `"roundrobin"`, or `"sticky"`.
@@ -101,7 +100,7 @@ variables or Azure CLI.
 
 ## Exported fields
 
-`loki.source.azure_event_hubs` does not export any fields.
+`loki.source.azure_event_hubs` doesn't export any fields.
 
 ## Component health
 
@@ -110,7 +109,7 @@ configuration.
 
 ## Debug information
 
-`loki.source.azure_event_hubs` does not expose additional debug info.
+`loki.source.azure_event_hubs` doesn't expose additional debug info.
 
 ## Example
 
