@@ -13,8 +13,7 @@ type Arguments struct {
 	Routes         Routes                     `alloy:"routes,block,optional"`
 	Attributes     Attributes                 `alloy:"attributes,block,optional"`
 	Discovery      Discovery                  `alloy:"discovery,block,optional"`
-	Prometheus     Prometheus                 `alloy:"prometheus,block,optional"`
-	Network        Network                    `alloy:"network,block,optional"`
+	Metrics        Metrics                    `alloy:"metrics,block,optional"`
 	Output         *otelcol.ConsumerArguments `alloy:"output,block,optional"`
 }
 
@@ -64,9 +63,10 @@ type Discovery struct {
 	ExcludeServices Services `alloy:"exclude_services,block,optional"`
 }
 
-type Prometheus struct {
+type Metrics struct {
 	Features         []string `alloy:"features,attr,optional"`
 	Instrumentations []string `alloy:"instrumentations,attr,optional"`
+	Network          Network  `alloy:"network,block,optional"`
 }
 
 type Network struct {

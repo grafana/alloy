@@ -5,6 +5,7 @@ package beyla
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path"
@@ -180,7 +181,7 @@ func (args KubernetesService) Convert() (map[string]*services.RegexpAttr, error)
 	return metadata, nil
 }
 
-func (args Prometheus) Convert() prom.PrometheusConfig {
+func (args Metrics) Convert() prom.PrometheusConfig {
 	p := beyla.DefaultConfig.Prometheus
 	if args.Features != nil {
 		p.Features = args.Features
@@ -334,10 +335,16 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.Prometheus = a.Prometheus.Convert()
-	cfg.NetworkFlows = a.Network.Convert()
+	cfg.Prometheus = a.Metrics.Convert()
+	cfg.NetworkFlows = a.Metrics.Network.Convert()
+
 	if a.Debug {
-		cfg.SetDebugMode()
+		// TODO: integrate Beyla internal logging with Alloy global logging
+		lvl := slog.LevelVar{}
+		lvl.Set(slog.LevelDebug)
+		cfg.ExternalLogger(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: &lvl,
+		})).Handler(), a.Debug)
 	}
 	return &cfg, nil
 }
@@ -347,19 +354,19 @@ func (args *Arguments) Validate() error {
 		return fmt.Errorf("you need to define at least open_port, executable_name, or services in the discovery section")
 	}
 	validInstrumentations := map[string]struct{}{"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}}
-	for _, instrumentation := range args.Prometheus.Instrumentations {
+	for _, instrumentation := range args.Metrics.Instrumentations {
 		if _, ok := validInstrumentations[instrumentation]; !ok {
 			return fmt.Errorf("invalid prometheus.instrumentations entry: %s", instrumentation)
 		}
 	}
 	validFeatures := map[string]struct{}{
-		"application": {},
-		"application_span": {},
+		"application":               {},
+		"application_span":          {},
 		"application_service_graph": {},
-		"application_process": {},
-		"network": {},
+		"application_process":       {},
+		"network":                   {},
 	}
-	for _, feature := range args.Prometheus.Features {
+	for _, feature := range args.Metrics.Features {
 		if _, ok := validFeatures[feature]; !ok {
 			return fmt.Errorf("invalid prometheus.features entry: %s", feature)
 		}

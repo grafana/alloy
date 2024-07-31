@@ -113,6 +113,12 @@ Main (unreleased)
   - `otelcol.connector.spanmetrics`: Produce delta temporality span metrics with StartTimeUnixNano and TimeUnixNano values representing an uninterrupted series.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/31780
 
+- Upgrade Beyla component v1.6.3 to v1.7.0
+  - Reporting application process metrics
+  - New supported protocols: SQL, Redis, Kafka
+  - Several bugfixes
+  - Full list of changes: https://github.com/grafana/beyla/releases/tag/v1.7.0
+
 ### Bugfixes
 
 - Fixed a clustering mode issue where a fatal startup failure of the clustering service

@@ -32,9 +32,6 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				enable = "true"
 			}
 		}
-		network {
-			enable = true
-		}
 		discovery {
 			services {
 				name = "test"
@@ -59,9 +56,12 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				namespace = "default"
 			}
 		}
-		prometheus {
+		metrics {
 			features = ["application", "network"]
 			instrumentations = ["redis", "sql"]
+			network {
+				enable = true
+			}
 		}
 		output { /* no-op */ }
 	`
@@ -241,7 +241,7 @@ func TestConvert_Discovery(t *testing.T) {
 }
 
 func TestConvert_Prometheus(t *testing.T) {
-	args := Prometheus{
+	args := Metrics{
 		Features:         []string{"application", "network"},
 		Instrumentations: []string{"redis", "sql"},
 	}
@@ -310,20 +310,20 @@ func TestArguments_Validate(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name: "invalid Prometheus instrumentation",
+			name: "invalid Metrics instrumentation",
 			args: Arguments{
 				Port: "849",
-				Prometheus: Prometheus{
+				Metrics: Metrics{
 					Instrumentations: []string{"*", "kafka", "redis", "superprotocol"},
 				},
 			},
 			expected: errors.New("invalid prometheus.instrumentations entry: superprotocol"),
 		},
 		{
-			name: "invalid Prometheus feature",
+			name: "invalid Metrics feature",
 			args: Arguments{
 				Port: "849",
-				Prometheus: Prometheus{
+				Metrics: Metrics{
 					Features: []string{"application_service_graph", "tralara"},
 				},
 			},

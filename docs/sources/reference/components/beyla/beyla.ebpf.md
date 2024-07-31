@@ -51,19 +51,18 @@ If the executable matches only one of the ports in the list, it is considered to
 
 The following blocks are supported inside the definition of `beyla.ebpf`:
 
-Hierarchy               | Block          | Description                                                                                        | Required
-------------------------|----------------|----------------------------------------------------------------------------------------------------|---------
-routes                  | [routes][]     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
-attributes              | [attributes][] | Configures the Beyla attributes for the component.                                                 | no
+Hierarchy               | Block                     | Description                                                                                        | Required
+------------------------|---------------------------|----------------------------------------------------------------------------------------------------|---------
+routes                  | [routes][]                | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
+attributes              | [attributes][]            | Configures the Beyla attributes for the component.                                                 | no
 attributes > kubernetes | [kubernetes attributes][] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
-discovery               | [discovery][]  | Configures the discovery for instrumentable processes matching a given criteria.                   | no
-discovery > services    | [services][]   | Configures the services to discover for the component.                                                        | no
+discovery               | [discovery][]             | Configures the discovery for instrumentable processes matching a given criteria.                   | no
+discovery > services    | [services][]              | Configures the services to discover for the component.                                                        | no
 discovery > services > kubernetes    | [kubernetes services][]   | Configures the Kubernetes services to discover for the component.                                | no
-discovery > exclude_services    | [services][]   | Configures the services to exclude for the component.                                                        | no
+discovery > exclude_services    | [services][]              | Configures the services to exclude for the component.                                                        | no
 discovery > exclude_services > kubernetes    | [kubernetes services][]   | Configures the Kubernetes services to exclude for the component.                                | no
-prometheus              | [prometheus][] | Configures which Prometheus metrics Beyla exposes.                                                           | no
-network                 | [network][]    | Configures network metrics options for Beyla.                                                     | no
-output                  | [output][]     | Configures where to send received telemetry data.                                                  | yes
+metrics                 | [metrics][]               | Configures which metrics Beyla exposes.                                                           | no
+output                  | [output][]                | Configures where to send received telemetry data.                                                  | yes
 
 The `>` symbol indicates deeper levels of nesting.
 For example,`attributes > kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
@@ -170,12 +169,13 @@ Name               | Type           | Description                               
 
 This block configures which metrics Beyla collects.
 
-Name              | Type           | Description                                                    | Default | Required
-------------------|----------------|----------------------------------------------------------------|---------|---------
-`features`        | `list(string)` | List of features to enable for the Prometheus metrics.         | `["application"]`    | no
-`instrumentations`| `list(string)` | List of instrumentations to enable for the Prometheus metrics. | `["*"]`    | no
+Name              | Type           | Description                                                    | Default           | Required
+------------------|----------------|----------------------------------------------------------------|-------------------|---------
+`features`        | `list(string)` | List of features to enable for the metrics.         | `["application"]` | no
+`instrumentations`| `list(string)` | List of instrumentations to enable for the metrics. | `["*"]`           | no
+`network`         | `map(string)`  | Configures network metrics options for Beyla.                  | `{}`              | no
 
-`features` is a list of features to enable for the Prometheus metrics. The following features are available:
+`features` is a list of features to enable for the metrics. The following features are available:
 
 - `application` exports application-level metrics.
 - `application_span`exports application-level metrics in traces span metrics format.
@@ -183,18 +183,16 @@ Name              | Type           | Description                                
 - `application_process` exports metrics about the processes that run the instrumented application.
 - `network` exports network-level metrics.
 
-`instrumentations` is a list of instrumentations to enable for the Prometheus metrics. The following instrumentations are available:
+`instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
-- `*` enables all `instrumentations`. If `*` is present in the list, the other values are simply ignored.
+- `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
 - `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
 - `grpc` enables the collection of gRPC application metrics.
 - `sql` enables the collection of SQL database client call metrics.
 - `redis` enables the collection of Redis client/server database metrics.
 - `kafka` enables the collection of Kafka client/server message queue metrics.
 
-### network block
-
-This block configures network metrics options for Beyla.
+`network` configures network metrics options for Beyla. The following options are accepted:
 
 Name              | Type           | Description                                             | Default | Required
 ------------------|----------------|---------------------------------------------------------|---------|---------
