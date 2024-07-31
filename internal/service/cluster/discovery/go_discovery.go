@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"fmt"
 	stdlog "log"
 	"strconv"
@@ -8,6 +9,9 @@ import (
 	"github.com/go-kit/log"
 	"github.com/hashicorp/go-discover"
 	"github.com/hashicorp/go-discover/provider/k8s"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // newWithGoDiscovery creates a new peer discovery function that uses the github.com/hashicorp/go-discover library to
@@ -33,8 +37,16 @@ func newWithGoDiscovery(opt Options) (DiscoverFn, error) {
 	}
 
 	return func() ([]string, error) {
+		_, span := opt.Tracer.Tracer("").Start(
+			context.Background(),
+			"DiscoverClusterPeers",
+			trace.WithSpanKind(trace.SpanKindInternal),
+		)
+		defer span.End()
+
 		addrs, err := discoverer.Addrs(opt.DiscoverPeers, stdlog.New(log.NewStdlibAdapter(opt.Logger), "", 0))
 		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
 			return nil, fmt.Errorf("discovering peers: %w", err)
 		}
 
@@ -43,6 +55,8 @@ func newWithGoDiscovery(opt Options) (DiscoverFn, error) {
 			addrs[i] = appendPortIfAbsent(addrs[i], strconv.Itoa(opt.DefaultPort))
 		}
 
+		span.SetAttributes(attribute.Int("discovered_addresses_count", len(addrs)))
+		span.SetStatus(codes.Ok, "discovered peers")
 		return addrs, nil
 	}, nil
 }

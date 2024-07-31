@@ -166,13 +166,16 @@ func TestPeerDiscovery(t *testing.T) {
 				Logger:      logger,
 				Tracer:      tracer,
 				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
-					return "", []*net.SRV{}, nil
+					return "", nil, nil
+				},
+				lookupIPFn: func(host string) ([]net.IP, error) {
+					return nil, nil
 				},
 			},
 			expectedErrContain: "failed to find any valid join addresses",
 		},
 		{
-			name: "SRV DNS record lookup error",
+			name: "SRV record lookup error",
 			args: Options{
 				JoinPeers:   []string{"host1"},
 				DefaultPort: 12345,
@@ -219,7 +222,7 @@ func TestPeerDiscovery(t *testing.T) {
 		{
 			name: "multiple hosts and multiple SRV records found",
 			args: Options{
-				JoinPeers:   []string{"host1", "host2"},
+				JoinPeers:   []string{"host1", "host2:7777"},
 				DefaultPort: 8888, // NOTE: this is the port that will be used, not the one from SRV records.
 				Logger:      logger,
 				Tracer:      tracer,
@@ -239,7 +242,7 @@ func TestPeerDiscovery(t *testing.T) {
 					}
 				},
 			},
-			expected: []string{"10.10.10.10:8888", "10.10.10.11:8888"},
+			expected: []string{"10.10.10.10:8888", "10.10.10.11:7777"},
 		},
 		{
 			name: "one SRV record lookup fails, another succeeds",
@@ -262,6 +265,164 @@ func TestPeerDiscovery(t *testing.T) {
 			},
 			// NOTE: due to deduplication, only one result is returned here.
 			expected: []string{"10.10.10.10:8888"},
+		},
+		{
+			name: "A record lookup error",
+			args: Options{
+				JoinPeers:   []string{"host1"},
+				DefaultPort: 12345,
+				Logger:      logger,
+				Tracer:      tracer,
+				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
+					return "", nil, fmt.Errorf("DNS SRV record lookup test error")
+				},
+				lookupIPFn: func(host string) ([]net.IP, error) {
+					return nil, fmt.Errorf("DNS A record lookup test error")
+				},
+			},
+			expectedErrContain: "DNS A record lookup test error",
+		},
+		{
+			name: "single A record found",
+			args: Options{
+				JoinPeers:   []string{"host1"},
+				DefaultPort: 12345,
+				Logger:      logger,
+				Tracer:      tracer,
+				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
+					return "", nil, fmt.Errorf("DNS SRV record lookup test error")
+				},
+				lookupIPFn: func(host string) ([]net.IP, error) {
+					return []net.IP{
+						net.ParseIP("10.10.10.10"),
+					}, nil
+				},
+			},
+			expected: []string{"10.10.10.10:12345"},
+		},
+		{
+			name: "multiple A records found",
+			args: Options{
+				JoinPeers:   []string{"host1"},
+				DefaultPort: 8888,
+				Logger:      logger,
+				Tracer:      tracer,
+				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
+					return "", nil, fmt.Errorf("DNS SRV record lookup test error")
+				},
+				lookupIPFn: func(host string) ([]net.IP, error) {
+					return []net.IP{
+						net.ParseIP("10.10.10.10"),
+						net.ParseIP("10.10.10.11"),
+						net.ParseIP("10.10.10.12"),
+					}, nil
+				},
+			},
+			expected: []string{"10.10.10.10:8888", "10.10.10.11:8888", "10.10.10.12:8888"},
+		},
+		{
+			name: "multiple hosts and multiple A records found",
+			args: Options{
+				JoinPeers:   []string{"host1:7777", "host2"},
+				DefaultPort: 8888,
+				Logger:      logger,
+				Tracer:      tracer,
+				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
+					return "", nil, fmt.Errorf("DNS SRV record lookup test error")
+				},
+				lookupIPFn: func(host string) ([]net.IP, error) {
+					switch host {
+					case "host1":
+						return []net.IP{
+							net.ParseIP("10.10.10.10"),
+							net.ParseIP("10.10.10.11"),
+						}, nil
+					case "host2":
+						return []net.IP{
+							net.ParseIP("10.10.10.11"),
+						}, nil
+					default:
+						return nil, fmt.Errorf("unexpected name %q", host)
+					}
+				},
+			},
+			expected: []string{"10.10.10.10:7777", "10.10.10.11:7777", "10.10.10.11:8888"},
+		},
+		{
+			name: "one A record lookup fails, another succeeds",
+			args: Options{
+				JoinPeers:   []string{"host1", "host2"},
+				DefaultPort: 8888, // NOTE: this is the port that will be used, not the one from SRV records.
+				Logger:      logger,
+				Tracer:      tracer,
+				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
+					return "", nil, fmt.Errorf("DNS SRV record lookup test error")
+				},
+				lookupIPFn: func(host string) ([]net.IP, error) {
+					switch host {
+					case "host2":
+						return []net.IP{
+							net.ParseIP("10.10.10.10"),
+							net.ParseIP("10.10.10.11"),
+						}, nil
+					default:
+						return nil, fmt.Errorf("unexpected name %q", host)
+					}
+				},
+			},
+			expected: []string{"10.10.10.10:8888", "10.10.10.11:8888"},
+		},
+		{
+			name: "one host has A record and another has SRV record",
+			args: Options{
+				JoinPeers:   []string{"host1", "host2"},
+				DefaultPort: 8888, // NOTE: this is the port that will be used, not the one from SRV records.
+				Logger:      logger,
+				Tracer:      tracer,
+				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
+					switch name {
+					case "host1":
+						return "", []*net.SRV{
+							{Target: "10.10.10.10", Port: 12345},
+							{Target: "10.10.10.10", Port: 12346},
+						}, nil
+					default:
+						return "", []*net.SRV{}, fmt.Errorf("DNS lookup test error")
+					}
+				},
+				lookupIPFn: func(host string) ([]net.IP, error) {
+					switch host {
+					case "host2":
+						return []net.IP{
+							net.ParseIP("10.10.10.11"),
+							net.ParseIP("10.10.10.12"),
+						}, nil
+					default:
+						return nil, fmt.Errorf("unknown name %q", host)
+					}
+				},
+			},
+			expected: []string{"10.10.10.10:8888", "10.10.10.11:8888", "10.10.10.12:8888"},
+		},
+		{
+			name: "A records take precedence over SRV records",
+			args: Options{
+				JoinPeers:   []string{"host1"},
+				DefaultPort: 8888,
+				Logger:      logger,
+				Tracer:      tracer,
+				lookupSRVFn: func(service, proto, name string) (string, []*net.SRV, error) {
+					return "", []*net.SRV{
+						{Target: "10.10.10.10", Port: 12345},
+					}, nil
+				},
+				lookupIPFn: func(host string) ([]net.IP, error) {
+					return []net.IP{
+						net.ParseIP("10.10.10.11"),
+					}, nil
+				},
+			},
+			expected: []string{"10.10.10.11:8888"},
 		},
 		{
 			name: "go discovery factory error",

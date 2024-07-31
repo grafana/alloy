@@ -24,6 +24,9 @@ type Options struct {
 	Tracer trace.TracerProvider
 	// lookupSRVFn is a function that can be used to lookup SRV records. If nil, net.LookupSRV is used. Used for testing.
 	lookupSRVFn lookupSRVFn
+	// lookupIPFn is a function that can be used to lookup addresses using A/AAAA DNS records. If nil, net.LookupIP is used. Used for testing.
+	lookupIPFn lookupIPFn
+
 	// goDiscoverFactory is a function that can be used to create a new discover.Discover instance.
 	// If nil, godiscover.New is used. Used for testing.
 	goDiscoverFactory goDiscoverFactory
@@ -31,6 +34,9 @@ type Options struct {
 
 // lookupSRVFn is a function that can be used to lookup SRV records. Matches net.LookupSRV signature.
 type lookupSRVFn func(service, proto, name string) (string, []*net.SRV, error)
+
+// lookupIPFn is a function that can be used to lookup IP addresses using A/AAAA DNS records. Matches net.LookupIP signature.
+type lookupIPFn func(host string) ([]net.IP, error)
 
 // goDiscoverFactory is a function that can be used to create a new discover.Discover instance.
 // Matches discover.New signature.
