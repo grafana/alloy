@@ -62,7 +62,7 @@ discovery > services > kubernetes    | [kubernetes services][]   | Configures th
 discovery > exclude_services    | [services][]              | Configures the services to exclude for the component.                                                        | no
 discovery > exclude_services > kubernetes    | [kubernetes services][]   | Configures the Kubernetes services to exclude for the component.                                | no
 metrics                 | [metrics][]               | Configures which metrics Beyla exposes.                                                           | no
-metrics > network       | [network attributes][]    | Configures network metrics options for Beyla.                                                      |no 
+metrics > network       | [network][]    | Configures network metrics options for Beyla.                                                      |no 
 output                  | [output][]                | Configures where to send received telemetry data.                                                  | yes
 
 The `>` symbol indicates deeper levels of nesting.
@@ -191,8 +191,6 @@ Name              | Type           | Description                                
 - `sql` enables the collection of SQL database client call metrics.
 - `redis` enables the collection of Redis client/server database metrics.
 - `kafka` enables the collection of Kafka client/server message queue metrics.
-
-The metrics block contains the following `network` block:
 
 ### network block
 
