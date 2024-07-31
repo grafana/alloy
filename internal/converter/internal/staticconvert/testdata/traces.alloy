@@ -10,9 +10,13 @@ prometheus.remote_write "metrics_remote_write_name" {
 }
 
 otelcol.extension.jaeger_remote_sampling "default_0" {
-	grpc { }
+	grpc {
+		endpoint = "localhost:14250"
+	}
 
-	http { }
+	http {
+		endpoint = "localhost:5778"
+	}
 
 	source {
 		remote {

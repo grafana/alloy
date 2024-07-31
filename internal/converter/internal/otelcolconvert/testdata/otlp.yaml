@@ -3,6 +3,8 @@ receivers:
     protocols:
       grpc:
       http:
+        compression_algorithms:
+        - "zlib"
 
 exporters:
   otlp:

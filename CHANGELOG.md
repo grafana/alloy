@@ -10,13 +10,28 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- `otelcol.receiver.otlp`, `otelcol.receiver.jaeger`, `otelcol.extension.jaeger_remote_sampling`, `otelcol.receiver.zipkin` 
+  will now configure `endpoint` using `localhost` by default instead of `0.0.0.0`. 
+  This may break the receiver in containerized environments like Kubernetes. 
+  If you depend on `0.0.0.0`, configure the `endpoint` attribute to explicitly use `0.0.0.0`.
+- [`otelcol.exporter.otlp`,`otelcol.exporter.loadbalancing`]: Change the default gRPC load balancing strategy.
+  The default value for the `balancer_name` attribute has changed to `round_robin`
+  https://github.com/open-telemetry/opentelemetry-collector/pull/10319
+
 ### Breaking changes to non-GA functionality
 
 - Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
 
+- The default value of the argument `unmatched` in the block `routes` of the component `beyla.ebpf` was changed from `unset` to `heuristic` (@marctc) 
+
 ### Features
 
 - Added community components support, enabling community members to implement and maintain components. (@wildum)
+
+- A new `otelcol.exporter.debug` component for printing OTel telemetry from 
+  other `otelcol` components to the console. (@BarunKGP)
 
 ### Enhancements
 
@@ -30,22 +45,95 @@ Main (unreleased)
 
 - Added live debugging support to `otelcol.processor.*` components. (@wildum)
 
+- Add automatic system attributes for `version` and `os` to `remotecfg`. (@erikbaranowski)
+
 - Added live debugging support to `otelcol.receiver.*` components. (@wildum)
 
 - Added live debugging support to `loki.process`. (@wildum)
+
+- Added live debugging support to `loki.relabel`. (@wildum)
 
 - Added a `namespace` label to probes scraped by the `prometheus.operator.probes` component to align with the upstream Prometheus Operator setup. (@toontijtgat2)
 
 - (_Public preview_) Added rate limiting of cluster state changes to reduce the
   number of unnecessary, intermediate state updates. (@thampiotr)
 
+- Allow setting the CPU profiling event for Java Async Profiler in `pyroscope.java` component (@slbucur)
+
+- `mimir.rules.kubernetes` is now able to add extra labels to the Prometheus rules. (@psychomantys)
+
+- Upgrade from OpenTelemetry v0.102.1 to v0.105.0.
+  - [`otelcol.receiver.*`] A new `compression_algorithms` attribute to configure which 
+    compression algorithms are allowed by the HTTP server.
+    https://github.com/open-telemetry/opentelemetry-collector/pull/10295
+  - [`otelcol.exporter.*`] Fix potential deadlock in the batch sender.
+    https://github.com/open-telemetry/opentelemetry-collector/pull/10315
+  - [`otelcol.exporter.*`] Fix a bug when the retry and timeout logic was not applied with enabled batching.
+    https://github.com/open-telemetry/opentelemetry-collector/issues/10166
+  - [`otelcol.exporter.*`] Fix a bug where an unstarted batch_sender exporter hangs on shutdown.
+    https://github.com/open-telemetry/opentelemetry-collector/issues/10306
+  - [`otelcol.exporter.*`] Fix small batch due to unfavorable goroutine scheduling in batch sender.
+    https://github.com/open-telemetry/opentelemetry-collector/issues/9952
+  - [`otelcol.exporter.otlphttp`] A new `cookies` block to store cookies from server responses and reuse them in subsequent requests.
+    https://github.com/open-telemetry/opentelemetry-collector/issues/10175
+  - [`otelcol.exporter.otlp`] Fixed a bug where the receiver's http response was not properly translating grpc error codes to http status codes.
+    https://github.com/open-telemetry/opentelemetry-collector/pull/10574
+  - [`otelcol.processor.tail_sampling`] Simple LRU Decision Cache for "keep" decisions.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33533
+  - [`otelcol.processor.tail_sampling`] Fix precedence of inverted match in and policy.
+    Previously if the decision from a policy evaluation was `NotSampled` or `InvertNotSampled` 
+    it would return a `NotSampled` decision regardless, effectively downgrading the result.
+    This was breaking the documented behaviour that inverted decisions should take precedence over all others.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33671
+  - [`otelcol.exporter.kafka`,`otelcol.receiver.kafka`] Add config attribute to disable Kerberos PA-FX-FAST negotiation.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/26345
+  - [`OTTL`]: Added `keep_matching_keys` function to allow dropping all keys from a map that don't match the pattern.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/32989
+  - [`OTTL`]: Add debug logs to help troubleshoot OTTL statements/conditions
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33274
+  - [`OTTL`]: Introducing `append` function for appending items into an existing array.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/32141
+  - [`OTTL`]: Introducing `Uri` converter parsing URI string into SemConv
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/32433
+  - [`OTTL`]: Added a Hex() converter function
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33450
+  - [`OTTL`]: Added a IsRootSpan() converter function.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33729
+  - [`otelcol.processor.probabilistic_sampler`]: Add Proportional and Equalizing sampling modes.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31918
+  - [`otelcol.processor.deltatocumulative`]: Bugfix to properly drop samples when at limit.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33285
+  - [`otelcol.receiver.vcenter`] Fixes errors in some of the client calls for environments containing multiple datacenters.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33735
+  - [`otelcol.processor.resourcedetection`] Fetch CPU info only if related attributes are enabled.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33774
+  - [`otelcol.receiver.vcenter`] Adding metrics for CPU readiness, CPU capacity, and network drop rate.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33607
+  - [`otelcol.receiver.vcenter`] Drop support for vCenter 6.7.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33607
+  - [`otelcol.processor.attributes`] Add an option to extract value from a client address 
+    by specifying `client.address` value in the `from_context` field.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/34048
+  - `otelcol.connector.spanmetrics`: Produce delta temporality span metrics with StartTimeUnixNano and TimeUnixNano values representing an uninterrupted series.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/31780
+
 - Add a `otelcol.processor.groupbyattrs` component to reassociate collected metrics that match specified attributes
   from opentelemetry. (@kehindesalaam)
+
+- Upgrade Beyla component v1.6.3 to v1.7.0
+  - Reporting application process metrics
+  - New supported protocols: SQL, Redis, Kafka
+  - Several bugfixes
+  - Full list of changes: https://github.com/grafana/beyla/releases/tag/v1.7.0
 
 ### Bugfixes
 
 - Fixed a clustering mode issue where a fatal startup failure of the clustering service
   would exit the service silently, without also exiting the Alloy process. (@thampiotr)
+
+- Fix a bug which prevented config reloads to work if a Loki `metrics` stage is in the pipeline. 
+  Previously, the reload would fail for `loki.process` without an error in the logs and the metrics
+  from the `metrics` stage would get stuck at the same values. (@ptodev)
 
 v1.2.1
 -----------------

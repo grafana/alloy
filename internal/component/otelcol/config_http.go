@@ -29,8 +29,18 @@ type HTTPServerArguments struct {
 	// We will need to generally figure out how we want to provide common
 	// authentication extensions to all of our components.
 
-	MaxRequestBodySize units.Base2Bytes `alloy:"max_request_body_size,attr,optional"`
-	IncludeMetadata    bool             `alloy:"include_metadata,attr,optional"`
+	MaxRequestBodySize    units.Base2Bytes `alloy:"max_request_body_size,attr,optional"`
+	IncludeMetadata       bool             `alloy:"include_metadata,attr,optional"`
+	CompressionAlgorithms []string         `alloy:"compression_algorithms,attr,optional"`
+}
+
+var DefaultCompressionAlgorithms = []string{"", "gzip", "zstd", "zlib", "snappy", "deflate"}
+
+func copyStringSlice(s []string) []string {
+	if s == nil {
+		return nil
+	}
+	return append([]string(nil), s...)
 }
 
 // Convert converts args into the upstream type.
@@ -40,11 +50,12 @@ func (args *HTTPServerArguments) Convert() *otelconfighttp.ServerConfig {
 	}
 
 	return &otelconfighttp.ServerConfig{
-		Endpoint:           args.Endpoint,
-		TLSSetting:         args.TLS.Convert(),
-		CORS:               args.CORS.Convert(),
-		MaxRequestBodySize: int64(args.MaxRequestBodySize),
-		IncludeMetadata:    args.IncludeMetadata,
+		Endpoint:              args.Endpoint,
+		TLSSetting:            args.TLS.Convert(),
+		CORS:                  args.CORS.Convert(),
+		MaxRequestBodySize:    int64(args.MaxRequestBodySize),
+		IncludeMetadata:       args.IncludeMetadata,
+		CompressionAlgorithms: copyStringSlice(args.CompressionAlgorithms),
 	}
 }
 
@@ -64,8 +75,8 @@ func (args *CORSArguments) Convert() *otelconfighttp.CORSConfig {
 	}
 
 	return &otelconfighttp.CORSConfig{
-		AllowedOrigins: args.AllowedOrigins,
-		AllowedHeaders: args.AllowedHeaders,
+		AllowedOrigins: copyStringSlice(args.AllowedOrigins),
+		AllowedHeaders: copyStringSlice(args.AllowedHeaders),
 
 		MaxAge: args.MaxAge,
 	}
@@ -96,6 +107,8 @@ type HTTPClientArguments struct {
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
 	Auth *auth.Handler `alloy:"auth,attr,optional"`
+
+	Cookies *Cookies `alloy:"cookies,block,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -136,6 +149,8 @@ func (args *HTTPClientArguments) Convert() *otelconfighttp.ClientConfig {
 		HTTP2PingTimeout:     args.HTTP2PingTimeout,
 
 		Auth: auth,
+
+		Cookies: args.Cookies.Convert(),
 	}
 }
 
@@ -146,4 +161,18 @@ func (args *HTTPClientArguments) Extensions() map[otelcomponent.ID]otelextension
 		m[args.Auth.ID] = args.Auth.Extension
 	}
 	return m
+}
+
+type Cookies struct {
+	Enabled bool `alloy:"enabled,attr,optional"`
+}
+
+func (c *Cookies) Convert() *otelconfighttp.CookiesConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &otelconfighttp.CookiesConfig{
+		Enabled: c.Enabled,
+	}
 }

@@ -138,7 +138,7 @@ func (c *Component) Update(args component.Arguments) error {
 		if err != nil {
 			return err
 		}
-		c.entryHandler = loki.NewEntryHandler(c.processOut, func() {})
+		c.entryHandler = loki.NewEntryHandler(c.processOut, func() { pipeline.Cleanup() })
 		c.processIn = pipeline.Wrap(c.entryHandler).Chan()
 		c.stages = newArgs.Stages
 	}

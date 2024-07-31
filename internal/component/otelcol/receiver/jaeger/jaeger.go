@@ -106,7 +106,7 @@ type GRPC struct {
 func (args *GRPC) SetToDefault() {
 	*args = GRPC{
 		GRPCServerArguments: &otelcol.GRPCServerArguments{
-			Endpoint:  "0.0.0.0:14250",
+			Endpoint:  "localhost:14250",
 			Transport: "tcp",
 		},
 	}
@@ -129,7 +129,8 @@ type ThriftHTTP struct {
 func (args *ThriftHTTP) SetToDefault() {
 	*args = ThriftHTTP{
 		HTTPServerArguments: &otelcol.HTTPServerArguments{
-			Endpoint: "0.0.0.0:14268",
+			Endpoint:              "localhost:14268",
+			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
 		},
 	}
 }
@@ -178,7 +179,7 @@ type ThriftCompact struct {
 func (args *ThriftCompact) SetToDefault() {
 	*args = ThriftCompact{
 		ProtocolUDP: &ProtocolUDP{
-			Endpoint:      "0.0.0.0:6831",
+			Endpoint:      "localhost:6831",
 			QueueSize:     1_000,
 			MaxPacketSize: 65 * units.KiB,
 			Workers:       10,
@@ -204,7 +205,7 @@ type ThriftBinary struct {
 func (args *ThriftBinary) SetToDefault() {
 	*args = ThriftBinary{
 		ProtocolUDP: &ProtocolUDP{
-			Endpoint:      "0.0.0.0:6832",
+			Endpoint:      "localhost:6832",
 			QueueSize:     1_000,
 			MaxPacketSize: 65 * units.KiB,
 			Workers:       10,

@@ -13,6 +13,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/confighttp"
 )
 
 func TestRun(t *testing.T) {
@@ -39,6 +40,29 @@ func TestRun(t *testing.T) {
 	}()
 
 	require.NoError(t, ctrl.WaitRunning(time.Second))
+}
+
+func TestArguments_UnmarshalDefaults(t *testing.T) {
+	in := "output {}"
+
+	var args zipkin.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+
+	ext, err := args.Convert()
+	require.NoError(t, err)
+
+	otelArgs, ok := (ext).(*zipkinreceiver.Config)
+	require.True(t, ok)
+
+	expected := zipkinreceiver.Config{
+		ServerConfig: confighttp.ServerConfig{
+			Endpoint:              "localhost:9411",
+			CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate"},
+		},
+	}
+
+	// Check the arguments
+	require.Equal(t, &expected, otelArgs)
 }
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {

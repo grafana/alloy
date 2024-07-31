@@ -68,7 +68,7 @@ configMapGenerator:
       disableNameSuffixHash: true
 ```
 
-## Configure the {{< param "PRODUCT_NAME" >}}
+## Configure {{< param "PRODUCT_NAME" >}}
 
 This section describes how to modify the {{< param "PRODUCT_NAME" >}} configuration, which is stored in a ConfigMap in the Kubernetes cluster.
 There are two methods to perform this task.

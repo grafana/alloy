@@ -32,7 +32,7 @@ Name               | Type                 | Description                         
 `host`             | `string`             | Address of the Docker daemon.                                                  |         | yes
 `targets`          | `list(map(string))`  | List of containers to read logs from.                                          |         | yes
 `forward_to`       | `list(LogsReceiver)` | List of receivers to send log entries to.                                      |         | yes
-`labels`           | `map(string)`        | The default set of labels to apply on entries.                                 | `"{}"`  | no
+`labels`           | `map(string)`        | The default set of labels to apply on entries.                                 | `"{}"`  | yes
 `relabel_rules`    | `RelabelRules`       | Relabeling rules to apply on log entries.                                      | `"{}"`  | no
 `refresh_interval` | `duration`           | The refresh interval to use when connecting to the Docker daemon over HTTP(S). | `"60s"` | no
 
@@ -139,12 +139,13 @@ discovery.docker "linux" {
 loki.source.docker "default" {
   host       = "unix:///var/run/docker.sock"
   targets    = discovery.docker.linux.targets
+  labels     = {"app" = "docker"}
   forward_to = [loki.write.local.receiver]
 }
 
 loki.write "local" {
   endpoint {
-    url = "loki:3100/api/v1/push"
+    url = "loki:3100/loki/api/v1/push"
   }
 }
 ```
