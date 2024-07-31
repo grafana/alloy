@@ -674,6 +674,10 @@ require (
 	go.opentelemetry.io/collector/filter v0.105.0 // indirect
 	go.opentelemetry.io/collector/internal/globalgates v0.105.0 // indirect
 	go.opentelemetry.io/contrib/config v0.8.0 // indirect
+	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.28.0 // indirect
+	go.opentelemetry.io/contrib/detectors/aws/eks v1.28.0 // indirect
+	go.opentelemetry.io/contrib/detectors/azure/azurevm v0.0.1 // indirect
+	go.opentelemetry.io/contrib/detectors/gcp v1.28.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.53.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 // indirect
 	go.opentelemetry.io/contrib/propagators/b3 v1.28.0 // indirect
@@ -708,13 +712,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20240620174524-b456828f718b // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
-)
-
-require (
-	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.28.0 // indirect
-	go.opentelemetry.io/contrib/detectors/aws/eks v1.28.0 // indirect
-	go.opentelemetry.io/contrib/detectors/azure/azurevm v0.0.1 // indirect
-	go.opentelemetry.io/contrib/detectors/gcp v1.28.0 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.
