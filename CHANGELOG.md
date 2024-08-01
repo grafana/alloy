@@ -62,8 +62,6 @@ Main (unreleased)
 
 - `mimir.rules.kubernetes` is now able to add extra labels to the Prometheus rules. (@psychomantys)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 - Upgrade from OpenTelemetry v0.102.1 to v0.105.0.
   - [`otelcol.receiver.*`] A new `compression_algorithms` attribute to configure which 
     compression algorithms are allowed by the HTTP server.
