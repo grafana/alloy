@@ -85,6 +85,7 @@ type Arguments struct {
 	Disk        DiskStatsConfig   `alloy:"disk,block,optional"`
 	EthTool     EthToolConfig     `alloy:"ethtool,block,optional"`
 	Filesystem  FilesystemConfig  `alloy:"filesystem,block,optional"`
+	HwMon       HwMonConfig       `alloy:"hwmon,block,optional"`
 	IPVS        IPVSConfig        `alloy:"ipvs,block,optional"`
 	NTP         NTPConfig         `alloy:"ntp,block,optional"`
 	Netclass    NetclassConfig    `alloy:"netclass,block,optional"`
@@ -125,6 +126,8 @@ func (a *Arguments) Convert() *node_integration.Config {
 		FilesystemFSTypesExclude:         a.Filesystem.FSTypesExclude,
 		FilesystemMountPointsExclude:     a.Filesystem.MountPointsExclude,
 		FilesystemMountTimeout:           a.Filesystem.MountTimeout,
+		HwMonChipInclude:                 a.HwMon.ChipInclude,
+		HwMonChipExclude:                 a.HwMon.ChipExclude,
 		IPVSBackendLabels:                a.IPVS.BackendLabels,
 		NTPIPTTL:                         a.NTP.IPTTL,
 		NTPLocalOffsetTolerance:          a.NTP.LocalOffsetTolerance,
@@ -234,6 +237,12 @@ type EthToolConfig struct {
 	DeviceExclude  string `alloy:"device_exclude,attr,optional"`
 	DeviceInclude  string `alloy:"device_include,attr,optional"`
 	MetricsInclude string `alloy:"metrics_include,attr,optional"`
+}
+
+// HwMonConfig contains config specific to the hwmon collector.
+type HwMonConfig struct {
+	ChipExclude string `alloy:"chip_exclude,attr,optional"`
+	ChipInclude string `alloy:"chip_include,attr,optional"`
 }
 
 // FilesystemConfig contains config specific to the filesystem collector.

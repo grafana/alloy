@@ -60,6 +60,7 @@ The following blocks are supported inside the definition of `prometheus.exporter
 | disk        | [disk][]        | Configures the diskstats collector.   | no       |
 | ethtool     | [ethtool][]     | Configures the ethtool collector.     | no       |
 | filesystem  | [filesystem][]  | Configures the filesystem collector.  | no       |
+| hwmon       | [hwmon][]       | Configures the hwmon collector.       | no       |
 | ipvs        | [ipvs][]        | Configures the ipvs collector.        | no       |
 | ntp         | [ntp][]         | Configures the ntp collector.         | no       |
 | netclass    | [netclass][]    | Configures the netclass collector.    | no       |
@@ -80,6 +81,7 @@ The following blocks are supported inside the definition of `prometheus.exporter
 [disk]: #disk-block
 [ethtool]: #ethtool-block
 [filesystem]: #filesystem-block
+[hwmon]: #hwmon-block
 [ipvs]: #ipvs-block
 [ntp]: #ntp-block
 [netclass]: #netclass-block
@@ -162,6 +164,13 @@ The default values vary by the operating system {{< param "PRODUCT_NAME" >}} run
 ^/(dev)($|/)
 ```
 {{< /code >}}
+
+### hwmon block
+
+| Name               | Type       | Description                                                                        | Default  | Required |
+|--------------------|------------|------------------------------------------------------------------------------------|----------|----------|
+| `chip_include`     | `string`   | Regular expression of hwmon chip to include. Mutually exclusive to `chip-exclude`. |          | no       |
+| `chip_exclude`     | `string`   | Regular expression of hwmon chip to exclude. Mutually exclusive to `chip-include`. |          | no       |
 
 ### ipvs block
 
