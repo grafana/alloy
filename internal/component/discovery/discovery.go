@@ -225,7 +225,11 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 				send()
 				haveUpdates = false
 			}
-		case <-ctx.Done():
+		// If Run has exited, return.
+		// We can't exit straight after the context is cancelled.
+		// We need to receive from runExited first.
+		// If we don't the first "go func() " will block on sending to runExited.
+		case <-runExited:
 			// Clear the cache
 			//TODO: Write a unit test which changes the config, reloads the component,
 			// and checks that the targets which should no longer be exported are removed.
@@ -234,7 +238,6 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 			cache = map[string]*targetgroup.Group{}
 			// shut down the discoverer - send latest targets and wait for discoverer goroutine to exit
 			send()
-			<-runExited
 			return
 		case groups := <-ch:
 			for _, group := range groups {
