@@ -11,7 +11,7 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.processor.groupbyattrs "default" {
-	keys = ["k8s.deployment.name", "k8s.namespace.name"]
+	keys = ["k8s.namespace.name", "k8s.deployment.name"]
 
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]
