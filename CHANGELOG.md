@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.3.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - `otelcol.receiver.otlp`, `otelcol.receiver.jaeger`, `otelcol.extension.jaeger_remote_sampling`, `otelcol.receiver.zipkin` 
