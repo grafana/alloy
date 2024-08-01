@@ -15,7 +15,7 @@ Collector `groupbyattrs` processor. If necessary, bug reports or feature request
 will be redirected to the upstream repository.
 {{% /admonition %}}
 
-It is recommended to use the groupbyattrs processor together with [otelcol.processor.batch][], as a consecutive step, as this will reduce the fragmentation of data (by grouping records together under matching Resource/Instrumentation Library)
+We recommend you use the groupbyattrs processor together with [otelcol.processor.batch][], as a consecutive step. This will reduce the fragmentation of data by grouping records together under the matching Resource/Instrumentation Library.
 
 You can specify multiple `otelcol.processor.groupbyattrs` components by giving them
 different labels.
@@ -38,7 +38,7 @@ The following arguments are supported:
 
 | Name            | Type              | Description                                                                           | Default | Required |
 |-----------------|-------------------|---------------------------------------------------------------------------------------|---------|----------|
-| `keys`          | `array(string)`   | Keys that will be used to group the spans, log records or metric data points together |         | no       |
+| `keys`          | `array(string)`   | Keys that will be used to group the spans, log records, or metric data points together. |         | no       |
 | `output`        | [output][]        | Configures where to send received telemetry data.                                     | yes     |          |
 | `debug_metrics` | [debug_metrics][] | Configures the metrics that this component generates to monitor its state.            | no      |          |
 
@@ -75,12 +75,12 @@ configuration.
 
 ## Debug information
 
-`otelcol.processor.groupbyattrs` does not expose any component-specific debug
+`otelcol.processor.groupbyattrs` doesn't expose any component-specific debug
 information.
 
 ## Debug metrics
 
-`otelcol.processor.groupbyattrs` does not expose any component-specific debug metrics.
+`otelcol.processor.groupbyattrs` doesn't expose any component-specific debug metrics.
 
 ## Examples
 
