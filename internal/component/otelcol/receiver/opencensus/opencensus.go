@@ -45,7 +45,7 @@ var _ receiver.Arguments = Arguments{}
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		GRPC: otelcol.GRPCServerArguments{
-			Endpoint:  "0.0.0.0:55678",
+			Endpoint:  "localhost:55678",
 			Transport: "tcp",
 
 			ReadBufferSize: 512 * units.Kibibyte,

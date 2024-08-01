@@ -46,7 +46,8 @@ var _ receiver.Arguments = Arguments{}
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		HTTPServer: otelcol.HTTPServerArguments{
-			Endpoint: "localhost:8126",
+			Endpoint:              "localhost:8126",
+			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
 		},
 		ReadTimeout: 60 * time.Second,
 	}

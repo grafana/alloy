@@ -10,6 +10,22 @@ title: otelcol.processor.probabilistic_sampler
 
 `otelcol.processor.probabilistic_sampler` accepts logs and traces data from other otelcol components and applies probabilistic sampling based on configuration options.
 
+<!-- 
+The next few paragraphs were copied from the OTel docs:
+https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/probabilisticsamplerprocessor/README.md
+-->
+
+The probabilistic sampler processor supports several modes of sampling for spans and log records.  
+Sampling is performed on a per-request basis, considering individual items statelessly. 
+For whole trace sampling, see `otelcol.processor.tail_sampling`.
+
+For trace spans, this sampler supports probabilistic sampling based on a configured sampling percentage applied to the TraceID.
+In addition, the sampler recognizes a `sampling.priority` annotation, which can force the sampler to apply 0% or 100% sampling.
+
+For log records, this sampler can be configured to use the embedded TraceID and follow the same logic as applied to spans.  
+When the TraceID is not defined, the sampler can be configured to apply hashing to a selected log record attribute.  
+This sampler also supports sampling priority.
+
 {{< admonition type="note" >}}
 `otelcol.processor.probabilistic_sampler` is a wrapper over the upstream OpenTelemetry Collector Contrib `probabilistic_sampler` processor.
 If necessary, bug reports or feature requests will be redirected to the upstream repository.
@@ -32,14 +48,22 @@ otelcol.processor.probabilistic_sampler "LABEL" {
 
 `otelcol.processor.probabilistic_sampler` supports the following arguments:
 
-Name                  | Type      | Description                                                                                                          | Default     | Required
-----------------------|-----------|----------------------------------------------------------------------------------------------------------------------|-------------|---------
-`hash_seed`           | `uint32`  | An integer used to compute the hash algorithm.                                                                       | `0`         | no
-`sampling_percentage` | `float32` | Percentage of traces or logs sampled.                                                                                | `0`         | no
-`fail_closed`         | `bool`    | Whether to reject items with sampling-related errors.                                                                | `true`      | no
-`attribute_source`    | `string`  | Defines where to look for the attribute in `from_attribute`.                                                         | `"traceID"` | no
-`from_attribute`      | `string`  | The name of a log record attribute used for sampling purposes.                                                       | `""`        | no
-`sampling_priority`   | `string`  | The name of a log record attribute used to set a different sampling priority from the `sampling_percentage` setting. | `""`        | no
+Name                  | Type      | Description                                                                                                          | Default          | Required
+----------------------|-----------|----------------------------------------------------------------------------------------------------------------------|------------------|---------
+`mode`                | `string`  | Sampling mode.                                                                                                       | `"proportional"` | no
+`hash_seed`           | `uint32`  | An integer used to compute the hash algorithm.                                                                       | `0`              | no
+`sampling_percentage` | `float32` | Percentage of traces or logs sampled.                                                                                | `0`              | no
+`sampling_precision`  | `int`     | The number of hexadecimal digits used to encode the sampling threshold.                                              | `4`              | no
+`fail_closed`         | `bool`    | Whether to reject items with sampling-related errors.                                                                | `true`           | no
+`attribute_source`    | `string`  | Defines where to look for the attribute in `from_attribute`.                                                         | `"traceID"`      | no
+`from_attribute`      | `string`  | The name of a log record attribute used for sampling purposes.                                                       | `""`             | no
+`sampling_priority`   | `string`  | The name of a log record attribute used to set a different sampling priority from the `sampling_percentage` setting. | `""`             | no
+
+You can set `mode` to `"proportional"`, `"equalizing"`, or `"hash_seed"`.
+The default is `"proportional"` unless either `hash_seed` is configured or `attribute_source` is set to `record`.
+For more information on modes, refer to the upstream Collector's [Mode Selection documentation][mode-selection-upstream] section.
+
+[mode-selection-upstream]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/processor/probabilisticsamplerprocessor/README.md#mode-selection
 
 `hash_seed` determines an integer to compute the hash algorithm. This argument could be used for both traces and logs.
 When used for logs, it computes the hash of a log record.
@@ -62,6 +86,8 @@ The `sampling.priority` semantic convention takes priority over trace ID hashing
 Trace ID hashing samples based on hash values determined by trace IDs.
 
 The `probabilistic_sampler` supports sampling logs according to their trace ID, or by a specific log record attribute.
+
+`sampling_precision` must be a value between 1 and 14 (inclusive).
 
 ## Blocks
 

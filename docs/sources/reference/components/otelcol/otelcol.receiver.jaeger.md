@@ -94,7 +94,7 @@ The following arguments are supported:
 
 Name                     | Type      | Description                                                                | Default           | Required
 -------------------------|-----------|----------------------------------------------------------------------------|-------------------|---------
-`endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"0.0.0.0:14250"` | no
+`endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"localhost:14250"` | no
 `transport`              | `string`  | Transport to use for the gRPC server.                                      | `"tcp"`           | no
 `max_recv_msg_size`      | `string`  | Maximum size of messages the server will accept.                           | `"4MiB`"          | no
 `max_concurrent_streams` | `number`  | Limit the number of concurrent streaming RPC calls.                        |                   | no
@@ -148,11 +148,12 @@ If the `thrift_http` block isn't specified, an HTTP server isn't started.
 
 The following arguments are supported:
 
-Name                    | Type      | Description                                                     | Default           | Required
-------------------------|-----------|-----------------------------------------------------------------|-------------------|---------
-`endpoint`              | `string`  | `host:port` to listen for traffic on.                           | `"0.0.0.0:14268"` | no
-`max_request_body_size` | `string`  | Maximum request body size the server will allow.                | `20MiB`           | no
-`include_metadata`      | `boolean` | Propagate incoming connection metadata to downstream consumers. |                   | no
+Name                     | Type      | Description                                                     | Default           | Required
+-------------------------|-----------|-----------------------------------------------------------------|-------------------|---------
+`endpoint`               | `string`  | `host:port` to listen for traffic on.                           | `"localhost:14268"` | no
+`max_request_body_size`  | `string`  | Maximum request body size the server will allow.                | `20MiB`           | no
+`include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers. |                   | no
+`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate"]` | no
 
 ### cors block
 
@@ -185,7 +186,7 @@ The following arguments are supported:
 
 Name                 | Type     | Description                                                    | Default          | Required
 ---------------------|----------|----------------------------------------------------------------|------------------|---------
-`endpoint`           | `string` | `host:port` to listen for traffic on.                          | `"0.0.0.0:6832"` | no
+`endpoint`           | `string` | `host:port` to listen for traffic on.                          | `"localhost:6832"` | no
 `queue_size`         | `number` | Maximum number of UDP messages that can be queued at once.     | `1000`           | no
 `max_packet_size`    | `string` | Maximum UDP message size.                                      | `"65KiB"`        | no
 `workers`            | `number` | Number of workers to concurrently read from the message queue. | `10`             | no
@@ -200,7 +201,7 @@ The following arguments are supported:
 
 Name                 | Type     | Description                                                    | Default          | Required
 ---------------------|----------|----------------------------------------------------------------|------------------|---------
-`endpoint`           | `string` | `host:port` to listen for traffic on.                          | `"0.0.0.0:6831"` | no
+`endpoint`           | `string` | `host:port` to listen for traffic on.                          | `localhost:6831"` | no
 `queue_size`         | `number` | Maximum number of UDP messages that can be queued at once.     | `1000`           | no
 `max_packet_size`    | `string` | Maximum UDP message size.                                      | `"65KiB"`        | no
 `workers`            | `number` | Number of workers to concurrently read from the message queue. | `10`             | no

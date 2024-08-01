@@ -51,7 +51,9 @@ func toProbabilisticSamplerProcessor(state *State, id component.InstanceID, cfg 
 	return &probabilistic_sampler.Arguments{
 		SamplingPercentage: cfg.SamplingPercentage,
 		HashSeed:           cfg.HashSeed,
+		Mode:               string(cfg.Mode),
 		FailClosed:         cfg.FailClosed,
+		SamplingPrecision:  cfg.SamplingPrecision,
 		AttributeSource:    string(cfg.AttributeSource),
 		FromAttribute:      cfg.FromAttribute,
 		SamplingPriority:   cfg.SamplingPriority,

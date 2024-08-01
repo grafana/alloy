@@ -40,7 +40,7 @@ otelcol.receiver.opencensus "LABEL" {
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `cors_allowed_origins` | `list(string)` | A list of allowed Cross-Origin Resource Sharing (CORS) origins. |  | no
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:55678"` | no
+`endpoint` | `string` | `host:port` to listen for traffic on. | `"localhost:55678"` | no
 `transport` | `string` | Transport to use for the gRPC server. | `"tcp"` | no
 `max_recv_msg_size` | `string` | Maximum size of messages the server will accept. | `"4MiB`" | no
 `max_concurrent_streams` | `number` | Limit the number of concurrent streaming RPC calls. | | no

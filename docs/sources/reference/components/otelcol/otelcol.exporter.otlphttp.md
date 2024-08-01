@@ -48,6 +48,7 @@ Hierarchy        | Block                | Description                           
 -----------------|----------------------|----------------------------------------------------------------------------|---------
 client           | [client][]           | Configures the HTTP server to send telemetry data to.                      | yes
 client > tls     | [tls][]              | Configures TLS for the HTTP client.                                        | no
+client > cookies | [cookies][]          | Store cookies from server responses and reuse them in subsequent requests. | no
 sending_queue    | [sending_queue][]    | Configures batching of data before sending.                                | no
 retry_on_failure | [retry_on_failure][] | Configures retry mechanism for failed requests.                            | no
 debug_metrics    | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state. | no
@@ -57,6 +58,7 @@ For example, `client > tls` refers to a `tls` block defined inside a `client` bl
 
 [client]: #client-block
 [tls]: #tls-block
+[cookies]: #cookies-block
 [sending_queue]: #sending_queue-block
 [retry_on_failure]: #retry_on_failure-block
 [debug_metrics]: #debug_metrics-block
@@ -97,6 +99,18 @@ If `http2_ping_timeout` is unset or set to `0s`, it will default to `15s`.
 If `http2_read_idle_timeout` is unset or set to `0s`, then no health check will be performed.
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### cookies block
+
+The `cookies` block allows the HTTP client to store cookies from server responses and reuse them in subsequent requests.
+
+This could be useful in situations such as load balancers relying on cookies for sticky sessions and enforcing a maximum session age.
+
+The following arguments are supported:
+
+Name      | Type   | Description                               | Default    | Required
+----------|--------|-------------------------------------------|------------|---------
+`enabled` | `bool` | The target URL to send telemetry data to. | `false`    | no
 
 ### tls block
 

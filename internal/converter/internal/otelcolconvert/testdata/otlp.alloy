@@ -1,7 +1,9 @@
 otelcol.receiver.otlp "default" {
 	grpc { }
 
-	http { }
+	http {
+		compression_algorithms = ["zlib"]
+	}
 
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]
