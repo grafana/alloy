@@ -123,6 +123,9 @@ Main (unreleased)
   - Several bugfixes
   - Full list of changes: https://github.com/grafana/beyla/releases/tag/v1.7.0
 
+- Enable instances connected to remotecfg-compatible servers to Register
+  themselves to the remote service. (@tpaschalis)
+
 ### Bugfixes
 
 - Fixed a clustering mode issue where a fatal startup failure of the clustering service
