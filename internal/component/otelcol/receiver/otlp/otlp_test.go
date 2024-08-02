@@ -145,14 +145,14 @@ func TestUnmarshalDefault(t *testing.T) {
 		Protocols: otlpreceiver.Protocols{
 			GRPC: &configgrpc.ServerConfig{
 				NetAddr: confignet.AddrConfig{
-					Endpoint:  "localhost:4317",
+					Endpoint:  "0.0.0.0:4317",
 					Transport: "tcp",
 				},
 				ReadBufferSize: 524288,
 			},
 			HTTP: &otlpreceiver.HTTPConfig{
 				ServerConfig: &confighttp.ServerConfig{
-					Endpoint:              "localhost:4318",
+					Endpoint:              "0.0.0.0:4318",
 					CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate"},
 				},
 				TracesURLPath:  "/v1/traces",
