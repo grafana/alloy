@@ -136,7 +136,7 @@ func validateURL(url string, urlName string) error {
 // SetToDefault implements syntax.Defaulter.
 func (args *GRPCServerArguments) SetToDefault() {
 	*args = GRPCServerArguments{
-		Endpoint:  "localhost:4317",
+		Endpoint:  "0.0.0.0:4317",
 		Transport: "tcp",
 
 		ReadBufferSize: 512 * units.Kibibyte,
@@ -148,7 +148,7 @@ func (args *GRPCServerArguments) SetToDefault() {
 func (args *HTTPConfigArguments) SetToDefault() {
 	*args = HTTPConfigArguments{
 		HTTPServerArguments: &otelcol.HTTPServerArguments{
-			Endpoint:              "localhost:4318",
+			Endpoint:              "0.0.0.0:4318",
 			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
 		},
 		MetricsURLPath: "/v1/metrics",
