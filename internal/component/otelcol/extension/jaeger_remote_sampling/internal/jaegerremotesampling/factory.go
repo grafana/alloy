@@ -34,11 +34,11 @@ func NewFactory() extension.Factory {
 func createDefaultConfig() component.Config {
 	return &Config{
 		HTTPServerConfig: &confighttp.ServerConfig{
-			Endpoint: "localhost:5778",
+			Endpoint: ":5778",
 		},
 		GRPCServerConfig: &configgrpc.ServerConfig{
 			NetAddr: confignet.AddrConfig{
-				Endpoint:  "localhost:14250",
+				Endpoint:  ":14250",
 				Transport: "tcp",
 			},
 		},

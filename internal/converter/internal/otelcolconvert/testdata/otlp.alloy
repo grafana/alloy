@@ -1,7 +1,10 @@
 otelcol.receiver.otlp "default" {
-	grpc { }
+	grpc {
+		endpoint = "localhost:4317"
+	}
 
 	http {
+		endpoint               = "localhost:4318"
 		compression_algorithms = ["zlib"]
 	}
 
