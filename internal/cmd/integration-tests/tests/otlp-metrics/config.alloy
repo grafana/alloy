@@ -1,7 +1,5 @@
 otelcol.receiver.otlp "otlp_metrics" {
-  http {
-    endpoint = "0.0.0.0:4318"
-  }
+  http {}
 
   output {
     metrics = [otelcol.processor.attributes.otlp_metrics.input, otelcol.exporter.prometheus.otlp_to_prom_metrics.input]

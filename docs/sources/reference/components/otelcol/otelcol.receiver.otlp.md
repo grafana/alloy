@@ -78,7 +78,7 @@ The following arguments are supported:
 
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"localhost:4317"` | no
+`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:4317"` | no
 `transport` | `string` | Transport to use for the gRPC server. | `"tcp"` | no
 `max_recv_msg_size` | `string` | Maximum size of messages the server will accept. | `"4MiB`" | no
 `max_concurrent_streams` | `number` | Limit the number of concurrent streaming RPC calls. | | no
@@ -138,7 +138,7 @@ The following arguments are supported:
 
 Name | Type | Description | Default         | Required
 ---- | ---- | ----------- |-----------------| --------
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"localhost:4318"` | no
+`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:4318"` | no
 `max_request_body_size` | `string`   | Maximum request body size the server will allow.                   | `20MiB`          | no
 `include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. |                 | no
 `traces_url_path` | `string` | The URL path to receive traces on. | `"/v1/traces"`  | no

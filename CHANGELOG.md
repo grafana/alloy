@@ -15,10 +15,6 @@ v1.3.0-rc.0
 
 ### Breaking changes
 
-- `otelcol.receiver.otlp`, `otelcol.receiver.jaeger`, `otelcol.extension.jaeger_remote_sampling`, `otelcol.receiver.zipkin` 
-  will now configure `endpoint` using `localhost` by default instead of `0.0.0.0`. 
-  This may break the receiver in containerized environments like Kubernetes. 
-  If you depend on `0.0.0.0`, configure the `endpoint` attribute to explicitly use `0.0.0.0`.
 - [`otelcol.exporter.otlp`,`otelcol.exporter.loadbalancing`]: Change the default gRPC load balancing strategy.
   The default value for the `balancer_name` attribute has changed to `round_robin`
   https://github.com/open-telemetry/opentelemetry-collector/pull/10319

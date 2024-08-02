@@ -59,7 +59,7 @@ func TestDefaultArguments_UnmarshalAlloy(t *testing.T) {
 	defaultArgs.SetToDefault()
 
 	// Check the gRPC arguments
-	require.Equal(t, otelArgs.NetAddr.Endpoint, "localhost:55678")
+	require.Equal(t, otelArgs.NetAddr.Endpoint, "0.0.0.0:55678")
 
 	// Check the gRPC arguments
 	require.Equal(t, defaultArgs.GRPC.Endpoint, otelArgs.NetAddr.Endpoint)

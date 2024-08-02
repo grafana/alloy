@@ -30,10 +30,12 @@ otelcol.extension.jaeger_remote_sampling "default_0" {
 
 otelcol.receiver.otlp "_0_default" {
 	grpc {
+		endpoint         = "localhost:4317"
 		include_metadata = true
 	}
 
 	http {
+		endpoint         = "localhost:4318"
 		include_metadata = true
 	}
 
