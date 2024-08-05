@@ -1,6 +1,7 @@
 package windows
 
 import (
+	"strconv"
 	"strings"
 
 	windows_integration "github.com/grafana/alloy/internal/static/integrations/windows_exporter"
@@ -49,6 +50,10 @@ func (a *Arguments) SetToDefault() {
 			Exclude: col.ConfigDefaults.PhysicalDisk.DiskExclude,
 			Include: col.ConfigDefaults.PhysicalDisk.DiskInclude,
 		},
+		Printer: PrinterConfig{
+			Include: col.ConfigDefaults.Printer.Include,
+			Exclude: col.ConfigDefaults.Printer.Exclude,
+		},
 		Process: ProcessConfig{
 			BlackList: col.ConfigDefaults.Process.ProcessExclude,
 			WhiteList: col.ConfigDefaults.Process.ProcessInclude,
@@ -60,8 +65,15 @@ func (a *Arguments) SetToDefault() {
 			Exclude: col.ConfigDefaults.ScheduledTask.TaskExclude,
 		},
 		Service: ServiceConfig{
-			UseApi: "false",
+			UseApi: strconv.FormatBool(col.ConfigDefaults.Service.UseAPI),
 			Where:  col.ConfigDefaults.Service.ServiceWhereClause,
+			V2:     strconv.FormatBool(col.ConfigDefaults.Service.V2),
+		},
+		SMB: SMBConfig{
+			EnabledList: strings.Split(col.ConfigDefaults.Smb.CollectorsEnabled, ","),
+		},
+		SMBClient: SMBClientConfig{
+			EnabledList: strings.Split(col.ConfigDefaults.SmbClient.CollectorsEnabled, ","),
 		},
 		SMTP: SMTPConfig{
 			BlackList: col.ConfigDefaults.Smtp.ServerExclude,

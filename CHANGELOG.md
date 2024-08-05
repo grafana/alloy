@@ -59,6 +59,8 @@ v1.3.0
 
 - Allow setting the CPU profiling event for Java Async Profiler in `pyroscope.java` component (@slbucur)
 
+- Update windows_exporter to v0.26.2. (@jkroepke)
+
 - `mimir.rules.kubernetes` is now able to add extra labels to the Prometheus rules. (@psychomantys)
 
 - `prometheus.exporter.unix` component now exposes hwmon collector config. (@dtrejod)
