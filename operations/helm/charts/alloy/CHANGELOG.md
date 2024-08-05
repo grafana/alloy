@@ -10,6 +10,13 @@ internal API changes are not present.
 Unreleased
 ----------
 
+0.6.0 (2024-08-05)
+------------------
+
+### Other changes
+
+Update helm chart to use v1.3.0.
+
 0.5.1 (2023-07-11)
 ------------------
 
