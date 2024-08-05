@@ -15,14 +15,16 @@ Unreleased
 
 ### Other changes
 
-Update helm chart to use v1.3.0.
+- Update helm chart to use v1.3.0.
+
+- Set `publishNotReadyAddresses` to `true` in the service spec for clustering to fix a bug where peers could not join on startup. (@wildum)
 
 0.5.1 (2023-07-11)
 ------------------
 
 ### Other changes
 
-Update helm chart to use v1.2.1.
+- Update helm chart to use v1.2.1.
 
 0.5.0 (2024-07-08)
 ------------------
