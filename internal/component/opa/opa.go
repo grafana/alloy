@@ -3,15 +3,17 @@ package opa
 import (
 	"context"
 	"embed"
-	"fmt"
 	"net/http"
+	"os"
+	"path"
 	"sync"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/open-policy-agent/opa/cmd"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // waitReadPeriod holds the time to wait before reading a file while the
@@ -34,12 +36,12 @@ func init() {
 	})
 }
 
-// Arguments holds values which are used to configure the local.file component.
+// Arguments holds values which are used to configure the opa component.
 type Arguments struct {
+	Input map[string]string `alloy:"input,attr,optional"`
 }
 
-// DefaultArguments provides the default arguments for the local.file
-// component.
+// DefaultArguments provides the default arguments for the opa component.
 var DefaultArguments = Arguments{}
 
 // SetToDefault implements syntax.Defaulter.
@@ -47,13 +49,13 @@ func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
-// Exports holds values which are exported by the local.file component.
+// Exports holds values which are exported by the opa component.
 type Exports struct {
 	// Content of the policy.
 	Content string `alloy:"content,attr"`
 }
 
-// Component implements the local.file component.
+// Component implements the opa component.
 type Component struct {
 	opts component.Options
 
@@ -87,7 +89,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		}),
 	}
 
-	err := o.Registerer.Register(c.lastAccessed)
+	err := os.MkdirAll(c.opts.DataPath, 0755)
+	if err != nil {
+		return nil, err
+	}
+
+	err = o.Registerer.Register(c.lastAccessed)
 	if err != nil {
 		return nil, err
 	}
@@ -170,10 +177,35 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 	c.args = newArgs
 
-	// Force an immediate read of the file to report any potential errors early.
-	if err := c.readFile(); err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
+	err := os.RemoveAll(c.opts.DataPath)
+	if err != nil {
+		return err
 	}
+	err = os.MkdirAll(c.opts.DataPath, 0755)
+	if err != nil {
+		return err
+	}
+
+	for fn, content := range c.args.Input {
+		err = os.WriteFile(path.Join(c.opts.DataPath, fn), []byte(content), 0644)
+		if err != nil {
+			return err
+		}
+	}
+
+	bp := cmd.NewBuildParams()
+	bp.BundleMode = true
+	bp.OutputFile = path.Join(c.opts.DataPath, "bundle.tar.gz")
+	_ = bp
+	err = cmd.DoBuild(bp, []string{c.opts.DataPath})
+	if err != nil {
+		return err
+	}
+
+	// Force an immediate read of the file to report any potential errors early.
+	// if err := c.readFile(); err != nil {
+	// 	return fmt.Errorf("failed to read file: %w", err)
+	// }
 
 	// Each detector is dedicated to a single file path. We'll naively shut down
 	// the existing detector (if any) before setting up a new one to make sure
@@ -208,8 +240,10 @@ var staticFiles embed.FS
 // Handler serves metrics endpoint from the integration implementation.
 func (c *Component) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fs := http.FS(staticFiles)
-		fileServer := http.FileServer(fs)
-		fileServer.ServeHTTP(w, r)
+		// fs := http.FS(staticFiles)
+		// fileServer := http.FileServer(fs)
+		// fileServer.ServeHTTP(w, r)
+		fs := http.FileServer(http.Dir(c.opts.DataPath))
+		fs.ServeHTTP(w, r)
 	})
 }
