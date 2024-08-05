@@ -734,13 +734,15 @@ require (
 	github.com/open-policy-agent/opa v0.67.0 // indirect
 	github.com/peterh/liner v1.2.2 // indirect
 	github.com/tchap/go-patricia/v2 v2.3.1 // indirect
-	github.com/tpaschalis/opa v0.0.0-20240805132704-79eecb4c2513 // indirect
+
 	github.com/vektah/gqlparser/v2 v2.5.16 // indirect
 	github.com/yashtewari/glob-intersection v0.2.0 // indirect
 	go.uber.org/automaxprocs v1.5.3 // indirect
 	oras.land/oras-go v1.2.6 // indirect
 	oras.land/oras-go/v2 v2.5.0 // indirect
 )
+
+replace github.com/open-policy-agent/opa v0.67.0 => github.com/tpaschalis/opa v0.0.0-20240805132704-79eecb4c2513 // indirect
 
 // NOTE: replace directives below must always be *temporary*.
 //
