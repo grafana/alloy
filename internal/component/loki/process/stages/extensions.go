@@ -19,12 +19,32 @@ const (
 // pipeline for decoding entries that are using the Docker logs format.
 type DockerConfig struct{}
 
+func (s *DockerConfig) Copy() *DockerConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &DockerConfig{}
+}
+
 // CRIConfig is an empty struct that is used to enable a pre-defined pipeline
 // for decoding entries that are using the CRI logging format.
 type CRIConfig struct {
 	MaxPartialLines            int    `alloy:"max_partial_lines,attr,optional"`
 	MaxPartialLineSize         uint64 `alloy:"max_partial_line_size,attr,optional"`
 	MaxPartialLineSizeTruncate bool   `alloy:"max_partial_line_size_truncate,attr,optional"`
+}
+
+func (s *CRIConfig) Copy() *CRIConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &CRIConfig{
+		MaxPartialLines:            s.MaxPartialLines,
+		MaxPartialLineSize:         s.MaxPartialLineSize,
+		MaxPartialLineSizeTruncate: s.MaxPartialLineSizeTruncate,
+	}
 }
 
 var (

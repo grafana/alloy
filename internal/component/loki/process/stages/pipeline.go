@@ -44,6 +44,37 @@ type StageConfig struct {
 	TimestampConfig       *TimestampConfig       `alloy:"timestamp,block,optional"`
 }
 
+func (sc *StageConfig) Copy() *StageConfig {
+	return &StageConfig{
+		CRIConfig:             sc.CRIConfig.Copy(),
+		DecolorizeConfig:      sc.DecolorizeConfig.Copy(),
+		DockerConfig:          sc.DockerConfig.Copy(),
+		DropConfig:            sc.DropConfig.Copy(),
+		EventLogMessageConfig: sc.EventLogMessageConfig.Copy(),
+		GeoIPConfig:           sc.GeoIPConfig.Copy(),
+		JSONConfig:            sc.JSONConfig.Copy(),
+		LabelAllowConfig:      sc.LabelAllowConfig.Copy(),
+		LabelDropConfig:       sc.LabelDropConfig.Copy(),
+		LabelsConfig:          sc.LabelsConfig.Copy(),
+		LimitConfig:           sc.LimitConfig.Copy(),
+		LogfmtConfig:          sc.LogfmtConfig.Copy(),
+		LuhnFilterConfig:      sc.LuhnFilterConfig.Copy(),
+		MatchConfig:           sc.MatchConfig.Copy(),
+		MetricsConfig:         sc.MetricsConfig.Copy(),
+		MultilineConfig:       sc.MultilineConfig.Copy(),
+		OutputConfig:          sc.OutputConfig.Copy(),
+		PackConfig:            sc.PackConfig.Copy(),
+		RegexConfig:           sc.RegexConfig.Copy(),
+		ReplaceConfig:         sc.ReplaceConfig.Copy(),
+		StaticLabelsConfig:    sc.StaticLabelsConfig.Copy(),
+		StructuredMetadata:    sc.StructuredMetadata.Copy(),
+		SamplingConfig:        sc.SamplingConfig.Copy(),
+		TemplateConfig:        sc.TemplateConfig.Copy(),
+		TenantConfig:          sc.TenantConfig.Copy(),
+		TimestampConfig:       sc.TimestampConfig.Copy(),
+	}
+}
+
 var rateLimiter *rate.Limiter
 var rateLimiterDrop bool
 var rateLimiterDropReason = "global_rate_limiter_drop"

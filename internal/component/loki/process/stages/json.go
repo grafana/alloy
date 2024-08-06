@@ -3,6 +3,7 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 
 	"github.com/go-kit/log"
@@ -25,6 +26,18 @@ type JSONConfig struct {
 	Expressions   map[string]string `alloy:"expressions,attr"`
 	Source        *string           `alloy:"source,attr,optional"`
 	DropMalformed bool              `alloy:"drop_malformed,attr,optional"`
+}
+
+func (s *JSONConfig) Copy() *JSONConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &JSONConfig{
+		Expressions:   maps.Clone(s.Expressions),
+		Source:        copyStrPtr(s.Source),
+		DropMalformed: s.DropMalformed,
+	}
 }
 
 // validateJSONConfig validates a json config and returns a map of necessary jmespath expressions.

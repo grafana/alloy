@@ -19,6 +19,21 @@ type StaticLabelsConfig struct {
 	Values map[string]*string `alloy:"values,attr"`
 }
 
+func (c *StaticLabelsConfig) Copy() *StaticLabelsConfig {
+	if c == nil {
+		return nil
+	}
+
+	values := make(map[string]*string, len(c.Values))
+	for k, v := range c.Values {
+		values[k] = copyStrPtr(v)
+	}
+
+	return &StaticLabelsConfig{
+		Values: values,
+	}
+}
+
 func newStaticLabelsStage(logger log.Logger, config StaticLabelsConfig) (Stage, error) {
 	err := validateLabelStaticConfig(config)
 	if err != nil {

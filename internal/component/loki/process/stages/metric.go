@@ -40,9 +40,36 @@ type MetricConfig struct {
 	Histogram *metric.HistogramConfig `alloy:"histogram,block,optional"`
 }
 
+func (c *MetricConfig) Copy() *MetricConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &MetricConfig{
+		Counter:   c.Counter.Copy(),
+		Gauge:     c.Gauge.Copy(),
+		Histogram: c.Histogram.Copy(),
+	}
+}
+
 // MetricsConfig is a set of configured metrics.
 type MetricsConfig struct {
 	Metrics []MetricConfig `alloy:"metric,enum,optional"`
+}
+
+func (s *MetricsConfig) Copy() *MetricsConfig {
+	if s == nil {
+		return nil
+	}
+
+	metrics := make([]MetricConfig, 0, len(s.Metrics))
+	for i, metric := range s.Metrics {
+		metrics[i] = *metric.Copy()
+	}
+
+	return &MetricsConfig{
+		Metrics: metrics,
+	}
 }
 
 type cfgCollector struct {

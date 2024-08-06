@@ -2,6 +2,7 @@ package stages
 
 import (
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/prometheus/common/model"
@@ -13,6 +14,16 @@ var ErrEmptyLabelAllowStageConfig = errors.New("labelallow stage config cannot b
 // LabelAllowConfig contains the slice of labels to allow through.
 type LabelAllowConfig struct {
 	Values []string `alloy:"values,attr"`
+}
+
+func (s *LabelAllowConfig) Copy() *LabelAllowConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &LabelAllowConfig{
+		Values: slices.Clone(s.Values),
+	}
 }
 
 func newLabelAllowStage(config LabelAllowConfig) (Stage, error) {

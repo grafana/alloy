@@ -26,6 +26,17 @@ type SamplingConfig struct {
 	SamplingRate float64 `alloy:"rate,attr"`
 }
 
+func (s *SamplingConfig) Copy() *SamplingConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &SamplingConfig{
+		DropReason:   copyStrPtr(s.DropReason),
+		SamplingRate: s.SamplingRate,
+	}
+}
+
 func (s *SamplingConfig) SetToDefault() {
 	if s.DropReason == nil || *s.DropReason == "" {
 		s.DropReason = &defaultSamplingpReason

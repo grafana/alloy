@@ -34,6 +34,30 @@ type MatchConfig struct {
 	DropReason   string        `alloy:"drop_counter_reason,attr,optional"`
 }
 
+func (s *MatchConfig) Copy() *MatchConfig {
+	if s == nil {
+		return nil
+	}
+
+	//TODO: When Stages is nil, does this output nil?
+	stages := []StageConfig{}
+	if s.Stages != nil {
+		stages = make([]StageConfig, 0, len(s.Stages))
+		for i := range s.Stages {
+			// stages[i] = *s.Stages[i].Copy()
+			stages = append(stages, *s.Stages[i].Copy())
+		}
+	}
+
+	return &MatchConfig{
+		Selector:     s.Selector,
+		Stages:       stages,
+		Action:       s.Action,
+		PipelineName: s.PipelineName,
+		DropReason:   s.DropReason,
+	}
+}
+
 // validateMatcherConfig validates the MatcherConfig for the matcherStage
 func validateMatcherConfig(cfg *MatchConfig) (logql.Expr, error) {
 	if cfg.Selector == "" {

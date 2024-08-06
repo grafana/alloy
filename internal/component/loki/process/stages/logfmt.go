@@ -3,6 +3,7 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 	"time"
@@ -23,6 +24,17 @@ var (
 type LogfmtConfig struct {
 	Mapping map[string]string `alloy:"mapping,attr"`
 	Source  string            `alloy:"source,attr,optional"`
+}
+
+func (s *LogfmtConfig) Copy() *LogfmtConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &LogfmtConfig{
+		Mapping: maps.Clone(s.Mapping),
+		Source:  s.Source,
+	}
 }
 
 // validateLogfmtConfig validates a logfmt stage config and returns an inverse mapping of configured mapping.

@@ -28,7 +28,18 @@ type MultilineConfig struct {
 	Expression  string        `alloy:"firstline,attr"`
 	MaxLines    uint64        `alloy:"max_lines,attr,optional"`
 	MaxWaitTime time.Duration `alloy:"max_wait_time,attr,optional"`
-	regex       *regexp.Regexp
+}
+
+func (c *MultilineConfig) Copy() *MultilineConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &MultilineConfig{
+		Expression:  c.Expression,
+		MaxLines:    c.MaxLines,
+		MaxWaitTime: c.MaxWaitTime,
+	}
 }
 
 // DefaultMultilineConfig applies the default values on
@@ -51,24 +62,24 @@ func (args *MultilineConfig) Validate() error {
 	return nil
 }
 
-func validateMultilineConfig(cfg *MultilineConfig) error {
+func validateMultilineConfig(cfg *MultilineConfig) (*regexp.Regexp, error) {
 	if cfg.Expression == "" {
-		return ErrMultilineStageEmptyConfig
+		return nil, ErrMultilineStageEmptyConfig
 	}
 
 	expr, err := regexp.Compile(cfg.Expression)
 	if err != nil {
-		return fmt.Errorf("%v: %w", ErrMultilineStageInvalidRegex, err)
+		return nil, fmt.Errorf("%v: %w", ErrMultilineStageInvalidRegex, err)
 	}
-	cfg.regex = expr
+	return expr, nil
 
-	return nil
 }
 
 // multilineStage matches lines to determine whether the following lines belong to a block and should be collapsed
 type multilineStage struct {
 	logger log.Logger
 	cfg    MultilineConfig
+	regex  *regexp.Regexp
 }
 
 // multilineState captures the internal state of a running multiline stage.
@@ -80,7 +91,7 @@ type multilineState struct {
 
 // newMultilineStage creates a MulitlineStage from config
 func newMultilineStage(logger log.Logger, config MultilineConfig) (Stage, error) {
-	err := validateMultilineConfig(&config)
+	regex, err := validateMultilineConfig(&config)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +99,7 @@ func newMultilineStage(logger log.Logger, config MultilineConfig) (Stage, error)
 	return &multilineStage{
 		logger: log.With(logger, "component", "stage", "type", "multiline"),
 		cfg:    config,
+		regex:  regex,
 	}, nil
 }
 
@@ -104,7 +116,7 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 			s, ok := streams[key]
 			if !ok {
 				// Pass through entries until we hit first start line.
-				if !m.cfg.regex.MatchString(e.Line) {
+				if !m.regex.MatchString(e.Line) {
 					level.Debug(m.logger).Log("msg", "pass through entry", "stream", key)
 					out <- e
 					continue
@@ -152,7 +164,7 @@ func (m *multilineStage) runMultiline(in chan Entry, out chan Entry, wg *sync.Wa
 				return
 			}
 
-			isFirstLine := m.cfg.regex.MatchString(e.Line)
+			isFirstLine := m.regex.MatchString(e.Line)
 			if isFirstLine {
 				level.Debug(m.logger).Log("msg", "flush multiline block because new start line", "block", state.buffer.String(), "stream", e.Labels.FastFingerprint())
 				m.flush(out, state)

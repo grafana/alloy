@@ -31,6 +31,24 @@ type CounterConfig struct {
 	CountEntryBytes bool   `alloy:"count_entry_bytes,attr,optional"`
 }
 
+func (c *CounterConfig) Copy() *CounterConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &CounterConfig{
+		Name:            c.Name,
+		Description:     c.Description,
+		Source:          c.Source,
+		Prefix:          c.Prefix,
+		MaxIdle:         c.MaxIdle,
+		Value:           c.Value,
+		Action:          c.Action,
+		MatchAll:        c.MatchAll,
+		CountEntryBytes: c.CountEntryBytes,
+	}
+}
+
 // DefaultCounterConfig sets the default for a Counter.
 var DefaultCounterConfig = CounterConfig{
 	MaxIdle: 5 * time.Minute,

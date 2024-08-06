@@ -21,6 +21,21 @@ type LabelsConfig struct {
 	Values map[string]*string `alloy:"values,attr"`
 }
 
+func (s *LabelsConfig) Copy() *LabelsConfig {
+	if s == nil {
+		return nil
+	}
+
+	values := make(map[string]*string, len(s.Values))
+	for k, v := range s.Values {
+		values[k] = copyStrPtr(v)
+	}
+
+	return &LabelsConfig{
+		Values: values,
+	}
+}
+
 // validateLabelsConfig validates the Label stage configuration
 func validateLabelsConfig(c LabelsConfig) error {
 	if c.Values == nil {

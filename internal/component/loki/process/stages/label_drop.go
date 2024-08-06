@@ -2,6 +2,7 @@ package stages
 
 import (
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/prometheus/common/model"
@@ -13,6 +14,16 @@ var ErrEmptyLabelDropStageConfig = errors.New("labeldrop stage config cannot be 
 // LabelDropConfig contains the slice of labels to be dropped.
 type LabelDropConfig struct {
 	Values []string `alloy:"values,attr"`
+}
+
+func (s *LabelDropConfig) Copy() *LabelDropConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &LabelDropConfig{
+		Values: slices.Clone(s.Values),
+	}
 }
 
 func newLabelDropStage(config LabelDropConfig) (Stage, error) {

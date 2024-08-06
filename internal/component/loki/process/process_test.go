@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
@@ -689,5 +691,222 @@ func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSend
 	if err := testutil.GatherAndCompare(t.registry,
 		strings.NewReader(expectedMetricsAfterSendingLogs)); err != nil {
 		require.NoError(t.t, err)
+	}
+}
+
+func TestConfigCopyNil(t *testing.T) {
+	noStages := []stages.StageConfig(nil)
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte("forward_to = []"), &args)
+	require.NoError(t, err)
+	require.Equal(t, noStages, args.Stages)
+
+	copiedStages := copyStageConfigSlice(args.Stages)
+	require.Equal(t, noStages, copiedStages)
+}
+
+func TestConfigCopy(t *testing.T) {
+	stg := `
+	stage.cri { }
+
+	stage.decolorize { }
+
+	stage.docker { }
+
+	stage.drop { }
+
+	stage.eventlogmessage { }
+
+	stage.geoip {
+		source  = "ip"
+        db      = "/path/to/db/GeoLite2-City.mmdb"
+        db_type = "city"
+	}
+
+	stage.json { 
+		expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
+		drop_malformed = true
+	}
+
+	stage.json {
+		expressions = { "user" = "" }
+		source      = "extra"
+	}
+
+	stage.drop {
+	    older_than          = "24h"
+	    drop_counter_reason = "too old"
+	}
+
+	stage.drop {
+	    longer_than         = "8KB"
+	    drop_counter_reason = "too long"
+	}
+
+	stage.drop {
+	    source = "app"
+	    value  = "foo"
+	}
+
+	stage.label_keep {
+    	values = [ "kubernetes_pod_name", "kubernetes_pod_container_name" ]
+	}
+
+	stage.labels {
+		values = { 
+			stream = "",
+			user   = "",
+			ts     = "timestamp",
+		}
+	}
+
+	stage.limit {
+	    rate  = 5
+	    burst = 10
+	}
+
+	stage.logfmt {
+	    mapping = { "extra" = "" }
+	}
+
+	stage.logfmt {
+	   mapping = { "username" = "user" }
+	   source  = "extra"
+	}
+
+	stage.luhn { }
+
+	stage.luhn {
+	    replacement = "**DELETED**"
+	}
+
+	stage.match {
+	    selector = "{applbl=\"foo\"}"
+
+	    stage.json {
+	        expressions = { "msg" = "message" }
+	    }
+	}
+
+	stage.match {
+	    selector = "{applbl=\"bar\"} |~ \".*noisy error.*\""
+	    action   = "drop"
+	    drop_counter_reason = "discard_noisy_errors"
+	}
+
+	stage.metrics {
+	    metric.counter {
+	        name        = "log_bytes_total"
+	        description = "total bytes of log lines"
+	        prefix      = "my_custom_tracking_"
+
+	        match_all         = true
+	        count_entry_bytes = true
+	        action            = "add"
+	        max_idle_duration = "24h"
+	    }
+
+		metric.gauge {
+    	    name        = "retries_total"
+    	    description = "total_retries"
+    	    source      = "retries"
+    	    action      = "add"
+    	}
+
+		metric.histogram {
+    	    name        = "http_response_time_seconds"
+    	    description = "recorded response times"
+    	    source      = "response_time"
+    	    buckets     = [0.001,0.0025,0.005,0.010,0.025,0.050]
+    	}
+	}
+
+	stage.multiline {
+	    firstline     = "^\\[\\d{4}-\\d{2}-\\d{2} \\d{1,2}:\\d{2}:\\d{2}\\]"
+    	max_wait_time = "10s"
+	}
+
+	stage.output {
+		source = "message"
+	}
+
+	stage.pack {
+		labels = ["env", "user_id"]
+	}
+
+	stage.regex {
+		expression = "^(?s)(?P<time>\\S+?) (?P<stream>stdout|stderr) (?P<flags>\\S+?) (?P<content>.*)$"
+	}
+
+	stage.regex {
+		expression = "^(?P<year>\\d+)"
+		source     = "time"
+	}
+
+	stage.replace {
+	    expression = "password (\\S+)"
+	    replace    = "*****"
+	}
+
+	stage.sampling {
+		rate = 0.25
+	}
+
+	stage.static_labels {
+		values = {
+			foo = "fooval",
+			bar = "barval",
+    	}
+	}
+
+	stage.structured_metadata {
+	    values = {
+			env  = "",         // Sets up an 'env' property to structured metadata, based on the 'env' extracted value.
+			user = "username", // Sets up a 'user' property to structured metadata, based on the 'username' extracted value.
+    	}
+	}
+
+	stage.template {
+	    source   = "new_key"
+    	template = "hello_world"
+	}
+
+	stage.tenant {
+		value = "team-a"
+	}
+
+	stage.tenant {
+		source = "customer_id"
+	}
+
+	stage.tenant {
+		label = "namespace"
+	}
+
+	stage.timestamp {
+		source = "time"
+    	format = "RFC3339"
+	}
+
+	// This will be filled later
+	forward_to = []`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(stg), &args)
+	require.NoError(t, err)
+
+	stagesCopy := copyStageConfigSlice(args.Stages)
+
+	rv1, rv2 := reflect.ValueOf(args.Stages), reflect.ValueOf(stagesCopy)
+	ty := rv1.Type().Elem()
+
+	if path, shared := util.SharePointer(rv1, rv2, false); shared {
+		fullPath := fmt.Sprintf("%s.%s.%s", ty.PkgPath(), ty.Name(), path)
+
+		assert.Fail(t,
+			fmt.Sprintf("A shallow copy was detected at %s", fullPath),
+			"Config should be copied deeply so that it's possible to compare old and new config structs reliably",
+		)
 	}
 }

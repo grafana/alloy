@@ -31,6 +31,18 @@ type TenantConfig struct {
 	Value  string `alloy:"value,attr,optional"`
 }
 
+func (c *TenantConfig) Copy() *TenantConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &TenantConfig{
+		Label:  c.Label,
+		Source: c.Source,
+		Value:  c.Value,
+	}
+}
+
 // validateTenantConfig validates the tenant stage configuration
 func validateTenantConfig(c TenantConfig) error {
 	if c.Source == "" && c.Value == "" && c.Label == "" {

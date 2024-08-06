@@ -17,12 +17,13 @@ import (
 func TestMultilineStageProcess(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
 	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second}
-	err := validateMultilineConfig(&mcfg)
+	regex, err := validateMultilineConfig(&mcfg)
 	require.NoError(t, err)
 
 	stage := &multilineStage{
 		cfg:    mcfg,
 		logger: logger,
+		regex:  regex,
 	}
 
 	out := processEntries(stage,
@@ -44,12 +45,13 @@ func TestMultilineStageProcess(t *testing.T) {
 func TestMultilineStageMultiStreams(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
 	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second}
-	err := validateMultilineConfig(&mcfg)
+	regex, err := validateMultilineConfig(&mcfg)
 	require.NoError(t, err)
 
 	stage := &multilineStage{
 		cfg:    mcfg,
 		logger: logger,
+		regex:  regex,
 	}
 
 	out := processEntries(stage,
@@ -84,12 +86,13 @@ func TestMultilineStageMultiStreams(t *testing.T) {
 func TestMultilineStageMaxWaitTime(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
 	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 100 * time.Millisecond}
-	err := validateMultilineConfig(&mcfg)
+	regex, err := validateMultilineConfig(&mcfg)
 	require.NoError(t, err)
 
 	stage := &multilineStage{
 		cfg:    mcfg,
 		logger: logger,
+		regex:  regex,
 	}
 
 	in := make(chan Entry, 2)

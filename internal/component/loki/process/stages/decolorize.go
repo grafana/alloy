@@ -6,6 +6,14 @@ import (
 
 type DecolorizeConfig struct{}
 
+func (s *DecolorizeConfig) Copy() *DecolorizeConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &DecolorizeConfig{}
+}
+
 type decolorizeStage struct{}
 
 func newDecolorizeStage(_ DecolorizeConfig) (Stage, error) {

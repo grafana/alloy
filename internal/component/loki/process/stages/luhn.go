@@ -16,6 +16,18 @@ type LuhnFilterConfig struct {
 	MinLength   int     `alloy:"min_length,attr,optional"`
 }
 
+func (s *LuhnFilterConfig) Copy() *LuhnFilterConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &LuhnFilterConfig{
+		Replacement: s.Replacement,
+		Source:      copyStrPtr(s.Source),
+		MinLength:   s.MinLength,
+	}
+}
+
 // validateLuhnFilterConfig validates the LuhnFilterConfig.
 func validateLuhnFilterConfig(c LuhnFilterConfig) error {
 	if c.Replacement == "" {
