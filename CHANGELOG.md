@@ -10,9 +10,29 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Enhancements
+
+- Clustering peer resolution through `--cluster.join-addresses` flag has been
+  improved with more consistent behaviour, better error handling and added
+  support for A/AAAA DNS records. If necessary, users can temporarily opt out of
+  this new behaviour with the `--cluster.use-discovery-v1`, but this can only be
+  used as a temporary measure, since this flag will be disabled in future
+  releases. (@thampiotr)
+
 ### Bugfixes
 
 - Fixed an issue which caused loss of context data in Faro exception. (@codecapitano)
+
+- Fixed an issue where providing multiple hostnames or IP addresses
+  via `--cluster.join-addresses` would only use the first provided value.
+  (@thampiotr)
+
+- Fixed an issue where providing `<hostname>:<port>`
+  in `--cluster.join-addresses` would only resolve with DNS to a single address,
+  instead of using all the available records. (@thampiotr)
+
+- Fixed an issue where clustering peers resolution via hostname in `--cluster.join-addresses`
+  resolves to duplicated IP addresses when using SRV records. (@thampiotr)
 
 v1.3.0
 -----------------
