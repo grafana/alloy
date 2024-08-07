@@ -33,6 +33,18 @@ type ReplaceConfig struct {
 	Replace    string `alloy:"replace,attr,optional"`
 }
 
+func (s *ReplaceConfig) Copy() *ReplaceConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &ReplaceConfig{
+		Expression: s.Expression,
+		Source:     s.Source,
+		Replace:    s.Replace,
+	}
+}
+
 func getExpressionRegex(c ReplaceConfig) (*regexp.Regexp, error) {
 	if c.Expression == "" {
 		return nil, ErrExpressionRequired

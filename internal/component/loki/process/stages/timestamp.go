@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"time"
 
 	"github.com/go-kit/log"
@@ -49,6 +50,20 @@ type TimestampConfig struct {
 	FallbackFormats []string `alloy:"fallback_formats,attr,optional"`
 	Location        *string  `alloy:"location,attr,optional"`
 	ActionOnFailure string   `alloy:"action_on_failure,attr,optional"`
+}
+
+func (c *TimestampConfig) Copy() *TimestampConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &TimestampConfig{
+		Source:          c.Source,
+		Format:          c.Format,
+		FallbackFormats: slices.Clone(c.FallbackFormats),
+		Location:        copyStrPtr(c.Location),
+		ActionOnFailure: c.ActionOnFailure,
+	}
 }
 
 type parser func(string) (time.Time, error)

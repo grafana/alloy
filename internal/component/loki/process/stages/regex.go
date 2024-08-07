@@ -27,6 +27,17 @@ type RegexConfig struct {
 	Source     *string `alloy:"source,attr,optional"`
 }
 
+func (c *RegexConfig) Copy() *RegexConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &RegexConfig{
+		Expression: c.Expression,
+		Source:     copyStrPtr(c.Source),
+	}
+}
+
 // validateRegexConfig validates the config and return a regex
 func validateRegexConfig(c RegexConfig) (*regexp.Regexp, error) {
 	if c.Expression == "" {

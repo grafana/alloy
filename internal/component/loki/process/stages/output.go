@@ -22,6 +22,16 @@ type OutputConfig struct {
 	Source string `alloy:"source,attr"`
 }
 
+func (s *OutputConfig) Copy() *OutputConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &OutputConfig{
+		Source: s.Source,
+	}
+}
+
 // newOutputStage creates a new outputStage
 func newOutputStage(logger log.Logger, config OutputConfig) (Stage, error) {
 	if config.Source == "" {

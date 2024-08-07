@@ -19,6 +19,18 @@ type EventLogMessageConfig struct {
 	OverwriteExisting bool   `alloy:"overwrite_existing,attr,optional"`
 }
 
+func (s *EventLogMessageConfig) Copy() *EventLogMessageConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &EventLogMessageConfig{
+		Source:            s.Source,
+		DropInvalidLabels: s.DropInvalidLabels,
+		OverwriteExisting: s.OverwriteExisting,
+	}
+}
+
 func (e *EventLogMessageConfig) Validate() error {
 	if !model.LabelName(e.Source).IsValid() {
 		return fmt.Errorf(ErrInvalidLabelName, e.Source)

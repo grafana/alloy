@@ -10,6 +10,11 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Bugfixes
+
+- Fixed a bug which caused `loki.process` to reload itself when a config reload is triggered,
+  even if its config didn't change. This would only happen when certain stages were present (e.g. `stage.labels`). (@ptodev)
+
 v1.3.0
 -----------------
 

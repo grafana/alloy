@@ -37,50 +37,66 @@ type DropConfig struct {
 	Expression string           `alloy:"expression,attr,optional"`
 	OlderThan  time.Duration    `alloy:"older_than,attr,optional"`
 	LongerThan units.Base2Bytes `alloy:"longer_than,attr,optional"`
-	regex      *regexp.Regexp
+}
+
+func (s *DropConfig) Copy() *DropConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &DropConfig{
+		DropReason: s.DropReason,
+		Source:     s.Source,
+		Value:      s.Value,
+		Separator:  s.Separator,
+		Expression: s.Expression,
+		OlderThan:  s.OlderThan,
+		LongerThan: s.LongerThan,
+	}
 }
 
 // validateDropConfig validates the DropConfig for the dropStage
-func validateDropConfig(cfg *DropConfig) error {
+func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
+	var regex *regexp.Regexp
 	if cfg == nil ||
 		(cfg.Source == "" && cfg.Expression == "" && cfg.OlderThan == emptyDuration && cfg.LongerThan == emptySize) {
 
-		return errors.New(ErrDropStageEmptyConfig)
+		return nil, errors.New(ErrDropStageEmptyConfig)
 	}
 	if cfg.DropReason == "" {
 		cfg.DropReason = defaultDropReason
 	}
 	if cfg.Value != "" && cfg.Expression != "" {
-		return errors.New(ErrDropStageInvalidConfig)
+		return nil, errors.New(ErrDropStageInvalidConfig)
 	}
 	if cfg.Separator == "" {
 		cfg.Separator = defaultSeparator
 	}
 	if cfg.Value != "" && cfg.Source == "" {
-		return errors.New(ErrDropStageNoSourceWithValue)
+		return nil, errors.New(ErrDropStageNoSourceWithValue)
 	}
 	if cfg.Expression != "" {
 		expr, err := regexp.Compile(cfg.Expression)
 		if err != nil {
-			return fmt.Errorf(ErrDropStageInvalidRegex, err)
+			return nil, fmt.Errorf(ErrDropStageInvalidRegex, err)
 		}
-		cfg.regex = expr
+		regex = expr
 	}
 	// The first step to exclude `value` and fully replace it with the `expression`.
 	// It will simplify code and less confusing for the end-user on which option to choose.
 	if cfg.Value != "" {
 		expr, err := regexp.Compile(fmt.Sprintf("^%s$", regexp.QuoteMeta(cfg.Value)))
 		if err != nil {
-			return fmt.Errorf(ErrDropStageInvalidRegex, err)
+			return nil, fmt.Errorf(ErrDropStageInvalidRegex, err)
 		}
-		cfg.regex = expr
+		regex = expr
 	}
-	return nil
+	return regex, nil
 }
 
 // newDropStage creates a DropStage from config
 func newDropStage(logger log.Logger, config DropConfig, registerer prometheus.Registerer) (Stage, error) {
-	err := validateDropConfig(&config)
+	regex, err := validateDropConfig(&config)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +105,7 @@ func newDropStage(logger log.Logger, config DropConfig, registerer prometheus.Re
 		logger:    log.With(logger, "component", "stage", "type", "drop"),
 		cfg:       &config,
 		dropCount: getDropCountMetric(registerer),
+		regex:     regex,
 	}, nil
 }
 
@@ -97,6 +114,7 @@ type dropStage struct {
 	logger    log.Logger
 	cfg       *DropConfig
 	dropCount *prometheus.CounterVec
+	regex     *regexp.Regexp
 }
 
 func (m *dropStage) Run(in chan Entry) chan Entry {
@@ -144,7 +162,7 @@ func (m *dropStage) shouldDrop(e Entry) bool {
 			return false
 		}
 	}
-	if m.cfg.Source != "" && m.cfg.regex == nil {
+	if m.cfg.Source != "" && m.regex == nil {
 		var match bool
 		match = true
 		for _, src := range splitSource(m.cfg.Source) {
@@ -165,8 +183,8 @@ func (m *dropStage) shouldDrop(e Entry) bool {
 		}
 	}
 
-	if m.cfg.Source == "" && m.cfg.regex != nil {
-		if !m.cfg.regex.MatchString(e.Line) {
+	if m.cfg.Source == "" && m.regex != nil {
+		if !m.regex.MatchString(e.Line) {
 			// Not a match to the regex, don't drop
 			if Debug {
 				level.Debug(m.logger).Log("msg", "line will not be dropped, the provided regular expression did not match the log line")
@@ -178,7 +196,7 @@ func (m *dropStage) shouldDrop(e Entry) bool {
 		}
 	}
 
-	if m.cfg.Source != "" && m.cfg.regex != nil {
+	if m.cfg.Source != "" && m.regex != nil {
 		var extractedData []string
 		for _, src := range splitSource(m.cfg.Source) {
 			if e, ok := e.Extracted[src]; ok {
@@ -192,7 +210,7 @@ func (m *dropStage) shouldDrop(e Entry) bool {
 				extractedData = append(extractedData, s)
 			}
 		}
-		if !m.cfg.regex.MatchString(strings.Join(extractedData, m.cfg.Separator)) {
+		if !m.regex.MatchString(strings.Join(extractedData, m.cfg.Separator)) {
 			// Not a match to the regex, don't drop
 			if Debug {
 				level.Debug(m.logger).Log("msg", "line will not be dropped, the provided regular expression did not match the log line")

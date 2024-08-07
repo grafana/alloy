@@ -202,3 +202,12 @@ func stringsContain(values []string, search string) bool {
 
 	return false
 }
+
+func copyStrPtr(s *string) *string {
+	if s == nil {
+		return nil
+	}
+
+	res := *s
+	return &res
+}

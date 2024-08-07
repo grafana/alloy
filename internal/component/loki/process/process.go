@@ -130,6 +130,8 @@ func (c *Component) Update(args component.Arguments) error {
 	// first load. This will allow a component with no stages to function
 	// properly.
 	if stagesChanged(c.stages, newArgs.Stages) || c.stages == nil {
+		stagesCopy := copyStageConfigSlice(newArgs.Stages)
+
 		if c.entryHandler != nil {
 			c.entryHandler.Stop()
 		}
@@ -140,7 +142,7 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 		c.entryHandler = loki.NewEntryHandler(c.processOut, func() { pipeline.Cleanup() })
 		c.processIn = pipeline.Wrap(c.entryHandler).Chan()
-		c.stages = newArgs.Stages
+		c.stages = stagesCopy
 	}
 
 	return nil
@@ -210,3 +212,15 @@ func stagesChanged(prev, next []stages.StageConfig) bool {
 }
 
 func (c *Component) LiveDebugging(_ int) {}
+
+func copyStageConfigSlice(s []stages.StageConfig) []stages.StageConfig {
+	if s == nil {
+		return nil
+	}
+
+	res := make([]stages.StageConfig, 0, len(s))
+	for i := range s {
+		res = append(res, *s[i].Copy())
+	}
+	return res
+}

@@ -31,6 +31,20 @@ type LimitConfig struct {
 	MaxDistinctLabels int     `alloy:"max_distinct_labels,attr,optional"`
 }
 
+func (c *LimitConfig) Copy() *LimitConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &LimitConfig{
+		Rate:              c.Rate,
+		Burst:             c.Burst,
+		Drop:              c.Drop,
+		ByLabelName:       c.ByLabelName,
+		MaxDistinctLabels: c.MaxDistinctLabels,
+	}
+}
+
 func newLimitStage(logger log.Logger, cfg LimitConfig, registerer prometheus.Registerer) (Stage, error) {
 	err := validateLimitConfig(cfg)
 	if err != nil {

@@ -4,6 +4,7 @@ package metric
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -27,6 +28,22 @@ type HistogramConfig struct {
 
 	// Histogram-specific fields
 	Buckets []float64 `alloy:"buckets,attr"`
+}
+
+func (h *HistogramConfig) Copy() *HistogramConfig {
+	if h == nil {
+		return nil
+	}
+
+	return &HistogramConfig{
+		Name:        h.Name,
+		Description: h.Description,
+		Source:      h.Source,
+		Prefix:      h.Prefix,
+		MaxIdle:     h.MaxIdle,
+		Value:       h.Value,
+		Buckets:     slices.Clone(h.Buckets),
+	}
 }
 
 // SetToDefault implements syntax.Defaulter.

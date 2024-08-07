@@ -67,6 +67,17 @@ type TemplateConfig struct {
 	Template string `alloy:"template,attr"`
 }
 
+func (c *TemplateConfig) Copy() *TemplateConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &TemplateConfig{
+		Source:   c.Source,
+		Template: c.Template,
+	}
+}
+
 // validateTemplateConfig validates the templateStage config.
 func validateTemplateConfig(cfg TemplateConfig) (*template.Template, error) {
 	if cfg.Source == "" {

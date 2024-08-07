@@ -40,6 +40,22 @@ type GaugeConfig struct {
 	Action string `alloy:"action,attr"`
 }
 
+func (g *GaugeConfig) Copy() *GaugeConfig {
+	if g == nil {
+		return nil
+	}
+
+	return &GaugeConfig{
+		Name:        g.Name,
+		Description: g.Description,
+		Source:      g.Source,
+		Prefix:      g.Prefix,
+		MaxIdle:     g.MaxIdle,
+		Value:       g.Value,
+		Action:      g.Action,
+	}
+}
+
 // SetToDefault implements syntax.Defaulter.
 func (g *GaugeConfig) SetToDefault() {
 	*g = DefaultGaugeConfig

@@ -3,6 +3,7 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"reflect"
 
@@ -60,6 +61,19 @@ type GeoIPConfig struct {
 	Source        *string           `alloy:"source,attr"`
 	DBType        string            `alloy:"db_type,attr,optional"`
 	CustomLookups map[string]string `alloy:"custom_lookups,attr,optional"`
+}
+
+func (s *GeoIPConfig) Copy() *GeoIPConfig {
+	if s == nil {
+		return nil
+	}
+
+	return &GeoIPConfig{
+		DB:            s.DB,
+		Source:        copyStrPtr(s.Source),
+		DBType:        s.DBType,
+		CustomLookups: maps.Clone(s.CustomLookups),
+	}
 }
 
 func validateGeoIPConfig(c GeoIPConfig) (map[string]*jmespath.JMESPath, error) {

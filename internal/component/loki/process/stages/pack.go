@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"time"
 
@@ -104,6 +105,17 @@ func (w Packed) MarshalJSON() ([]byte, error) {
 type PackConfig struct {
 	Labels          []string `alloy:"labels,attr"`
 	IngestTimestamp bool     `alloy:"ingest_timestamp,attr,optional"`
+}
+
+func (c *PackConfig) Copy() *PackConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &PackConfig{
+		Labels:          slices.Clone(c.Labels),
+		IngestTimestamp: c.IngestTimestamp,
+	}
 }
 
 // DefaultPackConfig sets the defaults.
