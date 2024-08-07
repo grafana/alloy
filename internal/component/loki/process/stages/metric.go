@@ -63,8 +63,8 @@ func (s *MetricsConfig) Copy() *MetricsConfig {
 	}
 
 	metrics := make([]MetricConfig, 0, len(s.Metrics))
-	for i, metric := range s.Metrics {
-		metrics[i] = *metric.Copy()
+	for _, metric := range s.Metrics {
+		metrics = append(metrics, *metric.Copy())
 	}
 
 	return &MetricsConfig{
