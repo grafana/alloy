@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -321,6 +322,8 @@ stage.labels {
 }
 
 func TestEntrySentToTwoProcessComponents(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
 	// Set up two different loki.process components.
 	stg1 := `
 forward_to = []
@@ -342,13 +345,16 @@ stage.static_labels {
 	args1.ForwardTo = []loki.LogsReceiver{ch1}
 	args2.ForwardTo = []loki.LogsReceiver{ch2}
 
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	defer ctxCancel()
+
 	// Start the loki.process components.
 	tc1, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
 	require.NoError(t, err)
 	tc2, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
 	require.NoError(t, err)
-	go func() { require.NoError(t, tc1.Run(componenttest.TestContext(t), args1)) }()
-	go func() { require.NoError(t, tc2.Run(componenttest.TestContext(t), args2)) }()
+	go func() { require.NoError(t, tc1.Run(ctx, args1)) }()
+	go func() { require.NoError(t, tc2.Run(ctx, args2)) }()
 	require.NoError(t, tc1.WaitExports(time.Second))
 	require.NoError(t, tc2.WaitExports(time.Second))
 
@@ -362,7 +368,7 @@ stage.static_labels {
 	require.NoError(t, err)
 
 	go func() {
-		err := ctrl.Run(context.Background(), lsf.Arguments{
+		err := ctrl.Run(ctx, lsf.Arguments{
 			Targets: []discovery.Target{{"__path__": f.Name(), "somelbl": "somevalue"}},
 			ForwardTo: []loki.LogsReceiver{
 				tc1.Exports().(Exports).Receiver,
@@ -401,6 +407,8 @@ stage.static_labels {
 }
 
 func TestDeadlockWithFrequentUpdates(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
 	stg := `stage.json { 
 			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
 				drop_malformed = true
@@ -443,26 +451,56 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
+
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go c.Run(ctx)
+
+	wgRun := sync.WaitGroup{}
+	wgRun.Add(1)
+	go func() {
+		c.Run(ctx)
+		wgRun.Done()
+	}()
 
 	var lastSend atomic.Value
+	var logsInTransit atomic.Uint64
+
+	keepSending := atomic.Bool{}
+	keepSending.Store(true)
+	keepReceiving := atomic.Bool{}
+	keepReceiving.Store(true)
+	wgLogSend := sync.WaitGroup{}
+
 	// Drain received logs
+	drainLogs := func() {
+		lastSend.Store(time.Now())
+		logsInTransit.Dec()
+	}
+	wgLogSend.Add(1)
 	go func() {
-		for {
+	L:
+		for keepReceiving.Load() || logsInTransit.Load() > 0 {
 			select {
-			case <-ch1.Chan():
-				lastSend.Store(time.Now())
-			case <-ch2.Chan():
-				lastSend.Store(time.Now())
+			case _, ok := <-ch1.Chan():
+				drainLogs()
+				if !ok {
+					// Let the for loop check if the goroutine has to exit
+					break L
+				}
+			case _, ok := <-ch2.Chan():
+				drainLogs()
+				if !ok {
+					// Let the for loop check if the goroutine has to exit
+					break L
+				}
 			}
 		}
+		wgLogSend.Done()
 	}()
 
 	// Continuously send entries to both channels
+	wgLogSend.Add(1)
 	go func() {
-		for {
+		for keepSending.Load() {
 			ts := time.Now()
 			logEntry := loki.Entry{
 				Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
@@ -472,7 +510,10 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 				},
 			}
 			c.receiver.Chan() <- logEntry
+			logsInTransit.Inc()
 		}
+		keepReceiving.Store(false)
+		wgLogSend.Done()
 	}()
 
 	// Call Updates
@@ -484,16 +525,28 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 		ForwardTo: []loki.LogsReceiver{ch2},
 		Stages:    stagesCfg.Stages,
 	}
+	wgRun.Add(1)
 	go func() {
 		for {
-			c.Update(args1)
-			c.Update(args2)
+			select {
+			case <-ctx.Done():
+				wgRun.Done()
+				return
+			default:
+				c.Update(args1)
+				c.Update(args2)
+			}
 		}
 	}()
 
 	// Run everything for a while
 	time.Sleep(1 * time.Second)
 	require.WithinDuration(t, time.Now(), lastSend.Load().(time.Time), 300*time.Millisecond)
+
+	keepSending.Store(false)
+	wgLogSend.Wait()
+	cancel()
+	wgRun.Wait()
 }
 
 func getServiceData(name string) (interface{}, error) {
