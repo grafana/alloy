@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Bugfixes
+
+- Fix a memory leak which would occur any time `loki.process` had its configuration reloaded. (@ptodev)
+
 v1.3.0
 -----------------
 
