@@ -505,6 +505,62 @@ func getServiceData(name string) (interface{}, error) {
 	}
 }
 
+// Make sure there are no goroutine leaks when the config is updated.
+// Goroutine leaks often cause memory leaks.
+func TestLeakyUpdate(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	tester := newTester(t)
+	defer tester.stop()
+
+	forwardArgs := `
+	// This will be filled later
+	forward_to = []`
+
+	numLogsToSend := 1
+
+	cfg1 := `
+	stage.metrics { 
+        metric.counter {
+          name = "paulin_test1"
+          action = "inc"
+          match_all = true
+        }
+	}` + forwardArgs
+
+	cfg2 := `
+	stage.metrics { 
+        metric.counter {
+          name = "paulin_test2"
+          action = "inc"
+          match_all = true
+        }
+	}` + forwardArgs
+
+	metricsTemplate1 := `
+	# HELP loki_process_custom_paulin_test1
+	# TYPE loki_process_custom_paulin_test1 counter
+	loki_process_custom_paulin_test1{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	`
+
+	metricsTemplate2 := `
+	# HELP loki_process_custom_paulin_test2
+	# TYPE loki_process_custom_paulin_test2 counter
+	loki_process_custom_paulin_test2{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	`
+
+	metrics1 := fmt.Sprintf(metricsTemplate1, numLogsToSend)
+	metrics2 := fmt.Sprintf(metricsTemplate2, numLogsToSend)
+
+	tester.updateAndTest(numLogsToSend, cfg1, "", metrics1)
+	tester.updateAndTest(numLogsToSend, cfg2, "", metrics2)
+
+	for i := 0; i < 100; i++ {
+		tester.updateAndTest(numLogsToSend, cfg1, "", metrics1)
+		tester.updateAndTest(numLogsToSend, cfg2, "", metrics2)
+	}
+}
+
 func TestMetricsStageRefresh(t *testing.T) {
 	tester := newTester(t)
 	defer tester.stop()

@@ -51,6 +51,8 @@ Main (unreleased)
   for `discovery.*`  is reloaded in such a way that no new targets were
   discovered. (@ptodev, @thampiotr)
 
+- Fix a memory leak which would occur any time `loki.process` had its configuration reloaded. (@ptodev)
+
 v1.3.0
 -----------------
 
