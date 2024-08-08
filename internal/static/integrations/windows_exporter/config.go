@@ -30,6 +30,9 @@ type Config struct {
 	MSMQ          MSMQConfig          `yaml:"msmq,omitempty"`
 	LogicalDisk   LogicalDiskConfig   `yaml:"logical_disk,omitempty"`
 	ScheduledTask ScheduledTaskConfig `yaml:"scheduled_task,omitempty"`
+	Printer       PrinterConfig       `yaml:"printer,omitempty"`
+	SMB           SMBConfig           `yaml:"smb,omitempty"`
+	SMBClient     SMBClientConfig     `yaml:"smb_client,omitempty"`
 }
 
 // Name returns the name used, "windows_explorer"
@@ -86,6 +89,7 @@ type SMTPConfig struct {
 type ServiceConfig struct {
 	UseApi string `yaml:"use_api,omitempty"`
 	Where  string `yaml:"where_clause,omitempty"`
+	V2     string `yaml:"enable_v2_collector,omitempty"`
 }
 
 // ProcessConfig handles settings for the windows_exporter process collector
@@ -132,4 +136,20 @@ type ScheduledTaskConfig struct {
 type PhysicalDiskConfig struct {
 	Include string `yaml:"include,omitempty"`
 	Exclude string `yaml:"exclude,omitempty"`
+}
+
+// PrinterConfig handles settings for the windows_exporter printer collector
+type PrinterConfig struct {
+	Include string `yaml:"include,omitempty"`
+	Exclude string `yaml:"exclude,omitempty"`
+}
+
+// SMBConfig handles settings for the windows_exporter smb collector
+type SMBConfig struct {
+	EnabledList string `yaml:"enabled_list,omitempty"`
+}
+
+// SMBClientConfig handles settings for the windows_exporter smb client collector
+type SMBClientConfig struct {
+	EnabledList string `yaml:"enabled_list,omitempty"`
 }

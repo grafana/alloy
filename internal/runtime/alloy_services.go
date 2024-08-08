@@ -5,7 +5,6 @@ import (
 
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
-	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/service"
 )
 
@@ -84,7 +83,7 @@ func (f *Runtime) NewController(id string) service.Controller {
 			},
 			IsModule:       true,
 			ModuleRegistry: newModuleRegistry(),
-			WorkerPool:     worker.NewDefaultWorkerPool(),
+			WorkerPool:     f.opts.WorkerPool, // NOTE(@tpaschalis) Reuse the worker pool since the worker cleanup is triggered from the root controller.
 		}),
 	}
 }

@@ -14,15 +14,11 @@ Main (unreleased)
 
 - Fixed an issue which caused loss of context data in Faro exception. (@codecapitano)
 
-v1.3.0-rc.0
+v1.3.0
 -----------------
 
 ### Breaking changes
 
-- `otelcol.receiver.otlp`, `otelcol.receiver.jaeger`, `otelcol.extension.jaeger_remote_sampling`, `otelcol.receiver.zipkin` 
-  will now configure `endpoint` using `localhost` by default instead of `0.0.0.0`. 
-  This may break the receiver in containerized environments like Kubernetes. 
-  If you depend on `0.0.0.0`, configure the `endpoint` attribute to explicitly use `0.0.0.0`.
 - [`otelcol.exporter.otlp`,`otelcol.exporter.loadbalancing`]: Change the default gRPC load balancing strategy.
   The default value for the `balancer_name` attribute has changed to `round_robin`
   https://github.com/open-telemetry/opentelemetry-collector/pull/10319
@@ -66,6 +62,8 @@ v1.3.0-rc.0
   number of unnecessary, intermediate state updates. (@thampiotr)
 
 - Allow setting the CPU profiling event for Java Async Profiler in `pyroscope.java` component (@slbucur)
+
+- Update windows_exporter to v0.26.2. (@jkroepke)
 
 - `mimir.rules.kubernetes` is now able to add extra labels to the Prometheus rules. (@psychomantys)
 

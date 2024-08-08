@@ -32,7 +32,8 @@ var (
 		}
 
         service {
-            where_clause = "where"
+            where_clause        = "where"
+			enable_v2_collector = "true"
         }
 
 		physical_disk {
@@ -40,9 +41,22 @@ var (
 			exclude = ""
 		}
 		
+		printer {
+			include = ".+"
+			exclude = ""
+		}
+		
 		process {
 			include = ".+"
 			exclude = ""
+		}
+		
+		smb {
+			enabled_list = ["example"]
+		}
+		
+		smb_client {
+			enabled_list = ["example"]
 		}
 		
 		network {
@@ -82,6 +96,10 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.Equal(t, "where", args.Service.Where)
 	require.Equal(t, "", args.PhysicalDisk.Exclude)
 	require.Equal(t, ".+", args.PhysicalDisk.Include)
+	require.Equal(t, "", args.Printer.Exclude)
+	require.Equal(t, ".+", args.Printer.Include)
+	require.Equal(t, []string{"example"}, args.SMB.EnabledList)
+	require.Equal(t, []string{"example"}, args.SMBClient.EnabledList)
 	require.Equal(t, "", args.Process.Exclude)
 	require.Equal(t, ".+", args.Process.Include)
 	require.Equal(t, "", args.Network.Exclude)
@@ -109,10 +127,15 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, "", conf.SMTP.Exclude)
 	require.Equal(t, ".+", conf.SMTP.Include)
 	require.Equal(t, "where", conf.Service.Where)
+	require.Equal(t, "true", conf.Service.V2)
 	require.Equal(t, "", conf.PhysicalDisk.Exclude)
 	require.Equal(t, ".+", conf.PhysicalDisk.Include)
 	require.Equal(t, "", conf.Process.Exclude)
 	require.Equal(t, ".+", conf.Process.Include)
+	require.Equal(t, "", conf.Printer.Exclude)
+	require.Equal(t, ".+", conf.Printer.Include)
+	require.Equal(t, "example", conf.SMB.EnabledList)
+	require.Equal(t, "example", conf.SMBClient.EnabledList)
 	require.Equal(t, "", conf.Network.Exclude)
 	require.Equal(t, ".+", conf.Network.Include)
 	require.Equal(t, "accessmethods", conf.MSSQL.EnabledClasses)
