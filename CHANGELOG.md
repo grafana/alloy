@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Bugfixes
+
+- Fixed an issue which caused loss of context data in Faro exception. (@codecapitano)
+
 v1.3.0
 -----------------
 
