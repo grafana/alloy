@@ -9,9 +9,9 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/cache"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	lru "github.com/hashicorp/golang-lru/v2"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -20,10 +20,18 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
+
 	"go.uber.org/atomic"
 )
 
 const name = "prometheus.relabel"
+
+// labelAndID stores both the globalrefid for the label and the id itself. We store the id so that it doesn't have
+// to be recalculated again.
+type labelAndID struct {
+	Labels labels.Labels `json:"labels"`
+	ID     uint64        `json:"id"`
+}
 
 func init() {
 	component.Register(component.Registration{
@@ -47,22 +55,38 @@ type Arguments struct {
 	// The relabelling rules to apply to each metric before it's forwarded.
 	MetricRelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 
-	// Cache size to use for LRU cache.
-	CacheSize int `alloy:"max_cache_size,attr,optional"`
+	// DEPRECATED Use type = inmemory and cache_size field.
+	InMemoryCacheSizeDeprecated int `alloy:"max_cache_size,attr,optional"`
+
+	// Cache backend configuration.
+	CacheConfig cache.CacheConfig `alloy:"cache,block,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (arg *Arguments) SetToDefault() {
 	*arg = Arguments{
-		CacheSize: 100_000,
+		CacheConfig: cache.CacheConfig{
+			Backend: cache.InMemory,
+			InMemory: cache.InMemoryCacheConfig{
+				CacheSize: 100_000,
+			},
+		},
 	}
 }
 
 // Validate implements syntax.Validator.
 func (arg *Arguments) Validate() error {
-	if arg.CacheSize <= 0 {
-		return fmt.Errorf("max_cache_size must be greater than 0 and is %d", arg.CacheSize)
+	switch arg.CacheConfig.Backend {
+	case cache.InMemory:
+		if arg.CacheConfig.InMemory.CacheSize <= 0 {
+			return fmt.Errorf("cache_size must be greater than 0 and is %d", arg.CacheConfig.InMemory.CacheSize)
+		}
+	case cache.Memcached:
+	case cache.Redis:
+	default:
+		return fmt.Errorf("unknown cache backend, should be one of %s", cache.SupportedCaches)
 	}
+
 	return nil
 }
 
@@ -91,7 +115,7 @@ type Component struct {
 	debugDataPublisher livedebugging.DebugDataPublisher
 
 	cacheMut sync.RWMutex
-	cache    *lru.Cache[uint64, *labelAndID]
+	cache    cache.Cache[labelAndID]
 }
 
 var (
@@ -101,7 +125,13 @@ var (
 
 // New creates a new prometheus.relabel component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	cache, err := lru.New[uint64, *labelAndID](args.CacheSize)
+	// to be removed after deprecation of max cache size
+	if args.CacheConfig.Backend == "" && args.InMemoryCacheSizeDeprecated != 0 {
+		args.CacheConfig.Backend = cache.InMemory
+		args.CacheConfig.InMemory.CacheSize = args.InMemoryCacheSizeDeprecated
+	}
+
+	relabelCache, err := cache.NewCache[labelAndID](args.CacheConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +147,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	c := &Component{
 		opts:               o,
-		cache:              cache,
+		cache:              relabelCache,
 		ls:                 data.(labelstore.LabelStore),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
@@ -230,7 +260,11 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.clearCache(newArgs.CacheSize)
+
+	// in case of in_memory cache we need to clean the cache
+	if newArgs.CacheConfig.Backend == cache.InMemory {
+		c.clearCache(newArgs.CacheConfig.InMemory.CacheSize)
+	}
 	c.mrc = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.MetricRelabelConfigs)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
@@ -253,7 +287,7 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 		c.cacheHits.Inc()
 		// If newLbls is nil but cache entry was found then we want to keep the value nil, if it's not we want to reuse the labels
 		if newLbls != nil {
-			relabelled = newLbls.labels
+			relabelled = newLbls.Labels
 		}
 	} else {
 		// Relabel against a copy of the labels to prevent modifying the original
@@ -271,7 +305,7 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	}
 	// Set the cache size to the cache.len
 	// TODO(@mattdurham): Instead of setting this each time could collect on demand for better performance.
-	c.cacheSize.Set(float64(c.cache.Len()))
+	// c.cacheSize.Set(float64(c.cache.GetCacheSize()))
 
 	componentID := livedebugging.ComponentID(c.opts.ID)
 	if c.debugDataPublisher.IsActive(componentID) {
@@ -285,22 +319,23 @@ func (c *Component) getFromCache(id uint64) (*labelAndID, bool) {
 	c.cacheMut.RLock()
 	defer c.cacheMut.RUnlock()
 
-	fm, found := c.cache.Get(id)
-	return fm, found
+	value, err := c.cache.Get(fmt.Sprintf("%d", id))
+
+	return value, err == nil
 }
 
 func (c *Component) deleteFromCache(id uint64) {
 	c.cacheMut.Lock()
 	defer c.cacheMut.Unlock()
 	c.cacheDeletes.Inc()
-	c.cache.Remove(id)
+
+	c.cache.Remove(fmt.Sprintf("%d", id))
 }
 
 func (c *Component) clearCache(cacheSize int) {
 	c.cacheMut.Lock()
 	defer c.cacheMut.Unlock()
-	cache, _ := lru.New[uint64, *labelAndID](cacheSize)
-	c.cache = cache
+	_ = c.cache.Clear(cacheSize)
 }
 
 func (c *Component) addToCache(originalID uint64, lbls labels.Labels, keep bool) {
@@ -308,21 +343,15 @@ func (c *Component) addToCache(originalID uint64, lbls labels.Labels, keep bool)
 	defer c.cacheMut.Unlock()
 
 	if !keep {
-		c.cache.Add(originalID, nil)
+		_ = c.cache.Set(fmt.Sprintf("%d", originalID), nil, 0)
 		return
 	}
 	newGlobal := c.ls.GetOrAddGlobalRefID(lbls)
-	c.cache.Add(originalID, &labelAndID{
-		labels: lbls,
-		id:     newGlobal,
-	})
+
+	_ = c.cache.Set(fmt.Sprintf("%d", originalID), &labelAndID{
+		Labels: lbls,
+		ID:     newGlobal,
+	}, 0)
 }
 
 func (c *Component) LiveDebugging(_ int) {}
-
-// labelAndID stores both the globalrefid for the label and the id itself. We store the id so that it doesn't have
-// to be recalculated again.
-type labelAndID struct {
-	labels labels.Labels
-	id     uint64
-}

@@ -13,6 +13,7 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/service/cache"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
@@ -25,39 +26,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCache(t *testing.T) {
+func TestLRUCache(t *testing.T) {
 	lc := labelstore.New(nil, prom.DefaultRegisterer)
-	relabeller := generateRelabel(t)
+	relabeller := generateRelabelWithLRUCache(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 	relabeller.relabel(0, lbls)
-	require.True(t, relabeller.cache.Len() == 1)
+	require.True(t, relabeller.cache.GetCacheSize() == 1)
 	entry, found := relabeller.getFromCache(lc.GetOrAddGlobalRefID(lbls))
 	require.True(t, found)
 	require.NotNil(t, entry)
 	require.True(
 		t,
-		lc.GetOrAddGlobalRefID(entry.labels) != lc.GetOrAddGlobalRefID(lbls),
+		lc.GetOrAddGlobalRefID(entry.Labels) != lc.GetOrAddGlobalRefID(lbls),
 	)
 }
 
-func TestUpdateReset(t *testing.T) {
-	relabeller := generateRelabel(t)
-	lbls := labels.FromStrings("__address__", "localhost")
-	relabeller.relabel(0, lbls)
-	require.True(t, relabeller.cache.Len() == 1)
-	_ = relabeller.Update(Arguments{
-		CacheSize:            100000,
-		MetricRelabelConfigs: []*alloy_relabel.Config{},
-	})
-	require.True(t, relabeller.cache.Len() == 0)
-}
-
 func TestValidator(t *testing.T) {
-	args := Arguments{CacheSize: 0}
+	args := Arguments{
+		CacheConfig: cache.CacheConfig{
+			Backend: "unknown",
+		},
+	}
 	err := args.Validate()
 	require.Error(t, err)
 
-	args.CacheSize = 1
+	args.CacheConfig.Backend = cache.InMemory
+	err = args.Validate()
+	require.Error(t, err)
+
+	args.CacheConfig.InMemory.CacheSize = 1
 	err = args.Validate()
 	require.NoError(t, err)
 }
@@ -83,7 +80,7 @@ func TestNil(t *testing.T) {
 				Action:       "drop",
 			},
 		},
-		CacheSize: 100000,
+		InMemoryCacheSizeDeprecated: 100000,
 	})
 	require.NotNil(t, relabeller)
 	require.NoError(t, err)
@@ -93,22 +90,22 @@ func TestNil(t *testing.T) {
 }
 
 func TestLRU(t *testing.T) {
-	relabeller := generateRelabel(t)
+	relabeller := generateRelabelWithLRUCache(t)
 
 	for i := 0; i < 600_000; i++ {
 		lbls := labels.FromStrings("__address__", "localhost", "inc", strconv.Itoa(i))
 		relabeller.relabel(0, lbls)
 	}
-	require.True(t, relabeller.cache.Len() == 100_000)
+	require.True(t, relabeller.cache.GetCacheSize() == 100_000)
 }
 
 func TestLRUNaN(t *testing.T) {
-	relabeller := generateRelabel(t)
+	relabeller := generateRelabelWithLRUCache(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 	relabeller.relabel(0, lbls)
-	require.True(t, relabeller.cache.Len() == 1)
+	require.True(t, relabeller.cache.GetCacheSize() == 1)
 	relabeller.relabel(math.Float64frombits(value.StaleNaN), lbls)
-	require.True(t, relabeller.cache.Len() == 0)
+	require.True(t, relabeller.cache.GetCacheSize() == 0)
 }
 
 func BenchmarkCache(b *testing.B) {
@@ -147,7 +144,7 @@ func BenchmarkCache(b *testing.B) {
 	app.Commit()
 }
 
-func generateRelabel(t *testing.T) *Component {
+func generateRelabelWithLRUCache(t *testing.T) *Component {
 	ls := labelstore.New(nil, prom.DefaultRegisterer)
 	fanout := prometheus.NewInterceptor(nil, ls, prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
 		require.True(t, l.Has("new_label"))
@@ -170,8 +167,9 @@ func generateRelabel(t *testing.T) *Component {
 				Action:       "replace",
 			},
 		},
-		CacheSize: 100_000,
+		InMemoryCacheSizeDeprecated: 100_000,
 	})
+
 	require.NotNil(t, relabeller)
 	require.NoError(t, err)
 	return relabeller
