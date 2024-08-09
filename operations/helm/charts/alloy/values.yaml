@@ -200,6 +200,9 @@ controller:
   # -- Extra pod labels to add.
   podLabels: {}
 
+  # -- Add additional label to all resources
+  commonLabels: {}
+
   # -- Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'.
   enableStatefulSetAutoDeletePVC: false
 
