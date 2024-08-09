@@ -162,6 +162,9 @@ v1.3.0
   Previously, the reload would fail for `loki.process` without an error in the logs and the metrics
   from the `metrics` stage would get stuck at the same values. (@ptodev)
 
+- Fix a bug in `discovery.*` components where old `targets` would continue to be exported to downstream components.
+  This would only happen if the config for `discovery.*`  is reloaded in such a way that no new targets were discovered. (@ptodev)
+
 v1.2.1
 -----------------
 
