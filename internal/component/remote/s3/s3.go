@@ -2,17 +2,13 @@ package s3
 
 import (
 	"context"
-	"crypto/tls"
-	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	aws_config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/grafana/alloy/internal/component"
+	aws_common_config "github.com/grafana/alloy/internal/component/common/config/aws"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/client_golang/prometheus"
@@ -51,12 +47,12 @@ var (
 
 // New initializes the S3 component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	s3cfg, err := generateS3Config(args)
+	awsCfg, err := aws_common_config.GenerateAWSConfig(args.Options.Client)
 	if err != nil {
 		return nil, err
 	}
 
-	s3Client := s3.NewFromConfig(*s3cfg, func(s3o *s3.Options) {
+	s3Client := s3.NewFromConfig(*awsCfg, func(s3o *s3.Options) {
 		s3o.UsePathStyle = args.Options.UsePathStyle
 	})
 
@@ -79,12 +75,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	w := newWatcher(bucket, file, s.updateChan, args.PollFrequency, s3Client)
 	s.watcher = w
 
-	err = o.Registerer.Register(s.s3Errors)
-	if err != nil {
+	if err := o.Registerer.Register(s.s3Errors); err != nil {
 		return nil, err
 	}
-	err = o.Registerer.Register(s.lastAccessed)
-	if err != nil {
+	if err := o.Registerer.Register(s.lastAccessed); err != nil {
 		return nil, err
 	}
 
@@ -106,11 +100,11 @@ func (s *Component) Run(ctx context.Context) error {
 func (s *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	s3cfg, err := generateS3Config(newArgs)
+	awsCfg, err := aws_common_config.GenerateAWSConfig(newArgs.Options.Client)
 	if err != nil {
 		return nil
 	}
-	s3Client := s3.NewFromConfig(*s3cfg, func(s3o *s3.Options) {
+	s3Client := s3.NewFromConfig(*awsCfg, func(s3o *s3.Options) {
 		s3o.UsePathStyle = newArgs.Options.UsePathStyle
 	})
 
@@ -129,61 +123,6 @@ func (s *Component) CurrentHealth() component.Health {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	return s.health
-}
-
-func generateS3Config(args Arguments) (*aws.Config, error) {
-	configOptions := make([]func(*aws_config.LoadOptions) error, 0)
-	// Override the endpoint.
-	if args.Options.Endpoint != "" {
-		endFunc := aws.EndpointResolverWithOptionsFunc(func(service, region string, _ ...interface{}) (aws.Endpoint, error) {
-			// The S3 compatible system used for testing with does not require signing region, so it's fine to be blank
-			// but when using a proxy to real S3 it needs to be injected.
-			return aws.Endpoint{URL: args.Options.Endpoint, SigningRegion: args.Options.SigningRegion}, nil
-		})
-		endResolver := aws_config.WithEndpointResolverWithOptions(endFunc)
-		configOptions = append(configOptions, endResolver)
-	}
-
-	// This incredibly nested option turns off SSL.
-	if args.Options.DisableSSL {
-		httpOverride := aws_config.WithHTTPClient(
-			&http.Client{
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: args.Options.DisableSSL,
-					},
-				},
-			},
-		)
-		configOptions = append(configOptions, httpOverride)
-	}
-
-	// Check to see if we need to override the credentials, else it will use the default ones.
-	// https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
-	if args.Options.AccessKey != "" {
-		if args.Options.Secret == "" {
-			return nil, fmt.Errorf("if accesskey or secret are specified then the other must also be specified")
-		}
-		credFunc := aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
-			return aws.Credentials{
-				AccessKeyID:     args.Options.AccessKey,
-				SecretAccessKey: string(args.Options.Secret),
-			}, nil
-		})
-		credProvider := aws_config.WithCredentialsProvider(credFunc)
-		configOptions = append(configOptions, credProvider)
-	}
-
-	cfg, err := aws_config.LoadDefaultConfig(context.TODO(), configOptions...)
-	if err != nil {
-		return nil, err
-	}
-	// Set region.
-	if args.Options.Region != "" {
-		cfg.Region = args.Options.Region
-	}
-
-	return &cfg, nil
 }
 
 // handleContentUpdate reads from the update and error channels setting as appropriate

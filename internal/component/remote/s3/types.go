@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	aws_common_config "github.com/grafana/alloy/internal/component/common/config/aws"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -15,19 +16,13 @@ type Arguments struct {
 	PollFrequency time.Duration `alloy:"poll_frequency,attr,optional"`
 	// IsSecret determines if the content should be displayed to the user.
 	IsSecret bool `alloy:"is_secret,attr,optional"`
-	// Options allows the overriding of default settings.
+	// Options allows the overriding of default AWS settings.
 	Options Client `alloy:"client,block,optional"`
 }
 
-// Client implements specific AWS configuration options
 type Client struct {
-	AccessKey     string            `alloy:"key,attr,optional"`
-	Secret        alloytypes.Secret `alloy:"secret,attr,optional"`
-	Endpoint      string            `alloy:"endpoint,attr,optional"`
-	DisableSSL    bool              `alloy:"disable_ssl,attr,optional"`
-	UsePathStyle  bool              `alloy:"use_path_style,attr,optional"`
-	Region        string            `alloy:"region,attr,optional"`
-	SigningRegion string            `alloy:"signing_region,attr,optional"`
+	aws_common_config.Client
+	UsePathStyle bool `alloy:"use_path_style,attr,optional"`
 }
 
 const minimumPollFrequency = 30 * time.Second

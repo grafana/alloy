@@ -191,3 +191,7 @@ func (c *Controller) Update(args component.Arguments) error {
 	}
 	return c.inner.Update(args)
 }
+
+func (c *Controller) GetInnerComponent() component.Component {
+	return c.inner
+}
