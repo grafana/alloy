@@ -182,12 +182,11 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		// This will never happen as the service dependency is explicit.
 		return fmt.Errorf("failed to get the remotecfg service when setting up the http service")
 	}
-	remotecfgHost := svc.Data().(remotecfg.Data).Host
 
 	// NOTE(@tpaschalis) These need to be kept in order for the longer
 	// remotecfg prefix to be invoked correctly.
-	r.PathPrefix(s.componentHttpPathPrefixRemotecfg).Handler(s.componentHandler(remotecfgHost, s.componentHttpPathPrefixRemotecfg))
-	r.PathPrefix(s.componentHttpPathPrefix).Handler(s.componentHandler(host, s.componentHttpPathPrefix))
+	r.PathPrefix(s.componentHttpPathPrefixRemotecfg).Handler(s.componentHandler(func() service.Host { return svc.Data().(remotecfg.Data).Host }, s.componentHttpPathPrefixRemotecfg))
+	r.PathPrefix(s.componentHttpPathPrefix).Handler(s.componentHandler(func() service.Host { return host }, s.componentHttpPathPrefix))
 
 	if s.opts.ReadyFunc != nil {
 		r.HandleFunc("/-/ready", func(w http.ResponseWriter, _ *http.Request) {
@@ -278,8 +277,9 @@ func (s *Service) getServiceRoutes(host service.Host) []serviceRoute {
 	return routes
 }
 
-func (s *Service) componentHandler(host service.Host, pathPrefix string) http.HandlerFunc {
+func (s *Service) componentHandler(getHost func() service.Host, pathPrefix string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		host := getHost()
 		// Trim the path prefix to get our full path.
 		trimmedPath := strings.TrimPrefix(r.URL.Path, pathPrefix)
 
