@@ -50,8 +50,7 @@ type Service struct {
 	opts Options
 	args Arguments
 
-	ctrlMut sync.RWMutex
-	ctrl    service.Controller
+	ctrl service.Controller
 
 	mut               sync.RWMutex
 	asClient          collectorv1connect.CollectorServiceClient
@@ -211,9 +210,10 @@ func (s *Service) registerMetrics() {
 // caller.
 // Data must only be called after Run.
 func (s *Service) Data() any {
-	s.ctrlMut.RLock()
+	if s.ctrl == nil {
+		return Data{Host: nil}
+	}
 	host := s.ctrl.(alloy_runtime.ServiceController).GetHost()
-	s.ctrlMut.RUnlock()
 	return Data{Host: host}
 }
 
@@ -239,18 +239,13 @@ var _ service.Service = (*Service)(nil)
 // Run implements [service.Service] and starts the remotecfg service. It will
 // run until the provided context is canceled or there is a fatal error.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
-	s.ctrlMut.Lock()
 	s.ctrl = host.NewController(ServiceName)
-	s.ctrlMut.Unlock()
 
 	s.fetch()
 	s.registerCollector()
 
 	// Run the service's own controller.
 	go func() {
-		s.ctrlMut.RLock()
-		defer s.ctrlMut.RUnlock()
-
 		s.ctrl.Run(ctx)
 	}()
 

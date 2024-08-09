@@ -177,16 +177,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
 	}
 
-	svc, ok := host.GetService(remotecfg.ServiceName)
-	if !ok {
-		// This will never happen as the service dependency is explicit.
-		return fmt.Errorf("failed to get the remotecfg service when setting up the http service")
-	}
-
 	// NOTE(@tpaschalis) These need to be kept in order for the longer
 	// remotecfg prefix to be invoked correctly.
-	r.PathPrefix(s.componentHttpPathPrefixRemotecfg).Handler(s.componentHandler(func() service.Host { return svc.Data().(remotecfg.Data).Host }, s.componentHttpPathPrefixRemotecfg))
-	r.PathPrefix(s.componentHttpPathPrefix).Handler(s.componentHandler(func() service.Host { return host }, s.componentHttpPathPrefix))
+	r.PathPrefix(s.componentHttpPathPrefixRemotecfg).Handler(s.componentHandler(remoteCfgHostProvider(host), s.componentHttpPathPrefixRemotecfg))
+	r.PathPrefix(s.componentHttpPathPrefix).Handler(s.componentHandler(rootHostProvider(host), s.componentHttpPathPrefix))
 
 	if s.opts.ReadyFunc != nil {
 		r.HandleFunc("/-/ready", func(w http.ResponseWriter, _ *http.Request) {
@@ -277,9 +271,14 @@ func (s *Service) getServiceRoutes(host service.Host) []serviceRoute {
 	return routes
 }
 
-func (s *Service) componentHandler(getHost func() service.Host, pathPrefix string) http.HandlerFunc {
+func (s *Service) componentHandler(getHost func() (service.Host, error), pathPrefix string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		host := getHost()
+		host, err := getHost()
+		if host == nil || err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintf(w, "failed to get host: %s\n", err)
+			return
+		}
 		// Trim the path prefix to get our full path.
 		trimmedPath := strings.TrimPrefix(r.URL.Path, pathPrefix)
 
@@ -500,4 +499,21 @@ func (lis *lazyListener) Addr() net.Addr {
 	}
 
 	return lis.inner.Addr()
+}
+
+func remoteCfgHostProvider(host service.Host) func() (service.Host, error) {
+	return func() (service.Host, error) {
+		svc, ok := host.GetService(remotecfg.ServiceName)
+		if !ok {
+			// This will never happen as the service dependency is explicit.
+			return nil, fmt.Errorf("failed to get the remotecfg service")
+		}
+		return svc.Data().(remotecfg.Data).Host, nil
+	}
+}
+
+func rootHostProvider(host service.Host) func() (service.Host, error) {
+	return func() (service.Host, error) {
+		return host, nil
+	}
 }
