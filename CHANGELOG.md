@@ -162,6 +162,8 @@ v1.3.0
   Previously, the reload would fail for `loki.process` without an error in the logs and the metrics
   from the `metrics` stage would get stuck at the same values. (@ptodev)
 
+- Fix a bug where custom components don't always get updated when the config is modified in an imported directory. (@ante012)
+
 v1.2.1
 -----------------
 

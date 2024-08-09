@@ -12,13 +12,13 @@ import (
 // [component.Component] and [service.Service]s which declared a dependency on
 // the named service.
 func (f *Runtime) GetServiceConsumers(serviceName string) []service.Consumer {
-	consumers := serviceConsumersForGraph(f.loader.OriginalGraph(), serviceName, true)
+	consumers := serviceConsumersForGraph(f.loader.Graph(), serviceName, true)
 
 	// Iterate through all modules to find other components that depend on the
 	// service. Peer services aren't checked here, since the services are always
 	// a subset of the services from the root controller.
 	for _, mod := range f.modules.List() {
-		moduleGraph := mod.f.loader.OriginalGraph()
+		moduleGraph := mod.f.loader.Graph()
 		consumers = append(consumers, serviceConsumersForGraph(moduleGraph, serviceName, false)...)
 	}
 

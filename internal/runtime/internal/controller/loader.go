@@ -41,7 +41,6 @@ type Loader struct {
 
 	mut                  sync.RWMutex
 	graph                *dag.Graph
-	originalGraph        *dag.Graph
 	componentNodes       []ComponentNode
 	declareNodes         map[string]*DeclareNode
 	importConfigNodes    map[string]*ImportConfigNode
@@ -98,10 +97,9 @@ func NewLoader(opts LoaderOptions) *Loader {
 			MaxBackoff: 10 * time.Second,
 		},
 
-		graph:         &dag.Graph{},
-		originalGraph: &dag.Graph{},
-		cache:         newValueCache(),
-		cm:            newControllerMetrics(parent, id),
+		graph: &dag.Graph{},
+		cache: newValueCache(),
+		cm:    newControllerMetrics(parent, id),
 	}
 	l.cc = newControllerCollector(l, parent, id)
 
@@ -310,12 +308,6 @@ func (l *Loader) loadNewGraph(args map[string]any, componentBlocks []*ast.BlockS
 		diags = append(diags, multierrToDiags(err)...)
 		return g, diags
 	}
-
-	// Copy the original graph, this is so we can have access to the original graph for things like displaying a UI or
-	// debug information.
-	l.originalGraph = g.Clone()
-	// Perform a transitive reduction of the graph to clean it up.
-	dag.Reduce(&g)
 
 	return g, diags
 }
@@ -674,14 +666,6 @@ func (l *Loader) Graph() *dag.Graph {
 	l.mut.RLock()
 	defer l.mut.RUnlock()
 	return l.graph.Clone()
-}
-
-// OriginalGraph returns a copy of the graph before Reduce was called. This can be used if you want to show a UI of the
-// original graph before the reduce function was called.
-func (l *Loader) OriginalGraph() *dag.Graph {
-	l.mut.RLock()
-	defer l.mut.RUnlock()
-	return l.originalGraph.Clone()
 }
 
 // EvaluateDependants sends nodes which depend directly on nodes in updatedNodes for evaluation to the
