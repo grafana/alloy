@@ -4,6 +4,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/azure_event_hubs"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func (s *ScrapeConfigBuilder) AppendAzureEventHubs() {
@@ -15,7 +16,7 @@ func (s *ScrapeConfigBuilder) AppendAzureEventHubs() {
 		FullyQualifiedNamespace: aCfg.FullyQualifiedNamespace,
 		EventHubs:               aCfg.EventHubs,
 		Authentication: azure_event_hubs.AzureEventHubsAuthentication{
-			ConnectionString: aCfg.ConnectionString,
+			ConnectionString: alloytypes.Secret(aCfg.ConnectionString),
 		},
 		GroupID:                aCfg.GroupID,
 		UseIncomingTimestamp:   aCfg.UseIncomingTimestamp,
@@ -25,9 +26,11 @@ func (s *ScrapeConfigBuilder) AppendAzureEventHubs() {
 		ForwardTo:              s.getOrNewProcessStageReceivers(),
 	}
 	override := func(val interface{}) interface{} {
-		switch val.(type) {
+		switch value := val.(type) {
 		case relabel.Rules:
 			return common.CustomTokenizer{Expr: s.getOrNewDiscoveryRelabelRules()}
+		case alloytypes.Secret:
+			return string(value)
 		default:
 			return val
 		}
