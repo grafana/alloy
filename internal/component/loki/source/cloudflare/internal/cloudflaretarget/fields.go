@@ -7,8 +7,7 @@ package cloudflaretarget
 
 import (
 	"fmt"
-
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 // FieldsType defines the set of fields to fetch alongside logs.

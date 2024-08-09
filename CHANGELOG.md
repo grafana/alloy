@@ -335,6 +335,9 @@ v1.1.1
 
 - Bubble up SSH key conversion error to facilitate failed `import.git`. (@hainenber)
 
+- Switch from `github.com/golang/snappy` to `github.com/klauspost/compress/snappy` for 
+  better compression in Loki clients. (@hainenber)
+
 v1.1.0
 ------
 
