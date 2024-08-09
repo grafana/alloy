@@ -69,7 +69,7 @@ func serviceConsumersForGraph(graph *dag.Graph, serviceName string, includePeerS
 // NewController returns a new, unstarted, isolated Alloy controller so that
 // services can instantiate their own components.
 func (f *Runtime) NewController(id string) service.Controller {
-	return serviceController{
+	return ServiceController{
 		f: newController(controllerOptions{
 			Options: Options{
 				ControllerID:    id,
@@ -88,16 +88,18 @@ func (f *Runtime) NewController(id string) service.Controller {
 	}
 }
 
-type serviceController struct {
+type ServiceController struct {
 	f *Runtime
 }
 
-func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
-func (sc serviceController) LoadSource(b []byte, args map[string]any) error {
+func (sc ServiceController) Run(ctx context.Context) { sc.f.Run(ctx) }
+func (sc ServiceController) LoadSource(b []byte, args map[string]any) error {
 	source, err := ParseSource("", b)
 	if err != nil {
 		return err
 	}
 	return sc.f.LoadSource(source, args)
 }
-func (sc serviceController) Ready() bool { return sc.f.Ready() }
+func (sc ServiceController) Ready() bool { return sc.f.Ready() }
+
+func (sc ServiceController) GetHost() service.Host { return sc.f }
