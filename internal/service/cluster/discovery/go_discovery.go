@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	stdlog "log"
+	"net"
 	"strconv"
 
 	"github.com/go-kit/log"
@@ -59,4 +60,13 @@ func newWithGoDiscovery(opt Options) (DiscoverFn, error) {
 		span.SetStatus(codes.Ok, "discovered peers")
 		return addrs, nil
 	}, nil
+}
+
+func appendPortIfAbsent(addr string, port string) string {
+	_, _, err := net.SplitHostPort(addr)
+	if err == nil {
+		// No error means there was a port in the string
+		return addr
+	}
+	return net.JoinHostPort(addr, port)
 }

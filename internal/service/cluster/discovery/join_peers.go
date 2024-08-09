@@ -17,15 +17,7 @@ import (
 )
 
 // newWithJoinPeers creates a DiscoverFn that resolves the provided list of peers to a list of addresses that can be
-// used for clustering. The peers can be given in the following formats:
-//   - IP address, e.g. 10.10.10.10, in which case the default port is used
-//   - IP address with port, e.g. 10.10.10.10:12345, in which case the provided port is used
-//   - Hostname, e.g. example.com - in this case the SRV records are looked up for the hostname and all the resolved
-//     IP addresses are used with the default port.
-//   - Hostname with port, e.g. example.com:12345 - in this case the SRV records are looked up for the hostname and all
-//     the resolved IP addresses will be used with the provided port.
-//
-// TODO(thampiotr): Update this after adding A record support and probably move this to documentation.
+// used for clustering. See docs/sources/reference/cli/run.md and the tests for more information.
 func newWithJoinPeers(opts Options) DiscoverFn {
 	return func() ([]string, error) {
 		ctx, span := opts.Tracer.Tracer("").Start(
@@ -77,7 +69,7 @@ func buildJoinAddresses(opts Options, resolvers []addressResolver) ([]string, er
 			resolved, err := resolver(host)
 			deferredErr = errors.Join(deferredErr, err)
 			for _, foundAddr := range resolved {
-				result = append(result, appendPortIfAbsent(foundAddr, port))
+				result = append(result, net.JoinHostPort(foundAddr, port))
 			}
 			// we stop once we find a resolver that succeeded for given address
 			if len(resolved) > 0 {
@@ -157,20 +149,14 @@ func dnsResolver(opts Options, ctx context.Context, recordType string, dnsLookup
 		)
 		defer span.End()
 
-		addresses, err := dnsLookupFn(addr)
+		result, err := dnsLookupFn(addr)
 		if err != nil {
 			level.Debug(opts.Logger).Log("msg", "failed to resolve DNS records", "addr", addr, "record_type", recordType, "err", err)
 			span.SetStatus(codes.Error, err.Error())
 			return nil, fmt.Errorf("failed to resolve %q records: %w", recordType, err)
 		}
 
-		// Use all the addresses found
-		level.Debug(opts.Logger).Log("msg", "received DNS query response", "addr", addr, "record_type", recordType, "records_count", len(addresses))
-		var result []string
-		for _, a := range addresses {
-			result = append(result, a)
-		}
-
+		level.Debug(opts.Logger).Log("msg", "received DNS query response", "addr", addr, "record_type", recordType, "records_count", len(result))
 		span.SetAttributes(attribute.Int("resolved_addresses_count", len(result)))
 		span.SetStatus(codes.Ok, "resolved addresses")
 		return result, nil
