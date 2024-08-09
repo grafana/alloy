@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <?define ComponentRules="OneToOne"?>
+  <?define SourceDir="..\..\..\..\dist"?>
+  <Fragment>
+    <ComponentGroup Id="AlloyFiles">
+      <Component Directory="INSTALLLOCATION">
+      	<File Source="Resources\config.alloy" />
+      </Component>
+      <Component Directory="INSTALLLOCATION">
+      	<File Source="Resources\LICENSE.md" />
+      </Component>
+      <Component Directory="INSTALLLOCATION">
+      	<File Source="Resources\Icon.ico" />
+      </Component>
+      <Component Directory="INSTALLLOCATION">
+      	<File Source="$(var.SourceDir)\alloy-windows-amd64.exe" Name="alloy.exe" KeyPath="true" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>
