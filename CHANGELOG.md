@@ -34,6 +34,9 @@ Main (unreleased)
 - Fixed an issue where clustering peers resolution via hostname in `--cluster.join-addresses`
   resolves to duplicated IP addresses when using SRV records. (@thampiotr)
 
+- Fixed an issue where the `connection_string` for the `loki.source.azure_event_hubs` component
+  was displayed in the UI in plaintext. (@MorrisWitthein)
+
 v1.3.0
 -----------------
 
