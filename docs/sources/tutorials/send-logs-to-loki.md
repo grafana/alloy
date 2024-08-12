@@ -106,7 +106,8 @@ This Docker Compose file includes Loki and Prometheus configured as data sources
    touch docker-compose.yml
    ```
 
-1. Copy the following Docker Compose file into `docker-compose.yml`:
+1. Copy the following Docker Compose file into `docker-compose.yml`.
+
    ```yaml
     version: '3'
     services:
