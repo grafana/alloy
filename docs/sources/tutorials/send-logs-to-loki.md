@@ -56,7 +56,7 @@ It's a fully configured environment with all the dependencies already installed.
 This tutorial requires a Linux or macOS environment with Docker installed.
 
 {{< docs/ignore >}}
-> This online sandbox enviroment is based on an Ubuntu image and has Docker pre-installed. To install Alloy simply follow the links below and copy and paste the `Ubuntu/Debian` commands in the terminal.
+> This online sandbox enviroment is based on an Ubuntu image and has Docker pre-installed. To install {{% param "PRODUCT_NAME" %}} follow the links below, and copy and paste the `Ubuntu/Debian` commands in the terminal.
 
 {{< /docs/ignore >}}
 
