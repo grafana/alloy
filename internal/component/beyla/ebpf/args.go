@@ -9,9 +9,11 @@ import (
 type Arguments struct {
 	Port           string                     `alloy:"open_port,attr,optional"`
 	ExecutableName string                     `alloy:"executable_name,attr,optional"`
+	Debug          bool                       `alloy:"debug,attr,optional"`
 	Routes         Routes                     `alloy:"routes,block,optional"`
 	Attributes     Attributes                 `alloy:"attributes,block,optional"`
 	Discovery      Discovery                  `alloy:"discovery,block,optional"`
+	Metrics        Metrics                    `alloy:"metrics,block,optional"`
 	Output         *otelcol.ConsumerArguments `alloy:"output,block,optional"`
 }
 
@@ -31,7 +33,8 @@ type Attributes struct {
 }
 
 type KubernetesDecorator struct {
-	Enable string `alloy:"enable,attr"`
+	Enable      string `alloy:"enable,attr"`
+	ClusterName string `alloy:"cluster_name,attr,optional"`
 }
 
 type Services []Service
@@ -56,5 +59,16 @@ type KubernetesService struct {
 }
 
 type Discovery struct {
-	Services Services `alloy:"services,block"`
+	Services        Services `alloy:"services,block"`
+	ExcludeServices Services `alloy:"exclude_services,block,optional"`
+}
+
+type Metrics struct {
+	Features         []string `alloy:"features,attr,optional"`
+	Instrumentations []string `alloy:"instrumentations,attr,optional"`
+	Network          Network  `alloy:"network,block,optional"`
+}
+
+type Network struct {
+	Enable bool `alloy:"enable,attr"`
 }

@@ -129,7 +129,8 @@ type ThriftHTTP struct {
 func (args *ThriftHTTP) SetToDefault() {
 	*args = ThriftHTTP{
 		HTTPServerArguments: &otelcol.HTTPServerArguments{
-			Endpoint: "0.0.0.0:14268",
+			Endpoint:              "0.0.0.0:14268",
+			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
 		},
 	}
 }

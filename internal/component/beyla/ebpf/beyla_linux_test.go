@@ -7,11 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/beyla/pkg/beyla"
+	"github.com/grafana/beyla/pkg/kubeflags"
 	"github.com/grafana/beyla/pkg/services"
 	"github.com/grafana/beyla/pkg/transform"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestArguments_UnmarshalSyntax(t *testing.T) {
@@ -24,6 +26,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			ignored_patterns = ["/api/v1/health"]
 			ignore_mode = "all"
 		}
+		debug = true
 		attributes {
 			kubernetes {
 				enable = "true"
@@ -48,6 +51,17 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 					}
 				}
 			}
+			exclude_services {
+				name = "test3"
+				namespace = "default"
+			}
+		}
+		metrics {
+			features = ["application", "network"]
+			instrumentations = ["redis", "sql"]
+			network {
+				enable = true
+			}
 		}
 		output { /* no-op */ }
 	`
@@ -61,12 +75,18 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, []string{"/api/v1/*"}, cfg.Routes.Patterns)
 	require.Equal(t, []string{"/api/v1/health"}, cfg.Routes.IgnorePatterns)
 	require.Equal(t, transform.IgnoreMode("all"), cfg.Routes.IgnoredEvents)
-	require.Equal(t, transform.KubeEnableFlag("true"), cfg.Attributes.Kubernetes.Enable)
+	require.Equal(t, kubeflags.EnabledTrue, cfg.Attributes.Kubernetes.Enable)
+	require.True(t, cfg.NetworkFlows.Enable)
 	require.Len(t, cfg.Discovery.Services, 2)
 	require.Equal(t, "test", cfg.Discovery.Services[0].Name)
 	require.Equal(t, "default", cfg.Discovery.Services[0].Namespace)
 	require.True(t, cfg.Discovery.Services[0].Metadata[services.AttrNamespace].IsSet())
 	require.True(t, cfg.Discovery.Services[1].PodLabels["test"].IsSet())
+	require.Len(t, cfg.Discovery.ExcludeServices, 1)
+	require.Equal(t, "test3", cfg.Discovery.ExcludeServices[0].Name)
+	require.Equal(t, "default", cfg.Discovery.ExcludeServices[0].Namespace)
+	require.Equal(t, []string{"application", "network"}, cfg.Prometheus.Features)
+	require.Equal(t, []string{"redis", "sql"}, cfg.Prometheus.Instrumentations)
 }
 
 func TestArguments_ConvertDefaultConfig(t *testing.T) {
@@ -138,7 +158,7 @@ func TestConvert_Routes(t *testing.T) {
 	require.Equal(t, expectedConfig, config)
 }
 
-func TestConvert_Attribute(t *testing.T) {
+func TestConvert_Attributes(t *testing.T) {
 	args := Attributes{
 		Kubernetes: KubernetesDecorator{
 			Enable: "true",
@@ -148,8 +168,11 @@ func TestConvert_Attribute(t *testing.T) {
 	expectedConfig := beyla.Attributes{
 		InstanceID: beyla.DefaultConfig.Attributes.InstanceID,
 		Kubernetes: transform.KubernetesDecorator{
-			Enable:               transform.KubeEnableFlag(args.Kubernetes.Enable),
+			Enable:               kubeflags.EnableFlag(args.Kubernetes.Enable),
 			InformersSyncTimeout: 30 * time.Second,
+		},
+		HostID: beyla.HostIDConfig{
+			FetchTimeout: 500 * time.Millisecond,
 		},
 	}
 
@@ -165,7 +188,14 @@ func TestConvert_Discovery(t *testing.T) {
 				Name:      "test",
 				Namespace: "default",
 				OpenPorts: "80",
-				Path:      "/api/v1/*",
+			},
+			{
+				Kubernetes: KubernetesService{
+					Namespace:      "default",
+					DeploymentName: "test",
+				},
+			},
+			{
 				Kubernetes: KubernetesService{
 					Namespace:       "default",
 					PodName:         "test",
@@ -178,24 +208,64 @@ func TestConvert_Discovery(t *testing.T) {
 				},
 			},
 		},
+		ExcludeServices: []Service{
+			{
+				Name:      "test",
+				Namespace: "default",
+			},
+		},
 	}
 	config, err := args.Convert()
 
 	require.NoError(t, err)
-	require.Len(t, config.Services, 1)
+	require.Len(t, config.Services, 3)
 	require.Equal(t, "test", config.Services[0].Name)
 	require.Equal(t, "default", config.Services[0].Namespace)
 	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Services[0].OpenPorts)
-	require.True(t, config.Services[0].Path.IsSet())
-	require.True(t, config.Services[0].Metadata[services.AttrNamespace].IsSet())
-	require.True(t, config.Services[0].Metadata[services.AttrPodName].IsSet())
-	require.True(t, config.Services[0].Metadata[services.AttrDeploymentName].IsSet())
-	require.True(t, config.Services[0].Metadata[services.AttrReplicaSetName].IsSet())
-	require.True(t, config.Services[0].Metadata[services.AttrStatefulSetName].IsSet())
-	require.True(t, config.Services[0].Metadata[services.AttrDaemonSetName].IsSet())
-	require.True(t, config.Services[0].Metadata[services.AttrOwnerName].IsSet())
-	require.True(t, config.Services[0].PodLabels["test"].IsSet())
+	require.True(t, config.Services[1].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, config.Services[1].Metadata[services.AttrDeploymentName].IsSet())
+	_, exists := config.Services[1].Metadata[services.AttrDaemonSetName]
+	require.False(t, exists)
+	require.True(t, config.Services[2].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, config.Services[2].Metadata[services.AttrPodName].IsSet())
+	require.True(t, config.Services[2].Metadata[services.AttrDeploymentName].IsSet())
+	require.True(t, config.Services[2].Metadata[services.AttrReplicaSetName].IsSet())
+	require.True(t, config.Services[2].Metadata[services.AttrStatefulSetName].IsSet())
+	require.True(t, config.Services[2].Metadata[services.AttrDaemonSetName].IsSet())
+	require.True(t, config.Services[2].Metadata[services.AttrOwnerName].IsSet())
+	require.True(t, config.Services[2].PodLabels["test"].IsSet())
 	require.NoError(t, config.Services.Validate())
+	require.Len(t, config.ExcludeServices, 1)
+	require.Equal(t, "test", config.ExcludeServices[0].Name)
+	require.Equal(t, "default", config.ExcludeServices[0].Namespace)
+}
+
+func TestConvert_Prometheus(t *testing.T) {
+	args := Metrics{
+		Features:         []string{"application", "network"},
+		Instrumentations: []string{"redis", "sql"},
+	}
+
+	expectedConfig := beyla.DefaultConfig.Prometheus
+	expectedConfig.Features = args.Features
+	expectedConfig.Instrumentations = args.Instrumentations
+
+	config := args.Convert()
+
+	require.Equal(t, expectedConfig, config)
+}
+
+func TestConvert_Network(t *testing.T) {
+	args := Network{
+		Enable: true,
+	}
+
+	expectedConfig := beyla.DefaultConfig.NetworkFlows
+	expectedConfig.Enable = true
+
+	config := args.Convert()
+
+	require.Equal(t, expectedConfig, config)
 }
 
 func TestArguments_Validate(t *testing.T) {
@@ -238,6 +308,26 @@ func TestArguments_Validate(t *testing.T) {
 				ExecutableName: "test",
 			},
 			expected: nil,
+		},
+		{
+			name: "invalid Metrics instrumentation",
+			args: Arguments{
+				Port: "849",
+				Metrics: Metrics{
+					Instrumentations: []string{"*", "kafka", "redis", "superprotocol"},
+				},
+			},
+			expected: errors.New("invalid prometheus.instrumentations entry: superprotocol"),
+		},
+		{
+			name: "invalid Metrics feature",
+			args: Arguments{
+				Port: "849",
+				Metrics: Metrics{
+					Features: []string{"application_service_graph", "tralara"},
+				},
+			},
+			expected: errors.New("invalid prometheus.features entry: tralara"),
 		},
 	}
 

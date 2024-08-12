@@ -14,6 +14,7 @@ import (
 	kt "github.com/grafana/alloy/internal/component/loki/source/internal/kafkatarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/dskit/flagext"
 
 	"github.com/prometheus/common/model"
@@ -50,9 +51,9 @@ type Arguments struct {
 
 // AzureEventHubsAuthentication describe the configuration for authentication with Azure Event Hub
 type AzureEventHubsAuthentication struct {
-	Mechanism        string   `alloy:"mechanism,attr"`
-	Scopes           []string `alloy:"scopes,attr,optional"`
-	ConnectionString string   `alloy:"connection_string,attr,optional"`
+	Mechanism        string            `alloy:"mechanism,attr"`
+	Scopes           []string          `alloy:"scopes,attr,optional"`
+	ConnectionString alloytypes.Secret `alloy:"connection_string,attr,optional"`
 }
 
 func getDefault() Arguments {
@@ -184,7 +185,7 @@ func (a *Arguments) Convert() (kt.Config, error) {
 			SASLConfig: kt.SASLConfig{
 				UseTLS:    true,
 				User:      "$ConnectionString",
-				Password:  flagext.SecretWithValue(a.Authentication.ConnectionString),
+				Password:  flagext.SecretWithValue(string(a.Authentication.ConnectionString)),
 				Mechanism: sarama.SASLTypePlaintext,
 			},
 		}

@@ -88,6 +88,7 @@ type Options struct {
 type Arguments struct {
 	URL              string                   `alloy:"url,attr,optional"`
 	ID               string                   `alloy:"id,attr,optional"`
+	Name             string                   `alloy:"name,attr,optional"`
 	Attributes       map[string]string        `alloy:"attributes,attr,optional"`
 	PollFrequency    time.Duration            `alloy:"poll_frequency,attr,optional"`
 	HTTPClientConfig *config.HTTPClientConfig `alloy:",squash"`
@@ -227,6 +228,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.ctrl = host.NewController(ServiceName)
 
 	s.fetch()
+	s.registerCollector()
 
 	// Run the service's own controller.
 	go func() {
@@ -288,6 +290,7 @@ func (s *Service) Update(newConfig any) error {
 
 	// Update the args as the last step to avoid polluting any comparisons
 	s.args = newArgs
+	s.registerCollector()
 	s.mut.Unlock()
 
 	// If we've already called Run, then immediately trigger an API call with
@@ -307,6 +310,22 @@ func (s *Service) fetch() {
 		s.fetchLocal()
 	}
 }
+
+func (s *Service) registerCollector() error {
+	req := connect.NewRequest(&collectorv1.RegisterCollectorRequest{
+		Id:         s.args.ID,
+		Attributes: s.attrs,
+		Name:       s.args.Name,
+	})
+	client := s.asClient
+
+	_, err := client.RegisterCollector(context.Background(), req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Service) fetchRemote() error {
 	if !s.isEnabled() {
 		return nil
