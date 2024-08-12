@@ -89,7 +89,7 @@ The `authentication` block defines the authentication method when communicating 
 Name                | Type           | Description                                                               | Default | Required
 --------------------|----------------|---------------------------------------------------------------------------|---------|---------
 `mechanism`         | `string`       | Authentication mechanism.                                                 |         | yes
-`connection_string` | `string`       | Event Hubs ConnectionString for authentication on Azure Cloud.            |         | no
+`connection_string` | `secret`       | Event Hubs ConnectionString for authentication on Azure Cloud.            |         | no
 `scopes`            | `list(string)` | Access token scopes. Default is `fully_qualified_namespace` without port. |         | no
 
 `mechanism` supports the values `"connection_string"` and `"oauth"`. If `"connection_string"` is used,
