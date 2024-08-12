@@ -341,7 +341,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
    {{< /docs/ignore >}}
 
 
-3. Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and load the configuration file:
+1. Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and load the configuration file.
    
 {{< docs/ignore >}}
    ```bash
