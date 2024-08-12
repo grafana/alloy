@@ -286,7 +286,7 @@ For further authorization options, refer to the [`loki.write`][loki.write] compo
 <!-- INTERACTIVE ignore END -->
 
 {{< docs/ignore >}}
-> The `basic_auth` block is commented out because the local `docker compose` stack doesn't require it. It's included in this example to show how you can configure authorization for other environments.For further authorization options, refer to the [`loki.write`](../../reference/components/loki/loki.write/) component reference.
+> The `basic_auth` block is commented out because the local `docker compose` stack doesn't require it. It's included in this example to show how you can configure authorization for other environments. For further authorization options, refer to the [`loki.write`](../../reference/components/loki/loki.write/) component reference.
 {{< /docs/ignore >}}
 
 With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the Loki instance running in the Docker container.
