@@ -225,5 +225,30 @@ local cluster_node_filename = 'alloy-cluster-node.json';
           },
         ])
       ),
+
+      // Number of peers as seen by each instance.
+      (
+        panel.new(title='Number of peers seen by each instance', type='timeseries') +
+        panel.withUnit('instances') +
+        panel.withDescription(|||
+          The number of cluster peers seen by each instance.
+
+          When cluster is converged, every peer should see all the other instances. When we have a split brain or one
+          peer not joining the cluster, we will see two or more groups of instances that report different peer numbers
+          for an extended period of time and not converging.
+
+          This graph helps to identify which instances may be in a split brain state.
+        |||) +
+        panel.withPosition({ h: 12, w: 24, x: 0, y: 18 }) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (cluster_node_peers{%(groupSelector)s})
+            ||| % $._config,
+            legendFormat='{{instance}}',
+          ),
+        ])
+      ),
+
     ]),
 }

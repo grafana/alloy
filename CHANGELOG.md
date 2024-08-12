@@ -19,6 +19,10 @@ Main (unreleased)
   used as a temporary measure, since this flag will be disabled in future
   releases. (@thampiotr)
 
+- Added a new panel to Cluster Overview dashboard to show the number of peers
+  seen by each instance in the cluster. This can help diagnose cluster split
+  brain issues. (@thampiotr)
+
 ### Bugfixes
 
 - Fixed an issue which caused loss of context data in Faro exception. (@codecapitano)
