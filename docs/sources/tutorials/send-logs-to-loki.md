@@ -100,6 +100,7 @@ This Docker Compose file includes Loki and Prometheus configured as data sources
 {{< /docs/ignore >}}
 
 1. Create a new directory and save the Docker Compose file as `docker-compose.yml`.
+
    ```bash
    mkdir alloy-tutorial
    cd alloy-tutorial
