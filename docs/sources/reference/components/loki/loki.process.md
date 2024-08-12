@@ -1284,7 +1284,7 @@ This example replaces the first two instances of the `loki` word by `Loki`:
 ```alloy
 stage.template {
     source   = "output"
-    template = "{{ Replace .Value "loki" "Loki" 2 }}"
+    template = "{{ Replace .Value \"loki\" \"Loki\" 2 }}"
 }
 ```
 
@@ -1303,7 +1303,7 @@ Examples:
 ```alloy
 stage.template {
     source   = "output"
-    template = "{{ Trim .Value ",. " }}"
+    template = "{{ Trim .Value \",. \" }}"
 }
 stage.template {
     source   = "output"
@@ -1311,7 +1311,7 @@ stage.template {
 }
 stage.template {
     source   = "output"
-    template = "{{ TrimPrefix .Value "--" }}"
+    template = "{{ TrimPrefix .Value \"--\" }}"
 }
 ```
 
@@ -1329,11 +1329,11 @@ substituted directly, without using Expand.
 ```alloy
 stage.template {
     source   = "output"
-    template = "{{ regexReplaceAll "(a*)bc" .Value "${1}a" }}"
+    template = "{{ regexReplaceAll \"(a*)bc\" .Value \"${1}a\" }}"
 }
 stage.template {
     source   = "output"
-    template = "{{ regexReplaceAllLiteral "(ts=)" .Value "timestamp=" }}"
+    template = "{{ regexReplaceAllLiteral \"(ts=)\" .Value \"timestamp=\" }}"
 }
 ```
 
@@ -1347,11 +1347,11 @@ Examples:
 ```alloy
 stage.template {
     source   = "output"
-    template = "{{ Hash .Value "salt" }}"
+    template = "{{ Hash .Value \"salt\" }}"
 }
 stage.template {
     source   = "output"
-    template = "{{ Sha2Hash .Value "salt" }}"
+    template = "{{ Sha2Hash .Value \"salt\" }}"
 }
 ```
 
