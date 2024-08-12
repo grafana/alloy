@@ -319,7 +319,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
    {{< /code >}}
    <!-- INTERACTIVE ignore END -->
 
-2. Call the `/-/reload` endpoint to tell {{< param "PRODUCT_NAME" >}} to reload the configuration file without a system service restart.
+1. Call the `/-/reload` endpoint to tell {{< param "PRODUCT_NAME" >}} to reload the configuration file without a system service restart.
 
    ```bash
     curl -X POST http://localhost:12345/-/reload
