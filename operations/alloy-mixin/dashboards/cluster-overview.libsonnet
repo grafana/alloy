@@ -229,7 +229,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
       // Number of peers as seen by each instance.
       (
         panel.new(title='Number of peers seen by each instance', type='timeseries') +
-        panel.withUnit('instances') +
+        panel.withUnit('peers') +
         panel.withDescription(|||
           The number of cluster peers seen by each instance.
 
