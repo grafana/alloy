@@ -257,7 +257,7 @@ The [`loki.process` documentation][loki.process] provides more comprehensive inf
 
 ### Fourth component: Write logs to Loki
 
-Copy and paste this component configuration below the previous component in your `config.alloy` file:
+Copy and paste this component configuration below the previous component in your `config.alloy` file.
 
 ```alloy
   loki.write "grafana_loki" {
