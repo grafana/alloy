@@ -41,6 +41,10 @@ Main (unreleased)
 - Fixed an issue where the `connection_string` for the `loki.source.azure_event_hubs` component
   was displayed in the UI in plaintext. (@MorrisWitthein)
 
+### Other changes
+
+- Change the Docker base image for Linux containers to `ubuntu:noble`. (@ptodev)
+
 v1.3.0
 -----------------
 
