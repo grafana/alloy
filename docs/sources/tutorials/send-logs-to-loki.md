@@ -45,7 +45,7 @@ It's a fully configured environment with all the dependencies already installed.
 
 ![Interactive](/media/docs/alloy/Alloy-Interactive-Learning-Environment-(Doc-Banner).png)
 {{< /admonition >}}
-<!-- INTERACTIVE ignore START -->
+<!-- INTERACTIVE ignore END -->
 
 <!-- INTERACTIVE page intro.md END -->
 
