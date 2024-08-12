@@ -66,7 +66,7 @@ Install and run {{< param "PRODUCT_NAME" >}} on Linux.
 
 1. [Install {{< param "PRODUCT_NAME" >}}][Linux Install].
 {{< docs/ignore >}}
-1. To view the Alloy UI within the sandbox, Alloy must run on all interfaces. Run the following command before you start the alloy service:
+1. To view the {{% param "PRODUCT_NAME" %}} UI within the sandbox, {{% param "PRODUCT_NAME" %}} must run on all interfaces. Run the following command before you start the {{% param "PRODUCT_NAME" %}} service.
    ```bash
    sed -i -e 's/CUSTOM_ARGS=""/CUSTOM_ARGS="--server.http.listen-addr=0.0.0.0:12345"/' /etc/default/alloy
    ```
