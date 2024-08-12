@@ -19,8 +19,9 @@ killercoda:
         replacement: docker-compose
       - regexp: '\.\./\.\./'
         replacement: 'https://grafana.com/docs/alloy/latest/'
-      - regexp: '\.\./'
-        replacement: 'https://grafana.com/docs/alloy/latest/tutorials/'
+      - regexp: '../send-metrics-to-prometheus/'
+        replacement: 'https://grafana.com/docs/alloy/latest/tutorials/send-metrics-to-prometheus/'
+
   backend:
     imageid: ubuntu
 ---
