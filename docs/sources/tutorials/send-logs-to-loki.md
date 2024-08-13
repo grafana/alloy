@@ -202,7 +202,8 @@ touch config.alloy
 
 ### First component: Log files
 
-Copy and paste the following component configuration at the top of the file:
+Copy and paste the following component configuration at the top of the file.
+
    ```alloy
     local.file_match "local_files" {
         path_targets = [{"__path__" = "/var/log/*.log"}]
