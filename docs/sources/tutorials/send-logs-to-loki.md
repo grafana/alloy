@@ -59,7 +59,7 @@ This tutorial requires a Linux or macOS environment with Docker installed.
 <!-- INTERACTIVE ignore END -->
 
 {{< docs/ignore >}}
-> This online sandbox enviroment is based on an Ubuntu image and has Docker pre-installed. To install {{% param "PRODUCT_NAME" %}} follow the links below, and copy and paste the `Ubuntu/Debian` commands in the terminal.
+> This online sandbox environment is based on an Ubuntu image and has Docker pre-installed. To install {{% param "PRODUCT_NAME" %}} in the sandbox, perform the following steps.
 
 {{< /docs/ignore >}}
 
