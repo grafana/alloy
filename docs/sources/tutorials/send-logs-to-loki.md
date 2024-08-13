@@ -194,7 +194,8 @@ You can try the examples using a `config.alloy` file and experiment with the exa
 
 ### Create a `config.alloy` file
 
-To start create a `config.alloy` file within your current working directory:
+Create a `config.alloy` file within your current working directory.
+
 ```bash
 touch config.alloy
 ```
