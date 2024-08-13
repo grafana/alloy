@@ -6,7 +6,27 @@ description: Learn how to use Grafana Alloy to send logs to Loki
 menuTitle: Send logs to Loki
 title: Use Grafana Alloy to send logs to Loki
 weight: 100
+killercoda:
+  title: Use Grafana Alloy to send logs to Loki
+  description: Learn how to use Grafana Alloy to send logs to Loki
+  preprocessing:
+    substitutions:
+      - regexp: '{{[%<] *param *"FULL_PRODUCT_NAME" *[%>]}}'
+        replacement: Grafana Alloy
+      - regexp: '{{[%<] *param *"PRODUCT_NAME" *[%>]}}'
+        replacement: Alloy
+      - regexp: 'docker compose'
+        replacement: docker-compose
+      - regexp: '\.\./\.\./'
+        replacement: 'https://grafana.com/docs/alloy/latest/'
+      - regexp: '../send-metrics-to-prometheus/'
+        replacement: 'https://grafana.com/docs/alloy/latest/tutorials/send-metrics-to-prometheus/'
+
+  backend:
+    imageid: ubuntu
 ---
+
+<!-- INTERACTIVE page intro.md START -->
 
 ## Use {{% param "FULL_PRODUCT_NAME" %}} to send logs to Loki
 
@@ -18,26 +38,59 @@ To complete this tutorial:
 
 * You must have a basic understanding of {{< param "PRODUCT_NAME" >}} and telemetry collection in general.
 * You should be familiar with Prometheus, PromQL, Loki, LogQL, and basic Grafana navigation.
+<!-- INTERACTIVE ignore START -->
+{{< admonition type="tip" >}}
+Alternatively, you can try out this example in our interactive learning environment: [Sending Logs to Loki](https://killercoda.com/grafana-labs/course/alloy/send-logs-to-loki).
+
+It's a fully configured environment with all the dependencies already installed.
+
+![Interactive](/media/docs/alloy/Alloy-Interactive-Learning-Environment-(Doc-Banner).png)
+{{< /admonition >}}
+<!-- INTERACTIVE ignore END -->
+
+<!-- INTERACTIVE page intro.md END -->
+
+<!-- INTERACTIVE page step1.md START -->
 
 ## Install {{% param "PRODUCT_NAME" %}} and start the service
 
+<!-- INTERACTIVE ignore START -->
 This tutorial requires a Linux or macOS environment with Docker installed.
+<!-- INTERACTIVE ignore END -->
+
+{{< docs/ignore >}}
+> This online sandbox environment is based on an Ubuntu image and has Docker pre-installed. To install {{% param "PRODUCT_NAME" %}} in the sandbox, perform the following steps.
+
+{{< /docs/ignore >}}
 
 ### Linux
 
 Install and run {{< param "PRODUCT_NAME" >}} on Linux.
 
 1. [Install {{< param "PRODUCT_NAME" >}}][Linux Install].
-
+{{< docs/ignore >}}
+1. To view the {{% param "PRODUCT_NAME" %}} UI within the sandbox, {{% param "PRODUCT_NAME" %}} must run on all interfaces. Run the following command before you start the {{% param "PRODUCT_NAME" %}} service.
+   ```bash
+   sed -i -e 's/CUSTOM_ARGS=""/CUSTOM_ARGS="--server.http.listen-addr=0.0.0.0:12345"/' /etc/default/alloy
+   ```
+{{< /docs/ignore >}}
 1. [Run {{< param "PRODUCT_NAME" >}}][Run on Linux].
 
+<!-- INTERACTIVE ignore START -->
 ### macOS
 
-Install  and run {{< param "PRODUCT_NAME" >}} on macOS.
+Install and run {{< param "PRODUCT_NAME" >}} on macOS.
 
 1. [Install {{< param "PRODUCT_NAME" >}}][macOS Install].
 
 1. [Run {{< param "PRODUCT_NAME" >}}][Run on macOS].
+<!-- INTERACTIVE ignore END -->
+
+You should now be able to access the {{< param "PRODUCT_NAME" >}} UI at [http://localhost:12345](http://localhost:12345).
+
+<!-- INTERACTIVE page step1.md END -->
+
+<!-- INTERACTIVE page step2.md START -->
 
 ## Set up a local Grafana instance
 
@@ -45,63 +98,91 @@ In this tutorial, you configure {{< param "PRODUCT_NAME" >}} to collect logs fro
 You can use the following Docker Compose file to set up a local Grafana instance.
 This Docker Compose file includes Loki and Prometheus configured as data sources.
 
-```yaml
-version: '3'
-services:
-  loki:
-    image: grafana/loki:3.0.0
-    ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
-  prometheus:
-    image: prom/prometheus:v2.47.0
-    command:
-      - --web.enable-remote-write-receiver
-      - --config.file=/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-  grafana:
-    environment:
-      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-    entrypoint:
-      - sh
-      - -euc
-      - |
-        mkdir -p /etc/grafana/provisioning/datasources
-        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
-        apiVersion: 1
-        datasources:
-        - name: Loki
-          type: loki
-          access: proxy
-          orgId: 1
-          url: http://loki:3100
-          basicAuth: false
-          isDefault: false
-          version: 1
-          editable: false
-        - name: Prometheus
-          type: prometheus
-          orgId: 1
-          url: http://prometheus:9090
-          basicAuth: false
-          isDefault: true
-          version: 1
-          editable: false
-        EOF
-        /run.sh
-    image: grafana/grafana:11.0.0
-    ports:
-      - "3000:3000"
-```
+{{< docs/ignore >}}
+> The interactive sandbox has a VSCode-like editor that allows you to access files and folders. To access this feature, click on the `Editor` tab. The editor also has a terminal that you can use to run commands. Since some commands assume you are within a specific directory, we recommend running the commands in `tab1`.
+{{< /docs/ignore >}}
 
-Run `docker compose up` to start your Docker container and open [http://localhost:3000](http://localhost:3000) in your browser to view the Grafana UI.
+1. Create a new directory and save the Docker Compose file as `docker-compose.yml`.
 
-{{< admonition type="note" >}}
-If you encounter the following error when you start your Docker container, `docker: 'compose' is not a docker command`, use the command `docker-compose up` to start your Docker container.
-{{< /admonition >}}
+   ```bash
+   mkdir alloy-tutorial
+   cd alloy-tutorial
+   touch docker-compose.yml
+   ```
+
+1. Copy the following Docker Compose file into `docker-compose.yml`.
+   {{< docs/ignore >}}
+    > We recommend using the `Editor` tab to copy and paste the Docker Compose file. However, you can also use a terminal editor like `nano` or `vim`.
+   {{< /docs/ignore >}}
+
+   ```yaml
+    version: '3'
+    services:
+      loki:
+        image: grafana/loki:3.0.0
+        ports:
+          - "3100:3100"
+        command: -config.file=/etc/loki/local-config.yaml
+      prometheus:
+        image: prom/prometheus:v2.47.0
+        command:
+          - --web.enable-remote-write-receiver
+          - --config.file=/etc/prometheus/prometheus.yml
+        ports:
+          - "9090:9090"
+      grafana:
+        environment:
+          - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+          - GF_AUTH_ANONYMOUS_ENABLED=true
+          - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+        entrypoint:
+          - sh
+          - -euc
+          - |
+            mkdir -p /etc/grafana/provisioning/datasources
+            cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+            apiVersion: 1
+            datasources:
+            - name: Loki
+              type: loki
+              access: proxy
+              orgId: 1
+              url: http://loki:3100
+              basicAuth: false
+              isDefault: false
+              version: 1
+              editable: false
+            - name: Prometheus
+              type: prometheus
+              orgId: 1
+              url: http://prometheus:9090
+              basicAuth: false
+              isDefault: true
+              version: 1
+              editable: false
+            EOF
+            /run.sh
+        image: grafana/grafana:11.0.0
+        ports:
+          - "3000:3000"
+    ```
+
+1. To start the local Grafana instance, run the following command.
+
+   ```bash
+    docker compose up -d
+   ```
+    <!-- INTERACTIVE ignore START -->
+    {{< admonition type="note" >}}
+      If you encounter the following error when you start your Docker container, `docker: 'compose' is not a docker command`, use the command `docker-compose up` to start your Docker container.
+    {{< /admonition >}}
+    <!-- INTERACTIVE ignore END -->
+
+1. Open [http://localhost:3000](http://localhost:3000) in your browser to access the Grafana UI.
+
+<!-- INTERACTIVE page step2.md END -->
+
+<!-- INTERACTIVE page step3.md START -->
 
 ## Configure {{% param "PRODUCT_NAME" %}}
 
@@ -111,16 +192,24 @@ You use components in the `config.alloy` file to tell {{< param "PRODUCT_NAME" >
 The examples run on a single host so that you can run them on your laptop or in a Virtual Machine.
 You can try the examples using a `config.alloy` file and experiment with the examples.
 
+### Create a `config.alloy` file
+
+Create a `config.alloy` file within your current working directory.
+
+```bash
+touch config.alloy
+```
+
 ### First component: Log files
 
-Create a file called `config.alloy` in your current working directory and paste the following component configuration at the top of the file:
+Copy and paste the following component configuration at the top of the file.
 
-```alloy
-local.file_match "local_files" {
-    path_targets = [{"__path__" = "/var/log/*.log"}]
-    sync_period = "5s"
-}
-```
+   ```alloy
+    local.file_match "local_files" {
+        path_targets = [{"__path__" = "/var/log/*.log"}]
+        sync_period = "5s"
+    }
+   ```
 
 This configuration creates a [local.file_match][] component named `local_files` which does the following:
 
@@ -129,14 +218,13 @@ This configuration creates a [local.file_match][] component named `local_files` 
 
 ### Second component: Scraping
 
-Paste the following component configuration below the previous component in your `config.alloy` file:
-
+Copy and paste the following component configuration below the previous component in your `config.alloy` file:
 ```alloy
-loki.source.file "log_scrape" {
-   targets    = local.file_match.local_files.targets
-   forward_to = [loki.process.filter_logs.receiver]
-   tail_from_end = true
-}
+  loki.source.file "log_scrape" {
+    targets    = local.file_match.local_files.targets
+    forward_to = [loki.process.filter_logs.receiver]
+    tail_from_end = true
+  }
 ```
 
 This configuration creates a [loki.source.file][] component named `log_scrape` which does the following:
@@ -151,17 +239,16 @@ Filtering non-essential logs before sending them to a data source can help you m
 
 The following example demonstrates how you can filter out or drop logs before sending them to Loki.
 
-Paste the following component configuration below the previous component in your `config.alloy` file:
-
+Copy and paste the following component configuration below the previous component in your `config.alloy` file:
 ```alloy
-loki.process "filter_logs" {
-  stage.drop {
-       source = ""
-       expression  = ".*Connection closed by authenticating user root"
-       drop_counter_reason = "noisy"
+  loki.process "filter_logs" {
+    stage.drop {
+        source = ""
+        expression  = ".*Connection closed by authenticating user root"
+        drop_counter_reason = "noisy"
+      }
+    forward_to = [loki.write.grafana_loki.receiver]
     }
-  forward_to = [loki.write.grafana_loki.receiver]
-  }
 ```
 
 The `loki.process` component allows you to transform, filter, parse, and enrich log data.
@@ -179,39 +266,55 @@ The [`loki.process` documentation][loki.process] provides more comprehensive inf
 
 ### Fourth component: Write logs to Loki
 
-Paste this component configuration below the previous component in your `config.alloy` file:
+Copy and paste this component configuration below the previous component in your `config.alloy` file.
 
 ```alloy
-loki.write "grafana_loki" {
-  endpoint {
-    url = "http://localhost:3100/loki/api/v1/push"
+  loki.write "grafana_loki" {
+    endpoint {
+      url = "http://localhost:3100/loki/api/v1/push"
 
-    // basic_auth {
-    //  username = "admin"
-    //  password = "admin"
-    // }
+      // basic_auth {
+      //  username = "admin"
+      //  password = "admin"
+      // }
+    }
   }
-}
 ```
 
-This final component creates a [`loki.write`][] component named `grafana_loki` that points to `http://localhost:3100/loki/api/v1/push`.
+This final component creates a [`loki.write`][loki.write] component named `grafana_loki` that points to `http://localhost:3100/loki/api/v1/push`.
 
 This completes the simple configuration pipeline.
 
+<!-- INTERACTIVE ignore START -->
 {{< admonition type="tip" >}}
 The `basic_auth` block is commented out because the local `docker compose` stack doesn't require it.
 It's included in this example to show how you can configure authorization for other environments.
-For further authorization options, refer to the [loki.write][] component reference.
+For further authorization options, refer to the [`loki.write`][loki.write] component reference.
 
 [loki.write]: ../../reference/components/loki/loki.write/
 {{< /admonition >}}
+<!-- INTERACTIVE ignore END -->
+
+{{< docs/ignore >}}
+> The `basic_auth` block is commented out because the local `docker compose` stack doesn't require it. It's included in this example to show how you can configure authorization for other environments. For further authorization options, refer to the [`loki.write`](../../reference/components/loki/loki.write/) component reference.
+{{< /docs/ignore >}}
 
 With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the Loki instance running in the Docker container.
+<!-- INTERACTIVE page step3.md END -->
+
+<!-- INTERACTIVE page step4.md START -->
 
 ## Reload the configuration
 
 1. Copy your local `config.alloy` file into the default {{< param "PRODUCT_NAME" >}} configuration file location.
 
+   {{< docs/ignore >}}
+   ```bash
+   sudo cp config.alloy /etc/alloy/config.alloy
+   ```
+   {{< /docs/ignore >}}
+
+   <!-- INTERACTIVE ignore START -->
    {{< code >}}
 
    ```macos
@@ -223,13 +326,14 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
    ```
 
    {{< /code >}}
+   <!-- INTERACTIVE ignore END -->
 
 1. Call the `/-/reload` endpoint to tell {{< param "PRODUCT_NAME" >}} to reload the configuration file without a system service restart.
 
    ```bash
-   curl -X POST http://localhost:12345/-/reload
+    curl -X POST http://localhost:12345/-/reload
    ```
-
+   <!-- INTERACTIVE ignore START -->
    {{< admonition type="tip" >}}
    This step uses the {{< param "PRODUCT_NAME" >}} UI on `localhost` port `12345`.
    If you chose to run {{< param "PRODUCT_NAME" >}} in a Docker container, make sure you use the `--server.http.listen-addr=0.0.0.0:12345` argument.
@@ -237,9 +341,23 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
 
    [debug]: ../../troubleshoot/debug/#alloy-ui
    {{< /admonition >}}
+   <!-- INTERACTIVE ignore END -->
+  
+   {{< docs/ignore >}}
 
-1. Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and load the configuration file:
+   > This step uses the {{< param "PRODUCT_NAME" >}} UI on `localhost` port `12345`. If you chose to run {{< param "PRODUCT_NAME" >}} in a Docker container, make sure you use the `--server.http.listen-addr=` argument. If you don’t use this argument, the [debugging UI](../../troubleshoot/debug/#alloy-ui) won’t be available outside of the Docker container.
 
+   {{< /docs/ignore >}}
+
+
+1. Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and load the configuration file.
+   
+{{< docs/ignore >}}
+   ```bash
+    sudo systemctl reload alloy
+   ```
+{{< /docs/ignore >}}
+<!-- INTERACTIVE ignore START -->
    {{< code >}}
 
    ```macos
@@ -251,6 +369,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
    ```
 
    {{< /code >}}
+<!-- INTERACTIVE ignore END -->
 
 ## Inspect your configuration in the {{% param "PRODUCT_NAME" %}} UI
 
@@ -263,6 +382,10 @@ The {{< param "PRODUCT_NAME" >}} UI shows you a visual representation of the pip
 
 You can see that the components are healthy, and you are ready to explore the logs in Grafana.
 
+<!-- INTERACTIVE page step4.md END -->
+
+<!-- INTERACTIVE page step5.md START -->
+
 ## Log in to Grafana and explore Loki logs
 
 Open [http://localhost:3000/explore](http://localhost:3000/explore) to access **Explore** feature in Grafana.
@@ -273,11 +396,18 @@ Here you can see that logs are flowing through to Loki as expected, and the end-
 
 {{< figure src="/media/docs/alloy/tutorial/loki-logs.png" alt="Logs reported by Alloy in Grafana" >}}
 
+<!-- INTERACTIVE page step5.md END -->
+
+<!-- INTERACTIVE page finish.md START -->
+
 ## Summary
 
 You have installed and configured {{< param "PRODUCT_NAME" >}}, and sent logs from your local host to your local Grafana stack.
 
 In the [next tutorial][], you learn more about configuration concepts and metrics.
+
+<!-- INTERACTIVE page finish.md END -->
+
 
 [MacOS Install]: ../../set-up/install/macos/
 [Linux Install]: ../../set-up/install/linux/
