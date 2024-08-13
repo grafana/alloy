@@ -54,7 +54,9 @@ It's a fully configured environment with all the dependencies already installed.
 
 ## Install {{% param "PRODUCT_NAME" %}} and start the service
 
+<!-- INTERACTIVE ignore START -->
 This tutorial requires a Linux or macOS environment with Docker installed.
+<!-- INTERACTIVE ignore END -->
 
 {{< docs/ignore >}}
 > This online sandbox enviroment is based on an Ubuntu image and has Docker pre-installed. To install {{% param "PRODUCT_NAME" %}} follow the links below, and copy and paste the `Ubuntu/Debian` commands in the terminal.
@@ -109,6 +111,9 @@ This Docker Compose file includes Loki and Prometheus configured as data sources
    ```
 
 1. Copy the following Docker Compose file into `docker-compose.yml`.
+   {{< docs/ignore >}}
+    > We recommend using the `Editor` tab to copy and paste the Docker Compose file. However, you can also use a terminal editor like `nano` or `vim`.
+   {{< /docs/ignore >}}
 
    ```yaml
     version: '3'
