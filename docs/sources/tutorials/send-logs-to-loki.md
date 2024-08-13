@@ -167,7 +167,8 @@ This Docker Compose file includes Loki and Prometheus configured as data sources
           - "3000:3000"
     ```
 
-1. to start the local Grafana instance, run the following command:
+1. To start the local Grafana instance, run the following command.
+
    ```bash
     docker compose up -d
    ```
