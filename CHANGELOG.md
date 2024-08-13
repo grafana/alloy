@@ -23,6 +23,9 @@ Main (unreleased)
   seen by each instance in the cluster. This can help diagnose cluster split
   brain issues. (@thampiotr)
 
+- Updated Snowflake exporter with performance improvements for larger environments. 
+  Also added a new panel to track deleted tables to the Snowflake mixin. (@Caleb-Hurshman)
+
 ### Bugfixes
 
 - Fixed an issue which caused loss of context data in Faro exception. (@codecapitano)
