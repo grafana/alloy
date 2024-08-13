@@ -160,6 +160,8 @@ v1.3.0
 - Enable instances connected to remotecfg-compatible servers to Register
   themselves to the remote service. (@tpaschalis)
 
+- Allow in-memory listener to work for remotecfg-supplied components. (@tpaschalis)
+
 ### Bugfixes
 
 - Fixed a clustering mode issue where a fatal startup failure of the clustering service

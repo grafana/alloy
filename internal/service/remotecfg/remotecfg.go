@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/featuregate"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util/jitter"
@@ -205,9 +206,22 @@ func (s *Service) registerMetrics() {
 	s.metrics = mets
 }
 
-// Data is a no-op for the remotecfg service.
+// Data returns an instance of [Data]. Calls to Data are cachable by the
+// caller.
+// Data must only be called after Run.
 func (s *Service) Data() any {
-	return nil
+	if s.ctrl == nil {
+		return Data{Host: nil}
+	}
+	host := s.ctrl.(alloy_runtime.ServiceController).GetHost()
+	return Data{Host: host}
+}
+
+// Data includes information associated with the HTTP service.
+type Data struct {
+	// Host exposes the Host of the isolated controller that is created by the
+	// remotecfg service.
+	Host service.Host
 }
 
 // Definition returns the definition of the remotecfg service.
