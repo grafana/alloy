@@ -31,11 +31,12 @@ otelcol.exporter.otlphttp "LABEL" {
 
 `otelcol.exporter.otlphttp` supports the following arguments:
 
-Name               | Type     | Description                      | Default                           | Required
--------------------|----------|----------------------------------|-----------------------------------|---------
-`metrics_endpoint` | `string` | The endpoint to send metrics to. | `client.endpoint + "/v1/metrics"` | no
-`logs_endpoint`    | `string` | The endpoint to send logs to.    | `client.endpoint + "/v1/logs"`    | no
-`traces_endpoint`  | `string` | The endpoint to send traces to.  | `client.endpoint + "/v1/traces"`  | no
+Name               | Type     | Description                                                               | Default                           | Required
+-------------------|----------|---------------------------------------------------------------------------|-----------------------------------|---------
+`metrics_endpoint` | `string` | The endpoint to send metrics to.                                          | `client.endpoint + "/v1/metrics"` | no
+`logs_endpoint`    | `string` | The endpoint to send logs to.                                             | `client.endpoint + "/v1/logs"`    | no
+`traces_endpoint`  | `string` | The endpoint to send traces to.                                           | `client.endpoint + "/v1/traces"`  | no
+`encoding`         | `string` | The encoding to use for messages. Should be either `"proto"` or `"json"`. | `"proto"`                         | no
 
 The default value depends on the `endpoint` field set in the required `client` block.
 If set, these arguments override the `client.endpoint` field for the corresponding signal.
@@ -72,7 +73,6 @@ The following arguments are supported:
 Name                      | Type                       | Description                                                                                                        | Default    | Required
 --------------------------|----------------------------|--------------------------------------------------------------------------------------------------------------------|------------|---------
 `endpoint`                | `string`                   | The target URL to send telemetry data to.                                                                          |            | yes
-`encoding`                | `string`                   | The encoding to use for messages. Should be either `"proto"` or `"json"`.                                          | `"proto"`  | no
 `read_buffer_size`        | `string`                   | Size of the read buffer the HTTP client uses for reading server responses.                                         | `0`        | no
 `write_buffer_size`       | `string`                   | Size of the write buffer the HTTP client uses for writing requests.                                                | `"512KiB"` | no
 `timeout`                 | `duration`                 | Time to wait before marking a request as failed.                                                                   | `"30s"`    | no
