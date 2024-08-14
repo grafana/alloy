@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom';
 import { faCubes } from '@fortawesome/free-solid-svg-icons';
 
 import ComponentList from '../features/component/ComponentList';
@@ -17,7 +18,10 @@ function getSortValue(component: ComponentInfo, field: string): string | undefin
 }
 
 function PageComponentList() {
-  const [components, setComponents] = useComponentInfo('');
+  const location = useLocation();
+  const useRemotecfg = location.pathname.startsWith('/remotecfg');
+
+  const [components, setComponents] = useComponentInfo('', useRemotecfg);
 
   // TODO: make this sorting logic reusable
   const handleSorting = (sortField: string, sortOrder: SortOrder): void => {
@@ -38,7 +42,7 @@ function PageComponentList() {
 
   return (
     <Page name="Components" desc="List of defined components" icon={faCubes}>
-      <ComponentList components={components} handleSorting={handleSorting} />
+      <ComponentList components={components} useRemotecfg={useRemotecfg} handleSorting={handleSorting} />
     </Page>
   );
 }
