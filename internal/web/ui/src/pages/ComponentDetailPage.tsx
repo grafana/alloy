@@ -52,7 +52,7 @@ const ComponentDetailPage: FC = () => {
 
       worker().catch(console.error);
     },
-    [id]
+    [id, useRemotecfg]
   );
 
   return component ? <ComponentView component={component} info={infoByID} /> : <div></div>;

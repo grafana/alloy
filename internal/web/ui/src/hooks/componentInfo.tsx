@@ -35,7 +35,7 @@ export const useComponentInfo = (
 
       worker().catch(console.error);
     },
-    [moduleID]
+    [moduleID, isRemotecfg]
   );
 
   return [components, setComponents];
