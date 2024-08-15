@@ -6,8 +6,8 @@ title: otelcol.processor.groupbyattrs
 
 # otelcol.processor.groupbyattrs
 
-`otelcol.processor.groupbyattrs` accepts telemetry data from other `otelcol`
-components and reassociates spans, log records, and metric datapoints to a resource that matches the specified attributes. It groups telemetry data by specified attributes.
+`otelcol.processor.groupbyattrs` accepts spans, metrics, and traces from other `otelcol`
+components and groups them under the same resource.
 
 {{% admonition type="note" %}}
 `otelcol.processor.groupbyattrs` is a wrapper over the upstream OpenTelemetry
@@ -22,7 +22,7 @@ different labels.
 
 ## Usage
 
-```river
+```alloy
 otelcol.processor.groupbyattrs "LABEL" {
   output {
     metrics = [...]
@@ -38,14 +38,13 @@ The following arguments are supported:
 
 | Name            | Type              | Description                                                                           | Default | Required |
 |-----------------|-------------------|---------------------------------------------------------------------------------------|---------|----------|
-| `keys`          | `array(string)`   | Keys that will be used to group the spans, log records or metric data points together |         | no       |
+| `keys`          | `list(string)`    | Keys that will be used to group the spans, log records or metric data points together |         | no       |
 | `output`        | [output][]        | Configures where to send received telemetry data.                                     | yes     |          |
 | `debug_metrics` | [debug_metrics][] | Configures the metrics that this component generates to monitor its state.            | no      |          |
 
 [output]: #output-block
 [debug_metrics]: #debug_metrics-block
 
-### keys
 `keys` is a string array that is used for grouping the data. If it is empty, the processor performs compaction and reassociates all spans with matching Resource and InstrumentationLibrary.
 
 
@@ -84,28 +83,93 @@ information.
 
 ## Examples
 
-### Grouping metrics by an attribute
+### Grouping metrics
 
-This example reassociates the metrics based on the value of the `host.name` attribute.
+Consider the following metrics, all originally associated to the same Resource:
+
+```
+Resource {host.name="localhost",source="prom"}
+  Metric "gauge-1" (GAUGE)
+    DataPoint {host.name="host-A",id="eth0"}
+    DataPoint {host.name="host-A",id="eth0"}
+    DataPoint {host.name="host-B",id="eth0"}
+  Metric "gauge-1" (GAUGE) // Identical to previous Metric
+    DataPoint {host.name="host-A",id="eth0"}
+    DataPoint {host.name="host-A",id="eth0"}
+    DataPoint {host.name="host-B",id="eth0"}
+  Metric "mixed-type" (GAUGE)
+    DataPoint {host.name="host-A",id="eth0"}
+    DataPoint {host.name="host-A",id="eth0"}
+    DataPoint {host.name="host-B",id="eth0"}
+  Metric "mixed-type" (SUM)
+    DataPoint {host.name="host-A",id="eth0"}
+    DataPoint {host.name="host-A",id="eth0"}
+  Metric "dont-move" (Gauge)
+    DataPoint {id="eth0"}
+```
+
+With the following configuration, the groupbyattrs will re-associate the metrics with either `host-A` or `host-B`, based on the value of the `host.name` attribute.
 
 ```alloy
 otelcol.processor.groupbyattrs "default" {
-  keys = [
-    "host.name",
-  ]
-
+  keys = [ "host.name" ]
   output {
     metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
   }
 }
 ```
 
-## Notes
-- The data points with different data types aren't merged under the same metric. For example, a gauge and sum metric would not be merged.
-- The data points without the specified keys remain under their respective resources.
-- New resources inherit the attributes of the original resource and the specified attributes in the keys array.
-- The grouping attributes in the keys array are removed from the output metrics.
+The output of the processor will therefore be:
+
+```
+Resource {host.name="localhost",source="prom"}
+  Metric "dont-move" (Gauge)
+    DataPoint {id="eth0"}
+Resource {host.name="host-A",source="prom"}
+  Metric "gauge-1"
+    DataPoint {id="eth0"}
+    DataPoint {id="eth0"}
+    DataPoint {id="eth0"}
+    DataPoint {id="eth0"}
+  Metric "mixed-type" (GAUGE)
+    DataPoint {id="eth0"}
+    DataPoint {id="eth0"}
+  Metric "mixed-type" (SUM)
+    DataPoint {id="eth0"}
+    DataPoint {id="eth0"}
+Resource {host.name="host-B",source="prom"}
+  Metric "gauge-1"
+    DataPoint {id="eth0"}
+    DataPoint {id="eth0"}
+  Metric "mixed-type" (GAUGE)
+    DataPoint {id="eth0"}
+```
+
+This output demonstrates how `otelcol.processor.groupbyattrs` works in various situations:
+
+- The DataPoints for the `gauge-1` (GAUGE) metric were originally split under 2 Metric instances and have been merged in the output.
+- The DataPoints of the `mixed-type` (GAUGE) and `mixed-type` (SUM) metrics have not been merged under the same Metric, because their DataType is different.
+- The `dont-move` metric DataPoints don't have a `host.name` attribute and therefore remained under the original Resource.
+- The new Resources inherited the attributes from the original Resource (`source="prom"`), plus the specified attributes from the processed metrics (`host.name="host-A"` or `host.name="host-B"`).
+- The specified "grouping" attributes that are set on the new Resources are also removed from the metric DataPoints.
+- While not shown in the above example, the processor also merges collections of records under matching InstrumentationLibrary.
 
 [otelcol.processor.batch]: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/
+<!-- START GENERATED COMPATIBLE COMPONENTS -->
+
+## Compatible components
+
+`otelcol.processor.groupbyattrs` can accept arguments from the following components:
+
+- Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
+
+`otelcol.processor.groupbyattrs` has exports that can be consumed by the following components:
+
+- Components that consume [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-consumers)
+
+{{< admonition type="note" >}}
+Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
+Refer to the linked documentation for more details.
+{{< /admonition >}}
+
+<!-- END GENERATED COMPATIBLE COMPONENTS -->

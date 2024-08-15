@@ -1,4 +1,3 @@
-// Package attributes provides an otelcol.processor.groupbyattrs component.
 package groupbyattrs
 
 import (
@@ -41,16 +40,13 @@ type Arguments struct {
 
 var (
 	_ processor.Arguments = Arguments{}
-
-	// DefaultArguments holds default settings for Arguments.
-	DefaultArguments = Arguments{
-		Keys: []string{},
-	}
 )
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		Keys: []string{},
+	}
 	args.DebugMetrics.SetToDefault()
 }
 
