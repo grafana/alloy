@@ -41,6 +41,11 @@ Main (unreleased)
 - Fixed an issue where the `connection_string` for the `loki.source.azure_event_hubs` component
   was displayed in the UI in plaintext. (@MorrisWitthein)
 
+- Fix a bug in `discovery.*` components where old `targets` would continue to be
+  exported to downstream components. This would only happen if the config
+  for `discovery.*`  is reloaded in such a way that no new targets were
+  discovered. (@ptodev, @thampiotr)
+
 v1.3.0
 -----------------
 
