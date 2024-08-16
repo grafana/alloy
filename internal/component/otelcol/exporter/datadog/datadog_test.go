@@ -2,6 +2,7 @@ package datadog_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"
 	datadog_config "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog/config"
@@ -18,9 +19,9 @@ import (
 
 func TestConfigConversion(t *testing.T) {
 	var (
-		defaultRetrySettings   = configretry.NewDefaultBackOffConfig()
-		defaultTimeoutSettings = exporterhelper.NewDefaultTimeoutSettings()
-		defaultQueueSettings   = exporterhelper.NewDefaultQueueSettings()
+		defaultRetrySettings = configretry.NewDefaultBackOffConfig()
+		defaultTimeout       = 15 * time.Second
+		defaultQueueSettings = exporterhelper.NewDefaultQueueSettings()
 
 		// Until logs get added, our default config is not equal to the default factory config
 		// from the official exporter; as such as need to init it all here
@@ -41,9 +42,7 @@ func TestConfigConversion(t *testing.T) {
 		}
 
 		defaultClient = confighttp.ClientConfig{
-			Endpoint:        "",
-			WriteBufferSize: 512 * 1024,
-			Timeout:         defaultTimeoutSettings.Timeout,
+			Timeout: defaultTimeout,
 		}
 	)
 
@@ -56,6 +55,11 @@ func TestConfigConversion(t *testing.T) {
 			testName: "full customise",
 			alloyCfg: `
 				hostname = "customhostname" 
+
+				client {
+					endpoint = ""
+					timeout = "10s"
+				}
 
 				api {
 					api_key = "abc"
@@ -84,7 +88,7 @@ func TestConfigConversion(t *testing.T) {
 				}
 			`,
 			expected: datadogexporter.Config{
-				ClientConfig:  defaultClient,
+				ClientConfig:  confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: ""},
 				QueueSettings: defaultQueueSettings,
 				BackOffConfig: defaultRetrySettings,
 				TagsConfig:    datadogexporter.TagsConfig{Hostname: "customhostname"},

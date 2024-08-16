@@ -40,10 +40,9 @@ func init() {
 
 // Arguments configures the otelcol.exporter.datadog component.
 type Arguments struct {
-	Client  HTTPClientArguments    `alloy:"client,block,optional"`
-	Timeout time.Duration          `alloy:"timeout,attr,optional"`
-	Queue   otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
-	Retry   otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
+	Client otelcol.HTTPClientArguments `alloy:"client,block,optional"`
+	Queue  otelcol.QueueArguments      `alloy:"sending_queue,block,optional"`
+	Retry  otelcol.RetryArguments      `alloy:"retry_on_failure,block,optional"`
 
 	// Datadog specific configuration settings
 	APISettings  datadog_config.DatadogAPIArguments          `alloy:"api,block"`
@@ -63,14 +62,16 @@ var _ exporter.Arguments = Arguments{}
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
+	args.Client = otelcol.HTTPClientArguments{
+		Timeout:  15 * time.Second,
+		Endpoint: "",
+	}
 	args.APISettings.SetToDefault()
 	args.Metrics.SetToDefault()
 	args.Traces.SetToDefault()
 	args.HostMetadata.SetToDefault()
-
 	args.Queue.SetToDefault()
 	args.Retry.SetToDefault()
-	args.Client.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 }
 
@@ -82,12 +83,14 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	defaultMetricsEndpoint := fmt.Sprintf(DATADOG_METRICS_ENDPOINT, args.APISettings.Site)
 	clientConfig := *(*otelcol.HTTPClientArguments)(&args.Client).Convert()
 	clientConfig.Headers = nil // Headers are not supported by the Datadog exporter
+
 	return &datadogexporter.Config{
 		ClientConfig:  clientConfig,
 		QueueSettings: *args.Queue.Convert(),
 		BackOffConfig: *args.Retry.Convert(),
 		TagsConfig: datadogexporter.TagsConfig{
-			Hostname: args.Hostname},
+			Hostname: args.Hostname,
+		},
 		API:          *args.APISettings.Convert(),
 		Traces:       *args.Traces.Convert(defaultTraceEndpoint),
 		Metrics:      *args.Metrics.Convert(defaultMetricsEndpoint),
@@ -121,17 +124,4 @@ func (args *Arguments) Validate() error {
 	}
 	datadogCfg := otelCfg.(*datadogexporter.Config)
 	return datadogCfg.Validate()
-}
-
-// HTTPClientArguments is used to configure otelcol.exporter.otlphttp with
-// component-specific defaults.
-type HTTPClientArguments otelcol.HTTPClientArguments
-
-// SetToDefault implements syntax.Defaulter.
-func (args *HTTPClientArguments) SetToDefault() {
-	*args = HTTPClientArguments{
-		Timeout:         5 * time.Second,
-		ReadBufferSize:  0,
-		WriteBufferSize: 512 * 1024,
-	}
 }

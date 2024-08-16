@@ -1,12 +1,53 @@
 otelcol.receiver.datadog "default" {
 	output {
-		metrics = [otelcol.exporter.otlp.default.input]
-		traces  = [otelcol.exporter.otlp.default.input]
+		metrics = [otelcol.exporter.otlp.default.input, otelcol.exporter.datadog.default.input]
+		traces  = [otelcol.exporter.otlp.default.input, otelcol.exporter.datadog.default.input]
 	}
 }
 
 otelcol.exporter.otlp "default" {
 	client {
 		endpoint = "database:4317"
+	}
+}
+
+otelcol.exporter.datadog "default" {
+	client {
+		endpoint = ""
+		timeout  = "10s"
+	}
+
+	api {
+		api_key             = "abc"
+		fail_on_invalid_key = true
+	}
+
+	traces {
+		endpoint             = "https://trace.agent.datadoghq.com"
+		ignore_resources     = ["(GET|POST) /healthcheck"]
+		span_name_remappings = {
+			"instrumentation:express.server" = "express",
+		}
+	}
+
+	metrics {
+		delta_ttl = 1200
+		endpoint  = "https://api.datadoghq.com"
+
+		exporter {
+			resource_attributes_as_tags = true
+		}
+
+		histograms {
+			mode = "counters"
+		}
+
+		sums {
+			initial_cumulative_monotonic_value = "keep"
+		}
+
+		summaries {
+			mode = "noquantiles"
+		}
 	}
 }
