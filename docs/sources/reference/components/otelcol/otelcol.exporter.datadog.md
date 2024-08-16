@@ -54,6 +54,7 @@ Hierarchy                        | Block               | Description            
 api | [api][] | Configures authentication with Datadog | yes
 traces | [traces][] | Trace exporter specific configuration. | no
 metrics | [metrics][] |  Metric exporter specific configuration. | no
+metrics > exporter | [exporter][] | Metric Exporter specific configuation. | no
 metrics > histograms | [histograms][] | Histograms specific configuration. | no
 metrics > sums | [sums][] | Sums specific configuration | no
 metrics > summaries | [summaries][] | Summaries specific configuration | no
@@ -70,6 +71,7 @@ refers to a `tls` block defined inside a `client` block.
 [api]: #api-block
 [traces]: #traces-block
 [metrics]: #metrics-block
+[exporter]: #exporter-block
 [histograms]: #histograms-block
 [sums]: #sums-block
 [summaries]: #summaries-block
@@ -129,8 +131,7 @@ Name                                       | Type            | Description      
 ------------------------------------------ | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
 `delta_ttl` | `number` | The amount of seconds values are kept in memory for calculating deltas. | `3600` | no
 `endpoint` | `string` | The host of the Datadog intake server to send metrics to. | `"https://api.datadoghq.com"` | no
-`resource_attributes_as_tags` | `bool` | Set to true to add resource attributes of a metric to its metric tags. | `false` | no
-`instrumentation_scope_metadata_as_tags` | `bool` | Set to true to add metadata about the instrumentation scope that created a metric. | `false` | no
+
 
 Please note that any of the subset of resource attributes in this [list](https://docs.datadoghq.com/opentelemetry/guide/semantic_mapping/) 
 are converted to datadog conventions and set to to metric tags whether `resource_attributes_as_tags` is enabled or not.
@@ -138,6 +139,18 @@ are converted to datadog conventions and set to to metric tags whether `resource
 If `endpoint` is unset, the value is obtained through the `site` parameter in the [api][] section.
 
 [api]: #api-block
+
+### exporter block
+
+The `exporter` block configures Metric Exporter specific settings.
+
+The following arguments are supported:
+
+Name                                       | Type            | Description                                                                         | Default              | Required
+------------------------------------------ | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
+`resource_attributes_as_tags` | `bool` | Set to true to add resource attributes of a metric to its metric tags. | `false` | no
+`instrumentation_scope_metadata_as_tags` | `bool` | Set to true to add metadata about the instrumentation scope that created a metric. | `false` | no
+
 
 ### histograms block
 

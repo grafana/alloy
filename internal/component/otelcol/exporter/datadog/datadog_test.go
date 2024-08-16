@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"
+	datadog_config "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog/config"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
@@ -41,9 +42,7 @@ func TestConfigConversion(t *testing.T) {
 
 		defaultClient = confighttp.ClientConfig{
 			Endpoint:        "",
-			Compression:     "gzip",
 			WriteBufferSize: 512 * 1024,
-			Headers:         map[string]configopaque.String{},
 			Timeout:         defaultTimeoutSettings.Timeout,
 		}
 	)
@@ -70,7 +69,9 @@ func TestConfigConversion(t *testing.T) {
 				}
 				metrics {
 					delta_ttl = 1200
-					resource_attributes_as_tags = true
+					exporter {
+						resource_attributes_as_tags = true
+					}
 					histograms {
 						mode = "counters"
 					}
@@ -215,6 +216,48 @@ func TestConfigConversion(t *testing.T) {
 			actual, err := args.Convert()
 			require.NoError(t, err)
 			require.Equal(t, &tc.expected, actual.(*datadogexporter.Config))
+		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		cfg       *datadog.Arguments
+		expectErr bool
+	}{
+		{
+			name: "invalid config",
+			cfg: &datadog.Arguments{
+				APISettings: datadog_config.DatadogAPIArguments{
+					Key: "abc",
+				},
+				OnlyMetadata: true,
+				HostMetadata: datadog_config.DatadogHostMetadataArguments{
+					Enabled: false,
+				},
+			},
+			expectErr: true,
+		},
+		{
+			name: "valid config",
+			cfg: &datadog.Arguments{
+				APISettings: datadog_config.DatadogAPIArguments{
+					Key: "abc",
+				},
+			},
+			expectErr: false,
+		},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := tt.cfg.Validate()
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

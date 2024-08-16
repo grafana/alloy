@@ -1,6 +1,4 @@
 // Package datadog provides an otelcol.exporter.datadog component.
-// This is a wrapper on the upstream component, found here: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.102.0/exporter/datadogexporter
-// This wrapper is using version: v0.102.0
 // Maintainers for the Grafana Alloy wrapper:
 //	- @polyrain
 
@@ -15,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
+	datadog_config "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog/config"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -47,12 +46,12 @@ type Arguments struct {
 	Retry   otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
 
 	// Datadog specific configuration settings
-	APISettings  otelcol.DatadogAPIArguments          `alloy:"api,block"`
-	Traces       otelcol.DatadogTracesArguments       `alloy:"traces,block,optional"`
-	Metrics      otelcol.DatadogMetricsArguments      `alloy:"metrics,block,optional"`
-	HostMetadata otelcol.DatadogHostMetadataArguments `alloy:"host_metadata,block,optional"`
-	OnlyMetadata bool                                 `alloy:"only_metadata,attr,optional"`
-	Hostname     string                               `alloy:"hostname,attr,optional"`
+	APISettings  datadog_config.DatadogAPIArguments          `alloy:"api,block"`
+	Traces       datadog_config.DatadogTracesArguments       `alloy:"traces,block,optional"`
+	Metrics      datadog_config.DatadogMetricsArguments      `alloy:"metrics,block,optional"`
+	HostMetadata datadog_config.DatadogHostMetadataArguments `alloy:"host_metadata,block,optional"`
+	OnlyMetadata bool                                        `alloy:"only_metadata,attr,optional"`
+	Hostname     string                                      `alloy:"hostname,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -77,25 +76,21 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	// Bubble down the API site to the metrics/traces settings. We do it this way
-	// as if we set a default, we can't tell if they specifically overrided this field as
-	// SetToDefault is called before Convert, and we need to set other defaults.
-	if args.Traces.Endpoint == "" {
-		args.Traces.Endpoint = fmt.Sprintf(DATADOG_TRACE_ENDPOINT, args.APISettings.Site)
-	}
-	if args.Metrics.Endpoint == "" {
-		args.Metrics.Endpoint = fmt.Sprintf(DATADOG_METRICS_ENDPOINT, args.APISettings.Site)
-	}
-
+	// Prepare default endpoints for traces and metrics based on the site value
+	// These are used only if an endpoint for either isn't specified
+	defaultTraceEndpoint := fmt.Sprintf(DATADOG_TRACE_ENDPOINT, args.APISettings.Site)
+	defaultMetricsEndpoint := fmt.Sprintf(DATADOG_METRICS_ENDPOINT, args.APISettings.Site)
+	clientConfig := *(*otelcol.HTTPClientArguments)(&args.Client).Convert()
+	clientConfig.Headers = nil // Headers are not supported by the Datadog exporter
 	return &datadogexporter.Config{
-		ClientConfig:  *(*otelcol.HTTPClientArguments)(&args.Client).Convert(),
+		ClientConfig:  clientConfig,
 		QueueSettings: *args.Queue.Convert(),
 		BackOffConfig: *args.Retry.Convert(),
 		TagsConfig: datadogexporter.TagsConfig{
 			Hostname: args.Hostname},
 		API:          *args.APISettings.Convert(),
-		Traces:       *args.Traces.Convert(),
-		Metrics:      *args.Metrics.Convert(),
+		Traces:       *args.Traces.Convert(defaultTraceEndpoint),
+		Metrics:      *args.Metrics.Convert(defaultMetricsEndpoint),
 		HostMetadata: *args.HostMetadata.Convert(),
 		OnlyMetadata: args.OnlyMetadata,
 	}, nil
@@ -116,13 +111,16 @@ func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 }
 
 // Validate implements syntax.Validator.
-// Checks taken from upstream
 func (args *Arguments) Validate() error {
 	if args.APISettings.Key == "" {
 		return errors.New("missing API key")
 	}
-
-	return nil
+	otelCfg, err := args.Convert()
+	if err != nil {
+		return err
+	}
+	datadogCfg := otelCfg.(*datadogexporter.Config)
+	return datadogCfg.Validate()
 }
 
 // HTTPClientArguments is used to configure otelcol.exporter.otlphttp with
@@ -133,8 +131,6 @@ type HTTPClientArguments otelcol.HTTPClientArguments
 func (args *HTTPClientArguments) SetToDefault() {
 	*args = HTTPClientArguments{
 		Timeout:         5 * time.Second,
-		Headers:         map[string]string{},
-		Compression:     otelcol.CompressionTypeGzip,
 		ReadBufferSize:  0,
 		WriteBufferSize: 512 * 1024,
 	}
