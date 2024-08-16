@@ -224,19 +224,23 @@ Valid values for `hostname_source` are:
 ### client block
 
 The `client` block configures the HTTP client used by the component.
+Not all fields are supported by the Datadog Exporter; the table below describes
+the supported options. Note that `endpoint` is required, but doesn't affect the
+Exporter (use the Metrics/Traces `endpoint` option to do this)
 
 The following arguments are supported:
 
 Name                      | Type                       | Description                                                                                                        | Default    | Required
 --------------------------|----------------------------|--------------------------------------------------------------------------------------------------------------------|------------|---------
-`read_buffer_size`        | `string`                   | Size of the read buffer the HTTP client uses for reading server responses.                                         | `0`        | no
-`write_buffer_size`       | `string`                   | Size of the write buffer the HTTP client uses for writing requests.                                                | `"512KiB"` | no
-`timeout`                 | `duration`                 | Time to wait before marking a request as failed.                                                                   | `"30s"`    | no
-`max_idle_conns`          | `int`                      | Limits the number of idle HTTP connections the client can keep open.                                               | `100`      | no
-`max_idle_conns_per_host` | `int`                      | Limits the number of idle HTTP connections the host can keep open.                                                 | `0`        | no
-`max_conns_per_host`      | `int`                      | Limits the total (dialing,active, and idle) number of connections per host.                                        | `0`        | no
-`idle_conn_timeout`       | `duration`                 | Time to wait before an idle connection closes itself.                                                              | `"90s"`    | no
-`disable_keep_alives`     | `bool`                     | Disable HTTP keep-alive.                                                                                           | `false`    | no
+`endpoint`        | `string`                          | Set to `""` if configuring this block. Required to re-use the HTTP client.                                         | `""`        | yes
+`read_buffer_size`        | `string`                   | Size of the read buffer the HTTP client uses for reading server responses.                                         |         | no
+`write_buffer_size`       | `string`                   | Size of the write buffer the HTTP client uses for writing requests.                                                |  | no
+`timeout`                 | `duration`                 | Time to wait before marking a request as failed.                                                                   | `"15s"`    | no
+`max_idle_conns`          | `int`                      | Limits the number of idle HTTP connections the client can keep open.                                               |       | no
+`max_idle_conns_per_host` | `int`                      | Limits the number of idle HTTP connections the host can keep open.                                                 |         | no
+`max_conns_per_host`      | `int`                      | Limits the total (dialing,active, and idle) number of connections per host.                                        |         | no
+`idle_conn_timeout`       | `duration`                 | Time to wait before an idle connection closes itself.                                                              |     | no
+`disable_keep_alives`     | `bool`                     | Disable HTTP keep-alive.                                                                                           |     | no
 
 ### tls block
 
