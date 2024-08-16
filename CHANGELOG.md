@@ -23,6 +23,10 @@ Main (unreleased)
   seen by each instance in the cluster. This can help diagnose cluster split
   brain issues. (@thampiotr)
 
+### Features
+
+- Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
+
 ### Bugfixes
 
 - Fixed an issue which caused loss of context data in Faro exception. (@codecapitano)
@@ -59,7 +63,6 @@ v1.3.0
 ### Features
 
 - Added community components support, enabling community members to implement and maintain components. (@wildum)
-- Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
 
 - A new `otelcol.exporter.debug` component for printing OTel telemetry from 
   other `otelcol` components to the console. (@BarunKGP)

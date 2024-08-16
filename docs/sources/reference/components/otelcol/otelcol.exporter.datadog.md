@@ -4,7 +4,7 @@ aliases:
   - ../otelcol.exporter.datadog/ # /docs/alloy/latest/reference/components/otelcol.exporter.datadog/
 description: Learn about otelcol.exporter.datadog
 labels:
-  stage: experimental
+  stage: community
 title: otelcol.exporter.datadog
 ---
 
