@@ -87,6 +87,7 @@ alloy:
   #   port: 12347
   #   targetPort: 12347
   #   protocol: "TCP"
+  #   appProtocol: "h2c"
 
   mounts:
     # -- Mount /var/log from the host into the container for log collection.
