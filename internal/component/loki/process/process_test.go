@@ -406,10 +406,150 @@ stage.static_labels {
 	}
 }
 
+type testFrequentUpdate struct {
+	t   *testing.T
+	c   *Component
+	ctx context.Context
+
+	keepSending   atomic.Bool
+	keepReceiving atomic.Bool
+
+	wgLogSend sync.WaitGroup
+	wgRun     sync.WaitGroup
+
+	lastSend      atomic.Value
+	logsInTransit atomic.Uint64
+	receiver1     loki.LogsReceiver
+	receiver2     loki.LogsReceiver
+
+	stop func()
+}
+
+func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
+	res := testFrequentUpdate{
+		t:         t,
+		receiver1: loki.NewLogsReceiver(),
+		receiver2: loki.NewLogsReceiver(),
+	}
+
+	var cancel context.CancelFunc
+	res.ctx, cancel = context.WithCancel(context.Background())
+
+	res.keepSending.Store(true)
+	res.keepReceiving.Store(true)
+
+	res.stop = func() {
+		res.keepSending.Store(false)
+		res.wgLogSend.Wait()
+		cancel()
+		res.wgRun.Wait()
+	}
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(cfg), &args)
+	require.NoError(t, err)
+
+	args.ForwardTo = []loki.LogsReceiver{res.receiver1, res.receiver2}
+
+	// Create and run the component, so that it can process and forwards logs.
+	opts := component.Options{
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+
+	res.c, err = New(opts, args)
+	require.NoError(t, err)
+
+	res.wgRun.Add(1)
+	go func() {
+		res.c.Run(res.ctx)
+		res.wgRun.Done()
+	}()
+
+	return &res
+}
+
+func (r *testFrequentUpdate) drainLogs() {
+	drainLogs := func() {
+		r.lastSend.Store(time.Now())
+		r.logsInTransit.Dec()
+	}
+	r.wgLogSend.Add(1)
+	go func() {
+	L:
+		for r.keepReceiving.Load() || r.logsInTransit.Load() > 0 {
+			select {
+			case _, ok := <-r.receiver1.Chan():
+				drainLogs()
+				if !ok {
+					// Let the for loop check if the goroutine has to exit
+					break L
+				}
+			case _, ok := <-r.receiver2.Chan():
+				drainLogs()
+				if !ok {
+					// Let the for loop check if the goroutine has to exit
+					break L
+				}
+			}
+		}
+		r.wgLogSend.Done()
+	}()
+}
+
+// Continuously send entries to both channels
+func (r *testFrequentUpdate) sendLogs() {
+	r.wgLogSend.Add(1)
+	go func() {
+		for r.keepSending.Load() {
+			ts := time.Now()
+			logEntry := loki.Entry{
+				Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
+				Entry: logproto.Entry{
+					Timestamp: ts,
+					Line:      logline,
+				},
+			}
+			r.c.receiver.Chan() <- logEntry
+			r.logsInTransit.Inc()
+		}
+		r.keepReceiving.Store(false)
+		r.wgLogSend.Done()
+	}()
+}
+
+func (r *testFrequentUpdate) updateContinuously(cfg1, cfg2 string) {
+	var args1 Arguments
+	err := syntax.Unmarshal([]byte(cfg1), &args1)
+	require.NoError(r.t, err)
+	args1.ForwardTo = []loki.LogsReceiver{r.receiver1}
+
+	var args2 Arguments
+	err = syntax.Unmarshal([]byte(cfg2), &args2)
+	require.NoError(r.t, err)
+	args2.ForwardTo = []loki.LogsReceiver{r.receiver2}
+
+	r.wgRun.Add(1)
+	go func() {
+		for {
+			select {
+			case <-r.ctx.Done():
+				r.wgRun.Done()
+				return
+			default:
+				r.c.Update(args1)
+				r.c.Update(args2)
+			}
+		}
+	}()
+}
+
 func TestDeadlockWithFrequentUpdates(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
-	stg := `stage.json { 
+	cfg1 := `stage.json { 
 			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
 				drop_malformed = true
 		    }
@@ -423,130 +563,38 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 				  user   = "",
 				  ts     = "timestamp",
 			    }
-			}`
-
-	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
-	// an easy way to refer to a loki.LogsReceiver value for the forward_to
-	// argument.
-	type cfg struct {
-		Stages []stages.StageConfig `alloy:"stage,enum"`
-	}
-	var stagesCfg cfg
-	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
-	require.NoError(t, err)
-
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
-
-	// Create and run the component, so that it can process and forwards logs.
-	opts := component.Options{
-		Logger:         util.TestAlloyLogger(t),
-		Registerer:     prometheus.NewRegistry(),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
-	}
-	args := Arguments{
-		ForwardTo: []loki.LogsReceiver{ch1, ch2},
-		Stages:    stagesCfg.Stages,
-	}
-
-	c, err := New(opts, args)
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	wgRun := sync.WaitGroup{}
-	wgRun.Add(1)
-	go func() {
-		c.Run(ctx)
-		wgRun.Done()
-	}()
-
-	var lastSend atomic.Value
-	var logsInTransit atomic.Uint64
-
-	keepSending := atomic.Bool{}
-	keepSending.Store(true)
-	keepReceiving := atomic.Bool{}
-	keepReceiving.Store(true)
-	wgLogSend := sync.WaitGroup{}
-
-	// Drain received logs
-	drainLogs := func() {
-		lastSend.Store(time.Now())
-		logsInTransit.Dec()
-	}
-	wgLogSend.Add(1)
-	go func() {
-	L:
-		for keepReceiving.Load() || logsInTransit.Load() > 0 {
-			select {
-			case _, ok := <-ch1.Chan():
-				drainLogs()
-				if !ok {
-					// Let the for loop check if the goroutine has to exit
-					break L
-				}
-			case _, ok := <-ch2.Chan():
-				drainLogs()
-				if !ok {
-					// Let the for loop check if the goroutine has to exit
-					break L
-				}
 			}
-		}
-		wgLogSend.Done()
-	}()
+			forward_to = []`
+
+	cfg2 := `stage.json { 
+			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
+				drop_malformed = true
+		    }
+			stage.labels {
+			    values = { 
+				  stream = "",
+				  ts     = "timestamp",
+			    }
+			}
+			forward_to = []`
+
+	r := startTestFrequentUpdate(t, cfg1)
 
 	// Continuously send entries to both channels
-	wgLogSend.Add(1)
-	go func() {
-		for keepSending.Load() {
-			ts := time.Now()
-			logEntry := loki.Entry{
-				Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-				Entry: logproto.Entry{
-					Timestamp: ts,
-					Line:      logline,
-				},
-			}
-			c.receiver.Chan() <- logEntry
-			logsInTransit.Inc()
-		}
-		keepReceiving.Store(false)
-		wgLogSend.Done()
-	}()
+	r.sendLogs()
+
+	// Continuously receive entries on both channels
+	r.drainLogs()
 
 	// Call Updates
-	args1 := Arguments{
-		ForwardTo: []loki.LogsReceiver{ch1},
-		Stages:    stagesCfg.Stages,
-	}
-	args2 := Arguments{
-		ForwardTo: []loki.LogsReceiver{ch2},
-		Stages:    stagesCfg.Stages,
-	}
-	wgRun.Add(1)
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				wgRun.Done()
-				return
-			default:
-				c.Update(args1)
-				c.Update(args2)
-			}
-		}
-	}()
+	r.updateContinuously(cfg1, cfg2)
 
 	// Run everything for a while
 	time.Sleep(1 * time.Second)
-	require.WithinDuration(t, time.Now(), lastSend.Load().(time.Time), 300*time.Millisecond)
+	require.WithinDuration(t, time.Now(), r.lastSend.Load().(time.Time), 300*time.Millisecond)
 
-	keepSending.Store(false)
-	wgLogSend.Wait()
-	cancel()
-	wgRun.Wait()
+	// Clean up
+	r.stop()
 }
 
 func getServiceData(name string) (interface{}, error) {
