@@ -306,5 +306,4 @@ spec:
   wildcardPolicy: None
 ```
 
-
 Once this Ingress/Route is exposed it would then allow gRPC communication for (for example) traces. This allow an Alloy instance on a VM or another Kubernetes/OpenShift cluster to be able to communicate over gRPC via the exposed Ingress or Route.

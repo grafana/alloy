@@ -34,5 +34,9 @@ spec:
       port: {{ $portMap.port }}
       targetPort: {{ $portMap.targetPort }}
       protocol: {{ coalesce $portMap.protocol "TCP" }}
+      {{- if not (empty $portMap.appProtocol) }}
+      # Useful for OpenShift clusters that want to expose Alloy ports externally
+      appProtocol: {{ $portMap.appProtocol }}
+      {{- end }}
 {{- end }}
 {{- end }}
