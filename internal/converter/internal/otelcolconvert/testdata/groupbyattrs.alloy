@@ -29,4 +29,3 @@ otelcol.exporter.otlp "default" {
 		endpoint = "database:4317"
 	}
 }
-
