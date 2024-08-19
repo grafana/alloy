@@ -38,7 +38,7 @@ The following arguments are supported:
 
 | Name            | Type              | Description                                                                           | Default | Required |
 |-----------------|-------------------|---------------------------------------------------------------------------------------|---------|----------|
-| `keys`          | `list(string)`    | Keys that will be used to group the spans, log records or metric data points together |         | no       |
+| `keys`          | `list(string)`    | Keys that will be used to group the spans, log records or metric data points together. |         | no       |
 | `output`        | [output][]        | Configures where to send received telemetry data.                                     | yes     |          |
 | `debug_metrics` | [debug_metrics][] | Configures the metrics that this component generates to monitor its state.            | no      |          |
 
