@@ -7,9 +7,11 @@ import (
 	"testing"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/phayes/freeport"
@@ -218,4 +220,23 @@ func (fakeHost) GetServiceConsumers(serviceName string) []service.Consumer { ret
 
 func (fakeHost) NewController(id string) service.Controller { return nil }
 
-func (fakeHost) GetService(_ string) (service.Service, bool) { return nil, false }
+func (fakeHost) GetService(svc string) (service.Service, bool) {
+	if svc == remotecfg.ServiceName {
+		return fakeRemotecfg{}, true
+	}
+	return nil, false
+}
+
+type fakeRemotecfg struct{}
+
+func (f fakeRemotecfg) Definition() service.Definition {
+	return service.Definition{
+		Name:       remotecfg.ServiceName,
+		ConfigType: remotecfg.Arguments{},
+		DependsOn:  nil, // remotecfg has no dependencies.
+		Stability:  featuregate.StabilityPublicPreview,
+	}
+}
+func (f fakeRemotecfg) Run(ctx context.Context, host service.Host) error { return nil }
+func (f fakeRemotecfg) Update(newConfig any) error                       { return nil }
+func (f fakeRemotecfg) Data() any                                        { return remotecfg.Data{} }

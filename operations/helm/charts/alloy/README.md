@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.5.1](https://img.shields.io/badge/Version-0.5.1-informational?style=flat-square) ![AppVersion: v1.2.1](https://img.shields.io/badge/AppVersion-v1.2.1-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.6.0](https://img.shields.io/badge/Version-0.6.0-informational?style=flat-square) ![AppVersion: v1.3.0](https://img.shields.io/badge/AppVersion-v1.3.0-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -34,6 +34,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | alloy.clustering.enabled | bool | `false` | Deploy Alloy in a cluster to allow for load distribution. |
+| alloy.clustering.name | string | `""` | Name for the Alloy cluster. Used for differentiating between clusters. |
 | alloy.clustering.portName | string | `"http"` | Name for the port used for clustering, useful if running inside an Istio Mesh |
 | alloy.configMap.content | string | `""` | Content to assign to the new ConfigMap.  This is passed into `tpl` allowing for templating from values. |
 | alloy.configMap.create | bool | `true` | Create a new ConfigMap for the config file. |

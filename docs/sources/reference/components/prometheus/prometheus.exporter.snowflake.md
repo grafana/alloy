@@ -58,15 +58,16 @@ Omitted fields take their default values.
 One of `password` or `private_key_path` must be specified to authenticate.
 Users with an encrypted private key will also need to provide a `private_key_password`.
 
-| Name                   | Type     | Description                                                                                       | Default          | Required |
-| ---------------------- | -------- | ------------------------------------------------------------------------------------------------- | ---------------- | -------- |
-| `account_name`         | `string` | The account to collect metrics from.                                                              |                  | yes      |
-| `username`             | `string` | The username for the user used when querying metrics.                                             |                  | yes      |
-| `password`             | `secret` | The password for the user used when querying metrics (required for password authentication).      |                  | no       |
-| `private_key_path`     | `secret` | The path to the user's RSA private key file (required for RSA key-pair authentication).           |                  | no       |
-| `private_key_password` | `secret` | The password for the user's RSA private key (required for encrypted RSA key-pair authentication). |                  | no       |
-| `role`                 | `string` | The role to use when querying metrics.                                                            | `"ACCOUNTADMIN"` | no       |
-| `warehouse`            | `string` | The warehouse to use when querying metrics.                                                       |                  | yes      |
+| Name                     | Type     | Description                                                                                       | Default          | Required |
+| ------------------------ | -------- | ------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `account_name`           | `string` | The account to collect metrics from.                                                              |                  | yes      |
+| `username`               | `string` | The username for the user used when querying metrics.                                             |                  | yes      |
+| `password`               | `secret` | The password for the user used when querying metrics (required for password authentication).      |                  | no       |
+| `private_key_path`       | `secret` | The path to the user's RSA private key file (required for RSA key-pair authentication).           |                  | no       |
+| `private_key_password`   | `secret` | The password for the user's RSA private key (required for encrypted RSA key-pair authentication). |                  | no       |
+| `role`                   | `string` | The role to use when querying metrics.                                                            | `"ACCOUNTADMIN"` | no       |
+| `warehouse`              | `string` | The warehouse to use when querying metrics.                                                       |                  | yes      |
+| `exclude_deleted_tables` |  `bool`  | Whether to exclude deleted tables when querying table storage metrics.                            | `false`          | no       |
 
 ## Blocks
 
