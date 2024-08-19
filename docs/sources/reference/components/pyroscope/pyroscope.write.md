@@ -135,7 +135,7 @@ In those cases, exported fields are kept at their last healthy values.
 pyroscope.write "staging" {
   // Send metrics to a locally running Pyroscope instance.
   endpoint {
-    url = "http://pyroscope:4100"
+    url = "http://pyroscope:4040"
     headers = {
       "X-Scope-OrgID" = "squad-1",
     }
@@ -147,7 +147,7 @@ pyroscope.write "staging" {
 
 pyroscope.scrape "default" {
   targets = [
-    {"__address__" = "pyroscope:4100", "service_name"="pyroscope"},
+    {"__address__" = "pyroscope:4040", "service_name"="pyroscope"},
     {"__address__" = "alloy:12345", "service_name"="alloy"},
   ]
   forward_to = [pyroscope.write.staging.receiver]
