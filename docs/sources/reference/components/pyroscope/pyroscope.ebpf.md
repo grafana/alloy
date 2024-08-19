@@ -247,7 +247,7 @@ pyroscope.ebpf "local_pods" {
 
 pyroscope.write "endpoint" {
   endpoint {
-    url = "http://pyroscope:4100"
+    url = "http://pyroscope:4040"
   }
 }
 ```
@@ -273,7 +273,7 @@ discovery.relabel "local_containers" {
 
 pyroscope.write "staging" {
   endpoint {
-    url = "http://pyroscope:4100"
+    url = "http://pyroscope:4040"
   }
 }
 
