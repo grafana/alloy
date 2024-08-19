@@ -54,6 +54,7 @@ type Arguments struct {
 	RedactWith     string              `alloy:"redact_with,attr,optional"`     // Redact the secret with this string. Use $SECRET_NAME and $SECRET_HASH to include the secret name and hash
 	ExcludeGeneric bool                `alloy:"exclude_generic,attr,optional"` // Exclude the generic API key rule (default: false)
 	AllowList      []string            `alloy:"allowlist,attr,optional"`       // List of regexes to allowlist (on top of what's in the Gitleaks config)
+	PartialMask    uint                `alloy:"partial_mask,attr,optional"`    // Show the first N characters of the secret (default: 0)
 }
 
 // Exports holds the values exported by the loki.secretfilter component.
@@ -280,6 +281,9 @@ func (c *Component) Run(ctx context.Context) error {
 						redactWith = c.args.RedactWith
 						redactWith = strings.ReplaceAll(redactWith, "$SECRET_NAME", r.name)
 						redactWith = strings.ReplaceAll(redactWith, "$SECRET_HASH", hashSecret(secret))
+						if c.args.PartialMask > 0 {
+							redactWith = secret[:c.args.PartialMask] + redactWith
+						}
 					}
 
 					entry.Line = strings.ReplaceAll(entry.Line, secret, redactWith)
