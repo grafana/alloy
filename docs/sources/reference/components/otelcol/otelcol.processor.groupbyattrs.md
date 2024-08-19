@@ -154,7 +154,7 @@ This output demonstrates how `otelcol.processor.groupbyattrs` works in various s
 - The specified "grouping" attributes that are set on the new Resources are also removed from the metric DataPoints.
 - While not shown in the above example, the processor also merges collections of records under matching InstrumentationLibrary.
 
-[otelcol.processor.batch]: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/
+[otelcol.processor.batch]: ../otelcol.processor.batch/
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
