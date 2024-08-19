@@ -50,7 +50,7 @@ otelcol.processor.interval "LABEL" {
 
 Name          | Type       | Description                                                               | Default | Required
 ------------- | ---------- | ------------------------------------------------------------------------- | ------- | --------
-`interval`    | `duration` | The interval in which the processor should export the aggregated metrics. | `"60s"` | 
+`interval`    | `duration` | The interval in which the processor should export the aggregated metrics. | `"60s"` | no
 
 ## Blocks
 
@@ -90,9 +90,7 @@ Name    | Type               | Description
 
 `otelcol.processor.interval` does not expose any component-specific debug information.
 
-## Examples
-
-### Usage
+## Example
 
 This example receives OTLP metrics and aggregates them for 30s before sending to the next exporter.
 
@@ -107,19 +105,25 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.processor.interval "default" {
+  interval = "30s"
   output {
-    metrics = [prometheus.remotewrite.default.receiver]
+    metrics = [otelcol.exporter.otlphttp.grafana_cloud.input]
   }
 }
 
-prometheus.remote_write "default" {
-  endpoint {
-    url = env("PROMETHEUS_SERVER_URL")
+otelcol.exporter.otlphttp "grafana_cloud" {
+  client {
+    endpoint = "https://otlp-gateway-prod-gb-south-0.grafana.net/otlp"
+    auth     = otelcol.auth.basic.grafana_cloud.handler
   }
+}
+
+otelcol.auth.basic "grafana_cloud" {
+  username = env("GRAFANA_CLOUD_USERNAME")
+  password = env("GRAFANA_CLOUD_API_KEY")
 }
 ```
 
-### Metric flow
 
 | Timestamp | Metric Name  | Aggregation Temporarility | Attributes        | Value |
 | --------- | ------------ | ------------------------- | ----------------- | ----: |
