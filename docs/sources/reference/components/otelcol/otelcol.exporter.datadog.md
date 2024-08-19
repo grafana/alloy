@@ -20,8 +20,7 @@ other `otelcol` components and sends it to Datadog.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
-Multiple `otelcol.exporter.datadog` components can be specified by giving them
-different labels.
+You can specify multiple `otelcol.exporter.datadog` components by giving them different labels.
 
 ## Usage
 
@@ -42,7 +41,7 @@ Name                                       | Type            | Description      
 `hostname`                              | `string`        | The fallback hostname used for payloads without hostname-identifying attributes.                                                    |                      | no
 `only_metadata`                                  | `bool`  | Whether to send only metadata.                                                        | `false` | no
 
-If `hostname` is unset, the hostname will be determined automatically (see [here for details](https://docs.datadoghq.com/opentelemetry/schema_semantics/hostname/?tab=datadogexporter#fallback-hostname-logic)). 
+If `hostname` is unset, the hostname is determined automatically. For more information, refer to the Datadog [Fallback hostname logic](https://docs.datadoghq.com/opentelemetry/schema_semantics/hostname/?tab=datadogexporter#fallback-hostname-logic) documentation. 
 This option will **NOT** change the hostname applied to metrics or traces if they already have hostname-identifying attributes.
 
 ## Blocks
@@ -63,7 +62,7 @@ client           | [client][]           | Configures the HTTP server to send tel
 client > tls     | [tls][]              | Configures TLS for the HTTP client.                                        | no
 retry_on_failure                 | [retry_on_failure][] | Configures retry mechanism for failed requests.                             | no
 queue                            | [queue][]            | Configures batching of data before sending.                                 | no
-debug_metrics                    | [debug_metrics][]    | Configures the metrics which this component generates to monitor its state. | no
+debug_metrics                    | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state. | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `client > tls`
 refers to a `tls` block defined inside a `client` block.
@@ -85,7 +84,7 @@ refers to a `tls` block defined inside a `client` block.
 ### api block
 
 The `api` block configures authentication with the Datadog API. This is required to send telemetry
-to Datadog. If the `api` block isn't provided, telemetry cannot be sent to Datadog.
+to Datadog. If you do not provide the `api` block, you can't send telemetry to Datadog.
 
 The following arguments are supported:
 
@@ -97,7 +96,7 @@ Name                                       | Type            | Description      
 
 ### traces block
 
-The `traces` block configures Trace specific exporter settings.
+The `traces` block configures the trace exporter settings.
 
 The following arguments are supported:
 
@@ -114,8 +113,8 @@ Name                                       | Type            | Description      
 `trace_buffer` | `number` | Specifies the number of outgoing trace payloads to buffer before dropping | `10` | no
 
 If `compute_stats_by_span_kind` is disabled, only top-level and measured spans will have stats computed. 
-If you are sending OTel traces and want stats on non-top-level spans, this flag will need to be set to `true`.
-If you are sending OTel traces and do not want stats computed by span kind, you need to disable this flag and disable `compute_top_level_by_span_kind`.
+If you are sending OTel traces and want stats on non-top-level spans, this flag must be set to `true`.
+If you are sending OTel traces and do not want stats computed by span kind, you must disable this flag and disable `compute_top_level_by_span_kind`.
 
 If `endpoint` is unset, the value is obtained through the `site` parameter in the [api][] section.
 
@@ -129,12 +128,12 @@ The following arguments are supported:
 
 Name                                       | Type            | Description                                                                         | Default              | Required
 ------------------------------------------ | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`delta_ttl` | `number` | The amount of seconds values are kept in memory for calculating deltas. | `3600` | no
+`delta_ttl` | `number` | The number of seconds values are kept in memory for calculating deltas. | `3600` | no
 `endpoint` | `string` | The host of the Datadog intake server to send metrics to. | `"https://api.datadoghq.com"` | no
 
 
-Please note that any of the subset of resource attributes in this [list](https://docs.datadoghq.com/opentelemetry/guide/semantic_mapping/) 
-are converted to datadog conventions and set to to metric tags whether `resource_attributes_as_tags` is enabled or not.
+Any of the subset of resource attributes in the [semantic mapping list](https://docs.datadoghq.com/opentelemetry/guide/semantic_mapping/) 
+are converted to Datadog conventions and set to to metric tags whether `resource_attributes_as_tags` is enabled or not.
 
 If `endpoint` is unset, the value is obtained through the `site` parameter in the [api][] section.
 
@@ -142,35 +141,35 @@ If `endpoint` is unset, the value is obtained through the `site` parameter in th
 
 ### exporter block
 
-The `exporter` block configures Metric Exporter specific settings.
+The `exporter` block configures the metric exporter settings.
 
 The following arguments are supported:
 
 Name                                       | Type            | Description                                                                         | Default              | Required
 ------------------------------------------ | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`resource_attributes_as_tags` | `bool` | Set to true to add resource attributes of a metric to its metric tags. | `false` | no
-`instrumentation_scope_metadata_as_tags` | `bool` | Set to true to add metadata about the instrumentation scope that created a metric. | `false` | no
+`resource_attributes_as_tags` | `bool` | Set to `true` to add resource attributes of a metric to its metric tags. | `false` | no
+`instrumentation_scope_metadata_as_tags` | `bool` | Set to `true` to add metadata about the instrumentation scope that created a metric. | `false` | no
 
 
 ### histograms block
 
-The `histograms` block configures Histogram specific settings.
+The `histograms` block configures the histogram settings.
 
 The following arguments are supported:
 
 Name                                       | Type            | Description                                                                         | Default              | Required
 ------------------------------------------ | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
 `mode` | `string` | How to report histograms. | `"distributions"` | no
-`send_aggregation_metrics` | `bool` | Whether to report sum, count, min and max as separate histogram metrics. | `false` | no
+`send_aggregation_metrics` | `bool` | Whether to report sum, count, min, and max as separate histogram metrics. | `false` | no
 
 Valid values for `mode` are:
 - `"distributions"` to report metrics as Datadog distributions (recommended).
-- `"nobuckets"` to not report bucket metrics,
+- `"nobuckets"` to not report bucket metrics.
 - `"counters"` to report one metric per histogram bucket.
 
 ### sums block
 
-The `sums` block configures Sums specific settings.
+The `sums` block configures the sums settings.
 
 The following arguments are supported:
 
@@ -184,13 +183,13 @@ Valid values for `cumulative_monotonic_mode` are:
 - `"raw_value"` to report the raw value as a Datadog gauge.
 
 Valid values for `initial_cumulative_monotonic_value` are:
-- `"auto"` reports the initial value if its start timestamp is set and it happens after the process was started.
+- `"auto"` reports the initial value if its start timestamp is set, and it happens after the process was started.
 - `"drop"` always drops the initial value.
 - `"keep"` always reports the initial value.
 
 ### summaries block
 
-The `summaries` block configures Summary specific settings.
+The `summaries` block configures the summary settings.
 
 The following arguments are supported:
 
@@ -199,12 +198,13 @@ Name                                       | Type            | Description      
 `mode` | `string` | How to report summaries.| `"gauges"` | no
 
 Valid values for `mode` are:
-- `"noquantiles"` to not report quantile metrics
+- `"noquantiles"` to not report quantile metrics.
 - `"gauges"` to report one gauge metric per quantile.
 
 ### host_metadata block
 
-The `host_metadata` block configures Host metadata specific configuration. Host metadata is the information used for populating the infrastructure list, the host map and providing host tags functionality within the Datadog app.
+The `host_metadata` block configures the host metadata configuration.
+Host metadata is the information used to populate the infrastructure list and the host map, and provide host tags functionality within the Datadog app.
 
 The following arguments are supported:
 
@@ -224,9 +224,9 @@ Valid values for `hostname_source` are:
 ### client block
 
 The `client` block configures the HTTP client used by the component.
-Not all fields are supported by the Datadog Exporter; the table below describes
-the supported options. Note that `endpoint` is required, but doesn't affect the
-Exporter (use the Metrics/Traces `endpoint` option to do this)
+Not all fields are supported by the Datadog Exporter. The table below describes
+the supported options. The `endpoint` argument is required, but doesn't affect the
+exporter. You can use the metrics/traces `endpoint` option to do this.
 
 The following arguments are supported:
 
@@ -244,7 +244,7 @@ Name                      | Type                       | Description            
 
 ### tls block
 
-The `tls` block configures TLS settings used for the connection to the HTTP server.
+The `tls` block configures the TLS settings used to connect to the HTTP server.
 
 The following arguments are supported:
 
@@ -274,7 +274,7 @@ The following fields are exported and can be referenced by other components:
 
 Name    | Type               | Description
 --------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+`input` | `otelcol.Consumer` | A value other components can use to send telemetry data to.
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
 
@@ -290,8 +290,8 @@ information.
 
 ## Example
 
-This example forwards prometheus metrics from Grafana Alloy itself through a receiver for conversion to Open Telemetry format before finally sending them to Datadog.
-Note that only the `api` field is required for the Exporter to function (if using the US Datadog APIs):
+This example forwards Prometheus metrics from {{< param "PRODUCT_NAME" >}} through a receiver for conversion to Open Telemetry format before finally sending them to Datadog.
+If you are using the US Datadog APIs, the `api` field is required for the exporter to function.
 
 ```alloy
 prometheus.exporter.self "default" {
