@@ -1036,11 +1036,11 @@ The following arguments are supported:
 | `source`     | `string` | Source of the data to parse. If empty, it uses the log message. |         | no       |
 | `replace`    | `string` | Value replaced by the capture group.                            |         | no       |
 
-Each capture group and named capture group in `expression` will be replaced with the value given in `replace`.
+Each capture group and named capture group in `expression` is replaced with the value given in `replace`.
 
 `expression` must contain valid RE2 regular expression capture groups.
-You can also name some of the groups using syntax such as `(?P<name>re)`.
-If any of the capture groups are named, their values will be set into the shared extracted map under the name of the regex group.
+You can also name some groups using syntax such as `(?P<name>re)`.
+If any of the capture groups are named, their values will be set into the shared extracted map under the name of the regular expression group.
 
 The `source` field defines the source of data to parse using `expression`.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
