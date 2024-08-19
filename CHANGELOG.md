@@ -23,6 +23,9 @@ Main (unreleased)
   seen by each instance in the cluster. This can help diagnose cluster split
   brain issues. (@thampiotr)
 
+- Added a new Secret resource into the helm chart to allow passing values into
+  config via environement variables.
+
 ### Bugfixes
 
 - Fixed an issue which caused loss of context data in Faro exception. (@codecapitano)
