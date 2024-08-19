@@ -1,13 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/collect/choose-component/
 description: Find out which components are useful for which tasks
-title: Choose an Alloy component
+title: Choose a Grafana Alloy component
+menuTitle: Choose a component
 weight: 100
 ---
 
-# Choose an Alloy component
+# Choose a  {{< param "FULL_PRODUCT_NAME" >}} component
 
-[Components][components] are the building blocks of Alloy, and there is a [large number of them][components-ref].
+[Components][components] are the building blocks of {{< param "FULL_PRODUCT_NAME" >}}, and there is a [large number of them][components-ref].
 The components you select and configure depend on the telemetry signals you want to collect.
 
 [components]: ../../get-started/components/
@@ -57,7 +58,6 @@ correlate the logs with OpenTelemetry metrics and traces coming from the applica
 All application telemetry must follow the [OpenTelemetry semantic conventions][OTel-semantics], simplifying this correlation.
 
 For example, if your application runs on Kubernetes, every trace, log, and metric can have a `k8s.namespace.name` resource attribute.
-
 
 [OTel-semantics]:https://opentelemetry.io/docs/concepts/semantic-conventions/
 
