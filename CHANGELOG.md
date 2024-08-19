@@ -177,6 +177,10 @@ v1.3.0
   Previously, the reload would fail for `loki.process` without an error in the logs and the metrics
   from the `metrics` stage would get stuck at the same values. (@ptodev)
 
+### Other Changes
+
+- Disabled go-discover logs. (@f9n)
+
 v1.2.1
 -----------------
 
