@@ -29,6 +29,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/cluster/discovery"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -82,7 +83,7 @@ type Options struct {
 
 	// Function to discover peers to join. If this function is nil or returns an
 	// empty slice, no peers will be joined.
-	DiscoverPeers func() ([]string, error)
+	DiscoverPeers discovery.DiscoverFn
 }
 
 // Service is the cluster service.

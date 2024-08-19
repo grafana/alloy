@@ -31,12 +31,13 @@ otelcol.receiver.datadog "LABEL" {
 
 `otelcol.receiver.datadog` supports the following arguments:
 
-Name                    | Type       | Description                                                     | Default            | Required
------------------------ | ---------- | --------------------------------------------------------------- | ------------------ | --------
-`endpoint`              | `string`   | `host:port` to listen for traffic on.                           | `"localhost:8126"` | no
-`max_request_body_size` | `string`   | Maximum request body size the server will allow.                | `20MiB`            | no
-`include_metadata`      | `boolean`  | Propagate incoming connection metadata to downstream consumers. | `false`            | no
-`read_timeout`          | `duration` | Read timeout for requests of the HTTP server.                   | `"60s"`            | no
+Name                     | Type       | Description                                                      | Default            | Required
+------------------------  | ---------- | --------------------------------------------------------------- | ------------------ | --------
+`endpoint`               | `string`   | `host:port` to listen for traffic on.                            | `"localhost:8126"` | no
+`max_request_body_size`  | `string`   | Maximum request body size the server will allow.                 | `20MiB`            | no
+`include_metadata`       | `boolean`  | Propagate incoming connection metadata to downstream consumers.  | `false`            | no
+`read_timeout`           | `duration` | Read timeout for requests of the HTTP server.                    | `"60s"`            | no
+`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.      | `["", "gzip", "zstd", "zlib", "snappy", "deflate"]` | no
 
 By default, `otelcol.receiver.datadog` listens for HTTP connections on `localhost`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8126` to listen on all network interfaces.

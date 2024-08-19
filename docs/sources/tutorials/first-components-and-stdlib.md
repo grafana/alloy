@@ -1,26 +1,29 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/first-components-and-stdlib/
-description: Learn about the basics of the Alloy configuration syntax
-title: First components and the standard library
-weight: 20
+description: Learn the basics of the Grafana Alloy configuration syntax
+menuTitle: First components and the standard library
+title: First components and the standard library in Grafana Alloy
+weight: 200
 ---
 
-# First components and the standard library
+# First components and the standard library in {{% param "FULL_PRODUCT_NAME" %}}
 
 This tutorial covers the basics of the {{< param "PRODUCT_NAME" >}} configuration syntax and the standard library.
 It introduces a basic pipeline that collects metrics from the host and sends them to Prometheus.
 
-## Prerequisites
+## Before you begin
 
-Set up a local Grafana instance as described in [Get started with {{< param "FULL_PRODUCT_NAME" >}}][get started]
+To complete this tutorial:
+
+* You must set up a [local Grafana instance][previous tutorial].
 
 ### Recommended reading
 
-- [{{< param "PRODUCT_NAME" >}} configuration syntax][Configuration syntax]
+- [{{< param "PRODUCT_NAME" >}} configuration syntax][configuration syntax]
 
-## {{< param "PRODUCT_NAME" >}} configuration syntax basics
+## {{% param "PRODUCT_NAME" %}} configuration syntax basics
 
-An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
+An {{< param "PRODUCT_NAME" >}} configuration file contains three elements:
 
 1. **Attributes**
 
@@ -50,7 +53,7 @@ An {{< param "PRODUCT_NAME" >}} configuration file is comprised of three things:
     ```
 
     {{< admonition type="note" >}}
-The default log level is `info` and the default log format is `logfmt`.
+    The default log level is `info` and the default log format is `logfmt`.
     {{< /admonition >}}
 
     Try pasting this into `config.alloy` and running `<BINARY_FILE_PATH> run config.alloy` to see what happens. Replace _`<BINARY_FILE_PATH>`_ with the path to the {{< param "PRODUCT_NAME" >}} binary.
@@ -59,7 +62,7 @@ The default log level is `info` and the default log format is `logfmt`.
     This configuration won't do anything, so let's add some components to it.
 
     {{< admonition type="note" >}}
-Comments in {{< param "PRODUCT_NAME" >}} syntax are prefixed with `//` and are single-line only. For example: `// This is a comment`.
+    Comments in {{< param "PRODUCT_NAME" >}} syntax are prefixed with `//` and are single-line only. For example: `// This is a comment`.
     {{< /admonition >}}
 
 ## Components
@@ -291,16 +294,15 @@ Generally, you can use a persistent directory for this, as some components may u
 In the next tutorial, you learn how to configure {{< param "PRODUCT_NAME" >}} to collect logs from a file and send them to Loki.
 You also learn how to use different components to process metrics and logs.
 
-[get started]: ../get-started/#set-up-a-local-grafana-instance
-[Configuration syntax]: ../../concepts/configuration-syntax/
+[previous tutorial]: ../send-logs-to-loki/#set-up-a-local-grafana-instance
+[configuration syntax]: ../../get-started/configuration-syntax/
 [Standard library documentation]: ../../reference/stdlib/
 [node_exporter]: https://github.com/prometheus/node_exporter
-[prometheus.exporter.redis]: ../../reference/components/prometheus.exporter.redis/
-[http://localhost:3000/explore]: http://localhost:3000/explore
-[prometheus.exporter.unix]: ../../reference/components/prometheus.exporter.unix/
-[prometheus.scrape]: ../../reference/components/prometheus.scrape/
-[prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
-[Components]: ../../concepts/components/
-[Component controller]: ../../concepts/component_controller/
-[Components configuration language]: ../../concepts/configuration-syntax/components/
+[prometheus.exporter.redis]: ../../reference/components/prometheus/prometheus.exporter.redis/
+[prometheus.exporter.unix]: ../../reference/components/prometheus/prometheus.exporter.unix/
+[prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/
+[prometheus.remote_write]: ../../reference/components/prometheus/prometheus.remote_write/
+[Components]: ../../get-started/components/
+[Component controller]: ../../get-started/component_controller/
+[Components configuration language]: ../../get-started/configuration-syntax/components/
 [env]: ../../reference/stdlib/env/

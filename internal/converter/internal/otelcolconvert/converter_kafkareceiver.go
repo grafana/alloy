@@ -142,13 +142,14 @@ func toKafkaKerberos(cfg map[string]any) *otelcol.KafkaKerberosArguments {
 	}
 
 	return &otelcol.KafkaKerberosArguments{
-		ServiceName: cfg["service_name"].(string),
-		Realm:       cfg["realm"].(string),
-		UseKeyTab:   cfg["use_keytab"].(bool),
-		Username:    cfg["username"].(string),
-		Password:    alloytypes.Secret(cfg["password"].(string)),
-		ConfigPath:  cfg["config_file"].(string),
-		KeyTabPath:  cfg["keytab_file"].(string),
+		ServiceName:     cfg["service_name"].(string),
+		Realm:           cfg["realm"].(string),
+		UseKeyTab:       cfg["use_keytab"].(bool),
+		Username:        cfg["username"].(string),
+		Password:        alloytypes.Secret(cfg["password"].(string)),
+		ConfigPath:      cfg["config_file"].(string),
+		KeyTabPath:      cfg["keytab_file"].(string),
+		DisablePAFXFAST: cfg["disable_fast_negotiation"].(bool),
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	otel_service "github.com/grafana/alloy/internal/service/otel"
+	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -331,6 +332,13 @@ func testOptions(t *testing.T) runtime.Options {
 	otelService := otel_service.New(s)
 	require.NotNil(t, otelService)
 
+	remotecfgService, err := remotecfg_service.New(remotecfg_service.Options{
+		Logger:      s,
+		StoragePath: t.TempDir(),
+		Metrics:     prometheus.DefaultRegisterer,
+	})
+	require.NoError(t, err)
+
 	return runtime.Options{
 		Logger:               s,
 		DataPath:             t.TempDir(),
@@ -342,6 +350,7 @@ func testOptions(t *testing.T) runtime.Options {
 			clusterService,
 			otelService,
 			labelstore.New(nil, prometheus.DefaultRegisterer),
+			remotecfgService,
 		},
 	}
 }

@@ -170,6 +170,13 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 		return nil
 	}
 
+	var compressionAlgorithms []string
+	if len(cfg.CompressionAlgorithms) > 0 {
+		compressionAlgorithms = append([]string{}, cfg.CompressionAlgorithms...)
+	} else {
+		compressionAlgorithms = append([]string{}, otelcol.DefaultCompressionAlgorithms...)
+	}
+
 	return &otelcol.HTTPServerArguments{
 		Endpoint: cfg.Endpoint,
 
@@ -179,6 +186,8 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 
 		MaxRequestBodySize: units.Base2Bytes(cfg.MaxRequestBodySize),
 		IncludeMetadata:    cfg.IncludeMetadata,
+
+		CompressionAlgorithms: compressionAlgorithms,
 	}
 }
 

@@ -138,7 +138,8 @@ func (args *GRPCServerArguments) SetToDefault() {
 // SetToDefault implements syntax.Defaulter.
 func (args *HTTPServerArguments) SetToDefault() {
 	*args = HTTPServerArguments{
-		Endpoint: "0.0.0.0:5778",
+		Endpoint:              "0.0.0.0:5778",
+		CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
 	}
 }
 

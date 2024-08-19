@@ -67,6 +67,7 @@ otelcol.connector.spanmetrics "LABEL" {
 | `exclude_dimensions`              | `list(string)` | List of dimensions to be excluded from the default set of dimensions.                      | `[]`           | no       |
 | `metrics_flush_interval`          | `duration`     | How often to flush generated metrics.                                                      | `"60s"`        | no       |
 | `metrics_expiration`              | `duration`     | Time period after which metrics are considered stale and are removed from the cache.       | `"0s"`         | no       |
+| `metric_timestamp_cache_size`     | `number`       | Controls the size of a cache used to keep track of the last time a metric was flushed.     | `1000`         | no       |
 | `namespace`                       | `string`       | Metric namespace.                                                                          | `""`           | no       |
 | `resource_metrics_cache_size`     | `number`       | The size of the cache holding metrics for a service.                                       | `1000`         | no       |
 | `resource_metrics_key_attributes` | `list(string)` | Limits the resource attributes used to create the metrics.                                 | `[]`           | no       |
@@ -83,6 +84,11 @@ If `namespace` is set, the generated metric name will be added a `namespace.` pr
 Setting `metrics_expiration` to `"0s"` means that the metrics will never expire.
 
 `resource_metrics_cache_size` is mostly relevant for cumulative temporality. It helps avoid issues with increasing memory and with incorrect metric timestamp resets.
+
+`metric_timestamp_cache_size` is only relevant for delta temporality span metrics. 
+It controls the size of a cache used to keep track of the last time a metric was flushed. 
+When a metric is evicted from the cache, its next data point will indicate a "reset" in the series. 
+Downstream components converting from delta to cumulative may handle these resets by setting cumulative counters back to 0.
 
 `resource_metrics_key_attributes` can be used to avoid situations where resource attributes may change across service restarts,
 causing metric counters to break (and duplicate). A resource does not need to have all of the attributes.

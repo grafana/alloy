@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,8 +19,10 @@ import (
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1/collectorv1connect"
 	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/featuregate"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util/jitter"
@@ -52,6 +57,8 @@ type Service struct {
 	ticker            *jitter.Ticker
 	dataPath          string
 	currentConfigHash string
+	systemAttrs       map[string]string
+	attrs             map[string]string
 	metrics           *metrics
 }
 
@@ -67,6 +74,9 @@ type metrics struct {
 // ServiceName defines the name used for the remotecfg service.
 const ServiceName = "remotecfg"
 
+const reservedAttributeNamespace = "collector"
+const namespaceDelimiter = "."
+
 // Options are used to configure the remotecfg service. Options are
 // constant for the lifetime of the remotecfg service.
 type Options struct {
@@ -79,6 +89,7 @@ type Options struct {
 type Arguments struct {
 	URL              string                   `alloy:"url,attr,optional"`
 	ID               string                   `alloy:"id,attr,optional"`
+	Name             string                   `alloy:"name,attr,optional"`
 	Attributes       map[string]string        `alloy:"attributes,attr,optional"`
 	PollFrequency    time.Duration            `alloy:"poll_frequency,attr,optional"`
 	HTTPClientConfig *config.HTTPClientConfig `alloy:",squash"`
@@ -103,6 +114,12 @@ func (a *Arguments) SetToDefault() {
 func (a *Arguments) Validate() error {
 	if a.PollFrequency < 10*time.Second {
 		return fmt.Errorf("poll_frequency must be at least \"10s\", got %q", a.PollFrequency)
+	}
+
+	for k := range a.Attributes {
+		if strings.HasPrefix(k, reservedAttributeNamespace+namespaceDelimiter) {
+			return fmt.Errorf("%q is a reserved namespace for remotecfg attribute keys", reservedAttributeNamespace)
+		}
 	}
 
 	// We must explicitly Validate because HTTPClientConfig is squashed and it
@@ -132,9 +149,17 @@ func New(opts Options) (*Service, error) {
 	}
 
 	return &Service{
-		opts:   opts,
-		ticker: jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
+		opts:        opts,
+		systemAttrs: getSystemAttributes(),
+		ticker:      jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
 	}, nil
+}
+
+func getSystemAttributes() map[string]string {
+	return map[string]string{
+		reservedAttributeNamespace + namespaceDelimiter + "version": build.Version,
+		reservedAttributeNamespace + namespaceDelimiter + "os":      runtime.GOOS,
+	}
 }
 
 func (s *Service) registerMetrics() {
@@ -181,9 +206,22 @@ func (s *Service) registerMetrics() {
 	s.metrics = mets
 }
 
-// Data is a no-op for the remotecfg service.
+// Data returns an instance of [Data]. Calls to Data are cachable by the
+// caller.
+// Data must only be called after Run.
 func (s *Service) Data() any {
-	return nil
+	if s.ctrl == nil {
+		return Data{Host: nil}
+	}
+	host := s.ctrl.(alloy_runtime.ServiceController).GetHost()
+	return Data{Host: host}
+}
+
+// Data includes information associated with the HTTP service.
+type Data struct {
+	// Host exposes the Host of the isolated controller that is created by the
+	// remotecfg service.
+	Host service.Host
 }
 
 // Definition returns the definition of the remotecfg service.
@@ -204,6 +242,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.ctrl = host.NewController(ServiceName)
 
 	s.fetch()
+	s.registerCollector()
 
 	// Run the service's own controller.
 	go func() {
@@ -259,7 +298,13 @@ func (s *Service) Update(newConfig any) error {
 			newArgs.URL,
 		)
 	}
-	s.args = newArgs // Update the args as the last step to avoid polluting any comparisons
+	// Combine the new attributes on top of the system attributes
+	s.attrs = maps.Clone(s.systemAttrs)
+	maps.Copy(s.attrs, newArgs.Attributes)
+
+	// Update the args as the last step to avoid polluting any comparisons
+	s.args = newArgs
+	s.registerCollector()
 	s.mut.Unlock()
 
 	// If we've already called Run, then immediately trigger an API call with
@@ -279,6 +324,22 @@ func (s *Service) fetch() {
 		s.fetchLocal()
 	}
 }
+
+func (s *Service) registerCollector() error {
+	req := connect.NewRequest(&collectorv1.RegisterCollectorRequest{
+		Id:         s.args.ID,
+		Attributes: s.attrs,
+		Name:       s.args.Name,
+	})
+	client := s.asClient
+
+	_, err := client.RegisterCollector(context.Background(), req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Service) fetchRemote() error {
 	if !s.isEnabled() {
 		return nil
@@ -329,7 +390,7 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 	s.mut.RLock()
 	req := connect.NewRequest(&collectorv1.GetConfigRequest{
 		Id:         s.args.ID,
-		Attributes: s.args.Attributes,
+		Attributes: s.attrs,
 	})
 	client := s.asClient
 	s.mut.RUnlock()

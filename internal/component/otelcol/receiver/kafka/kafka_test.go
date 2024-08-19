@@ -309,6 +309,7 @@ func TestArguments_Auth(t *testing.T) {
 						password = "test_password"
 						config_file = "test_config_filem"
 						keytab_file = "test_keytab_file"
+						disable_fast_negotiation = true
 					}
 				}
 
@@ -338,13 +339,14 @@ func TestArguments_Auth(t *testing.T) {
 				},
 				"auth": map[string]interface{}{
 					"kerberos": map[string]interface{}{
-						"service_name": "test_service_name",
-						"realm":        "test_realm",
-						"use_keytab":   true,
-						"username":     "test_username",
-						"password":     "test_password",
-						"config_file":  "test_config_filem",
-						"keytab_file":  "test_keytab_file",
+						"service_name":             "test_service_name",
+						"realm":                    "test_realm",
+						"use_keytab":               true,
+						"username":                 "test_username",
+						"password":                 "test_password",
+						"config_file":              "test_config_filem",
+						"keytab_file":              "test_keytab_file",
+						"disable_fast_negotiation": true,
 					},
 				},
 			},

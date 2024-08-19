@@ -8,7 +8,7 @@ title: prometheus.operator.probes
 
 # prometheus.operator.probes
 
-`prometheus.operator.probes` discovers [Probe](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.Probe) resources in your Kubernetes cluster and scrapes the targets they reference.
+`prometheus.operator.probes` discovers [Probe](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.Probe) resources in your Kubernetes cluster and scrapes the targets they reference.
  This component performs three main functions:
 
 1. Discover Probe resources from your Kubernetes cluster.

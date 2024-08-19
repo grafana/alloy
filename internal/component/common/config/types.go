@@ -139,10 +139,10 @@ func (b *BasicAuth) Validate() error {
 }
 
 type ProxyConfig struct {
-	ProxyURL             URL    `alloy:"proxy_url,attr,optional"`
-	NoProxy              string `alloy:"no_proxy,attr,optional"`
-	ProxyFromEnvironment bool   `alloy:"proxy_from_environment,attr,optional"`
-	ProxyConnectHeader   Header `alloy:",squash"`
+	ProxyURL             URL         `alloy:"proxy_url,attr,optional"`
+	NoProxy              string      `alloy:"no_proxy,attr,optional"`
+	ProxyFromEnvironment bool        `alloy:"proxy_from_environment,attr,optional"`
+	ProxyConnectHeader   ProxyHeader `alloy:",squash"`
 }
 
 func (p *ProxyConfig) Convert() config.ProxyConfig {
@@ -214,15 +214,15 @@ func (u *URL) Convert() config.URL {
 	return config.URL{URL: u.URL}
 }
 
-type Header struct {
+type ProxyHeader struct {
 	Header map[string][]alloytypes.Secret `alloy:"proxy_connect_header,attr,optional"`
 }
 
-func (h *Header) Convert() config.Header {
+func (h *ProxyHeader) Convert() config.ProxyHeader {
 	if h == nil {
 		return nil
 	}
-	header := make(config.Header)
+	header := make(config.ProxyHeader)
 	for name, values := range h.Header {
 		var s []config.Secret
 		if values != nil {

@@ -65,6 +65,7 @@ The following blocks are supported inside the definition of
 
 Hierarchy | Block | Description  | Required
 --------- | ----- | -----------  | --------
+decision_cache                                                | [decision_cache] [] | Configures amount of trace IDs to be kept in an LRU cache. | no
 policy                                                        | [policy] [] | Policies used to make a sampling decision. | yes
 policy > latency                                              | [latency] | The policy will sample based on the duration of the trace. | no
 policy > numeric_attribute                                    | [numeric_attribute] | The policy will sample based on number attributes (resource and record). | no
@@ -103,6 +104,7 @@ policy > composite > composite_sub_policy > trace_state       | [trace_state] | 
 output                                                        | [output] [] | Configures where to send received telemetry data. | yes
 debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
+[decision_cache]: #decision_cache-block
 [policy]: #policy-block
 [latency]: #latency-block
 [numeric_attribute]: #numeric_attribute-block
@@ -121,6 +123,21 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 [output]: #output-block
 [otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
 [debug_metrics]: #debug_metrics-block
+
+### decision_cache block
+
+The `decision_cache` block configures the number of trace IDs to be kept in an LRU cache, 
+persisting the "keep" decisions for traces that may have already been released from memory. 
+
+The following arguments are supported:
+
+Name                 | Type     | Description                                 | Default | Required
+---------------------|----------|---------------------------------------------|---------|---------
+`sampled_cache_size` | `number` | Amount of trace IDs to keep in the cache.   | `0`     | no
+
+When `sampled_cache_size` is set to `0`, the cache is inactive. 
+
+When using `decision_cache`, configure `sampled_cache_size` much higher than `num_traces` so that decisions for trace IDs are kept longer than the span data for the trace.
 
 ### policy block
 

@@ -91,25 +91,27 @@ func (args KafkaAWSMSKArguments) Convert() map[string]interface{} {
 // KafkaKerberosArguments configures Kerberos authentication against the Kafka
 // broker.
 type KafkaKerberosArguments struct {
-	ServiceName string            `alloy:"service_name,attr,optional"`
-	Realm       string            `alloy:"realm,attr,optional"`
-	UseKeyTab   bool              `alloy:"use_keytab,attr,optional"`
-	Username    string            `alloy:"username,attr"`
-	Password    alloytypes.Secret `alloy:"password,attr,optional"`
-	ConfigPath  string            `alloy:"config_file,attr,optional"`
-	KeyTabPath  string            `alloy:"keytab_file,attr,optional"`
+	ServiceName     string            `alloy:"service_name,attr,optional"`
+	Realm           string            `alloy:"realm,attr,optional"`
+	UseKeyTab       bool              `alloy:"use_keytab,attr,optional"`
+	Username        string            `alloy:"username,attr"`
+	Password        alloytypes.Secret `alloy:"password,attr,optional"`
+	ConfigPath      string            `alloy:"config_file,attr,optional"`
+	KeyTabPath      string            `alloy:"keytab_file,attr,optional"`
+	DisablePAFXFAST bool              `alloy:"disable_fast_negotiation,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
 func (args KafkaKerberosArguments) Convert() map[string]interface{} {
 	return map[string]interface{}{
-		"service_name": args.ServiceName,
-		"realm":        args.Realm,
-		"use_keytab":   args.UseKeyTab,
-		"username":     args.Username,
-		"password":     string(args.Password),
-		"config_file":  args.ConfigPath,
-		"keytab_file":  args.KeyTabPath,
+		"service_name":             args.ServiceName,
+		"realm":                    args.Realm,
+		"use_keytab":               args.UseKeyTab,
+		"username":                 args.Username,
+		"password":                 string(args.Password),
+		"config_file":              args.ConfigPath,
+		"keytab_file":              args.KeyTabPath,
+		"disable_fast_negotiation": args.DisablePAFXFAST,
 	}
 }
 

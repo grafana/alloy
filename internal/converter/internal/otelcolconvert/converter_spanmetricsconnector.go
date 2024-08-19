@@ -87,6 +87,11 @@ func toSpanmetricsConnector(state *State, id component.InstanceID, cfg *spanmetr
 		})
 	}
 
+	timestampCacheSize := spanmetrics.DefaultArguments.TimestampCacheSize
+	if cfg.TimestampCacheSize != nil {
+		timestampCacheSize = *cfg.TimestampCacheSize
+	}
+
 	return &spanmetrics.Arguments{
 		Dimensions:             dimensions,
 		ExcludeDimensions:      cfg.ExcludeDimensions,
@@ -100,6 +105,7 @@ func toSpanmetricsConnector(state *State, id component.InstanceID, cfg *spanmetr
 		},
 		MetricsFlushInterval:         cfg.MetricsFlushInterval,
 		MetricsExpiration:            cfg.MetricsExpiration,
+		TimestampCacheSize:           timestampCacheSize,
 		Namespace:                    cfg.Namespace,
 		ResourceMetricsCacheSize:     cfg.ResourceMetricsCacheSize,
 		ResourceMetricsKeyAttributes: cfg.ResourceMetricsKeyAttributes,

@@ -619,8 +619,8 @@ exporters:
 processors:
   spanmetrics:
     metrics_exporter: prometheus
-    latency_histogram_buckets: {}
-    dimensions: {}
+    latency_histogram_buckets: []
+    dimensions: []
     aggregation_temporality: AGGREGATION_TEMPORALITY_CUMULATIVE
     metrics_flush_interval: 15s
     dimensions_cache_size: 1000
@@ -779,7 +779,7 @@ load_balancing:
   resolver:
     dns:
       hostname: agent
-      port: 8282
+      port: "8282"
       interval: 12m
       timeout: 76s
 `,
@@ -812,7 +812,7 @@ exporters:
     resolver:
       dns:
         hostname: agent
-        port: 8282
+        port: "8282"
         interval: 12m
         timeout: 76s
 processors:
@@ -1079,7 +1079,7 @@ processors:
     scrape_configs:
       - im_a_scrape_config
     operation_type: update
-    pod_associations: {}
+    pod_associations: []
 extensions: {}
 service:
   pipelines:
@@ -1218,7 +1218,7 @@ remote_write:
         ca_file: /var/lib/mycert.pem
         cert_file: certfile
         key_file: keyfile
-        min_version: 1.3
+        min_version: "1.3"
         reload_interval: 1h
 `,
 			expectedConfig: `
@@ -1242,7 +1242,7 @@ extensions:
       ca_file: /var/lib/mycert.pem
       cert_file: certfile
       key_file: keyfile
-      min_version: 1.3
+      min_version: "1.3"
       reload_interval: 1h
       cipher_suites: []
 exporters:
@@ -1287,7 +1287,7 @@ remote_write:
         ca_pem: test_secret_ca_pem_string
         cert_pem: test_secret_cert_pem_string
         key_pem: test_secret_key_pem_string
-        max_version: 1.2
+        max_version: "1.2"
         reload_interval: 1h
 `,
 			expectedConfig: `
@@ -1311,7 +1311,7 @@ extensions:
       ca_pem: test_secret_ca_pem_string
       cert_pem: test_secret_cert_pem_string
       key_pem: test_secret_key_pem_string
-      max_version: 1.2
+      max_version: "1.2"
       reload_interval: 1h
       cipher_suites: []
 exporters:
@@ -1668,7 +1668,7 @@ load_balancing:
   resolver:
     dns:
       hostname: agent
-      port: 4318
+      port: "4318"
 service_graphs:
   enabled: true
 `,
@@ -1721,7 +1721,7 @@ load_balancing:
   resolver:
     dns:
       hostname: agent
-      port: 4318
+      port: "4318"
 `,
 			expectedProcessors: map[component.ID][]component.ID{
 				component.NewIDWithName(component.MustNewType("traces"), "0"): {

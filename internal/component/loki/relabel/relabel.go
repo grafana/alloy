@@ -2,6 +2,7 @@ package relabel
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -10,6 +11,7 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -70,10 +72,13 @@ type Component struct {
 
 	cache        *lru.Cache
 	maxCacheSize int
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
 var (
-	_ component.Component = (*Component)(nil)
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
 )
 
 // New creates a new loki.relabel component.
@@ -83,11 +88,17 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
-		opts:         o,
-		metrics:      newMetrics(o.Registerer),
-		cache:        cache,
-		maxCacheSize: args.MaxCacheSize,
+		opts:               o,
+		metrics:            newMetrics(o.Registerer),
+		cache:              cache,
+		maxCacheSize:       args.MaxCacheSize,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	// Create and immediately export the receiver which remains the same for
@@ -105,6 +116,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	componentID := livedebugging.ComponentID(c.opts.ID)
 	for {
 		select {
 		case <-ctx.Done():
@@ -112,6 +124,11 @@ func (c *Component) Run(ctx context.Context) error {
 		case entry := <-c.receiver.Chan():
 			c.metrics.entriesProcessed.Inc()
 			lbls := c.relabel(entry)
+
+			if c.debugDataPublisher.IsActive(componentID) {
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("entry: %s, labels: %s => %s", entry.Line, entry.Labels.String(), lbls.String()))
+			}
+
 			if len(lbls) == 0 {
 				level.Debug(c.opts.Logger).Log("msg", "dropping entry after relabeling", "labels", entry.Labels.String())
 				continue
@@ -228,3 +245,5 @@ func (c *Component) process(e loki.Entry) model.LabelSet {
 	}
 	return relabeled
 }
+
+func (c *Component) LiveDebugging(_ int) {}

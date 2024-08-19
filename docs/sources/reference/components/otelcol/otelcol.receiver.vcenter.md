@@ -34,7 +34,6 @@ This receiver has been built to support ESXi and vCenter versions:
 
 - 8
 - 7.0
-- 6.7
 
 A “Read Only” user assigned to a vSphere with permissions to the vCenter server, cluster and all subsequent resources being monitored must be specified in order for the receiver to retrieve information about them.
 
@@ -105,8 +104,17 @@ Name | Type | Description | Default | Required
 `vcenter.cluster.memory.limit` | [metric][] | Enables the `vcenter.cluster.memory.limit` metric. | `true` | no
 `vcenter.cluster.vm.count` | [metric][] | Enables the `vcenter.cluster.vm.count` metric. | `true` | no
 `vcenter.cluster.vm_template.count` | [metric][] | Enables the `vcenter.cluster.vm_template.count` metric. | `true` | no
+`vcenter.datacenter.cluster.count` | [metric][] | Enables the `vcenter.datacenter.cluster.count` metric. | `false` | no
+`vcenter.datacenter.cpu.limit` | [metric][] | Enables the `vcenter.datacenter.cpu.limit` metric. | `false` | no
+`vcenter.datacenter.datastore.count` | [metric][] | Enables the `vcenter.datacenter.datastore.count` metric. | `false` | no
+`vcenter.datacenter.disk.space` | [metric][] | Enables the `vcenter.datacenter.disk.space` metric. | `false` | no
+`vcenter.datacenter.host.count` | [metric][] | Enables the `vcenter.datacenter.host.count` metric. | `false` | no
+`vcenter.datacenter.memory.limit` | [metric][] | Enables the `vcenter.datacenter.memory.limit` metric. | `false` | no
+`vcenter.datacenter.vm.count` | [metric][] | Enables the `vcenter.datacenter.vm.count` metric. | `false` | no
 `vcenter.datastore.disk.usage` | [metric][] | Enables the `vcenter.datastore.disk.usage` metric. | `true` | no
 `vcenter.datastore.disk.utilization` | [metric][] | Enables the `vcenter.datastore.disk.utilization` metric. | `true` | no
+`vcenter.host.cpu.capacity` | [metric][] | Enables the `vcenter.host.cpu.capacity` metric. | `true` | no
+`vcenter.host.cpu.reserved` | [metric][] | Enables the `vcenter.host.cpu.reserved` metric. | `true` | no
 `vcenter.host.cpu.usage` | [metric][] | Enables the `vcenter.host.cpu.usage` metric. | `true` | no
 `vcenter.host.cpu.utilization` | [metric][] | Enables the `vcenter.host.cpu.utilization` metric. | `true` | no
 `vcenter.host.disk.latency.avg` | [metric][] | Enables the `vcenter.host.disk.latency.avg` metric. | `true` | no
@@ -116,12 +124,17 @@ Name | Type | Description | Default | Required
 `vcenter.host.memory.utilization` | [metric][] | Enables the `vcenter.host.memory.utilization` metric. | `true` | no
 `vcenter.host.network.packet.rate` | [metric][] | Enables the `vcenter.host.network.packet.rate` metric. | `true` | no
 `vcenter.host.network.packet.error.rate` | [metric][] | Enables the `vcenter.host.network.packet.error.rate` metric. | `true` | no
+`vcenter.host.network.packet.drop.rate` | [metric][] | Enables the `vcenter.host.network.packet.drop.rate` metric. | `true` | no
 `vcenter.host.network.throughput` | [metric][] | Enables the `vcenter.host.network.throughput` metric. | `true` | no
 `vcenter.host.network.usage` | [metric][] | Enables the `vcenter.host.network.usage` metric. | `true` | no
 `vcenter.resource_pool.cpu.shares` | [metric][] | Enables the `vcenter.resource_pool.cpu.shares` metric. | `true` | no
 `vcenter.resource_pool.cpu.usage` | [metric][] | Enables the `vcenter.resource_pool.cpu.usage` metric. | `true` | no
+`vcenter.resource_pool.memory.ballooned` | [metric][] | Enables the `vcenter.resource_pool.memory.ballooned` metric. | `false` | no
+`vcenter.resource_pool.memory.granted` | [metric][] | Enables the `vcenter.resource_pool.memory.granted` metric. | `false` | no
 `vcenter.resource_pool.memory.shares` | [metric][] | Enables the `vcenter.resource_pool.memory.shares` metric. | `true` | no
+`vcenter.resource_pool.memory.swapped` | [metric][] | Enables the `vcenter.resource_pool.memory.swapped` metric. | `false` | no
 `vcenter.resource_pool.memory.usage` | [metric][] | Enables the `vcenter.resource_pool.memory.usage` metric. | `true` | no
+`vcenter.vm.cpu.readiness` | [metric][] | Enables the `vcenter.vm.cpu.readiness` metric. | `true` | no
 `vcenter.vm.cpu.usage` | [metric][] | Enables the `vcenter.vm.cpu.usage` metric. | `true` | no
 `vcenter.vm.cpu.utilization` | [metric][] | Enables the `vcenter.vm.cpu.utilization` metric. | `true` | no
 `vcenter.vm.disk.latency.avg` | [metric][] | Enables the `vcenter.vm.disk.latency.avg` metric. | `true` | no

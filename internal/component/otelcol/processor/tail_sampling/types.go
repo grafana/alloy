@@ -418,3 +418,17 @@ func mustDecodeMapStructure(source map[string]interface{}, otelConfig interface{
 		panic(err)
 	}
 }
+
+type DecisionCacheConfig struct {
+	// SampledCacheSize specifies the size of the cache that holds the sampled trace IDs
+	// This value will be the maximum amount of trace IDs that the cache can hold before overwriting previous IDs.
+	// For effective use, this value should be at least an order of magnitude higher than Arguments.NumTraces.
+	// If left as default 0, a no-op DecisionCache will be used.
+	SampledCacheSize int `alloy:"sampled_cache_size,attr,optional"`
+}
+
+func (decisionCacheConfig DecisionCacheConfig) Convert() tsp.DecisionCacheConfig {
+	return tsp.DecisionCacheConfig{
+		SampledCacheSize: decisionCacheConfig.SampledCacheSize,
+	}
+}

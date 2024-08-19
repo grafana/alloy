@@ -94,13 +94,15 @@ func TestStaticDiscovery(t *testing.T) {
 	})
 	t.Run("nothing found", func(t *testing.T) {
 		logger := log.NewLogfmtLogger(os.Stdout)
-		sd := newStaticDiscovery([]string{"this | wont | work", "and/this/won't/either"}, 12345, logger)
+		sd := newStaticDiscovery([]string{"this | wont | work"}, 12345, logger)
 		actual, err := sd()
 		require.Nil(t, actual)
 		require.ErrorContains(t, err, "failed to find any valid join addresses")
-		require.ErrorContains(t, err, "this | wont | work: missing port in address")
-		require.ErrorContains(t, err, "lookup this | wont | work: no such host")
-		require.ErrorContains(t, err, "and/this/won't/either: missing port in address")
-		require.ErrorContains(t, err, "lookup and/this/won't/either: no such host")
+		// We can only check the error messages in Alloy's code.
+		// We cannot check for error messages from other Go libraries,
+		// because they may differ based on operating system and
+		// on env var settings such as GODEBUG=netdns.
+		require.ErrorContains(t, err, "failed to extract host and port")
+		require.ErrorContains(t, err, "failed to resolve SRV records")
 	})
 }

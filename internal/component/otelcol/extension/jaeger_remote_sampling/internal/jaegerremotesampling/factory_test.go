@@ -21,7 +21,7 @@ func TestCreateDefaultConfig(t *testing.T) {
 		HTTPServerConfig: &confighttp.ServerConfig{Endpoint: ":5778"},
 		GRPCServerConfig: &configgrpc.ServerConfig{NetAddr: confignet.AddrConfig{
 			Endpoint:  ":14250",
-			Transport: "tcp",
+			Transport: confignet.TransportTypeTCP,
 		}},
 	}
 

@@ -148,11 +148,12 @@ If the `thrift_http` block isn't specified, an HTTP server isn't started.
 
 The following arguments are supported:
 
-Name                    | Type      | Description                                                     | Default           | Required
-------------------------|-----------|-----------------------------------------------------------------|-------------------|---------
-`endpoint`              | `string`  | `host:port` to listen for traffic on.                           | `"0.0.0.0:14268"` | no
-`max_request_body_size` | `string`  | Maximum request body size the server will allow.                | `20MiB`           | no
-`include_metadata`      | `boolean` | Propagate incoming connection metadata to downstream consumers. |                   | no
+Name                     | Type      | Description                                                     | Default           | Required
+-------------------------|-----------|-----------------------------------------------------------------|-------------------|---------
+`endpoint`               | `string`  | `host:port` to listen for traffic on.                           | `"0.0.0.0:14268"` | no
+`max_request_body_size`  | `string`  | Maximum request body size the server will allow.                | `20MiB`           | no
+`include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers. |                   | no
+`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate"]` | no
 
 ### cors block
 

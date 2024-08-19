@@ -19,7 +19,6 @@ This is how to publish the release in GitHub.
     Do not substitute the value for `CHANGELOG`.
 
 4. At the bottom of the release page, perform the following:
-    - Tick the check box to "add a discussion" under the category for "announcements".
     - For a Release Candidate, tick the checkbox to "pre-release".
     - For a Stable Release or Patch Release, tick the checkbox to "set as the latest release".
 

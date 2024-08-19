@@ -78,7 +78,7 @@ func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.I
 	return nil
 }
 
-// DebugMetricsConfig implements receiver.Arguments.
+// DebugMetricsConfig implements exporter.Arguments.
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
 }

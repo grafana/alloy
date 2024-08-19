@@ -8,24 +8,24 @@ weight: 200
 
 # Supported platforms
 
-The following operating systems and hardware architecture are supported:
+The following operating systems and hardware architecture are supported.
 
-* Linux
+## Linux
 
-  * Minimum version: kernel 2.6.32 or later
-  * Architectures: AMD64, ARM64
+* Minimum version: kernel 2.6.32 or later
+* Architectures: AMD64, ARM64
 
-* Windows
+## Windows
 
-  * Minimum version: Windows Server 2016 or later, or Windows 10 or later.
-  * Architectures: AMD64
+* Minimum version: Windows Server 2016 or later, or Windows 10 or later.
+* Architectures: AMD64
 
-* macOS
+## macOS
 
-  * Minimum version: macOS 10.13 or later
-  * Architectures: AMD64 (Intel), ARM64 (Apple Silicon)
+* Minimum version: macOS 10.13 or later
+* Architectures: AMD64 (Intel), ARM64 (Apple Silicon)
 
-* FreeBSD
+## FreeBSD
 
-  * Minimum version: FreeBSD 10 or later
-  * Architectures: AMD64
+* Minimum version: FreeBSD 10 or later
+* Architectures: AMD64

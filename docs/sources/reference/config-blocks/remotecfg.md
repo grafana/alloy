@@ -42,13 +42,22 @@ Name             | Type                 | Description                           
 `id`             | `string`             | A self-reported ID.                               | `see below` | no
 `attributes`     | `map(string)`        | A set of self-reported attributes.                | `{}`        | no
 `poll_frequency` | `duration`           | How often to poll the API for new configuration.  | `"1m"`      | no
+`name`           | `string`             | A human-readable name for the collector.          | `""`        | no
 
 If the `url` is not set, then the service block is a no-op.
 
-If not set, the self-reported `id` that {{< param "PRODUCT_NAME" >}} uses is a randomly generated, anonymous unique ID (UUID) that is stored as an `alloy_seed.json` file in {{< param "PRODUCT_NAME" >}}'s storage path so that it can persist across restarts.
+If not set, the self-reported `id` that {{< param "PRODUCT_NAME" >}} uses is a randomly generated, anonymous unique ID (UUID) that is stored as an `alloy_seed.json` file in the {{< param "PRODUCT_NAME" >}} storage path so that it can persist across restarts.
+You can use the `name` field to set another human-friendly identifier for the specific {{< param "PRODUCT_NAME" >}} instance.
 
 The `id` and `attributes` fields are used in the periodic request sent to the
 remote endpoint so that the API can decide what configuration to serve.
+
+The `attribute` map keys can include any custom value except the reserved prefix `collector.`.
+The reserved label prefix is for automatic system attributes.
+You can't override this prefix.
+
+* `collector.os`: The operating system where {{< param "PRODUCT_NAME" >}} is running.
+* `collector.version`: The version of {{< param "PRODUCT_NAME" >}}.
 
 The `poll_frequency` must be set to at least `"10s"`.
 

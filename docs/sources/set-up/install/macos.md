@@ -10,7 +10,7 @@ weight: 400
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} on macOS
 
-You can install {{< param "PRODUCT_NAME" >}} on macOS with Homebrew .
+You can install {{< param "PRODUCT_NAME" >}} on macOS with Homebrew.
 
 {{< admonition type="note" >}}
 The default prefix for Homebrew on Intel is `/usr/local`.

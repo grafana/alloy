@@ -18,8 +18,9 @@ The component exposes metrics that can be collected by a Prometheus scrape compo
 
 {{< admonition type="note" >}}
 To run this component, {{< param "PRODUCT_NAME" >}} requires administrative (`sudo`) privileges, or at least it needs to be granted the `CAP_SYS_ADMIN` and `CAP_SYS_PTRACE` capability.
-In Kubernetes environments, app armour must be disabled for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
+In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
+
 
 ## Usage
 
@@ -37,26 +38,32 @@ Name              | Type     | Description                                      
 ------------------|----------|-------------------------------------------------------------------------------------|---------|---------
 `open_port`       | `string` | The port of the running service for Beyla automatically instrumented with eBPF.     | `""`    | no
 `executable_name` | `string` | The name of the executable to match for Beyla automatically instrumented with eBPF. | `""`    | no
+`debug`           | `bool`   | Enable debug mode for Beyla.                                                        | `false` | no
 
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it is considered to match the selection criteria.
 
 `executable_name` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
+`debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.
+
 ## Blocks
 
 The following blocks are supported inside the definition of `beyla.ebpf`:
 
-Hierarchy               | Block          | Description                                                                                        | Required
-------------------------|----------------|----------------------------------------------------------------------------------------------------|---------
-routes                  | [routes][]     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
-attributes              | [attributes][] | Configures the Beyla attributes for the component.                                                 | no
-attributes > kubernetes | [kubernetes][] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
-discovery               | [discovery][]  | Configures the discovery for instrumentable processes matching a given criteria.                   | no
-discovery > services    | [services][]   | Configures the discovery for the component.                                                        | no
-discovery > services > kubernetes    | [kubernetes services][]   | Configures the discovery for the component.                                | no
-
-output                  | [output][]     | Configures where to send received telemetry data.                                                  | yes
+Hierarchy               | Block                     | Description                                                                                        | Required
+------------------------|---------------------------|----------------------------------------------------------------------------------------------------|---------
+routes                  | [routes][]                | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
+attributes              | [attributes][]            | Configures the Beyla attributes for the component.                                                 | no
+attributes > kubernetes | [kubernetes attributes][] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
+discovery               | [discovery][]             | Configures the discovery for instrumentable processes matching a given criteria.                   | no
+discovery > services    | [services][]              | Configures the services to discover for the component.                                                        | no
+discovery > services > kubernetes    | [kubernetes services][]   | Configures the Kubernetes services to discover for the component.                                | no
+discovery > exclude_services    | [services][]              | Configures the services to exclude for the component.                                                        | no
+discovery > exclude_services > kubernetes    | [kubernetes services][]   | Configures the Kubernetes services to exclude for the component.                                | no
+metrics                 | [metrics][]               | Configures which metrics Beyla exposes.                                                           | no
+metrics > network       | [network][]    | Configures network metrics options for Beyla.                                                      |no 
+output                  | [output][]                | Configures where to send received telemetry data.                                                  | yes
 
 The `>` symbol indicates deeper levels of nesting.
 For example,`attributes > kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
@@ -72,6 +79,7 @@ It contains the following blocks:
 Name     | Type     | Description                                | Default | Required
 ---------|----------|--------------------------------------------|---------|---------
 `enable` | `string` | Enable the Kubernetes metadata decoration. | `false` | no
+`cluster_name` | `string` | The name of the Kubernetes cluster. | `""` | no
 
 If set to `true`, Beyla will decorate the metrics and traces with Kubernetes metadata. The following labels will be added:
 
@@ -89,6 +97,8 @@ If set to `false`, the Kubernetes metadata decorator will be disabled.
 
 If set to `autodetect`, Beyla will try to automatically detect if it is running inside Kubernetes, and enable the metadata decoration if that's the case.
 
+If `cluster_name` is not set, Beyla tries to detect the cluster name from the Kubernetes API.
+
 ### routes block
 
 This block is used to configure the routes to match HTTP paths into user-provided HTTP routes.
@@ -98,7 +108,7 @@ Name              | Type           | Description                                
 `patterns`        | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property          | `[]`    | no
 `ignore_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.     | `[]`    | no
 `ignore_mode`     | `string`       | The mode to use when ignoring patterns.                                                   | `""`    | no
-`unmatched`       | `string`       | Specifies what to do when a trace HTTP path does not match any of the `patterns` entries. | `""`    | no
+`unmatched`       | `string`       | Specifies what to do when a trace HTTP path does not match any of the `patterns` entries. | `"heuristic"`    | no
 
 `patterns` and `ignored_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
 The matcher tags can be in the `:name` or `{name}` format.
@@ -156,6 +166,40 @@ Name               | Type           | Description                               
 `owner_name`       | `string`       | Regular expression of Kubernetes owners of running Pods to match.                                           | `""`    | no
 `pod_labels`       | `map(string)`  | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression. |  `{}`   | no
 
+### metrics block
+
+This block configures which metrics Beyla collects.
+
+Name              | Type           | Description                                                    | Default           | Required
+------------------|----------------|----------------------------------------------------------------|-------------------|---------
+`features`        | `list(string)` | List of features to enable for the metrics.         | `["application"]` | no
+`instrumentations`| `list(string)` | List of instrumentations to enable for the metrics. | `["*"]`           | no
+
+`features` is a list of features to enable for the metrics. The following features are available:
+
+- `application` exports application-level metrics.
+- `application_span`exports application-level metrics in traces span metrics format.
+- `application_service_graph` exports application-level service graph metrics.
+- `application_process` exports metrics about the processes that run the instrumented application.
+- `network` exports network-level metrics.
+
+`instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
+
+- `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+- `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
+- `grpc` enables the collection of gRPC application metrics.
+- `sql` enables the collection of SQL database client call metrics.
+- `redis` enables the collection of Redis client/server database metrics.
+- `kafka` enables the collection of Kafka client/server message queue metrics.
+
+### network block
+
+This block configures network metrics options for Beyla.
+
+Name              | Type           | Description                                             | Default | Required
+------------------|----------------|---------------------------------------------------------|---------|---------
+`enabled`         | `bool`         | Enable network metrics collection.                      | `false` | no
+
 
 ### output block
 
@@ -204,6 +248,7 @@ beyla.ebpf "default" {
 
 prometheus.scrape "beyla" {
   targets = beyla.ebpf.default.targets
+  honor_labels = true // required to keep job and instance labels
   forward_to = [prometheus.remote_write.demo.receiver]
 }
 
@@ -260,9 +305,12 @@ Replace the following:
 [eBPF]: https://ebpf.io/
 [routes]: #routes-block
 [attributes]: #attributes-block
-[kubernetes]: #kubernetes-block
+[kubernetes attributes]: #kubernetes-attributes-block
+[kubernetes services]: #kubernetes-services-block
 [discovery]: #discovery-block
 [services]: #services-block
+[metrics]: #metrics-block
+[network]: #network-block
 [output]: #output-block
 [in-memory traffic]: ../../../../get-started/component_controller#in-memory-traffic
 [run command]: ../../../cli/run/

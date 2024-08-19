@@ -216,8 +216,9 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 	}
 
 	ticker := time.NewTicker(MaxUpdateFrequency)
-	// true if we have received new targets and need to send.
-	haveUpdates := false
+	// true if we have received new targets and need to send. Initially set it to true to send empty targets in case
+	// the discoverer never sends any targets.
+	haveUpdates := true
 	for {
 		select {
 		case <-ticker.C:

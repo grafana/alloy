@@ -5,7 +5,6 @@ import (
 
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
-	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/service"
 )
 
@@ -70,7 +69,7 @@ func serviceConsumersForGraph(graph *dag.Graph, serviceName string, includePeerS
 // NewController returns a new, unstarted, isolated Alloy controller so that
 // services can instantiate their own components.
 func (f *Runtime) NewController(id string) service.Controller {
-	return serviceController{
+	return ServiceController{
 		f: newController(controllerOptions{
 			Options: Options{
 				ControllerID:    id,
@@ -84,21 +83,23 @@ func (f *Runtime) NewController(id string) service.Controller {
 			},
 			IsModule:       true,
 			ModuleRegistry: newModuleRegistry(),
-			WorkerPool:     worker.NewDefaultWorkerPool(),
+			WorkerPool:     f.opts.WorkerPool, // NOTE(@tpaschalis) Reuse the worker pool since the worker cleanup is triggered from the root controller.
 		}),
 	}
 }
 
-type serviceController struct {
+type ServiceController struct {
 	f *Runtime
 }
 
-func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
-func (sc serviceController) LoadSource(b []byte, args map[string]any) error {
+func (sc ServiceController) Run(ctx context.Context) { sc.f.Run(ctx) }
+func (sc ServiceController) LoadSource(b []byte, args map[string]any) error {
 	source, err := ParseSource("", b)
 	if err != nil {
 		return err
 	}
 	return sc.f.LoadSource(source, args)
 }
-func (sc serviceController) Ready() bool { return sc.f.Ready() }
+func (sc ServiceController) Ready() bool { return sc.f.Ready() }
+
+func (sc ServiceController) GetHost() service.Host { return sc.f }

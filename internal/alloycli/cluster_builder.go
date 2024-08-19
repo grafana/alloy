@@ -18,6 +18,7 @@ import (
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/cluster/discovery"
 )
 
 type clusterOptions struct {
@@ -36,6 +37,7 @@ type clusterOptions struct {
 	ClusterMaxJoinPeers       int
 	ClusterName               string
 	EnableStateUpdatesLimiter bool
+	EnableDiscoveryV2         bool
 }
 
 func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
@@ -68,24 +70,39 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		return nil, err
 	}
 
-	switch {
-	case len(opts.JoinPeers) > 0 && opts.DiscoverPeers != "":
-		return nil, fmt.Errorf("at most one of join peers and discover peers may be set")
-
-	case len(opts.JoinPeers) > 0:
-		config.DiscoverPeers = newStaticDiscovery(opts.JoinPeers, listenPort, opts.Log)
-
-	case opts.DiscoverPeers != "":
-		discoverFunc, err := newDynamicDiscovery(config.Log, opts.DiscoverPeers, listenPort)
+	// New, refactored and improved peer discovery.
+	// TODO(alloy/#1274): Remove the old peer discovery code once this becomes default.
+	if opts.EnableDiscoveryV2 {
+		config.DiscoverPeers, err = discovery.NewPeerDiscoveryFn(discovery.Options{
+			JoinPeers:     opts.JoinPeers,
+			DiscoverPeers: opts.DiscoverPeers,
+			DefaultPort:   listenPort,
+			Logger:        opts.Log,
+			Tracer:        opts.Tracer,
+		})
 		if err != nil {
 			return nil, err
 		}
-		config.DiscoverPeers = discoverFunc
+	} else {
+		switch {
+		case len(opts.JoinPeers) > 0 && opts.DiscoverPeers != "":
+			return nil, fmt.Errorf("at most one of join peers and discover peers may be set")
 
-	default:
-		// Here, both JoinPeers and DiscoverPeers are empty. This is desirable when
-		// starting a seed node that other nodes connect to, so we don't require
-		// one of the fields to be set.
+		case len(opts.JoinPeers) > 0:
+			config.DiscoverPeers = newStaticDiscovery(opts.JoinPeers, listenPort, opts.Log)
+
+		case opts.DiscoverPeers != "":
+			discoverFunc, err := newDynamicDiscovery(config.Log, opts.DiscoverPeers, listenPort)
+			if err != nil {
+				return nil, err
+			}
+			config.DiscoverPeers = discoverFunc
+
+		default:
+			// Here, both JoinPeers and DiscoverPeers are empty. This is desirable when
+			// starting a seed node that other nodes connect to, so we don't require
+			// one of the fields to be set.
+		}
 	}
 
 	return cluster.New(config)
@@ -141,7 +158,7 @@ func appendDefaultPort(addr string, port int) string {
 
 type discoverFunc func() ([]string, error)
 
-func newStaticDiscovery(providedAddr []string, defaultPort int, log log.Logger) discoverFunc {
+func newStaticDiscovery(providedAddr []string, defaultPort int, log log.Logger) discovery.DiscoverFn {
 	return func() ([]string, error) {
 		addresses, err := buildJoinAddresses(providedAddr, log)
 		if err != nil {
@@ -170,7 +187,8 @@ func buildJoinAddresses(providedAddr []string, log log.Logger) ([]string, error)
 		// If it's a host:port, use it as is.
 		_, _, err := net.SplitHostPort(addr)
 		if err != nil {
-			deferredErr = errors.Join(deferredErr, err)
+			wrappedErr := fmt.Errorf("failed to extract host and port: %w", err)
+			deferredErr = errors.Join(deferredErr, wrappedErr)
 		} else {
 			level.Debug(log).Log("msg", "found a host:port cluster join address", "addr", addr)
 			result = append(result, addr)
@@ -189,7 +207,8 @@ func buildJoinAddresses(providedAddr []string, log log.Logger) ([]string, error)
 		_, srvs, err := net.LookupSRV("", "", addr)
 		if err != nil {
 			level.Warn(log).Log("msg", "failed to resolve SRV records", "addr", addr, "err", err)
-			deferredErr = errors.Join(deferredErr, err)
+			wrappedErr := fmt.Errorf("failed to resolve SRV records: %w", err)
+			deferredErr = errors.Join(deferredErr, wrappedErr)
 		} else {
 			level.Debug(log).Log("msg", "found cluster join addresses via SRV records", "addr", addr, "count", len(srvs))
 			for _, srv := range srvs {
@@ -203,7 +222,7 @@ func buildJoinAddresses(providedAddr []string, log log.Logger) ([]string, error)
 	return result, nil
 }
 
-func newDynamicDiscovery(l log.Logger, config string, defaultPort int) (discoverFunc, error) {
+func newDynamicDiscovery(l log.Logger, config string, defaultPort int) (discovery.DiscoverFn, error) {
 	providers := make(map[string]discover.Provider, len(discover.Providers)+1)
 	for k, v := range discover.Providers {
 		providers[k] = v

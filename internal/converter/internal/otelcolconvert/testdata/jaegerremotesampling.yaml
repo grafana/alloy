@@ -13,7 +13,7 @@ extensions:
         # Our defaults have drifted from upstream so we explicitly set our
         # defaults below for the remote block that is used as GRPC client
         # arguments (balancer_name, compression, write_buffer_size).
-        balancer_name: pick_first
+        balancer_name: round_robin
         compression: "gzip"
         write_buffer_size: 524288 # 512 * 1024
 

@@ -20,9 +20,12 @@ type Arguments struct {
 	MSSQL         MSSQLConfig         `alloy:"mssql,block,optional"`
 	Network       NetworkConfig       `alloy:"network,block,optional"`
 	PhysicalDisk  PhysicalDiskConfig  `alloy:"physical_disk,block,optional"`
+	Printer       PrinterConfig       `alloy:"printer,block,optional"`
 	Process       ProcessConfig       `alloy:"process,block,optional"`
 	ScheduledTask ScheduledTaskConfig `alloy:"scheduled_task,block,optional"`
 	Service       ServiceConfig       `alloy:"service,block,optional"`
+	SMB           SMBConfig           `alloy:"smb,block,optional"`
+	SMBClient     SMBClientConfig     `alloy:"smb_client,block,optional"`
 	SMTP          SMTPConfig          `alloy:"smtp,block,optional"`
 	TextFile      TextFileConfig      `alloy:"text_file,block,optional"`
 }
@@ -40,8 +43,11 @@ func (a *Arguments) Convert() *windows_integration.Config {
 		Network:           a.Network.Convert(),
 		Process:           a.Process.Convert(),
 		PhysicalDisk:      a.PhysicalDisk.Convert(),
+		Printer:           a.Printer.Convert(),
 		ScheduledTask:     a.ScheduledTask.Convert(),
 		Service:           a.Service.Convert(),
+		SMB:               a.SMB.Convert(),
+		SMBClient:         a.SMBClient.Convert(),
 		SMTP:              a.SMTP.Convert(),
 		TextFile:          a.TextFile.Convert(),
 	}
@@ -131,6 +137,7 @@ func (t SMTPConfig) Convert() windows_integration.SMTPConfig {
 type ServiceConfig struct {
 	UseApi string `alloy:"use_api,attr,optional"`
 	Where  string `alloy:"where_clause,attr,optional"`
+	V2     string `alloy:"enable_v2_collector,attr,optional"`
 }
 
 // Convert converts the component's ServiceConfig to the integration's ServiceConfig.
@@ -138,6 +145,7 @@ func (t ServiceConfig) Convert() windows_integration.ServiceConfig {
 	return windows_integration.ServiceConfig{
 		UseApi: t.UseApi,
 		Where:  t.Where,
+		V2:     t.V2,
 	}
 }
 
@@ -244,5 +252,43 @@ func (t PhysicalDiskConfig) Convert() windows_integration.PhysicalDiskConfig {
 	return windows_integration.PhysicalDiskConfig{
 		Include: t.Include,
 		Exclude: t.Exclude,
+	}
+}
+
+// PrinterConfig handles settings for the windows_exporter printer collector
+type PrinterConfig struct {
+	Exclude string `alloy:"exclude,attr,optional"`
+	Include string `alloy:"include,attr,optional"`
+}
+
+// Convert converts the component's ProcessConfig to the integration's ProcessConfig.
+func (t PrinterConfig) Convert() windows_integration.PrinterConfig {
+	return windows_integration.PrinterConfig{
+		Exclude: t.Exclude,
+		Include: t.Include,
+	}
+}
+
+// SMBConfig handles settings for the windows_exporter smb collector
+type SMBConfig struct {
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+}
+
+// Convert converts the component's ExchangeConfig to the integration's ExchangeConfig.
+func (t SMBConfig) Convert() windows_integration.SMBConfig {
+	return windows_integration.SMBConfig{
+		EnabledList: strings.Join(t.EnabledList, ","),
+	}
+}
+
+// SMBClientConfig handles settings for the windows_exporter smb client collector
+type SMBClientConfig struct {
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+}
+
+// Convert converts the component's ExchangeConfig to the integration's ExchangeConfig.
+func (t SMBClientConfig) Convert() windows_integration.SMBClientConfig {
+	return windows_integration.SMBClientConfig{
+		EnabledList: strings.Join(t.EnabledList, ","),
 	}
 }

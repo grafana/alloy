@@ -54,9 +54,12 @@ logical_disk   | [logical_disk][]   | Configures the logical_disk collector.   |
 msmq           | [msmq][]           | Configures the msmq collector.           | no
 mssql          | [mssql][]          | Configures the mssql collector.          | no
 network        | [network][]        | Configures the network collector.        | no
+printer        | [printer][]        | Configures the printer collector.        | no
 process        | [process][]        | Configures the process collector.        | no
 scheduled_task | [scheduled_task][] | Configures the scheduled_task collector. | no
 service        | [service][]        | Configures the service collector.        | no
+smb            | [smb][]            | Configures the smb collector.            | no
+smb_client     | [smb_client][]     | Configures the smb_client collector.     | no
 smtp           | [smtp][]           | Configures the smtp collector.           | no
 text_file      | [text_file][]      | Configures the text_file collector.      | no
 
@@ -67,9 +70,12 @@ text_file      | [text_file][]      | Configures the text_file collector.      |
 [msmq]: #msmq-block
 [mssql]: #mssql-block
 [network]: #network-block
+[printer]: #printer-block
 [process]: #process-block
 [scheduled_task]: #scheduledtask-block
 [service]: #service-block
+[smb]: #smb-block
+[smb_client]: #smbclient-block
 [smtp]: #smtp-block
 [text_file]: #textfile-block
 
@@ -147,6 +153,16 @@ Name      | Type     | Description                             | Default | Requi
 NIC names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
 
+### printer block
+
+Name      | Type     | Description                               | Default | Required
+----------|----------|-------------------------------------------|---------|---------
+`exclude` | `string` | Regular expression of printer to exclude. | `""`    | no
+`include` | `string` | Regular expression of printer to include. | `".*"`  | no
+
+Printer must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
+
+
 ### process block
 
 Name      | Type     | Description                                 | Default | Required
@@ -169,13 +185,40 @@ For a server name to be included, it must match the regular expression specified
 
 ### service block
 
-Name           | Type     | Description                                           | Default | Required
----------------|----------|-------------------------------------------------------|---------|---------
-`use_api`      | `string` | Use API calls to collect service data instead of WMI. | `false` | no
-`where_clause` | `string` | WQL 'where' clause to use in WMI metrics query.       | `""`    | no
+Name                  | Type     | Description                                           | Default | Required
+----------------------|----------|-------------------------------------------------------|---------|---------
+`enable_v2_collector` | `string` | Enable V2 service collector.                          | `""`    | no
+`use_api`             | `string` | Use API calls to collect service data instead of WMI. | `false` | no
+`where_clause`        | `string` | WQL 'where' clause to use in WMI metrics query.       | `""`    | no
 
 The `where_clause` argument can be used to limit the response to the services you specify, reducing the size of the response.
 If `use_api` is enabled, 'where_clause' won't be effective.
+
+The v2 collector can query service states much more efficiently, but can't provide general service information.
+
+### smb block
+
+Name           | Type     | Description                                | Default | Required
+---------------|----------|--------------------------------------------|---------|---------
+`enabled_list` | `string` | Comma-separated list of collectors to use. | `""`    | no
+
+The collectors specified by `enabled_list` can include the following:
+
+- `ServerShares`
+
+For example, `enabled_list` may be set to `"ServerShares"`.
+
+### smb_client block
+
+Name           | Type     | Description                                | Default | Required
+---------------|----------|--------------------------------------------|---------|---------
+`enabled_list` | `string` | Comma-separated list of collectors to use. | `""`    | no
+
+The collectors specified by `enabled_list` can include the following:
+
+- `ClientShares`
+
+For example, `enabled_list` may be set to `"ClientShares"`.
 
 
 ### smtp block
@@ -266,10 +309,13 @@ Name     | Description | Enabled by default
 [net](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.net.md) | Network interface I/O | &#10003;
 [os](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.os.md) | OS metrics (memory, processes, users) | &#10003;
 [physical_disk](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.physical_disk.md) | Physical disks | &#10003;
+[printer](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.printer.md) | Printer metrics |
 [process](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.process.md) | Per-process metrics |
 [remote_fx](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.remote_fx.md) | RemoteFX protocol (RDP) metrics |
 [scheduled_task](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.scheduled_task.md) | Scheduled Tasks metrics |
 [service](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.service.md) | Service state metrics | &#10003;
+[smb](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.smb.md) | IIS SMTP Server |
+[smb_client](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.smb_client.md) | IIS SMTP Server |
 [smtp](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.smtp.md) | IIS SMTP Server |
 [system](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.system.md) | System calls | &#10003;
 [tcp](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.tcp.md) | TCP connections |

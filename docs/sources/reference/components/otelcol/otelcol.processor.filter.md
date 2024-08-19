@@ -231,8 +231,8 @@ otelcol.processor.filter "default" {
 
   metrics {
     metric = [
-       "name == \"my.metric\" and resource.attributes[\"my_label\"] == \"abc123\""
-       "type == METRIC_DATA_TYPE_HISTOGRAM"
+       "name == \"my.metric\" and resource.attributes[\"my_label\"] == \"abc123\"",
+       "type == METRIC_DATA_TYPE_HISTOGRAM",
     ]
   }
 

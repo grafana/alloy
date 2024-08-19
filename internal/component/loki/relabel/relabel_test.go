@@ -19,6 +19,7 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
@@ -55,9 +56,10 @@ func TestRelabeling(t *testing.T) {
 
 	// Create and run the component, so that it relabels and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
 	}
 	args := Arguments{
 		ForwardTo:      []loki.LogsReceiver{ch1, ch2},
@@ -116,9 +118,10 @@ func BenchmarkRelabelComponent(b *testing.B) {
 
 	// Create and run the component, so that it relabels and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(b),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
+		Logger:         util.TestAlloyLogger(b),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
 	}
 	args := Arguments{
 		ForwardTo:      []loki.LogsReceiver{ch1},
@@ -164,9 +167,10 @@ func TestCache(t *testing.T) {
 
 	// Create and run the component, so that it relabels and forwards logs.
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
+		Logger:         util.TestAlloyLogger(t),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1},
@@ -432,5 +436,14 @@ func getEntry() loki.Entry {
 			Timestamp: time.Now(),
 			Line:      "very important log",
 		},
+	}
+}
+
+func getServiceData(name string) (interface{}, error) {
+	switch name {
+	case livedebugging.ServiceName:
+		return livedebugging.NewLiveDebugging(), nil
+	default:
+		return nil, fmt.Errorf("service not found %s", name)
 	}
 }

@@ -31,7 +31,9 @@ func init() {
 type Arguments struct {
 	SamplingPercentage float32 `alloy:"sampling_percentage,attr,optional"`
 	HashSeed           uint32  `alloy:"hash_seed,attr,optional"`
+	Mode               string  `alloy:"mode,attr,optional"`
 	FailClosed         bool    `alloy:"fail_closed,attr,optional"`
+	SamplingPrecision  int     `alloy:"sampling_precision,attr,optional"`
 	AttributeSource    string  `alloy:"attribute_source,attr,optional"`
 	FromAttribute      string  `alloy:"from_attribute,attr,optional"`
 	SamplingPriority   string  `alloy:"sampling_priority,attr,optional"`
@@ -51,8 +53,9 @@ var (
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
-	FailClosed:      true,
-	AttributeSource: "traceID",
+	FailClosed:        true,
+	AttributeSource:   "traceID",
+	SamplingPrecision: 4,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -76,7 +79,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &probabilisticsamplerprocessor.Config{
 		SamplingPercentage: args.SamplingPercentage,
 		HashSeed:           args.HashSeed,
+		Mode:               probabilisticsamplerprocessor.SamplerMode(args.Mode),
 		FailClosed:         args.FailClosed,
+		SamplingPrecision:  args.SamplingPrecision,
 		AttributeSource:    probabilisticsamplerprocessor.AttributeSource(args.AttributeSource),
 		FromAttribute:      args.FromAttribute,
 		SamplingPriority:   args.SamplingPriority,

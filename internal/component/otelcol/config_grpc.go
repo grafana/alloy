@@ -13,7 +13,7 @@ import (
 	otelextension "go.opentelemetry.io/collector/extension"
 )
 
-const DefaultBalancerName = "pick_first"
+const DefaultBalancerName = "round_robin"
 
 // GRPCServerArguments holds shared gRPC settings for components which launch
 // gRPC servers.

@@ -102,12 +102,12 @@ func toProxyURL(proxyURL prom_config.URL) config.URL {
 	}
 }
 
-func toProxyConnectHeader(proxyConnectHeader prom_config.Header) config.Header {
+func toProxyConnectHeader(proxyConnectHeader prom_config.ProxyHeader) config.ProxyHeader {
 	if proxyConnectHeader == nil {
-		return config.Header{}
+		return config.ProxyHeader{}
 	}
 
-	header := config.Header{
+	header := config.ProxyHeader{
 		Header: make(map[string][]alloytypes.Secret),
 	}
 	for name, values := range proxyConnectHeader {

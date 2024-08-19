@@ -3,6 +3,7 @@ package rules
 import (
 	"context"
 	"fmt"
+	"maps"
 	"regexp"
 	"sync"
 	"time"
@@ -36,6 +37,7 @@ type eventProcessor struct {
 	namespaceSelector labels.Selector
 	ruleSelector      labels.Selector
 	namespacePrefix   string
+	externalLabels    map[string]string
 
 	metrics *metrics
 	logger  log.Logger
@@ -178,6 +180,19 @@ func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.RuleGroupsByNa
 			groups, err := convertCRDRuleGroupToRuleGroup(rule.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert rule group: %w", err)
+			}
+
+			if len(e.externalLabels) > 0 {
+				for _, rule_group := range groups {
+					// Refer to the slice element via its index,
+					// to make sure we mutate on the original and not a copy.
+					for i := range rule_group.Rules {
+						if rule_group.Rules[i].Labels == nil {
+							rule_group.Rules[i].Labels = make(map[string]string, len(e.externalLabels))
+						}
+						maps.Copy(rule_group.Rules[i].Labels, e.externalLabels)
+					}
+				}
 			}
 
 			desiredState[mimirNs] = groups

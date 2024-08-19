@@ -13,9 +13,13 @@ otelcol.auth.bearer "default_withscheme" {
 }
 
 otelcol.receiver.otlp "default" {
-	grpc { }
+	grpc {
+		endpoint = "localhost:4317"
+	}
 
-	http { }
+	http {
+		endpoint = "localhost:4318"
+	}
 
 	output {
 		metrics = [otelcol.exporter.otlp.default_withauth.input, otelcol.exporter.otlphttp.default_withauth.input]

@@ -1,6 +1,8 @@
 package windows_exporter
 
 import (
+	"strconv"
+
 	"github.com/prometheus-community/windows_exporter/pkg/collector"
 )
 
@@ -16,6 +18,7 @@ func (c *Config) ToWindowsExporterConfig() collector.Config {
 
 	cfg.Service.ServiceWhereClause = c.Service.Where
 	cfg.Service.UseAPI = c.Service.UseApi == "true"
+	cfg.Service.V2 = c.Service.V2 == "true"
 
 	cfg.Smtp.ServerInclude = coalesceString(c.SMTP.Include, c.SMTP.WhiteList)
 	cfg.Smtp.ServerExclude = coalesceString(c.SMTP.Exclude, c.SMTP.BlackList)
@@ -24,6 +27,9 @@ func (c *Config) ToWindowsExporterConfig() collector.Config {
 
 	cfg.PhysicalDisk.DiskInclude = c.PhysicalDisk.Include
 	cfg.PhysicalDisk.DiskExclude = c.PhysicalDisk.Exclude
+
+	cfg.Printer.Include = c.Printer.Include
+	cfg.Printer.Exclude = c.Printer.Exclude
 
 	cfg.Process.ProcessExclude = coalesceString(c.Process.Exclude, c.Process.BlackList)
 	cfg.Process.ProcessInclude = coalesceString(c.Process.Include, c.Process.WhiteList)
@@ -40,6 +46,9 @@ func (c *Config) ToWindowsExporterConfig() collector.Config {
 
 	cfg.ScheduledTask.TaskInclude = c.ScheduledTask.Include
 	cfg.ScheduledTask.TaskExclude = c.ScheduledTask.Exclude
+
+	cfg.Smb.CollectorsEnabled = c.SMB.EnabledList
+	cfg.SmbClient.CollectorsEnabled = c.SMBClient.EnabledList
 
 	return cfg
 }
@@ -94,6 +103,10 @@ var DefaultConfig = Config{
 		Include: collector.ConfigDefaults.PhysicalDisk.DiskInclude,
 		Exclude: collector.ConfigDefaults.PhysicalDisk.DiskExclude,
 	},
+	Printer: PrinterConfig{
+		Include: collector.ConfigDefaults.Printer.Include,
+		Exclude: collector.ConfigDefaults.Printer.Exclude,
+	},
 	Process: ProcessConfig{
 		BlackList: collector.ConfigDefaults.Process.ProcessExclude,
 		WhiteList: collector.ConfigDefaults.Process.ProcessInclude,
@@ -105,14 +118,21 @@ var DefaultConfig = Config{
 		Exclude: collector.ConfigDefaults.ScheduledTask.TaskExclude,
 	},
 	Service: ServiceConfig{
-		UseApi: "false",
+		UseApi: strconv.FormatBool(collector.ConfigDefaults.Service.UseAPI),
 		Where:  collector.ConfigDefaults.Service.ServiceWhereClause,
+		V2:     strconv.FormatBool(collector.ConfigDefaults.Service.V2),
 	},
 	SMTP: SMTPConfig{
 		BlackList: collector.ConfigDefaults.Smtp.ServerExclude,
 		WhiteList: collector.ConfigDefaults.Smtp.ServerInclude,
 		Include:   collector.ConfigDefaults.Smtp.ServerInclude,
 		Exclude:   collector.ConfigDefaults.Smtp.ServerExclude,
+	},
+	SMB: SMBConfig{
+		EnabledList: collector.ConfigDefaults.Smb.CollectorsEnabled,
+	},
+	SMBClient: SMBClientConfig{
+		EnabledList: collector.ConfigDefaults.SmbClient.CollectorsEnabled,
 	},
 	TextFile: TextFileConfig{
 		TextFileDirectory: collector.ConfigDefaults.Textfile.TextFileDirectories,

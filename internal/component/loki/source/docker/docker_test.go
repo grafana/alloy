@@ -207,6 +207,6 @@ func (mock clientMock) ContainerInspect(ctx context.Context, c string) (types.Co
 	}, nil
 }
 
-func (mock clientMock) ContainerLogs(ctx context.Context, container string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
+func (mock clientMock) ContainerLogs(ctx context.Context, container string, options container.LogsOptions) (io.ReadCloser, error) {
 	return io.NopCloser(strings.NewReader(mock.logLine)), nil
 }

@@ -231,6 +231,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 				},
 			},
 		},
+		Context: payload.ExceptionContext{"ReactError": "Annoying Error", "component": "ReactErrorBoundary"},
 	}
 
 	actual := transformException(logger, store, &payload.Exception{
@@ -262,9 +263,11 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 				},
 			},
 		},
+		Context: payload.ExceptionContext{"ReactError": "Annoying Error", "component": "ReactErrorBoundary"},
 	}, "123")
 
 	require.Equal(t, expect, actual)
+	require.EqualValues(t, payload.ExceptionContext{"ReactError": "Annoying Error", "component": "ReactErrorBoundary"}, actual.Context)
 }
 
 func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {

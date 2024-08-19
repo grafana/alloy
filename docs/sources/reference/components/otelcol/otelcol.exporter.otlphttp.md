@@ -31,11 +31,12 @@ otelcol.exporter.otlphttp "LABEL" {
 
 `otelcol.exporter.otlphttp` supports the following arguments:
 
-Name               | Type     | Description                      | Default                           | Required
--------------------|----------|----------------------------------|-----------------------------------|---------
-`metrics_endpoint` | `string` | The endpoint to send metrics to. | `client.endpoint + "/v1/metrics"` | no
-`logs_endpoint`    | `string` | The endpoint to send logs to.    | `client.endpoint + "/v1/logs"`    | no
-`traces_endpoint`  | `string` | The endpoint to send traces to.  | `client.endpoint + "/v1/traces"`  | no
+Name               | Type     | Description                                                               | Default                           | Required
+-------------------|----------|---------------------------------------------------------------------------|-----------------------------------|---------
+`metrics_endpoint` | `string` | The endpoint to send metrics to.                                          | `client.endpoint + "/v1/metrics"` | no
+`logs_endpoint`    | `string` | The endpoint to send logs to.                                             | `client.endpoint + "/v1/logs"`    | no
+`traces_endpoint`  | `string` | The endpoint to send traces to.                                           | `client.endpoint + "/v1/traces"`  | no
+`encoding`         | `string` | The encoding to use for messages. Should be either `"proto"` or `"json"`. | `"proto"`                         | no
 
 The default value depends on the `endpoint` field set in the required `client` block.
 If set, these arguments override the `client.endpoint` field for the corresponding signal.
@@ -48,6 +49,7 @@ Hierarchy        | Block                | Description                           
 -----------------|----------------------|----------------------------------------------------------------------------|---------
 client           | [client][]           | Configures the HTTP server to send telemetry data to.                      | yes
 client > tls     | [tls][]              | Configures TLS for the HTTP client.                                        | no
+client > cookies | [cookies][]          | Store cookies from server responses and reuse them in subsequent requests. | no
 sending_queue    | [sending_queue][]    | Configures batching of data before sending.                                | no
 retry_on_failure | [retry_on_failure][] | Configures retry mechanism for failed requests.                            | no
 debug_metrics    | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state. | no
@@ -57,6 +59,7 @@ For example, `client > tls` refers to a `tls` block defined inside a `client` bl
 
 [client]: #client-block
 [tls]: #tls-block
+[cookies]: #cookies-block
 [sending_queue]: #sending_queue-block
 [retry_on_failure]: #retry_on_failure-block
 [debug_metrics]: #debug_metrics-block
@@ -70,7 +73,6 @@ The following arguments are supported:
 Name                      | Type                       | Description                                                                                                        | Default    | Required
 --------------------------|----------------------------|--------------------------------------------------------------------------------------------------------------------|------------|---------
 `endpoint`                | `string`                   | The target URL to send telemetry data to.                                                                          |            | yes
-`encoding`                | `string`                   | The encoding to use for messages. Should be either `"proto"` or `"json"`.                                          | `"proto"`  | no
 `read_buffer_size`        | `string`                   | Size of the read buffer the HTTP client uses for reading server responses.                                         | `0`        | no
 `write_buffer_size`       | `string`                   | Size of the write buffer the HTTP client uses for writing requests.                                                | `"512KiB"` | no
 `timeout`                 | `duration`                 | Time to wait before marking a request as failed.                                                                   | `"30s"`    | no
@@ -97,6 +99,18 @@ If `http2_ping_timeout` is unset or set to `0s`, it will default to `15s`.
 If `http2_read_idle_timeout` is unset or set to `0s`, then no health check will be performed.
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### cookies block
+
+The `cookies` block allows the HTTP client to store cookies from server responses and reuse them in subsequent requests.
+
+This could be useful in situations such as load balancers relying on cookies for sticky sessions and enforcing a maximum session age.
+
+The following arguments are supported:
+
+Name      | Type   | Description                               | Default    | Required
+----------|--------|-------------------------------------------|------------|---------
+`enabled` | `bool` | The target URL to send telemetry data to. | `false`    | no
 
 ### tls block
 

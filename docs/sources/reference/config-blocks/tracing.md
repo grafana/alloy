@@ -82,13 +82,6 @@ Name               | Type       | Description                                   
 
 The remote sampling strategies are retrieved from the URL specified by the `url` argument, and polled for updates on a timer. The frequency for how often polling occurs is controlled by the `refresh_interval` argument.
 
-Name               | Type           | Description                                                      | Default | Required
--------------------|----------------|------------------------------------------------------------------|---------|---------
-`names`            | `list(string)` | DNS names to look up.                                            |         | yes
-`port`             | `number`       | Port to use for collecting metrics. Not used for SRV records.    | `0`     | no
-`refresh_interval` | `duration`     | How often to query DNS for updates.                              | `"30s"` | no
-`type`             | `string`       | Type of DNS record to query. Must be one of SRV, A, AAAA, or MX. | `"SRV"` | no
-
 Requests to the remote sampling strategies server are made through an HTTP `GET` request to the configured `url` argument.
 A `service=alloy` query parameter is always added to the URL to allow the server to respond with service-specific strategies.
 The HTTP response body is read as JSON matching the schema specified by Jaeger's [`strategies.json` file][Jaeger sampling strategies].
