@@ -154,6 +154,66 @@ This output demonstrates how `otelcol.processor.groupbyattrs` works in various s
 - The specified "grouping" attributes that are set on the new Resources are also removed from the metric DataPoints.
 - While not shown in the above example, the processor also merges collections of records under matching InstrumentationLibrary.
 
+### Compaction
+
+Sometimes telemetry data can become fragmented due to multiple duplicated ResourceSpans/ResourceLogs/ResourceMetrics objects.
+This leads to additional memory consumption, increased processing costs, inefficient serialization and increase of the export requests. 
+In such situations, `otelcol.processor.groupbyattrs` can be used to compact the data with matching Resource and InstrumentationLibrary properties.
+
+For example, consider this input data:
+
+```
+Resource {host.name="localhost"}
+  InstrumentationLibrary {name="MyLibrary"}
+  Spans
+    Span {span_id=1, ...}
+  InstrumentationLibrary {name="OtherLibrary"}
+  Spans
+    Span {span_id=2, ...}
+    
+Resource {host.name="localhost"}
+  InstrumentationLibrary {name="MyLibrary"}
+  Spans
+    Span {span_id=3, ...}
+    
+Resource {host.name="localhost"}
+  InstrumentationLibrary {name="MyLibrary"}
+  Spans
+    Span {span_id=4, ...}
+    
+Resource {host.name="otherhost"}
+  InstrumentationLibrary {name="MyLibrary"}
+  Spans
+    Span {span_id=5, ...}
+```
+
+You can use `otelcol.processor.groupbyattrs` with its default configuration to compact the data: 
+```alloy
+otelcol.processor.groupbyattrs "default" {
+  output {
+    metrics = [otelcol.exporter.otlp.default.input]
+  }
+}
+```
+
+The output will be:
+
+```
+Resource {host.name="localhost"}
+  InstrumentationLibrary {name="MyLibrary"}
+  Spans
+    Span {span_id=1, ...}
+    Span {span_id=3, ...}
+    Span {span_id=4, ...}
+  InstrumentationLibrary {name="OtherLibrary"}
+  Spans
+    Span {span_id=2, ...}
+
+Resource {host.name="otherhost"}
+  InstrumentationLibrary {name="MyLibrary"}
+  Spans
+    Span {span_id=5, ...}
+```
 [otelcol.processor.batch]: ../otelcol.processor.batch/
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
