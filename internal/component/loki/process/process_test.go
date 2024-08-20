@@ -407,20 +407,21 @@ stage.static_labels {
 }
 
 type testFrequentUpdate struct {
-	t   *testing.T
-	c   *Component
-	ctx context.Context
+	t *testing.T
+	c *Component
+
+	receiver1 loki.LogsReceiver
+	receiver2 loki.LogsReceiver
 
 	keepSending   atomic.Bool
 	keepReceiving atomic.Bool
+	keepUpdating  atomic.Bool
 
 	wgLogSend sync.WaitGroup
 	wgRun     sync.WaitGroup
+	wgUpdate  sync.WaitGroup
 
-	lastSend      atomic.Value
-	logsInTransit atomic.Uint64
-	receiver1     loki.LogsReceiver
-	receiver2     loki.LogsReceiver
+	lastSend atomic.Value
 
 	stop func()
 }
@@ -432,17 +433,24 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 		receiver2: loki.NewLogsReceiver(),
 	}
 
-	var cancel context.CancelFunc
-	res.ctx, cancel = context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 
 	res.keepSending.Store(true)
 	res.keepReceiving.Store(true)
+	res.keepUpdating.Store(true)
 
 	res.stop = func() {
+		res.keepUpdating.Store(false)
+		res.wgUpdate.Wait()
+
 		res.keepSending.Store(false)
 		res.wgLogSend.Wait()
+
 		cancel()
 		res.wgRun.Wait()
+
+		close(res.receiver1.Chan())
+		close(res.receiver2.Chan())
 	}
 
 	var args Arguments
@@ -451,7 +459,6 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 
 	args.ForwardTo = []loki.LogsReceiver{res.receiver1, res.receiver2}
 
-	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
 		Logger:         util.TestAlloyLogger(t),
 		Registerer:     prometheus.NewRegistry(),
@@ -464,35 +471,27 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 
 	res.wgRun.Add(1)
 	go func() {
-		res.c.Run(res.ctx)
+		res.c.Run(ctx)
 		res.wgRun.Done()
 	}()
 
 	return &res
 }
 
+// Continuously receive the logs from both channels
 func (r *testFrequentUpdate) drainLogs() {
 	drainLogs := func() {
 		r.lastSend.Store(time.Now())
-		r.logsInTransit.Dec()
 	}
+
 	r.wgLogSend.Add(1)
 	go func() {
-	L:
-		for r.keepReceiving.Load() || r.logsInTransit.Load() > 0 {
+		for r.keepReceiving.Load() {
 			select {
-			case _, ok := <-r.receiver1.Chan():
+			case <-r.receiver1.Chan():
 				drainLogs()
-				if !ok {
-					// Let the for loop check if the goroutine has to exit
-					break L
-				}
-			case _, ok := <-r.receiver2.Chan():
+			case <-r.receiver2.Chan():
 				drainLogs()
-				if !ok {
-					// Let the for loop check if the goroutine has to exit
-					break L
-				}
 			}
 		}
 		r.wgLogSend.Done()
@@ -512,8 +511,11 @@ func (r *testFrequentUpdate) sendLogs() {
 					Line:      logline,
 				},
 			}
-			r.c.receiver.Chan() <- logEntry
-			r.logsInTransit.Inc()
+			select {
+			case r.c.receiver.Chan() <- logEntry:
+			default:
+				// continue
+			}
 		}
 		r.keepReceiving.Store(false)
 		r.wgLogSend.Done()
@@ -531,25 +533,20 @@ func (r *testFrequentUpdate) updateContinuously(cfg1, cfg2 string) {
 	require.NoError(r.t, err)
 	args2.ForwardTo = []loki.LogsReceiver{r.receiver2}
 
-	r.wgRun.Add(1)
+	r.wgUpdate.Add(1)
 	go func() {
-		for {
-			select {
-			case <-r.ctx.Done():
-				r.wgRun.Done()
-				return
-			default:
-				r.c.Update(args1)
-				r.c.Update(args2)
-			}
+		for r.keepUpdating.Load() {
+			r.c.Update(args1)
+			r.c.Update(args2)
 		}
+		r.wgUpdate.Done()
 	}()
 }
 
 func TestDeadlockWithFrequentUpdates(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
-	cfg1 := `stage.json { 
+	cfg1 := `stage.json {
 			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
 				drop_malformed = true
 		    }
@@ -558,7 +555,7 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 				source      = "extra"
 			}
 			stage.labels {
-			    values = { 
+			    values = {
 				  stream = "",
 				  user   = "",
 				  ts     = "timestamp",
@@ -566,19 +563,19 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 			}
 			forward_to = []`
 
-	cfg2 := `stage.json { 
+	cfg2 := `stage.json {
 			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
 				drop_malformed = true
 		    }
 			stage.labels {
-			    values = { 
+			    values = {
 				  stream = "",
 				  ts     = "timestamp",
 			    }
 			}
 			forward_to = []`
 
-	r := startTestFrequentUpdate(t, cfg1)
+	r := startTestFrequentUpdate(t, `forward_to = []`)
 
 	// Continuously send entries to both channels
 	r.sendLogs()
