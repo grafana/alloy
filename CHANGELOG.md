@@ -26,6 +26,10 @@ Main (unreleased)
 - Updated Snowflake exporter with performance improvements for larger environments. 
   Also added a new panel to track deleted tables to the Snowflake mixin. (@Caleb-Hurshman)
 
+- Changed the cluster startup behaviour, reverting to the previous logic where
+  a failure to resolve cluster join peers results in the node creating its own cluster. This is
+  to facilitate the process of bootstrapping a new cluster following user feedback (@thampiotr)
+
 ### Bugfixes
 
 - Fix a bug where custom components don't always get updated when the config is modified in an imported directory. (@ante012)
