@@ -17,6 +17,8 @@ v1.3.1
   to facilitate the process of bootstrapping a new cluster following user feedback (@thampiotr)
 
 
+- Fix a memory leak which would occur any time `loki.process` had its configuration reloaded. (@ptodev)
+
 v1.3.0
 -----------------
 
