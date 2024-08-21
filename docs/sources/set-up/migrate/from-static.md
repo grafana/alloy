@@ -355,7 +355,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * There is no gRPC server to configure for {{< param "PRODUCT_NAME" >}}. Any non-default configuration shows as unsupported during the conversion.
 * Check if you are using any extra command line arguments with Grafana Agent Static that aren't present in your configuration file. For example, `-server.http.address`.
 * Check if you are using any environment variables in your Grafana Agent Static configuration.
-  These are evaluated during conversion, and you may want to replace them with the {{< param "PRODUCT_NAME" >}} Standard library [env][] function after conversion.
+  These are evaluated during conversion, and you may want to replace them with the {{< param "PRODUCT_NAME" >}} Standard library [sys.env][] function after conversion.
 * Review additional [Prometheus Limitations][] for limitations specific to your [Metrics][] configuration.
 * Review additional [Promtail Limitations][] for limitations specific to your [Logs][] configuration.
 * The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Grafana Agent Static.
@@ -378,7 +378,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [configuration]: ../../../get-started/configuration-syntax/
 [Integrations next]: https://grafana.com/docs/agent/latest/static/configuration/integrations/integrations-next/
 [Agent Management]: https://grafana.com/docs/agent/latest/static/configuration/agent-management/
-[env]: ../../../reference/stdlib/env/
+[sys.env]: ../../../reference/stdlib/sys/
 [Prometheus Limitations]: ../from-prometheus/#limitations
 [Promtail Limitations]: ../from-promtail/#limitations
 [Metrics]: https://grafana.com/docs/agent/latest/static/configuration/metrics-config/
