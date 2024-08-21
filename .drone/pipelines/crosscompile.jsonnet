@@ -14,6 +14,7 @@ local os_arch_tuples = [
   { name: 'Linux arm64', os: 'linux', arch: 'arm64' },
   { name: 'Linux ppc64le', os: 'linux', arch: 'ppc64le' },
   { name: 'Linux s390x', os: 'linux', arch: 's390x' },
+  { name: 'Linux riscv64', os: 'linux', arch: 'riscv64' },
 
   // Darwin
   { name: 'macOS Intel', os: 'darwin', arch: 'amd64' },

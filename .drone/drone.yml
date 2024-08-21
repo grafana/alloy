@@ -290,6 +290,23 @@ trigger:
 type: docker
 ---
 kind: pipeline
+name: Build alloy (Linux riscv64)
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - make generate-ui
+  - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=riscv64 GOARM=
+    make alloy
+  image: grafana/alloy-build-image:v0.1.3
+  name: Build
+trigger:
+  event:
+  - pull_request
+type: docker
+---
+kind: pipeline
 name: Build alloy (macOS Intel)
 platform:
   arch: amd64
@@ -833,8 +850,3 @@ get:
   path: infra/data/ci/github/updater-app
 kind: secret
 name: updater_private_key
----
-kind: signature
-hmac: ee269482e125ef982b0dffcf21ded182eb20960f97adf0513610fac49a1ab775
-
-...

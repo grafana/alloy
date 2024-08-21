@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Build binaries and OCI images for linux/riscv64. (@macabu)
+
 ### Enhancements
 
 - Clustering peer resolution through `--cluster.join-addresses` flag has been
