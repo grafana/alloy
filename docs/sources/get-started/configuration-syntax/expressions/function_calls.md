@@ -23,8 +23,8 @@ Some functions enable interaction with the host system, for example, reading fro
 Some functions allow for more complex expressions, for example, concatenating arrays or decoding JSON strings into objects.
 
 ```alloy
-env("HOME")
-json_decode(local.file.cfg.content)["namespace"]
+sys.env("HOME")
+encoding.from_json(local.file.cfg.content)["namespace"]
 ```
 
 [standard library]:../../../../reference/stdlib/

@@ -187,7 +187,7 @@ loki.source.kubernetes "pods" {
 
 loki.write "local" {
   endpoint {
-    url = env("LOKI_URL")
+    url = sys.env("LOKI_URL")
   }
 }
 ```

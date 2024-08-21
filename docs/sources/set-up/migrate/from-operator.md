@@ -80,7 +80,7 @@ prometheus.remote_write "primary" {
     endpoint {
         url = "https://<PROMETHEUS_URL>/api/v1/push"
         basic_auth {
-            username = nonsensitive(remote.kubernetes.secret.credentials.data["username"])
+            username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["username"])
             password = remote.kubernetes.secret.credentials.data["password"]
         }
     }
@@ -163,7 +163,7 @@ discovery.kubernetes "pods" {
   // limit to pods on this node to reduce the amount you need to filter
   selectors {
     role  = "pod"
-    field = "spec.nodeName=" + env("<HOSTNAME>")
+    field = "spec.nodeName=" + sys.env("<HOSTNAME>")
   }
 }
 
@@ -253,7 +253,7 @@ loki.write "loki" {
   endpoint {
     url = "https://<LOKI_URL>/loki/api/v1/push"
     basic_auth {
-      username = nonsensitive(remote.kubernetes.secret.credentials.data["username"])
+      username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["username"])
       password = remote.kubernetes.secret.credentials.data["password"]
     }
 }

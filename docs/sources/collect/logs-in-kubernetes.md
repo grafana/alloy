@@ -141,7 +141,7 @@ local.file_match "node_logs" {
       // Monitor syslog to scrape node-logs
       __path__  = "/var/log/syslog",
       job       = "node/syslog",
-      node_name = env("HOSTNAME"),
+      node_name = sys.env("HOSTNAME"),
       cluster   = <CLUSTER_NAME>,
   }]
 }

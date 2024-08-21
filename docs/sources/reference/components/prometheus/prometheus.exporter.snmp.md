@@ -262,7 +262,7 @@ local.file "targets" {
 prometheus.exporter.snmp "example" {
     config_file = "snmp_modules.yml"
 
-    targets = yaml_decode(local.file.targets.content)
+    targets = encoding.from_yaml(local.file.targets.content)
 
     walk_param "private" {
         retries = "2"

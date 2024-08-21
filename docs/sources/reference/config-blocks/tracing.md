@@ -22,7 +22,7 @@ tracing {
 otelcol.exporter.otlp "tempo" {
   // Send traces to a locally running Tempo without TLS enabled.
   client {
-    endpoint = env("TEMPO_OTLP_ENDPOINT")
+    endpoint = sys.env("TEMPO_OTLP_ENDPOINT")
 
     tls {
       insecure = true

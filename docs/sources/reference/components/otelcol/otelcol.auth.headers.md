@@ -142,7 +142,7 @@ otelcol.auth.headers "creds" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
     auth     = otelcol.auth.headers.creds.handler
   }
 }
