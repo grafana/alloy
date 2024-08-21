@@ -65,16 +65,16 @@ func TestStdlibCoalesce(t *testing.T) {
 	}{
 		{"coalesce()", `coalesce()`, value.Null},
 		{"coalesce(string)", `coalesce("Hello!")`, string("Hello!")},
-		{"coalesce(string, string)", `coalesce(env("TEST_VAR2"), "World!")`, string("Hello!")},
-		{"(string, string) with fallback", `coalesce(env("NON_DEFINED"), "World!")`, string("World!")},
+		{"coalesce(string, string)", `coalesce(sys.env("TEST_VAR2"), "World!")`, string("Hello!")},
+		{"(string, string) with fallback", `coalesce(sys.env("NON_DEFINED"), "World!")`, string("World!")},
 		{"coalesce(list, list)", `coalesce([], ["fallback"])`, []string{"fallback"}},
-		{"coalesce(list, list) with fallback", `coalesce(concat(["item"]), ["fallback"])`, []string{"item"}},
+		{"coalesce(list, list) with fallback", `coalesce(array.concat(["item"]), ["fallback"])`, []string{"item"}},
 		{"coalesce(int, int, int)", `coalesce(0, 1, 2)`, 1},
 		{"coalesce(bool, int, int)", `coalesce(false, 1, 2)`, 1},
 		{"coalesce(bool, bool)", `coalesce(false, true)`, true},
-		{"coalesce(list, bool)", `coalesce(json_decode("[]"), true)`, true},
-		{"coalesce(object, true) and return true", `coalesce(json_decode("{}"), true)`, true},
-		{"coalesce(object, false) and return false", `coalesce(json_decode("{}"), false)`, false},
+		{"coalesce(list, bool)", `coalesce(encoding.from_json("[]"), true)`, true},
+		{"coalesce(object, true) and return true", `coalesce(encoding.from_json("{}"), true)`, true},
+		{"coalesce(object, false) and return false", `coalesce(encoding.from_json("{}"), false)`, false},
 		{"coalesce(list, nil)", `coalesce([],null)`, value.Null},
 	}
 
@@ -231,7 +231,7 @@ func BenchmarkConcat(b *testing.B) {
 		Values []Person `alloy:"values,attr"`
 	}
 
-	in := `values = concat(values_ref)`
+	in := `values = array.concat(values_ref)`
 	f, err := parser.ParseFile("", []byte(in))
 	require.NoError(b, err)
 
