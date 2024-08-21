@@ -23,6 +23,7 @@ import (
 
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
+	urlPrefix       string
 	alloy           service.Host
 	remotecfg       service.Host
 	CallbackManager livedebugging.CallbackManager
@@ -35,21 +36,29 @@ func NewAlloyAPI(alloy, remotecfg service.Host, CallbackManager livedebugging.Ca
 
 // RegisterRoutes registers all the API's routes.
 func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
+	a.urlPrefix = urlPrefix
 	// NOTE(rfratto): {id:.+} is used in routes below to allow the
 	// id to contain / characters, which is used by nested module IDs and
 	// component IDs.
 
 	r.Handle(path.Join(urlPrefix, "/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
-	r.Handle(path.Join(urlPrefix, "/remotecfg/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: a.listRemotecfgComponentsHandler()})
+	r.Handle(path.Join(urlPrefix, "/remotecfg/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
 
 	r.Handle(path.Join(urlPrefix, "/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
-	r.Handle(path.Join(urlPrefix, "/remotecfg/components"), httputil.CompressionHandler{Handler: a.listRemotecfgComponentsHandler()})
+	r.Handle(path.Join(urlPrefix, "/remotecfg/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
 
 	r.Handle(path.Join(urlPrefix, "/components/{id:.+}"), httputil.CompressionHandler{Handler: a.getComponentHandler()})
-	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: a.getRemotecfgComponentHandler()})
+	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: a.getComponentHandler()})
 
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: a.getClusteringPeersHandler()})
 	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), a.liveDebugging())
+}
+
+func (a *AlloyAPI) getHost(r *http.Request) service.Host {
+	if strings.HasPrefix(r.URL.Path, a.urlPrefix+"/remotecfg") {
+		return a.remotecfg
+	}
+	return a.alloy
 }
 
 func (a *AlloyAPI) listComponentsHandler() http.HandlerFunc {
@@ -61,33 +70,7 @@ func (a *AlloyAPI) listComponentsHandler() http.HandlerFunc {
 			moduleID = vars["moduleID"]
 		}
 
-		components, err := a.alloy.ListComponents(moduleID, component.InfoOptions{
-			GetHealth: true,
-		})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		bb, err := json.Marshal(components)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		_, _ = w.Write(bb)
-	}
-}
-
-func (a *AlloyAPI) listRemotecfgComponentsHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// moduleID is set from the /modules/{moduleID:.+}/components route above
-		// but not from the /components route.
-		var moduleID string
-		if vars := mux.Vars(r); vars != nil {
-			moduleID = vars["moduleID"]
-		}
-
-		components, err := a.remotecfg.ListComponents(moduleID, component.InfoOptions{
+		components, err := a.getHost(r).ListComponents(moduleID, component.InfoOptions{
 			GetHealth: true,
 		})
 		if err != nil {
@@ -109,32 +92,7 @@ func (a *AlloyAPI) getComponentHandler() http.HandlerFunc {
 		vars := mux.Vars(r)
 		requestedComponent := component.ParseID(vars["id"])
 
-		component, err := a.alloy.GetComponent(requestedComponent, component.InfoOptions{
-			GetHealth:    true,
-			GetArguments: true,
-			GetExports:   true,
-			GetDebugInfo: true,
-		})
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-
-		bb, err := json.Marshal(component)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		_, _ = w.Write(bb)
-	}
-}
-
-func (a *AlloyAPI) getRemotecfgComponentHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		requestedComponent := component.ParseID(vars["id"])
-
-		component, err := a.remotecfg.GetComponent(requestedComponent, component.InfoOptions{
+		component, err := a.getHost(r).GetComponent(requestedComponent, component.InfoOptions{
 			GetHealth:    true,
 			GetArguments: true,
 			GetExports:   true,

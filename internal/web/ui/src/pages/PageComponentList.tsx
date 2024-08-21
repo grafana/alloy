@@ -20,6 +20,8 @@ function getSortValue(component: ComponentInfo, field: string): string | undefin
 function PageComponentList() {
   const location = useLocation();
   const useRemotecfg = location.pathname.startsWith('/remotecfg');
+  const pageName = useRemotecfg ? 'Remote Configuration' : 'Components';
+  const pageDesc = useRemotecfg ? 'List of remote configuration pipelines' : 'List of defined components';
 
   const [components, setComponents] = useComponentInfo('', useRemotecfg);
 
@@ -41,7 +43,7 @@ function PageComponentList() {
   };
 
   return (
-    <Page name="Components" desc="List of defined components" icon={faCubes}>
+    <Page name={pageName} desc={pageDesc} icon={faCubes}>
       <ComponentList components={components} useRemotecfg={useRemotecfg} handleSorting={handleSorting} />
     </Page>
   );
