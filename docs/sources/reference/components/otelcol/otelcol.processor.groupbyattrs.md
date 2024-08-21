@@ -36,17 +36,24 @@ otelcol.processor.groupbyattrs "LABEL" {
 
 The following arguments are supported:
 
-| Name            | Type              | Description                                                                           | Default | Required |
-|-----------------|-------------------|---------------------------------------------------------------------------------------|---------|----------|
-| `keys`          | `list(string)`    | Keys that will be used to group the spans, log records or metric data points together. |         | no       |
-| `output`        | [output][]        | Configures where to send received telemetry data.                                     | yes     |          |
-| `debug_metrics` | [debug_metrics][] | Configures the metrics that this component generates to monitor its state.            | no      |          |
+| Name            | Type              | Description                                                                             | Default | Required |
+|-----------------|-------------------|-----------------------------------------------------------------------------------------|---------|----------|
+| `keys`          | `list(string)`    | Keys that will be used to group the spans, log records, or metric data points together. | `[]`    | no       |
+
+`keys` is a string array that is used for grouping the data. 
+If it is empty, the processor performs compaction and reassociates all spans with matching Resource and InstrumentationLibrary.
+
+## Blocks
+
+The following blocks are supported inside the definition of `otelcol.processor.groupbyattrs`:
+
+Hierarchy | Block       | Description                                       | Required
+--------- | ----------- | ------------------------------------------------- | --------
+output    | [output][]  | Configures where to send received telemetry data. | yes
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [output]: #output-block
 [debug_metrics]: #debug_metrics-block
-
-`keys` is a string array that is used for grouping the data. If it is empty, the processor performs compaction and reassociates all spans with matching Resource and InstrumentationLibrary.
-
 
 ### output block
 
