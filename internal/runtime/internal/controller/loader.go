@@ -608,7 +608,7 @@ func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 		}
 
 		// Finally, wire component references.
-		refs, nodeDiags := ComponentReferences(n, g)
+		refs, nodeDiags := ComponentReferences(n, g, l.log)
 		for _, ref := range refs {
 			g.AddEdge(dag.Edge{From: n, To: ref.Target})
 		}

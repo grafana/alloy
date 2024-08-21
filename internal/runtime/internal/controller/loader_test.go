@@ -171,6 +171,17 @@ func TestLoader(t *testing.T) {
 		require.ErrorContains(t, diags.ErrorOrNil(), `component "testcomponents.tick" must have a label`)
 	})
 
+	t.Run("Load component with stdlib function", func(t *testing.T) {
+		file := `
+			testcomponents.tick "default" {
+				frequency = string.join(["1", "s"], "")
+			}
+		`
+		l := controller.NewLoader(newLoaderOptions())
+		diags := applyFromContent(t, l, []byte(file), nil, nil)
+		require.NoError(t, diags.ErrorOrNil())
+	})
+
 	t.Run("Load with correct stability level", func(t *testing.T) {
 		l := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityPublicPreview))
 		diags := applyFromContent(t, l, []byte(testFile), nil, nil)

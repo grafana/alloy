@@ -20,18 +20,25 @@ func TestVM_Stdlib(t *testing.T) {
 		input  string
 		expect interface{}
 	}{
+		// deprecated tests
 		{"env", `env("TEST_VAR")`, string("Hello!")},
 		{"concat", `concat([true, "foo"], [], [false, 1])`, []interface{}{true, "foo", false, 1}},
 		{"json_decode object", `json_decode("{\"foo\": \"bar\"}")`, map[string]interface{}{"foo": "bar"}},
-		{"json_decode array", `json_decode("[0, 1, 2]")`, []interface{}{float64(0), float64(1), float64(2)}},
-		{"json_decode nil field", `json_decode("{\"foo\": null}")`, map[string]interface{}{"foo": nil}},
-		{"json_decode nil array element", `json_decode("[0, null]")`, []interface{}{float64(0), nil}},
 		{"yaml_decode object", "yaml_decode(`foo: bar`)", map[string]interface{}{"foo": "bar"}},
-		{"yaml_decode array", "yaml_decode(`[0, 1, 2]`)", []interface{}{0, 1, 2}},
-		{"yaml_decode array float", "yaml_decode(`[0.0, 1.0, 2.0]`)", []interface{}{float64(0), float64(1), float64(2)}},
-		{"yaml_decode nil field", "yaml_decode(`foo: null`)", map[string]interface{}{"foo": nil}},
-		{"yaml_decode nil array element", `yaml_decode("[0, null]")`, []interface{}{0, nil}},
 		{"base64_decode", `base64_decode("Zm9vYmFyMTIzIT8kKiYoKSctPUB+")`, string(`foobar123!?$*&()'-=@~`)},
+
+		{"sys.env", `sys.env("TEST_VAR")`, string("Hello!")},
+		{"array.concat", `array.concat([true, "foo"], [], [false, 1])`, []interface{}{true, "foo", false, 1}},
+		{"encoding.from_json object", `encoding.from_json("{\"foo\": \"bar\"}")`, map[string]interface{}{"foo": "bar"}},
+		{"encoding.from_json array", `encoding.from_json("[0, 1, 2]")`, []interface{}{float64(0), float64(1), float64(2)}},
+		{"encoding.from_json nil field", `encoding.from_json("{\"foo\": null}")`, map[string]interface{}{"foo": nil}},
+		{"encoding.from_json nil array element", `encoding.from_json("[0, null]")`, []interface{}{float64(0), nil}},
+		{"encoding.from_yaml object", "encoding.from_yaml(`foo: bar`)", map[string]interface{}{"foo": "bar"}},
+		{"encoding.from_yaml array", "encoding.from_yaml(`[0, 1, 2]`)", []interface{}{0, 1, 2}},
+		{"encoding.from_yaml array float", "encoding.from_yaml(`[0.0, 1.0, 2.0]`)", []interface{}{float64(0), float64(1), float64(2)}},
+		{"encoding.from_yaml nil field", "encoding.from_yaml(`foo: null`)", map[string]interface{}{"foo": nil}},
+		{"encoding.from_yaml nil array element", `encoding.from_yaml("[0, null]")`, []interface{}{0, nil}},
+		{"encoding.from_base64", `encoding.from_base64("Zm9vYmFyMTIzIT8kKiYoKSctPUB+")`, string(`foobar123!?$*&()'-=@~`)},
 	}
 
 	for _, tc := range tt {
@@ -124,8 +131,11 @@ func TestStdlib_Nonsensitive(t *testing.T) {
 		input  string
 		expect interface{}
 	}{
-		{"secret to string", `nonsensitive(secret)`, string("foo")},
-		{"optional secret to string", `nonsensitive(optionalSecret)`, string("bar")},
+		// deprecated tests
+		{"deprecated secret to string", `nonsensitive(secret)`, string("foo")},
+
+		{"secret to string", `convert.nonsensitive(secret)`, string("foo")},
+		{"optional secret to string", `convert.nonsensitive(optionalSecret)`, string("bar")},
 	}
 
 	for _, tc := range tt {
@@ -151,6 +161,7 @@ func TestStdlib_StringFunc(t *testing.T) {
 		input  string
 		expect interface{}
 	}{
+		// deprecated tests
 		{"to_lower", `to_lower("String")`, "string"},
 		{"to_upper", `to_upper("string")`, "STRING"},
 		{"trimspace", `trim_space("   string \n\n")`, "string"},
@@ -169,6 +180,25 @@ func TestStdlib_StringFunc(t *testing.T) {
 		{"trim2", `trim("   hello! world.!  ", "! ")`, "hello! world."},
 		{"trim_prefix", `trim_prefix("helloworld", "hello")`, "world"},
 		{"trim_suffix", `trim_suffix("helloworld", "world")`, "hello"},
+
+		{"string.to_lower", `string.to_lower("String")`, "string"},
+		{"string.to_upper", `string.to_upper("string")`, "STRING"},
+		{"string.trimspace", `string.trim_space("   string \n\n")`, "string"},
+		{"string.trimspace+string.to_upper+string.trim", `string.to_lower(string.to_upper(string.trim_space("   String   ")))`, "string"},
+		{"string.split", `string.split("/aaa/bbb/ccc/ddd", "/")`, []string{"", "aaa", "bbb", "ccc", "ddd"}},
+		{"string.split+index", `string.split("/aaa/bbb/ccc/ddd", "/")[0]`, ""},
+		{"string.join+split", `string.join(string.split("/aaa/bbb/ccc/ddd", "/"), "/")`, "/aaa/bbb/ccc/ddd"},
+		{"string.join", `string.join(["foo", "bar", "baz"], ", ")`, "foo, bar, baz"},
+		{"string.join w/ int", `string.join([0, 0, 1], ", ")`, "0, 0, 1"},
+		{"string.format", `string.format("Hello %s", "World")`, "Hello World"},
+		{"string.format+int", `string.format("%#v", 1)`, "1"},
+		{"string.format+bool", `string.format("%#v", true)`, "true"},
+		{"string.format+quote", `string.format("%q", "hello")`, `"hello"`},
+		{"string.replace", `string.replace("Hello World", " World", "!")`, "Hello!"},
+		{"string.trim", `string.trim("?!hello?!", "!?")`, "hello"},
+		{"string.trim2", `string.trim("   hello! world.!  ", "! ")`, "hello! world."},
+		{"string.trim_prefix", `string.trim_prefix("helloworld", "hello")`, "world"},
+		{"string.trim_suffix", `string.trim_suffix("helloworld", "world")`, "hello"},
 	}
 
 	for _, tc := range tt {
