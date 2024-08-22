@@ -3,8 +3,6 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/alecthomas/units"
-	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"
 	datadog_config "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog/config"
 	"github.com/grafana/alloy/internal/converter/diag"
@@ -59,18 +57,17 @@ func toDatadogExporter(cfg *datadogexporter.Config) *datadog.Arguments {
 	}
 }
 
-func toDatadogHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArguments {
-	return otelcol.HTTPClientArguments{
+func toDatadogHTTPClientArguments(cfg confighttp.ClientConfig) datadog_config.DatadogClientArguments {
+	return datadog_config.DatadogClientArguments{
 		Timeout:             cfg.Timeout,
-		ReadBufferSize:      units.Base2Bytes(cfg.ReadBufferSize),
-		WriteBufferSize:     units.Base2Bytes(cfg.WriteBufferSize),
+		ReadBufferSize:      int(cfg.ReadBufferSize),
+		WriteBufferSize:     int(cfg.WriteBufferSize),
 		MaxIdleConns:        cfg.MaxIdleConns,
 		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,
 		IdleConnTimeout:     cfg.IdleConnTimeout,
 		DisableKeepAlives:   cfg.DisableKeepAlives,
-		Endpoint:            "",
-		TLS:                 toTLSClientArguments(cfg.TLSSetting),
+		InsecureSkipVerify:  cfg.TLSSetting.Insecure,
 	}
 }
 

@@ -7,7 +7,6 @@ package datadog
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -40,9 +39,9 @@ func init() {
 
 // Arguments configures the otelcol.exporter.datadog component.
 type Arguments struct {
-	Client otelcol.HTTPClientArguments `alloy:"client,block,optional"`
-	Queue  otelcol.QueueArguments      `alloy:"sending_queue,block,optional"`
-	Retry  otelcol.RetryArguments      `alloy:"retry_on_failure,block,optional"`
+	Client datadog_config.DatadogClientArguments `alloy:"client,block,optional"`
+	Queue  otelcol.QueueArguments                `alloy:"sending_queue,block,optional"`
+	Retry  otelcol.RetryArguments                `alloy:"retry_on_failure,block,optional"`
 
 	// Datadog specific configuration settings
 	APISettings  datadog_config.DatadogAPIArguments          `alloy:"api,block"`
@@ -62,10 +61,7 @@ var _ exporter.Arguments = Arguments{}
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	args.Client = otelcol.HTTPClientArguments{
-		Timeout:  15 * time.Second,
-		Endpoint: "",
-	}
+	args.Client.SetToDefault()
 	args.APISettings.SetToDefault()
 	args.Metrics.SetToDefault()
 	args.Traces.SetToDefault()
@@ -81,11 +77,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	// These are used only if an endpoint for either isn't specified
 	defaultTraceEndpoint := fmt.Sprintf(DATADOG_TRACE_ENDPOINT, args.APISettings.Site)
 	defaultMetricsEndpoint := fmt.Sprintf(DATADOG_METRICS_ENDPOINT, args.APISettings.Site)
-	clientConfig := *(*otelcol.HTTPClientArguments)(&args.Client).Convert()
-	clientConfig.Headers = nil // Headers are not supported by the Datadog exporter
 
 	return &datadogexporter.Config{
-		ClientConfig:  clientConfig,
+		ClientConfig:  *args.Client.Convert(),
 		QueueSettings: *args.Queue.Convert(),
 		BackOffConfig: *args.Retry.Convert(),
 		TagsConfig: datadogexporter.TagsConfig{
@@ -101,7 +95,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements exporter.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return (*otelcol.HTTPClientArguments)(&args.Client).Extensions()
+	return nil
 }
 
 // Exporters implements exporter.Arguments.

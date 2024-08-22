@@ -1,11 +1,56 @@
 package datadog_config
 
 import (
+	"time"
+
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
+	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configtls"
 )
+
+// DatadogClientArguments holds the configuration settings for the Datadog client.
+type DatadogClientArguments struct {
+	ReadBufferSize      int            `alloy:"read_buffer_size,attr,optional"`
+	WriteBufferSize     int            `alloy:"write_buffer_size,attr,optional"`
+	Timeout             time.Duration  `alloy:"timeout,attr,optional"`
+	MaxIdleConns        *int           `alloy:"max_idle_conns,attr,optional"`
+	MaxIdleConnsPerHost *int           `alloy:"max_idle_conns_per_host,attr,optional"`
+	MaxConnsPerHost     *int           `alloy:"max_conns_per_host,attr,optional"`
+	IdleConnTimeout     *time.Duration `alloy:"idle_conn_timeout,attr,optional"`
+	DisableKeepAlives   bool           `alloy:"disable_keep_alives,attr,optional"`
+	InsecureSkipVerify  bool           `alloy:"insecure_skip_verify,attr,optional"`
+}
+
+func (args *DatadogClientArguments) Convert() *confighttp.ClientConfig {
+	if args == nil {
+		return nil
+	}
+
+	return &confighttp.ClientConfig{
+		Endpoint:            "",
+		Headers:             nil,
+		ReadBufferSize:      args.ReadBufferSize,
+		WriteBufferSize:     args.WriteBufferSize,
+		Timeout:             args.Timeout,
+		MaxIdleConns:        args.MaxIdleConns,
+		MaxIdleConnsPerHost: args.MaxIdleConnsPerHost,
+		MaxConnsPerHost:     args.MaxConnsPerHost,
+		IdleConnTimeout:     args.IdleConnTimeout,
+		DisableKeepAlives:   args.DisableKeepAlives,
+		TLSSetting: configtls.ClientConfig{
+			InsecureSkipVerify: args.InsecureSkipVerify,
+		},
+	}
+}
+
+func (args *DatadogClientArguments) SetToDefault() {
+	*args = DatadogClientArguments{
+		Timeout: 15 * time.Second,
+	}
+}
 
 // DatadogAPISettings holds the configuration settings for the Datadog API.
 type DatadogAPIArguments struct {

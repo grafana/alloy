@@ -56,14 +56,13 @@ metrics > histograms | [histograms][] | Histograms specific configuration. | no
 metrics > sums | [sums][] | Sums specific configuration | no
 metrics > summaries | [summaries][] | Summaries specific configuration | no
 host_metadata | [host_metadata][] | Host metadata specific configuration. | no
-client           | [client][]           | Configures the HTTP server to send telemetry data to.                      | no
-client > tls     | [tls][]              | Configures TLS for the HTTP client.                                        | no
+client           | [client][]           | Configures the HTTP client used to send telemetry data.                      | no
 retry_on_failure                 | [retry_on_failure][] | Configures retry mechanism for failed requests.                             | no
 queue                            | [queue][]            | Configures batching of data before sending.                                 | no
 debug_metrics                    | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state. | no
 
-The `>` symbol indicates deeper levels of nesting. For example, `client > tls`
-refers to a `tls` block defined inside a `client` block.
+The `>` symbol indicates deeper levels of nesting. For example, `metrics > summaries`
+refers to a `summaries` block defined inside a `metrics` block.
 
 [api]: #api-block
 [traces]: #traces-block
@@ -223,14 +222,12 @@ Valid values for `hostname_source` are:
 
 The `client` block configures the HTTP client used by the component.
 Not all fields are supported by the Datadog Exporter. The table below describes
-the supported options. The `endpoint` argument is required, but doesn't affect the
-exporter. You can use the metrics/traces `endpoint` option to do this.
+the supported options.
 
 The following arguments are supported:
 
 Name                      | Type                       | Description                                                                                                        | Default    | Required
 --------------------------|----------------------------|--------------------------------------------------------------------------------------------------------------------|------------|---------
-`endpoint`        | `string`                          | Set to `""` if configuring this block. Required to re-use the HTTP client.                                         | `""`        | yes
 `read_buffer_size`        | `string`                   | Size of the read buffer the HTTP client uses for reading server responses.                                         |         | no
 `write_buffer_size`       | `string`                   | Size of the write buffer the HTTP client uses for writing requests.                                                |  | no
 `timeout`                 | `duration`                 | Time to wait before marking a request as failed.                                                                   | `"15s"`    | no
@@ -239,16 +236,8 @@ Name                      | Type                       | Description            
 `max_conns_per_host`      | `int`                      | Limits the total (dialing,active, and idle) number of connections per host.                                        |         | no
 `idle_conn_timeout`       | `duration`                 | Time to wait before an idle connection closes itself.                                                              |     | no
 `disable_keep_alives`     | `bool`                     | Disable HTTP keep-alive.                                                                                           |     | no
-
-### tls block
-
-The `tls` block configures the TLS settings used to connect to the HTTP server.
-
-The following arguments are supported:
-
-Name                           | Type           | Description                                                                                  | Default     | Required
--------------------------------|----------------|----------------------------------------------------------------------------------------------|-------------|---------
 `insecure_skip_verify`         | `boolean`      | Ignores insecure server TLS certificates.                                                    |             | no
+
 
 ### retry_on_failure block
 

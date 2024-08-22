@@ -13,8 +13,7 @@ otelcol.exporter.otlp "default" {
 
 otelcol.exporter.datadog "default" {
 	client {
-		endpoint = ""
-		timeout  = "10s"
+		timeout = "10s"
 	}
 
 	api {
