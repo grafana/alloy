@@ -9,7 +9,10 @@ internal API changes are not present.
 
 Main (unreleased)
 -----------------
+### Features
 
+- Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
+- 
 ### Enhancements
 
 - Clustering peer resolution through `--cluster.join-addresses` flag has been
@@ -23,11 +26,16 @@ Main (unreleased)
   seen by each instance in the cluster. This can help diagnose cluster split
   brain issues. (@thampiotr)
 
-### Features
+- Updated Snowflake exporter with performance improvements for larger environments. 
+  Also added a new panel to track deleted tables to the Snowflake mixin. (@Caleb-Hurshman)
 
-- Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
+- Changed the cluster startup behaviour, reverting to the previous logic where
+  a failure to resolve cluster join peers results in the node creating its own cluster. This is
+  to facilitate the process of bootstrapping a new cluster following user feedback (@thampiotr)
 
 ### Bugfixes
+
+- Fix a bug where custom components don't always get updated when the config is modified in an imported directory. (@ante012)
 
 - Fixed an issue which caused loss of context data in Faro exception. (@codecapitano)
 
@@ -44,6 +52,13 @@ Main (unreleased)
 
 - Fixed an issue where the `connection_string` for the `loki.source.azure_event_hubs` component
   was displayed in the UI in plaintext. (@MorrisWitthein)
+
+- Fix a bug in `discovery.*` components where old `targets` would continue to be
+  exported to downstream components. This would only happen if the config
+  for `discovery.*`  is reloaded in such a way that no new targets were
+  discovered. (@ptodev, @thampiotr)
+
+- Fix a memory leak which would occur any time `loki.process` had its configuration reloaded. (@ptodev)
 
 v1.3.0
 -----------------
@@ -175,6 +190,7 @@ v1.3.0
 - Fix a bug which prevented config reloads to work if a Loki `metrics` stage is in the pipeline.
   Previously, the reload would fail for `loki.process` without an error in the logs and the metrics
   from the `metrics` stage would get stuck at the same values. (@ptodev)
+
 
 v1.2.1
 -----------------
