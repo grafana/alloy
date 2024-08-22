@@ -85,14 +85,14 @@ func TestJSONLabelsStage(t *testing.T) {
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 
-	liveDebuggingLog := []string{}
+	liveDebuggingLog := testlivedebugging.NewLog()
 
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
 		Logger:         util.TestAlloyLogger(t),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceDataWithLiveDebugging(&liveDebuggingLog),
+		GetServiceData: getServiceDataWithLiveDebugging(liveDebuggingLog),
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1, ch2},
@@ -155,7 +155,7 @@ func TestJSONLabelsStage(t *testing.T) {
 		"[IN]: timestamp: 2020-11-15T02:08:41-07:00, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\"}",
 		"[OUT]: timestamp: 2019-04-30T02:12:41.8443515Z, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\", stream=\"stderr\", ts=\"2019-04-30T02:12:41.8443515Z\", user=\"smith\"}",
 	}
-	require.Equal(t, expectedLiveDebuggingLog, liveDebuggingLog)
+	require.Equal(t, expectedLiveDebuggingLog, liveDebuggingLog.Get())
 }
 
 func TestStaticLabelsLabelAllowLabelDrop(t *testing.T) {
@@ -625,7 +625,7 @@ func getServiceData(name string) (interface{}, error) {
 	}
 }
 
-func getServiceDataWithLiveDebugging(liveDebuggingLog *[]string) func(string) (interface{}, error) {
+func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (interface{}, error) {
 	ld := livedebugging.NewLiveDebugging()
 	host := &testlivedebugging.FakeServiceHost{
 		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
@@ -637,7 +637,7 @@ func getServiceDataWithLiveDebugging(liveDebuggingLog *[]string) func(string) (i
 	ld.AddCallback(
 		"callback1",
 		"",
-		func(data string) { *liveDebuggingLog = append(*liveDebuggingLog, data) },
+		func(data string) { log.Append(data) },
 	)
 
 	return func(name string) (interface{}, error) {

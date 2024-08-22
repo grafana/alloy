@@ -2,6 +2,7 @@ package testlivedebugging
 
 import (
 	"context"
+	"sync"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service"
@@ -53,4 +54,27 @@ func (f *FakeComponentNoLiveDebugging) Run(ctx context.Context) error {
 
 func (f *FakeComponentNoLiveDebugging) Update(_ component.Arguments) error {
 	return nil
+}
+
+type Log struct {
+	m    sync.Mutex
+	logs []string
+}
+
+func NewLog() *Log {
+	return &Log{
+		logs: []string{},
+	}
+}
+
+func (l *Log) Append(log string) {
+	l.m.Lock()
+	defer l.m.Unlock()
+	l.logs = append(l.logs, log)
+}
+
+func (l *Log) Get() []string {
+	l.m.Lock()
+	defer l.m.Unlock()
+	return append([]string{}, l.logs...)
 }
