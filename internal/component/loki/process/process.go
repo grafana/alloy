@@ -184,14 +184,18 @@ func (c *Component) handleOut(ctx context.Context, wg *sync.WaitGroup) {
 			c.fanoutMut.RLock()
 			fanout := c.fanout
 			c.fanoutMut.RUnlock()
+
+			// The log entry is the same for every fanout,
+			// so we can publish it only once.
+			if c.debugDataPublisher.IsActive(componentID) {
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
+			}
+
 			for _, f := range fanout {
 				select {
 				case <-ctx.Done():
 					return
 				case f.Chan() <- entry:
-					if c.debugDataPublisher.IsActive(componentID) {
-						c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
-					}
 				}
 			}
 		}
