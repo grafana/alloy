@@ -6,14 +6,11 @@ description: Learn how to install Grafana Alloy with Ansible
 menuTitle: Ansible
 title: Install Grafana Alloy with Ansible
 weight: 550
-_build:
-  list: false
-noindex: true
 ---
 
 # Install or uninstall {{% param "FULL_PRODUCT_NAME" %}} using Ansible
 
-You can use [Grafana Ansible Collection](https://github.com/grafana/grafana-ansible-collection) to install and manage {{< param "PRODUCT_NAME" >}} on Linux hosts.
+You can use the [Grafana Ansible Collection](https://github.com/grafana/grafana-ansible-collection) to install and manage {{< param "PRODUCT_NAME" >}} on Linux hosts.
 
 ## Before you begin
 
@@ -43,15 +40,15 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
               }
               prometheus.remote_write "prom" {
                 endpoint {
-                    url = "YOUR_PROMETHEUS_PUSH_ENDPOINT"
+                    url = "<YOUR_PROMETHEUS_PUSH_ENDPOINT>"
                 }
               }
     ```
 
-    The above snippet has a sample configuration to collect and send Alloy metrics to Prometheus
+    This snippet has a sample configuration to collect and send {{% param "PRODUCT_NAME" %}} metrics to Prometheus
 
     Replace the following:
-    - _`YOUR_PROMETHEUS_PUSH_ENDPOINT`_:  With the Remote write endpoint of your Prometheus Instance.
+    - _`<YOUR_PROMETHEUS_PUSH_ENDPOINT>`_:  The Remote write endpoint of your Prometheus Instance.
 
 1. Run the Ansible playbook. Open a terminal window and run the following command from the Ansible playbook directory.
 
@@ -86,4 +83,5 @@ Main PID: 3176 (alloy-linux-amd)
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Grafana Ansible Collection]: https://github.com/grafana/grafana-ansible-collection
+[Ansible]: https://www.ansible.com/
 [Configure]: ../../../configure/linux/
