@@ -102,8 +102,13 @@ func TestJSONLabelsStage(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go c.Run(ctx)
+	wgRun := sync.WaitGroup{}
+
+	wgRun.Add(1)
+	go func() {
+		c.Run(ctx)
+		wgRun.Done()
+	}()
 
 	// Choose a timestamp which is different from the one in the json log line that is being sent.
 	ingestionTs, err := time.Parse(time.RFC3339, "2020-11-15T02:08:41-07:00")
@@ -149,6 +154,9 @@ func TestJSONLabelsStage(t *testing.T) {
 			require.FailNow(t, "failed waiting for log line")
 		}
 	}
+
+	cancel()
+	wgRun.Wait()
 
 	// The timestamp in "IN" is different from the one in "OUT".
 	expectedLiveDebuggingLog := []string{
