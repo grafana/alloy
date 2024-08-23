@@ -355,6 +355,25 @@ func testOptions(t *testing.T) runtime.Options {
 	}
 }
 
+func updateComponent(t *testing.T, ctrl *runtime.Runtime, moduleId string, nodeId string, newArgs component.Arguments) {
+	info, err := ctrl.GetComponent(
+		component.ID{
+			ModuleID: moduleId,
+			LocalID:  nodeId,
+		},
+		component.InfoOptions{
+			GetHealth:    true,
+			GetArguments: true,
+			GetExports:   true,
+			GetDebugInfo: true,
+		},
+	)
+	require.NoError(t, err)
+
+	err = info.Component.Update(newArgs)
+	require.NoError(t, err)
+}
+
 func getExport[T any](t *testing.T, ctrl *runtime.Runtime, moduleId string, nodeId string) T {
 	t.Helper()
 	info, err := ctrl.GetComponent(component.ID{
