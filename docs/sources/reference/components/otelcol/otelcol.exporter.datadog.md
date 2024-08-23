@@ -363,7 +363,6 @@ otelcol.exporter.datadog "default" {
 }
 ```
 
-
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
