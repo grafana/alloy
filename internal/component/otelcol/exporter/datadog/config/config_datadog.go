@@ -12,6 +12,8 @@ import (
 )
 
 // DatadogClientArguments holds the configuration settings for the Datadog client.
+// Datadog Exporter only supports InsecureSkipVerify for TLS configuration.
+// https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.105.0/exporter/datadogexporter/examples/collector.yaml#L219
 type DatadogClientArguments struct {
 	ReadBufferSize      int            `alloy:"read_buffer_size,attr,optional"`
 	WriteBufferSize     int            `alloy:"write_buffer_size,attr,optional"`
@@ -47,6 +49,10 @@ func (args *DatadogClientArguments) Convert() *confighttp.ClientConfig {
 }
 
 func (args *DatadogClientArguments) SetToDefault() {
+	// Additional defaults are set on the OTel side if values aren't provided.
+	// These are the defaults listed in the Alloy docs.
+	// We leave this to OTel as the types for MaxIdleConns etc are ptrs, which is difficult for Alloy to default.
+	// https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.105.0/exporter/datadogexporter/internal/clientutil/http.go#L49
 	*args = DatadogClientArguments{
 		Timeout: 15 * time.Second,
 	}
