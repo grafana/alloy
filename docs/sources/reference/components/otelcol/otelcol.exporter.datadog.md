@@ -1,14 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.datadog/
 description: Learn about otelcol.exporter.datadog
-labels:
-  stage: community
+aliases:
+  - ../otelcol.exporter.datadog/ # /docs/alloy/latest/reference/components/otelcol.exporter.datadog/
 title: otelcol.exporter.datadog
 ---
 
 # otelcol.exporter.datadog
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.exporter.datadog` accepts metrics and traces telemetry data from 
 other `otelcol` components and sends it to Datadog.
@@ -231,10 +229,10 @@ Name                      | Type                       | Description            
 `read_buffer_size`        | `string`                   | Size of the read buffer the HTTP client uses for reading server responses.                                         |         | no
 `write_buffer_size`       | `string`                   | Size of the write buffer the HTTP client uses for writing requests.                                                |  | no
 `timeout`                 | `duration`                 | Time to wait before marking a request as failed.                                                                   | `"15s"`    | no
-`max_idle_conns`          | `int`                      | Limits the number of idle HTTP connections the client can keep open.                                               |       | no
-`max_idle_conns_per_host` | `int`                      | Limits the number of idle HTTP connections the host can keep open.                                                 |         | no
+`max_idle_conns`          | `int`                      | Limits the number of idle HTTP connections the client can keep open.                                               |    `100`   | no
+`max_idle_conns_per_host` | `int`                      | Limits the number of idle HTTP connections the host can keep open.                                                 |   `5`      | no
 `max_conns_per_host`      | `int`                      | Limits the total (dialing,active, and idle) number of connections per host.                                        |         | no
-`idle_conn_timeout`       | `duration`                 | Time to wait before an idle connection closes itself.                                                              |     | no
+`idle_conn_timeout`       | `duration`                 | Time to wait before an idle connection closes itself.                                                              |  `"45s"`   | no
 `disable_keep_alives`     | `bool`                     | Disable HTTP keep-alive.                                                                                           |     | no
 `insecure_skip_verify`         | `boolean`      | Ignores insecure server TLS certificates.                                                    |             | no
 
@@ -277,6 +275,7 @@ information.
 
 ## Example
 
+### Forward Prometheus Metrics
 This example forwards Prometheus metrics from {{< param "PRODUCT_NAME" >}} through a receiver for conversion to Open Telemetry format before finally sending them to Datadog.
 If you are using the US Datadog APIs, the `api` field is required for the exporter to function.
 
@@ -307,6 +306,63 @@ otelcol.exporter.datadog "default" {
     }
 }
 ```
+### Full OTel pipeline
+This example forwards metrics and traces received in Datadog format to Alloy, converts them to OTel format, and exports them to Datadog. 
+```alloy
+otelcol.receiver.datadog "default" {
+	output {
+		metrics = [otelcol.exporter.otlp.default.input, otelcol.exporter.datadog.default input]
+		traces  = [otelcol.exporter.otlp.default.input, otelcol.exporter.datadog.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
+
+otelcol.exporter.datadog "default" {
+	client {
+		timeout = "10s"
+	}
+
+	api {
+		api_key             = "abc"
+		fail_on_invalid_key = true
+	}
+
+	traces {
+		endpoint             = "https://trace.agent.datadoghq.com"
+		ignore_resources     = ["(GET|POST) /healthcheck"]
+		span_name_remappings = {
+			"instrumentation:express.server" = "express",
+		}
+	}
+
+	metrics {
+		delta_ttl = 1200
+		endpoint  = "https://api.datadoghq.com"
+
+		exporter {
+			resource_attributes_as_tags = true
+		}
+
+		histograms {
+			mode = "counters"
+		}
+
+		sums {
+			initial_cumulative_monotonic_value = "keep"
+		}
+
+		summaries {
+			mode = "noquantiles"
+		}
+	}
+}
+```
+
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

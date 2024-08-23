@@ -104,7 +104,7 @@ func (args *DatadogHostMetadataArguments) Convert() *datadogexporter.HostMetadat
 func (args *DatadogHostMetadataArguments) SetToDefault() {
 	*args = DatadogHostMetadataArguments{
 		Enabled:        true,
-		HostnameSource: string(datadogexporter.HostnameSourceConfigOrSystem),
+		HostnameSource: "config_or_system",
 	}
 }
 
@@ -191,11 +191,11 @@ func (args *DatadogMetricsArguments) SetToDefault() {
 			SendAggregations: false,
 		},
 		SumConfig: DatadogSumArguments{
-			CumulativeMonotonicMode:        string(datadogexporter.CumulativeMonotonicSumModeToDelta),
-			InitialCumulativeMonotonicMode: string(datadogexporter.InitialValueModeAuto),
+			CumulativeMonotonicMode:        "to_delta",
+			InitialCumulativeMonotonicMode: "auto",
 		},
 		SummaryConfig: DatadogSummaryArguments{
-			Mode: string(datadogexporter.SummaryModeGauges),
+			Mode: "gauges",
 		},
 	}
 }
