@@ -196,7 +196,7 @@ The following blocks are supported inside the definition of
 Hierarchy           | Block               | Description                                              | Required
 --------------------|---------------------|----------------------------------------------------------|---------
 namespaces          | [namespaces][]      | Information about which Kubernetes namespaces to search. | no
-selectors           | [selectors][]       | Information about which Kubernetes namespaces to search. | no
+selectors           | [selectors][]       | Selectors to filter discovered Kubernetes resources.     | no
 attach_metadata     | [attach_metadata][] | Optional metadata to attach to discovered targets.       | no
 basic_auth          | [basic_auth][]      | Configure basic_auth for authenticating to the endpoint. | no
 authorization       | [authorization][]   | Configure generic authorization to the endpoint.         | no
