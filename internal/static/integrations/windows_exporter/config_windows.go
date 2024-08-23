@@ -1,54 +1,53 @@
 package windows_exporter
 
 import (
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/prometheus-community/windows_exporter/pkg/collector"
 )
 
 func (c *Config) ToWindowsExporterConfig() collector.Config {
 	cfg := collector.ConfigDefaults
-	cfg.Dfsr.DfsrEnabledCollectors = c.Dfsr.SourcesEnabled
-	cfg.Exchange.CollectorsEnabled = c.Exchange.EnabledList
+	cfg.DFSR.CollectorsEnabled = strings.Split(c.Dfsr.SourcesEnabled, ",")
+	cfg.Exchange.CollectorsEnabled = strings.Split(c.Exchange.EnabledList, ",")
 
-	cfg.Iis.SiteInclude = coalesceString(c.IIS.SiteInclude, c.IIS.SiteWhiteList)
-	cfg.Iis.SiteExclude = coalesceString(c.IIS.SiteExclude, c.IIS.SiteBlackList)
-	cfg.Iis.AppInclude = coalesceString(c.IIS.AppInclude, c.IIS.AppWhiteList)
-	cfg.Iis.AppExclude = coalesceString(c.IIS.AppExclude, c.IIS.AppBlackList)
+	cfg.IIS.SiteInclude = regexp.MustCompile(coalesceString(c.IIS.SiteInclude, c.IIS.SiteWhiteList))
+	cfg.IIS.SiteExclude = regexp.MustCompile(coalesceString(c.IIS.SiteExclude, c.IIS.SiteBlackList))
+	cfg.IIS.AppInclude = regexp.MustCompile(coalesceString(c.IIS.AppInclude, c.IIS.AppWhiteList))
+	cfg.IIS.AppExclude = regexp.MustCompile(coalesceString(c.IIS.AppExclude, c.IIS.AppBlackList))
 
 	cfg.Service.ServiceWhereClause = c.Service.Where
 	cfg.Service.UseAPI = c.Service.UseApi == "true"
 	cfg.Service.V2 = c.Service.V2 == "true"
 
-	cfg.Smtp.ServerInclude = coalesceString(c.SMTP.Include, c.SMTP.WhiteList)
-	cfg.Smtp.ServerExclude = coalesceString(c.SMTP.Exclude, c.SMTP.BlackList)
+	cfg.SMTP.ServerInclude = regexp.MustCompile(coalesceString(c.SMTP.Include, c.SMTP.WhiteList))
+	cfg.SMTP.ServerExclude = regexp.MustCompile(coalesceString(c.SMTP.Exclude, c.SMTP.BlackList))
 
-	cfg.Textfile.TextFileDirectories = c.TextFile.TextFileDirectory
+	cfg.Textfile.TextFileDirectories = strings.Split(c.TextFile.TextFileDirectory, ",")
 
-	cfg.PhysicalDisk.DiskInclude = c.PhysicalDisk.Include
-	cfg.PhysicalDisk.DiskExclude = c.PhysicalDisk.Exclude
+	cfg.PhysicalDisk.DiskInclude = regexp.MustCompile(c.PhysicalDisk.Include)
+	cfg.PhysicalDisk.DiskExclude = regexp.MustCompile(c.PhysicalDisk.Exclude)
 
-	cfg.Printer.Include = c.Printer.Include
-	cfg.Printer.Exclude = c.Printer.Exclude
+	cfg.Printer.PrinterInclude = regexp.MustCompile(c.Printer.Include)
+	cfg.Printer.PrinterExclude = regexp.MustCompile(c.Printer.Exclude)
 
-	cfg.Process.ProcessExclude = coalesceString(c.Process.Exclude, c.Process.BlackList)
-	cfg.Process.ProcessInclude = coalesceString(c.Process.Include, c.Process.WhiteList)
+	cfg.Process.ProcessExclude = regexp.MustCompile(coalesceString(c.Process.Exclude, c.Process.BlackList))
+	cfg.Process.ProcessInclude = regexp.MustCompile(coalesceString(c.Process.Include, c.Process.WhiteList))
 
-	cfg.Net.NicExclude = coalesceString(c.Network.Exclude, c.Network.BlackList)
-	cfg.Net.NicInclude = coalesceString(c.Network.Include, c.Network.WhiteList)
+	cfg.Net.NicExclude = regexp.MustCompile(coalesceString(c.Network.Exclude, c.Network.BlackList))
+	cfg.Net.NicInclude = regexp.MustCompile(coalesceString(c.Network.Include, c.Network.WhiteList))
 
-	cfg.Mssql.EnabledCollectors = c.MSSQL.EnabledClasses
+	cfg.Mssql.CollectorsEnabled = strings.Split(c.MSSQL.EnabledClasses, ",")
 
-	cfg.Msmq.QueryWhereClause = c.MSMQ.Where
+	cfg.Msmq.QueryWhereClause = &c.MSMQ.Where
 
-	cfg.LogicalDisk.VolumeInclude = coalesceString(c.LogicalDisk.Include, c.LogicalDisk.WhiteList)
-	cfg.LogicalDisk.VolumeExclude = coalesceString(c.LogicalDisk.Exclude, c.LogicalDisk.BlackList)
+	cfg.LogicalDisk.VolumeInclude = regexp.MustCompile(coalesceString(c.LogicalDisk.Include, c.LogicalDisk.WhiteList))
+	cfg.LogicalDisk.VolumeExclude = regexp.MustCompile(coalesceString(c.LogicalDisk.Exclude, c.LogicalDisk.BlackList))
 
-	cfg.ScheduledTask.TaskInclude = c.ScheduledTask.Include
-	cfg.ScheduledTask.TaskExclude = c.ScheduledTask.Exclude
-
-	cfg.Smb.CollectorsEnabled = c.SMB.EnabledList
-	cfg.SmbClient.CollectorsEnabled = c.SMBClient.EnabledList
+	cfg.ScheduledTask.TaskInclude = regexp.MustCompile(c.ScheduledTask.Include)
+	cfg.ScheduledTask.TaskExclude = regexp.MustCompile(c.ScheduledTask.Exclude)
 
 	return cfg
 }
@@ -66,56 +65,56 @@ func coalesceString(v ...string) string {
 var DefaultConfig = Config{
 	EnabledCollectors: "cpu,cs,logical_disk,net,os,service,system",
 	Dfsr: DfsrConfig{
-		SourcesEnabled: collector.ConfigDefaults.Dfsr.DfsrEnabledCollectors,
+		SourcesEnabled: strings.Join(collector.ConfigDefaults.DFSR.CollectorsEnabled, ","),
 	},
 	Exchange: ExchangeConfig{
-		EnabledList: collector.ConfigDefaults.Exchange.CollectorsEnabled,
+		EnabledList: strings.Join(collector.ConfigDefaults.Exchange.CollectorsEnabled, ","),
 	},
 	IIS: IISConfig{
-		AppBlackList:  collector.ConfigDefaults.Iis.AppExclude,
-		AppWhiteList:  collector.ConfigDefaults.Iis.AppInclude,
-		SiteBlackList: collector.ConfigDefaults.Iis.SiteExclude,
-		SiteWhiteList: collector.ConfigDefaults.Iis.SiteInclude,
-		AppInclude:    collector.ConfigDefaults.Iis.AppInclude,
-		AppExclude:    collector.ConfigDefaults.Iis.AppExclude,
-		SiteInclude:   collector.ConfigDefaults.Iis.SiteInclude,
-		SiteExclude:   collector.ConfigDefaults.Iis.SiteExclude,
+		AppBlackList:  collector.ConfigDefaults.IIS.AppExclude.String(),
+		AppWhiteList:  collector.ConfigDefaults.IIS.AppInclude.String(),
+		SiteBlackList: collector.ConfigDefaults.IIS.SiteExclude.String(),
+		SiteWhiteList: collector.ConfigDefaults.IIS.SiteInclude.String(),
+		AppInclude:    collector.ConfigDefaults.IIS.AppInclude.String(),
+		AppExclude:    collector.ConfigDefaults.IIS.AppExclude.String(),
+		SiteInclude:   collector.ConfigDefaults.IIS.SiteInclude.String(),
+		SiteExclude:   collector.ConfigDefaults.IIS.SiteExclude.String(),
 	},
 	LogicalDisk: LogicalDiskConfig{
-		BlackList: collector.ConfigDefaults.LogicalDisk.VolumeExclude,
-		WhiteList: collector.ConfigDefaults.LogicalDisk.VolumeInclude,
-		Include:   collector.ConfigDefaults.LogicalDisk.VolumeInclude,
-		Exclude:   collector.ConfigDefaults.LogicalDisk.VolumeExclude,
+		BlackList: collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
+		WhiteList: collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
+		Include:   collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
+		Exclude:   collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
 	},
 	MSMQ: MSMQConfig{
-		Where: collector.ConfigDefaults.Msmq.QueryWhereClause,
+		Where: *collector.ConfigDefaults.Msmq.QueryWhereClause,
 	},
 	MSSQL: MSSQLConfig{
-		EnabledClasses: collector.ConfigDefaults.Mssql.EnabledCollectors,
+		EnabledClasses: strings.Join(collector.ConfigDefaults.Mssql.CollectorsEnabled, ","),
 	},
 	Network: NetworkConfig{
-		BlackList: collector.ConfigDefaults.Net.NicExclude,
-		WhiteList: collector.ConfigDefaults.Net.NicInclude,
-		Include:   collector.ConfigDefaults.Net.NicInclude,
-		Exclude:   collector.ConfigDefaults.Net.NicExclude,
+		BlackList: collector.ConfigDefaults.Net.NicExclude.String(),
+		WhiteList: collector.ConfigDefaults.Net.NicInclude.String(),
+		Include:   collector.ConfigDefaults.Net.NicInclude.String(),
+		Exclude:   collector.ConfigDefaults.Net.NicExclude.String(),
 	},
 	PhysicalDisk: PhysicalDiskConfig{
-		Include: collector.ConfigDefaults.PhysicalDisk.DiskInclude,
-		Exclude: collector.ConfigDefaults.PhysicalDisk.DiskExclude,
+		Include: collector.ConfigDefaults.PhysicalDisk.DiskInclude.String(),
+		Exclude: collector.ConfigDefaults.PhysicalDisk.DiskExclude.String(),
 	},
 	Printer: PrinterConfig{
-		Include: collector.ConfigDefaults.Printer.Include,
-		Exclude: collector.ConfigDefaults.Printer.Exclude,
+		Include: collector.ConfigDefaults.Printer.PrinterInclude.String(),
+		Exclude: collector.ConfigDefaults.Printer.PrinterExclude.String(),
 	},
 	Process: ProcessConfig{
-		BlackList: collector.ConfigDefaults.Process.ProcessExclude,
-		WhiteList: collector.ConfigDefaults.Process.ProcessInclude,
-		Include:   collector.ConfigDefaults.Process.ProcessInclude,
-		Exclude:   collector.ConfigDefaults.Process.ProcessExclude,
+		BlackList: collector.ConfigDefaults.Process.ProcessExclude.String(),
+		WhiteList: collector.ConfigDefaults.Process.ProcessInclude.String(),
+		Include:   collector.ConfigDefaults.Process.ProcessInclude.String(),
+		Exclude:   collector.ConfigDefaults.Process.ProcessExclude.String(),
 	},
 	ScheduledTask: ScheduledTaskConfig{
-		Include: collector.ConfigDefaults.ScheduledTask.TaskInclude,
-		Exclude: collector.ConfigDefaults.ScheduledTask.TaskExclude,
+		Include: collector.ConfigDefaults.ScheduledTask.TaskInclude.String(),
+		Exclude: collector.ConfigDefaults.ScheduledTask.TaskExclude.String(),
 	},
 	Service: ServiceConfig{
 		UseApi: strconv.FormatBool(collector.ConfigDefaults.Service.UseAPI),
@@ -123,19 +122,19 @@ var DefaultConfig = Config{
 		V2:     strconv.FormatBool(collector.ConfigDefaults.Service.V2),
 	},
 	SMTP: SMTPConfig{
-		BlackList: collector.ConfigDefaults.Smtp.ServerExclude,
-		WhiteList: collector.ConfigDefaults.Smtp.ServerInclude,
-		Include:   collector.ConfigDefaults.Smtp.ServerInclude,
-		Exclude:   collector.ConfigDefaults.Smtp.ServerExclude,
+		BlackList: collector.ConfigDefaults.SMTP.ServerExclude.String(),
+		WhiteList: collector.ConfigDefaults.SMTP.ServerInclude.String(),
+		Include:   collector.ConfigDefaults.SMTP.ServerInclude.String(),
+		Exclude:   collector.ConfigDefaults.SMTP.ServerExclude.String(),
 	},
 	SMB: SMBConfig{
-		EnabledList: collector.ConfigDefaults.Smb.CollectorsEnabled,
+		EnabledList: "",
 	},
 	SMBClient: SMBClientConfig{
-		EnabledList: collector.ConfigDefaults.SmbClient.CollectorsEnabled,
+		EnabledList: "",
 	},
 	TextFile: TextFileConfig{
-		TextFileDirectory: collector.ConfigDefaults.Textfile.TextFileDirectories,
+		TextFileDirectory: strings.Join(collector.ConfigDefaults.Textfile.TextFileDirectories, ","),
 	},
 }
 
