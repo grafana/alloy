@@ -10,9 +10,17 @@ internal API changes are not present.
 Unreleased
 ----------
 
+0.6.1 (2024-08-23)
+----------
+
 ### Enhancements
 
 - Add the ability to set --cluster.name in the Helm chart with alloy.clustering.name. (@petewall)
+
+### Other changes
+
+- Update helm chart to use v1.3.1.
+
 
 0.6.0 (2024-08-05)
 ------------------
