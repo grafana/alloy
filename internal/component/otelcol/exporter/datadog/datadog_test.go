@@ -1,3 +1,6 @@
+//go:build !freebsd
+
+
 package datadog_test
 
 import (
