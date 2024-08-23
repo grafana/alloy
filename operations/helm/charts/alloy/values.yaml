@@ -258,6 +258,9 @@ controller:
   # -- Additional containers to run alongside the Alloy container and initContainers.
   extraContainers: []
 
+  # -- Determines if the token of the ServiceAccount in will be mounted automatically.
+  automountServiceAccountToken: false
+
 service:
   # -- Creates a Service for the controller's pods.
   enabled: true

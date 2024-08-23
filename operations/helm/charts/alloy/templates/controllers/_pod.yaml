@@ -17,6 +17,7 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   serviceAccountName: {{ include "alloy.serviceAccountName" . }}
+  automountServiceAccountToken: {{ .Values.controller.automountServiceAccountToken }}
   {{- if or .Values.global.image.pullSecrets .Values.image.pullSecrets }}
   imagePullSecrets:
     {{- if .Values.global.image.pullSecrets }}
