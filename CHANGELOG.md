@@ -26,10 +26,6 @@ Main (unreleased)
 - Updated Snowflake exporter with performance improvements for larger environments. 
   Also added a new panel to track deleted tables to the Snowflake mixin. (@Caleb-Hurshman)
 
-- Changed the cluster startup behaviour, reverting to the previous logic where
-  a failure to resolve cluster join peers results in the node creating its own cluster. This is
-  to facilitate the process of bootstrapping a new cluster following user feedback (@thampiotr)
-
 - Live debugging of `loki.process` will now also print the timestamp of incoming and outgoing log lines.
   This is helpful for debugging `stage.timestamp`. (@ptodev)
 
@@ -57,6 +53,15 @@ Main (unreleased)
   exported to downstream components. This would only happen if the config
   for `discovery.*`  is reloaded in such a way that no new targets were
   discovered. (@ptodev, @thampiotr)
+
+v1.3.1
+-----------------
+
+### Bugfixes
+
+- Changed the cluster startup behaviour, reverting to the previous logic where
+  a failure to resolve cluster join peers results in the node creating its own cluster. This is
+  to facilitate the process of bootstrapping a new cluster following user feedback (@thampiotr)
 
 - Fix a memory leak which would occur any time `loki.process` had its configuration reloaded. (@ptodev)
 
