@@ -12,7 +12,7 @@ v1.3.1
 
 ### Bugfixes
 
- - Changed the cluster startup behaviour, reverting to the previous logic where
+- Changed the cluster startup behaviour, reverting to the previous logic where
   a failure to resolve cluster join peers results in the node creating its own cluster. This is
   to facilitate the process of bootstrapping a new cluster following user feedback (@thampiotr)
 
