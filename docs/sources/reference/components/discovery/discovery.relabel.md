@@ -52,15 +52,65 @@ Name      | Type                | Description        | Default | Required
 The following blocks are supported inside the definition of
 `discovery.relabel`:
 
-Hierarchy | Block    | Description                           | Required
-----------|----------|---------------------------------------|---------
-rule      | [rule][] | Relabeling rules to apply to targets. | no
+Hierarchy         | Block         | Description                                       | Required
+------------------|---------------|---------------------------------------------------|---------
+rule              | [rule][]      | Relabeling rules to apply to targets.             | no
+join              | [join][]      | Joined labels from other lists of targets.        | no
+join > condition  | [condition][] | Only join the labels if the condition is true.    | yes
 
 [rule]: #rule-block
+[join]: #join-block
 
 ### rule block
 
 {{< docs/shared lookup="reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### join block
+
+<!-- TODO: Add a similar block to loki.relabel and prometheus.relabel. 
+           Enriching logs in such a way might be especially useful. -->
+
+The `join` block allows you to add additional labels to the list of `targets`.
+
+The following arguments are supported:
+
+| Name               | Type           | Description                                       | Default  | Required |
+|--------------------|----------------|---------------------------------------------------|----------|----------|
+| `incoming_targets` | `targets`      | A list of targets whose labels to merge.          |          | yes      |
+| `labels_to_join`   | `list(string)` | Labels from `targets` which to join.              | `[]`     | no       |
+| `action`           | `string`       | Whether to update the label if it already exists. | `upsert` | no
+
+`incoming_targets` contains labels which could come from a `discovery` or a `prometheus.exporter` component.
+
+Only the labels in `labels_to_join` will be appended to the current targets.
+Labels which are in `labels_to_join`, but not in `incoming_targets` will be ignored.
+
+The supported values for `action` are:
+* `insert`: Inserts a new label if the label does not already exist. 
+  If the label already exists, it is not modified.
+* `update`: Updates a label if it already exists. 
+  If the label does not exist, it will not be created.
+* `upsert`: Inserts a new label if the label does not already exist.
+  If a label already exists, its value will be updated.
+
+When `incoming_targets` are received, they will be stripped of any labels which are not mentioned in `labels_to_join` and `condition`.
+Duplicate sets of targets in `incoming_targets` will then be removed.
+We then iterate over every target in `targets`. If all of the `condition` blocks are satisfied, 
+the labels listed in `labels_to_join` will be added to `targets` along with their values.
+
+### condition block
+
+The `condition` block will join labels from `incoming_targets` only if the value of a `label_incoming` matches the value of a `label_current` label.
+Multiple `condition` blocks can be specified.
+
+The following arguments are supported:
+
+| Name             | Type     | Description                             | Default | Required |
+|------------------|----------|-----------------------------------------|---------|----------|
+| `label_incoming` | `string` | Name of a label in `incoming_targets`.  |         | yes      |
+| `label_current`  | `string` | Name of a label in `targets`.           |         | yes      |
+
+<!-- TODO: Are the arguments named well? What about "incoming label" -->
 
 ## Exported fields
 
@@ -84,7 +134,9 @@ In those cases, exported fields retain their last healthy values.
 
 `discovery.relabel` does not expose any component-specific debug metrics.
 
-## Example
+## Examples
+
+### Using rules
 
 ```alloy
 discovery.relabel "keep_backend_only" {
@@ -108,6 +160,124 @@ discovery.relabel "keep_backend_only" {
   }
 }
 ```
+
+### Joining targets from Kubernetes discovery
+
+```alloy
+prometheus.exporter.redis "example" {
+  redis_addr = "localhost:6379"
+}
+
+discovery.kubernetes "k8s_pods" {
+  role = "pod"
+}
+
+discovery.relabel "joining" {
+  targets = prometheus.exporter.redis.example.targets
+
+  join {
+    incoming_targets = discovery.kubernetes.k8s_pods.targets
+    labels_to_join   = "__meta_kubernetes_namespace"
+
+    // You can use multiple condition blocks within the same join block
+    condition {
+      label_incoming = "__meta_kubernetes_pod_ip"
+      label_current  = "__address__"
+    }
+
+    condition {
+      label_incoming = "__meta_kubernetes_pod_name"
+
+      // TODO: The "__redis_instance__" label is not real. Can we use a real one as an example?
+      label_current  = "__redis_instance__"
+    }
+  }
+}
+
+prometheus.scrape "demo" {
+  targets    = discovery.relabel.joining.targets
+  forward_to = [prometheus.remote_write.demo.receiver]
+}
+
+prometheus.remote_write "demo" {
+  endpoint {
+    url = PROMETHEUS_REMOTE_WRITE_URL
+
+    basic_auth {
+      username = USERNAME
+      password = PASSWORD
+    }
+  }
+}
+```
+
+### Joining multiple targets are relabeling
+
+This example demonstrates how you could use multiple interweaved `join` and `rule` blocks.
+The blocks will be executed in the same sequence that they are configured.
+
+<!-- TODO: Is this example realistic? If not - is there a more realistic one? -->
+
+```alloy
+prometheus.exporter.redis "example" {
+  redis_addr = "localhost:6379"
+}
+
+discovery.kubernetes "k8s_pods" {
+  role = "pod"
+}
+
+discovery.ec2 "example" {
+}
+
+discovery.relabel "joining" {
+  targets = prometheus.exporter.redis.example.targets
+
+  // TODO: Fill this with something
+  rule {}
+
+  join {
+    incoming_targets = discovery.kubernetes.k8s_pods.targets
+    labels_to_join   = "__meta_kubernetes_namespace"
+    condition {
+      label_incoming = "__meta_kubernetes_pod_ip"
+      label_current  = "__address__"
+    }
+  }
+
+  // TODO: Fill this with something
+  rule {}
+
+  join {
+    incoming_targets = discovery.ec2.example.targets
+    labels_to_join   = "__meta_ec2_availability_zone"
+    condition {
+      label_incoming = "__meta_ec2_public_ip"
+      label_current  = "__address__"
+    }
+  }
+
+  // TODO: Fill this with something
+  rule {}
+}
+
+prometheus.scrape "demo" {
+  targets    = discovery.relabel.joining.targets
+  forward_to = [prometheus.remote_write.demo.receiver]
+}
+
+prometheus.remote_write "demo" {
+  endpoint {
+    url = PROMETHEUS_REMOTE_WRITE_URL
+
+    basic_auth {
+      username = USERNAME
+      password = PASSWORD
+    }
+  }
+}
+```
+
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
