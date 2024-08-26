@@ -3,10 +3,13 @@ canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/array/
 description: Learn about array functions
 aliases:
   - ./concat/ # /docs/alloy/latest/reference/stdlib/concat/
+menuTitle: array
 title: array
 ---
 
 # array
+
+The `array` namespace contains functions related to arrays.
 
 ## array.concat
 

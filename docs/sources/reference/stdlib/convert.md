@@ -3,10 +3,13 @@ canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/convert/
 description: Learn about convert functions
 aliases:
   - ./nonsensitive/ # /docs/alloy/latest/reference/stdlib/nonsensitive/
+menuTitle: convert
 title: convert
 ---
 
 # convert
+
+The `convert` namespace contains conversion functions.
 
 ## nonsensitive
 

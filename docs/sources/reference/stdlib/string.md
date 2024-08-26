@@ -12,10 +12,13 @@ aliases:
   - ./trim_prefix/ # /docs/alloy/latest/reference/stdlib/trim_prefix/
   - ./trim_suffix/ # /docs/alloy/latest/reference/stdlib/trim_suffix/
   - ./trim_space/ # /docs/alloy/latest/reference/stdlib/trim_space/
+menuTitle: string
 title: string
 ---
 
 # string
+
+The `string` namespace contains functions related to strings.
 
 ## string.format
 

@@ -3,10 +3,13 @@ canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/sys/
 description: Learn about sys functions
 aliases:
   - ./env/ # /docs/alloy/latest/reference/stdlib/env/
+menuTitle: sys
 title: sys
 ---
 
 # sys
+
+The `sys` namespace contains functions related to the system.
 
 ## sys.env
 

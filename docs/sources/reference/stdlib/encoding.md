@@ -5,10 +5,13 @@ aliases:
   - ./base64_decode/ # /docs/alloy/latest/reference/stdlib/base64_decode/
   - ./json_decode/ # /docs/alloy/latest/reference/stdlib/json_decode/
   - ./yaml_decode/ # /docs/alloy/latest/reference/stdlib/yaml_decode/
+menuTitle: encoding
 title: encoding
 ---
 
 # encoding
+
+The `encoding` namespace contains encoding and decoding functions.
 
 ## encoding.from_base64
 
