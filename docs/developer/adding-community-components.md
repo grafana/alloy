@@ -44,7 +44,7 @@ Community components live amongst other components in the code. The only differe
 
 The documentation should also follow the same pattern as the core components. You must include the the following markdown elements in the component documentation.
 
-* A community badge below the metadata.
+* A community badge below the frontmatter.
 
   ```markdown
   <span class="badge docs-labels__stage docs-labels__item">Community</span>
