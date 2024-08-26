@@ -1,10 +1,23 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/string/
 description: Learn about string functions
+aliases:
+  - ./format/ # /docs/alloy/latest/reference/stdlib/format/
+  - ./join/ # /docs/alloy/latest/reference/stdlib/join/
+  - ./replace/ # /docs/alloy/latest/reference/stdlib/replace/
+  - ./split/ # /docs/alloy/latest/reference/stdlib/split/
+  - ./to_lower/ # /docs/alloy/latest/reference/stdlib/to_lower/
+  - ./to_upper/ # /docs/alloy/latest/reference/stdlib/to_upper/
+  - ./trim/ # /docs/alloy/latest/reference/stdlib/trim/
+  - ./trim_prefix/ # /docs/alloy/latest/reference/stdlib/trim_prefix/
+  - ./trim_suffix/ # /docs/alloy/latest/reference/stdlib/trim_suffix/
+  - ./trim_space/ # /docs/alloy/latest/reference/stdlib/trim_space/
 title: string
 ---
 
-# string.format (previously `format`)
+# string
+
+## string.format
 
 The `string.format` function produces a string by formatting a number of other values according to a specification string.
 It's similar to the `printf` function in C, and other similar functions in other programming languages.
@@ -13,7 +26,7 @@ It's similar to the `printf` function in C, and other similar functions in other
 string.format(spec, values...)
 ```
 
-## Examples
+### Examples
 
 ```alloy
 > string.format("Hello, %s!", "Ander")
@@ -24,7 +37,7 @@ string.format(spec, values...)
 
 The `string.format` function is most useful when you use more complex format specifications.
 
-## Specification Syntax
+### Specification Syntax
 
 The specification is a string that includes formatting verbs that are introduced with the `%` character.
 The function call must then have one additional argument for each verb sequence in the specification.
@@ -37,7 +50,7 @@ Subsequent calls without an explicit index will then proceed with `n`+1, `n`+2, 
 The function produces an error if the format string requests an impossible conversion or accesses more arguments than are given.
 An error is also produced for an unsupported format verb.
 
-### Verbs
+##### Verbs
 
 The specification may contain the following verbs.
 
@@ -58,7 +71,7 @@ The specification may contain the following verbs.
 | `%s` | Convert to string and insert the string's characters.                                     |
 | `%q` | Convert to string and produce a JSON quoted string representation.                        |
 
-# string.join (previously `join`)
+## string.join
 
 `string.join` all items in an array into a string, using a character as separator.
 
@@ -66,7 +79,7 @@ The specification may contain the following verbs.
 string.join(list, separator)
 ```
 
-## Examples
+### Examples
 
 ```alloy
 > string.join(["foo", "bar", "baz"], "-")
@@ -77,7 +90,7 @@ string.join(list, separator)
 "foo"
 ```
 
-# string.replace (previously `replace`)
+## string.replace
 
 `string.replace` searches a string for a substring, and replaces each occurrence of the substring with a replacement string.
 
@@ -85,14 +98,14 @@ string.join(list, separator)
 string.replace(string, substring, replacement)
 ```
 
-## Examples
+### Examples
 
 ```alloy
 > string.replace("1 + 2 + 3", "+", "-")
 "1 - 2 - 3"
 ```
 
-# string.split (previously `split`)
+## string.split
 
 `string.split` produces a list by dividing a string at all occurrences of a separator.
 
@@ -100,7 +113,7 @@ string.replace(string, substring, replacement)
 split(list, separator)
 ```
 
-## Examples
+### Examples
 
 ```alloy
 > string.split("foo,bar,baz", "," )
@@ -113,29 +126,29 @@ split(list, separator)
 [""]
 ```
 
-# string.to_lower (previously `to_lower`)
+## string.to_lower
 
 `string.to_lower` converts all uppercase letters in a string to lowercase.
 
-## Examples
+### Examples
 
 ```alloy
 > string.to_lower("HELLO")
 "hello"
 ```
 
-# string.to_upper (previously `to_upper`)
+## string.to_upper
 
 `string.to_upper` converts all lowercase letters in a string to uppercase.
 
-## Examples
+### Examples
 
 ```alloy
 > string.to_upper("hello")
 "HELLO"
 ```
 
-# string.trim (previously `trim`)
+## string.trim
 
 `string.trim` removes the specified set of characters from the start and end of a string.
 
@@ -143,7 +156,7 @@ split(list, separator)
 string.trim(string, str_character_set)
 ```
 
-## Examples
+### Examples
 
 ```alloy
 > string.trim("?!hello?!", "!?")
@@ -156,33 +169,33 @@ string.trim(string, str_character_set)
 "hello! world."
 ```
 
-# string.trim_prefix (previously `trim_prefix`)
+## string.trim_prefix
 
 `string.trim_prefix` removes the prefix from the start of a string.
 If the string doesn't start with the prefix, the string is returned unchanged.
 
-## Examples
+### Examples
 
 ```alloy
 > string.trim_prefix("helloworld", "hello")
 "world"
 ```
-# string.trim_suffix (previously `trim_suffix`)
+## string.trim_suffix
 
 `string.trim_suffix` removes the suffix from the end of a string.
 
-## Examples
+### Examples
 
 ```alloy
 > string.trim_suffix("helloworld", "world")
 "hello"
 ```
 
-# strings.trim_space (previously `trim_space`)
+## strings.trim_space
 
 `strings.trim_space` removes any whitespace characters from the start and end of a string.
 
-## Examples
+### Examples
 
 ```alloy
 > strings.trim_space("  hello\n\n")

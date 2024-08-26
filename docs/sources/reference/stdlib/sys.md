@@ -1,15 +1,19 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/sys/
 description: Learn about sys functions
+aliases:
+  - ./env/ # /docs/alloy/latest/reference/stdlib/env/
 title: sys
 ---
 
-# sys.env (previously `env`)
+# sys
+
+## sys.env
 
 The `sys.env` function gets the value of an environment variable from the system {{< param "PRODUCT_NAME" >}} is running on.
 If the environment variable does not exist, `sys.env` returns an empty string.
 
-## Examples
+### Examples
 
 ```
 > sys.env("HOME")

@@ -1,10 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/convert/
 description: Learn about convert functions
+aliases:
+  - ./nonsensitive/ # /docs/alloy/latest/reference/stdlib/nonsensitive/
 title: convert
 ---
 
-# convert.nonsensitive (previously `nonsensitive`)
+# convert
+
+## nonsensitive
 
 `convert.nonsensitive` converts a [secret][] value back into a string.
 
@@ -14,7 +18,7 @@ Only use `convert.nonsensitive` when you are positive that the value converted b
 Strings resulting from calls to `convert.nonsensitive` are displayed in plain text in the UI and internal API calls.
 {{< /admonition >}}
 
-## Examples
+### Examples
 
 ```
 // Assuming `sensitive_value` is a secret:

@@ -1,16 +1,20 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/array/
 description: Learn about array functions
+aliases:
+  - ./concat/ # /docs/alloy/latest/reference/stdlib/concat/
 title: array
 ---
 
-# array.concat (previously `concat`)
+# array
+
+## array.concat
 
 The `array.concat` function concatenates one or more lists of values into a single list.
 Each argument to `array.concat` must be a list value.
 Elements within the list can be any type.
 
-## Examples
+### Examples
 
 ```
 > array.concat([])
