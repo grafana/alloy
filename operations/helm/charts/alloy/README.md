@@ -179,6 +179,7 @@ Port numbers specified must be 0 < x < 65535.
 | hostPort | hostPort | (Optional) Number of port to expose on the host. Daemonsets taking traffic might find this useful. |
 | name | name | If specified, this must be an `IANA_SVC_NAME` and unique within the pod. Each named port in a pod must have a unique name. Name for the port that can be referred to by services.
 | protocol | protocol | Must be UDP, TCP, or SCTP. Defaults to "TCP". |
+| appProtocol | appProtocol | Hint on application protocol. This is used to expose Alloy externally on OpenShift clusters using "h2c". Optional. No default value. |
 
 ### alloy.listenAddr
 
@@ -280,3 +281,29 @@ To expose this information to Grafana Alloy for telemetry collection:
   privileged: true
   runAsUser: 0
   ```
+
+## Expose Alloy externally on OpenShift clusters
+
+If you want to send telemetry from an Alloy instance outside of the OpenShift clusters over gRPC towards the Alloy instance on the OpenShift clusters, you need to:
+
+* Set the optional `appProtocol` on `alloy.extraPorts` to `h2c`
+* Expose the service via Ingress or Route within the OpenShift cluster. Example of a Route in OpenShift:
+```yaml
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: route-otlp-alloy-h2c
+spec:
+  to:
+    kind: Service
+    name: test-grpc-h2c
+    weight: 100
+  port:
+    targetPort: otlp-grpc
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+```
+
+Once this Ingress/Route is exposed it would then allow gRPC communication for (for example) traces. This allow an Alloy instance on a VM or another Kubernetes/OpenShift cluster to be able to communicate over gRPC via the exposed Ingress or Route.
