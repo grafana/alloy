@@ -6,10 +6,14 @@ aliases:
 title: otelcol.exporter.datadog
 ---
 
+
+<span class="badge docs-labels__stage docs-labels__item">Community</span>
+
 # otelcol.exporter.datadog
 
-`otelcol.exporter.datadog` accepts metrics and traces telemetry data from 
-other `otelcol` components and sends it to Datadog.
+{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+`otelcol.exporter.datadog` accepts metrics and traces telemetry data from other `otelcol` components and sends it to Datadog.
 
 {{< admonition type="note" >}}
 `otelcol.exporter.datadog` is a wrapper over the upstream OpenTelemetry Collector `datadog` exporter from the `otelcol-contrib`  distribution.
@@ -32,10 +36,10 @@ otelcol.exporter.datadog "LABEL" {
 
 The following arguments are supported:
 
-Name                                       | Type            | Description                                                                         | Default              | Required
------------------------------------------- | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`hostname`                              | `string`        | The fallback hostname used for payloads without hostname-identifying attributes.                                                    |                      | no
-`only_metadata`                                  | `bool`  | Whether to send only metadata.                                                        | `false` | no
+Name            | Type     | Description                                                                      | Default | Required
+----------------|----------|----------------------------------------------------------------------------------|---------|---------
+`hostname`      | `string` | The fallback hostname used for payloads without hostname-identifying attributes. |         | no
+`only_metadata` | `bool`   | Whether to send only metadata.                                                   | `false` | no
 
 If `hostname` is unset, the hostname is determined automatically. For more information, refer to the Datadog [Fallback hostname logic](https://docs.datadoghq.com/opentelemetry/schema_semantics/hostname/?tab=datadogexporter#fallback-hostname-logic) documentation. 
 This option will **NOT** change the hostname applied to metrics or traces if they already have hostname-identifying attributes.
@@ -44,23 +48,22 @@ This option will **NOT** change the hostname applied to metrics or traces if the
 
 The following blocks are supported inside the definition of `otelcol.exporter.datadog`:
 
-Hierarchy                        | Block               | Description                                                                 | Required
--------------------------------- | ------------------- | --------------------------------------------------------------------------- | --------
-api | [api][] | Configures authentication with Datadog | yes
-traces | [traces][] | Trace exporter specific configuration. | no
-metrics | [metrics][] |  Metric exporter specific configuration. | no
-metrics > exporter | [exporter][] | Metric Exporter specific configuation. | no
-metrics > histograms | [histograms][] | Histograms specific configuration. | no
-metrics > sums | [sums][] | Sums specific configuration | no
-metrics > summaries | [summaries][] | Summaries specific configuration | no
-host_metadata | [host_metadata][] | Host metadata specific configuration. | no
-client           | [client][]           | Configures the HTTP client used to send telemetry data.                      | no
-retry_on_failure                 | [retry_on_failure][] | Configures retry mechanism for failed requests.                             | no
-queue                            | [queue][]            | Configures batching of data before sending.                                 | no
-debug_metrics                    | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state. | no
+Hierarchy            | Block                | Description                                                                | Required
+---------------------|----------------------|----------------------------------------------------------------------------|---------
+api                  | [api][]              | Configures authentication with Datadog                                     | yes
+traces               | [traces][]           | Trace exporter specific configuration.                                     | no
+metrics              | [metrics][]          | Metric exporter specific configuration.                                    | no
+metrics > exporter   | [exporter][]         | Metric Exporter specific configuation.                                     | no
+metrics > histograms | [histograms][]       | Histograms specific configuration.                                         | no
+metrics > sums       | [sums][]             | Sums specific configuration                                                | no
+metrics > summaries  | [summaries][]        | Summaries specific configuration                                           | no
+host_metadata        | [host_metadata][]    | Host metadata specific configuration.                                      | no
+client               | [client][]           | Configures the HTTP client used to send telemetry data.                    | no
+retry_on_failure     | [retry_on_failure][] | Configures retry mechanism for failed requests.                            | no
+queue                | [queue][]            | Configures batching of data before sending.                                | no
+debug_metrics        | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state. | no
 
-The `>` symbol indicates deeper levels of nesting. For example, `metrics > summaries`
-refers to a `summaries` block defined inside a `metrics` block.
+The `>` symbol indicates deeper levels of nesting. For example, `metrics > summaries` refers to a `summaries` block defined inside a `metrics` block.
 
 [api]: #api-block
 [traces]: #traces-block
@@ -83,11 +86,11 @@ to Datadog. If you do not provide the `api` block, you can't send telemetry to D
 
 The following arguments are supported:
 
-Name                                       | Type            | Description                                                                         | Default              | Required
------------------------------------------- | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`api_key` | `secret` | API Key for Datadog | | yes
-`site` | `string` | The site of the Datadog intake to send Agent data to. | `"datadoghq.com"` | no
-`fail_on_invalid_key` | `bool` | Whether to exit at startup on an invalid API key | `false` | no
+Name                  | Type     | Description                                           | Default           | Required
+----------------------|----------|-------------------------------------------------------|-------------------|---------
+`api_key`             | `secret` | API Key for Datadog                                   |                   | yes
+`site`                | `string` | The site of the Datadog intake to send Agent data to. | `"datadoghq.com"` | no
+`fail_on_invalid_key` | `bool`   | Whether to exit at startup on an invalid API key      | `false`           | no
 
 ### traces block
 
@@ -95,19 +98,19 @@ The `traces` block configures the trace exporter settings.
 
 The following arguments are supported:
 
-Name                                       | Type            | Description                                                                         | Default              | Required
------------------------------------------- | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`endpoint` | `string` | The host of the Datadog intake server to send traces to. | `"https://trace.agent.datadoghq.com"` | no
-`ignore_resources` | `list(string)` |  A blocklist of regular expressions can be provided to disable certain traces based on their resource name. || no
-`span_name_remappings` | `map(string)` | A map of Datadog span operation name keys and preferred name values to update those names to. || no
-`span_name_as_resource_name` | `bool` | Use OpenTelemetry semantic convention for span naming |`true`| no
-`compute_stats_by_span_kind` | `bool` | Enables APM stats computation based on `span.kind` | `true` | no
-`compute_top_level_by_span_kind` | `bool` | Enables top-level span identification based on `span.kind` | `false` | no
-`peer_tags_aggregation` | `bool` | Enables aggregation of peer related tags in Datadog exporter | `false` | no
-`peer_tags` | `list(string)` | List of supplementary peer tags that go beyond the defaults. || no
-`trace_buffer` | `number` | Specifies the number of outgoing trace payloads to buffer before dropping | `10` | no
+Name                             | Type           | Description                                                                                        | Default                               | Required
+---------------------------------|----------------|----------------------------------------------------------------------------------------------------|---------------------------------------|---------
+`endpoint`                       | `string`       | The host of the Datadog intake server to send traces to.                                           | `"https://trace.agent.datadoghq.com"` | no
+`ignore_resources`               | `list(string)` | A blocklist of regular expressions can be provided to disable traces based on their resource name. |                                       | no
+`span_name_remappings`           | `map(string)`  | A map of Datadog span operation name keys and preferred name values to update those names to.      |                                       | no
+`span_name_as_resource_name`     | `bool`         | Use OpenTelemetry semantic convention for span naming                                              | `true`                                | no
+`compute_stats_by_span_kind`     | `bool`         | Enables APM stats computation based on `span.kind`                                                 | `true`                                | no
+`compute_top_level_by_span_kind` | `bool`         | Enables top-level span identification based on `span.kind`                                         | `false`                               | no
+`peer_tags_aggregation`          | `bool`         | Enables aggregation of peer related tags in Datadog exporter                                       | `false`                               | no
+`peer_tags`                      | `list(string)` | List of supplementary peer tags that go beyond the defaults.                                       |                                       | no
+`trace_buffer`                   | `number`       | Specifies the number of outgoing trace payloads to buffer before dropping                          | `10`                                  | no
 
-If `compute_stats_by_span_kind` is disabled, only top-level and measured spans will have stats computed. 
+If `compute_stats_by_span_kind` is disabled, only top-level and measured spans will have stats computed.
 If you are sending OTel traces and want stats on non-top-level spans, this flag must be set to `true`.
 If you are sending OTel traces and do not want stats computed by span kind, you must disable this flag and disable `compute_top_level_by_span_kind`.
 
@@ -121,14 +124,12 @@ The `metrics` block configures Metric specific exporter settings.
 
 The following arguments are supported:
 
-Name                                       | Type            | Description                                                                         | Default              | Required
------------------------------------------- | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`delta_ttl` | `number` | The number of seconds values are kept in memory for calculating deltas. | `3600` | no
-`endpoint` | `string` | The host of the Datadog intake server to send metrics to. | `"https://api.datadoghq.com"` | no
+Name        | Type     | Description                                                             | Default                       | Required
+------------|----------|-------------------------------------------------------------------------|-------------------------------|---------
+`delta_ttl` | `number` | The number of seconds values are kept in memory for calculating deltas. | `3600`                        | no
+`endpoint`  | `string` | The host of the Datadog intake server to send metrics to.               | `"https://api.datadoghq.com"` | no
 
-
-Any of the subset of resource attributes in the [semantic mapping list](https://docs.datadoghq.com/opentelemetry/guide/semantic_mapping/) 
-are converted to Datadog conventions and set to to metric tags whether `resource_attributes_as_tags` is enabled or not.
+Any of the subset of resource attributes in the [semantic mapping list](https://docs.datadoghq.com/opentelemetry/guide/semantic_mapping/)  are converted to Datadog conventions and set to to metric tags whether `resource_attributes_as_tags` is enabled or not.
 
 If `endpoint` is unset, the value is obtained through the `site` parameter in the [api][] section.
 
@@ -140,9 +141,9 @@ The `exporter` block configures the metric exporter settings.
 
 The following arguments are supported:
 
-Name                                       | Type            | Description                                                                         | Default              | Required
------------------------------------------- | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`resource_attributes_as_tags` | `bool` | Set to `true` to add resource attributes of a metric to its metric tags. | `false` | no
+Name                                     | Type   | Description                                                                          | Default | Required
+-----------------------------------------|--------|--------------------------------------------------------------------------------------|---------|---------
+`resource_attributes_as_tags`            | `bool` | Set to `true` to add resource attributes of a metric to its metric tags.             | `false` | no
 `instrumentation_scope_metadata_as_tags` | `bool` | Set to `true` to add metadata about the instrumentation scope that created a metric. | `false` | no
 
 
@@ -152,12 +153,13 @@ The `histograms` block configures the histogram settings.
 
 The following arguments are supported:
 
-Name                                       | Type            | Description                                                                         | Default              | Required
------------------------------------------- | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`mode` | `string` | How to report histograms. | `"distributions"` | no
-`send_aggregation_metrics` | `bool` | Whether to report sum, count, min, and max as separate histogram metrics. | `false` | no
+Name                       | Type     | Description                                                               | Default           | Required
+---------------------------|----------|---------------------------------------------------------------------------|-------------------|---------
+`mode`                     | `string` | How to report histograms.                                                 | `"distributions"` | no
+`send_aggregation_metrics` | `bool`   | Whether to report sum, count, min, and max as separate histogram metrics. | `false`           | no
 
 Valid values for `mode` are:
+
 - `"distributions"` to report metrics as Datadog distributions (recommended).
 - `"nobuckets"` to not report bucket metrics.
 - `"counters"` to report one metric per histogram bucket.
@@ -168,16 +170,18 @@ The `sums` block configures the sums settings.
 
 The following arguments are supported:
 
-Name                                       | Type            | Description                                                                         | Default              | Required
------------------------------------------- | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`cumulative_monotonic_mode` | `string` | How to report cumulative monotonic sums. | `"to_delta"` | no
-`initial_cumulative_monotonic_value` | `string` | How to report the initial value for cumulative monotonic sums. | `"auto"` | no
+Name                                 | Type     | Description                                                    | Default      | Required
+-------------------------------------|----------|----------------------------------------------------------------|--------------|---------
+`cumulative_monotonic_mode`          | `string` | How to report cumulative monotonic sums.                       | `"to_delta"` | no
+`initial_cumulative_monotonic_value` | `string` | How to report the initial value for cumulative monotonic sums. | `"auto"`     | no
 
 Valid values for `cumulative_monotonic_mode` are:
+
 - `"to_delta"` to calculate delta for sum in the client side and report as Datadog counts.
 - `"raw_value"` to report the raw value as a Datadog gauge.
 
 Valid values for `initial_cumulative_monotonic_value` are:
+
 - `"auto"` reports the initial value if its start timestamp is set, and it happens after the process was started.
 - `"drop"` always drops the initial value.
 - `"keep"` always reports the initial value.
@@ -188,11 +192,12 @@ The `summaries` block configures the summary settings.
 
 The following arguments are supported:
 
-Name                                       | Type            | Description                                                                         | Default              | Required
------------------------------------------- | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`mode` | `string` | How to report summaries.| `"gauges"` | no
+Name   | Type     | Description              | Default    | Required
+-------|----------|--------------------------|------------|---------
+`mode` | `string` | How to report summaries. | `"gauges"` | no
 
 Valid values for `mode` are:
+
 - `"noquantiles"` to not report quantile metrics.
 - `"gauges"` to report one gauge metric per quantile.
 
@@ -203,15 +208,16 @@ Host metadata is the information used to populate the infrastructure list and th
 
 The following arguments are supported:
 
-Name                                       | Type            | Description                                                                         | Default              | Required
------------------------------------------- | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`enabled` | `bool` | Enable the host metadata functionality | `true` | no
-`hostname_source` | `string` | Source for the hostname of host metadata. | `"config_or_system"` | no
-`tags` | `list(string)` | List of host tags to be sent as part of the host metadata. || no
+Name              | Type           | Description                                                | Default              | Required
+------------------|----------------|------------------------------------------------------------|----------------------|---------
+`enabled`         | `bool`         | Enable the host metadata functionality                     | `true`               | no
+`hostname_source` | `string`       | Source for the hostname of host metadata.                  | `"config_or_system"` | no
+`tags`            | `list(string)` | List of host tags to be sent as part of the host metadata. |                      | no
 
 By default, the exporter will only send host metadata for a single host, whose name is chosen according to `host_metadata::hostname_source`.
 
 Valid values for `hostname_source` are:
+
 - `"first_resource"` picks the host metadata hostname from the resource attributes on the first OTLP payload that gets to the exporter. 
   If the first payload lacks hostname-like attributes, it will fallback to 'config_or_system' behavior. **Do not use this hostname source if receiving data from multiple hosts**.
 - `"config_or_system"` picks the host metadata hostname from the 'hostname' setting, falling back to system and cloud provider APIs.
@@ -219,23 +225,21 @@ Valid values for `hostname_source` are:
 ### client block
 
 The `client` block configures the HTTP client used by the component.
-Not all fields are supported by the Datadog Exporter. The table below describes
-the supported options.
+Not all fields are supported by the Datadog Exporter.
 
 The following arguments are supported:
 
-Name                      | Type                       | Description                                                                                                        | Default    | Required
---------------------------|----------------------------|--------------------------------------------------------------------------------------------------------------------|------------|---------
-`read_buffer_size`        | `string`                   | Size of the read buffer the HTTP client uses for reading server responses.                                         |         | no
-`write_buffer_size`       | `string`                   | Size of the write buffer the HTTP client uses for writing requests.                                                |  | no
-`timeout`                 | `duration`                 | Time to wait before marking a request as failed.                                                                   | `"15s"`    | no
-`max_idle_conns`          | `int`                      | Limits the number of idle HTTP connections the client can keep open.                                               |    `100`   | no
-`max_idle_conns_per_host` | `int`                      | Limits the number of idle HTTP connections the host can keep open.                                                 |   `5`      | no
-`max_conns_per_host`      | `int`                      | Limits the total (dialing,active, and idle) number of connections per host.                                        |         | no
-`idle_conn_timeout`       | `duration`                 | Time to wait before an idle connection closes itself.                                                              |  `"45s"`   | no
-`disable_keep_alives`     | `bool`                     | Disable HTTP keep-alive.                                                                                           |     | no
-`insecure_skip_verify`         | `boolean`      | Ignores insecure server TLS certificates.                                                    |             | no
-
+Name                      | Type       | Description                                                                 | Default | Required
+--------------------------|------------|-----------------------------------------------------------------------------|---------|---------
+`read_buffer_size`        | `string`   | Size of the read buffer the HTTP client uses for reading server responses.  |         | no
+`write_buffer_size`       | `string`   | Size of the write buffer the HTTP client uses for writing requests.         |         | no
+`timeout`                 | `duration` | Time to wait before marking a request as failed.                            | `"15s"` | no
+`max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        | `100`   | no
+`max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          | `5`     | no
+`max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. |         | no
+`idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `"45s"` | no
+`disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |         | no
+`insecure_skip_verify`    | `boolean`  | Ignores insecure server TLS certificates.                                   |         | no
 
 ### retry_on_failure block
 
@@ -306,8 +310,11 @@ otelcol.exporter.datadog "default" {
     }
 }
 ```
+
 ### Full OTel pipeline
-This example forwards metrics and traces received in Datadog format to Alloy, converts them to OTel format, and exports them to Datadog. 
+
+This example forwards metrics and traces received in Datadog format to {{< param "PRODUCT_NAME" >}}, converts them to OTel format, and exports them to Datadog.
+
 ```alloy
 otelcol.receiver.datadog "default" {
 	output {
