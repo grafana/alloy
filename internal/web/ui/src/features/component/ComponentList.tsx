@@ -10,7 +10,7 @@ import styles from './ComponentList.module.css';
 interface ComponentListProps {
   components: ComponentInfo[];
   moduleID?: string;
-  useRemotecfg?: boolean;
+  useRemotecfg: boolean;
   handleSorting?: (sortField: string, sortOrder: SortOrder) => void;
 }
 
