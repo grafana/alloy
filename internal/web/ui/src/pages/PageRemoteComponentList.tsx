@@ -16,8 +16,8 @@ function getSortValue(component: ComponentInfo, field: string): string | undefin
   return valueGetter ? valueGetter(component) : undefined;
 }
 
-function PageComponentList() {
-  const [components, setComponents] = useComponentInfo('', false);
+function PageRemoteComponentList() {
+  const [components, setComponents] = useComponentInfo('', true);
 
   // TODO: make this sorting logic reusable
   const handleSorting = (sortField: string, sortOrder: SortOrder): void => {
@@ -37,10 +37,10 @@ function PageComponentList() {
   };
 
   return (
-    <Page name="Components" desc="List of defined components" icon={faCubes}>
-      <ComponentList components={components} useRemotecfg={false} handleSorting={handleSorting} />
+    <Page name="Remote Configuration" desc="List of remote configuration pipelines" icon={faCubes}>
+      <ComponentList components={components} useRemotecfg={true} handleSorting={handleSorting} />
     </Page>
   );
 }
 
-export default PageComponentList;
+export default PageRemoteComponentList;

@@ -10,7 +10,7 @@ import { ComponentInfo } from '../features/component/types';
  */
 export const useComponentInfo = (
   moduleID: string,
-  isRemotecfg?: boolean
+  isRemotecfg: boolean
 ): [ComponentInfo[], React.Dispatch<React.SetStateAction<ComponentInfo[]>>] => {
   const [components, setComponents] = useState<ComponentInfo[]>([]);
 
