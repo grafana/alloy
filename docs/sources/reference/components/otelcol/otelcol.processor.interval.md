@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.interval/
-aliases:
-  - ../otelcol.processor.interval/ # /docs/alloy/latest/reference/otelcol.processor.interval/
 description: Learn about otelcol.processor.interval
 title: otelcol.processor.interval
 ---
@@ -12,13 +10,14 @@ title: otelcol.processor.interval
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.processor.interval`  aggregates metrics and periodically forwards the latest values to the next component in the pipeline. The processor supports aggregating the following metric types:
+`otelcol.processor.interval`  aggregates metrics and periodically forwards the latest values to the next component in the pipeline.
+The processor supports aggregating the following metric types:
 
 * Monotonically increasing, cumulative sums
 * Monotonically increasing, cumulative histograms
 * Monotonically increasing, cumulative exponential histograms
 
-The following metric types will *not* be aggregated, and will instead be passed, unchanged, to the next component in the pipeline:
+The following metric types will *not* be aggregated and will instead be passed, unchanged, to the next component in the pipeline:
 
 * All delta metrics
 * Non-monotonically increasing sums
@@ -26,7 +25,7 @@ The following metric types will *not* be aggregated, and will instead be passed,
 * Summaries
 
 {{< admonition type="warning" >}}
-After exporting, any internal state is cleared. So if no new metrics come in, the next interval will export nothing.
+After exporting, any internal state is cleared. If no new metrics come in, the next interval will export nothing.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -48,9 +47,9 @@ otelcol.processor.interval "LABEL" {
 
 `otelcol.processor.interval` supports the following arguments:
 
-Name          | Type       | Description                                                               | Default | Required
-------------- | ---------- | ------------------------------------------------------------------------- | ------- | --------
-`interval`    | `duration` | The interval in which the processor should export the aggregated metrics. | `"60s"` | no
+Name          | Type       | Description                                                         | Default | Required
+------------- | ---------- | ------------------------------------------------------------------- | ------- | --------
+`interval`    | `duration` | The interval in the processor should export the aggregated metrics. | `"60s"` | no
 
 ## Blocks
 
@@ -124,7 +123,6 @@ otelcol.auth.basic "grafana_cloud" {
 }
 ```
 
-
 | Timestamp | Metric Name  | Aggregation Temporarility | Attributes        | Value |
 | --------- | ------------ | ------------------------- | ----------------- | ----: |
 | 0         | test_metric  | Cumulative                | labelA: foo       |   4.0 |
@@ -134,15 +132,14 @@ otelcol.auth.basic "grafana_cloud" {
 | 8         | test_metric  | Cumulative                | labelA: foo       |  12.8 |
 | 10        | test_metric  | Cumulative                | labelA: bar       |   6.4 |
 
-The processor would immediately pass the following metrics to the next processor in the chain
+The processor immediately passes the following metric to the next processor in the chain because it is a Delta metric.
 
 | Timestamp | Metric Name  | Aggregation Temporarility | Attributes        | Value |
 | --------- | ------------ | ------------------------- | ----------------- | ----: |
 | 4         | other_metric | Delta                     | fruitType: orange |  77.4 |
 
-Because it's a Delta metric.
 
-At the next `interval` (15s by default), the processor would pass the following metrics to the next processor in the chain
+At the next `interval` (15s by default), the processor passed the following metrics to the next processor in the chain.
 
 | Timestamp | Metric Name | Aggregation Temporarility | Attributes  | Value |
 | --------- | ----------- | ------------------------- | ----------- | ----: |
