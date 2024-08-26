@@ -10,13 +10,15 @@ import styles from './ComponentList.module.css';
 interface ComponentListProps {
   components: ComponentInfo[];
   moduleID?: string;
+  useRemotecfg: boolean;
   handleSorting?: (sortField: string, sortOrder: SortOrder) => void;
 }
 
 const TABLEHEADERS = ['Health', 'ID'];
 
-const ComponentList = ({ components, moduleID, handleSorting }: ComponentListProps) => {
+const ComponentList = ({ components, moduleID, useRemotecfg, handleSorting }: ComponentListProps) => {
   const tableStyles = { width: '130px' };
+  const urlPrefix = useRemotecfg ? '/remotecfg' : '';
   const pathPrefix = moduleID ? moduleID + '/' : '';
 
   /**
@@ -30,7 +32,7 @@ const ComponentList = ({ components, moduleID, handleSorting }: ComponentListPro
         </td>
         <td className={styles.idColumn}>
           <span className={styles.idName}>{id}</span>
-          <NavLink to={'/component/' + pathPrefix + id} className={styles.viewButton}>
+          <NavLink to={urlPrefix + '/component/' + pathPrefix + id} className={styles.viewButton}>
             View
           </NavLink>
         </td>

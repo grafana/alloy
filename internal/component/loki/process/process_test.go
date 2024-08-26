@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/testlivedebugging"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -66,6 +67,10 @@ func TestJSONLabelsStage(t *testing.T) {
 				  user   = "",
 				  ts     = "timestamp",
 			    }
+			}
+			stage.timestamp {
+				source = "timestamp"
+				format = "RFC3339Nano"
 			}`
 
 	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
@@ -80,12 +85,14 @@ func TestJSONLabelsStage(t *testing.T) {
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 
+	liveDebuggingLog := testlivedebugging.NewLog()
+
 	// Create and run the component, so that it can process and forwards logs.
 	opts := component.Options{
 		Logger:         util.TestAlloyLogger(t),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		GetServiceData: getServiceDataWithLiveDebugging(liveDebuggingLog),
 	}
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{ch1, ch2},
@@ -95,26 +102,39 @@ func TestJSONLabelsStage(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go c.Run(ctx)
+	wgRun := sync.WaitGroup{}
+
+	wgRun.Add(1)
+	go func() {
+		c.Run(ctx)
+		wgRun.Done()
+	}()
+
+	// Choose a timestamp which is different from the one in the json log line that is being sent.
+	ingestionTs, err := time.Parse(time.RFC3339, "2020-11-15T02:08:41-07:00")
+	require.NoError(t, err)
 
 	// Send a log entry to the component's receiver.
-	ts := time.Now()
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
 		Entry: logproto.Entry{
-			Timestamp: ts,
+			Timestamp: ingestionTs,
 			Line:      logline,
 		},
 	}
 
 	c.receiver.Chan() <- logEntry
 
+	// This is the timestamp from the json body of the log line that is being sent.
+	expectedTsLabel := "2019-04-30T02:12:41.8443515Z"
+	expectedTs, err := time.Parse(time.RFC3339Nano, expectedTsLabel)
+	require.NoError(t, err)
+
 	wantLabelSet := model.LabelSet{
 		"filename": "/var/log/pods/agent/agent/1.log",
 		"foo":      "bar",
 		"stream":   "stderr",
-		"ts":       "2019-04-30T02:12:41.8443515Z",
+		"ts":       model.LabelValue(expectedTsLabel),
 		"user":     "smith",
 	}
 
@@ -123,17 +143,28 @@ func TestJSONLabelsStage(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		select {
 		case logEntry := <-ch1.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
+			require.Equal(t, expectedTs, logEntry.Timestamp)
 			require.Equal(t, logline, logEntry.Line)
 			require.Equal(t, wantLabelSet, logEntry.Labels)
 		case logEntry := <-ch2.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
+			require.Equal(t, expectedTs, logEntry.Timestamp)
 			require.Equal(t, logline, logEntry.Line)
 			require.Equal(t, wantLabelSet, logEntry.Labels)
 		case <-time.After(5 * time.Second):
 			require.FailNow(t, "failed waiting for log line")
 		}
 	}
+
+	cancel()
+	wgRun.Wait()
+
+	// The timestamp in "IN" is different from the one in "OUT".
+	// Even though there are two downstream components, we expect only one "OUT" line to be printed.
+	expectedLiveDebuggingLog := []string{
+		"[IN]: timestamp: 2020-11-15T02:08:41-07:00, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\"}",
+		"[OUT]: timestamp: 2019-04-30T02:12:41.8443515Z, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\", stream=\"stderr\", ts=\"2019-04-30T02:12:41.8443515Z\", user=\"smith\"}",
+	}
+	require.Equal(t, expectedLiveDebuggingLog, liveDebuggingLog.Get())
 }
 
 func TestStaticLabelsLabelAllowLabelDrop(t *testing.T) {
@@ -600,6 +631,31 @@ func getServiceData(name string) (interface{}, error) {
 		return livedebugging.NewLiveDebugging(), nil
 	default:
 		return nil, fmt.Errorf("service not found %s", name)
+	}
+}
+
+func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (interface{}, error) {
+	ld := livedebugging.NewLiveDebugging()
+	host := &testlivedebugging.FakeServiceHost{
+		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
+			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
+		},
+	}
+	ld.SetServiceHost(host)
+	ld.SetEnabled(true)
+	ld.AddCallback(
+		"callback1",
+		"",
+		func(data string) { log.Append(data) },
+	)
+
+	return func(name string) (interface{}, error) {
+		switch name {
+		case livedebugging.ServiceName:
+			return ld, nil
+		default:
+			return nil, fmt.Errorf("service not found %s", name)
+		}
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -160,7 +161,7 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 				return
 			case c.processIn <- entry.Clone():
 				if c.debugDataPublisher.IsActive(componentID) {
-					c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[IN]: entry: %s, labels: %s", entry.Line, entry.Labels.String()))
+					c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
 				}
 				// TODO(@tpaschalis) Instead of calling Clone() at the
 				// component's entrypoint here, we can try a copy-on-write
@@ -183,14 +184,18 @@ func (c *Component) handleOut(ctx context.Context, wg *sync.WaitGroup) {
 			c.fanoutMut.RLock()
 			fanout := c.fanout
 			c.fanoutMut.RUnlock()
+
+			// The log entry is the same for every fanout,
+			// so we can publish it only once.
+			if c.debugDataPublisher.IsActive(componentID) {
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
+			}
+
 			for _, f := range fanout {
 				select {
 				case <-ctx.Done():
 					return
 				case f.Chan() <- entry:
-					if c.debugDataPublisher.IsActive(componentID) {
-						c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[OUT]: entry: %s, labels: %s", entry.Line, entry.Labels.String()))
-					}
 				}
 			}
 		}
