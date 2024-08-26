@@ -103,11 +103,15 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </a>
         </div>
 
-        <div className={styles.debugLink}>
-          <a href={`debug/${pathJoin([props.component.moduleID, props.component.localID])}`}>
-            <FontAwesomeIcon icon={faBug} /> Live debugging
-          </a>
-        </div>
+        {useRemotecfg ? (
+          'Live debugging is not yet available for remote components'
+        ) : (
+          <div className={styles.debugLink}>
+            <a href={`debug/${pathJoin([props.component.moduleID, props.component.localID])}`}>
+              <FontAwesomeIcon icon={faBug} /> Live debugging
+            </a>
+          </div>
+        )}
 
         {props.component.health.message && (
           <blockquote>
