@@ -34,9 +34,11 @@ The `encoding.from_json` function decodes a string representing JSON into an {{<
 
 A common use case of `encoding.from_json` is to decode the output of a [`local.file`][] component to an {{< param "PRODUCT_NAME" >}} value.
 
-> Remember to escape double quotes when passing JSON string literals to `encoding.from_json`.
->
-> For example, the JSON value `{"key": "value"}` is properly represented by the string `"{\"key\": \"value\"}"`.
+{{< admonition type="note" >}}
+Remember to escape double quotes when passing JSON string literals to `encoding.from_json`.
+
+For example, the JSON value `{"key": "value"}` is properly represented by the string `"{\"key\": \"value\"}"`.
+{{< /admonition >}}
 
 ### Examples
 
