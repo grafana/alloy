@@ -23,7 +23,6 @@ import (
 
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
-	urlPrefix       string
 	alloy           service.Host
 	remotecfg       service.Host
 	CallbackManager livedebugging.CallbackManager
@@ -36,32 +35,24 @@ func NewAlloyAPI(alloy, remotecfg service.Host, CallbackManager livedebugging.Ca
 
 // RegisterRoutes registers all the API's routes.
 func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
-	a.urlPrefix = urlPrefix
 	// NOTE(rfratto): {id:.+} is used in routes below to allow the
 	// id to contain / characters, which is used by nested module IDs and
 	// component IDs.
 
-	r.Handle(path.Join(urlPrefix, "/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
-	r.Handle(path.Join(urlPrefix, "/remotecfg/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
+	r.Handle(path.Join(urlPrefix, "/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: listComponentsHandler(a.alloy)})
+	r.Handle(path.Join(urlPrefix, "/remotecfg/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: listComponentsHandler(a.remotecfg)})
 
-	r.Handle(path.Join(urlPrefix, "/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
-	r.Handle(path.Join(urlPrefix, "/remotecfg/components"), httputil.CompressionHandler{Handler: a.listComponentsHandler()})
+	r.Handle(path.Join(urlPrefix, "/components"), httputil.CompressionHandler{Handler: listComponentsHandler(a.alloy)})
+	r.Handle(path.Join(urlPrefix, "/remotecfg/components"), httputil.CompressionHandler{Handler: listComponentsHandler(a.remotecfg)})
 
-	r.Handle(path.Join(urlPrefix, "/components/{id:.+}"), httputil.CompressionHandler{Handler: a.getComponentHandler()})
-	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: a.getComponentHandler()})
+	r.Handle(path.Join(urlPrefix, "/components/{id:.+}"), httputil.CompressionHandler{Handler: getComponentHandler(a.alloy)})
+	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: getComponentHandler(a.remotecfg)})
 
-	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: a.getClusteringPeersHandler()})
-	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), a.liveDebugging())
+	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: getClusteringPeersHandler(a.alloy)})
+	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
 }
 
-func (a *AlloyAPI) getHost(r *http.Request) service.Host {
-	if strings.HasPrefix(r.URL.Path, a.urlPrefix+"/remotecfg") {
-		return a.remotecfg
-	}
-	return a.alloy
-}
-
-func (a *AlloyAPI) listComponentsHandler() http.HandlerFunc {
+func listComponentsHandler(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// moduleID is set from the /modules/{moduleID:.+}/components route above
 		// but not from the /components route.
@@ -70,7 +61,7 @@ func (a *AlloyAPI) listComponentsHandler() http.HandlerFunc {
 			moduleID = vars["moduleID"]
 		}
 
-		components, err := a.getHost(r).ListComponents(moduleID, component.InfoOptions{
+		components, err := host.ListComponents(moduleID, component.InfoOptions{
 			GetHealth: true,
 		})
 		if err != nil {
@@ -87,12 +78,12 @@ func (a *AlloyAPI) listComponentsHandler() http.HandlerFunc {
 	}
 }
 
-func (a *AlloyAPI) getComponentHandler() http.HandlerFunc {
+func getComponentHandler(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		requestedComponent := component.ParseID(vars["id"])
 
-		component, err := a.getHost(r).GetComponent(requestedComponent, component.InfoOptions{
+		component, err := host.GetComponent(requestedComponent, component.InfoOptions{
 			GetHealth:    true,
 			GetArguments: true,
 			GetExports:   true,
@@ -112,11 +103,11 @@ func (a *AlloyAPI) getComponentHandler() http.HandlerFunc {
 	}
 }
 
-func (a *AlloyAPI) getClusteringPeersHandler() http.HandlerFunc {
+func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		// TODO(@tpaschalis) Detect if clustering is disabled and propagate to
 		// the Typescript code (eg. via the returned status code?).
-		svc, found := a.alloy.GetService(cluster.ServiceName)
+		svc, found := host.GetService(cluster.ServiceName)
 		if !found {
 			http.Error(w, "cluster service not running", http.StatusInternalServerError)
 			return
@@ -131,7 +122,7 @@ func (a *AlloyAPI) getClusteringPeersHandler() http.HandlerFunc {
 	}
 }
 
-func (a *AlloyAPI) liveDebugging() http.HandlerFunc {
+func liveDebugging(host service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		componentID := livedebugging.ComponentID(vars["id"])
@@ -145,7 +136,7 @@ func (a *AlloyAPI) liveDebugging() http.HandlerFunc {
 
 		id := livedebugging.CallbackID(uuid.New().String())
 
-		err := a.CallbackManager.AddCallback(id, componentID, func(data string) {
+		err := callbackManager.AddCallback(id, componentID, func(data string) {
 			select {
 			case <-ctx.Done():
 				return
@@ -168,7 +159,7 @@ func (a *AlloyAPI) liveDebugging() http.HandlerFunc {
 
 		defer func() {
 			close(dataCh)
-			a.CallbackManager.DeleteCallback(id, componentID)
+			callbackManager.DeleteCallback(id, componentID)
 		}()
 
 		for {
