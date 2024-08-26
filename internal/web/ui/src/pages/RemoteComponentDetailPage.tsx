@@ -6,10 +6,11 @@ import { ComponentDetail, ComponentInfo, componentInfoByID } from '../features/c
 import { useComponentInfo } from '../hooks/componentInfo';
 import { parseID } from '../utils/id';
 
-const ComponentDetailPage: FC = () => {
+const RemoteComponentDetailPage: FC = () => {
   const { '*': id } = useParams();
+
   const { moduleID } = parseID(id || '');
-  const [components] = useComponentInfo(moduleID, false);
+  const [components] = useComponentInfo(moduleID, true);
   const infoByID = componentInfoByID(components);
 
   const [component, setComponent] = useState<ComponentDetail | undefined>(undefined);
@@ -20,7 +21,7 @@ const ComponentDetailPage: FC = () => {
         return;
       }
 
-      const fetchURL = `./api/v0/web/components/${id}`;
+      const fetchURL = `./api/v0/web/remotecfg/components/${id}`;
       const worker = async () => {
         // Request is relative to the <base> tag inside of <head>.
         const resp = await fetch(fetchURL, {
@@ -30,7 +31,7 @@ const ComponentDetailPage: FC = () => {
         const data: ComponentDetail = await resp.json();
 
         for (const moduleID of data.createdModuleIDs || []) {
-          const modulesURL = `./api/v0/web/modules/${moduleID}/components`;
+          const modulesURL = `./api/v0/web/remotecfg/modules/${moduleID}/components`;
 
           const moduleComponentsResp = await fetch(modulesURL, {
             cache: 'no-cache',
@@ -52,4 +53,4 @@ const ComponentDetailPage: FC = () => {
   return component ? <ComponentView component={component} info={infoByID} /> : <div></div>;
 };
 
-export default ComponentDetailPage;
+export default RemoteComponentDetailPage;
