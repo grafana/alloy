@@ -148,7 +148,8 @@ func (args *GRPCServerArguments) SetToDefault() {
 func (args *HTTPConfigArguments) SetToDefault() {
 	*args = HTTPConfigArguments{
 		HTTPServerArguments: &otelcol.HTTPServerArguments{
-			Endpoint: "0.0.0.0:4318",
+			Endpoint:              "0.0.0.0:4318",
+			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
 		},
 		MetricsURLPath: "/v1/metrics",
 		LogsURLPath:    "/v1/logs",

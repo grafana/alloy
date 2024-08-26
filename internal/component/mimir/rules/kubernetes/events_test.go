@@ -275,7 +275,7 @@ func TestAdditionalLabels(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, len(rules))
 		return len(rules) == 1
-	}, time.Second, 10*time.Millisecond)
+	}, 3*time.Second, 10*time.Millisecond)
 
 	// The map of rules has only one element.
 	for ruleName, rule := range rules {

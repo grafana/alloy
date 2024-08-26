@@ -41,6 +41,9 @@ alloy:
     # -- Deploy Alloy in a cluster to allow for load distribution.
     enabled: false
 
+    # -- Name for the Alloy cluster. Used for differentiating between clusters.
+    name: ""
+
     # -- Name for the port used for clustering, useful if running inside an Istio Mesh
     portName: http
 

@@ -144,6 +144,7 @@ Name | Type | Description | Default         | Required
 `traces_url_path` | `string` | The URL path to receive traces on. | `"/v1/traces"`  | no
 `metrics_url_path` | `string` | The URL path to receive metrics on. | `"/v1/metrics"` | no
 `logs_url_path` | `string` | The URL path to receive logs on. | `"/v1/logs"`    | no
+`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate"]` | no
 
 To send telemetry signals to `otelcol.receiver.otlp` with HTTP/JSON, POST to:
 * `[endpoint][traces_url_path]` for traces.

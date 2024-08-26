@@ -54,6 +54,10 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Exclude: config.PhysicalDisk.Exclude,
 			Include: config.PhysicalDisk.Include,
 		},
+		Printer: windows.PrinterConfig{
+			Exclude: config.Printer.Exclude,
+			Include: config.Printer.Include,
+		},
 		Process: windows.ProcessConfig{
 			BlackList: config.Process.BlackList,
 			WhiteList: config.Process.WhiteList,
@@ -67,6 +71,12 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		Service: windows.ServiceConfig{
 			UseApi: config.Service.UseApi,
 			Where:  config.Service.Where,
+		},
+		SMB: windows.SMBConfig{
+			EnabledList: strings.Split(config.SMB.EnabledList, ","),
+		},
+		SMBClient: windows.SMBClientConfig{
+			EnabledList: strings.Split(config.SMBClient.EnabledList, ","),
 		},
 		SMTP: windows.SMTPConfig{
 			BlackList: config.SMTP.BlackList,

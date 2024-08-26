@@ -29,6 +29,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/cluster/discovery"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -82,7 +83,7 @@ type Options struct {
 
 	// Function to discover peers to join. If this function is nil or returns an
 	// empty slice, no peers will be joined.
-	DiscoverPeers func() ([]string, error)
+	DiscoverPeers discovery.DiscoverFn
 }
 
 // Service is the cluster service.
@@ -274,10 +275,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	peers, err := s.getPeers()
 	if err != nil {
-		// Fatal failure on startup if we can't discover peers to prevent a split brain and give a clear signal to the user.
-		// NOTE: currently returning error from `Run` will not be handled correctly: https://github.com/grafana/alloy/issues/843
-		level.Error(s.log).Log("msg", "fatal error: failed to get peers to join at startup - this is likely a configuration error", "err", err)
-		os.Exit(1)
+		// Warn when failed to get peers on startup as it can result in a split brain. We do not fail hard here
+		// because it would complicate the process of bootstrapping a new cluster.
+		level.Warn(s.log).Log("msg", "failed to get peers to join at startup; will create a new cluster", "err", err)
 	}
 
 	// We log on info level including all the peers (without any abbreviation), as it's happening only on startup and

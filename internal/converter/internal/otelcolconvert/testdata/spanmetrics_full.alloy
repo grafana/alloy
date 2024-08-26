@@ -1,7 +1,11 @@
 otelcol.receiver.otlp "default_traces" {
-	grpc { }
+	grpc {
+		endpoint = "localhost:4317"
+	}
 
-	http { }
+	http {
+		endpoint = "localhost:4318"
+	}
 
 	output {
 		traces = [otelcol.exporter.otlp.default_traces_backend.input, otelcol.connector.spanmetrics.default.input]

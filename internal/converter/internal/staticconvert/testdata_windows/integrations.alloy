@@ -22,7 +22,11 @@ http {
 	}
 }
 
-prometheus.exporter.windows "integrations_windows_exporter" { }
+prometheus.exporter.windows "integrations_windows_exporter" {
+	service {
+		use_api = "false"
+	}
+}
 
 discovery.relabel "integrations_windows_exporter" {
 	targets = prometheus.exporter.windows.integrations_windows_exporter.targets
