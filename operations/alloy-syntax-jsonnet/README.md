@@ -21,8 +21,8 @@ make it easier:
     lexicographically by name and label.
 
 In addition to the helper functions, `alloy.expr(literal)` is used to inject a
-literal Alloy expression, so that `alloy.expr('env("HOME")')` is manifested as
-the literal Alloy expression `env("HOME")`.
+literal Alloy expression, so that `alloy.expr('sys.env("HOME")')` is manifested as
+the literal Alloy expression `sys.env("HOME")`.
 
 ## Limitations
 
@@ -40,7 +40,7 @@ alloy.manifestAlloy({
   attr_1: "Hello, world!",
 
   [alloy.block("some_block", "foobar")]: {
-    expr: alloy.expr('env("HOME")'),
+    expr: alloy.expr('sys.env("HOME")'),
     inner_attr_1: [0, 1, 2, 3],
     inner_attr_2: {
       first_name: "John",
@@ -55,7 +55,7 @@ results in
 ```alloy
 attr_1 = "Hello, world"
 some_block "foobar" {
-  expr = env("HOME")
+  expr = sys.env("HOME")
   inner_attr_1 = [0, 1, 2, 3]
   inner_attr_2 = {
     "first_name" = "John",

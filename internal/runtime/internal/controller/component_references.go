@@ -2,8 +2,11 @@ package controller
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/vm"
@@ -26,7 +29,7 @@ type Reference struct {
 
 // ComponentReferences returns the list of references a component is making to
 // other components.
-func ComponentReferences(cn dag.Node, g *dag.Graph) ([]Reference, diag.Diagnostics) {
+func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger) ([]Reference, diag.Diagnostics) {
 	var (
 		traversals []Traversal
 
@@ -43,19 +46,29 @@ func ComponentReferences(cn dag.Node, g *dag.Graph) ([]Reference, diag.Diagnosti
 	refs := make([]Reference, 0, len(traversals))
 	for _, t := range traversals {
 		ref, resolveDiags := resolveTraversal(t, g)
-		if resolveDiags.HasErrors() {
-			// We use an empty scope to determine if a reference refers to something in
-			// the stdlib, since vm.Scope.Lookup will search the scope tree + the
-			// stdlib.
-			//
-			// Any call to an stdlib function is ignored.
-			var emptyScope vm.Scope
-			if _, exist := emptyScope.Lookup(t[0].Name); !exist {
-				diags = append(diags, resolveDiags...)
-			}
+		componentRefMatch := !resolveDiags.HasErrors()
+
+		// We use an empty scope to determine if a reference refers to something in
+		// the stdlib, since vm.Scope.Lookup will search the scope tree + the
+		// stdlib.
+		//
+		// Any call to an stdlib function is ignored.
+		var emptyScope vm.Scope
+		_, stdlibMatch := emptyScope.Lookup(t[0].Name)
+
+		if !componentRefMatch && !stdlibMatch {
+			diags = append(diags, resolveDiags...)
 			continue
 		}
-		refs = append(refs, ref)
+
+		if componentRefMatch {
+			if stdlibMatch {
+				level.Warn(l).Log("msg", "a component is shadowing an existing stdlib name", "component", strings.Join(ref.Target.Block().Name, "."), "stdlib name", t[0].Name)
+			}
+			refs = append(refs, ref)
+		} else if stdlibMatch && emptyScope.IsDeprecated(t[0].Name) {
+			level.Warn(l).Log("msg", "this stdlib function is deprecated; please refer to the documentation for updated usage and alternatives", "function", t[0].Name)
+		}
 	}
 
 	return refs, diags

@@ -29,7 +29,7 @@ discovery.azure "metrics_agent_promobee_2" {
 }
 
 discovery.relabel "metrics_agent_promobee" {
-	targets = concat(
+	targets = array.concat(
 		discovery.azure.metrics_agent_promobee.targets,
 		discovery.azure.metrics_agent_promobee_2.targets,
 		[{
@@ -54,7 +54,7 @@ discovery.relabel "metrics_agent_promobee" {
 }
 
 prometheus.scrape "metrics_agent_prometheus" {
-	targets = concat(
+	targets = array.concat(
 		[{
 			__address__ = "localhost:9099",
 		}],

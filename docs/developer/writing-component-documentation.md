@@ -492,7 +492,7 @@ remote.http "targets" {
 }
 
 prometheus.scrape "default" {
-  targets    = json_decode(remote.http.targets.content)
+  targets    = encoding.from_json(remote.http.targets.content)
   forward_to = [prometheus.remote_write.default.receiver]
 }
 
