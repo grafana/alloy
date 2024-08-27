@@ -1,3 +1,4 @@
+//go:build !freebsd
 
 package otelcolconvert
 
