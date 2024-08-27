@@ -321,7 +321,7 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 
 	lbs := t.connectionLabels(ipFromConn(c).String())
 
-	err := syslogparser.ParseStream(c, func(result *syslog.Result) {
+	err := syslogparser.ParseStream(t.config.IsRFC3164Message(), c, func(result *syslog.Result) {
 		if err := result.Error; err != nil {
 			t.handleMessageError(err)
 			return
@@ -429,7 +429,8 @@ func (t *UDPTransport) acceptPackets() {
 func (t *UDPTransport) handleRcv(c *ConnPipe) {
 	defer t.openConnections.Done()
 
-	lbs := t.connectionLabels(c.addr.String())
+	udpAddr, _ := net.ResolveUDPAddr("udp", c.addr.String())
+	lbs := t.connectionLabels(udpAddr.IP.String())
 
 	for {
 		datagram := make([]byte, t.maxMessageLength())
@@ -445,7 +446,7 @@ func (t *UDPTransport) handleRcv(c *ConnPipe) {
 
 		r := bytes.NewReader(datagram[:n])
 
-		err = syslogparser.ParseStream(r, func(result *syslog.Result) {
+		err = syslogparser.ParseStream(t.config.IsRFC3164Message(), r, func(result *syslog.Result) {
 			if err := result.Error; err != nil {
 				t.handleMessageError(err)
 			} else {
