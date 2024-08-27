@@ -27,6 +27,8 @@ Main (unreleased)
 
 - Updated Snowflake exporter with performance improvements for larger environments. 
   Also added a new panel to track deleted tables to the Snowflake mixin. (@Caleb-Hurshman)
+- Add a `otelcol.processor.groupbyattrs` component to reassociate collected metrics that match specified attributes
+    from opentelemetry. (@kehindesalaam)
 
 - Live debugging of `loki.process` will now also print the timestamp of incoming and outgoing log lines.
   This is helpful for debugging `stage.timestamp`. (@ptodev)
