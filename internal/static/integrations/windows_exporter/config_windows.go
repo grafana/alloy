@@ -1,6 +1,7 @@
 package windows_exporter
 
 import (
+	"errors"
 	"regexp"
 	"strconv"
 	"strings"
@@ -8,48 +9,70 @@ import (
 	"github.com/prometheus-community/windows_exporter/pkg/collector"
 )
 
-func (c *Config) ToWindowsExporterConfig() collector.Config {
+func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
+	var err error
+
+	errs := make([]error, 0, 18)
+
 	cfg := collector.ConfigDefaults
 	cfg.DFSR.CollectorsEnabled = strings.Split(c.Dfsr.SourcesEnabled, ",")
 	cfg.Exchange.CollectorsEnabled = strings.Split(c.Exchange.EnabledList, ",")
 
-	cfg.IIS.SiteInclude = regexp.MustCompile(coalesceString(c.IIS.SiteInclude, c.IIS.SiteWhiteList))
-	cfg.IIS.SiteExclude = regexp.MustCompile(coalesceString(c.IIS.SiteExclude, c.IIS.SiteBlackList))
-	cfg.IIS.AppInclude = regexp.MustCompile(coalesceString(c.IIS.AppInclude, c.IIS.AppWhiteList))
-	cfg.IIS.AppExclude = regexp.MustCompile(coalesceString(c.IIS.AppExclude, c.IIS.AppBlackList))
+	cfg.IIS.SiteInclude, err = regexp.Compile(coalesceString(c.IIS.SiteInclude, c.IIS.SiteWhiteList))
+	errs = append(errs, err)
+	cfg.IIS.SiteExclude, err = regexp.Compile(coalesceString(c.IIS.SiteExclude, c.IIS.SiteBlackList))
+	errs = append(errs, err)
+	cfg.IIS.AppInclude, err = regexp.Compile(coalesceString(c.IIS.AppInclude, c.IIS.AppWhiteList))
+	errs = append(errs, err)
+	cfg.IIS.AppExclude, err = regexp.Compile(coalesceString(c.IIS.AppExclude, c.IIS.AppBlackList))
+	errs = append(errs, err)
 
 	cfg.Service.ServiceWhereClause = c.Service.Where
 	cfg.Service.UseAPI = c.Service.UseApi == "true"
 	cfg.Service.V2 = c.Service.V2 == "true"
 
-	cfg.SMTP.ServerInclude = regexp.MustCompile(coalesceString(c.SMTP.Include, c.SMTP.WhiteList))
-	cfg.SMTP.ServerExclude = regexp.MustCompile(coalesceString(c.SMTP.Exclude, c.SMTP.BlackList))
+	cfg.SMTP.ServerInclude, err = regexp.Compile(coalesceString(c.SMTP.Include, c.SMTP.WhiteList))
+	errs = append(errs, err)
+	cfg.SMTP.ServerExclude, err = regexp.Compile(coalesceString(c.SMTP.Exclude, c.SMTP.BlackList))
+	errs = append(errs, err)
 
 	cfg.Textfile.TextFileDirectories = strings.Split(c.TextFile.TextFileDirectory, ",")
 
-	cfg.PhysicalDisk.DiskInclude = regexp.MustCompile(c.PhysicalDisk.Include)
-	cfg.PhysicalDisk.DiskExclude = regexp.MustCompile(c.PhysicalDisk.Exclude)
+	cfg.PhysicalDisk.DiskInclude, err = regexp.Compile(c.PhysicalDisk.Include)
+	errs = append(errs, err)
+	cfg.PhysicalDisk.DiskExclude, err = regexp.Compile(c.PhysicalDisk.Exclude)
+	errs = append(errs, err)
 
-	cfg.Printer.PrinterInclude = regexp.MustCompile(c.Printer.Include)
-	cfg.Printer.PrinterExclude = regexp.MustCompile(c.Printer.Exclude)
+	cfg.Printer.PrinterInclude, err = regexp.Compile(c.Printer.Include)
+	errs = append(errs, err)
+	cfg.Printer.PrinterExclude, err = regexp.Compile(c.Printer.Exclude)
+	errs = append(errs, err)
 
-	cfg.Process.ProcessExclude = regexp.MustCompile(coalesceString(c.Process.Exclude, c.Process.BlackList))
-	cfg.Process.ProcessInclude = regexp.MustCompile(coalesceString(c.Process.Include, c.Process.WhiteList))
+	cfg.Process.ProcessExclude, err = regexp.Compile(coalesceString(c.Process.Exclude, c.Process.BlackList))
+	errs = append(errs, err)
+	cfg.Process.ProcessInclude, err = regexp.Compile(coalesceString(c.Process.Include, c.Process.WhiteList))
+	errs = append(errs, err)
 
-	cfg.Net.NicExclude = regexp.MustCompile(coalesceString(c.Network.Exclude, c.Network.BlackList))
-	cfg.Net.NicInclude = regexp.MustCompile(coalesceString(c.Network.Include, c.Network.WhiteList))
+	cfg.Net.NicExclude, err = regexp.Compile(coalesceString(c.Network.Exclude, c.Network.BlackList))
+	errs = append(errs, err)
+	cfg.Net.NicInclude, err = regexp.Compile(coalesceString(c.Network.Include, c.Network.WhiteList))
+	errs = append(errs, err)
 
 	cfg.Mssql.CollectorsEnabled = strings.Split(c.MSSQL.EnabledClasses, ",")
 
 	cfg.Msmq.QueryWhereClause = &c.MSMQ.Where
 
-	cfg.LogicalDisk.VolumeInclude = regexp.MustCompile(coalesceString(c.LogicalDisk.Include, c.LogicalDisk.WhiteList))
-	cfg.LogicalDisk.VolumeExclude = regexp.MustCompile(coalesceString(c.LogicalDisk.Exclude, c.LogicalDisk.BlackList))
+	cfg.LogicalDisk.VolumeInclude, err = regexp.Compile(coalesceString(c.LogicalDisk.Include, c.LogicalDisk.WhiteList))
+	errs = append(errs, err)
+	cfg.LogicalDisk.VolumeExclude, err = regexp.Compile(coalesceString(c.LogicalDisk.Exclude, c.LogicalDisk.BlackList))
+	errs = append(errs, err)
 
-	cfg.ScheduledTask.TaskInclude = regexp.MustCompile(c.ScheduledTask.Include)
-	cfg.ScheduledTask.TaskExclude = regexp.MustCompile(c.ScheduledTask.Exclude)
+	cfg.ScheduledTask.TaskInclude, err = regexp.Compile(c.ScheduledTask.Include)
+	errs = append(errs, err)
+	cfg.ScheduledTask.TaskExclude, err = regexp.Compile(c.ScheduledTask.Exclude)
+	errs = append(errs, err)
 
-	return cfg
+	return cfg, errors.Join(errs...)
 }
 
 func coalesceString(v ...string) string {

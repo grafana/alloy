@@ -15,12 +15,17 @@ import (
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	// Filter down to the enabled collectors
 	enabledCollectorNames := enabledCollectors(c.EnabledCollectors)
-	winCol := collector.NewWithConfig(logger, c.ToWindowsExporterConfig())
+	winExporterConfig, err := c.ToWindowsExporterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	winCol := collector.NewWithConfig(logger, winExporterConfig)
 	winCol.Enable(enabledCollectorNames)
 	sort.Strings(enabledCollectorNames)
 	level.Info(logger).Log("msg", "enabled windows_exporter collectors", "collectors", strings.Join(enabledCollectorNames, ","))
 
-	err := winCol.Build()
+	err = winCol.Build()
 	if err != nil {
 		return nil, err
 	}
