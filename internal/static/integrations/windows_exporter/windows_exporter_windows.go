@@ -1,6 +1,8 @@
 package windows_exporter //nolint:golint
 
 import (
+	"context"
+	"errors"
 	"sort"
 	"strings"
 	"time"
@@ -34,11 +36,22 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		return nil, err
 	}
 
-	return integrations.NewCollectorIntegration(c.Name(), integrations.WithCollectors(
-		// Hard-coded 4m timeout to represent the time a series goes stale.
-		// TODO: Make configurable if useful.
-		collector.NewPrometheus(4*time.Minute, &winCol, logger),
-	)), nil
+	return integrations.NewCollectorIntegration(
+		c.Name(),
+		integrations.WithCollectors(
+			// Hard-coded 4m timeout to represent the time a series goes stale.
+			// TODO: Make configurable if useful.
+			collector.NewPrometheus(4*time.Minute, &winCol, logger),
+		),
+		integrations.WithRunner(func(ctx context.Context) error {
+			<-ctx.Done()
+
+			// Stop the collector
+			err := winCol.Close()
+
+			return errors.Join(ctx.Err(), err)
+		}),
+	), nil
 }
 
 func enabledCollectors(input string) []string {
