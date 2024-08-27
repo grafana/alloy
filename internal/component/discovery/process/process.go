@@ -4,6 +4,7 @@ package process
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"github.com/go-kit/log"
@@ -26,6 +27,7 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
+
 	c := &Component{
 		l:             opts.Logger,
 		onStateChange: opts.OnStateChange,
@@ -44,8 +46,17 @@ type Component struct {
 }
 
 func (c *Component) Run(ctx context.Context) error {
-	doDiscover := func() error {
-		processes, err := discover(c.l, &c.args.DiscoverConfig)
+	var cgroupIDRegexp *regexp.Regexp
+	var err error
+	if c.args.CgroupIDRegex != "" {
+		cgroupIDRegexp, err = regexp.Compile(c.args.CgroupIDRegex)
+		if err != nil {
+			return err
+		}
+	}
+
+	doDiscover := func(cgroupIDRegexp *regexp.Regexp) error {
+		processes, err := discover(c.l, &c.args.DiscoverConfig, cgroupIDRegexp)
 		if err != nil {
 			return err
 		}
@@ -53,7 +64,7 @@ func (c *Component) Run(ctx context.Context) error {
 		c.changed()
 		return nil
 	}
-	if err := doDiscover(); err != nil {
+	if err := doDiscover(cgroupIDRegexp); err != nil {
 		return err
 	}
 
@@ -64,7 +75,7 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-t.C:
-			if err := doDiscover(); err != nil {
+			if err := doDiscover(cgroupIDRegexp); err != nil {
 				return err
 			}
 			t.Reset(c.args.RefreshInterval)
