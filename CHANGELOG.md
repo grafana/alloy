@@ -9,7 +9,9 @@ internal API changes are not present.
 
 Main (unreleased)
 -----------------
+### Features
 
+- Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
 ### Enhancements
 
 - Clustering peer resolution through `--cluster.join-addresses` flag has been
