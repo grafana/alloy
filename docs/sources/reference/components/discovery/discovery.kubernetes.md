@@ -99,6 +99,8 @@ For each declared port of a container, a single target is generated.
 If a container has no specified ports, a port-free target per container is created.
 These targets must have a port manually injected using a [`discovery.relabel` component][discovery.relabel] before metrics can be collected from them.
 
+[discovery.relabel]: ../discovery.relabel/
+
 The following labels are included for discovered pods:
 
 * `__meta_kubernetes_namespace`: The namespace of the pod object.
