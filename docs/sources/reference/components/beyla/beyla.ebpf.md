@@ -194,7 +194,7 @@ Name              | Type           | Description                                
 
 ### network block
 
-This block configures network metrics options for Beyla. You must append `network` to `features` list in the `metrics` block to enable network metrics.
+This block configures network metrics options for Beyla. You must append `network` to the `features` list in the `metrics` block to enable network metrics.
 
 Name              | Type           | Description                                             | Default | Required
 ------------------|----------------|---------------------------------------------------------|---------|---------
