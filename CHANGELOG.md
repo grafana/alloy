@@ -31,6 +31,8 @@ Main (unreleased)
 - Live debugging of `loki.process` will now also print the timestamp of incoming and outgoing log lines.
   This is helpful for debugging `stage.timestamp`. (@ptodev)
 
+- Add extra validation in `beyla.ebpf` to avoid panics when network feature is enabled. (@marctc)
+
 ### Bugfixes
 
 - Fix a bug where custom components don't always get updated when the config is modified in an imported directory. (@ante012)
