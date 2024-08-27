@@ -2,6 +2,8 @@
 // Maintainers for the Grafana Alloy wrapper:
 //	- @polyrain
 
+//go:build !freebsd
+
 package datadog
 
 import (
