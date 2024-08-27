@@ -81,6 +81,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/attributes"             // Import otelcol.processor.attributes
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/batch"                  // Import otelcol.processor.batch
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/deltatocumulative"      // Import otelcol.processor.deltatocumulative
+	_ "github.com/grafana/alloy/internal/component/otelcol/processor/interval"               // Import otelcol.processor.interval
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/discovery"              // Import otelcol.processor.discovery
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/filter"                 // Import otelcol.processor.filter
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/groupbyattrs"           // Import otelcol.processor.groupbyattrs

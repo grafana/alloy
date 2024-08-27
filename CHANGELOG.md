@@ -12,6 +12,9 @@ Main (unreleased)
 ### Features
 
 - Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
+- (_Experimental_) Add an `otelcol.processor.interval` component to aggregate metrics and periodically
+  forward the latest values to the next component in the pipeline.
+
 ### Enhancements
 
 - Clustering peer resolution through `--cluster.join-addresses` flag has been
