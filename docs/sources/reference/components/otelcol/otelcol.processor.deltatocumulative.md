@@ -112,7 +112,7 @@ otelcol.processor.deltatocumulative "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
@@ -136,7 +136,7 @@ otelcol.exporter.prometheus "default" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = env("PROMETHEUS_SERVER_URL")
+    url = sys.env("PROMETHEUS_SERVER_URL")
   }
 }
 ```

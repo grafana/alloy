@@ -214,8 +214,8 @@ otelcol.exporter.otlp "grafana_cloud_traces" {
     }
 }
 otelcol.auth.basic "grafana_cloud_traces" {
-    username = env("TEMPO_USERNAME")
-    password = env("GRAFANA_CLOUD_API_KEY")
+    username = sys.env("TEMPO_USERNAME")
+    password = sys.env("GRAFANA_CLOUD_API_KEY")
 }
 ```
 <!-- START GENERATED COMPATIBLE COMPONENTS -->

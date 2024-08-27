@@ -84,8 +84,8 @@ prometheus.remote_write "default" {
 
     // Get basic authentication based on environment variables.
     basic_auth {
-      username = env("<REMOTE_WRITE_USERNAME>")
-      password = env("<REMOTE_WRITE_PASSWORD>")
+      username = sys.env("<REMOTE_WRITE_USERNAME>")
+      password = sys.env("<REMOTE_WRITE_PASSWORD>")
     }
   }
 }

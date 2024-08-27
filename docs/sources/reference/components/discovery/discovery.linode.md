@@ -136,7 +136,7 @@ In those cases, exported fields retain their last healthy values.
 
 ```alloy
 discovery.linode "example" {
-    bearer_token = env("LINODE_TOKEN")
+    bearer_token = sys.env("LINODE_TOKEN")
     port = 8876
 }
 prometheus.scrape "demo" {
@@ -162,7 +162,7 @@ Replace the following:
 
 ```
 discovery.linode "example" {
-    bearer_token = env("LINODE_TOKEN")
+    bearer_token = sys.env("LINODE_TOKEN")
     port = 8876
 }
 discovery.relabel "private_ips" {

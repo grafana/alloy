@@ -16,6 +16,7 @@ Unreleased
 ### Enhancements
 
 - Add the ability to set --cluster.name in the Helm chart with alloy.clustering.name. (@petewall)
+- Add the ability to set appProtocol in extraPorts to help OpenShift users to expose gRPC. (@clementduveau)
 
 ### Other changes
 

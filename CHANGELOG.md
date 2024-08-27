@@ -9,6 +9,11 @@ internal API changes are not present.
 
 Main (unreleased)
 -----------------
+### Features
+
+- Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
+- (_Experimental_) Add an `otelcol.processor.interval` component to aggregate metrics and periodically
+  forward the latest values to the next component in the pipeline.
 
 ### Enhancements
 
@@ -25,11 +30,16 @@ Main (unreleased)
 
 - Updated Snowflake exporter with performance improvements for larger environments. 
   Also added a new panel to track deleted tables to the Snowflake mixin. (@Caleb-Hurshman)
+- Add a `otelcol.processor.groupbyattrs` component to reassociate collected metrics that match specified attributes
+    from opentelemetry. (@kehindesalaam)
 
 - Update windows_exporter to v0.27.2. (@jkroepke)
+  The `smb.enabled_list` and `smb_client.enabled_list` doesn't have any effect anymore. All sub-collectors are enabled by default.
 
 - Live debugging of `loki.process` will now also print the timestamp of incoming and outgoing log lines.
   This is helpful for debugging `stage.timestamp`. (@ptodev)
+
+- Add extra validation in `beyla.ebpf` to avoid panics when network feature is enabled. (@marctc)
 
 ### Bugfixes
 
@@ -55,7 +65,11 @@ Main (unreleased)
   exported to downstream components. This would only happen if the config
   for `discovery.*`  is reloaded in such a way that no new targets were
   discovered. (@ptodev, @thampiotr)
-  
+
+### Other
+
+- Renamed standard library functions. Old names are still valid but are marked deprecated. (@wildum)
+
 v1.3.1
 -----------------
 

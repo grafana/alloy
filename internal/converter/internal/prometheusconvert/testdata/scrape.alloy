@@ -1,5 +1,5 @@
 prometheus.scrape "prometheus_1" {
-	targets = concat(
+	targets = array.concat(
 		[{
 			__address__ = "localhost:9090",
 			app         = "foo",
@@ -23,7 +23,7 @@ prometheus.scrape "prometheus_1" {
 }
 
 prometheus.scrape "prometheus2" {
-	targets = concat(
+	targets = array.concat(
 		[{
 			__address__ = "localhost:9091",
 		}],

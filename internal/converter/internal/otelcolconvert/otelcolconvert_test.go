@@ -1,3 +1,5 @@
+//go:build !freebsd
+
 package otelcolconvert_test
 
 import (
