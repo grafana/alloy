@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Enhancements
+
+- Added support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
+
 v1.4.0-rc.0
 -----------------
 
