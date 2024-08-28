@@ -52,15 +52,6 @@ Name             | Type                 | Description                           
 `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.         | `false` | no
 `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests. |         | no
 
- At most, one of the following can be provided:
- - [`bearer_token` argument](#endpoint-block).
- - [`bearer_token_file` argument](#endpoint-block).
- - [`basic_auth` block][basic_auth].
- - [`authorization` block][authorization].
- - [`oauth2` block][oauth2].
- - [`sigv4` block][sigv4].
- - [`azuread` block][azuread].
-
 If the `url` is not set, then the service block is a no-op.
 
 If not set, the self-reported `id` that {{< param "PRODUCT_NAME" >}} uses is a randomly generated, anonymous unique ID (UUID) that is stored as an `alloy_seed.json` file in the {{< param "PRODUCT_NAME" >}} storage path so that it can persist across restarts.
@@ -77,6 +68,15 @@ You can't override this prefix.
 * `collector.version`: The version of {{< param "PRODUCT_NAME" >}}.
 
 The `poll_frequency` must be set to at least `"10s"`.
+
+ At most, one of the following can be provided:
+ - [`bearer_token` argument][arguments].
+ - [`bearer_token_file` argument][arguments].
+ - [`basic_auth` block][basic_auth].
+ - [`authorization` block][authorization].
+ - [`oauth2` block][oauth2].
+
+{{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
 
@@ -110,6 +110,7 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 [API definition]: https://github.com/grafana/alloy-remote-config
+[arguments]: #arguments
 [basic_auth]: #basic_auth-block
 [authorization]: #authorization-block
 [oauth2]: #oauth2-block
