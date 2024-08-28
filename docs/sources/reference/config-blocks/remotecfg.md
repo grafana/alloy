@@ -43,6 +43,14 @@ Name             | Type                 | Description                           
 `attributes`     | `map(string)`        | A set of self-reported attributes.                | `{}`        | no
 `poll_frequency` | `duration`           | How often to poll the API for new configuration.  | `"1m"`      | no
 `name`           | `string`             | A human-readable name for the collector.          | `""`        | no
+`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.          |         | no
+`bearer_token`           | `secret`            | Bearer token to authenticate with.                            |         | no
+`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                      | `true`  | no
+`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.  | `true`  | no
+`proxy_url`              | `string`            | HTTP proxy to send requests through.                          |         | no
+`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
+`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.         | `false` | no
+`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests. |         | no
 
 If the `url` is not set, then the service block is a no-op.
 
@@ -60,6 +68,15 @@ You can't override this prefix.
 * `collector.version`: The version of {{< param "PRODUCT_NAME" >}}.
 
 The `poll_frequency` must be set to at least `"10s"`.
+
+ At most, one of the following can be provided:
+ - [`bearer_token` argument][arguments].
+ - [`bearer_token_file` argument][arguments].
+ - [`basic_auth` block][basic_auth].
+ - [`authorization` block][authorization].
+ - [`oauth2` block][oauth2].
+
+{{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
 
@@ -93,6 +110,7 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 [API definition]: https://github.com/grafana/alloy-remote-config
+[arguments]: #arguments
 [basic_auth]: #basic_auth-block
 [authorization]: #authorization-block
 [oauth2]: #oauth2-block
