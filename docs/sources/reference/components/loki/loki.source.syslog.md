@@ -10,8 +10,8 @@ title: loki.source.syslog
 
 `loki.source.syslog` listens for syslog messages over TCP or UDP connections and
 forwards them to other `loki.*` components. The messages must be compliant with
-the [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) format or the
-[RFC3164](https://datatracker.ietf.org/doc/html/rfc3164) ("BSD syslog") format.
+the [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) syslog protocol or the
+[RFC3164](https://datatracker.ietf.org/doc/html/rfc3164) BSD syslog protocol.
 
 The component starts a new syslog listener for each of the given `config`
 blocks and fans out incoming entries to the list of receivers in `forward_to`.
