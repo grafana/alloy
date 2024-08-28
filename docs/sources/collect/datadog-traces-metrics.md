@@ -131,7 +131,7 @@ We recommend this approach for current Datadog users who want to try using {{< p
 1. Add the following environment variable to your datadog-agent installation.
 
    ```bash
-   DD_ADDITIONAL_ENDPOINTS='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_HOST>": ["datadog-receiver"]}'
+   DD_ADDITIONAL_ENDPOINTS='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_PORT>": ["datadog-receiver"]}'
    ```
 
    Replace the following:
@@ -151,7 +151,7 @@ Or by setting an environment variable:
 
 
    ```bash
-   DD_DD_URL='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_HOST>": ["datadog-receiver"]}'
+   DD_DD_URL='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_PORT>": ["datadog-receiver"]}'
    ```
 
 ## Run {{% param "PRODUCT_NAME" %}} with the Datadog Receiver
