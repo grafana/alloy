@@ -34,6 +34,11 @@ For example, if a configuration contains a block called `import.file "my_module"
 
 If an import namespace matches the name of a built-in component namespace, such as `prometheus`, the built-in namespace is hidden from the importing module, and only components defined in the imported module may be used.
 
+{{< admonition type="warning" >}}
+If you choose a label that corresponds to an existing component for an `import` or a `declare` block, the component will be shadowed and you won't be able to use it in your configuration.
+For example, if you use the label `import.file "mimir"`, you won't be able to use the existing components that start with `mimir` such as `mimir.rules.kubernetes` because it refers to the module imported via the `import` block.
+{{< /admonition >}}
+
 ## Example
 
 This example module defines a component to filter out debug-level and info-level log lines:
