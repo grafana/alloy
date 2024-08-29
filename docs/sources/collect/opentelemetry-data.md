@@ -54,7 +54,7 @@ To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry da
    ```alloy
    otelcol.exporter.otlp "<EXPORTER_LABEL>" {
      client {
-       url = "<HOST>:<PORT>"
+       endpoint = "<HOST>:<PORT>"
      }
    }
    ```
