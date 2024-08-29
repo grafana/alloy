@@ -90,8 +90,8 @@ The resulting targets are:
 
 ### Cgroup ID regex
 
-Argument `cgroup_id_regex` allows to capture the cgroup ID of the process managed by other resource managers like
-SLURM, Libvirt, _etc._ The capture cgroup ID can be exported as `__meta_process_cgroup_id` field when enabled.
+The `cgroup_id_regex` argument allows you to capture the cgroup ID of the process managed by other resource managers like SLURM or Libvirt.
+When it is enabled, you can export the cgroup ID as the `__meta_process_cgroup_id` field.
 
 ## Blocks
 
