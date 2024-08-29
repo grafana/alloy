@@ -9,6 +9,11 @@ internal API changes are not present.
 
 Main (unreleased)
 -----------------
+### Features
+
+- Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
+- (_Experimental_) Add an `otelcol.processor.interval` component to aggregate metrics and periodically
+  forward the latest values to the next component in the pipeline.
 
 ### Enhancements
 
@@ -23,10 +28,22 @@ Main (unreleased)
   seen by each instance in the cluster. This can help diagnose cluster split
   brain issues. (@thampiotr)
 
-- Added a new Secret resource into the helm chart to allow passing values into
+- Add a new Secret resource into the helm chart to allow passing values into
   config via environement variables.
 
+- Updated Snowflake exporter with performance improvements for larger environments. 
+  Also added a new panel to track deleted tables to the Snowflake mixin. (@Caleb-Hurshman)
+- Add a `otelcol.processor.groupbyattrs` component to reassociate collected metrics that match specified attributes
+    from opentelemetry. (@kehindesalaam)
+
+- Live debugging of `loki.process` will now also print the timestamp of incoming and outgoing log lines.
+  This is helpful for debugging `stage.timestamp`. (@ptodev)
+
+- Add extra validation in `beyla.ebpf` to avoid panics when network feature is enabled. (@marctc)
+
 ### Bugfixes
+
+- Fix a bug where custom components don't always get updated when the config is modified in an imported directory. (@ante012)
 
 - Fixed an issue which caused loss of context data in Faro exception. (@codecapitano)
 
@@ -48,6 +65,21 @@ Main (unreleased)
   exported to downstream components. This would only happen if the config
   for `discovery.*`  is reloaded in such a way that no new targets were
   discovered. (@ptodev, @thampiotr)
+
+### Other
+
+- Renamed standard library functions. Old names are still valid but are marked deprecated. (@wildum)
+
+v1.3.1
+-----------------
+
+### Bugfixes
+
+- Changed the cluster startup behaviour, reverting to the previous logic where
+  a failure to resolve cluster join peers results in the node creating its own cluster. This is
+  to facilitate the process of bootstrapping a new cluster following user feedback (@thampiotr)
+
+- Fix a memory leak which would occur any time `loki.process` had its configuration reloaded. (@ptodev)
 
 v1.3.0
 -----------------
@@ -179,6 +211,7 @@ v1.3.0
 - Fix a bug which prevented config reloads to work if a Loki `metrics` stage is in the pipeline.
   Previously, the reload would fail for `loki.process` without an error in the logs and the metrics
   from the `metrics` stage would get stuck at the same values. (@ptodev)
+
 
 v1.2.1
 -----------------

@@ -52,25 +52,25 @@ pyroscope.scrape "default" {
 
 prometheus.remote_write "mimir" {
 	endpoint {
-		url = format(
+		url = string.format(
 			"http://%s/api/v1/push",
-			coalesce(env("REMOTE_WRITE_HOST"), "localhost:9009"),
+			coalesce(sys.env("REMOTE_WRITE_HOST"), "localhost:9009"),
 		)
 	}
 }
 
 loki.write "loki" {
 	endpoint {
-		url = format(
+		url = string.format(
 			"http://%s/loki/api/v1/push",
-			coalesce(env("LOKI_HOST"), "localhost:3100"),
+			coalesce(sys.env("LOKI_HOST"), "localhost:3100"),
 		)
 	}
 }
 
 otelcol.exporter.otlp "tempo" {
 	client {
-		endpoint = coalesce(env("TEMPO_HOST"), "localhost:4317")
+		endpoint = coalesce(sys.env("TEMPO_HOST"), "localhost:4317")
 
 		tls {
 			insecure = true
@@ -80,9 +80,9 @@ otelcol.exporter.otlp "tempo" {
 
 pyroscope.write "pyroscope" {
 	endpoint {
-		url = format(
+		url = string.format(
 			"http://%s",
-			coalesce(env("PYROSCOPE_HOST"), "localhost:4040"),
+			coalesce(sys.env("PYROSCOPE_HOST"), "localhost:4040"),
 		)
 	}
 }

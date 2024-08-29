@@ -186,7 +186,7 @@ This example pulls logs from Cloudflare's API and forwards them to a
 
 ```alloy
 loki.source.cloudflare "dev" {
-  zone_id   = env("CF_ZONE_ID")
+  zone_id   = sys.env("CF_ZONE_ID")
   api_token = local.file.api.content
 
   forward_to = [loki.write.local.receiver]

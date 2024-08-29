@@ -160,7 +160,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
@@ -184,7 +184,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
@@ -223,7 +223,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```

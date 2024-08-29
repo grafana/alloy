@@ -6,9 +6,6 @@ description: Learn how to install Grafana Alloy with Chef
 menuTitle: Chef
 title: Install Grafana Alloy with Chef
 weight: 550
-_build:
-  list: false
-noindex: true
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} with Chef

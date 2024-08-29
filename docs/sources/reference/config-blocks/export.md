@@ -50,7 +50,7 @@ declare "pods_and_nodes" {
   }
 
   export "kubernetes_resources" {
-    value = concat(
+    value = array.concat(
       discovery.kubernetes.pods.targets,
       discovery.kubernetes.nodes.targets,
     )

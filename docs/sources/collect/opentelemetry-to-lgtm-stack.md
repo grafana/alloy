@@ -150,7 +150,7 @@ loki.write "grafana_cloud_logs" {
 
 		basic_auth {
 			username = 5252
-			password = env("GRAFANA_CLOUD_API_KEY")
+			password = sys.env("GRAFANA_CLOUD_API_KEY")
 		}
 	}
 }
@@ -182,7 +182,7 @@ otelcol.exporter.otlp "grafana_cloud_traces" {
 
 otelcol.auth.basic "grafana_cloud_traces" {
 	username = 4094
-	password = env("GRAFANA_CLOUD_API_KEY")
+	password = sys.env("GRAFANA_CLOUD_API_KEY")
 }
 ```
 
@@ -218,7 +218,7 @@ prometheus.remote_write "grafana_cloud_metrics" {
 
         basic_auth {
             username = 12690
-            password = env("GRAFANA_CLOUD_API_KEY")
+            password = sys.env("GRAFANA_CLOUD_API_KEY")
         }
     }
 }
@@ -263,7 +263,7 @@ otelcol.exporter.otlp "grafana_cloud_traces" {
 
 otelcol.auth.basic "grafana_cloud_traces" {
 	username = 4094
-	password = env("GRAFANA_CLOUD_API_KEY")
+	password = sys.env("GRAFANA_CLOUD_API_KEY")
 }
 
 otelcol.exporter.prometheus "grafana_cloud_metrics" {
@@ -276,7 +276,7 @@ prometheus.remote_write "grafana_cloud_metrics" {
 
         basic_auth {
             username = 12690
-            password = env("GRAFANA_CLOUD_API_KEY")
+            password = sys.env("GRAFANA_CLOUD_API_KEY")
         }
     }
 }
@@ -291,7 +291,7 @@ loki.write "grafana_cloud_logs" {
 
 		basic_auth {
 			username = 5252
-			password = env("GRAFANA_CLOUD_API_KEY")
+			password = sys.env("GRAFANA_CLOUD_API_KEY")
 		}
 	}
 }

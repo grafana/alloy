@@ -268,7 +268,7 @@ loki.source.podlogs "default" {
 
 loki.write "local" {
   endpoint {
-    url = env("LOKI_URL")
+    url = sys.env("LOKI_URL")
   }
 }
 ```

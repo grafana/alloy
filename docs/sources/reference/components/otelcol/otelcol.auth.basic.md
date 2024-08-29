@@ -84,7 +84,7 @@ otelcol.exporter.otlp "example" {
 
 otelcol.auth.basic "creds" {
   username = "demo"
-  password = env("API_KEY")
+  password = sys.env("API_KEY")
 }
 ```
 

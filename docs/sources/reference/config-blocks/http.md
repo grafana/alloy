@@ -15,8 +15,8 @@ title: http block
 ```alloy
 http {
   tls {
-    cert_file = env("TLS_CERT_FILE_PATH")
-    key_file  = env("TLS_KEY_FILE_PATH")
+    cert_file = sys.env("TLS_CERT_FILE_PATH")
+    key_file  = sys.env("TLS_KEY_FILE_PATH")
   }
 }
 ```

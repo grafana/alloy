@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -101,7 +102,6 @@ func (c *Component) Run(ctx context.Context) error {
 		if c.entryHandler != nil {
 			c.entryHandler.Stop()
 		}
-		close(c.processIn)
 		c.mut.RUnlock()
 	}()
 	wg := &sync.WaitGroup{}
@@ -138,8 +138,9 @@ func (c *Component) Update(args component.Arguments) error {
 		if err != nil {
 			return err
 		}
-		c.entryHandler = loki.NewEntryHandler(c.processOut, func() { pipeline.Cleanup() })
-		c.processIn = pipeline.Wrap(c.entryHandler).Chan()
+		entryHandler := loki.NewEntryHandler(c.processOut, func() { pipeline.Cleanup() })
+		c.entryHandler = pipeline.Wrap(entryHandler)
+		c.processIn = c.entryHandler.Chan()
 		c.stages = newArgs.Stages
 	}
 
@@ -160,7 +161,7 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 				return
 			case c.processIn <- entry.Clone():
 				if c.debugDataPublisher.IsActive(componentID) {
-					c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[IN]: entry: %s, labels: %s", entry.Line, entry.Labels.String()))
+					c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
 				}
 				// TODO(@tpaschalis) Instead of calling Clone() at the
 				// component's entrypoint here, we can try a copy-on-write
@@ -183,14 +184,18 @@ func (c *Component) handleOut(ctx context.Context, wg *sync.WaitGroup) {
 			c.fanoutMut.RLock()
 			fanout := c.fanout
 			c.fanoutMut.RUnlock()
+
+			// The log entry is the same for every fanout,
+			// so we can publish it only once.
+			if c.debugDataPublisher.IsActive(componentID) {
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
+			}
+
 			for _, f := range fanout {
 				select {
 				case <-ctx.Done():
 					return
 				case f.Chan() <- entry:
-					if c.debugDataPublisher.IsActive(componentID) {
-						c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[OUT]: entry: %s, labels: %s", entry.Line, entry.Labels.String()))
-					}
 				}
 			}
 		}

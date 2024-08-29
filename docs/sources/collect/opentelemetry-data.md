@@ -118,8 +118,8 @@ otelcol.exporter.otlp "default" {
 otelcol.auth.basic "credentials" {
   // Retrieve credentials using environment variables.
 
-  username = env("BASIC_AUTH_USER")
-  password = env("API_KEY")
+  username = sys.env("BASIC_AUTH_USER")
+  password = sys.env("API_KEY")
 }
 
 otelcol.receiver.otlp "example" {

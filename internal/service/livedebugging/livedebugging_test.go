@@ -1,11 +1,10 @@
 package livedebugging
 
 import (
-	"context"
 	"testing"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util/testlivedebugging"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +29,7 @@ func TestAddCallback(t *testing.T) {
 	require.NoError(t, livedebugging.AddCallback(callbackID, "fake.liveDebugging", callback))
 
 	component, _ := livedebugging.host.GetComponent(component.ParseID("fake.liveDebugging"), component.InfoOptions{})
-	require.Equal(t, 1, component.Component.(*fakeComponentLiveDebugging).ConsumersCount)
+	require.Equal(t, 1, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 
 	err = livedebugging.AddCallback(callbackID, "fake.noLiveDebugging", callback)
 	require.ErrorContains(t, err, "the component \"fake.noLiveDebugging\" does not support live debugging")
@@ -110,9 +109,9 @@ func TestDeleteCallback(t *testing.T) {
 	component, _ := livedebugging.host.GetComponent(component.ParseID("fake.liveDebugging"), component.InfoOptions{})
 
 	require.NoError(t, livedebugging.AddCallback(callbackID1, componentID, callback1))
-	require.Equal(t, 1, component.Component.(*fakeComponentLiveDebugging).ConsumersCount)
+	require.Equal(t, 1, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 	require.NoError(t, livedebugging.AddCallback(callbackID2, componentID, callback2))
-	require.Equal(t, 2, component.Component.(*fakeComponentLiveDebugging).ConsumersCount)
+	require.Equal(t, 2, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 	require.Len(t, livedebugging.callbacks[componentID], 2)
 
 	// Deleting callbacks that don't exist should not panic
@@ -121,72 +120,24 @@ func TestDeleteCallback(t *testing.T) {
 
 	livedebugging.DeleteCallback(callbackID1, componentID)
 	require.Len(t, livedebugging.callbacks[componentID], 1)
-	require.Equal(t, 1, component.Component.(*fakeComponentLiveDebugging).ConsumersCount)
+	require.Equal(t, 1, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 
 	livedebugging.DeleteCallback(callbackID2, componentID)
 	require.Empty(t, livedebugging.callbacks[componentID])
-	require.Equal(t, 0, component.Component.(*fakeComponentLiveDebugging).ConsumersCount)
+	require.Equal(t, 0, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 
 	require.False(t, livedebugging.IsActive(ComponentID("fake.liveDebugging")))
 }
 
 func setupServiceHost(liveDebugging *liveDebugging) {
-	host := &fakeServiceHost{
-		componentsInfo: map[component.ID]fakeInfo{
-			component.ParseID("fake.liveDebugging"):                {ComponentName: "fake.liveDebugging", Component: &fakeComponentLiveDebugging{}},
-			component.ParseID("declared.cmp/fake.liveDebugging"):   {ComponentName: "fake.liveDebugging", Component: &fakeComponentLiveDebugging{}},
-			component.ParseID("fake.noLiveDebugging"):              {ComponentName: "fake.noLiveDebugging", Component: &fakeComponentNoLiveDebugging{}},
-			component.ParseID("declared.cmp/fake.noLiveDebugging"): {ComponentName: "fake.noLiveDebugging", Component: &fakeComponentNoLiveDebugging{}},
+	host := &testlivedebugging.FakeServiceHost{
+		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
+			component.ParseID("fake.liveDebugging"):                {ComponentName: "fake.liveDebugging", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
+			component.ParseID("declared.cmp/fake.liveDebugging"):   {ComponentName: "fake.liveDebugging", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
+			component.ParseID("fake.noLiveDebugging"):              {ComponentName: "fake.noLiveDebugging", Component: &testlivedebugging.FakeComponentNoLiveDebugging{}},
+			component.ParseID("declared.cmp/fake.noLiveDebugging"): {ComponentName: "fake.noLiveDebugging", Component: &testlivedebugging.FakeComponentNoLiveDebugging{}},
 		},
 	}
 	liveDebugging.SetServiceHost(host)
 	liveDebugging.SetEnabled(true)
-}
-
-type fakeInfo struct {
-	ComponentName string
-	Component     component.Component
-}
-
-type fakeServiceHost struct {
-	service.Host
-	componentsInfo map[component.ID]fakeInfo
-}
-
-func (h *fakeServiceHost) GetComponent(id component.ID, opts component.InfoOptions) (*component.Info, error) {
-	info, exist := h.componentsInfo[id]
-	if exist {
-		return &component.Info{ID: id, ComponentName: info.ComponentName, Component: info.Component}, nil
-	}
-
-	return nil, component.ErrComponentNotFound
-}
-
-type fakeComponentLiveDebugging struct {
-	ConsumersCount int
-}
-
-func (f *fakeComponentLiveDebugging) LiveDebugging(consumers int) {
-	f.ConsumersCount = consumers
-}
-
-func (f *fakeComponentLiveDebugging) Run(ctx context.Context) error {
-	<-ctx.Done()
-	return nil
-}
-
-func (f *fakeComponentLiveDebugging) Update(_ component.Arguments) error {
-	return nil
-}
-
-type fakeComponentNoLiveDebugging struct {
-}
-
-func (f *fakeComponentNoLiveDebugging) Run(ctx context.Context) error {
-	<-ctx.Done()
-	return nil
-}
-
-func (f *fakeComponentNoLiveDebugging) Update(_ component.Arguments) error {
-	return nil
 }
