@@ -204,6 +204,17 @@ controller:
   # -- Extra pod labels to add.
   podLabels: {}
 
+  # -- PodDisruptionBudget configuration.
+  podDisruptionBudget:
+    # -- Whether to create a PodDisruptionBudget for the controller.
+    enabled: false
+    # -- Minimum number of pods that must be available during a disruption.
+    # Note: Only one of minAvailable or maxUnavailable should be set.
+    minAvailable: null
+    # -- Maximum number of pods that can be unavailable during a disruption.
+    # Note: Only one of minAvailable or maxUnavailable should be set.
+    maxUnavailable: null
+
   # -- Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'.
   enableStatefulSetAutoDeletePVC: false
 
