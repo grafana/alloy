@@ -11,6 +11,13 @@ import (
 	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 )
 
+const (
+	// A modern Syslog RFC
+	SyslogFormatRFC5424 = "rfc5424"
+	// A legacy Syslog RFC also known as BSD-syslog
+	SyslogFormatRFC3164 = "rfc3164"
+)
+
 // ListenerConfig defines a syslog listener.
 type ListenerConfig struct {
 	ListenAddress        string            `alloy:"address,attr"`
@@ -30,6 +37,7 @@ var DefaultListenerConfig = ListenerConfig{
 	ListenProtocol:   st.DefaultProtocol,
 	IdleTimeout:      st.DefaultIdleTimeout,
 	MaxMessageLength: st.DefaultMaxMessageLength,
+	SyslogFormat:     SyslogFormatRFC5424,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -43,13 +51,11 @@ func (sc *ListenerConfig) Validate() error {
 		return fmt.Errorf("syslog listener protocol should be either 'tcp' or 'udp', got %s", sc.ListenProtocol)
 	}
 
-	if sc.SyslogFormat != "" {
-		if sc.SyslogFormat != scrapeconfig.SyslogFormatRFC3164 && sc.SyslogFormat != scrapeconfig.SyslogFormatRFC5424 {
-			return fmt.Errorf("syslog format should be either %q or %q, got %q",
-				scrapeconfig.SyslogFormatRFC3164,
-				scrapeconfig.SyslogFormatRFC5424,
-				sc.SyslogFormat)
-		}
+	if sc.SyslogFormat != SyslogFormatRFC3164 && sc.SyslogFormat != SyslogFormatRFC5424 {
+		return fmt.Errorf("syslog format should be either %q or %q, got %q",
+			SyslogFormatRFC3164,
+			SyslogFormatRFC5424,
+			sc.SyslogFormat)
 	}
 
 	return nil
@@ -62,6 +68,15 @@ func (sc ListenerConfig) Convert() *scrapeconfig.SyslogTargetConfig {
 		lbls[model.LabelName(k)] = model.LabelValue(v)
 	}
 
+	var syslogFormat scrapeconfig.SyslogFormat
+	if sc.SyslogFormat == SyslogFormatRFC3164 {
+		syslogFormat = scrapeconfig.SyslogFormatRFC3164
+	} else if sc.SyslogFormat == SyslogFormatRFC5424 {
+		syslogFormat = scrapeconfig.SyslogFormatRFC5424
+	} else {
+		panic("unknown syslog format " + sc.SyslogFormat)
+	}
+
 	return &scrapeconfig.SyslogTargetConfig{
 		ListenAddress:        sc.ListenAddress,
 		ListenProtocol:       sc.ListenProtocol,
@@ -72,6 +87,6 @@ func (sc ListenerConfig) Convert() *scrapeconfig.SyslogTargetConfig {
 		UseRFC5424Message:    sc.UseRFC5424Message,
 		MaxMessageLength:     sc.MaxMessageLength,
 		TLSConfig:            *sc.TLSConfig.Convert(),
-		SyslogFormat:         scrapeconfig.SyslogFormat(sc.SyslogFormat),
+		SyslogFormat:         syslogFormat,
 	}
 }
