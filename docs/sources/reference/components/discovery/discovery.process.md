@@ -29,7 +29,7 @@ The following arguments are supported:
 | Name               | Type                | Description                                                                              | Default | Required |
 |--------------------|---------------------|------------------------------------------------------------------------------------------|---------|----------|
 | `join`             | `list(map(string))` | Join external targets to discovered processes targets based on `__container_id__` label. |         | no       |
-| `cgroup_id_regex`  | `string`            | Regex expression to retrieve cgroup ID of the process.                                   |         | no       |
+| `cgroup_id_regex`  | `string`            | Regular expression that captures only one group that will used as cgroup ID of process.  |         | no       |
 | `refresh_interval` | `duration`          | How often to sync targets.                                                               | "60s"   | no       |
 
 ### Targets joining
