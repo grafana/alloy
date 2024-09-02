@@ -281,9 +281,9 @@ func (c *Component) Run(ctx context.Context) error {
 						redactWith = c.args.RedactWith
 						redactWith = strings.ReplaceAll(redactWith, "$SECRET_NAME", r.name)
 						redactWith = strings.ReplaceAll(redactWith, "$SECRET_HASH", hashSecret(secret))
-						if c.args.PartialMask > 0 {
-							redactWith = secret[:c.args.PartialMask] + redactWith
-						}
+					}
+					if c.args.PartialMask > 0 {
+						redactWith = secret[:c.args.PartialMask] + redactWith
 					}
 
 					entry.Line = strings.ReplaceAll(entry.Line, secret, redactWith)
