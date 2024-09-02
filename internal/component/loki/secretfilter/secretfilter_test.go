@@ -76,7 +76,7 @@ var testConfigs = map[string]string{
 	`,
 	"custom_gitleaks_file_simple": `
 		forward_to = []
-		gitleaks_config = "not-empty"
+		gitleaks_config = "not-empty" // This will be replaced with the actual path to the temporary gitleaks config file
 	`,
 }
 
