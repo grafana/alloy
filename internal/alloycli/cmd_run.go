@@ -19,6 +19,13 @@ import (
 	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
+	"github.com/grafana/ckit/advertise"
+	"github.com/grafana/ckit/peer"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
+	"golang.org/x/exp/maps"
+
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
 	"github.com/grafana/alloy/internal/component"
@@ -39,12 +46,6 @@ import (
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
 	"github.com/grafana/alloy/syntax/diag"
-	"github.com/grafana/ckit/advertise"
-	"github.com/grafana/ckit/peer"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/spf13/cobra"
-	"go.opentelemetry.io/otel"
-	"golang.org/x/exp/maps"
 
 	// Install Components
 	_ "github.com/grafana/alloy/internal/component/all"
@@ -61,7 +62,7 @@ func runCommand() *cobra.Command {
 		enablePprof:           true,
 		configFormat:          "alloy",
 		clusterAdvInterfaces:  advertise.DefaultInterfaces,
-		ClusterMaxJoinPeers:   5,
+		clusterMaxJoinPeers:   5,
 		clusterRejoinInterval: 60 * time.Second,
 	}
 
@@ -127,9 +128,13 @@ depending on the nature of the reload error.
 	cmd.Flags().
 		DurationVar(&r.clusterRejoinInterval, "cluster.rejoin-interval", r.clusterRejoinInterval, "How often to rejoin the list of peers")
 	cmd.Flags().
-		IntVar(&r.ClusterMaxJoinPeers, "cluster.max-join-peers", r.ClusterMaxJoinPeers, "Number of peers to join from the discovered set")
+		IntVar(&r.clusterMaxJoinPeers, "cluster.max-join-peers", r.clusterMaxJoinPeers, "Number of peers to join from the discovered set")
 	cmd.Flags().
 		StringVar(&r.clusterName, "cluster.name", r.clusterName, "The name of the cluster to join")
+	// TODO(alloy/#1274): make this flag a no-op once we have more confidence in this feature, and add issue to
+	// remove it in the next major release
+	cmd.Flags().
+		BoolVar(&r.clusterUseDiscoveryV1, "cluster.use-discovery-v1", r.clusterUseDiscoveryV1, "Use the older, v1 version of cluster peers discovery. Note that this flag will be deprecated in the future and eventually removed.")
 
 	// Config flags
 	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
@@ -141,6 +146,7 @@ depending on the nature of the reload error.
 		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
+	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	return cmd
 }
 
@@ -159,11 +165,13 @@ type alloyRun struct {
 	clusterDiscoverPeers         string
 	clusterAdvInterfaces         []string
 	clusterRejoinInterval        time.Duration
-	ClusterMaxJoinPeers          int
+	clusterMaxJoinPeers          int
 	clusterName                  string
+	clusterUseDiscoveryV1        bool
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
+	enableCommunityComps         bool
 }
 
 func (fr *alloyRun) Run(configPath string) error {
@@ -233,7 +241,7 @@ func (fr *alloyRun) Run(configPath string) error {
 	)
 
 	clusterService, err := buildClusterService(clusterOptions{
-		Log:     l,
+		Log:     log.With(l, "service", "cluster"),
 		Tracer:  t,
 		Metrics: reg,
 
@@ -245,8 +253,11 @@ func (fr *alloyRun) Run(configPath string) error {
 		DiscoverPeers:       fr.clusterDiscoverPeers,
 		RejoinInterval:      fr.clusterRejoinInterval,
 		AdvertiseInterfaces: fr.clusterAdvInterfaces,
-		ClusterMaxJoinPeers: fr.ClusterMaxJoinPeers,
+		ClusterMaxJoinPeers: fr.clusterMaxJoinPeers,
 		ClusterName:         fr.clusterName,
+		//TODO(alloy/#1274): graduate to GA once we have more confidence in this feature
+		EnableStateUpdatesLimiter: fr.minStability.Permits(featuregate.StabilityPublicPreview),
+		EnableDiscoveryV2:         !fr.clusterUseDiscoveryV1,
 	})
 	if err != nil {
 		return err
@@ -290,11 +301,12 @@ func (fr *alloyRun) Run(configPath string) error {
 	alloyseed.Init(fr.storagePath, l)
 
 	f := alloy_runtime.New(alloy_runtime.Options{
-		Logger:       l,
-		Tracer:       t,
-		DataPath:     fr.storagePath,
-		Reg:          reg,
-		MinStability: fr.minStability,
+		Logger:               l,
+		Tracer:               t,
+		DataPath:             fr.storagePath,
+		Reg:                  reg,
+		MinStability:         fr.minStability,
+		EnableCommunityComps: fr.enableCommunityComps,
 		Services: []service.Service{
 			clusterService,
 			httpService,

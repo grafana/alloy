@@ -10,9 +10,13 @@ prometheus.remote_write "metrics_remote_write_name" {
 }
 
 otelcol.extension.jaeger_remote_sampling "default_0" {
-	grpc { }
+	grpc {
+		endpoint = "localhost:14250"
+	}
 
-	http { }
+	http {
+		endpoint = "localhost:5778"
+	}
 
 	source {
 		remote {
@@ -26,10 +30,12 @@ otelcol.extension.jaeger_remote_sampling "default_0" {
 
 otelcol.receiver.otlp "_0_default" {
 	grpc {
+		endpoint         = "localhost:4317"
 		include_metadata = true
 	}
 
 	http {
+		endpoint         = "localhost:4318"
 		include_metadata = true
 	}
 
@@ -60,7 +66,7 @@ discovery.lightsail "_0_default_prometheus1" {
 }
 
 discovery.relabel "_0_default_prometheus1" {
-	targets = concat(
+	targets = array.concat(
 		discovery.azure._0_default_prometheus1.targets,
 		discovery.lightsail._0_default_prometheus1.targets,
 	)

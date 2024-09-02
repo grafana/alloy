@@ -5,6 +5,7 @@ package beyla
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path"
@@ -12,19 +13,22 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/beyla/pkg/beyla"
+	"github.com/grafana/beyla/pkg/components"
+	"github.com/grafana/beyla/pkg/export/prom"
+	"github.com/grafana/beyla/pkg/kubeflags"
+	"github.com/grafana/beyla/pkg/services"
+	"github.com/grafana/beyla/pkg/transform"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
-	"github.com/grafana/beyla/pkg/beyla"
-	"github.com/grafana/beyla/pkg/components"
-	"github.com/grafana/beyla/pkg/services"
-	"github.com/grafana/beyla/pkg/transform"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/model"
 )
 
 func init() {
@@ -53,19 +57,22 @@ type Component struct {
 var _ component.HealthComponent = (*Component)(nil)
 
 func (args Routes) Convert() *transform.RoutesConfig {
-	return &transform.RoutesConfig{
-		Unmatch:        transform.UnmatchType(args.Unmatch),
-		Patterns:       args.Patterns,
-		IgnorePatterns: args.IgnorePatterns,
-		IgnoredEvents:  transform.IgnoreMode(args.IgnoredEvents),
+	routes := beyla.DefaultConfig.Routes
+	if args.Unmatch != "" {
+		routes.Unmatch = transform.UnmatchType(args.Unmatch)
 	}
+	routes.Patterns = args.Patterns
+	routes.IgnorePatterns = args.IgnorePatterns
+	routes.IgnoredEvents = transform.IgnoreMode(args.IgnoredEvents)
+	return routes
 }
 
 func (args Attributes) Convert() beyla.Attributes {
 	attrs := beyla.DefaultConfig.Attributes
 	if args.Kubernetes.Enable != "" {
-		attrs.Kubernetes.Enable = transform.KubeEnableFlag(args.Kubernetes.Enable)
+		attrs.Kubernetes.Enable = kubeflags.EnableFlag(args.Kubernetes.Enable)
 	}
+	attrs.Kubernetes.ClusterName = args.Kubernetes.ClusterName
 	return attrs
 }
 
@@ -74,8 +81,13 @@ func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 	if err != nil {
 		return services.DiscoveryConfig{}, err
 	}
+	excludeSrv, err := args.ExcludeServices.Convert()
+	if err != nil {
+		return services.DiscoveryConfig{Services: srv}, err
+	}
 	return services.DiscoveryConfig{
-		Services: srv,
+		Services:        srv,
+		ExcludeServices: excludeSrv,
 	}, nil
 }
 
@@ -116,43 +128,76 @@ func (args Services) Convert() (services.DefinitionCriteria, error) {
 }
 
 func (args KubernetesService) Convert() (map[string]*services.RegexpAttr, error) {
-	namespace, err := stringToRegexpAttr(args.Namespace)
-	if err != nil {
-		return nil, err
+	metadata := map[string]*services.RegexpAttr{}
+	if args.Namespace != "" {
+		namespace, err := stringToRegexpAttr(args.Namespace)
+		metadata[services.AttrNamespace] = &namespace
+		if err != nil {
+			return nil, err
+		}
 	}
-	podName, err := stringToRegexpAttr(args.PodName)
-	if err != nil {
-		return nil, err
+	if args.PodName != "" {
+		podName, err := stringToRegexpAttr(args.PodName)
+		metadata[services.AttrPodName] = &podName
+		if err != nil {
+			return nil, err
+		}
 	}
-	deploymentName, err := stringToRegexpAttr(args.DeploymentName)
-	if err != nil {
-		return nil, err
+	if args.DeploymentName != "" {
+		deploymentName, err := stringToRegexpAttr(args.DeploymentName)
+		metadata[services.AttrDeploymentName] = &deploymentName
+		if err != nil {
+			return nil, err
+		}
 	}
-	replicaSetName, err := stringToRegexpAttr(args.ReplicaSetName)
-	if err != nil {
-		return nil, err
+	if args.ReplicaSetName != "" {
+		replicaSetName, err := stringToRegexpAttr(args.ReplicaSetName)
+		metadata[services.AttrReplicaSetName] = &replicaSetName
+		if err != nil {
+			return nil, err
+		}
 	}
-	statefulSetName, err := stringToRegexpAttr(args.StatefulSetName)
-	if err != nil {
-		return nil, err
+	if args.StatefulSetName != "" {
+		statefulSetName, err := stringToRegexpAttr(args.StatefulSetName)
+		metadata[services.AttrStatefulSetName] = &statefulSetName
+		if err != nil {
+			return nil, err
+		}
 	}
-	dataaemonSetName, err := stringToRegexpAttr(args.DaemonSetName)
-	if err != nil {
-		return nil, err
+	if args.DaemonSetName != "" {
+		daemonSetName, err := stringToRegexpAttr(args.DaemonSetName)
+		metadata[services.AttrDaemonSetName] = &daemonSetName
+		if err != nil {
+			return nil, err
+		}
 	}
-	ownerName, err := stringToRegexpAttr(args.OwnerName)
-	if err != nil {
-		return nil, err
+	if args.OwnerName != "" {
+		ownerName, err := stringToRegexpAttr(args.OwnerName)
+		metadata[services.AttrOwnerName] = &ownerName
+		if err != nil {
+			return nil, err
+		}
 	}
-	return map[string]*services.RegexpAttr{
-		services.AttrNamespace:       &namespace,
-		services.AttrPodName:         &podName,
-		services.AttrDeploymentName:  &deploymentName,
-		services.AttrReplicaSetName:  &replicaSetName,
-		services.AttrStatefulSetName: &statefulSetName,
-		services.AttrDaemonSetName:   &dataaemonSetName,
-		services.AttrOwnerName:       &ownerName,
-	}, nil
+	return metadata, nil
+}
+
+func (args Metrics) Convert() prom.PrometheusConfig {
+	p := beyla.DefaultConfig.Prometheus
+	if args.Features != nil {
+		p.Features = args.Features
+	}
+	if args.Instrumentations != nil {
+		p.Instrumentations = args.Instrumentations
+	}
+	return p
+}
+
+func (args Network) Convert() beyla.NetworkConfig {
+	networks := beyla.DefaultConfig.NetworkFlows
+	if args.Enable {
+		networks.Enable = true
+	}
+	return networks
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -196,7 +241,12 @@ func (c *Component) Run(ctx context.Context) error {
 			c.reportHealthy()
 			cfg.Prometheus.Registry = c.reg
 			c.mut.Unlock()
-			components.RunBeyla(newCtx, cfg)
+			err = components.RunBeyla(newCtx, cfg)
+			if err != nil {
+				level.Error(c.opts.Logger).Log("msg", "failed to run Beyla", "err", err)
+				c.reportUnhealthy(err)
+				continue
+			}
 		}
 	}
 }
@@ -285,12 +335,44 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfg.Prometheus = a.Metrics.Convert()
+	cfg.NetworkFlows = a.Metrics.Network.Convert()
+
+	if a.Debug {
+		// TODO: integrate Beyla internal logging with Alloy global logging
+		lvl := slog.LevelVar{}
+		lvl.Set(slog.LevelDebug)
+		cfg.ExternalLogger(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: &lvl,
+		})).Handler(), a.Debug)
+	}
 	return &cfg, nil
 }
 
 func (args *Arguments) Validate() error {
 	if args.Port == "" && args.ExecutableName == "" && len(args.Discovery.Services) == 0 {
 		return fmt.Errorf("you need to define at least open_port, executable_name, or services in the discovery section")
+	}
+	validInstrumentations := map[string]struct{}{"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}}
+	for _, instrumentation := range args.Metrics.Instrumentations {
+		if _, ok := validInstrumentations[instrumentation]; !ok {
+			return fmt.Errorf("invalid prometheus.instrumentations entry: %s", instrumentation)
+		}
+	}
+	validFeatures := map[string]struct{}{
+		"application":               {},
+		"application_span":          {},
+		"application_service_graph": {},
+		"application_process":       {},
+		"network":                   {},
+	}
+	for _, feature := range args.Metrics.Features {
+		if _, ok := validFeatures[feature]; !ok {
+			return fmt.Errorf("invalid prometheus.features entry: %s", feature)
+		}
+		if feature == "network" && !args.Metrics.Network.Enable {
+			return fmt.Errorf("network feature can only be enabled if network is enabled")
+		}
 	}
 	return nil
 }

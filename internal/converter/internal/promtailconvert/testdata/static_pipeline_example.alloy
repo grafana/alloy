@@ -4,7 +4,7 @@ discovery.kubernetes "example" {
 }
 
 discovery.relabel "example" {
-	targets = concat(
+	targets = array.concat(
 		discovery.kubernetes.example.targets,
 		[{
 			__address__       = "this",

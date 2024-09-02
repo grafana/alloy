@@ -12,8 +12,10 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	loki_translator "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -54,17 +56,32 @@ type Component struct {
 	mut      sync.RWMutex
 	receiver loki.LogsReceiver
 	logsSink consumer.Logs
+
+	liveDebuggingConsumer *livedebuggingconsumer.Consumer
+	debugDataPublisher    livedebugging.DebugDataPublisher
+
+	args Arguments
 }
 
-var _ component.Component = (*Component)(nil)
+var (
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
+)
 
 // New creates a new otelcol.receiver.loki component.
 func New(o component.Options, c Arguments) (*Component, error) {
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO(@tpaschalis) Create a metrics struct to count
 	// total/successful/errored log entries?
 	res := &Component{
-		log:  o.Logger,
-		opts: o,
+		log:                   o.Logger,
+		opts:                  o,
+		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID),
+		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	// Create and immediately export the receiver which remains the same for
@@ -102,8 +119,12 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	cfg := newConfig.(Arguments)
-	c.logsSink = fanoutconsumer.Logs(cfg.Output.Logs)
+	c.args = newConfig.(Arguments)
+	logs := c.args.Output.Logs
+	if c.debugDataPublisher.IsActive(livedebugging.ComponentID(c.opts.ID)) {
+		logs = append(logs, c.liveDebuggingConsumer)
+	}
+	c.logsSink = fanoutconsumer.Logs(logs)
 
 	return nil
 }
@@ -148,4 +169,8 @@ func convertLokiEntryToPlog(lokiEntry loki.Entry) plog.Logs {
 	loki_translator.ConvertEntryToLogRecord(&lokiEntry.Entry, &lr, lokiEntry.Labels, true)
 
 	return logs
+}
+
+func (c *Component) LiveDebugging(_ int) {
+	c.Update(c.args)
 }

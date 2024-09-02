@@ -17,7 +17,7 @@ function getSortValue(component: ComponentInfo, field: string): string | undefin
 }
 
 function PageComponentList() {
-  const [components, setComponents] = useComponentInfo('');
+  const [components, setComponents] = useComponentInfo('', false);
 
   // TODO: make this sorting logic reusable
   const handleSorting = (sortField: string, sortOrder: SortOrder): void => {
@@ -38,7 +38,7 @@ function PageComponentList() {
 
   return (
     <Page name="Components" desc="List of defined components" icon={faCubes}>
-      <ComponentList components={components} handleSorting={handleSorting} />
+      <ComponentList components={components} useRemotecfg={false} handleSorting={handleSorting} />
     </Page>
   );
 }

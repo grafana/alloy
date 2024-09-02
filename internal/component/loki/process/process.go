@@ -5,13 +5,16 @@ package process
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
 // TODO(thampiotr): We should reconsider which parts of this component should be exported and which should
@@ -45,7 +48,8 @@ type Exports struct {
 }
 
 var (
-	_ component.Component = (*Component)(nil)
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
 )
 
 // Component implements the loki.process component.
@@ -61,12 +65,20 @@ type Component struct {
 
 	fanoutMut sync.RWMutex
 	fanout    []loki.LogsReceiver
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
 // New creates a new loki.process component.
 func New(o component.Options, args Arguments) (*Component, error) {
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
-		opts: o,
+		opts:               o,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	// Create and immediately export the receiver which remains the same for
@@ -90,7 +102,6 @@ func (c *Component) Run(ctx context.Context) error {
 		if c.entryHandler != nil {
 			c.entryHandler.Stop()
 		}
-		close(c.processIn)
 		c.mut.RUnlock()
 	}()
 	wg := &sync.WaitGroup{}
@@ -127,8 +138,9 @@ func (c *Component) Update(args component.Arguments) error {
 		if err != nil {
 			return err
 		}
-		c.entryHandler = loki.NewEntryHandler(c.processOut, func() {})
-		c.processIn = pipeline.Wrap(c.entryHandler).Chan()
+		entryHandler := loki.NewEntryHandler(c.processOut, func() { pipeline.Cleanup() })
+		c.entryHandler = pipeline.Wrap(entryHandler)
+		c.processIn = c.entryHandler.Chan()
 		c.stages = newArgs.Stages
 	}
 
@@ -137,6 +149,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+	componentID := livedebugging.ComponentID(c.opts.ID)
 	for {
 		select {
 		case <-ctx.Done():
@@ -147,7 +160,9 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 			case <-ctx.Done():
 				return
 			case c.processIn <- entry.Clone():
-				// no-op
+				if c.debugDataPublisher.IsActive(componentID) {
+					c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
+				}
 				// TODO(@tpaschalis) Instead of calling Clone() at the
 				// component's entrypoint here, we can try a copy-on-write
 				// approach instead, so that the copy only gets made on the
@@ -160,6 +175,7 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 
 func (c *Component) handleOut(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+	componentID := livedebugging.ComponentID(c.opts.ID)
 	for {
 		select {
 		case <-ctx.Done():
@@ -168,12 +184,18 @@ func (c *Component) handleOut(ctx context.Context, wg *sync.WaitGroup) {
 			c.fanoutMut.RLock()
 			fanout := c.fanout
 			c.fanoutMut.RUnlock()
+
+			// The log entry is the same for every fanout,
+			// so we can publish it only once.
+			if c.debugDataPublisher.IsActive(componentID) {
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
+			}
+
 			for _, f := range fanout {
 				select {
 				case <-ctx.Done():
 					return
 				case f.Chan() <- entry:
-					// no-op
 				}
 			}
 		}
@@ -191,3 +213,5 @@ func stagesChanged(prev, next []stages.StageConfig) bool {
 	}
 	return false
 }
+
+func (c *Component) LiveDebugging(_ int) {}

@@ -5,7 +5,7 @@ import Page from '../features/layout/Page';
 import { useComponentInfo } from '../hooks/componentInfo';
 
 function Graph() {
-  const [components] = useComponentInfo('');
+  const [components] = useComponentInfo('', false);
 
   return (
     <Page name="Graph" desc="Relationships between defined components" icon={faDiagramProject}>

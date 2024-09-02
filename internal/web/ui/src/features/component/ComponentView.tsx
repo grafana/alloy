@@ -1,5 +1,6 @@
 import { FC, Fragment, ReactElement } from 'react';
 import { Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { faBug, faCubes, faLink } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -26,6 +27,8 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
   const argsPartition = partitionBody(props.component.arguments, 'Arguments');
   const exportsPartition = props.component.exports && partitionBody(props.component.exports, 'Exports');
   const debugPartition = props.component.debugInfo && partitionBody(props.component.debugInfo, 'Debug info');
+  const location = useLocation();
+  const useRemotecfg = location.pathname.startsWith('/remotecfg');
 
   function partitionTOC(partition: PartitionedBody): ReactElement {
     return (
@@ -100,11 +103,15 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </a>
         </div>
 
-        <div className={styles.debugLink}>
-          <a href={`debug/${pathJoin([props.component.moduleID, props.component.localID])}`}>
-            <FontAwesomeIcon icon={faBug} /> Live debugging
-          </a>
-        </div>
+        {useRemotecfg ? (
+          'Live debugging is not yet available for remote components'
+        ) : (
+          <div className={styles.debugLink}>
+            <a href={`debug/${pathJoin([props.component.moduleID, props.component.localID])}`}>
+              <FontAwesomeIcon icon={faBug} /> Live debugging
+            </a>
+          </div>
+        )}
 
         {props.component.health.message && (
           <blockquote>
@@ -126,7 +133,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="dependencies">
             <h2>Dependencies</h2>
             <div className={styles.sectionContent}>
-              <ComponentList components={referencesTo} moduleID={props.component.moduleID} />
+              <ComponentList components={referencesTo} useRemotecfg={useRemotecfg} moduleID={props.component.moduleID} />
             </div>
           </section>
         )}
@@ -135,7 +142,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="dependants">
             <h2>Dependants</h2>
             <div className={styles.sectionContent}>
-              <ComponentList components={referencedBy} moduleID={props.component.moduleID} />
+              <ComponentList components={referencedBy} useRemotecfg={useRemotecfg} moduleID={props.component.moduleID} />
             </div>
           </section>
         )}
@@ -146,6 +153,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
             <div className={styles.sectionContent}>
               <ComponentList
                 components={props.component.moduleInfo}
+                useRemotecfg={useRemotecfg}
                 moduleID={pathJoin([props.component.moduleID, props.component.localID])}
               />
             </div>

@@ -27,6 +27,7 @@ func TestAlloyConfig(t *testing.T) {
 		username = "GRAFANA_CLOUD_USER"
 		password = "GRAFANA_CLOUD_API_KEY"
 	}
+	external_labels = {"label1" = "value1"}
 `
 
 	var args Arguments

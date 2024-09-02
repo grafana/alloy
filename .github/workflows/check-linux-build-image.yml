@@ -19,19 +19,19 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Create test Linux build image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./tools/build-image
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=golang:1.22.3-bullseye
+            GO_RUNTIME=golang:1.22.5-bullseye
 
       - name: Create test Linux build image for boring crypto
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./tools/build-image
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.22.3-bullseye
+            GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.22.5-bullseye

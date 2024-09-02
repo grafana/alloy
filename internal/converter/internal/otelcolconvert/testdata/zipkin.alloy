@@ -1,4 +1,6 @@
 otelcol.receiver.zipkin "default" {
+	endpoint = "localhost:9411"
+
 	output {
 		traces = [otelcol.exporter.otlp.default.input]
 	}
