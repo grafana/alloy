@@ -1,3 +1,5 @@
+# Copied from https://github.com/gitleaks/gitleaks/blob/3be7faa1ffc80f1aa071192a09141d5e829e1af3/config/gitleaks.toml
+# 
 # This file has been auto-generated. Do not edit manually.
 # If you would like to contribute new rules, please use
 # cmd/generate/config/main.go and follow the contributing guidelines
