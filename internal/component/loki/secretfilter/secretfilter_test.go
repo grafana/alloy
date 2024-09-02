@@ -104,7 +104,7 @@ var fakeSecrets = map[string]fakeSecret{
 	},
 	"custom-fake-secret": {
 		name:  "my-fake-secret",
-		value: "fakeSecret12345",
+		value: "fakeSec" + "ret12345",
 	},
 }
 
