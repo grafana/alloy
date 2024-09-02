@@ -59,9 +59,9 @@ static "super_ec2_instance_id" {
 const discoveryJobConfig = `
 sts_region = "us-east-2"
 debug = true
-discovery_exported_tags = { "sqs" = ["name"] }
+discovery_exported_tags = { "AWS/SQS" = ["name"] }
 discovery {
-	type = "sqs"
+	type = "AWS/SQS"
 	regions = ["us-east-2"]
 	search_tags = {
 		"scrape" = "true",
@@ -149,9 +149,9 @@ static "super_ec2_instance_id" {
 const discoveryJobNilToZeroConfig = `
 sts_region = "us-east-2"
 debug = true
-discovery_exported_tags = { "sqs" = ["name"] }
+discovery_exported_tags = { "AWS/SQS" = ["name"] }
 discovery {
-	type = "sqs"
+	type = "AWS/SQS"
 	regions = ["us-east-2"]
 	search_tags = {
 		"scrape" = "true",
