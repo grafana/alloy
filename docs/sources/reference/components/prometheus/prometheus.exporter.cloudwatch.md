@@ -95,7 +95,7 @@ prometheus.exporter.cloudwatch "queues" {
     sts_region      = "us-east-2"
     aws_sdk_version_v2 = "false"
     discovery {
-        type        = "sqs"
+        type        = "AWS/SQS"
         regions     = ["us-east-2"]
         search_tags = {
             "scrape" = "true",
