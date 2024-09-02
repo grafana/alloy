@@ -82,6 +82,7 @@ var testConfigs = map[string]string{
 
 // List of fake secrets to use for testing
 // They are constructed so that they will match the regexes in the gitleaks configs
+// Note that some string literals are concatenated to avoid being flagged as secrets
 var fakeSecrets = map[string]fakeSecret{
 	"grafana-api-key": {
 		name:   "grafana-api-key",
@@ -215,7 +216,7 @@ var tt = []struct {
 		testConfigs["custom_types"],
 		"",
 		testLogs["simple_secret"].log,
-		testLogs["simple_secret"].log, // Grafana API key is not in the list of types
+		testLogs["simple_secret"].log, // Grafana API key is not in the list of types, no redaction expected
 	},
 	{
 		"custom_types_with_gcp_api_key",
