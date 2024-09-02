@@ -61,11 +61,6 @@ func NewSyslogTarget(
 	relabel []*relabel.Config,
 	config *scrapeconfig.SyslogTargetConfig,
 ) (*SyslogTarget, error) {
-
-	if config.SyslogFormat == "" {
-		config.SyslogFormat = "rfc5424"
-	}
-
 	t := &SyslogTarget{
 		metrics:       metrics,
 		logger:        logger,
