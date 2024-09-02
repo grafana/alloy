@@ -16,6 +16,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// fakeSecret represents a fake secret to be used in the tests
+type fakeSecret struct {
+	name   string
+	value  string
+	prefix string // Prefix to add to the redacted secret (if applicable)
+}
+
+// testLog represents a log entry to be used in the tests
+type testLog struct {
+	log     string
+	secrets []fakeSecret // List of fake secrets it contains for easy redaction check
+}
+
+// Custom gitleaks configs for testing
 var customGitleaksConfig = map[string]string{
 	"simple": `
 		title = "gitleaks custom config"
@@ -27,17 +41,21 @@ var customGitleaksConfig = map[string]string{
 	`,
 }
 
+var defaultRedactionString = "REDACTED-SECRET"
+var customRedactionString = "ALLOY-REDACTED-SECRET"
+
+// Alloy configurations for testing
 var testConfigs = map[string]string{
 	"default": `
 		forward_to = []
 	`,
 	"custom_redact_string": `
 		forward_to = []
-		redact_with = "<ALLOY-REDACTED-SECRET:$SECRET_NAME>"
+		redact_with = "<` + customRedactionString + `:$SECRET_NAME>"
 	`,
 	"custom_redact_string_with_hash": `
 		forward_to = []
-		redact_with = "<ALLOY-REDACTED-SECRET:$SECRET_NAME:$SECRET_HASH>"
+		redact_with = "<` + customRedactionString + `:$SECRET_NAME:$SECRET_HASH>"
 	`,
 	"partial_mask": `
 		forward_to = []
@@ -45,7 +63,7 @@ var testConfigs = map[string]string{
 	`,
 	"custom_types": `
 		forward_to = []
-		redact_with = "<ALLOY-REDACTED-SECRET:$SECRET_NAME>"
+		redact_with = "<` + customRedactionString + `:$SECRET_NAME>"
 		types = ["aws", "gcp"]
 	`,
 	"allow_list": `
@@ -62,12 +80,8 @@ var testConfigs = map[string]string{
 	`,
 }
 
-type fakeSecret struct {
-	name   string
-	value  string
-	prefix string
-}
-
+// List of fake secrets to use for testing
+// They are constructed so that they will match the regexes in the gitleaks configs
 var fakeSecrets = map[string]fakeSecret{
 	"grafana-api-key": {
 		name:   "grafana-api-key",
@@ -93,11 +107,7 @@ var fakeSecrets = map[string]fakeSecret{
 	},
 }
 
-type testLog struct {
-	log     string
-	secrets []fakeSecret
-}
-
+// List of fake log entries to use for testing
 var testLogs = map[string]testLog{
 	"no_secret": {
 		log: `{
@@ -143,6 +153,7 @@ var testLogs = map[string]testLog{
 	},
 }
 
+// Test cases for the secret filter
 var tt = []struct {
 	name                  string
 	config                string
@@ -162,7 +173,7 @@ var tt = []struct {
 		testConfigs["default"],
 		"",
 		testLogs["simple_secret"].log,
-		replaceSecrets(testLogs["simple_secret"].log, testLogs["simple_secret"].secrets, false, false, "REDACTED-SECRET"),
+		replaceSecrets(testLogs["simple_secret"].log, testLogs["simple_secret"].secrets, false, false, defaultRedactionString),
 	},
 	{
 		"simple_allow",
@@ -176,86 +187,71 @@ var tt = []struct {
 		testConfigs["custom_redact_string"],
 		"",
 		testLogs["simple_secret"].log,
-		replaceSecrets(testLogs["simple_secret"].log, testLogs["simple_secret"].secrets, false, false, "ALLOY-REDACTED-SECRET"),
+		replaceSecrets(testLogs["simple_secret"].log, testLogs["simple_secret"].secrets, false, false, customRedactionString),
 	},
 	{
 		"custom_redact_string_with_hash",
 		testConfigs["custom_redact_string_with_hash"],
 		"",
 		testLogs["simple_secret"].log,
-		replaceSecrets(testLogs["simple_secret"].log, testLogs["simple_secret"].secrets, false, true, "ALLOY-REDACTED-SECRET"),
+		replaceSecrets(testLogs["simple_secret"].log, testLogs["simple_secret"].secrets, false, true, customRedactionString),
 	},
 	{
 		"partial_mask",
 		testConfigs["partial_mask"],
 		"",
 		testLogs["simple_secret"].log,
-		replaceSecrets(testLogs["simple_secret"].log, testLogs["simple_secret"].secrets, true, false, "REDACTED-SECRET"),
+		replaceSecrets(testLogs["simple_secret"].log, testLogs["simple_secret"].secrets, true, false, defaultRedactionString),
 	},
 	{
 		"gcp_secret",
 		testConfigs["default"],
 		"",
 		testLogs["simple_secret_gcp"].log,
-		replaceSecrets(testLogs["simple_secret_gcp"].log, testLogs["simple_secret_gcp"].secrets, false, false, "REDACTED-SECRET"),
+		replaceSecrets(testLogs["simple_secret_gcp"].log, testLogs["simple_secret_gcp"].secrets, false, false, defaultRedactionString),
 	},
 	{
 		"custom_types_with_grafana_api_key",
 		testConfigs["custom_types"],
 		"",
 		testLogs["simple_secret"].log,
-		testLogs["simple_secret"].log,
+		testLogs["simple_secret"].log, // Grafana API key is not in the list of types
 	},
 	{
 		"custom_types_with_gcp_api_key",
 		testConfigs["custom_types"],
 		"",
 		testLogs["simple_secret_gcp"].log,
-		replaceSecrets(testLogs["simple_secret_gcp"].log, testLogs["simple_secret_gcp"].secrets, true, false, "ALLOY-REDACTED-SECRET"),
+		replaceSecrets(testLogs["simple_secret_gcp"].log, testLogs["simple_secret_gcp"].secrets, true, false, customRedactionString),
 	},
 	{
 		"generic_secret",
 		testConfigs["default"],
 		"",
 		testLogs["simple_secret_generic"].log,
-		replaceSecrets(testLogs["simple_secret_generic"].log, testLogs["simple_secret_generic"].secrets, true, false, "REDACTED-SECRET"),
+		replaceSecrets(testLogs["simple_secret_generic"].log, testLogs["simple_secret_generic"].secrets, true, false, defaultRedactionString),
 	},
 	{
 		"exclude_generic",
 		testConfigs["exclude_generic"],
 		"",
 		testLogs["simple_secret_generic"].log,
-		testLogs["simple_secret_generic"].log,
+		testLogs["simple_secret_generic"].log, // Generic secret is excluded so no redaction expected
 	},
 	{
 		"custom_gitleaks_file_simple",
 		testConfigs["custom_gitleaks_file_simple"],
 		customGitleaksConfig["simple"],
 		testLogs["simple_secret_custom"].log,
-		replaceSecrets(testLogs["simple_secret_custom"].log, testLogs["simple_secret_custom"].secrets, false, false, "REDACTED-SECRET"),
+		replaceSecrets(testLogs["simple_secret_custom"].log, testLogs["simple_secret_custom"].secrets, false, false, defaultRedactionString),
 	},
 	{
 		"multiple_secrets",
 		testConfigs["default"],
 		"",
 		testLogs["multiple_secrets"].log,
-		replaceSecrets(testLogs["multiple_secrets"].log, testLogs["multiple_secrets"].secrets, false, false, "REDACTED-SECRET"),
+		replaceSecrets(testLogs["multiple_secrets"].log, testLogs["multiple_secrets"].secrets, false, false, defaultRedactionString),
 	},
-}
-
-func replaceSecrets(log string, secrets []fakeSecret, withPrefix bool, withHash bool, redactionString string) string {
-	var prefix = ""
-	if withPrefix {
-		prefix = secrets[0].prefix
-	}
-	var hash = ""
-	if withHash {
-		hash = ":" + hashSecret(secrets[0].value)
-	}
-	for _, secret := range secrets {
-		log = strings.Replace(log, secret.value, fmt.Sprintf("%s<%s:%s%s>", prefix, redactionString, secret.name, hash), -1)
-	}
-	return log
 }
 
 func TestSecretFiltering(t *testing.T) {
@@ -309,6 +305,21 @@ func runTest(t *testing.T, config string, gitLeaksConfigContent string, inputLog
 	if args.GitleaksConfig != "" {
 		deleteTempGitLeaksConfig(t, args.GitleaksConfig)
 	}
+}
+
+func replaceSecrets(log string, secrets []fakeSecret, withPrefix bool, withHash bool, redactionString string) string {
+	var prefix = ""
+	if withPrefix {
+		prefix = secrets[0].prefix
+	}
+	var hash = ""
+	if withHash {
+		hash = ":" + hashSecret(secrets[0].value)
+	}
+	for _, secret := range secrets {
+		log = strings.Replace(log, secret.value, fmt.Sprintf("%s<%s:%s%s>", prefix, redactionString, secret.name, hash), -1)
+	}
+	return log
 }
 
 func createTempGitleaksConfig(t *testing.T, content string) string {
