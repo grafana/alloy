@@ -405,6 +405,9 @@ v1.1.0
 - Introduce a `otelcol.receiver.file_stats` component from the upstream
   OpenTelemetry `filestatsreceiver` component. (@rfratto)
 
+- New component `remote.aws.secrets_manager` to obtain decrypted secrets
+  from AWS Secrets Manager. (@hainenber)
+
 ### Enhancements
 
 - Update `prometheus.exporter.kafka` with the following functionalities (@wildum):
