@@ -41,6 +41,8 @@ Main (unreleased)
 
 - Add extra validation in `beyla.ebpf` to avoid panics when network feature is enabled. (@marctc)
 
+- A new parameter `aws_sdk_version_v2` is added for the cloudwatch exporters configuration. It enables the use of aws sdk v2 which has shown to have significant performance benefits. (@kgeckhart, @andriikushch)
+
 ### Bugfixes
 
 - Fix a bug where custom components don't always get updated when the config is modified in an imported directory. (@ante012)
@@ -69,6 +71,8 @@ Main (unreleased)
 ### Other
 
 - Renamed standard library functions. Old names are still valid but are marked deprecated. (@wildum)
+
+- Aliases for the namespaces are deprecated in the Cloudwatch exporter. For example: "s3" is not allowed, "AWS/S3" should be used. Usage of the aliases will generate warnings in the logs. Support for the aliases will be dropped in the upcoming releases. (@kgeckhart, @andriikushch)
 
 v1.3.1
 -----------------
