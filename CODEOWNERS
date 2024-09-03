@@ -20,5 +20,5 @@
 /docs/sources/ @clayton-cornell
 
 # Components:
-/internal/component/pyroscope/ @grafana/grafana-agent-profiling-maintainers
+/internal/component/pyroscope/ @grafana/grafana-alloy-profiling-maintainers
 /internal/component/beyla/     @marctc
