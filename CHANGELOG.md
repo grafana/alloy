@@ -33,6 +33,9 @@ Main (unreleased)
 - Add a `otelcol.processor.groupbyattrs` component to reassociate collected metrics that match specified attributes
     from opentelemetry. (@kehindesalaam)
 
+- Update windows_exporter to v0.27.2. (@jkroepke)
+  The `smb.enabled_list` and `smb_client.enabled_list` doesn't have any effect anymore. All sub-collectors are enabled by default.
+
 - Live debugging of `loki.process` will now also print the timestamp of incoming and outgoing log lines.
   This is helpful for debugging `stage.timestamp`. (@ptodev)
 
