@@ -26,7 +26,8 @@ type queue struct {
 	maxIndex  int
 	logger    log.Logger
 	files     actor.Mailbox[types.Data]
-	// Out is where to send data when pulled from queue.
+	// Out is where to send data when pulled from queue, it is assumed that it will
+	// block until ready for another file.
 	out func(ctx context.Context, dh types.DataHandle)
 	// existingFiles is the list of files found initially.
 	existingsFiles []string
