@@ -6,7 +6,9 @@
 # CODEOWNERS as a GitHub project board is used instead for PR tracking, which
 # helps reduce notification noise of the members of that team.
 
-# `make docs` procedure and related workflows are owned by @jdbaldry.
+* @grafana/grafana-alloy-maintainers
+
+#`make docs` procedure and related workflows are owned by @jdbaldry.
 /.github/workflows/publish-technical-documentation-next.yml    @jdbaldry
 /.github/workflows/publish-technical-documentation-release.yml @jdbaldry
 /.github/workflows/update-make-docs.yml                        @jdbaldry
