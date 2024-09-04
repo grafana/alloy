@@ -26,7 +26,7 @@ func (memoryLimiterProcessorConverter) Factory() component.Factory {
 func (memoryLimiterProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.memory_limiter"
 }
-func (memoryLimiterProcessorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (memoryLimiterProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -44,7 +44,7 @@ func (memoryLimiterProcessorConverter) ConvertAndAppend(state *State, id *compon
 	return diags
 }
 
-func toMemoryLimiterProcessor(state *State, id *componentstatus.InstanceID, cfg *memorylimiterprocessor.Config) *memorylimiter.Arguments {
+func toMemoryLimiterProcessor(state *State, id componentstatus.InstanceID, cfg *memorylimiterprocessor.Config) *memorylimiter.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

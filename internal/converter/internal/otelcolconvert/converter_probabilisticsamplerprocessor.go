@@ -26,7 +26,7 @@ func (probabilisticSamplerProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.probabilistic_sampler"
 }
 
-func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -43,7 +43,7 @@ func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *State, id 
 	return diags
 }
 
-func toProbabilisticSamplerProcessor(state *State, id *componentstatus.InstanceID, cfg *probabilisticsamplerprocessor.Config) *probabilistic_sampler.Arguments {
+func toProbabilisticSamplerProcessor(state *State, id componentstatus.InstanceID, cfg *probabilisticsamplerprocessor.Config) *probabilistic_sampler.Arguments {
 	var (
 		nextTraces = state.Next(id, component.DataTypeTraces)
 		nextLogs   = state.Next(id, component.DataTypeLogs)

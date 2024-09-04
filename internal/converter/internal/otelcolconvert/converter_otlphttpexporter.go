@@ -31,7 +31,7 @@ func (otlpHTTPExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.otlphttp"
 }
 
-func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

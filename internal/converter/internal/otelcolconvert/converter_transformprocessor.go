@@ -26,7 +26,7 @@ func (transformProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.transform"
 }
 
-func (transformProcessorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (transformProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -43,7 +43,7 @@ func (transformProcessorConverter) ConvertAndAppend(state *State, id *components
 	return diags
 }
 
-func toTransformProcessor(state *State, id *componentstatus.InstanceID, cfg *transformprocessor.Config) *transform.Arguments {
+func toTransformProcessor(state *State, id componentstatus.InstanceID, cfg *transformprocessor.Config) *transform.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

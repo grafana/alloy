@@ -27,7 +27,7 @@ func (groupByAttrsConverter) InputComponentName() string {
 	return "otelcol.processor.groupbyattrs"
 }
 
-func (groupByAttrsConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (groupByAttrsConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -44,7 +44,7 @@ func (groupByAttrsConverter) ConvertAndAppend(state *State, id *componentstatus.
 	return diags
 }
 
-func toGroupByAttrsProcessor(state *State, id *componentstatus.InstanceID, cfg *groupbyattrsprocessor.Config) *groupbyattrs.Arguments {
+func toGroupByAttrsProcessor(state *State, id componentstatus.InstanceID, cfg *groupbyattrsprocessor.Config) *groupbyattrs.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

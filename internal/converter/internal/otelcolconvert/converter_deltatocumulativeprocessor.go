@@ -26,7 +26,7 @@ func (deltatocumulativeProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.deltatocumulative"
 }
 
-func (deltatocumulativeProcessorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (deltatocumulativeProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -43,7 +43,7 @@ func (deltatocumulativeProcessorConverter) ConvertAndAppend(state *State, id *co
 	return diags
 }
 
-func toDeltatocumulativeProcessor(state *State, id *componentstatus.InstanceID, cfg *deltatocumulativeprocessor.Config) *deltatocumulative.Arguments {
+func toDeltatocumulativeProcessor(state *State, id componentstatus.InstanceID, cfg *deltatocumulativeprocessor.Config) *deltatocumulative.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

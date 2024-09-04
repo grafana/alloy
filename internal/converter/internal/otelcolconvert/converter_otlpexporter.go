@@ -32,7 +32,7 @@ func (otlpExporterConverter) Factory() component.Factory {
 
 func (otlpExporterConverter) InputComponentName() string { return "otelcol.exporter.otlp" }
 
-func (otlpExporterConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

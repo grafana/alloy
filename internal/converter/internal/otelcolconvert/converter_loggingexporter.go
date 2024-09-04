@@ -26,7 +26,7 @@ func (loggingExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.logging"
 }
 
-func (loggingExporterConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (loggingExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

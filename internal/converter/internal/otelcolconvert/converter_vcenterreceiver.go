@@ -23,7 +23,7 @@ func (vcenterReceiverConverter) Factory() component.Factory { return vcenterrece
 
 func (vcenterReceiverConverter) InputComponentName() string { return "" }
 
-func (vcenterReceiverConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (vcenterReceiverConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -40,7 +40,7 @@ func (vcenterReceiverConverter) ConvertAndAppend(state *State, id *componentstat
 	return diags
 }
 
-func toVcenterReceiver(state *State, id *componentstatus.InstanceID, cfg *vcenterreceiver.Config) *vcenter.Arguments {
+func toVcenterReceiver(state *State, id componentstatus.InstanceID, cfg *vcenterreceiver.Config) *vcenter.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextTraces  = state.Next(id, component.DataTypeTraces)

@@ -26,7 +26,7 @@ func (intervalProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.interval"
 }
 
-func (intervalProcessorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (intervalProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -43,7 +43,7 @@ func (intervalProcessorConverter) ConvertAndAppend(state *State, id *componentst
 	return diags
 }
 
-func toIntervalProcessor(state *State, id *componentstatus.InstanceID, cfg *intervalprocessor.Config) *interval.Arguments {
+func toIntervalProcessor(state *State, id componentstatus.InstanceID, cfg *intervalprocessor.Config) *interval.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

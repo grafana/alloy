@@ -25,7 +25,7 @@ func (jaegerReceiverConverter) Factory() component.Factory { return jaegerreceiv
 
 func (jaegerReceiverConverter) InputComponentName() string { return "" }
 
-func (jaegerReceiverConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (jaegerReceiverConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,7 +42,7 @@ func (jaegerReceiverConverter) ConvertAndAppend(state *State, id *componentstatu
 	return diags
 }
 
-func toJaegerReceiver(state *State, id *componentstatus.InstanceID, cfg *jaegerreceiver.Config) *jaeger.Arguments {
+func toJaegerReceiver(state *State, id componentstatus.InstanceID, cfg *jaegerreceiver.Config) *jaeger.Arguments {
 	var (
 		nextTraces = state.Next(id, component.DataTypeTraces)
 	)

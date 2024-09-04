@@ -27,7 +27,7 @@ func (spanmetricsConnectorConverter) InputComponentName() string {
 	return "otelcol.connector.spanmetrics"
 }
 
-func (spanmetricsConnectorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (spanmetricsConnectorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -44,7 +44,7 @@ func (spanmetricsConnectorConverter) ConvertAndAppend(state *State, id *componen
 	return diags
 }
 
-func toSpanmetricsConnector(state *State, id *componentstatus.InstanceID, cfg *spanmetricsconnector.Config) *spanmetrics.Arguments {
+func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *spanmetricsconnector.Config) *spanmetrics.Arguments {
 	if cfg == nil {
 		return nil
 	}

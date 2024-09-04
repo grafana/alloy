@@ -33,7 +33,7 @@ func (remoteWriteExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.prometheus"
 }
 
-func (remoteWriteExporterConverter) ConvertAndAppend(state *otelcolconvert.State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (remoteWriteExporterConverter) ConvertAndAppend(state *otelcolconvert.State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	label := state.AlloyComponentLabel()
 
 	// We overloaded the ServerConfig.Endpoint field to be the prometheus.remote_write label

@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
-func StringifyInstanceID(id *componentstatus.InstanceID) string {
+func StringifyInstanceID(id componentstatus.InstanceID) string {
 	return fmt.Sprintf("%s/%s", StringifyKind(id.Kind()), id.ComponentID())
 }
 

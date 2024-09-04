@@ -27,7 +27,7 @@ func (otlpReceiverConverter) Factory() component.Factory { return otlpreceiver.N
 
 func (otlpReceiverConverter) InputComponentName() string { return "" }
 
-func (otlpReceiverConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (otlpReceiverConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -44,7 +44,7 @@ func (otlpReceiverConverter) ConvertAndAppend(state *State, id *componentstatus.
 	return diags
 }
 
-func toOtelcolReceiverOTLP(state *State, id *componentstatus.InstanceID, cfg *otlpreceiver.Config) *otlp.Arguments {
+func toOtelcolReceiverOTLP(state *State, id componentstatus.InstanceID, cfg *otlpreceiver.Config) *otlp.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

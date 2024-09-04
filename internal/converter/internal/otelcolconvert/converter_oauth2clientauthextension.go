@@ -24,7 +24,7 @@ func (oauth2ClientAuthExtensionConverter) Factory() component.Factory {
 
 func (oauth2ClientAuthExtensionConverter) InputComponentName() string { return "otelcol.auth.oauth2" }
 
-func (oauth2ClientAuthExtensionConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (oauth2ClientAuthExtensionConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

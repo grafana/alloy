@@ -27,7 +27,7 @@ func (bearerTokenAuthExtensionConverter) Factory() component.Factory {
 
 func (bearerTokenAuthExtensionConverter) InputComponentName() string { return "otelcol.auth.bearer" }
 
-func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

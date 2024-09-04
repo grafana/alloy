@@ -27,7 +27,7 @@ func (filestatsReceiverConverter) Factory() component.Factory { return filestats
 
 func (filestatsReceiverConverter) InputComponentName() string { return "" }
 
-func (filestatsReceiverConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (filestatsReceiverConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -44,7 +44,7 @@ func (filestatsReceiverConverter) ConvertAndAppend(state *State, id *componentst
 	return diags
 }
 
-func toFilestatsReceiver(state *State, id *componentstatus.InstanceID, cfg *filestatsreceiver.Config) *file_stats.Arguments {
+func toFilestatsReceiver(state *State, id componentstatus.InstanceID, cfg *filestatsreceiver.Config) *file_stats.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 	)

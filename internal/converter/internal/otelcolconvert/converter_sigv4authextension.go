@@ -25,7 +25,7 @@ func (sigV4AuthExtensionConverter) InputComponentName() string {
 	return "otelcol.auth.sigv4"
 }
 
-func (sigV4AuthExtensionConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (sigV4AuthExtensionConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

@@ -26,7 +26,7 @@ func (filterProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.filter"
 }
 
-func (filterProcessorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (filterProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -43,7 +43,7 @@ func (filterProcessorConverter) ConvertAndAppend(state *State, id *componentstat
 	return diags
 }
 
-func toFilterProcessor(state *State, id *componentstatus.InstanceID, cfg *filterprocessor.Config) *filter.Arguments {
+func toFilterProcessor(state *State, id componentstatus.InstanceID, cfg *filterprocessor.Config) *filter.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

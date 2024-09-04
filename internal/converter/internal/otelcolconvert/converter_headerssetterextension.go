@@ -24,7 +24,7 @@ func (headersSetterExtensionConverter) Factory() component.Factory {
 
 func (headersSetterExtensionConverter) InputComponentName() string { return "otelcol.auth.headers" }
 
-func (headersSetterExtensionConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (headersSetterExtensionConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

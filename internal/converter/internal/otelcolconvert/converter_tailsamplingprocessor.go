@@ -26,7 +26,7 @@ func (tailSamplingProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.tail_sampling"
 }
 
-func (tailSamplingProcessorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (tailSamplingProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -43,7 +43,7 @@ func (tailSamplingProcessorConverter) ConvertAndAppend(state *State, id *compone
 	return diags
 }
 
-func toTailSamplingProcessor(state *State, id *componentstatus.InstanceID, cfg *tailsamplingprocessor.Config) *tail_sampling.Arguments {
+func toTailSamplingProcessor(state *State, id componentstatus.InstanceID, cfg *tailsamplingprocessor.Config) *tail_sampling.Arguments {
 	var (
 		nextTraces = state.Next(id, component.DataTypeTraces)
 	)

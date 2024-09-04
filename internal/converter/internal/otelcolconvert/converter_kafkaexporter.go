@@ -23,7 +23,7 @@ func (kafkaExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.kafka"
 }
 
-func (kafkaExporterConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (kafkaExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

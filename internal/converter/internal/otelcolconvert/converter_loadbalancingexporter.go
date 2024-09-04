@@ -29,7 +29,7 @@ func (loadbalancingExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.loadbalancing"
 }
 
-func (loadbalancingExporterConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (loadbalancingExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

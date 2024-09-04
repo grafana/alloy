@@ -26,7 +26,7 @@ func (debugExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.debug"
 }
 
-func (debugExporterConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (debugExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

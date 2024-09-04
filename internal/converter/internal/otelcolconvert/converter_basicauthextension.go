@@ -24,7 +24,7 @@ func (basicAuthConverterConverter) Factory() component.Factory {
 
 func (basicAuthConverterConverter) InputComponentName() string { return "otelcol.auth.basic" }
 
-func (basicAuthConverterConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (basicAuthConverterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

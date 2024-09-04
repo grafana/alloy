@@ -22,7 +22,7 @@ func (datadogReceiverConverter) Factory() component.Factory { return datadogrece
 
 func (datadogReceiverConverter) InputComponentName() string { return "" }
 
-func (datadogReceiverConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+func (datadogReceiverConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -39,7 +39,7 @@ func (datadogReceiverConverter) ConvertAndAppend(state *State, id *componentstat
 	return diags
 }
 
-func toDatadogReceiver(state *State, id *componentstatus.InstanceID, cfg *datadogreceiver.Config) *datadog.Arguments {
+func toDatadogReceiver(state *State, id componentstatus.InstanceID, cfg *datadogreceiver.Config) *datadog.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextTraces  = state.Next(id, component.DataTypeTraces)
