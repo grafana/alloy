@@ -20,7 +20,7 @@ type kvStore struct{ c *vault.Client }
 
 func (ks *kvStore) Read(ctx context.Context, args *Arguments) (*vault.Secret, error) {
 	kv := ks.c.KVv2(args.Path)
-	kvSecret, err := kv.Get(ctx, args.Secret)
+	kvSecret, err := kv.Get(ctx, args.Key)
 	if err != nil {
 		return nil, err
 	}
