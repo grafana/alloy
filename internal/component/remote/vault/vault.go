@@ -35,7 +35,7 @@ type Arguments struct {
 	Namespace string `alloy:"namespace,attr,optional"`
 
 	Path string `alloy:"path,attr"`
-	Key string `alloy:"key,attr"`
+	Key string `alloy:"key,attr,optional"`
 
 	RereadFrequency time.Duration `alloy:"reread_frequency,attr,optional"`
 
