@@ -68,8 +68,9 @@ Main (unreleased)
   for `discovery.*`  is reloaded in such a way that no new targets were
   discovered. (@ptodev, @thampiotr)
 
-- Fixed an issue where specifying both path and key in the remote.vault `path` configuration could result in incorrect URLs.
-  The `path` and `key` arguments have been separated to allow for clear and accurate specification of Vault secrets. (@PatMis16)
+- Fixed an issue (see https://github.com/grafana/alloy/issues/1599) where specifying both path and key in the remote.vault `path`
+  configuration could result in incorrect URLs. The `path` and `key` arguments have been separated to allow for clear and accurate
+  specification of Vault secrets. (@PatMis16)
 
 ### Other
 
