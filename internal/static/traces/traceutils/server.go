@@ -183,7 +183,7 @@ func newFuncProcessorFactory(callback func(ptrace.Traces)) processor.Factory {
 		},
 		processor.WithTraces(func(
 			_ context.Context,
-			_ processor.CreateSettings,
+			_ processor.Settings,
 			_ component.Config,
 			next consumer.Traces,
 		) (processor.Traces, error) {
@@ -223,7 +223,7 @@ func newNoopExporterFactory() exporter.Factory {
 		},
 		exporter.WithTraces(func(
 			context.Context,
-			exporter.CreateSettings,
+			exporter.Settings,
 			component.Config) (
 			exporter.Traces,
 			error) {

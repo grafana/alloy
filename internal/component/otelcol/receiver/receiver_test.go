@@ -147,7 +147,7 @@ func newTestEnvironment(t *testing.T, onTracesConsumer func(t otelconsumer.Trace
 				func() otelcomponent.Config { return nil },
 				otelreceiver.WithTraces(func(
 					_ context.Context,
-					_ otelreceiver.CreateSettings,
+					_ otelreceiver.Settings,
 					_ otelcomponent.Config,
 					t otelconsumer.Traces,
 				) (otelreceiver.Traces, error) {

@@ -119,7 +119,7 @@ func (e *Extension) Update(args component.Arguments) error {
 		return err
 	}
 
-	settings := otelextension.CreateSettings{
+	settings := otelextension.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 

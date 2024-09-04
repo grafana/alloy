@@ -175,7 +175,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 		return err
 	}
 
-	settings := otelexporter.CreateSettings{
+	settings := otelexporter.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 

@@ -152,7 +152,7 @@ func (p *Connector) Update(args component.Arguments) error {
 		return err
 	}
 
-	settings := otelconnector.CreateSettings{
+	settings := otelconnector.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(p.opts.Logger),
 
