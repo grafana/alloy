@@ -2,6 +2,8 @@ package vault
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	vault "github.com/hashicorp/vault/api"
 )
@@ -17,10 +19,12 @@ type secretStore interface {
 type kvStore struct{ c *vault.Client }
 
 func (ks *kvStore) Read(ctx context.Context, args *Arguments) (*vault.Secret, error) {
-	
-	if args.Key != nil {
+	var kvSecret *vault.KVSecret
+	var err error
+
+	if args.Key != "" {
 		kv := ks.c.KVv2(args.Path)
-		kvSecret, err := kv.Get(ctx, args.Key)
+		kvSecret, err = kv.Get(ctx, args.Key)
 		if err != nil {
 			return nil, err
 		}
@@ -30,11 +34,9 @@ func (ks *kvStore) Read(ctx context.Context, args *Arguments) (*vault.Secret, er
 		if len(pathParts) != 2 {
 			return nil, fmt.Errorf("missing mount path in %q", args.Path)
 		}
-	
+
 		kv := ks.c.KVv2(pathParts[0])
-		kvSecret, err := kv.Get(ctx, pathParts[1])
-		kv := ks.c.KVv2(args.Path)
-		kvSecret, err := kv.Get(ctx, args.Key)
+		kvSecret, err = kv.Get(ctx, pathParts[1])
 		if err != nil {
 			return nil, err
 		}
