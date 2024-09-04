@@ -41,7 +41,7 @@ Name               | Type       | Description                                   
 `server`           | `string`   | The Vault server to connect to.                            |         | yes
 `namespace`        | `string`   | The Vault namespace to connect to (Vault Enterprise only). |         | no
 `path`             | `string`   | The path to retrieve a secret from.                        |         | yes
-`key`              | `string`   | The key to retrive a secret from.                          |         | yes
+`key`              | `string`   | The key to retrieve a secret from.                         |         | no
 `reread_frequency` | `duration` | Rate to re-read keys.                                      | `"0s"`  | no
 
 Tokens with a lease will be automatically renewed roughly two-thirds through their lease duration.
