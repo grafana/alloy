@@ -2,8 +2,6 @@ package vault
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	vault "github.com/hashicorp/vault/api"
 )
