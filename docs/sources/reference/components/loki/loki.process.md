@@ -659,7 +659,7 @@ The following arguments are supported:
 | Name                | Type       | Description                                                                                               | Default                  | Required |
 |---------------------|------------|-----------------------------------------------------------------------------------------------------------|--------------------------|----------|
 | `name`              | `string`   | The metric name.                                                                                          |                          | yes      |
-| `action`            | `string`   | The action to take. Valid actions are `set`, `inc`, `dec`,` add`, or `sub`.                               |                          | yes      |
+| `action`            | `string`   | The action to take. Valid actions are `inc` and `add`.                                                    |                          | yes      |
 | `description`       | `string`   | The metric's description and help text.                                                                   | `""`                     | no       |
 | `source`            | `string`   | Key from the extracted data map to use for the metric. Defaults to the metric name.                       | `""`                     | no       |
 | `prefix`            | `string`   | The prefix to the metric name.                                                                            | `"loki_process_custom_"` | no       |
@@ -682,7 +682,7 @@ The following arguments are supported:
 | Name                | Type       | Description                                                                         | Default                  | Required |
 |---------------------|------------|-------------------------------------------------------------------------------------|--------------------------|----------|
 | `name`              | `string`   | The metric name.                                                                    |                          | yes      |
-| `action`            | `string`   | The action to take. Valid actions are `inc` and `add`.                              |                          | yes      |
+| `action`            | `string`   | The action to take. Valid actions are  `inc`, `dec`, `set`, `add`, or `sub`.        |                          | yes      |
 | `description`       | `string`   | The metric's description and help text.                                             | `""`                     | no       |
 | `source`            | `string`   | Key from the extracted data map to use for the metric. Defaults to the metric name. | `""`                     | no       |
 | `prefix`            | `string`   | The prefix to the metric name.                                                      | `"loki_process_custom_"` | no       |
@@ -692,7 +692,7 @@ The following arguments are supported:
 
 The valid `action` values are `inc`, `dec`, `set`, `add`, or `sub`.
 `inc` and `dec` increment and decrement the metric's value by 1 respectively.
-If `set`, `add, or `sub` is chosen, the extracted value must be convertible to a positive float and is set, added to, or subtracted from the metric's value.
+If `set`, `add`, or `sub` is chosen, the extracted value must be convertible to a positive float and is set, added to, or subtracted from the metric's value.
 
 
 #### metric.histogram block
@@ -704,7 +704,7 @@ The following arguments are supported:
 | Name                | Type          | Description                                                                         | Default                  | Required |
 |---------------------|---------------|-------------------------------------------------------------------------------------|--------------------------|----------|
 | `name`              | `string`      | The metric name.                                                                    |                          | yes      |
-| `buckets`           | `list(float)` | The action to take. Valid actions are `set`, `inc`, `dec`,` add`, or `sub`.         |                          | yes      |
+| `buckets`           | `list(float)` | Prefined buckets                                                                    |                          | yes      |
 | `description`       | `string`      | The metric's description and help text.                                             | `""`                     | no       |
 | `source`            | `string`      | Key from the extracted data map to use for the metric. Defaults to the metric name. | `""`                     | no       |
 | `prefix`            | `string`      | The prefix to the metric name.                                                      | `"loki_process_custom_"` | no       |
