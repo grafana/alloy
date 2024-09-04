@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configtls"
@@ -26,7 +27,7 @@ func (otlpReceiverConverter) Factory() component.Factory { return otlpreceiver.N
 
 func (otlpReceiverConverter) InputComponentName() string { return "" }
 
-func (otlpReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (otlpReceiverConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -43,7 +44,7 @@ func (otlpReceiverConverter) ConvertAndAppend(state *State, id component.Instanc
 	return diags
 }
 
-func toOtelcolReceiverOTLP(state *State, id component.InstanceID, cfg *otlpreceiver.Config) *otlp.Arguments {
+func toOtelcolReceiverOTLP(state *State, id *componentstatus.InstanceID, cfg *otlpreceiver.Config) *otlp.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

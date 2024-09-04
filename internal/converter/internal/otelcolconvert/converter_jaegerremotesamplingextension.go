@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -24,7 +25,7 @@ func (jaegerRemoteSamplingExtensionConverter) InputComponentName() string {
 	return "otelcol.extension.jaeger_remote_sampling"
 }
 
-func (jaegerRemoteSamplingExtensionConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (jaegerRemoteSamplingExtensionConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/pdata/plog"
 )
 
@@ -22,7 +23,7 @@ func (spanProcessorConverter) Factory() component.Factory { return spanprocessor
 
 func (spanProcessorConverter) InputComponentName() string { return "otelcol.processor.span" }
 
-func (spanProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (spanProcessorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -39,7 +40,7 @@ func (spanProcessorConverter) ConvertAndAppend(state *State, id component.Instan
 	return diags
 }
 
-func toSpanProcessor(state *State, id component.InstanceID, cfg *spanprocessor.Config) *span.Arguments {
+func toSpanProcessor(state *State, id *componentstatus.InstanceID, cfg *spanprocessor.Config) *span.Arguments {
 	var (
 		nextTraces = state.Next(id, component.DataTypeTraces)
 	)

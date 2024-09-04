@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
 )
 
@@ -25,7 +26,7 @@ func (batchProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.batch"
 }
 
-func (batchProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (batchProcessorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,7 +43,7 @@ func (batchProcessorConverter) ConvertAndAppend(state *State, id component.Insta
 	return diags
 }
 
-func toBatchProcessor(state *State, id component.InstanceID, cfg *batchprocessor.Config) *batch.Arguments {
+func toBatchProcessor(state *State, id *componentstatus.InstanceID, cfg *batchprocessor.Config) *batch.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

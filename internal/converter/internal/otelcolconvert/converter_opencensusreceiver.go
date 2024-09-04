@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -23,7 +24,7 @@ func (opencensusReceiverConverter) Factory() component.Factory {
 
 func (opencensusReceiverConverter) InputComponentName() string { return "" }
 
-func (opencensusReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (opencensusReceiverConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -40,7 +41,7 @@ func (opencensusReceiverConverter) ConvertAndAppend(state *State, id component.I
 	return diags
 }
 
-func toOpencensusReceiver(state *State, id component.InstanceID, cfg *opencensusreceiver.Config) *opencensus.Arguments {
+func toOpencensusReceiver(state *State, id *componentstatus.InstanceID, cfg *opencensusreceiver.Config) *opencensus.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextTraces  = state.Next(id, component.DataTypeTraces)

@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -25,7 +26,7 @@ func (attributesProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.attributes"
 }
 
-func (attributesProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (attributesProcessorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,7 +43,7 @@ func (attributesProcessorConverter) ConvertAndAppend(state *State, id component.
 	return diags
 }
 
-func toAttributesProcessor(state *State, id component.InstanceID, cfg *attributesprocessor.Config) *attributes.Arguments {
+func toAttributesProcessor(state *State, id *componentstatus.InstanceID, cfg *attributesprocessor.Config) *attributes.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextTraces  = state.Next(id, component.DataTypeTraces)

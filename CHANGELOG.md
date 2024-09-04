@@ -74,6 +74,9 @@ Main (unreleased)
 
 - Aliases for the namespaces are deprecated in the Cloudwatch exporter. For example: "s3" is not allowed, "AWS/S3" should be used. Usage of the aliases will generate warnings in the logs. Support for the aliases will be dropped in the upcoming releases. (@kgeckhart, @andriikushch)
 
+- Update OTel from v0.105.0 vo v0.108.0:
+  - https://github.com/open-telemetry/opentelemetry-collector/pull/10423
+
 v1.3.1
 -----------------
 

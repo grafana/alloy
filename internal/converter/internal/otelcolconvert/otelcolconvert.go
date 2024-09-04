@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/converter/expandconverter"
 	"go.opentelemetry.io/collector/confmap/provider/yamlprovider"
@@ -182,7 +183,7 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, e
 	extensionTable := make(map[component.ID]componentID, len(cfg.Service.Extensions))
 
 	for _, ext := range cfg.Service.Extensions {
-		cid := component.InstanceID{Kind: component.KindExtension, ID: ext}
+		cid := componentstatus.NewInstanceID(ext, component.KindExtension)
 
 		state := &State{
 			cfg:  cfg,
@@ -199,7 +200,7 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, e
 			componentLabelPrefix: labelPrefix,
 		}
 
-		key := converterKey{Kind: component.KindExtension, Type: ext.Type()}
+		key := &converterKey{Kind: component.KindExtension, Type: ext.Type()}
 		conv, ok := converterTable[key]
 		if !ok {
 			panic(fmt.Sprintf("otelcolconvert: no converter found for key %v", key))
@@ -231,7 +232,7 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, e
 
 		for _, componentSet := range componentSets {
 			for _, id := range componentSet.ids {
-				componentID := component.InstanceID{Kind: componentSet.kind, ID: id}
+				componentID := componentstatus.NewInstanceID(id, componentSet.kind)
 
 				state := &State{
 					cfg:   cfg,
@@ -246,7 +247,7 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, e
 					componentLabelPrefix: labelPrefix,
 				}
 
-				key := converterKey{Kind: componentSet.kind, Type: id.Type()}
+				key := &converterKey{Kind: componentSet.kind, Type: id.Type()}
 				conv, ok := converterTable[key]
 				if !ok {
 					panic(fmt.Sprintf("otelcolconvert: no converter found for key %v", key))
@@ -285,8 +286,8 @@ func validateNoDuplicateReceivers(groups []pipelineGroup, connectorIDs []compone
 	return diags
 }
 
-func buildConverterTable(extraConverters []ComponentConverter) map[converterKey]ComponentConverter {
-	table := make(map[converterKey]ComponentConverter)
+func buildConverterTable(extraConverters []ComponentConverter) map[*converterKey]ComponentConverter {
+	table := make(map[*converterKey]ComponentConverter)
 
 	// Ordering is critical here because conflicting converters are resolved with
 	// the first one in the list winning.
@@ -316,10 +317,10 @@ func buildConverterTable(extraConverters []ComponentConverter) map[converterKey]
 
 		for _, kind := range kinds {
 			// If a converter for this kind and type already exists, skip it.
-			if _, ok := table[converterKey{Kind: kind, Type: fact.Type()}]; ok {
+			if _, ok := table[&converterKey{Kind: kind, Type: fact.Type()}]; ok {
 				continue
 			}
-			table[converterKey{Kind: kind, Type: fact.Type()}] = conv
+			table[&converterKey{Kind: kind, Type: fact.Type()}] = conv
 		}
 	}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -26,7 +27,7 @@ func (bearerTokenAuthExtensionConverter) Factory() component.Factory {
 
 func (bearerTokenAuthExtensionConverter) InputComponentName() string { return "otelcol.auth.bearer" }
 
-func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()

@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -25,7 +26,7 @@ func (k8sAttributesProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.k8sattributes"
 }
 
-func (k8sAttributesProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (k8sAttributesProcessorConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,7 +43,7 @@ func (k8sAttributesProcessorConverter) ConvertAndAppend(state *State, id compone
 	return diags
 }
 
-func toK8SAttributesProcessor(state *State, id component.InstanceID, cfg *k8sattributesprocessor.Config) *k8sattributes.Arguments {
+func toK8SAttributesProcessor(state *State, id *componentstatus.InstanceID, cfg *k8sattributesprocessor.Config) *k8sattributes.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

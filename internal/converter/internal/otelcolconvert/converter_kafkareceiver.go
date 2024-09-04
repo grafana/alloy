@@ -12,6 +12,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/configtls"
 )
 
@@ -25,7 +26,7 @@ func (kafkaReceiverConverter) Factory() component.Factory { return kafkareceiver
 
 func (kafkaReceiverConverter) InputComponentName() string { return "" }
 
-func (kafkaReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (kafkaReceiverConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,7 +43,7 @@ func (kafkaReceiverConverter) ConvertAndAppend(state *State, id component.Instan
 	return diags
 }
 
-func toKafkaReceiver(state *State, id component.InstanceID, cfg *kafkareceiver.Config) *kafka.Arguments {
+func toKafkaReceiver(state *State, id *componentstatus.InstanceID, cfg *kafkareceiver.Config) *kafka.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -21,7 +22,7 @@ func (zipkinReceiverConverter) Factory() component.Factory { return zipkinreceiv
 
 func (zipkinReceiverConverter) InputComponentName() string { return "" }
 
-func (zipkinReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (zipkinReceiverConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -38,7 +39,7 @@ func (zipkinReceiverConverter) ConvertAndAppend(state *State, id component.Insta
 	return diags
 }
 
-func toZipkinReceiver(state *State, id component.InstanceID, cfg *zipkinreceiver.Config) *zipkin.Arguments {
+func toZipkinReceiver(state *State, id *componentstatus.InstanceID, cfg *zipkinreceiver.Config) *zipkin.Arguments {
 	var (
 		nextTraces = state.Next(id, component.DataTypeTraces)
 	)

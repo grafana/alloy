@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -22,7 +23,7 @@ func (vcenterReceiverConverter) Factory() component.Factory { return vcenterrece
 
 func (vcenterReceiverConverter) InputComponentName() string { return "" }
 
-func (vcenterReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (vcenterReceiverConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -39,7 +40,7 @@ func (vcenterReceiverConverter) ConvertAndAppend(state *State, id component.Inst
 	return diags
 }
 
-func toVcenterReceiver(state *State, id component.InstanceID, cfg *vcenterreceiver.Config) *vcenter.Arguments {
+func toVcenterReceiver(state *State, id *componentstatus.InstanceID, cfg *vcenterreceiver.Config) *vcenter.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextTraces  = state.Next(id, component.DataTypeTraces)

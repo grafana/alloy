@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/exporter/loggingexporter"
 	"go.uber.org/zap/zapcore"
 )
@@ -25,7 +26,7 @@ func (loggingExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.logging"
 }
 
-func (loggingExporterConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (loggingExporterConverter) ConvertAndAppend(state *State, id *componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
