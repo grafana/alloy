@@ -104,6 +104,10 @@ Name | Type | Description | Default | Required
 `vcenter.cluster.memory.limit` | [metric][] | Enables the `vcenter.cluster.memory.limit` metric. | `true` | no
 `vcenter.cluster.vm.count` | [metric][] | Enables the `vcenter.cluster.vm.count` metric. | `true` | no
 `vcenter.cluster.vm_template.count` | [metric][] | Enables the `vcenter.cluster.vm_template.count` metric. | `true` | no
+`vcenter.cluster.vsan.congestions` | [metric][] | Enables the `vcenter.cluster.vsan.congestions` metric. | `false` | no
+`vcenter.cluster.vsan.latency.avg` | [metric][] | Enables the `vcenter.cluster.vsan.latency.avg` metric. | `false` | no
+`vcenter.cluster.vsan.operations` | [metric][] | Enables the `vcenter.cluster.vsan.operations` metric. | `false` | no
+`vcenter.cluster.vsan.throughput` | [metric][] | Enables the `vcenter.cluster.vsan.throughput` metric. | `false` | no
 `vcenter.datacenter.cluster.count` | [metric][] | Enables the `vcenter.datacenter.cluster.count` metric. | `false` | no
 `vcenter.datacenter.cpu.limit` | [metric][] | Enables the `vcenter.datacenter.cpu.limit` metric. | `false` | no
 `vcenter.datacenter.datastore.count` | [metric][] | Enables the `vcenter.datacenter.datastore.count` metric. | `false` | no
@@ -127,6 +131,11 @@ Name | Type | Description | Default | Required
 `vcenter.host.network.packet.drop.rate` | [metric][] | Enables the `vcenter.host.network.packet.drop.rate` metric. | `true` | no
 `vcenter.host.network.throughput` | [metric][] | Enables the `vcenter.host.network.throughput` metric. | `true` | no
 `vcenter.host.network.usage` | [metric][] | Enables the `vcenter.host.network.usage` metric. | `true` | no
+`vcenter.host.vsan.cache.hit_rate` | [metric][] | Enables the `vcenter.host.vsan.cache.hit_rate` metric. | `false` | no
+`vcenter.host.vsan.congestions` | [metric][] | Enables the `vcenter.host.vsan.congestions` metric. | `false` | no
+`vcenter.host.vsan.latency.avg` | [metric][] | Enables the `vcenter.host.vsan.latency.avg` metric. | `false` | no
+`vcenter.host.vsan.operations` | [metric][] | Enables the `vcenter.host.vsan.operations` metric. | `false` | no
+`vcenter.host.vsan.throughput` | [metric][] | Enables the `vcenter.host.vsan.throughput` metric. | `false` | no
 `vcenter.resource_pool.cpu.shares` | [metric][] | Enables the `vcenter.resource_pool.cpu.shares` metric. | `true` | no
 `vcenter.resource_pool.cpu.usage` | [metric][] | Enables the `vcenter.resource_pool.cpu.usage` metric. | `true` | no
 `vcenter.resource_pool.memory.ballooned` | [metric][] | Enables the `vcenter.resource_pool.memory.ballooned` metric. | `false` | no
@@ -151,6 +160,9 @@ Name | Type | Description | Default | Required
 `vcenter.vm.network.packet.drop.rate` | [metric][] | Enables the `vcenter.vm.network.packet.drop.rate` metric. | `true` | no
 `vcenter.vm.network.throughput` | [metric][] | Enables the `vcenter.vm.network.throughput` metric. | `true` | no
 `vcenter.vm.network.usage` | [metric][] | Enables the `vcenter.vm.network.usage` metric. | `true` | no
+`vcenter.vm.vsan.latency.avg` | [metric][] | Enables the `vcenter.vm.vsan.latency.avg` metric. | `true` | no
+`vcenter.vm.vsan.operations` | [metric][] | Enables the `vcenter.vm.vsan.operations` metric. | `true` | no
+`vcenter.vm.vsan.throughput` | [metric][] | Enables the `vcenter.vm.vsan.throughput` metric. | `true` | no
 
 [metric]: #metric-block
 

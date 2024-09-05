@@ -53,6 +53,10 @@ type MetricsConfig struct {
 	VcenterClusterMemoryLimit          MetricConfig `alloy:"vcenter.cluster.memory.limit,block,optional"`
 	VcenterClusterVMCount              MetricConfig `alloy:"vcenter.cluster.vm.count,block,optional"`
 	VcenterClusterVMTemplateCount      MetricConfig `alloy:"vcenter.cluster.vm_template.count,block,optional"`
+	VcenterClusterVsanCongestions      MetricConfig `alloy:"vcenter.cluster.vsan.congestions,block,optional"`
+	VcenterClusterVsanLatencyAvg       MetricConfig `alloy:"vcenter.cluster.vsan.latency.avg,block,optional"`
+	VcenterClusterVsanOperations       MetricConfig `alloy:"vcenter.cluster.vsan.operations,block,optional"`
+	VcenterClusterVsanThroughput       MetricConfig `alloy:"vcenter.cluster.vsan.throughput,block,optional"`
 	VcenterDatacenterClusterCount      MetricConfig `alloy:"vcenter.datacenter.cluster.count,block,optional"`
 	VcenterDatacenterCPULimit          MetricConfig `alloy:"vcenter.datacenter.cpu.limit,block,optional"`
 	VcenterDatacenterDatastoreCount    MetricConfig `alloy:"vcenter.datacenter.datastore.count,block,optional"`
@@ -76,6 +80,11 @@ type MetricsConfig struct {
 	VcenterHostNetworkPacketDropRate   MetricConfig `alloy:"vcenter.host.network.packet.drop.rate,block,optional"`
 	VcenterHostNetworkThroughput       MetricConfig `alloy:"vcenter.host.network.throughput,block,optional"`
 	VcenterHostNetworkUsage            MetricConfig `alloy:"vcenter.host.network.usage,block,optional"`
+	VcenterHostVsanCacheHitRate        MetricConfig `alloy:"vcenter.host.vsan.cache.hit_rate,block,optional"`
+	VcenterHostVsanCongestions         MetricConfig `alloy:"vcenter.host.vsan.congestions,block,optional"`
+	VcenterHostVsanLatencyAvg          MetricConfig `alloy:"vcenter.host.vsan.latency.avg,block,optional"`
+	VcenterHostVsanOperations          MetricConfig `alloy:"vcenter.host.vsan.operations,block,optional"`
+	VcenterHostVsanThroughput          MetricConfig `alloy:"vcenter.host.vsan.throughput,block,optional"`
 	VcenterResourcePoolCPUShares       MetricConfig `alloy:"vcenter.resource_pool.cpu.shares,block,optional"`
 	VcenterResourcePoolCPUUsage        MetricConfig `alloy:"vcenter.resource_pool.cpu.usage,block,optional"`
 	VcenterResourcePoolMemoryBallooned MetricConfig `alloy:"vcenter.resource_pool.memory.ballooned,block,optional"`
@@ -100,6 +109,9 @@ type MetricsConfig struct {
 	VcenterVMNetworkPacketDropRate     MetricConfig `alloy:"vcenter.vm.network.packet.drop.rate,block,optional"`
 	VcenterVMNetworkThroughput         MetricConfig `alloy:"vcenter.vm.network.throughput,block,optional"`
 	VcenterVMNetworkUsage              MetricConfig `alloy:"vcenter.vm.network.usage,block,optional"`
+	VcenterVMVsanLatencyAvg            MetricConfig `alloy:"vcenter.vm.vsan.latency.avg,block,optional"`
+	VcenterVMVsanOperations            MetricConfig `alloy:"vcenter.vm.vsan.operations,block,optional"`
+	VcenterVMVsanThroughput            MetricConfig `alloy:"vcenter.vm.vsan.throughput,block,optional"`
 }
 
 func (args *MetricsConfig) SetToDefault() {
@@ -111,6 +123,10 @@ func (args *MetricsConfig) SetToDefault() {
 		VcenterClusterMemoryLimit:          MetricConfig{Enabled: true},
 		VcenterClusterVMCount:              MetricConfig{Enabled: true},
 		VcenterClusterVMTemplateCount:      MetricConfig{Enabled: true},
+		VcenterClusterVsanCongestions:      MetricConfig{Enabled: false},
+		VcenterClusterVsanLatencyAvg:       MetricConfig{Enabled: false},
+		VcenterClusterVsanOperations:       MetricConfig{Enabled: false},
+		VcenterClusterVsanThroughput:       MetricConfig{Enabled: false},
 		VcenterDatacenterClusterCount:      MetricConfig{Enabled: false},
 		VcenterDatacenterCPULimit:          MetricConfig{Enabled: false},
 		VcenterDatacenterDatastoreCount:    MetricConfig{Enabled: false},
@@ -134,6 +150,11 @@ func (args *MetricsConfig) SetToDefault() {
 		VcenterHostNetworkPacketDropRate:   MetricConfig{Enabled: true},
 		VcenterHostNetworkThroughput:       MetricConfig{Enabled: true},
 		VcenterHostNetworkUsage:            MetricConfig{Enabled: true},
+		VcenterHostVsanCacheHitRate:        MetricConfig{Enabled: false},
+		VcenterHostVsanCongestions:         MetricConfig{Enabled: false},
+		VcenterHostVsanLatencyAvg:          MetricConfig{Enabled: false},
+		VcenterHostVsanOperations:          MetricConfig{Enabled: false},
+		VcenterHostVsanThroughput:          MetricConfig{Enabled: false},
 		VcenterResourcePoolCPUShares:       MetricConfig{Enabled: true},
 		VcenterResourcePoolCPUUsage:        MetricConfig{Enabled: true},
 		VcenterResourcePoolMemoryBallooned: MetricConfig{Enabled: false},
@@ -158,6 +179,9 @@ func (args *MetricsConfig) SetToDefault() {
 		VcenterVMNetworkPacketDropRate:     MetricConfig{Enabled: true},
 		VcenterVMNetworkThroughput:         MetricConfig{Enabled: true},
 		VcenterVMNetworkUsage:              MetricConfig{Enabled: true},
+		VcenterVMVsanLatencyAvg:            MetricConfig{Enabled: false},
+		VcenterVMVsanOperations:            MetricConfig{Enabled: false},
+		VcenterVMVsanThroughput:            MetricConfig{Enabled: false},
 	}
 }
 
@@ -174,6 +198,10 @@ func (args *MetricsConfig) Convert() map[string]interface{} {
 		"vcenter.cluster.memory.limit":           args.VcenterClusterMemoryLimit.Convert(),
 		"vcenter.cluster.vm.count":               args.VcenterClusterVMCount.Convert(),
 		"vcenter.cluster.vm_template.count":      args.VcenterClusterVMTemplateCount.Convert(),
+		"vcenter.cluster.vsan.congestions":       args.VcenterClusterVsanCongestions.Convert(),
+		"vcenter.cluster.vsan.latency.avg":       args.VcenterClusterVsanLatencyAvg.Convert(),
+		"vcenter.cluster.vsan.operations":        args.VcenterClusterVsanOperations.Convert(),
+		"vcenter.cluster.vsan.throughput":        args.VcenterClusterVsanThroughput.Convert(),
 		"vcenter.datacenter.cluster.count":       args.VcenterDatacenterClusterCount.Convert(),
 		"vcenter.datacenter.cpu.limit":           args.VcenterDatacenterCPULimit.Convert(),
 		"vcenter.datacenter.datastore.count":     args.VcenterDatacenterDatastoreCount.Convert(),
@@ -197,6 +225,11 @@ func (args *MetricsConfig) Convert() map[string]interface{} {
 		"vcenter.host.network.packet.drop.rate":  args.VcenterHostNetworkPacketDropRate.Convert(),
 		"vcenter.host.network.throughput":        args.VcenterHostNetworkThroughput.Convert(),
 		"vcenter.host.network.usage":             args.VcenterHostNetworkUsage.Convert(),
+		"vcenter.host.vsan.cache.hit_rate":       args.VcenterHostVsanCacheHitRate.Convert(),
+		"vcenter.host.vsan.congestions":          args.VcenterHostVsanCongestions.Convert(),
+		"vcenter.host.vsan.latency.avg":          args.VcenterHostVsanLatencyAvg.Convert(),
+		"vcenter.host.vsan.operations":           args.VcenterHostVsanOperations.Convert(),
+		"vcenter.host.vsan.throughput":           args.VcenterHostVsanThroughput.Convert(),
 		"vcenter.resource_pool.cpu.shares":       args.VcenterResourcePoolCPUShares.Convert(),
 		"vcenter.resource_pool.cpu.usage":        args.VcenterResourcePoolCPUUsage.Convert(),
 		"vcenter.resource_pool.memory.ballooned": args.VcenterResourcePoolMemoryBallooned.Convert(),
@@ -220,7 +253,10 @@ func (args *MetricsConfig) Convert() map[string]interface{} {
 		"vcenter.vm.network.packet.rate":         args.VcenterVMNetworkPacketRate.Convert(),
 		"vcenter.vm.network.packet.drop.rate":    args.VcenterVMNetworkPacketDropRate.Convert(),
 		"vcenter.vm.network.throughput":          args.VcenterVMNetworkThroughput.Convert(),
-		"vcenter.vm.network.usage":               args.VcenterVMNetworkUsage.Convert()}
+		"vcenter.vm.network.usage":               args.VcenterVMNetworkUsage.Convert(),
+		"vcenter.vm.vsan.latency.avg":            args.VcenterVMVsanLatencyAvg.Convert(),
+		"vcenter.vm.vsan.operations":             args.VcenterVMVsanOperations.Convert(),
+		"vcenter.vm.vsan.throughput":             args.VcenterVMVsanThroughput.Convert()}
 }
 
 type ResourceAttributeConfig struct {
