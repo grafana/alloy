@@ -142,7 +142,7 @@ func (q *queue) DoWork(ctx actor.Context) actor.WorkerStatus {
 	}
 }
 
-// Add a committed file to the queue.
+// Add a file to the queue (as committed).
 func (q *queue) add(meta map[string]string, data []byte) (string, error) {
 	if meta == nil {
 		meta = make(map[string]string)
