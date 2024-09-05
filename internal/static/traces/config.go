@@ -572,7 +572,7 @@ func (c *InstanceConfig) extensions() (map[string]interface{}, error) {
 		}
 		for i, jrsConfig := range c.JaegerRemoteSampling {
 			extName := fmt.Sprintf("jaegerremotesampling/%d", i)
-			extensions[extName] = jrsConfig
+			extensions[extName] = map[string]interface{}(jrsConfig)
 		}
 	}
 	return extensions, nil
