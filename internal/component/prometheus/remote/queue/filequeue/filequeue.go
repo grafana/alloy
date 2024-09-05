@@ -129,7 +129,7 @@ func (q *queue) DoWork(ctx actor.Context) actor.WorkerStatus {
 		}
 		name, err := q.add(item.Meta, item.Data)
 		if err != nil {
-			level.Error(q.logger).Log("msg", "error adding item", "err", err)
+			level.Error(q.logger).Log("msg", "error adding item - dropping data", "err", err)
 			return actor.WorkerContinue
 		}
 		q.out(ctx, types.DataHandle{
