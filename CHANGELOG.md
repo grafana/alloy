@@ -81,6 +81,8 @@ Main (unreleased)
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33082
   - [`otelcol.processor.transform`] Add `aggregate_on_attributes` function for metrics.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33334
+  - [`otelcol.receiver.vcenter`] Enable metrics by default
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33607
 
 v1.3.1
 -----------------
