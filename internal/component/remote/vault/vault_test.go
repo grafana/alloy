@@ -37,8 +37,8 @@ func Test_GetSecrets(t *testing.T) {
 
 	cfg := fmt.Sprintf(`
 		server = "%s"
-		path   = ""
-  		secret = "secret/test"
+		path   = "secret"
+  		secret = "test"
 
 		reread_frequency = "0s"
 
