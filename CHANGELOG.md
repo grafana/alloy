@@ -9,6 +9,11 @@ internal API changes are not present.
 
 Main (unreleased)
 -----------------
+### Breaking changes
+
+- [otelcol.processor.transform] The functions `convert_sum_to_gauge` and `convert_gauge_to_sum` must now be used in the `metric` `context` rather than in the `datapoint` context.
+  https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/34567
+
 ### Features
 
 - Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
