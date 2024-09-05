@@ -79,6 +79,8 @@ Main (unreleased)
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33556
   - [`otelcol.receiver.kafka`] Add `session_timeout` and `heartbeat_interval` attributes.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33082
+  - [`otelcol.processor.transform`] Add `aggregate_on_attributes` function for metrics.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33334
 
 v1.3.1
 -----------------
