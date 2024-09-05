@@ -69,7 +69,7 @@ func NewQueue(directory string, out func(ctx context.Context, dh types.DataHandl
 		existingsFiles: make([]string, 0),
 	}
 
-	// Save the existing files in `q.existingFiles`, which will be push to `out` when actor starts.
+	// Save the existing files in `q.existingFiles`, which will have their data pushed to `out` when actor starts.
 	for _, id := range ids {
 		name := filepath.Join(directory, fmt.Sprintf("%d.committed", id))
 		q.existingsFiles = append(q.existingsFiles, name)
