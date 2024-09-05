@@ -23,7 +23,7 @@ var _ types.FileStorage = (*queue)(nil)
 type queue struct {
 	self      actor.Actor
 	directory string
-	maxIndex  int
+	maxId  int
 	logger    log.Logger
 	files     actor.Mailbox[types.Data]
 	// Out is where to send data when pulled from queue, it is assumed that it will
