@@ -232,7 +232,6 @@ func TestResuming(t *testing.T) {
 	_, buf, err = getHandle(t, mbx2)
 	require.NoError(t, err)
 	require.True(t, string(buf) == "third")
-
 }
 
 func getHandle(t *testing.T, mbx actor.MailboxReceiver[types.DataHandle]) (map[string]string, []byte, error) {
@@ -246,5 +245,4 @@ func getHandle(t *testing.T, mbx actor.MailboxReceiver[types.DataHandle]) (map[s
 		require.True(t, ok)
 		return item.Get()
 	}
-
 }
