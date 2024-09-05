@@ -18,7 +18,7 @@ import (
 var _ actor.Worker = (*queue)(nil)
 var _ types.FileStorage = (*queue)(nil)
 
-// queue represents the on disk queue. This is an ordered list by id in the format: <id>.committed
+// queue represents an on-disk queue. This is a list implemented as files ordered by id with a name pattern: <id>.committed
 // Each file contains a byte buffer and an optional metatdata map.
 type queue struct {
 	self      actor.Actor
