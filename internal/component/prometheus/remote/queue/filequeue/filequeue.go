@@ -55,7 +55,7 @@ func NewQueue(directory string, out func(ctx context.Context, dh types.DataHandl
 		ids[i] = id
 	}
 	sort.Ints(ids)
-	var currentIndex int
+	var currentMaxId int
 	if len(ids) > 0 {
 		currentIndex = ids[len(ids)-1]
 	}
