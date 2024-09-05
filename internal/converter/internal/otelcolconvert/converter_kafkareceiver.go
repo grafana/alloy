@@ -51,13 +51,15 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 	)
 
 	return &kafka.Arguments{
-		Brokers:         cfg.Brokers,
-		ProtocolVersion: cfg.ProtocolVersion,
-		Topic:           cfg.Topic,
-		Encoding:        cfg.Encoding,
-		GroupID:         cfg.GroupID,
-		ClientID:        cfg.ClientID,
-		InitialOffset:   cfg.InitialOffset,
+		Brokers:           cfg.Brokers,
+		ProtocolVersion:   cfg.ProtocolVersion,
+		SessionTimeout:    cfg.SessionTimeout,
+		HeartbeatInterval: cfg.HeartbeatInterval,
+		Topic:             cfg.Topic,
+		Encoding:          cfg.Encoding,
+		GroupID:           cfg.GroupID,
+		ClientID:          cfg.ClientID,
+		InitialOffset:     cfg.InitialOffset,
 
 		ResolveCanonicalBootstrapServersOnly: cfg.ResolveCanonicalBootstrapServersOnly,
 

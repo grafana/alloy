@@ -75,7 +75,10 @@ Main (unreleased)
 - Aliases for the namespaces are deprecated in the Cloudwatch exporter. For example: "s3" is not allowed, "AWS/S3" should be used. Usage of the aliases will generate warnings in the logs. Support for the aliases will be dropped in the upcoming releases. (@kgeckhart, @andriikushch)
 
 - Update OTel from v0.105.0 vo v0.108.0:
-  - [`otelcol.receiver.vcenter`] New VSAN metrics. https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33556
+  - [`otelcol.receiver.vcenter`] New VSAN metrics.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33556
+  - [`otelcol.receiver.kafka`] Add `session_timeout` and `heartbeat_interval` attributes.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33082
 
 v1.3.1
 -----------------
