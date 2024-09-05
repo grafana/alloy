@@ -163,7 +163,7 @@ func (q *queue) add(meta map[string]string, data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return name, err
+	return name, nil
 }
 
 func (q *queue) writeFile(name string, data []byte) error {
