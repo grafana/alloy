@@ -46,7 +46,7 @@ func NewQueue(directory string, out func(ctx context.Context, dh types.DataHandl
 	ids := make([]int, len(matches))
 
 	// Try and grab the id from each file.
-	// 1.committed
+	// e.g. grab 1 from `1.committed`
 	for i, fileName := range matches {
 		id, err := strconv.Atoi(strings.ReplaceAll(filepath.Base(fileName), ".committed", ""))
 		if err != nil {
