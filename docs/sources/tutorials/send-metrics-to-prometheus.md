@@ -271,7 +271,7 @@ Select Prometheus as the data source and click the **Metrics Browser** button to
 
 Here you can see that metrics are flowing through to Prometheus as expected, and the end-to-end configuration was successful.
 
-{{< figure src="/media/docs/alloy/tutorial/Metrics_visualization.png" alt="Your data flowing through Prometheus." >}}
+
 
 <!-- INTERACTIVE page step4.md END -->
 
