@@ -92,10 +92,10 @@ To use all of the integration features, use the following AWS IAM Policy:
 
 ```alloy
 prometheus.exporter.cloudwatch "queues" {
-    sts_region = "us-east-2"
-
+    sts_region      = "us-east-2"
+    aws_sdk_version_v2 = "false"
     discovery {
-        type        = "sqs"
+        type        = "AWS/SQS"
         regions     = ["us-east-2"]
         search_tags = {
             "scrape" = "true",
@@ -124,6 +124,7 @@ Omitted fields take their default values.
 | Name                      | Type                | Description                                                                    | Default | Required |
 |---------------------------|---------------------|--------------------------------------------------------------------------------|---------|----------|
 | `sts_region`              | `string`            | AWS region to use when calling [STS][] for retrieving account information.     |         | yes      |
+| `aws_sdk_version_v2`      | `bool`              | Use AWS SDK version 2.                                                                                                                                                                                                                  | `false` | no       |
 | `fips_disabled`           | `bool`              | Disable use of FIPS endpoints. Set 'true' when running outside of USA regions. | `true`  | no       |
 | `debug`                   | `bool`              | Enable debug logging on CloudWatch exporter internals.                         | `false` | no       |
 | `discovery_exported_tags` | `map(list(string))` | List of tags (value) per service (key) to export in all metrics. For example, defining the `["name", "type"]` under `"AWS/EC2"` will export the name and type tags and its values as labels in all metrics. Affects all discovery jobs. | `{}` | no |
@@ -366,91 +367,100 @@ See the examples described under each [discovery][] and [static] sections.
 ## Supported services in discovery jobs
 
 The following is a list of AWS services that are supported in `cloudwatch_exporter` discovery jobs. When configuring a
-discovery job, the `type` field of each `discovery_job` must match either the desired job namespace or alias.
+discovery job, the `type` field of each `discovery_job` must match the desired job namespace.
 
-- Namespace: `CWAgent` or Alias: `cwagent`
-- Namespace: `AWS/Usage` or Alias: `usage`
-- Namespace: `AWS/CertificateManager` or Alias: `acm`
-- Namespace: `AWS/ACMPrivateCA` or Alias: `acm-pca`
-- Namespace: `AmazonMWAA` or Alias: `airflow`
-- Namespace: `AWS/MWAA` or Alias: `mwaa`
-- Namespace: `AWS/ApplicationELB` or Alias: `alb`
-- Namespace: `AWS/AppStream` or Alias: `appstream`
-- Namespace: `AWS/Backup` or Alias: `backup`
-- Namespace: `AWS/ApiGateway` or Alias: `apigateway`
-- Namespace: `AWS/AmazonMQ` or Alias: `mq`
-- Namespace: `AWS/AppSync` or Alias: `appsync`
-- Namespace: `AWS/Athena` or Alias: `athena`
-- Namespace: `AWS/AutoScaling` or Alias: `asg`
-- Namespace: `AWS/ElasticBeanstalk` or Alias: `beanstalk`
-- Namespace: `AWS/Billing` or Alias: `billing`
-- Namespace: `AWS/Cassandra` or Alias: `cassandra`
-- Namespace: `AWS/CloudFront` or Alias: `cloudfront`
-- Namespace: `AWS/Cognito` or Alias: `cognito-idp`
-- Namespace: `AWS/DMS` or Alias: `dms`
-- Namespace: `AWS/DDoSProtection` or Alias: `shield`
-- Namespace: `AWS/DocDB` or Alias: `docdb`
-- Namespace: `AWS/DX` or Alias: `dx`
-- Namespace: `AWS/DynamoDB` or Alias: `dynamodb`
-- Namespace: `AWS/EBS` or Alias: `ebs`
-- Namespace: `AWS/ElastiCache` or Alias: `ec`
-- Namespace: `AWS/MemoryDB` or Alias: `memorydb`
-- Namespace: `AWS/EC2` or Alias: `ec2`
-- Namespace: `AWS/EC2Spot` or Alias: `ec2Spot`
-- Namespace: `AWS/ECS` or Alias: `ecs-svc`
-- Namespace: `ECS/ContainerInsights` or Alias: `ecs-containerinsights`
-- Namespace: `AWS/EFS` or Alias: `efs`
-- Namespace: `AWS/ELB` or Alias: `elb`
-- Namespace: `AWS/ElasticMapReduce` or Alias: `emr`
-- Namespace: `AWS/EMRServerless` or Alias: `emr-serverless`
-- Namespace: `AWS/ES` or Alias: `es`
-- Namespace: `AWS/Firehose` or Alias: `firehose`
-- Namespace: `AWS/FSx` or Alias: `fsx`
-- Namespace: `AWS/GameLift` or Alias: `gamelift`
-- Namespace: `AWS/GlobalAccelerator` or Alias: `ga`
-- Namespace: `Glue` or Alias: `glue`
-- Namespace: `AWS/IoT` or Alias: `iot`
-- Namespace: `AWS/Kafka` or Alias: `kafka`
-- Namespace: `AWS/KafkaConnect` or Alias: `kafkaconnect`
-- Namespace: `AWS/Kinesis` or Alias: `kinesis`
-- Namespace: `AWS/KinesisAnalytics` or Alias: `kinesis-analytics`
-- Namespace: `AWS/Lambda` or Alias: `lambda`
-- Namespace: `AWS/MediaConnect` or Alias: `mediaconnect`
-- Namespace: `AWS/MediaConvert` or Alias: `mediaconvert`
-- Namespace: `AWS/MediaLive` or Alias: `medialive`
-- Namespace: `AWS/MediaTailor` or Alias: `mediatailor`
-- Namespace: `AWS/Neptune` or Alias: `neptune`
-- Namespace: `AWS/NetworkFirewall` or Alias: `nfw`
-- Namespace: `AWS/NATGateway` or Alias: `ngw`
-- Namespace: `AWS/NetworkELB` or Alias: `nlb`
-- Namespace: `AWS/PrivateLinkEndpoints` or Alias: `vpc-endpoint`
-- Namespace: `AWS/PrivateLinkServices` or Alias: `vpc-endpoint-service`
-- Namespace: `AWS/Prometheus` or Alias: `amp`
-- Namespace: `AWS/QLDB` or Alias: `qldb`
-- Namespace: `AWS/RDS` or Alias: `rds`
-- Namespace: `AWS/Redshift` or Alias: `redshift`
-- Namespace: `AWS/Route53Resolver` or Alias: `route53-resolver`
-- Namespace: `AWS/Route53` or Alias: `route53`
-- Namespace: `AWS/S3` or Alias: `s3`
-- Namespace: `AWS/SES` or Alias: `ses`
-- Namespace: `AWS/States` or Alias: `sfn`
-- Namespace: `AWS/SNS` or Alias: `sns`
-- Namespace: `AWS/SQS` or Alias: `sqs`
-- Namespace: `AWS/StorageGateway` or Alias: `storagegateway`
-- Namespace: `AWS/TransitGateway` or Alias: `tgw`
-- Namespace: `AWS/TrustedAdvisor` or Alias: `trustedadvisor`
-- Namespace: `AWS/VPN` or Alias: `vpn`
-- Namespace: `AWS/ClientVPN` or Alias: `clientvpn`
-- Namespace: `AWS/WAFV2` or Alias: `wafv2`
-- Namespace: `AWS/WorkSpaces` or Alias: `workspaces`
-- Namespace: `AWS/AOSS` or Alias: `aoss`
-- Namespace: `AWS/SageMaker` or Alias: `sagemaker`
-- Namespace: `/aws/sagemaker/Endpoints` or Alias: `sagemaker-endpoints`
-- Namespace: `/aws/sagemaker/TrainingJobs` or Alias: `sagemaker-training`
-- Namespace: `/aws/sagemaker/ProcessingJobs` or Alias: `sagemaker-processing`
-- Namespace: `/aws/sagemaker/TransformJobs` or Alias: `sagemaker-transform`
-- Namespace: `/aws/sagemaker/InferenceRecommendationsJobs` or Alias: `sagemaker-inf-rec`
-- Namespace: `AWS/Sagemaker/ModelBuildingPipeline` or Alias: `sagemaker-model-building-pipeline`
+- Namespace: `CWAgent`
+- Namespace: `AWS/Usage`
+- Namespace: `AWS/CertificateManager`
+- Namespace: `AWS/ACMPrivateCA`
+- Namespace: `AmazonMWAA`
+- Namespace: `AWS/MWAA`
+- Namespace: `AWS/ApplicationELB`
+- Namespace: `AWS/AppStream`
+- Namespace: `AWS/Backup`
+- Namespace: `AWS/ApiGateway`
+- Namespace: `AWS/AmazonMQ`
+- Namespace: `AWS/AppSync`
+- Namespace: `AWS/Athena`
+- Namespace: `AWS/AutoScaling`
+- Namespace: `AWS/ElasticBeanstalk`
+- Namespace: `AWS/Billing`
+- Namespace: `AWS/Cassandra`
+- Namespace: `AWS/CloudFront`
+- Namespace: `AWS/Cognito`
+- Namespace: `AWS/DataSync`
+- Namespace: `AWS/DMS`
+- Namespace: `AWS/DDoSProtection`
+- Namespace: `AWS/DocDB`
+- Namespace: `AWS/DX`
+- Namespace: `AWS/DynamoDB`
+- Namespace: `AWS/EBS`
+- Namespace: `AWS/ElastiCache`
+- Namespace: `AWS/MemoryDB`
+- Namespace: `AWS/EC2`
+- Namespace: `AWS/EC2Spot`
+- Namespace: `AWS/ECS`
+- Namespace: `ECS/ContainerInsights`
+- Namespace: `AWS/EFS`
+- Namespace: `AWS/ELB`
+- Namespace: `AWS/ElasticMapReduce`
+- Namespace: `AWS/EMRServerless`
+- Namespace: `AWS/ES`
+- Namespace: `AWS/Firehose`
+- Namespace: `AWS/FSx`
+- Namespace: `AWS/GameLift`
+- Namespace: `AWS/GatewayELB`
+- Namespace: `AWS/GlobalAccelerator`
+- Namespace: `Glue`
+- Namespace: `AWS/IoT`
+- Namespace: `AWS/Kafka`
+- Namespace: `AWS/KafkaConnect`
+- Namespace: `AWS/Kinesis`
+- Namespace: `AWS/KinesisAnalytics`
+- Namespace: `AWS/KMS`
+- Namespace: `AWS/Lambda`
+- Namespace: `AWS/Logs`
+- Namespace: `AWS/MediaConnect`
+- Namespace: `AWS/MediaConvert`
+- Namespace: `AWS/MediaLive`
+- Namespace: `AWS/MediaTailor`
+- Namespace: `AWS/Neptune`
+- Namespace: `AWS/NetworkFirewall`
+- Namespace: `AWS/NATGateway`
+- Namespace: `AWS/NetworkELB`
+- Namespace: `AWS/PrivateLinkEndpoints`
+- Namespace: `AWS/PrivateLinkServices`
+- Namespace: `AWS/Prometheus`
+- Namespace: `AWS/QLDB`
+- Namespace: `AWS/RDS`
+- Namespace: `AWS/Redshift`
+- Namespace: `AWS/Route53Resolver`
+- Namespace: `AWS/Route53`
+- Namespace: `AWS/RUM`
+- Namespace: `AWS/S3`
+- Namespace: `AWS/SecretsManager`
+- Namespace: `AWS/SES`
+- Namespace: `AWS/States`
+- Namespace: `AWS/SNS`
+- Namespace: `AWS/SQS`
+- Namespace: `AWS/StorageGateway`
+- Namespace: `AWS/TransitGateway`
+- Namespace: `AWS/TrustedAdvisor`
+- Namespace: `AWS/VPN`
+- Namespace: `AWS/ClientVPN`
+- Namespace: `AWS/WAFV2`
+- Namespace: `AWS/WorkSpaces`
+- Namespace: `AWS/AOSS`
+- Namespace: `AWS/SageMaker`
+- Namespace: `/aws/sagemaker/Endpoints`
+- Namespace: `/aws/sagemaker/TrainingJobs`
+- Namespace: `/aws/sagemaker/ProcessingJobs`
+- Namespace: `/aws/sagemaker/TransformJobs`
+- Namespace: `/aws/sagemaker/InferenceRecommendationsJobs`
+- Namespace: `AWS/Sagemaker/ModelBuildingPipeline`
+- Namespace: `AWS/IPAM`
+- Namespace: `AWS/Bedrock`
+- Namespace: `AWS/Events`
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

@@ -33,10 +33,15 @@ Main (unreleased)
 - Add a `otelcol.processor.groupbyattrs` component to reassociate collected metrics that match specified attributes
     from opentelemetry. (@kehindesalaam)
 
+- Update windows_exporter to v0.27.2. (@jkroepke)
+  The `smb.enabled_list` and `smb_client.enabled_list` doesn't have any effect anymore. All sub-collectors are enabled by default.
+
 - Live debugging of `loki.process` will now also print the timestamp of incoming and outgoing log lines.
   This is helpful for debugging `stage.timestamp`. (@ptodev)
 
 - Add extra validation in `beyla.ebpf` to avoid panics when network feature is enabled. (@marctc)
+
+- A new parameter `aws_sdk_version_v2` is added for the cloudwatch exporters configuration. It enables the use of aws sdk v2 which has shown to have significant performance benefits. (@kgeckhart, @andriikushch)
 
 ### Bugfixes
 
@@ -66,6 +71,8 @@ Main (unreleased)
 ### Other
 
 - Renamed standard library functions. Old names are still valid but are marked deprecated. (@wildum)
+
+- Aliases for the namespaces are deprecated in the Cloudwatch exporter. For example: "s3" is not allowed, "AWS/S3" should be used. Usage of the aliases will generate warnings in the logs. Support for the aliases will be dropped in the upcoming releases. (@kgeckhart, @andriikushch)
 
 v1.3.1
 -----------------

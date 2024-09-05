@@ -198,9 +198,9 @@ The v2 collector can query service states much more efficiently, but can't provi
 
 ### smb block
 
-Name           | Type     | Description                                | Default | Required
----------------|----------|--------------------------------------------|---------|---------
-`enabled_list` | `string` | Comma-separated list of collectors to use. | `""`    | no
+Name           | Type     | Description                                                    | Default | Required
+---------------|----------|----------------------------------------------------------------|---------|---------
+`enabled_list` | `string` | Deprecated (no-op), Comma-separated list of collectors to use. | `""`    | no
 
 The collectors specified by `enabled_list` can include the following:
 
@@ -210,9 +210,9 @@ For example, `enabled_list` may be set to `"ServerShares"`.
 
 ### smb_client block
 
-Name           | Type     | Description                                | Default | Required
----------------|----------|--------------------------------------------|---------|---------
-`enabled_list` | `string` | Comma-separated list of collectors to use. | `""`    | no
+Name           | Type     | Description                                                    | Default | Required
+---------------|----------|----------------------------------------------------------------|---------|---------
+`enabled_list` | `string` | Deprecated (no-op), Comma-separated list of collectors to use. | `""`    | no
 
 The collectors specified by `enabled_list` can include the following:
 

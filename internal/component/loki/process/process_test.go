@@ -445,10 +445,11 @@ type testFrequentUpdate struct {
 	receiver2 loki.LogsReceiver
 
 	keepSending   atomic.Bool
-	keepReceiving atomic.Bool
+	stopReceiving chan struct{}
 	keepUpdating  atomic.Bool
 
-	wgLogSend sync.WaitGroup
+	wgSend    sync.WaitGroup
+	wgReceive sync.WaitGroup
 	wgRun     sync.WaitGroup
 	wgUpdate  sync.WaitGroup
 
@@ -459,15 +460,15 @@ type testFrequentUpdate struct {
 
 func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 	res := testFrequentUpdate{
-		t:         t,
-		receiver1: loki.NewLogsReceiver(),
-		receiver2: loki.NewLogsReceiver(),
+		t:             t,
+		receiver1:     loki.NewLogsReceiver(),
+		receiver2:     loki.NewLogsReceiver(),
+		stopReceiving: make(chan struct{}),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	res.keepSending.Store(true)
-	res.keepReceiving.Store(true)
 	res.keepUpdating.Store(true)
 
 	res.stop = func() {
@@ -475,10 +476,13 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 		res.wgUpdate.Wait()
 
 		res.keepSending.Store(false)
-		res.wgLogSend.Wait()
+		res.wgSend.Wait()
 
 		cancel()
 		res.wgRun.Wait()
+
+		close(res.stopReceiving)
+		res.wgReceive.Wait()
 
 		close(res.receiver1.Chan())
 		close(res.receiver2.Chan())
@@ -515,23 +519,25 @@ func (r *testFrequentUpdate) drainLogs() {
 		r.lastSend.Store(time.Now())
 	}
 
-	r.wgLogSend.Add(1)
+	r.wgReceive.Add(1)
 	go func() {
-		for r.keepReceiving.Load() {
+		for {
 			select {
+			case <-r.stopReceiving:
+				r.wgReceive.Done()
+				return
 			case <-r.receiver1.Chan():
 				drainLogs()
 			case <-r.receiver2.Chan():
 				drainLogs()
 			}
 		}
-		r.wgLogSend.Done()
 	}()
 }
 
 // Continuously send entries to both channels
 func (r *testFrequentUpdate) sendLogs() {
-	r.wgLogSend.Add(1)
+	r.wgSend.Add(1)
 	go func() {
 		for r.keepSending.Load() {
 			ts := time.Now()
@@ -548,8 +554,7 @@ func (r *testFrequentUpdate) sendLogs() {
 				// continue
 			}
 		}
-		r.keepReceiving.Store(false)
-		r.wgLogSend.Done()
+		r.wgSend.Done()
 	}()
 }
 
