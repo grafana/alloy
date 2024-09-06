@@ -66,6 +66,7 @@ type samplingStage struct {
 
 func (m *samplingStage) Run(in chan Entry) chan Entry {
 	out := make(chan Entry)
+	reason := *m.cfg.DropReason
 	go func() {
 		defer close(out)
 		for e := range in {
@@ -73,7 +74,7 @@ func (m *samplingStage) Run(in chan Entry) chan Entry {
 				out <- e
 				continue
 			}
-			m.dropCount.WithLabelValues(*m.cfg.DropReason).Inc()
+			m.dropCount.WithLabelValues(reason).Inc()
 		}
 	}()
 	return out
