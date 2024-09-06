@@ -68,6 +68,10 @@ Main (unreleased)
   for `discovery.*`  is reloaded in such a way that no new targets were
   discovered. (@ptodev, @thampiotr)
 
+- Fixed an issue (see https://github.com/grafana/alloy/issues/1599) where specifying both path and key in the remote.vault `path`
+  configuration could result in incorrect URLs. The `path` and `key` arguments have been separated to allow for clear and accurate
+  specification of Vault secrets. (@PatMis16)
+
 ### Other
 
 - Renamed standard library functions. Old names are still valid but are marked deprecated. (@wildum)
