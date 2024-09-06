@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/uber/jaeger-client-go/utils"
 )
@@ -66,18 +67,20 @@ type samplingStage struct {
 
 func (m *samplingStage) Run(in chan Entry) chan Entry {
 	out := make(chan Entry)
-	reason := *m.cfg.DropReason
-	go func() {
-		defer close(out)
-		for e := range in {
-			if m.isSampled() {
-				out <- e
-				continue
-			}
-			m.dropCount.WithLabelValues(reason).Inc()
-		}
-	}()
+	go m.process(in, out)
 	return out
+}
+
+func (m *samplingStage) process(in <-chan Entry, out chan<- Entry) {
+	defer close(out)
+	for e := range in {
+		if m.isSampled() {
+			out <- e
+			continue
+		}
+		level.Warn(m.logger).Log("Msg", *m.cfg.DropReason)
+		m.dropCount.WithLabelValues(*m.cfg.DropReason).Inc()
+	}
 }
 
 // code from jaeger project.
