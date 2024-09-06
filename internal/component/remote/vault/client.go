@@ -22,6 +22,9 @@ func (ks *kvStore) Read(ctx context.Context, args *Arguments) (*vault.Secret, er
 	var kvSecret *vault.KVSecret
 	var err error
 
+	// If a key is provided, we use that to get the secret from the KV store.
+	// This allows for more flexibility in how secrets are stored in vault.
+	// eg. long/path/kv/secret/key where long/path/kv is the path and secret/key is the key.
 	if args.Key != "" {
 		kv := ks.c.KVv2(args.Path)
 		kvSecret, err = kv.Get(ctx, args.Key)
@@ -29,6 +32,7 @@ func (ks *kvStore) Read(ctx context.Context, args *Arguments) (*vault.Secret, er
 			return nil, err
 		}
 	} else {
+		// for backward compatibility, we assume the path is in the format path/secret
 		// Split the path so we know which kv mount we want to use.
 		pathParts := strings.SplitN(args.Path, "/", 2)
 		if len(pathParts) != 2 {
