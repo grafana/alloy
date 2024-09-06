@@ -207,9 +207,9 @@ type MSClusterConfig struct {
 }
 
 // Convert converts the component's MSMQConfig to the integration's MSMQConfig.
-func (t MSClusterConfig) Convert() windows_integration.MSMQConfig {
+func (t MSClusterConfig) Convert() windows_integration.MSClusterConfig {
 	return windows_integration.MSClusterConfig{
-		CollectorsEnabled: t.CollectorsEnabled,
+		CollectorsEnabled: strings.Join(t.CollectorsEnabled, ","),
 	}
 }
 

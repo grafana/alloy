@@ -73,7 +73,10 @@ func (c *Config) ToWindowsExporterConfig(enabledCollectorNames []string) (collec
 	cfg.ScheduledTask.TaskExclude, err = regexp.Compile(c.ScheduledTask.Exclude)
 	errs = append(errs, err)
 
-	msClusterCollectorsEnabled := append(strings.Split(c.MSCluster.CollectorsEnabled, ","), msClusterCollectorsEnabledShim(enabledCollectorNames)...)
+	msClusterCollectorsEnabled := strings.Split(c.MSCluster.CollectorsEnabled, ",")
+	msClusterCollectorsEnabled = append(msClusterCollectorsEnabled, msClusterCollectorsEnabledShim(enabledCollectorNames)...)
+
+	slices.Sort(msClusterCollectorsEnabled)
 	cfg.Mscluster.CollectorsEnabled = slices.Compact(msClusterCollectorsEnabled)
 
 	return cfg, errors.Join(errs...)
