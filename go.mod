@@ -1,6 +1,6 @@
 module github.com/grafana/alloy
 
-go 1.22.5
+go 1.23.1
 
 require (
 	cloud.google.com/go/pubsub v1.38.0
