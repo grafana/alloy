@@ -22,13 +22,13 @@ var (
 
 // SamplingConfig contains the configuration for a samplingStage
 type SamplingConfig struct {
-	DropReason   *string `alloy:"drop_counter_reason,attr,optional"`
+	DropReason   string  `alloy:"drop_counter_reason,attr,optional"`
 	SamplingRate float64 `alloy:"rate,attr"`
 }
 
 func (s *SamplingConfig) SetToDefault() {
-	if s.DropReason == nil || *s.DropReason == "" {
-		s.DropReason = &defaultSamplingpReason
+	if s.DropReason == "" {
+		s.DropReason = defaultSamplingpReason
 	}
 }
 
@@ -66,15 +66,15 @@ type samplingStage struct {
 
 func (m *samplingStage) Run(in chan Entry) chan Entry {
 	out := make(chan Entry)
-	reason := *m.cfg.DropReason
 	go func() {
 		defer close(out)
+		counter := m.dropCount.WithLabelValues(m.cfg.DropReason)
 		for e := range in {
 			if m.isSampled() {
 				out <- e
 				continue
 			}
-			m.dropCount.WithLabelValues(reason).Inc()
+			counter.Inc()
 		}
 	}()
 	return out

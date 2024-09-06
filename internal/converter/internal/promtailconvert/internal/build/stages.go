@@ -240,7 +240,7 @@ func convertSampling(cfg interface{}, diags *diag.Diagnostics) (stages.StageConf
 	fSampling.SetToDefault()
 	fSampling.SamplingRate = pSampling.SamplingRate
 	if pSampling.DropReason != nil {
-		fSampling.DropReason = pSampling.DropReason
+		fSampling.DropReason = *pSampling.DropReason
 	}
 	return stages.StageConfig{
 		SamplingConfig: fSampling,
