@@ -27,7 +27,7 @@ type queue struct {
 	logger    log.Logger
 	dataQueue actor.Mailbox[types.Data]
 	// Out is where to send data when pulled from queue, it is assumed that it will
-	// block until ready for another file.
+	// block until ready for another record.
 	out func(ctx context.Context, dh types.DataHandle)
 	// existingFiles is the list of files found initially.
 	existingsFiles []string
@@ -46,7 +46,7 @@ func NewQueue(directory string, out func(ctx context.Context, dh types.DataHandl
 	ids := make([]int, len(matches))
 
 	// Try and grab the id from each file.
-	// 1.committed
+	// e.g. grab 1 from `1.committed`
 	for i, fileName := range matches {
 		id, err := strconv.Atoi(strings.ReplaceAll(filepath.Base(fileName), ".committed", ""))
 		if err != nil {
@@ -69,7 +69,7 @@ func NewQueue(directory string, out func(ctx context.Context, dh types.DataHandl
 		existingsFiles: make([]string, 0),
 	}
 
-	// Save the existing files in `q.existingFiles`, which will be push to `out` when actor starts.
+	// Save the existing files in `q.existingFiles`, which will have their data pushed to `out` when actor starts.
 	for _, id := range ids {
 		name := filepath.Join(directory, fmt.Sprintf("%d.committed", id))
 		q.existingsFiles = append(q.existingsFiles, name)
