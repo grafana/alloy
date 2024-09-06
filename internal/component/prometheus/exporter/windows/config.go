@@ -16,6 +16,7 @@ type Arguments struct {
 	Exchange      ExchangeConfig      `alloy:"exchange,block,optional"`
 	IIS           IISConfig           `alloy:"iis,block,optional"`
 	LogicalDisk   LogicalDiskConfig   `alloy:"logical_disk,block,optional"`
+	MSCluster     MSClusterConfig     `alloy:"mscluster,block,optional"`
 	MSMQ          MSMQConfig          `alloy:"msmq,block,optional"`
 	MSSQL         MSSQLConfig         `alloy:"mssql,block,optional"`
 	Network       NetworkConfig       `alloy:"network,block,optional"`
@@ -38,6 +39,7 @@ func (a *Arguments) Convert() *windows_integration.Config {
 		Exchange:          a.Exchange.Convert(),
 		IIS:               a.IIS.Convert(),
 		LogicalDisk:       a.LogicalDisk.Convert(),
+		MSCluster:         a.MSCluster.Convert(),
 		MSMQ:              a.MSMQ.Convert(),
 		MSSQL:             a.MSSQL.Convert(),
 		Network:           a.Network.Convert(),
@@ -196,6 +198,18 @@ func (t NetworkConfig) Convert() windows_integration.NetworkConfig {
 		WhiteList: t.WhiteList,
 		Exclude:   t.Exclude,
 		Include:   t.Include,
+	}
+}
+
+// MSClusterConfig handles settings for the windows_exporter MSCluster collector
+type MSClusterConfig struct {
+	CollectorsEnabled []string `alloy:"collectors_enabled,attr,optional"`
+}
+
+// Convert converts the component's MSMQConfig to the integration's MSMQConfig.
+func (t MSClusterConfig) Convert() windows_integration.MSMQConfig {
+	return windows_integration.MSClusterConfig{
+		CollectorsEnabled: t.CollectorsEnabled,
 	}
 }
 

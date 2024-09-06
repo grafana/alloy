@@ -7,9 +7,10 @@ import (
 	"strings"
 
 	"github.com/prometheus-community/windows_exporter/pkg/collector"
+	"golang.org/x/exp/slices"
 )
 
-func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
+func (c *Config) ToWindowsExporterConfig(enabledCollectorNames []string) (collector.Config, error) {
 	var err error
 
 	errs := make([]error, 0, 18)
@@ -72,6 +73,9 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	cfg.ScheduledTask.TaskExclude, err = regexp.Compile(c.ScheduledTask.Exclude)
 	errs = append(errs, err)
 
+	msClusterCollectorsEnabled := append(strings.Split(c.MSCluster.CollectorsEnabled, ","), msClusterCollectorsEnabledShim(enabledCollectorNames)...)
+	cfg.Mscluster.CollectorsEnabled = slices.Compact(msClusterCollectorsEnabled)
+
 	return cfg, errors.Join(errs...)
 }
 
@@ -82,6 +86,35 @@ func coalesceString(v ...string) string {
 		}
 	}
 	return ""
+}
+
+// msClusterCollectorsEnabledShim adds backward compatibility to the mscluster collector merge.
+// Introduced in windows_exporter v0.28.0.
+// Ref: https://github.com/prometheus-community/windows_exporter/pull/1585
+func msClusterCollectorsEnabledShim(enabledCollectorNames []string) []string {
+	var msClusterCollectorsEnabled []string
+
+	if slices.Contains(enabledCollectorNames, "mscluster_cluster") {
+		msClusterCollectorsEnabled = append(msClusterCollectorsEnabled, "cluster")
+	}
+
+	if slices.Contains(enabledCollectorNames, "mscluster_network") {
+		msClusterCollectorsEnabled = append(msClusterCollectorsEnabled, "network")
+	}
+
+	if slices.Contains(enabledCollectorNames, "mscluster_node") {
+		msClusterCollectorsEnabled = append(msClusterCollectorsEnabled, "node")
+	}
+
+	if slices.Contains(enabledCollectorNames, "mscluster_resource") {
+		msClusterCollectorsEnabled = append(msClusterCollectorsEnabled, "resource")
+	}
+
+	if slices.Contains(enabledCollectorNames, "mscluster_resourcegroup") {
+		msClusterCollectorsEnabled = append(msClusterCollectorsEnabled, "resourcegroup")
+	}
+
+	return msClusterCollectorsEnabled
 }
 
 // DefaultConfig holds the default settings for the windows_exporter integration.
@@ -108,6 +141,9 @@ var DefaultConfig = Config{
 		WhiteList: collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
 		Include:   collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
 		Exclude:   collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
+	},
+	MSCluster: MSClusterConfig{
+		CollectorsEnabled: strings.Join(collector.ConfigDefaults.Mscluster.CollectorsEnabled, ","),
 	},
 	MSMQ: MSMQConfig{
 		Where: *collector.ConfigDefaults.Msmq.QueryWhereClause,

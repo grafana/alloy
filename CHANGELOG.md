@@ -79,8 +79,14 @@ v1.4.0
 - Add a `otelcol.processor.groupbyattrs` component to reassociate collected metrics that match specified attributes
     from opentelemetry. (@kehindesalaam)
 
-- Update windows_exporter to v0.27.2. (@jkroepke)
-  The `smb.enabled_list` and `smb_client.enabled_list` doesn't have any effect anymore. All sub-collectors are enabled by default.
+- Update windows_exporter to v0.28.1. (@jkroepke)
+  Mentionable changes:
+  - The `smb.enabled_list` and `smb_client.enabled_list` doesn't have any effect anymore. All sub-collectors are enabled by default.
+  - The `mscluster_*` collectors has been merged into one `mscluster` collect. The names of the metrics does not have been changes. All sub-collectors are enabled by default. https://github.com/prometheus-community/windows_exporter/pull/1585
+  - The `cpu_info` exposes more information about the installed cpus. (thread_count, core count) https://github.com/prometheus-community/windows_exporter/pull/1597
+  - The label `creating_process_id` is removed from all metrics beginning with `process_` and moved to any dedicated info metric. https://github.com/prometheus-community/windows_exporter/pull/1592ö
+
+  windows_exporter changes: https://github.com/prometheus-community/windows_exporter/releases
 
 - Live debugging of `loki.process` will now also print the timestamp of incoming and outgoing log lines.
   This is helpful for debugging `stage.timestamp`. (@ptodev)

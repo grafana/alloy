@@ -59,6 +59,10 @@ var (
 			enabled_list = ["example"]
 		}
 		
+		mscluster {
+			collectors_enabled = ["example"]
+		}
+		
 		network {
 			include = ".+"
 			exclude = ""
@@ -104,6 +108,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.Equal(t, ".+", args.Process.Include)
 	require.Equal(t, "", args.Network.Exclude)
 	require.Equal(t, ".+", args.Network.Include)
+	require.Equal(t, []string{"example"}, args.MSCluster.CollectorsEnabled)
 	require.Equal(t, []string{"accessmethods"}, args.MSSQL.EnabledClasses)
 	require.Equal(t, "where", args.MSMQ.Where)
 	require.Equal(t, "", args.LogicalDisk.Exclude)
@@ -138,6 +143,7 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, "example", conf.SMBClient.EnabledList)
 	require.Equal(t, "", conf.Network.Exclude)
 	require.Equal(t, ".+", conf.Network.Include)
+	require.Equal(t, "example", conf.MSCluster.CollectorsEnabled)
 	require.Equal(t, "accessmethods", conf.MSSQL.EnabledClasses)
 	require.Equal(t, "where", conf.MSMQ.Where)
 	require.Equal(t, "", conf.LogicalDisk.Exclude)

@@ -26,8 +26,9 @@ type Config struct {
 	PhysicalDisk  PhysicalDiskConfig  `yaml:"physical_disk,omitempty"`
 	Process       ProcessConfig       `yaml:"process,omitempty"`
 	Network       NetworkConfig       `yaml:"network,omitempty"`
-	MSSQL         MSSQLConfig         `yaml:"mssql,omitempty"`
+	MSCluster     MSClusterConfig     `yaml:"mscluster,omitempty"`
 	MSMQ          MSMQConfig          `yaml:"msmq,omitempty"`
+	MSSQL         MSSQLConfig         `yaml:"mssql,omitempty"`
 	LogicalDisk   LogicalDiskConfig   `yaml:"logical_disk,omitempty"`
 	ScheduledTask ScheduledTaskConfig `yaml:"scheduled_task,omitempty"`
 	Printer       PrinterConfig       `yaml:"printer,omitempty"`
@@ -108,14 +109,19 @@ type NetworkConfig struct {
 	Exclude   string `yaml:"exclude,omitempty"`
 }
 
-// MSSQLConfig handles settings for the windows_exporter SQL server collector
-type MSSQLConfig struct {
-	EnabledClasses string `yaml:"enabled_classes,omitempty"`
+// MSClusterConfig handles settings for the windows_exporter mscluster collector
+type MSClusterConfig struct {
+	CollectorsEnabled string `yaml:"collectors_enabled,omitempty"`
 }
 
 // MSMQConfig handles settings for the windows_exporter MSMQ collector
 type MSMQConfig struct {
 	Where string `yaml:"where_clause,omitempty"`
+}
+
+// MSSQLConfig handles settings for the windows_exporter SQL server collector
+type MSSQLConfig struct {
+	EnabledClasses string `yaml:"enabled_classes,omitempty"`
 }
 
 // LogicalDiskConfig handles settings for the windows_exporter logical disk collector
