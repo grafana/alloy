@@ -20,6 +20,12 @@ func (s *ScrapeConfigBuilder) AppendSyslogConfig() {
 		UseRFC5424Message:    s.cfg.SyslogConfig.UseRFC5424Message,
 		MaxMessageLength:     s.cfg.SyslogConfig.MaxMessageLength,
 		TLSConfig:            *common.ToTLSConfig(&s.cfg.SyslogConfig.TLSConfig),
+		SyslogFormat:         string(s.cfg.SyslogConfig.SyslogFormat),
+	}
+
+	// If the syslog format is not set, use the default.
+	if listenerConfig.SyslogFormat == "" {
+		listenerConfig.SyslogFormat = string(syslog.DefaultListenerConfig.SyslogFormat)
 	}
 
 	args := syslog.Arguments{
