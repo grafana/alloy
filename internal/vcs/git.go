@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 )
 
 type GitRepoOptions struct {
@@ -24,16 +25,15 @@ type GitRepo struct {
 	opts     GitRepoOptions
 	repo     *git.Repository
 	workTree *git.Worktree
+	auth     transport.AuthMethod
 }
 
 // NewGitRepo creates a new instance of a GitRepo, where the Git repository is
 // managed at storagePath.
 //
-// If storagePath is empty on disk, NewGitRepo initializes GitRepo by cloning
-// the repository. Otherwise, NewGitRepo will do a pull.
-//
-// After GitRepo is initialized, it checks out to the Revision specified in
-// GitRepoOptions.
+// 1. If storagePath is empty on disk, NewGitRepo initializes GitRepo by cloning the repository.
+// 2. After GitRepo is initialized/opened, a git fetch is don.
+// 3. Then, a git checkout is done to the Revision specified in GitRepoOptions.
 func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*GitRepo, error) {
 	var (
 		repo *git.Repository
@@ -66,7 +66,7 @@ func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*
 		}
 	}
 
-	// Pulls the latest contents. This may be a no-op if we just did a clone.
+	// Fetch the latest contents. This may be a no-op if we just did a clone.
 	wt, err := repo.Worktree()
 	if err != nil {
 		return nil, DownloadFailedError{
@@ -74,39 +74,15 @@ func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*
 			Inner:      err,
 		}
 	}
-	pullRepoErr := wt.PullContext(ctx, &git.PullOptions{
-		RemoteName: "origin",
-		Force:      true,
-		Auth:       authConfig,
-	})
-	if pullRepoErr != nil && !errors.Is(pullRepoErr, git.NoErrAlreadyUpToDate) {
-		workTree, err := repo.Worktree()
-		if err != nil {
-			return nil, err
-		}
-		return &GitRepo{
-				opts:     opts,
-				repo:     repo,
-				workTree: workTree,
-			}, UpdateFailedError{
-				Repository: opts.Repository,
-				Inner:      pullRepoErr,
-			}
-	}
 
-	checkoutErr := checkout(opts.Revision, repo)
-	if checkoutErr != nil {
-		if errors.Is(checkoutErr, plumbing.ErrReferenceNotFound) {
-			return nil, InvalidRevisionError{opts.Revision}
-		}
-		return nil, checkoutErr
-	}
-
-	return &GitRepo{
+	gitRepo := &GitRepo{
 		opts:     opts,
 		repo:     repo,
 		workTree: wt,
-	}, err
+		auth:     authConfig,
+	}
+
+	return gitRepo, gitRepo.Update(ctx)
 }
 
 func isRepoCloned(dir string) bool {
@@ -117,23 +93,15 @@ func isRepoCloned(dir string) bool {
 // Update updates the repository by pulling new content and re-checking out to
 // latest version of Revision.
 func (repo *GitRepo) Update(ctx context.Context) error {
-	authConfig, err := repo.opts.Auth.Convert()
-	if err != nil {
-		return UpdateFailedError{
-			Repository: repo.opts.Repository,
-			Inner:      err,
-		}
-	}
-
-	pullRepoErr := repo.workTree.PullContext(ctx, &git.PullOptions{
+	fetchErr := repo.repo.Fetch(&git.FetchOptions{
 		RemoteName: "origin",
 		Force:      true,
-		Auth:       authConfig,
+		Auth:       repo.auth,
 	})
-	if pullRepoErr != nil && !errors.Is(pullRepoErr, git.NoErrAlreadyUpToDate) {
+	if fetchErr != nil && !errors.Is(fetchErr, git.NoErrAlreadyUpToDate) {
 		return UpdateFailedError{
 			Repository: repo.opts.Repository,
-			Inner:      pullRepoErr,
+			Inner:      fetchErr,
 		}
 	}
 
