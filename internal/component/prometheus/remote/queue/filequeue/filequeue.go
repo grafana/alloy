@@ -118,7 +118,7 @@ func (q *queue) DoWork(ctx actor.Context) actor.WorkerStatus {
 	for _, name := range q.existingsFiles {
 		q.out(ctx, types.DataHandle{
 			Name: name,
-			Get: func() (map[string]string, []byte, error) {
+			Pop: func() (map[string]string, []byte, error) {
 				return get(q.logger, name)
 			},
 		})
@@ -140,7 +140,7 @@ func (q *queue) DoWork(ctx actor.Context) actor.WorkerStatus {
 		// The idea is that this will callee will block/process until the callee is ready for another file.
 		q.out(ctx, types.DataHandle{
 			Name: name,
-			Get: func() (map[string]string, []byte, error) {
+			Pop: func() (map[string]string, []byte, error) {
 				return get(q.logger, name)
 			},
 		})

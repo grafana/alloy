@@ -243,6 +243,6 @@ func getHandle(t *testing.T, mbx actor.MailboxReceiver[types.DataHandle]) (map[s
 		return nil, nil, nil
 	case item, ok := <-mbx.ReceiveC():
 		require.True(t, ok)
-		return item.Get()
+		return item.Pop()
 	}
 }
