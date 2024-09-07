@@ -31,6 +31,7 @@ We could create an interface to avoid changing the code logic and to abstract th
 
 - No logic change so impact is expected to be null for users
 - Possibility to use an external cache if needed, even having multiple caches for different relabeling components.
+- Will be easy to use in other parts of the codebase
 
 **Cons:**
 
@@ -46,6 +47,20 @@ This proposal offer to deprecate for a couple of release the old way to configur
 
 ## Implementation
 
+We should add a re-usable cache interface compatible with multiple backend, it should be usable with different value types
+
+```golang
+type Cache[valueType any] interface {
+ Get(key string) (*valueType, error)
+ Set(key string, value *valueType, ttl time.Duration) error
+ Remove(key string)
+ Clear(newSize int) error
+ GetCacheSize() int
+}
+```
+
+Each backend cache should be implemented in a separate file. For now we should support in_memory, redis and memcached.
+
 We should add a way to select the cache and its connections options through the components arguments
 
 For example, based on what's done in [Mimir index cache](https://github.com/grafana/mimir/blob/main/pkg/storage/tsdb/index_cache.go#L47):
@@ -58,20 +73,20 @@ type Arguments struct {
     // The relabelling rules to apply to each metric before it's forwarded.
     MetricRelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 
-    // DEPRECATED Use CacheConfig and set InMemoryRelabelCacheConfig
+    // DEPRECATED Use type = inmemory and cache_size field.
     InMemoryCacheSizeDeprecated int `alloy:"max_cache_size,attr,optional"`
 
-    // The relabelling rules to apply to each metric before it's forwarded.
-    CacheConfig RelabelCacheConfig `alloy:"cache,block,optional"`
+    // Cache backend configuration.
+    CacheConfig cache.CacheConfig `alloy:"cache,block,optional"`
 }
 
-type RelabelCacheConfig struct {
-    cache.BackendConfig `yaml:",inline"`
-    InMemory            , `yaml:"inmemory"`
+type CacheConfig struct {
+   cache.BackendConfig `yaml:",inline"`
+   InMemory            InMemoryCacheConfig `yaml:"inmemory"`
 }
 
-type InMemoryRelabelCacheConfig struct {
-    CacheSize int `yaml:"cache_size"`
+type InMemoryCacheConfig struct {
+   CacheSize int `yaml:"cache_size"`
 }
 
 ------
