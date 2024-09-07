@@ -9,7 +9,6 @@ import (
 	"os/user"
 	"path"
 	"regexp"
-	"runtime"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -41,7 +40,7 @@ type process struct {
 }
 
 func (p process) String() string {
-	return fmt.Sprintf("pid=%s exe=%s cwd=%s commandline=%s containerID=%s", p.pid, p.exe, p.cwd, p.commandline, p.containerID)
+	return fmt.Sprintf("pid=%s exe=%s cwd=%s commandline=%s cgroupID=%s containerID=%s", p.pid, p.exe, p.cwd, p.commandline, p.cgroupID, p.containerID)
 }
 
 func convertProcesses(ps []process) []discovery.Target {
@@ -167,30 +166,28 @@ func discover(l log.Logger, cfg *DiscoverConfig, cgroupIDRegexp *regexp.Regexp) 
 }
 
 func getLinuxProcessContainerID(pid string) (string, error) {
-	if runtime.GOOS == "linux" {
-		cgroup, err := os.Open(path.Join("/proc", pid, "cgroup"))
-		if err != nil {
-			return "", err
-		}
-		defer cgroup.Close()
-		cid := getContainerIDFromCGroup(cgroup)
-		if cid != "" {
-			return cid, nil
-		}
+	cgroup, err := os.Open(path.Join("/proc", pid, "cgroup"))
+	if err != nil {
+		return "", err
 	}
+	defer cgroup.Close()
+	cid := getContainerIDFromCGroup(cgroup)
+	if cid != "" {
+		return cid, nil
+	}
+
 	return "", nil
 }
 
 func getLinuxProcessCgroupID(pid string, regexp *regexp.Regexp) (string, error) {
-	if runtime.GOOS == "linux" {
-		cgroup, err := os.Open(path.Join("/proc", pid, "cgroup"))
-		if err != nil {
-			return "", err
-		}
-		defer cgroup.Close()
-		if cgroupID := getIDFromCGroup(cgroup, regexp); cgroupID != "" {
-			return cgroupID, nil
-		}
+	cgroup, err := os.Open(path.Join("/proc", pid, "cgroup"))
+	if err != nil {
+		return "", err
 	}
+	defer cgroup.Close()
+	if cgroupID := getIDFromCGroup(cgroup, regexp); cgroupID != "" {
+		return cgroupID, nil
+	}
+
 	return "", nil
 }
