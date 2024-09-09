@@ -280,6 +280,8 @@ v1.2.0
 
 - Add a `prometheus.exporter.catchpoint` component to collect metrics from Catchpoint. (@bominrahmani)
 
+- Add the `-t/--test` flag to `alloy fmt` to check if a alloy config file is formatted correctly. (@kavfixnel)
+
 ### Enhancements
 
 - (_Public preview_) Add native histogram support to `otelcol.receiver.prometheus`. (@wildum)
