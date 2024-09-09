@@ -77,7 +77,7 @@ spec:
       hostPath:
         path: /var/lib/docker/containers
     {{- end }}
-    {{- if .Values.controller.volumes.extra }}
-    {{- toYaml .Values.controller.volumes.extra | nindent 4 }}
+    {{- if $values.controller.volumes.extra }}
+    {{- toYaml $values.controller.volumes.extra | nindent 4 }}
     {{- end }}
 {{- end }}

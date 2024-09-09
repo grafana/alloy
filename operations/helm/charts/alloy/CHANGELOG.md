@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Bugfixes
+
+- Fix "alloy.controller.volumes.extra" field not being populated. (@tjaacks)
+
 0.7.0 (2024-08-26)
 ------------------
 
