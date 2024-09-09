@@ -12,6 +12,13 @@ title: loki.source.journal
 
 Multiple `loki.source.journal` components can be specified by giving them different labels.
 
+{{< admonition type="note" >}}
+Make sure that the `grafana-alloy` user is a member of the following groups:
+
+* adm
+* systemd-journal
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
@@ -36,7 +43,9 @@ Name             | Type                 | Description                           
 `relabel_rules`  | `RelabelRules`       | Relabeling rules to apply on log entries.                                                              | `{}`    | no
 `labels`         | `map(string)`        | The labels to apply to every log coming out of the journal.                                            | `{}`    | no
 
-> **NOTE**:  A `job` label is added with the full name of the component `loki.source.journal.LABEL`.
+{{< admonition type="note" >}}
+A `job` label is added with the full name of the component `loki.source.journal.LABEL`.
+{{< /admonition >}}
 
 When the `format_as_json` argument is true, log messages are passed through as
 JSON with all of the original fields from the journal entry. Otherwise, the log
