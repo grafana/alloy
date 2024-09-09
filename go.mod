@@ -833,11 +833,11 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prome
 replace go.opentelemetry.io/collector/featuregate => github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 // feature-gate-registration-error-handler branch
 
 // Replace directives from Prometheus
-// replace (
-// 	k8s.io/klog => github.com/simonpasquier/klog-gokit v0.3.0
-// 	// Prometheus uses v3.3.0, but we will get a compilation error from another module if we use it.
-// 	k8s.io/klog/v2 => github.com/simonpasquier/klog-gokit/v3 v3.4.0
-// )
+replace (
+	k8s.io/klog => github.com/simonpasquier/klog-gokit v0.3.0
+	// Prometheus uses v3.3.0, but we will get a compilation error from another module if we use it.
+	k8s.io/klog/v2 => github.com/simonpasquier/klog-gokit/v3 v3.5.0
+)
 
 // TODO: remove replace directive once:
 // * There is a release of Prometheus which addresses https://github.com/prometheus/prometheus/issues/14049,
