@@ -2,8 +2,6 @@ module github.com/grafana/alloy
 
 go 1.22.5
 
-toolchain go1.23.1
-
 require (
 	cloud.google.com/go/pubsub v1.40.0
 	connectrpc.com/connect v1.16.2
