@@ -908,4 +908,4 @@ exclude (
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 
-replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
+replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.13.1
