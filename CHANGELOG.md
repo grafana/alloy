@@ -70,6 +70,10 @@ Main (unreleased)
 
 - Fixed bug in `loki.process` with `sampling` stage where all components use same `drop_counter_reason`. (@captncraig)
 
+- Fixed an issue (see https://github.com/grafana/alloy/issues/1599) where specifying both path and key in the remote.vault `path`
+  configuration could result in incorrect URLs. The `path` and `key` arguments have been separated to allow for clear and accurate
+  specification of Vault secrets. (@PatMis16)
+
 ### Other
 
 - Renamed standard library functions. Old names are still valid but are marked deprecated. (@wildum)
@@ -277,6 +281,8 @@ v1.2.0
   metrics and traces from Datadog. (@carrieedwards, @jesusvazquez, @alexgreenbank, @fedetorres93)
 
 - Add a `prometheus.exporter.catchpoint` component to collect metrics from Catchpoint. (@bominrahmani)
+
+- Add the `-t/--test` flag to `alloy fmt` to check if a alloy config file is formatted correctly. (@kavfixnel)
 
 ### Enhancements
 
