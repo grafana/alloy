@@ -1,6 +1,6 @@
 module github.com/grafana/alloy
 
-go 1.22.7
+go 1.22.5
 
 toolchain go1.23.1
 
