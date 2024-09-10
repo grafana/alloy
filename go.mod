@@ -55,7 +55,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.8
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla v1.7.0
+	github.com/grafana/beyla v1.8.2
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
 	github.com/grafana/ckit v0.0.0-20240624165704-36f3407a8eaa
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
@@ -213,7 +213,7 @@ require (
 	go.opentelemetry.io/collector/exporter/debugexporter v0.108.1
 	go.opentelemetry.io/collector/exporter/loggingexporter v0.108.1
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.108.1
-	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.108.0
+	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.108.1
 	go.opentelemetry.io/collector/extension v0.108.1
 	go.opentelemetry.io/collector/extension/auth v0.108.1
 	go.opentelemetry.io/collector/featuregate v1.14.1
@@ -434,7 +434,7 @@ require (
 	github.com/channelmeter/iso8601duration v0.0.0-20150204201828-8da3af7a2a61 // indirect
 	github.com/checkpoint-restore/go-criu/v5 v5.3.0 // indirect
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 // indirect
-	github.com/cilium/ebpf v0.12.3 // indirect
+	github.com/cilium/ebpf v0.16.0 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 // indirect
 	github.com/cncf/xds/go v0.0.0-20240423153145-555b57ec207b // indirect

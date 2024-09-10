@@ -12,7 +12,12 @@ Main (unreleased)
 ### Breaking changes
 
 - [otelcol.processor.transform] The functions `convert_sum_to_gauge` and `convert_gauge_to_sum` must now be used in the `metric` `context` rather than in the `datapoint` context.
-  https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/34567
+  https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/34567 (@wildum)
+
+- Upgrade Beyla from 1.7.0 to 1.8.2. A complete list of changes can be found on the Beyla releases page: https://github.com/grafana/beyla/releases. (@wildum)
+  It contains a few breaking changes for the component `beyla.ebpf`:
+  - renamed metric `process.cpu.state` to `cpu.mode`
+  - renamed metric `beyla_build_info` to `beyla_internal_build_info`
 
 ### Features
 
@@ -79,7 +84,7 @@ Main (unreleased)
 
 - Aliases for the namespaces are deprecated in the Cloudwatch exporter. For example: "s3" is not allowed, "AWS/S3" should be used. Usage of the aliases will generate warnings in the logs. Support for the aliases will be dropped in the upcoming releases. (@kgeckhart, @andriikushch)
 
-- Update OTel from v0.105.0 vo v0.108.0:
+- Update OTel from v0.105.0 vo v0.108.0: (@wildum)
   - [`otelcol.receiver.vcenter`] New VSAN metrics.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33556
   - [`otelcol.receiver.kafka`] Add `session_timeout` and `heartbeat_interval` attributes.
