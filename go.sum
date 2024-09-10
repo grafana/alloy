@@ -1230,8 +1230,8 @@ github.com/grafana/postgres_exporter v0.15.1-0.20240417113938-9358270470dd h1:vN
 github.com/grafana/postgres_exporter v0.15.1-0.20240417113938-9358270470dd/go.mod h1:kR16GJ0ZwWVQ2osW3pgtDJU1a/GXpufrwio0kLG14cg=
 github.com/grafana/prometheus v1.8.2-0.20240514135907-13889ba362e6 h1:kih3d3M3dxAmrpFLvnIxFzWx8KMQyKxQwKgWP67C/Fg=
 github.com/grafana/prometheus v1.8.2-0.20240514135907-13889ba362e6/go.mod h1:yv4MwOn3yHMQ6MZGHPg/U7Fcyqf+rxqiZfSur6myVtc=
-github.com/grafana/pyroscope-go/godeltaprof v0.1.7 h1:C11j63y7gymiW8VugJ9ZW0pWfxTZugdSJyC48olk5KY=
-github.com/grafana/pyroscope-go/godeltaprof v0.1.7/go.mod h1:Tk376Nbldo4Cha9RgiU7ik8WKFkNpfds98aUzS8omLE=
+github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKtUuKQbJqgAIjlnicKg=
+github.com/grafana/pyroscope-go/godeltaprof v0.1.8/go.mod h1:2+l7K7twW49Ct4wFluZD3tZ6e0SjanjcUUBPVD/UuGU=
 github.com/grafana/pyroscope/api v0.4.0 h1:J86DxoNeLOvtJhB1Cn65JMZkXe682D+RqeoIUiYc/eo=
 github.com/grafana/pyroscope/api v0.4.0/go.mod h1:MFnZNeUM4RDsDOnbgKW3GWoLSBpLzMMT9nkvhHHo81o=
 github.com/grafana/pyroscope/ebpf v0.4.7 h1:OwE7QrgEl4lH9BEzMW9NG4AySysBfCaH5fXYJiuroC8=
@@ -1611,7 +1611,6 @@ github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+o
 github.com/klauspost/asmfmt v1.3.2 h1:4Ri7ox3EwapiOjCki+hw14RyKk201CN4rzyCJRFLpK4=
 github.com/klauspost/asmfmt v1.3.2/go.mod h1:AG8TuvYojzulgDAMCnYn50l/5QV3Bs/tp6j0HLHbNSE=
 github.com/klauspost/compress v1.11.0/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=
-github.com/klauspost/compress v1.17.3/go.mod h1:/dCuZOvVtNoHsyb+cuJD3itjs3NbnF6KH9zAO4BDxPM=
 github.com/klauspost/compress v1.17.9 h1:6KIumPrER1LHsvBVuDa0r5xaG0Es51mhhB9BQB2qeMA=
 github.com/klauspost/compress v1.17.9/go.mod h1:Di0epgTjJY877eYKx5yC51cX2A2Vl2ibi7bDH9ttBbw=
 github.com/klauspost/cpuid/v2 v2.2.5 h1:0E5MSMDEoAulmXNFquVs//DdoomxaoTY1kUhbc/qbZg=
@@ -2116,8 +2115,6 @@ github.com/prometheus-community/prom-label-proxy v0.6.0 h1:vRY29tUex8qI2MEimovTz
 github.com/prometheus-community/prom-label-proxy v0.6.0/go.mod h1:XyAyskjjhqEx0qnbGUVeAkYSz3Wm9gStT7/wXFxD8n0=
 github.com/prometheus-community/stackdriver_exporter v0.15.1 h1:+k26zeBy8BlG+eDKPtYA7IKXrQCI7ISLfktjIUu7wBQ=
 github.com/prometheus-community/stackdriver_exporter v0.15.1/go.mod h1:UmmIgnrVQqDAeM8pSeYntBcUxPhp8oqb8W3nvRYzsSg=
-github.com/prometheus-community/windows_exporter v0.26.2-0.20240731160221-8f2a45d83276 h1:hyWyr4JekYnFneEiqamv6CXQBA2ymSnS+VZgiWla++s=
-github.com/prometheus-community/windows_exporter v0.26.2-0.20240731160221-8f2a45d83276/go.mod h1:5r9EMDZEMh+6a7fuTOoO/aik6R33NdSj5y19TFcfvDU=
 github.com/prometheus-community/windows_exporter v0.27.2 h1:/tdRTouPMVsC4qt8+s9NOPEm7L/9qdDxmasiETlx+Wk=
 github.com/prometheus-community/windows_exporter v0.27.2/go.mod h1:8+T6hfv71nvgVIzguouXkIGoa15ni+uXHHULBOA2bZo=
 github.com/prometheus-operator/prometheus-operator v0.66.0 h1:Jj4mbGAkfBbTih6ait03f2vUjEHB7Kb4gnlAmWu7AJ0=
@@ -3025,8 +3022,6 @@ golang.org/x/sys v0.13.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.15.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
 golang.org/x/sys v0.17.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
 golang.org/x/sys v0.20.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
-golang.org/x/sys v0.22.0 h1:RI27ohtqKCnwULzJLqkv897zojh5/DwS/ENaMzUOaWI=
-golang.org/x/sys v0.22.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
 golang.org/x/sys v0.24.0 h1:Twjiwq9dn6R1fQcyiK+wQyHWfaz/BJB+YIpzU/Cv3Xg=
 golang.org/x/sys v0.24.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
 golang.org/x/term v0.0.0-20201117132131-f5c789dd3221/go.mod h1:Nr5EML6q2oocZ2LXRh80K7BxOlk5/8JxuGnuhpl+muw=
