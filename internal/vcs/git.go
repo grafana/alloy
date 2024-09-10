@@ -82,7 +82,12 @@ func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*
 		auth:     authConfig,
 	}
 
-	return gitRepo, gitRepo.Update(ctx)
+	err = gitRepo.Update(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return gitRepo, nil
 }
 
 func isRepoCloned(dir string) bool {
@@ -93,7 +98,7 @@ func isRepoCloned(dir string) bool {
 // Update updates the repository by pulling new content and re-checking out to
 // latest version of Revision.
 func (repo *GitRepo) Update(ctx context.Context) error {
-	fetchErr := repo.repo.Fetch(&git.FetchOptions{
+	fetchErr := repo.repo.FetchContext(ctx, &git.FetchOptions{
 		RemoteName: "origin",
 		Force:      true,
 		Auth:       repo.auth,
@@ -107,6 +112,10 @@ func (repo *GitRepo) Update(ctx context.Context) error {
 
 	checkoutErr := checkout(repo.opts.Revision, repo.repo)
 	if checkoutErr != nil {
+		if errors.Is(checkoutErr, plumbing.ErrReferenceNotFound) {
+			return InvalidRevisionError{repo.opts.Revision}
+		}
+
 		return UpdateFailedError{
 			Repository: repo.opts.Repository,
 			Inner:      checkoutErr,
