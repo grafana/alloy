@@ -54,6 +54,8 @@ type Cache[valueType any] interface {
  Get(key string) (*valueType, error)
  Set(key string, value *valueType, ttl time.Duration) error
  Remove(key string)
+ GetMultiple(keys []string) ([]*valueType, error)
+ SetMultiple(values map[string]*valueType, ttl time.Duration) error
  Clear(newSize int) error
  GetCacheSize() int
 }
