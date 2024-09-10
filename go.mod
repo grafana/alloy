@@ -43,7 +43,7 @@ require (
 	github.com/go-kit/log v0.2.1
 	github.com/go-logfmt/logfmt v0.6.0
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible
-	github.com/go-sql-driver/mysql v1.7.1
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v0.0.4
@@ -162,11 +162,11 @@ require (
 	github.com/prometheus/blackbox_exporter v0.24.1-0.20230623125439-bd22efa1c900
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/client_model v0.6.1
-	github.com/prometheus/common v0.60.0
+	github.com/prometheus/common v0.60.1
 	github.com/prometheus/common/sigv4 v0.1.0
 	github.com/prometheus/consul_exporter v0.8.0
 	github.com/prometheus/memcached_exporter v0.13.0
-	github.com/prometheus/mysqld_exporter v0.14.0
+	github.com/prometheus/mysqld_exporter v0.16.0
 	github.com/prometheus/node_exporter v1.6.0
 	github.com/prometheus/procfs v0.15.1
 	github.com/prometheus/prometheus v0.55.1 // a.k.a. v2.51.2
@@ -710,7 +710,7 @@ require (
 	github.com/prometheus-community/go-runit v0.1.0 // indirect
 	github.com/prometheus-community/prom-label-proxy v0.6.0 // indirect
 	github.com/prometheus/alertmanager v0.27.0 // indirect
-	github.com/prometheus/exporter-toolkit v0.11.0 // indirect
+	github.com/prometheus/exporter-toolkit v0.13.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/relvacode/iso8601 v1.4.0 // indirect
 	github.com/remeh/sizedwaitgroup v1.0.0 // indirect
@@ -826,13 +826,16 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Azure/go-amqp v1.2.0 // indirect
 	github.com/DataDog/datadog-agent/comp/core/log/def v0.57.1 // indirect
 	github.com/antchfx/xmlquery v1.4.2 // indirect
 	github.com/antchfx/xpath v1.3.2 // indirect
 	github.com/ebitengine/purego v0.8.0 // indirect
 	github.com/elastic/lunes v0.1.0 // indirect
+	github.com/mdlayher/vsock v1.2.1 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.112.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/topic v0.112.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	go.opentelemetry.io/collector/connector/connectorprofiles v0.112.0 // indirect
@@ -909,8 +912,11 @@ replace (
 	// grafana fork of the exporter, or completely into upstream
 	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20241105053755-e0a51174f168
 
+// Needed until a bunch of exporters are updated, because 0.13.0 breaks compatibility in web.ListenAndServe
+	github.com/prometheus/exporter-toolkit => github.com/prometheus/exporter-toolkit v0.11.0
+
 	// TODO(marctc): remove once this PR is merged upstream: https://github.com/prometheus/mysqld_exporter/pull/774
-	github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.12.2-0.20231005125903-364b9c41e595
+	github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.16.1-0.20241111085008-47b8ea9fab19
 
 	// TODO(marctc, mattdurham): Replace node_export with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
 	github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20231004161416-702318429731

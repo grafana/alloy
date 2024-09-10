@@ -34,6 +34,15 @@ Main (unreleased)
 
 - Logs from underlying clustering library `memberlist` are now surfaced with correct level (@thampiotr)
 
+- Update mysqld_exporter from v0.15.0 to v0.16.0, most notable changes: (@cristiangreco)
+  - Support MySQL 8.4 replicas syntax
+  - Fetch lock time and cpu time from performance schema
+  - Fix fetching tmpTables vs tmpDiskTables from performance_schema
+  - Skip SPACE_TYPE column for MariaDB >=10.5
+  - Fixed parsing of timestamps with non-zero padded days
+  - Fix auto_increment metric collection errors caused by using collation in INFORMATION_SCHEMA searches
+  - Change processlist query to support ONLY_FULL_GROUP_BY sql_mode
+
 ### Bugfixes
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
