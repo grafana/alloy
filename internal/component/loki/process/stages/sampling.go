@@ -27,9 +27,7 @@ type SamplingConfig struct {
 }
 
 func (s *SamplingConfig) SetToDefault() {
-	if s.DropReason == "" {
-		s.DropReason = defaultSamplingpReason
-	}
+	s.DropReason = defaultSamplingpReason
 }
 
 func (s *SamplingConfig) Validate() error {
