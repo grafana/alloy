@@ -51,7 +51,7 @@ type GitArguments struct {
 }
 
 var DefaultGitArguments = GitArguments{
-	Revision:      "HEAD",
+	Revision:      "main",
 	PullFrequency: time.Minute,
 }
 
