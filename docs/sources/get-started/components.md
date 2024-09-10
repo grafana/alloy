@@ -74,7 +74,7 @@ The following configuration file represents the pipeline.
 // This component has an exported field called "content", holding the content
 // of the file.
 //
-// local.file.api_key will watch the file and update its exports any time the
+// local.file "api_key" will watch the file and update its exports any time the
 // file changes.
 local.file "api_key" {
   filename  = "/var/data/secrets/api-key"
