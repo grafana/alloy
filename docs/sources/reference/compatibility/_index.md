@@ -71,6 +71,7 @@ The following components, grouped by namespace, _export_ Targets.
 - [discovery.process](../components/discovery/discovery.process)
 - [discovery.puppetdb](../components/discovery/discovery.puppetdb)
 - [discovery.relabel](../components/discovery/discovery.relabel)
+- [discovery.remote_relabel](../components/discovery/discovery.remote_relabel)
 - [discovery.scaleway](../components/discovery/discovery.scaleway)
 - [discovery.serverset](../components/discovery/discovery.serverset)
 - [discovery.triton](../components/discovery/discovery.triton)
@@ -123,6 +124,7 @@ The following components, grouped by namespace, _consume_ Targets.
 {{< collapse title="discovery" >}}
 - [discovery.process](../components/discovery/discovery.process)
 - [discovery.relabel](../components/discovery/discovery.relabel)
+- [discovery.remote_relabel](../components/discovery/discovery.remote_relabel)
 {{< /collapse >}}
 
 {{< collapse title="local" >}}

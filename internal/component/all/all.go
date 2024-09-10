@@ -29,6 +29,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/discovery/process"                        // Import discovery.process
 	_ "github.com/grafana/alloy/internal/component/discovery/puppetdb"                       // Import discovery.puppetdb
 	_ "github.com/grafana/alloy/internal/component/discovery/relabel"                        // Import discovery.relabel
+	_ "github.com/grafana/alloy/internal/component/discovery/remote_relabel"                 // Import discovery.remote_relabel
 	_ "github.com/grafana/alloy/internal/component/discovery/scaleway"                       // Import discovery.scaleway
 	_ "github.com/grafana/alloy/internal/component/discovery/serverset"                      // Import discovery.serverset
 	_ "github.com/grafana/alloy/internal/component/discovery/triton"                         // Import discovery.triton
