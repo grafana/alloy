@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/vcs"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/vm"
 )
 
@@ -53,6 +54,21 @@ type GitArguments struct {
 var DefaultGitArguments = GitArguments{
 	Revision:      "main",
 	PullFrequency: time.Minute,
+}
+
+var (
+	_ syntax.Validator = (*GitArguments)(nil)
+	_ syntax.Defaulter = (*GitArguments)(nil)
+)
+
+// Validate implements syntax.Validator.
+func (args *GitArguments) Validate() error {
+	switch args.Revision {
+	case "HEAD", "FETCH_HEAD", "ORIG_HEAD", "MERGE_HEAD", "CHERRY_PICK_HEAD":
+		return fmt.Errorf("revision cannot be a special git reference such as HEAD, FETCH_HEAD, ORIG_HEAD, MERGE_HEAD, or CHERRY_PICK_HEAD")
+	}
+
+	return nil
 }
 
 // SetToDefault implements syntax.Defaulter.
