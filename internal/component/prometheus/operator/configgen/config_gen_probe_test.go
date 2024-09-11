@@ -119,7 +119,9 @@ func TestGenerateProbeConfig(t *testing.T) {
 						Path:     "/probe",
 						ProxyURL: "socks://myproxy:9095",
 					},
-					Module: "http_2xx",
+					Interval:      promopv1.Duration("30s"),
+					ScrapeTimeout: promopv1.Duration("15s"),
+					Module:        "http_2xx",
 					Targets: promopv1.ProbeTargets{
 						StaticConfig: &promopv1.ProbeTargetStaticConfig{
 							Targets: []string{
@@ -161,8 +163,8 @@ func TestGenerateProbeConfig(t *testing.T) {
 			expected: &config.ScrapeConfig{
 				JobName:           "probe/default/testprobe1",
 				HonorTimestamps:   true,
-				ScrapeInterval:    model.Duration(time.Minute),
-				ScrapeTimeout:     model.Duration(10 * time.Second),
+				ScrapeInterval:    model.Duration(30 * time.Second),
+				ScrapeTimeout:     model.Duration(15 * time.Second),
 				ScrapeProtocols:   config.DefaultScrapeProtocols,
 				EnableCompression: true,
 				MetricsPath:       "/probe",
@@ -183,7 +185,7 @@ func TestGenerateProbeConfig(t *testing.T) {
 								{"__address__": "promcon.io"},
 							},
 							Labels: model.LabelSet{
-								"static": "label",
+								"static":    "label",
 								"namespace": "default",
 							},
 						},
