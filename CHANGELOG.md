@@ -9,6 +9,10 @@ internal API changes are not present.
 
 Main (unreleased)
 -----------------
+
+v1.4.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - [otelcol.processor.transform] The functions `convert_sum_to_gauge` and `convert_gauge_to_sum` must now be used in the `metric` `context` rather than in the `datapoint` context.
