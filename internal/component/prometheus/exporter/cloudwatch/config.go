@@ -159,15 +159,6 @@ func convertAliasesToNamespaces(a *Arguments, logger log.Logger) {
 		}
 	}
 
-	for i, job := range a.CustomNamespace {
-		if svc := yaceConf.SupportedServices.GetService(job.Namespace); svc == nil {
-			if namespace := getServiceByAlias(job.Namespace); namespace != "" {
-				level.Warn(logger).Log("msg", "service alias is deprecated, use the namespace instead", "alias", job.Namespace, "namespace", namespace)
-				a.CustomNamespace[i].Namespace = namespace
-			}
-		}
-	}
-
 	if len(a.DiscoveryExportedTags) > 0 {
 		var newDiscoveryExportedTags TagsPerNamespace = make(map[string][]string, len(a.DiscoveryExportedTags))
 
