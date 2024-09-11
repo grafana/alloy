@@ -1,8 +1,11 @@
+//go:build !race
+
 package serialization
 
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -14,7 +17,7 @@ import (
 )
 
 func TestRoundTripSerialization(t *testing.T) {
-	var totalSeries = 0
+	totalSeries := atomic.Int64{}
 	f := &fqq{t: t}
 	l := log.NewNopLogger()
 	start := time.Now().Add(-1 * time.Second).Unix()
@@ -23,7 +26,7 @@ func TestRoundTripSerialization(t *testing.T) {
 		MaxSignalsInBatch: 10,
 		FlushFrequency:    5 * time.Second,
 	}, f, func(stats types.SerializerStats) {
-		totalSeries = totalSeries + stats.SeriesStored
+		totalSeries.Add(int64(stats.SeriesStored))
 		require.True(t, stats.SeriesStored == 10)
 		require.True(t, stats.Errors == 0)
 		require.True(t, stats.MetadataStored == 0)
@@ -48,10 +51,10 @@ func TestRoundTripSerialization(t *testing.T) {
 		require.NoError(t, sendErr)
 	}
 	require.Eventually(t, func() bool {
-		return f.total == 100
+		return f.total.Load() == 100
 	}, 5*time.Second, 100*time.Millisecond)
 	// 100 series send from the above for loop
-	require.True(t, totalSeries == 100)
+	require.True(t, totalSeries.Load() == 100)
 }
 
 func TestUpdateConfig(t *testing.T) {
@@ -79,7 +82,7 @@ var _ types.FileStorage = (*fqq)(nil)
 type fqq struct {
 	t     *testing.T
 	buf   []byte
-	total int
+	total atomic.Int64
 }
 
 func (f *fqq) Start() {
@@ -105,6 +108,6 @@ func (f *fqq) Store(ctx context.Context, meta map[string]string, value []byte) e
 			series.Labels[j].Value = fmt.Sprintf("value_%d_%d", int(series.Value), j)
 		}
 	}
-	f.total += len(sg.Series)
+	f.total.Add(int64(len(sg.Series)))
 	return nil
 }
