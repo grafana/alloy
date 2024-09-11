@@ -48,8 +48,8 @@ Name | Type | Description | Default | Required
 `client_id` | `string` | Consumer client ID to use. | `"otel-collector"` | no
 `initial_offset` | `string` | Initial offset to use if no offset was previously committed. | `"latest"` | no
 `resolve_canonical_bootstrap_servers_only` | `bool` | Whether to resolve then reverse-lookup broker IPs during startup. | `"false"` | no
-`session_timeout` | `duration` | The request timeout for detecting client failures when using Kafka’s group management facilities. | `"10s"` | no
-`heartbeat_interval` | `duration` | The expected time between heartbeats to the consumer coordinator when using Kafka’s group management facilities. | `"3s"` | no
+`session_timeout` | `duration` | The request timeout for detecting client failures when using Kafka group management. | `"10s"` | no
+`heartbeat_interval` | `duration` | The expected time between heartbeats to the consumer coordinator when using Kafka group management. | `"3s"` | no
 
 
 If `topic` is not set, different topics will be used for different telemetry signals:
