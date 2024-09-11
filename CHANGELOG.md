@@ -100,6 +100,8 @@ Main (unreleased)
   - [`otelcol.receiver.vcenter`] Enable metrics by default
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33607
 
+- Updated the docker base image to Ubuntu 24.04 (Noble Numbat)
+
 v1.3.1
 -----------------
 
