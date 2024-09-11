@@ -10,6 +10,7 @@ import (
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/groupbyattrsprocessor"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -26,7 +27,7 @@ func (groupByAttrsConverter) InputComponentName() string {
 	return "otelcol.processor.groupbyattrs"
 }
 
-func (groupByAttrsConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (groupByAttrsConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -43,7 +44,7 @@ func (groupByAttrsConverter) ConvertAndAppend(state *State, id component.Instanc
 	return diags
 }
 
-func toGroupByAttrsProcessor(state *State, id component.InstanceID, cfg *groupbyattrsprocessor.Config) *groupbyattrs.Arguments {
+func toGroupByAttrsProcessor(state *State, id componentstatus.InstanceID, cfg *groupbyattrsprocessor.Config) *groupbyattrs.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

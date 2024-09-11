@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -44,24 +43,7 @@ func WithHostExporters(exporters map[otelcomponent.DataType]map[otelcomponent.ID
 
 var _ otelcomponent.Host = (*Host)(nil)
 
-// ReportFatalError implements otelcomponent.Host.
-func (h *Host) ReportFatalError(err error) {
-	level.Error(h.log).Log("msg", "fatal error running component", "err", err)
-}
-
-// GetFactory implements otelcomponent.Host.
-func (h *Host) GetFactory(kind otelcomponent.Kind, componentType otelcomponent.Type) otelcomponent.Factory {
-	// GetFactory is used for components to create other components. It's not
-	// clear if we want to allow this right now, so it's disabled.
-	return nil
-}
-
 // GetExtensions implements otelcomponent.Host.
 func (h *Host) GetExtensions() map[otelcomponent.ID]otelextension.Extension {
 	return h.extensions
-}
-
-// GetExporters implements otelcomponent.Host.
-func (h *Host) GetExporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
-	return h.exporters
 }

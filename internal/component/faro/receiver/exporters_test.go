@@ -12,10 +12,10 @@ import (
 )
 
 var metricNames = []string{
-	"logs_total",
-	"measurements_total",
-	"exceptions_total",
-	"events_total",
+	"faro_receiver_logs_total",
+	"faro_receiver_measurements_total",
+	"faro_receiver_exceptions_total",
+	"faro_receiver_events_total",
 }
 
 func Test_metricsExporter_Export(t *testing.T) {
