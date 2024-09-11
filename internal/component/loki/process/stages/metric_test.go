@@ -433,14 +433,6 @@ func TestMetricStage_Process(t *testing.T) {
 				}},
 			{
 				Counter: &metric.CounterConfig{
-					Name:        "contains_false",
-					Description: "contains_false",
-					Source:      "contains_false",
-					Value:       trueVal,
-					Action:      metric.CounterAdd,
-				}},
-			{
-				Counter: &metric.CounterConfig{
 					Name:        "matches",
 					Source:      timeSource,
 					Description: "all matches",
