@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/stretchr/testify/require"
