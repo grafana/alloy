@@ -177,7 +177,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
-	github.com/testcontainers/testcontainers-go v0.31.0
+	github.com/testcontainers/testcontainers-go v0.33.0
 	github.com/tilinna/clock v1.1.0
 	github.com/ua-parser/uap-go v0.0.0-20240611065828-3a4781585db6 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
@@ -812,6 +812,8 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 
 )
+
+require github.com/containerd/platforms v0.2.1 // indirect
 
 // NOTE: replace directives below must always be *temporary*.
 //
