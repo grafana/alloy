@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,4 +51,40 @@ func TestGenericCGroupMatching(t *testing.T) {
 			require.Equal(t, expected, cgroupID)
 		})
 	}
+}
+
+func TestProcessUpdateSuccess(t *testing.T) {
+	var args = DefaultConfig
+
+	tc, err := componenttest.NewControllerFromID(nil, "discovery.process")
+	require.NoError(t, err)
+	go func() {
+		err = tc.Run(componenttest.TestContext(t), args)
+		require.NoError(t, err)
+	}()
+
+	// Sleep a short time for component to go into run state
+	time.Sleep(100 * time.Millisecond)
+
+	newArgs := args
+	newArgs.CgroupIDRegex = "^.*/docker/([a-z0-9]+)(?:.*$)"
+	require.NoError(t, tc.Update(newArgs))
+}
+
+func TestProcessUpdateFail(t *testing.T) {
+	var args = DefaultConfig
+	args.CgroupIDRegex = "^.*/docker/([a-z0-9]+)(?:.*$)"
+
+	tc, err := componenttest.NewControllerFromID(nil, "discovery.process")
+	require.NoError(t, err)
+	go func() {
+		err = tc.Run(componenttest.TestContext(t), args)
+		require.NoError(t, err)
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	newArgs := args
+	newArgs.CgroupIDRegex = `[z-a]` // Invalid regex
+	require.Error(t, tc.Update(newArgs))
 }
