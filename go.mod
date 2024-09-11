@@ -910,4 +910,7 @@ exclude (
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 
+// This is a temporary replace because runk is still on this version.
+// It's important to remove it asap because in version v0.13.1 there is a fix for Beyla.
+// PR to track it: https://github.com/opencontainers/runc/pull/4397
 replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
