@@ -30,7 +30,7 @@ type queue struct {
 	// block until ready for another record.
 	out func(ctx context.Context, dh types.DataHandle)
 	// existingFiles is the list of files found initially.
-	existingsFiles []string
+	existingFiles []string
 }
 
 // NewQueue returns a implementation of FileStorage.
@@ -61,18 +61,18 @@ func NewQueue(directory string, out func(ctx context.Context, dh types.DataHandl
 		currentMaxID = ids[len(ids)-1]
 	}
 	q := &queue{
-		directory:      directory,
-		maxID:          currentMaxID,
-		logger:         logger,
-		out:            out,
-		dataQueue:      actor.NewMailbox[types.Data](),
-		existingsFiles: make([]string, 0),
+		directory:     directory,
+		maxID:         currentMaxID,
+		logger:        logger,
+		out:           out,
+		dataQueue:     actor.NewMailbox[types.Data](),
+		existingFiles: make([]string, 0),
 	}
 
 	// Save the existing files in `q.existingFiles`, which will have their data pushed to `out` when actor starts.
 	for _, id := range ids {
 		name := filepath.Join(directory, fmt.Sprintf("%d.committed", id))
-		q.existingsFiles = append(q.existingsFiles, name)
+		q.existingFiles = append(q.existingFiles, name)
 	}
 	return q, nil
 }
@@ -115,7 +115,7 @@ func get(logger log.Logger, name string) (map[string]string, []byte, error) {
 // DoWork allows most of the queue to be single threaded with work only coming in and going out via mailboxes(channels).
 func (q *queue) DoWork(ctx actor.Context) actor.WorkerStatus {
 	// Queue up our existing items.
-	for _, name := range q.existingsFiles {
+	for _, name := range q.existingFiles {
 		q.out(ctx, types.DataHandle{
 			Name: name,
 			Pop: func() (map[string]string, []byte, error) {
@@ -124,7 +124,7 @@ func (q *queue) DoWork(ctx actor.Context) actor.WorkerStatus {
 		})
 	}
 	// We only want to process existing files once.
-	q.existingsFiles = nil
+	q.existingFiles = nil
 	select {
 	case <-ctx.Done():
 		return actor.WorkerEnd
