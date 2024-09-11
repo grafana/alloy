@@ -48,6 +48,7 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		Metrics: opts.Metrics,
 		Tracer:  opts.Tracer,
 
+		// test
 		EnableClustering:          opts.EnableClustering,
 		NodeName:                  opts.NodeName,
 		RejoinInterval:            opts.RejoinInterval,
