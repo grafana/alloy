@@ -246,6 +246,9 @@ func PutTimeSeriesBinary(ts *TimeSeriesBinary) {
 // DeserializeToSeriesGroup transforms a buffer to a SeriesGroup and converts the stringmap + indexes into actual Labels.
 func DeserializeToSeriesGroup(sg *SeriesGroup, buf []byte) (*SeriesGroup, []byte, error) {
 	buffer, err := sg.UnmarshalMsg(buf)
+	if err != nil {
+		return sg, nil, err
+	}
 	// Need to fill in the labels.
 	for _, series := range sg.Series {
 		if cap(series.Labels) < len(series.LabelsNames) {
