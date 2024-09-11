@@ -108,6 +108,27 @@ discovery {
 }
 `
 
+const customNamespaceJobConfig = `
+sts_region = "eu-west-1"
+
+custom_namespace "customEC2Metrics" {
+    namespace = "CustomEC2Metrics"
+    regions   = ["us-east-1"]
+
+    metric {
+        name       = "cpu_usage_idle"
+        statistics = ["Average"]
+        period     = "5m"
+    }
+
+    metric {
+        name       = "disk_free"
+        statistics = ["Average"]
+        period     = "5m"
+    }
+}
+`
+
 const staticJobNilToZeroConfig = `
 sts_region = "us-east-2"
 debug = true
@@ -170,6 +191,31 @@ discovery {
 		// setting nil_to_zero on the metric level
 		nil_to_zero = true
 	}
+}
+`
+
+const customNamespacebNilToZeroJobConfig = `
+sts_region = "eu-west-1"
+
+custom_namespace "customEC2Metrics" {
+    namespace = "CustomEC2Metrics"
+    regions   = ["us-east-1"]
+	// setting nil_to_zero on the job level
+	nil_to_zero = false
+
+    metric {
+        name       = "cpu_usage_idle"
+        statistics = ["Average"]
+        period     = "5m"
+    }
+
+    metric {
+        name       = "disk_free"
+        statistics = ["Average"]
+        period     = "5m"
+		// setting nil_to_zero on the metric level
+		nil_to_zero = true
+    }
 }
 `
 
@@ -355,6 +401,51 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 				},
 			},
 		},
+		"single custom namespace job config": {
+			raw: customNamespaceJobConfig,
+			expected: yaceModel.JobsConfig{
+				StsRegion: "eu-west-1",
+				CustomNamespaceJobs: []yaceModel.CustomNamespaceJob{
+					{
+						Name:    "customEC2Metrics",
+						Regions: []string{"us-east-1"},
+						// assert an empty role is used as default. IMPORTANT since this
+						// is what YACE looks for delegating to the environment role
+						Roles:      []yaceModel.Role{{}},
+						CustomTags: []yaceModel.Tag{},
+						Namespace:  "CustomEC2Metrics",
+						Metrics: []*yaceModel.MetricConfig{
+							{
+								Name:                   "cpu_usage_idle",
+								Statistics:             []string{"Average"},
+								Period:                 300,
+								Length:                 300,
+								Delay:                  0,
+								NilToZero:              defaultNilToZero,
+								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+							},
+							{
+								Name:                   "disk_free",
+								Statistics:             []string{"Average"},
+								Period:                 300,
+								Length:                 300,
+								Delay:                  0,
+								NilToZero:              defaultNilToZero,
+								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+							},
+						},
+						RoundingPeriod: nil,
+						JobLevelMetricFields: yaceModel.JobLevelMetricFields{
+							Period:                 0,
+							Length:                 0,
+							Delay:                  0,
+							AddCloudwatchTimestamp: &falsePtr,
+							NilToZero:              &defaultNilToZero,
+						},
+					},
+				},
+			},
+		},
 		"static job nil to zero": {
 			raw: staticJobNilToZeroConfig,
 			expected: yaceModel.JobsConfig{
@@ -468,6 +559,51 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								Regexp:          regexp.MustCompile("(?P<QueueName>[^:]+)$"),
 								DimensionsNames: []string{"QueueName"},
 							},
+						},
+					},
+				},
+			},
+		},
+		"custom namespace job nil to zero config": {
+			raw: customNamespacebNilToZeroJobConfig,
+			expected: yaceModel.JobsConfig{
+				StsRegion: "eu-west-1",
+				CustomNamespaceJobs: []yaceModel.CustomNamespaceJob{
+					{
+						Name:    "customEC2Metrics",
+						Regions: []string{"us-east-1"},
+						// assert an empty role is used as default. IMPORTANT since this
+						// is what YACE looks for delegating to the environment role
+						Roles:      []yaceModel.Role{{}},
+						CustomTags: []yaceModel.Tag{},
+						Namespace:  "CustomEC2Metrics",
+						Metrics: []*yaceModel.MetricConfig{
+							{
+								Name:                   "cpu_usage_idle",
+								Statistics:             []string{"Average"},
+								Period:                 300,
+								Length:                 300,
+								Delay:                  0,
+								NilToZero:              falsePtr,
+								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+							},
+							{
+								Name:                   "disk_free",
+								Statistics:             []string{"Average"},
+								Period:                 300,
+								Length:                 300,
+								Delay:                  0,
+								NilToZero:              truePtr,
+								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+							},
+						},
+						RoundingPeriod: nil,
+						JobLevelMetricFields: yaceModel.JobLevelMetricFields{
+							Period:                 0,
+							Length:                 0,
+							Delay:                  0,
+							AddCloudwatchTimestamp: &falsePtr,
+							NilToZero:              &falsePtr,
 						},
 					},
 				},
