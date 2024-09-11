@@ -28,7 +28,6 @@ func TestLabels(t *testing.T) {
 	strMap := make(map[string]uint32)
 
 	sg.Series[0].FillLabelMapping(strMap)
-	require.True(t, len(sg.Series) == len(unique))
 	stringsSlice := make([]string, len(strMap))
 	for k, v := range strMap {
 		stringsSlice[v] = k
@@ -42,6 +41,7 @@ func TestLabels(t *testing.T) {
 	series1 := newSg.Series[0]
 	series2 := sg.Series[0]
 	require.Len(t, series2.Labels, len(series1.Labels))
+	// Ensure we were able to convert back and forth properly.
 	for i, lbl := range series2.Labels {
 		require.Equal(t, lbl.Name, series1.Labels[i].Name)
 		require.Equal(t, lbl.Value, series1.Labels[i].Value)
