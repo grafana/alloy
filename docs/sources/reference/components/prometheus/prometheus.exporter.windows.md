@@ -75,7 +75,7 @@ text_file      | [text_file][]      | Configures the text_file collector.      |
 [scheduled_task]: #scheduledtask-block
 [service]: #service-block
 [smb]: #smb-block
-[smb_client]: #smbclient-block
+[smb_client]: #smb_client-block
 [smtp]: #smtp-block
 [text_file]: #textfile-block
 
