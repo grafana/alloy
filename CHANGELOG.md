@@ -43,6 +43,8 @@ Main (unreleased)
 
 - A new parameter `aws_sdk_version_v2` is added for the cloudwatch exporters configuration. It enables the use of aws sdk v2 which has shown to have significant performance benefits. (@kgeckhart, @andriikushch)
 
+- `prometheus.exporter.cloudwatch` can now collect metrics from custom namespaces via the `custom_namespace` block. (@ptodev)
+
 ### Bugfixes
 
 - Fix a bug where custom components don't always get updated when the config is modified in an imported directory. (@ante012)
