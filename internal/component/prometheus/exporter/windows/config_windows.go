@@ -1,6 +1,7 @@
 package windows
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -13,10 +14,10 @@ func (a *Arguments) SetToDefault() {
 	*a = Arguments{
 		EnabledCollectors: strings.Split(windows_integration.DefaultConfig.EnabledCollectors, ","),
 		Dfsr: DfsrConfig{
-			SourcesEnabled: col.ConfigDefaults.DFSR.CollectorsEnabled,
+			SourcesEnabled: slices.Clone(col.ConfigDefaults.DFSR.CollectorsEnabled),
 		},
 		Exchange: ExchangeConfig{
-			EnabledList: col.ConfigDefaults.Exchange.CollectorsEnabled,
+			EnabledList: slices.Clone(col.ConfigDefaults.Exchange.CollectorsEnabled),
 		},
 		IIS: IISConfig{
 			AppBlackList:  col.ConfigDefaults.IIS.AppExclude.String(),
@@ -38,7 +39,7 @@ func (a *Arguments) SetToDefault() {
 			Where: *col.ConfigDefaults.Msmq.QueryWhereClause,
 		},
 		MSSQL: MSSQLConfig{
-			EnabledClasses: col.ConfigDefaults.Mssql.CollectorsEnabled,
+			EnabledClasses: slices.Clone(col.ConfigDefaults.Mssql.CollectorsEnabled),
 		},
 		Network: NetworkConfig{
 			BlackList: col.ConfigDefaults.Net.NicExclude.String(),
