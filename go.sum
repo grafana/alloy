@@ -2388,6 +2388,7 @@ github.com/tg123/go-htpasswd v1.2.2 h1:tmNccDsQ+wYsoRfiONzIhDm5OkVHQzN3w4FOBAlN6
 github.com/tg123/go-htpasswd v1.2.2/go.mod h1:FcIrK0J+6zptgVwK1JDlqyajW/1B4PtuJ/FLWl7nx8A=
 github.com/tiagorossig/ckit v0.0.0-20240911155249-c56843253262 h1:/0ADw9nMTcbBZISXJQq+qVceci0EhnPjisEK/HX5LCg=
 github.com/tiagorossig/ckit v0.0.0-20240911155249-c56843253262/go.mod h1:dDqep1rKTbq2ppMYEgIM88GaPXHp4i6Cp3qantiloA0=
+github.com/tiagorossig/ckit v0.0.0-20240911203718-626fabc45032/go.mod h1:dDqep1rKTbq2ppMYEgIM88GaPXHp4i6Cp3qantiloA0=
 github.com/tidwall/gjson v1.6.0/go.mod h1:P256ACg0Mn+j1RXIDXoss50DeIABTYK1PULOJHhxOls=
 github.com/tidwall/match v1.0.1/go.mod h1:LujAq0jyVjBy028G1WhWfIzbpQfMO8bBZ6Tyb0+pL9E=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=

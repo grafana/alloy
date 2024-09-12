@@ -814,7 +814,7 @@ require (
 // dependency.
 
 // TODO(tiagogr): replace directive
-replace github.com/grafana/ckit => github.com/tiagorossig/ckit v0.0.0-20240911155249-c56843253262
+replace github.com/grafana/ckit => github.com/tiagorossig/ckit v0.0.0-20240911203718-626fabc45032
 
 // TODO: remove this replace directive once opentelemetry-collector-contrib/receiver/prometheusreceiver is updated to prometheus/prometheus v0.51.0 or later
 replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20240326165551-1ae1b9218b1b
