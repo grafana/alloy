@@ -105,6 +105,8 @@ alloy:
 
   # -- Resource requests and limits to apply to the Grafana Alloy container.
   resources: {}
+  # -- lifecycle support
+  lifecycle: {}
 
 image:
   # -- Grafana Alloy image registry (defaults to docker.io)
