@@ -226,6 +226,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				context = "metric"
 				statements = [
 					` + backtick + `set(description, "Sum") where type == "Sum"` + backtick + `,
+					` + backtick + `convert_sum_to_gauge() where name == "system.processes.count"` + backtick + `,
+					` + backtick + `convert_gauge_to_sum("cumulative", false) where name == "prometheus_metric"` + backtick + `,
+					` + backtick + `aggregate_on_attributes("sum") where name == "system.memory.usage"` + backtick + `,
 				]
 			}
 			metric_statements {
@@ -233,8 +236,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				statements = [
 					` + backtick + `limit(attributes, 100, ["host.name"])` + backtick + `,
 					` + backtick + `truncate_all(attributes, 4096)` + backtick + `,
-					` + backtick + `convert_sum_to_gauge() where metric.name == "system.processes.count"` + backtick + `,
-					` + backtick + `convert_gauge_to_sum("cumulative", false) where metric.name == "prometheus_metric"` + backtick + `,
 				]
 			}
 			log_statements {
@@ -289,6 +290,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"context": "metric",
 						"statements": []interface{}{
 							`set(description, "Sum") where type == "Sum"`,
+							`convert_sum_to_gauge() where name == "system.processes.count"`,
+							`convert_gauge_to_sum("cumulative", false) where name == "prometheus_metric"`,
+							`aggregate_on_attributes("sum") where name == "system.memory.usage"`,
 						},
 					},
 					map[string]interface{}{
@@ -296,8 +300,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"statements": []interface{}{
 							`limit(attributes, 100, ["host.name"])`,
 							`truncate_all(attributes, 4096)`,
-							`convert_sum_to_gauge() where metric.name == "system.processes.count"`,
-							`convert_gauge_to_sum("cumulative", false) where metric.name == "prometheus_metric"`,
 						},
 					},
 				},

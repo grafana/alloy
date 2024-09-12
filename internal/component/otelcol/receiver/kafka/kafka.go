@@ -32,13 +32,15 @@ func init() {
 
 // Arguments configures the otelcol.receiver.kafka component.
 type Arguments struct {
-	Brokers         []string `alloy:"brokers,attr"`
-	ProtocolVersion string   `alloy:"protocol_version,attr"`
-	Topic           string   `alloy:"topic,attr,optional"`
-	Encoding        string   `alloy:"encoding,attr,optional"`
-	GroupID         string   `alloy:"group_id,attr,optional"`
-	ClientID        string   `alloy:"client_id,attr,optional"`
-	InitialOffset   string   `alloy:"initial_offset,attr,optional"`
+	Brokers           []string      `alloy:"brokers,attr"`
+	ProtocolVersion   string        `alloy:"protocol_version,attr"`
+	SessionTimeout    time.Duration `alloy:"session_timeout,attr,optional"`
+	HeartbeatInterval time.Duration `alloy:"heartbeat_interval,attr,optional"`
+	Topic             string        `alloy:"topic,attr,optional"`
+	Encoding          string        `alloy:"encoding,attr,optional"`
+	GroupID           string        `alloy:"group_id,attr,optional"`
+	ClientID          string        `alloy:"client_id,attr,optional"`
+	InitialOffset     string        `alloy:"initial_offset,attr,optional"`
 
 	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
 
@@ -64,11 +66,13 @@ func (args *Arguments) SetToDefault() {
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
 
-		Encoding:      "otlp_proto",
-		Brokers:       []string{"localhost:9092"},
-		ClientID:      "otel-collector",
-		GroupID:       "otel-collector",
-		InitialOffset: "latest",
+		Encoding:          "otlp_proto",
+		Brokers:           []string{"localhost:9092"},
+		ClientID:          "otel-collector",
+		GroupID:           "otel-collector",
+		InitialOffset:     "latest",
+		SessionTimeout:    10 * time.Second,
+		HeartbeatInterval: 3 * time.Second,
 	}
 	args.Metadata.SetToDefault()
 	args.AutoCommit.SetToDefault()
@@ -111,6 +115,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	result.Brokers = args.Brokers
 	result.ProtocolVersion = args.ProtocolVersion
+	result.SessionTimeout = args.SessionTimeout
+	result.HeartbeatInterval = args.HeartbeatInterval
 	result.Topic = args.Topic
 	result.Encoding = args.Encoding
 	result.GroupID = args.GroupID
