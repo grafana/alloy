@@ -271,7 +271,9 @@ controller:
 
   # -- Additional containers to run alongside the Alloy container and initContainers.
   extraContainers: []
-
+  # -- terminationGracePeriodSeconds 
+  terminationGracePeriodSeconds: {}
+  
 service:
   # -- Creates a Service for the controller's pods.
   enabled: true
