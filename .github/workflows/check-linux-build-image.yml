@@ -25,7 +25,7 @@ jobs:
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=golang:1.23.1-bullseye
+            GO_RUNTIME=golang:1.22.7-bullseye
 
       - name: Create test Linux build image for boring crypto
         uses: docker/build-push-action@v6
@@ -34,4 +34,4 @@ jobs:
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.23.1-bullseye
+            GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.22.7-bullseye
