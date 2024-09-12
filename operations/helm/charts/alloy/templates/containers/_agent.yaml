@@ -57,6 +57,10 @@
       scheme: {{ $values.listenScheme }}
     initialDelaySeconds: 10
     timeoutSeconds: 1
+  {{- with $values.lifecycle }}
+  lifecycle:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- with $values.resources }}
   resources:
     {{- toYaml . | nindent 4 }}
