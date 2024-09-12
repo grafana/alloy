@@ -131,6 +131,8 @@ depending on the nature of the reload error.
 		IntVar(&r.clusterMaxJoinPeers, "cluster.max-join-peers", r.clusterMaxJoinPeers, "Number of peers to join from the discovered set")
 	cmd.Flags().
 		StringVar(&r.clusterName, "cluster.name", r.clusterName, "The name of the cluster to join")
+	cmd.Flags().
+		BoolVar(&r.clusterEnableTransportHttps, "cluster.enable-transport-https", r.clusterEnableTransportHttps, "Specifies whether TLS should be used for communication between peers")
 	// TODO(alloy/#1274): make this flag a no-op once we have more confidence in this feature, and add issue to
 	// remove it in the next major release
 	cmd.Flags().
@@ -168,6 +170,7 @@ type alloyRun struct {
 	clusterMaxJoinPeers          int
 	clusterName                  string
 	clusterUseDiscoveryV1        bool
+	clusterEnableTransportHttps  bool
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
@@ -258,6 +261,7 @@ func (fr *alloyRun) Run(configPath string) error {
 		//TODO(alloy/#1274): graduate to GA once we have more confidence in this feature
 		EnableStateUpdatesLimiter: fr.minStability.Permits(featuregate.StabilityPublicPreview),
 		EnableDiscoveryV2:         !fr.clusterUseDiscoveryV1,
+		EnableTransportHTTPS:      fr.clusterEnableTransportHttps,
 	})
 	if err != nil {
 		return err

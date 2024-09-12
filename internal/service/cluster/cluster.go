@@ -76,6 +76,7 @@ type Options struct {
 
 	NodeName                  string        // Name to use for this node in the cluster.
 	AdvertiseAddress          string        // Address to advertise to other nodes in the cluster.
+	EnableTransportHTTPS      bool          // Specifies whether TLS should be used for communication between peers.
 	RejoinInterval            time.Duration // How frequently to rejoin the cluster to address split brain issues.
 	ClusterMaxJoinPeers       int           // Number of initial peers to join from the discovered set.
 	ClusterName               string        // Name to prevent nodes without this identifier from joining the cluster.
@@ -116,11 +117,12 @@ func New(opts Options) (*Service, error) {
 	}
 
 	ckitConfig := ckit.Config{
-		Name:          opts.NodeName,
-		AdvertiseAddr: opts.AdvertiseAddress,
-		Log:           l,
-		Sharder:       shard.Ring(tokensPerNode),
-		Label:         opts.ClusterName,
+		Name:                 opts.NodeName,
+		AdvertiseAddr:        opts.AdvertiseAddress,
+		Log:                  l,
+		Sharder:              shard.Ring(tokensPerNode),
+		Label:                opts.ClusterName,
+		EnableTransportHTTPS: opts.EnableTransportHTTPS,
 	}
 
 	httpClient := &http.Client{

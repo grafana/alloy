@@ -188,10 +188,11 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 	require.NoError(t, err)
 
 	clusterService, err := cluster_service.New(cluster_service.Options{
-		Log:              logger,
-		EnableClustering: false,
-		NodeName:         "test-node",
-		AdvertiseAddress: "127.0.0.1:80",
+		Log:                  logger,
+		EnableClustering:     false,
+		NodeName:             "test-node",
+		AdvertiseAddress:     "127.0.0.1:80",
+		EnableTransportHTTPS: false,
 	})
 	require.NoError(t, err)
 

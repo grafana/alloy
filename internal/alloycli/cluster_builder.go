@@ -38,6 +38,7 @@ type clusterOptions struct {
 	ClusterName               string
 	EnableStateUpdatesLimiter bool
 	EnableDiscoveryV2         bool
+	EnableTransportHTTPS      bool
 }
 
 func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
@@ -55,6 +56,7 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		ClusterMaxJoinPeers:       opts.ClusterMaxJoinPeers,
 		ClusterName:               opts.ClusterName,
 		EnableStateUpdatesLimiter: opts.EnableStateUpdatesLimiter,
+		EnableTransportHTTPS:      opts.EnableTransportHTTPS,
 	}
 
 	if config.NodeName == "" {
