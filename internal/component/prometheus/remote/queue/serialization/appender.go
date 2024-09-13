@@ -25,8 +25,8 @@ func (a *appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t,
 	return ref, nil
 }
 
-// NewAppender returns an Appender that writes to a given serializer. NOTE the Appender returned writes
-// data immediately and does not honor commit or rollback.
+// NewAppender returns an Appender that writes to a given serializer. NOTE the returned Appender writes
+// data immediately, discards data older than `ttl` and does not honor commit or rollback.
 func NewAppender(ctx context.Context, ttl time.Duration, s types.Serializer, logger log.Logger) storage.Appender {
 	app := &appender{
 		ttl:    ttl,
