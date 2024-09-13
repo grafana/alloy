@@ -98,18 +98,26 @@ func (s *serializer) DoWork(ctx actor.Context) actor.WorkerStatus {
 		if !ok {
 			return actor.WorkerEnd
 		}
-		err := s.Append(ctx, item)
-		if err != nil {
-			level.Error(s.logger).Log("msg", "unable to append to serializer", "err", err)
+		s.series = append(s.series, item)
+		// If we would go over the max size then send, or if we have hit the flush duration then send.
+		if len(s.meta)+len(s.series) >= s.maxItemsBeforeFlush {
+			err := s.store(ctx)
+			if err != nil {
+				level.Error(s.logger).Log("msg", "unable to append to serializer", "err", err)
+			}
 		}
+
 		return actor.WorkerContinue
 	case item, ok := <-s.metaInbox.ReceiveC():
 		if !ok {
 			return actor.WorkerEnd
 		}
-		err := s.AppendMetadata(ctx, item)
-		if err != nil {
-			level.Error(s.logger).Log("msg", "unable to append metadata to serializer", "err", err)
+		s.meta = append(s.meta, item)
+		if len(s.meta)+len(s.series) >= s.maxItemsBeforeFlush {
+			err := s.store(ctx)
+			if err != nil {
+				level.Error(s.logger).Log("msg", "unable to append metadata to serializer", "err", err)
+			}
 		}
 		return actor.WorkerContinue
 	case <-s.flushTestTimer.C:
@@ -121,28 +129,6 @@ func (s *serializer) DoWork(ctx actor.Context) actor.WorkerStatus {
 		}
 		return actor.WorkerContinue
 	}
-}
-
-func (s *serializer) AppendMetadata(ctx actor.Context, data *types.TimeSeriesBinary) error {
-	s.meta = append(s.meta, data)
-	// If we would go over the max size then send, or if we have hit the flush duration then send.
-	if len(s.meta)+len(s.series) >= s.maxItemsBeforeFlush {
-		return s.store(ctx)
-	} else if time.Since(s.lastFlush) > s.flushFrequency {
-		return s.store(ctx)
-	}
-	return nil
-}
-
-func (s *serializer) Append(ctx actor.Context, data *types.TimeSeriesBinary) error {
-	s.series = append(s.series, data)
-	// If we would go over the max size then send, or if we have hit the flush duration then send.
-	if len(s.meta)+len(s.series) >= s.maxItemsBeforeFlush {
-		return s.store(ctx)
-	} else if time.Since(s.lastFlush) > s.flushFrequency {
-		return s.store(ctx)
-	}
-	return nil
 }
 
 func (s *serializer) store(ctx actor.Context) error {
