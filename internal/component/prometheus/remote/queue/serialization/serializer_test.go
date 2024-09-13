@@ -37,7 +37,7 @@ func TestRoundTripSerialization(t *testing.T) {
 	s.Start()
 	defer s.Stop()
 	for i := 0; i < 100; i++ {
-		tss := types.GetTimeSeriesBinary()
+		tss := types.GetTimeSeriesFromPool()
 		tss.Labels = make(labels.Labels, 10)
 		for j := 0; j < 10; j++ {
 			tss.Labels[j] = labels.Label{

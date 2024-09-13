@@ -52,7 +52,7 @@ func getTimeSeries(b *testing.B) []*types.TimeSeriesBinary {
 	b.Helper()
 	series := make([]*types.TimeSeriesBinary, 0)
 	for j := 0; j < 10_000; j++ {
-		timeseries := types.GetTimeSeriesBinary()
+		timeseries := types.GetTimeSeriesFromPool()
 		timeseries.TS = time.Now().Unix()
 		timeseries.Value = rand.Float64()
 		timeseries.Labels = getLabels()
@@ -86,12 +86,12 @@ func (f *fakeSerializer) Start() {}
 func (f *fakeSerializer) Stop() {}
 
 func (f *fakeSerializer) SendSeries(ctx context.Context, data *types.TimeSeriesBinary) error {
-	types.PutTimeSeriesBinary(data)
+	types.PutTimeSeriesIntoPool(data)
 	return nil
 }
 
 func (f *fakeSerializer) SendMetadata(ctx context.Context, data *types.TimeSeriesBinary) error {
-	types.PutTimeSeriesBinary(data)
+	types.PutTimeSeriesIntoPool(data)
 	return nil
 }
 

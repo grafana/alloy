@@ -44,7 +44,7 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 	if t < endTime {
 		return ref, nil
 	}
-	ts := types.GetTimeSeriesBinary()
+	ts := types.GetTimeSeriesFromPool()
 	ts.Labels = l
 	ts.TS = t
 	ts.Value = v
@@ -69,7 +69,7 @@ func (a *appender) AppendExemplar(ref storage.SeriesRef, _ labels.Labels, e exem
 	if e.HasTs && e.Ts < endTime {
 		return ref, nil
 	}
-	ts := types.GetTimeSeriesBinary()
+	ts := types.GetTimeSeriesFromPool()
 	ts.Hash = e.Labels.Hash()
 	ts.TS = e.Ts
 	ts.Labels = e.Labels
@@ -84,7 +84,7 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 	if t < endTime {
 		return ref, nil
 	}
-	ts := types.GetTimeSeriesBinary()
+	ts := types.GetTimeSeriesFromPool()
 	ts.Labels = l
 	ts.TS = t
 	if h != nil {
@@ -99,7 +99,7 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 
 // UpdateMetadata updates metadata.
 func (a *appender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (_ storage.SeriesRef, _ error) {
-	ts := types.GetTimeSeriesBinary()
+	ts := types.GetTimeSeriesFromPool()
 	// We are going to handle converting some strings to hopefully not reused label names. TimeSeriesBinary has a lot of work
 	// to ensure its efficient it makes sense to encode metadata into it.
 	combinedLabels := l.Copy()

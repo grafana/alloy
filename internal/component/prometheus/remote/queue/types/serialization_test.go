@@ -22,8 +22,8 @@ func TestLabels(t *testing.T) {
 	sg := &SeriesGroup{
 		Series: make([]*TimeSeriesBinary, 1),
 	}
-	sg.Series[0] = GetTimeSeriesBinary()
-	defer PutTimeSeriesBinary(sg.Series[0])
+	sg.Series[0] = GetTimeSeriesFromPool()
+	defer PutTimeSeriesIntoPool(sg.Series[0])
 	sg.Series[0].Labels = labels.FromMap(lblsMap)
 	strMap := make(map[string]uint32)
 

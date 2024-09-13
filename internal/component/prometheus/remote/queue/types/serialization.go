@@ -216,21 +216,21 @@ var tsBinaryPool = sync.Pool{
 	},
 }
 
-func GetTimeSeriesBinary() *TimeSeriesBinary {
+func GetTimeSeriesFromPool() *TimeSeriesBinary {
 	OutStandingTimeSeriesBinary.Inc()
 	return tsBinaryPool.Get().(*TimeSeriesBinary)
 }
 
 var OutStandingTimeSeriesBinary = atomic.Int32{}
 
-func PutTimeSeriesBinarySlice(tss []*TimeSeriesBinary) {
+func PutTimeSeriesSliceIntoPool(tss []*TimeSeriesBinary) {
 	for i := 0; i < len(tss); i++ {
-		PutTimeSeriesBinary(tss[i])
+		PutTimeSeriesIntoPool(tss[i])
 	}
 
 }
 
-func PutTimeSeriesBinary(ts *TimeSeriesBinary) {
+func PutTimeSeriesIntoPool(ts *TimeSeriesBinary) {
 	OutStandingTimeSeriesBinary.Dec()
 	ts.LabelsNames = ts.LabelsNames[:0]
 	ts.LabelsValues = ts.LabelsValues[:0]

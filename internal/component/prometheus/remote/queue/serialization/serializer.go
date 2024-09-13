@@ -161,8 +161,8 @@ func (s *serializer) store(ctx actor.Context) error {
 	defer func() {
 		s.storeStats(err)
 		// Return series to the pool, this is key to reducing allocs.
-		types.PutTimeSeriesBinarySlice(s.series)
-		types.PutTimeSeriesBinarySlice(s.meta)
+		types.PutTimeSeriesSliceIntoPool(s.series)
+		types.PutTimeSeriesSliceIntoPool(s.meta)
 		s.series = s.series[:0]
 		s.meta = s.series[:0]
 	}()
