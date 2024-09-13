@@ -20,19 +20,25 @@ type configMetrics struct {
 var confMetrics *configMetrics
 var configMetricsInitializer sync.Once
 
-func initializeConfigMetrics() {
-	confMetrics = newConfigMetrics()
+func initializeConfigMetrics(withClusterLabel bool) {
+	confMetrics = newConfigMetrics(withClusterLabel)
 }
 
-func newConfigMetrics() *configMetrics {
+func newConfigMetrics(withClusterLabel bool) *configMetrics {
 	var m configMetrics
+	var labels []string
+	if withClusterLabel {
+		labels = []string{"sha256", "alloy_cluster"}
+	} else {
+		labels = []string{"sha256"}
+	}
 
 	m.configHash = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "alloy_config_hash",
 			Help: "Hash of the currently active config file.",
 		},
-		[]string{"sha256"},
+		labels,
 	)
 	m.configLoadSuccess = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "alloy_config_last_load_successful",
@@ -49,27 +55,23 @@ func newConfigMetrics() *configMetrics {
 	return &m
 }
 
-// Create a sha256 hash of the config before expansion and expose it via
-// the alloy_config_hash metric.
-func InstrumentConfig(buf []byte) {
-	InstrumentSHA256(sha256.Sum256(buf))
-}
+func InstrumentConfig(success bool, hash [sha256.Size]byte, clusterName string) {
+	configMetricsInitializer.Do(func() {
+		initializeConfigMetrics(clusterName != "")
+	})
 
-// InstrumentSHA256 stores the provided hash to the alloy_config_hash metric.
-func InstrumentSHA256(hash [sha256.Size]byte) {
-	configMetricsInitializer.Do(initializeConfigMetrics)
-	confMetrics.configHash.Reset()
-	confMetrics.configHash.WithLabelValues(fmt.Sprintf("%x", hash)).Set(1)
-}
-
-// Expose metrics for load success / failures.
-func InstrumentLoad(success bool) {
-	configMetricsInitializer.Do(initializeConfigMetrics)
 	if success {
 		confMetrics.configLoadSuccessSeconds.SetToCurrentTime()
 		confMetrics.configLoadSuccess.Set(1)
 	} else {
 		confMetrics.configLoadSuccess.Set(0)
 		confMetrics.configLoadFailures.Inc()
+	}
+
+	confMetrics.configHash.Reset()
+	if clusterName != "" {
+		confMetrics.configHash.WithLabelValues(fmt.Sprintf("%x", hash), clusterName).Set(1)
+	} else {
+		confMetrics.configHash.WithLabelValues(fmt.Sprintf("%x", hash)).Set(1)
 	}
 }
