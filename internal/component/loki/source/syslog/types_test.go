@@ -33,7 +33,7 @@ func TestValidate(t *testing.T) {
 			scFn: func(sc *ListenerConfig) {
 				sc.SyslogFormat = "invalid"
 			},
-			errSubstring: "syslog format should be",
+			errSubstring: "unknown syslog format",
 		},
 	}
 
