@@ -21,7 +21,7 @@ type SeriesGroup struct {
 }
 
 type TimeSeriesBinary struct {
-	// Labels are not serialized to msgp but are passed in.
+	// Labels are not serialized to msgp, instead we store separately a dictionary of strings and use `LabelNames` and `LabelValues` to refer to the dictionary by ID.
 	Labels       labels.Labels `msg:"-"`
 	LabelsNames  []uint32
 	LabelsValues []uint32

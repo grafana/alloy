@@ -13,7 +13,7 @@ import (
 )
 
 // serializer collects data from multiple appenders in-memory and will periodically flush the data to file.Storage.
-// serializer will trigger based on the last flush duration OR if it hits a certain amount of items.
+// serializer will flush based on configured time duration OR if it hits a certain number of items.
 type serializer struct {
 	inbox               actor.Mailbox[*types.TimeSeriesBinary]
 	metaInbox           actor.Mailbox[*types.TimeSeriesBinary]
