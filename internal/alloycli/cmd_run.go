@@ -321,8 +321,7 @@ func (fr *alloyRun) Run(configPath string) error {
 	ready = f.Ready
 	reload = func() (*alloy_runtime.Source, error) {
 		alloySource, err := loadAlloySource(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-		defer instrumentation.InstrumentSHA256(alloySource.SHA256())
-		defer instrumentation.InstrumentLoad(err == nil)
+		defer instrumentation.InstrumentConfig(err == nil, alloySource.SHA256(), fr.clusterName)
 
 		if err != nil {
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
@@ -475,8 +474,6 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 			return nil, diags
 		}
 	}
-
-	instrumentation.InstrumentConfig(bb)
 
 	return alloy_runtime.ParseSource(path, bb)
 }
