@@ -51,30 +51,24 @@ func (sc *ListenerConfig) Validate() error {
 		return fmt.Errorf("syslog listener protocol should be either 'tcp' or 'udp', got %s", sc.ListenProtocol)
 	}
 
-	if sc.SyslogFormat != SyslogFormatRFC3164 && sc.SyslogFormat != SyslogFormatRFC5424 {
-		return fmt.Errorf("syslog format should be either %q or %q, got %q",
-			SyslogFormatRFC3164,
-			SyslogFormatRFC5424,
-			sc.SyslogFormat)
+	_, err := convertSyslogFormat(sc.SyslogFormat)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
 // Convert is used to bridge between the Alloy and Promtail types.
-func (sc ListenerConfig) Convert() *scrapeconfig.SyslogTargetConfig {
+func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 	lbls := make(model.LabelSet, len(sc.Labels))
 	for k, v := range sc.Labels {
 		lbls[model.LabelName(k)] = model.LabelValue(v)
 	}
 
-	var syslogFormat scrapeconfig.SyslogFormat
-	if sc.SyslogFormat == SyslogFormatRFC3164 {
-		syslogFormat = scrapeconfig.SyslogFormatRFC3164
-	} else if sc.SyslogFormat == SyslogFormatRFC5424 {
-		syslogFormat = scrapeconfig.SyslogFormatRFC5424
-	} else {
-		panic("unknown syslog format " + sc.SyslogFormat)
+	syslogFormat, err := convertSyslogFormat(sc.SyslogFormat)
+	if err != nil {
+		return nil, err
 	}
 
 	return &scrapeconfig.SyslogTargetConfig{
@@ -88,5 +82,16 @@ func (sc ListenerConfig) Convert() *scrapeconfig.SyslogTargetConfig {
 		MaxMessageLength:     sc.MaxMessageLength,
 		TLSConfig:            *sc.TLSConfig.Convert(),
 		SyslogFormat:         syslogFormat,
+	}, nil
+}
+
+func convertSyslogFormat(format string) (scrapeconfig.SyslogFormat, error) {
+	switch format {
+	case SyslogFormatRFC3164:
+		return scrapeconfig.SyslogFormatRFC3164, nil
+	case SyslogFormatRFC5424:
+		return scrapeconfig.SyslogFormatRFC5424, nil
+	default:
+		return "", fmt.Errorf("unknown syslog format %q", format)
 	}
 }
