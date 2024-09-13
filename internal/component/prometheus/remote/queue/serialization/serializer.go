@@ -12,7 +12,7 @@ import (
 	"github.com/vladopajic/go-actor/actor"
 )
 
-// serializer collects data from multiple appenders and will write them to file.Storage.
+// serializer collects data from multiple appenders in-memory and will periodically flush the data to file.Storage.
 // serializer will trigger based on the last flush duration OR if it hits a certain amount of items.
 type serializer struct {
 	inbox               actor.Mailbox[*types.TimeSeriesBinary]
