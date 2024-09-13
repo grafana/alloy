@@ -28,7 +28,7 @@ func newConfigMetrics(withClusterLabel bool) *configMetrics {
 	var m configMetrics
 	var labels []string
 	if withClusterLabel {
-		labels = []string{"sha256", "alloy_cluster"}
+		labels = []string{"sha256", "cluster_name"}
 	} else {
 		labels = []string{"sha256"}
 	}
