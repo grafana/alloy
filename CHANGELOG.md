@@ -55,6 +55,9 @@ v1.4.0-rc.0
 
 - `prometheus.exporter.cloudwatch` can now collect metrics from custom namespaces via the `custom_namespace` block. (@ptodev)
 
+- Add the label `alloy_cluster` in the metric `alloy_config_hash` when the flag `cluster.name` is set to help differentiate between
+  configs from the same alloy cluster or different alloy clusters. (@wildum)
+
 ### Bugfixes
 
 - Fix a bug where the scrape timeout for a Probe resource was not applied, overwriting the scrape interval instead. (@morremeyer, @stefanandres)
