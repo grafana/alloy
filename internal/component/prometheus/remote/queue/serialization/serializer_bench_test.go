@@ -28,24 +28,19 @@ func BenchmarkAppender(b *testing.B) {
 }
 
 func BenchmarkSerializer(b *testing.B) {
-	// This should be around 200-300 allocs 7m ns/op
-	series := getTimeSeries(b)
 	b.ResetTimer()
 	b.ReportAllocs()
+	// This should be ~11 allocs and 1400-1800 ns/op.
 	logger := log.NewNopLogger()
+	serial, _ := NewSerializer(types.SerializerConfig{
+		MaxSignalsInBatch: 1_000,
+		FlushFrequency:    1 * time.Second,
+	}, &fakeFileQueue{}, func(stats types.SerializerStats) {}, logger)
+	serial.Start()
 	for i := 0; i < b.N; i++ {
-		serial, _ := NewSerializer(types.SerializerConfig{
-			MaxSignalsInBatch: 1_000,
-			FlushFrequency:    1 * time.Second,
-		}, &fakeFileQueue{}, func(stats types.SerializerStats) {
-
-		}, logger)
-		serial.Start()
-		for _, s := range series {
-			_ = serial.SendSeries(context.Background(), s)
-		}
-		serial.Stop()
+		_ = serial.SendSeries(context.Background(), getSingleTimeSeries(b))
 	}
+	serial.Stop()
 }
 
 func getTimeSeries(b *testing.B) []*types.TimeSeriesBinary {
@@ -59,6 +54,16 @@ func getTimeSeries(b *testing.B) []*types.TimeSeriesBinary {
 		series = append(series, timeseries)
 	}
 	return series
+}
+
+func getSingleTimeSeries(b *testing.B) *types.TimeSeriesBinary {
+	b.Helper()
+	timeseries := types.GetTimeSeriesFromPool()
+	timeseries.TS = time.Now().Unix()
+	timeseries.Value = rand.Float64()
+	timeseries.Labels = getLabels()
+	return timeseries
+
 }
 
 func getLabels() labels.Labels {

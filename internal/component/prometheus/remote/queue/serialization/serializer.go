@@ -101,7 +101,7 @@ func (s *serializer) DoWork(ctx actor.Context) actor.WorkerStatus {
 		s.series = append(s.series, item)
 		// If we would go over the max size then send, or if we have hit the flush duration then send.
 		if len(s.meta)+len(s.series) >= s.maxItemsBeforeFlush {
-			err := s.store(ctx)
+			err := s.flushToDisk(ctx)
 			if err != nil {
 				level.Error(s.logger).Log("msg", "unable to append to serializer", "err", err)
 			}
@@ -114,7 +114,7 @@ func (s *serializer) DoWork(ctx actor.Context) actor.WorkerStatus {
 		}
 		s.meta = append(s.meta, item)
 		if len(s.meta)+len(s.series) >= s.maxItemsBeforeFlush {
-			err := s.store(ctx)
+			err := s.flushToDisk(ctx)
 			if err != nil {
 				level.Error(s.logger).Log("msg", "unable to append metadata to serializer", "err", err)
 			}
@@ -122,7 +122,7 @@ func (s *serializer) DoWork(ctx actor.Context) actor.WorkerStatus {
 		return actor.WorkerContinue
 	case <-s.flushTestTimer.C:
 		if time.Since(s.lastFlush) > s.flushFrequency {
-			err := s.store(ctx)
+			err := s.flushToDisk(ctx)
 			if err != nil {
 				level.Error(s.logger).Log("msg", "unable to store data", "err", err)
 			}
@@ -131,7 +131,7 @@ func (s *serializer) DoWork(ctx actor.Context) actor.WorkerStatus {
 	}
 }
 
-func (s *serializer) store(ctx actor.Context) error {
+func (s *serializer) flushToDisk(ctx actor.Context) error {
 	var err error
 	defer func() {
 		s.lastFlush = time.Now()
@@ -154,18 +154,18 @@ func (s *serializer) store(ctx actor.Context) error {
 	}()
 
 	// This maps strings to index position in a slice. This is doing to reduce the file size of the data.
-	strMapToInt := make(map[string]uint32)
+	strMapToIndex := make(map[string]uint32)
 	for i, ts := range s.series {
-		ts.FillLabelMapping(strMapToInt)
+		ts.FillLabelMapping(strMapToIndex)
 		group.Series[i] = ts
 	}
 	for i, ts := range s.meta {
-		ts.FillLabelMapping(strMapToInt)
+		ts.FillLabelMapping(strMapToIndex)
 		group.Metadata[i] = ts
 	}
 
-	stringsSlice := make([]string, len(strMapToInt))
-	for stringValue, index := range strMapToInt {
+	stringsSlice := make([]string, len(strMapToIndex))
+	for stringValue, index := range strMapToIndex {
 		stringsSlice[index] = stringValue
 	}
 	group.Strings = stringsSlice
