@@ -82,7 +82,7 @@ Name                     | Type          | Description                          
 `use_incoming_timestamp` | `bool`        | Whether to set the timestamp to the incoming syslog record timestamp.         | `false`   | no
 `use_rfc5424_message`    | `bool`        | Whether to forward the full RFC5424-formatted syslog message.                 | `false`   | no
 `max_message_length`     | `int`         | The maximum limit to the length of syslog messages.                           | `8192`    | no
-`syslog_format`          | `string`      | The format for incoming messages. Must be either `rfc5242` or `rfc3164`.      | `rfc5242` | no
+`syslog_format`          | `string`      | The format for incoming messages. Must be either `rfc5424` or `rfc3164`.      | `rfc5424` | no
 
 By default, the component assigns the log entry timestamp as the time it was processed.
 
