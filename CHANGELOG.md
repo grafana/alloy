@@ -10,11 +10,6 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-### Enhancements
-
-- Add the label `alloy_cluster` in the metric `alloy_config_hash` when the flag `cluster.name` is set to help differentiate between
-  configs from the same alloy cluster or different alloy clusters. (@wildum)
-
 v1.4.0-rc.0
 -----------------
 
@@ -63,6 +58,9 @@ v1.4.0-rc.0
 - A new parameter `aws_sdk_version_v2` is added for the cloudwatch exporters configuration. It enables the use of aws sdk v2 which has shown to have significant performance benefits. (@kgeckhart, @andriikushch)
 
 - `prometheus.exporter.cloudwatch` can now collect metrics from custom namespaces via the `custom_namespace` block. (@ptodev)
+
+- Add the label `alloy_cluster` in the metric `alloy_config_hash` when the flag `cluster.name` is set to help differentiate between
+  configs from the same alloy cluster or different alloy clusters. (@wildum)
 
 ### Bugfixes
 
