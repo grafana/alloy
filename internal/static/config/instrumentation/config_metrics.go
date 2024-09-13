@@ -20,25 +20,22 @@ type configMetrics struct {
 var confMetrics *configMetrics
 var configMetricsInitializer sync.Once
 
-func initializeConfigMetrics(withClusterLabel bool) {
-	confMetrics = newConfigMetrics(withClusterLabel)
+func initializeConfigMetrics(clusterName string) {
+	confMetrics = newConfigMetrics(clusterName)
 }
 
-func newConfigMetrics(withClusterLabel bool) *configMetrics {
+func newConfigMetrics(clusterName string) *configMetrics {
 	var m configMetrics
-	var labels []string
-	if withClusterLabel {
-		labels = []string{"sha256", "cluster_name"}
-	} else {
-		labels = []string{"sha256"}
-	}
 
 	m.configHash = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "alloy_config_hash",
 			Help: "Hash of the currently active config file.",
+			ConstLabels: prometheus.Labels{
+				"cluster_name": clusterName,
+			},
 		},
-		labels,
+		[]string{"sha256"},
 	)
 	m.configLoadSuccess = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "alloy_config_last_load_successful",
@@ -57,7 +54,7 @@ func newConfigMetrics(withClusterLabel bool) *configMetrics {
 
 func InstrumentConfig(success bool, hash [sha256.Size]byte, clusterName string) {
 	configMetricsInitializer.Do(func() {
-		initializeConfigMetrics(clusterName != "")
+		initializeConfigMetrics(clusterName)
 	})
 
 	if success {
@@ -69,9 +66,5 @@ func InstrumentConfig(success bool, hash [sha256.Size]byte, clusterName string) 
 	}
 
 	confMetrics.configHash.Reset()
-	if clusterName != "" {
-		confMetrics.configHash.WithLabelValues(fmt.Sprintf("%x", hash), clusterName).Set(1)
-	} else {
-		confMetrics.configHash.WithLabelValues(fmt.Sprintf("%x", hash)).Set(1)
-	}
+	confMetrics.configHash.WithLabelValues(fmt.Sprintf("%x", hash)).Set(1)
 }
