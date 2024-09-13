@@ -43,7 +43,7 @@ The alternative is to do nothing as we deem this improvement unnecessary.
 
 ## Compatibility
 
-This proposal offer to deprecate for a couple of release the old way to configure the in-memory cache, then release+2 drop the old way. Doing so allow to migrate the settings to the correct block.
+This proposal offer to deprecate the old way to configure the in-memory cache and drop it in the next major release (e.g: 2.0). Doing so allow to migrate the settings to the correct block.
 
 ## Implementation
 
