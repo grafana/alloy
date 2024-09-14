@@ -22,7 +22,7 @@ spec:
   updateStrategy:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- with .Values.controller.terminationGracePeriodSeconds }}
-  terminationGracePeriodSeconds: {{ . }}
+  {{- if .Values.controller.terminationGracePeriodSeconds }}
+  terminationGracePeriodSeconds: {{ .Values.controller.terminationGracePeriodSeconds | int }}
   {{- end }}
 {{- end }}
