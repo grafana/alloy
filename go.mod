@@ -100,7 +100,7 @@ require (
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f
 	github.com/natefinch/atomic v1.0.1
 	github.com/ncabatoff/process-exporter v0.7.10
-	github.com/nerdswords/yet-another-cloudwatch-exporter v0.60.0
+	github.com/nerdswords/yet-another-cloudwatch-exporter v0.61.0
 	github.com/oklog/run v1.1.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/oliver006/redis_exporter v1.54.0
@@ -398,23 +398,23 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.16 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.1 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/amp v1.25.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/apigateway v1.23.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.20.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.40.6 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.38.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.38.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.161.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/amp v1.26.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/apigateway v1.24.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.21.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.41.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.39.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.39.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.165.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.3.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.18 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.17.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.21.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.22.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.27.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/shield v1.25.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/shield v1.26.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.22.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/storagegateway v1.27.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/storagegateway v1.30.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.4 // indirect
 	github.com/aws/smithy-go v1.20.4 // indirect
 	github.com/axiomhq/hyperloglog v0.0.0-20240124082744-24bca3a5b39b // indirect
@@ -813,6 +813,7 @@ require (
 )
 
 require (
+	github.com/aws/aws-sdk-go-v2/service/iam v1.33.1 // indirect
 	github.com/checkpoint-restore/go-criu/v6 v6.3.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
 )
