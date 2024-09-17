@@ -21,7 +21,7 @@ Documented functionality that's released as _Generally available_ is covered by 
 
 ## Exceptions
 
-We strive to maintain backward compatibility, but there are situations that may arise that require a breaking change without a new major version, deviating from [item 8 of the semver specification]:
+We strive to maintain backward compatibility, but there are situations that may arise that require a breaking change without a new major version, deviating from [item 8 of the semver specification][]:
 
 * **Security**: A security issue may arise that requires breaking compatibility.
 
