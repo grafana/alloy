@@ -10,6 +10,11 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Enhancements
+
+* `prometheus.exporter.cloudwatch`: The `discovery` block now has a `recently_active_only` configuration attribute 
+  to return only metrics which have been active in the last 3 hours.
+
 v1.4.0-rc.0
 -----------------
 
