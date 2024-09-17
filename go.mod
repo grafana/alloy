@@ -57,7 +57,7 @@ require (
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/beyla v1.8.2
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
-	github.com/grafana/ckit v0.0.0-20240624165704-36f3407a8eaa
+	github.com/grafana/ckit v0.0.0-20240913130805-0ee98bafad88
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
 	github.com/grafana/dskit v0.0.0-20240104111617-ea101a3b86eb
 	github.com/grafana/go-gelf/v2 v2.0.1
@@ -154,7 +154,7 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.66.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.66.0
 	github.com/prometheus/blackbox_exporter v0.24.1-0.20230623125439-bd22efa1c900
-	github.com/prometheus/client_golang v1.20.2
+	github.com/prometheus/client_golang v1.20.3
 	github.com/prometheus/client_model v0.6.1
 	github.com/prometheus/common v0.55.0
 	github.com/prometheus/common/sigv4 v0.1.0
