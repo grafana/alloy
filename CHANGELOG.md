@@ -10,6 +10,13 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Bugfixes
+
+
+- Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morreymeyer)
+  - Fixes a bug where cloudwatch S3 metrics are reported as `0`
+
+
 v1.4.0-rc.0
 -----------------
 
