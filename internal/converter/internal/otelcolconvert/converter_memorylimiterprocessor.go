@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/processor/memorylimiterprocessor"
 )
 
@@ -25,7 +26,7 @@ func (memoryLimiterProcessorConverter) Factory() component.Factory {
 func (memoryLimiterProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.memory_limiter"
 }
-func (memoryLimiterProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (memoryLimiterProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -43,7 +44,7 @@ func (memoryLimiterProcessorConverter) ConvertAndAppend(state *State, id compone
 	return diags
 }
 
-func toMemoryLimiterProcessor(state *State, id component.InstanceID, cfg *memorylimiterprocessor.Config) *memorylimiter.Arguments {
+func toMemoryLimiterProcessor(state *State, id componentstatus.InstanceID, cfg *memorylimiterprocessor.Config) *memorylimiter.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

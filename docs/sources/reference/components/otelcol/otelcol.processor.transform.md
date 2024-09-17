@@ -23,6 +23,8 @@ there is also a set of metrics-only functions:
 * [convert_summary_count_val_to_sum][]
 * [convert_summary_sum_val_to_sum][]
 * [copy_metric][]
+* [scale_metric][]
+* [aggregate_on_attributes][]
 
 [OTTL][] statements can also contain constructs such as:
 * [Booleans][OTTL booleans]:
@@ -516,6 +518,9 @@ otelcol.processor.transform "default" {
     context = "metric"
     statements = [
       `set(description, "Sum") where type == "Sum"`,
+      `convert_sum_to_gauge() where name == "system.processes.count"`,
+      `convert_gauge_to_sum("cumulative", false) where name == "prometheus_metric"`,
+      `aggregate_on_attributes("sum") where name == "system.memory.usage"`,
     ]
   }
 
@@ -524,8 +529,6 @@ otelcol.processor.transform "default" {
     statements = [
       `limit(attributes, 100, ["host.name"])`,
       `truncate_all(attributes, 4096)`,
-      `convert_sum_to_gauge() where metric.name == "system.processes.count"`,
-      `convert_gauge_to_sum("cumulative", false) where metric.name == "prometheus_metric"`,
     ]
   }
 
@@ -579,6 +582,8 @@ each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< pa
 [convert_summary_count_val_to_sum]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#convert_summary_count_val_to_sum
 [convert_summary_sum_val_to_sum]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#convert_summary_sum_val_to_sum
 [copy_metric]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#copy_metric
+[scale_metric]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#scale_metric
+[aggregate_on_attributes]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#aggregate_on_attributes
 [OTTL booleans]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/pkg/ottl#booleans
 [OTTL math expressions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/pkg/ottl#math-expressions
 [OTTL boolean expressions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/pkg/ottl#boolean-expressions

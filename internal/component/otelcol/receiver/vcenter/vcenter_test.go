@@ -73,6 +73,18 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			vcenter.cluster.vm_template.count {
 				enabled = true
 			}
+			vcenter.cluster.vsan.congestions {
+				enabled = true
+			}
+			vcenter.cluster.vsan.latency.avg {
+				enabled = true
+			}
+			vcenter.cluster.vsan.operations {
+				enabled = true
+			}
+			vcenter.cluster.vsan.throughput {
+				enabled = true
+			}
 			vcenter.datastore.disk.usage {
 				enabled = true
 			}
@@ -110,6 +122,21 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				enabled = true
 			}
 			vcenter.host.network.usage {
+				enabled = true
+			}
+			vcenter.host.vsan.cache.hit_rate {
+				enabled = true
+			}
+			vcenter.host.vsan.congestions {
+				enabled = true
+			}
+			vcenter.host.vsan.latency.avg {
+				enabled = true
+			}
+			vcenter.host.vsan.operations {
+				enabled = true
+			}
+			vcenter.host.vsan.throughput {
 				enabled = true
 			}
 			vcenter.resource_pool.cpu.shares {
@@ -172,6 +199,15 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			vcenter.vm.network.usage {
 				enabled = true
 			}
+			vcenter.vm.vsan.latency.avg {
+				enabled = true
+			}
+			vcenter.vm.vsan.operations {
+				enabled = true
+			}
+			vcenter.vm.vsan.throughput {
+				enabled = true
+			}
 		}
 
 		output { /* no-op */ }
@@ -210,6 +246,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.True(t, otelArgs.Metrics.VcenterClusterMemoryEffective.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterClusterMemoryLimit.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterClusterVMCount.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterClusterVsanCongestions.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterClusterVsanLatencyAvg.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterClusterVsanOperations.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterClusterVsanThroughput.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterDatastoreDiskUsage.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterDatastoreDiskUtilization.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostCPUUsage.Enabled)
@@ -223,6 +263,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.True(t, otelArgs.Metrics.VcenterHostNetworkPacketErrorRate.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostNetworkThroughput.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostNetworkUsage.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterHostVsanCacheHitRate.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterHostVsanCongestions.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterHostVsanLatencyAvg.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterHostVsanOperations.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterHostVsanThroughput.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterResourcePoolCPUShares.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterResourcePoolCPUUsage.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterResourcePoolMemoryShares.Enabled)
@@ -243,6 +288,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.True(t, otelArgs.Metrics.VcenterVMNetworkPacketDropRate.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMNetworkThroughput.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMNetworkUsage.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterVMVsanLatencyAvg.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterVMVsanOperations.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterVMVsanThroughput.Enabled)
 }
 
 func TestDebugMetricsConfig(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -23,7 +24,7 @@ func (headersSetterExtensionConverter) Factory() component.Factory {
 
 func (headersSetterExtensionConverter) InputComponentName() string { return "otelcol.auth.headers" }
 
-func (headersSetterExtensionConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (headersSetterExtensionConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
