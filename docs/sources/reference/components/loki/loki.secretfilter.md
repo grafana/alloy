@@ -17,8 +17,8 @@ labels:
 ## Usage
 
 ```alloy
-loki.secretfilter "LABEL" {
-    forward_to = RECEIVER_LIST
+loki.secretfilter "<LABEL>" {
+    forward_to = <RECEIVER_LIST>
 }
 ```
 
@@ -50,7 +50,7 @@ The `partial_mask` argument is the number of characters to show from the beginni
 
 ## Blocks
 
-The `loki.secretfilter` component does not support any blocks, and is configured fully through arguments.
+The `loki.secretfilter` component doesn't support any blocks, and is configured fully through arguments.
 
 ## Exported fields
 
@@ -66,15 +66,16 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-`loki.secretfilter` does not expose any component-specific debug information.
+`loki.secretfilter` doesn't expose any component-specific debug information.
 
 ## Example
 
-This example shows how to use `loki.secretfilter` to redact secrets from log entries before forwarding them to a Loki receiver. It uses a custom redaction string that will include the secret type and its hash.
+This example shows how to use `loki.secretfilter` to redact secrets from log entries before forwarding them to a Loki receiver.
+It uses a custom redaction string that will include the secret type and its hash.
 
 ```alloy
 local.file_match "local_logs" {
-	path_targets = PATH_TARGETS
+	path_targets = <PATH_TARGETS>
 }
 
 loki.source.file "local_logs" {
@@ -89,13 +90,13 @@ loki.secretfilter "secret_filter" {
 
 loki.write "local_loki" {
 	endpoint {
-		url = LOKI_ENDPOINT
+		url = <LOKI_ENDPOINT>
 	}
 }
 ```
 Replace the following:
-  - `PATH_TARGETS`: The paths to the log files to monitor.
-  - `LOKI_ENDPOINT`: The URL of the Loki instance to send logs to.
+  - `<PATH_TARGETS>`: The paths to the log files to monitor.
+  - `<LOKI_ENDPOINT>`: The URL of the Loki instance to send logs to.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
