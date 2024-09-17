@@ -354,6 +354,40 @@ trigger:
 type: docker
 ---
 kind: pipeline
+name: Build alloy (Linux amd64 boringcrypto)
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - make generate-ui
+  - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=amd64 GOARM=
+    GOEXPERIMENT=boringcrypto make alloy
+  image: grafana/alloy-build-image:v0.1.6-boringcrypto
+  name: Build
+trigger:
+  event:
+  - pull_request
+type: docker
+---
+kind: pipeline
+name: Build alloy (Linux arm64 boringcrypto)
+platform:
+  arch: amd64
+  os: linux
+steps:
+- commands:
+  - make generate-ui
+  - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=arm64 GOARM=
+    GOEXPERIMENT=boringcrypto make alloy
+  image: grafana/alloy-build-image:v0.1.6-boringcrypto
+  name: Build
+trigger:
+  event:
+  - pull_request
+type: docker
+---
+kind: pipeline
 name: Publish Linux alloy-devel container
 platform:
   arch: amd64
@@ -801,6 +835,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: c630f0d1bb15bade49aa723ecf1bd6720415ddac51b762ef5a210ffa34a1a733
+hmac: 353fac6e335a14f055d7e7a43b4d40517a1b5e28b3b3ad4d4e68df82b7f013b9
 
 ...
