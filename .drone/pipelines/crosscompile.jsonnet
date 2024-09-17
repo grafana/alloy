@@ -63,7 +63,10 @@ local build_environments(targets, tuples, image) = std.flatMap(function(target) 
         name: 'Build',
         image: image,
         commands: [
-          'make generate-ui',
+          'make generate-ui' +
+            (if env.GOOS == 'windows'
+                     then ' generate-winmanifest'
+                     else ""),
           (if 'GOEXPERIMENT' in env
            then 'GO_TAGS="%(tags)s" GOOS=%(GOOS)s GOARCH=%(GOARCH)s GOARM=%(GOARM)s GOEXPERIMENT=%(GOEXPERIMENT)s make %(target)s' % env
            else 'GO_TAGS="%(tags)s" GOOS=%(GOOS)s GOARCH=%(GOARCH)s GOARM=%(GOARM)s make %(target)s') % env,
