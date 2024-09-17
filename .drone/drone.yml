@@ -328,7 +328,7 @@ platform:
   os: linux
 steps:
 - commands:
-  - make generate-ui
+  - make generate-ui generate-winmanifest
   - GO_TAGS="builtinassets" GOOS=windows GOARCH=amd64 GOARM= make alloy
   image: grafana/alloy-build-image:v0.1.6
   name: Build
@@ -835,6 +835,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 353fac6e335a14f055d7e7a43b4d40517a1b5e28b3b3ad4d4e68df82b7f013b9
+hmac: 350ced7c5fc8047109896a2393131e80e20274b17240d61cb073b96a0ebe29a2
 
 ...

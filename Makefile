@@ -235,7 +235,8 @@ generate-ui:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./internal/web/ui && yarn --network-timeout=1200000 && yarn run build
+	export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+	cd ./internal/web/ui && yarn --network-timeout=1200000 &&  yarn run build
 endif
 
 generate-versioned-files:
@@ -256,7 +257,7 @@ generate-winmanifest:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	go generate ./internal/winmanifest
+	GOOS=linux GOARCH=amd64 GOEXPERIMENT= go generate ./internal/winmanifest
 endif
 #
 # Other targets
