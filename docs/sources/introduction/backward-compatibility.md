@@ -8,7 +8,7 @@ weight: 999
 
 # {{% param "FULL_PRODUCT_NAME" %}} backward compatibility
 
-{{< param "FULL_PRODUCT_NAME" >}} mosty follows [semantic versioning][], with the differences documented in the [Exceptions](#exceptions) section.
+{{< param "FULL_PRODUCT_NAME" >}} mostly follows [semantic versioning][], with the differences documented in the [Exceptions](#exceptions) section.
 {{< param "PRODUCT_NAME" >}} is stable, and we strive to maintain backward compatibility between minor and patch versions.
 
 Documented functionality that's released as _Generally available_ is covered by backward compatibility, including:
