@@ -8,7 +8,7 @@ weight: 999
 
 # {{% param "FULL_PRODUCT_NAME" %}} backward compatibility
 
-{{< param "FULL_PRODUCT_NAME" >}} follows [semantic versioning][].
+{{< param "FULL_PRODUCT_NAME" >}} follows [semantic versioning][]. [Exceptions](#exceptions) may arise that require a breaking change without a new major version.
 {{< param "PRODUCT_NAME" >}} is stable, and we strive to maintain backward compatibility between minor and patch versions.
 
 Documented functionality that's released as _Generally available_ is covered by backward compatibility, including:
@@ -21,7 +21,7 @@ Documented functionality that's released as _Generally available_ is covered by 
 
 ## Exceptions
 
-We strive to maintain backward compatibility, but there are situations that may arise that require a breaking change without a new major version:
+We strive to maintain backward compatibility, but there are situations that may arise that require a breaking change without a new major version, deviating from [item 8 of the semver specification][]:
 
 * **Security**: A security issue may arise that requires breaking compatibility.
 
@@ -36,4 +36,5 @@ We strive to maintain backward compatibility, but there are situations that may 
 We try, whenever possible, to resolve these issues without breaking compatibility.
 
 [semantic versioning]: https://semver.org/
+[item 8 of the semver specification]: https://semver.org/spec/v2.0.0.html#spec-item-8
 [alloy-mixin]: https://github.com/grafana/alloy/tree/main/operations/alloy-mixin
