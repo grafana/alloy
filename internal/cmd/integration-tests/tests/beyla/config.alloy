@@ -1,0 +1,24 @@
+beyla.ebpf "default" {
+  executable_name	 = "main" // this is instrumenting the otel-metrics-gen app
+}
+
+prometheus.scrape "beyla" {
+  targets = beyla.ebpf.default.targets
+  honor_labels = true
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+  forward_to = [prometheus.remote_write.beyla.receiver]
+}
+
+prometheus.remote_write "beyla" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    queue_config {
+      max_samples_per_send = 100
+    }
+  }
+
+  external_labels = {
+    test_name = "beyla",
+  }
+}

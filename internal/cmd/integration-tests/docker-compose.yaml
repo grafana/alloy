@@ -1,6 +1,4 @@
-version: "3"
 services:
-
   mimir:
     image: grafana/mimir:2.10.4
     volumes:
@@ -10,12 +8,16 @@ services:
       - -config.file=/etc/mimir-config/mimir.yaml
     ports:
       - "9009:9009"
+    networks:
+      - integration-tests
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - integration-tests
 
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -30,6 +32,8 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - integration-tests
 
   kafka-gen:
     depends_on:
@@ -37,19 +41,27 @@ services:
     build:
       dockerfile: ./internal/cmd/integration-tests/configs/kafka/Dockerfile
       context: ../../..
+    networks:
+      - integration-tests
 
   loki:
     image: grafana/loki:latest
     command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
+    networks:
+      - integration-tests
 
   otel-metrics-gen:
     build:
       dockerfile: ./internal/cmd/integration-tests/configs/otel-metrics-gen/Dockerfile
       context: ../../..
     environment:
-      - OTEL_EXPORTER_ENDPOINT=${OTEL_EXPORTER_ENDPOINT:-host.docker.internal:4318}
+      - OTEL_EXPORTER_ENDPOINT=${OTEL_EXPORTER_ENDPOINT:-alloy-otlp-metrics:4318}
+    networks:
+      - integration-tests
+    ports:
+      - "8443:8443"
 
   prom-gen:
     build:
@@ -57,14 +69,24 @@ services:
       context: ../../..
     ports:
       - "9001:9001"
+    networks:
+      - integration-tests
 
   redis:
     image: redis:6.0.9-alpine
     ports:
       - "6379:6379"
+    networks:
+      - integration-tests
 
   snmp-simulator:
     image: tandrup/snmpsim:v0.4
     container_name: snmpsim
     ports:
       - "161:161/udp"
+    networks:
+      - integration-tests
+
+networks:
+  integration-tests:
+    driver: bridge

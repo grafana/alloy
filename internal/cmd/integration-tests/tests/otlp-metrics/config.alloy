@@ -20,7 +20,7 @@ otelcol.processor.attributes "otlp_metrics" {
 
 otelcol.exporter.otlphttp "otlp_metrics" {
   client {
-    endpoint = "http://localhost:9009/otlp"
+    endpoint = "http://mimir:9009/otlp"
     tls {
       insecure             = true
       insecure_skip_verify = true
@@ -34,7 +34,7 @@ otelcol.exporter.prometheus "otlp_to_prom_metrics" {
 
 prometheus.remote_write "otlp_to_prom_metrics" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     send_native_histograms = true
     metadata_config {
         send_interval = "1s"

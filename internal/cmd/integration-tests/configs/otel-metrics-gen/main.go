@@ -20,7 +20,7 @@ func main() {
 	ctx := context.Background()
 	otlpExporterEndpoint, ok := os.LookupEnv(otelExporterOtlpEndpoint)
 	if !ok {
-		otlpExporterEndpoint = "localhost:4318"
+		otlpExporterEndpoint = "alloy-otlp-metrics:4318"
 	}
 	exporter, err := otlpmetrichttp.New(ctx,
 		otlpmetrichttp.WithInsecure(),

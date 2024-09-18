@@ -9,7 +9,7 @@ on:
   pull_request:
 jobs:
   run_tests:
-    runs-on: ubuntu-latest
+    runs-on: github-hosted-ubuntu-x64-large
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -17,7 +17,5 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: "1.22"
-    - name: Set OTEL Exporter Endpoint
-      run: echo "OTEL_EXPORTER_ENDPOINT=172.17.0.1:4318" >> $GITHUB_ENV
     - name: Run tests
       run: make integration-test
