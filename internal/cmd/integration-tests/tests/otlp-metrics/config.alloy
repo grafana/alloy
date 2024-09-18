@@ -45,7 +45,7 @@ otelcol.exporter.prometheus "otlp_to_prom_metrics" {
 
 prometheus.remote_write "otlp_to_prom_metrics" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     send_native_histograms = true
     metadata_config {
         send_interval = "1s"

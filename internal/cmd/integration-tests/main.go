@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
+	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 )
 
 var specificTest string
@@ -29,13 +32,31 @@ func main() {
 }
 
 func runIntegrationTests(cmd *cobra.Command, args []string) {
-	defer reportResults()
-	defer cleanUpEnvironment()
-
 	if !skipBuild {
 		buildAlloy()
 	}
-	setupEnvironment()
+
+	err := os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+	if err != nil {
+		fmt.Println("error setting environment variable:", err)
+		return
+	}
+
+	compose, err := tc.NewDockerCompose("./docker-compose.yaml")
+	if err != nil {
+		panic(fmt.Errorf("failed to parse the docker compose file: %v", err))
+	}
+
+	ctx := context.Background()
+	fmt.Println("Start test containers with docker compose config")
+	err = compose.Up(ctx)
+	if err != nil {
+		panic(fmt.Errorf("could not start the docker compose: %v", err))
+	}
+	defer compose.Down(context.Background(), tc.RemoveImagesAll)
+
+	fmt.Println("Sleep for 10 seconds to ensure that the env has time to initialize...")
+	time.Sleep(10 * time.Second)
 
 	if specificTest != "" {
 		fmt.Println("Running", specificTest)
@@ -43,13 +64,14 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 			specificTest = "./tests/" + specificTest
 		}
 		logChan = make(chan TestLog, 1)
-		runSingleTest(specificTest, 12345)
+		runSingleTest(ctx, specificTest, 12345)
 	} else {
 		testDirs, err := filepath.Glob("./tests/*")
 		if err != nil {
 			panic(err)
 		}
 		logChan = make(chan TestLog, len(testDirs))
-		runAllTests()
+		runAllTests(ctx)
 	}
+	reportResults()
 }
