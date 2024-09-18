@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add the function `path_join` to the stdlib. (@wildum)
+
 ### Bugfixes
 
 
