@@ -17,7 +17,7 @@ Main (unreleased)
   - Fixes a bug where cloudwatch S3 metrics are reported as `0`
 
 
-v1.4.0-rc.0
+v1.4.0-rc.2
 -----------------
 
 ### Breaking changes
