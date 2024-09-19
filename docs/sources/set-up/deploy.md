@@ -146,9 +146,9 @@ This similarity is because most {{< param "PRODUCT_NAME" >}} components used for
 #### When to scale
 
 To decide whether scaling is necessary, check metrics such as:
-* `receiver_refused_spans_ratio_total` from receivers such as `otelcol.receiver.otlp`.
-* `processor_refused_spans_ratio_total` from processors such as `otelcol.processor.batch`.
-* `exporter_send_failed_spans_ratio_total` from exporters such as `otelcol.exporter.otlp` and `otelcol.exporter.loadbalancing`.
+* `otelcol_receiver_refused_spans_total` from receivers such as `otelcol.receiver.otlp`.
+* `otelcol_receiver_refused_spans_total` from processors such as `otelcol.processor.batch`.
+* `otelcol_exporter_send_failed_spans_total` from exporters such as `otelcol.exporter.otlp` and `otelcol.exporter.loadbalancing`.
 
 #### Stateful and stateless components
 
