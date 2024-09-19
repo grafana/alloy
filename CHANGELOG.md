@@ -18,6 +18,7 @@ Main (unreleased)
 - Fixed incorrect debug metric names in `otelcol.exporter.awss3`, `otelcol.exporter.otlp`, `otelcol.processor.batch`, `otelcol.processor.deltatocumulative` and `otelcol.processor.otlp`
   which have changed due to an upstream breaking change. The dashboards and alerts in the mixin have also been fixed. (@thampiotr)
 
+- Fix issue where `loki.source.kubernetes` took into account all labels, instead of specific logs labels. Resulting in duplication. (@mattdurham)
 
 v1.4.0-rc.2
 -----------------
