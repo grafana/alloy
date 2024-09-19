@@ -10,6 +10,10 @@ import (
 	"go.uber.org/atomic"
 )
 
+const MetaType = "__alloy_metadata_type__"
+const MetaUnit = "__alloy_metadata_unit__"
+const MetaHelp = "__alloy_metadata_help__"
+
 // SeriesGroup is the holder for TimeSeries, Metadata, and the strings array.
 // When serialized the Labels Key,Value array will be transformed into
 // LabelNames and LabelsValues that point to the index in Strings.

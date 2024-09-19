@@ -104,15 +104,15 @@ func (a *appender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m meta
 	// to ensure its efficient it makes sense to encode metadata into it.
 	combinedLabels := l.Copy()
 	combinedLabels = append(combinedLabels, labels.Label{
-		Name:  "__alloy_metadata_type__",
+		Name:  types.MetaType,
 		Value: string(m.Type),
 	})
 	combinedLabels = append(combinedLabels, labels.Label{
-		Name:  "__alloy_metadata_help__",
+		Name:  types.MetaHelp,
 		Value: m.Help,
 	})
 	combinedLabels = append(combinedLabels, labels.Label{
-		Name:  "__alloy_metadata_unit__",
+		Name:  types.MetaUnit,
 		Value: m.Unit,
 	})
 	ts.Labels = combinedLabels
