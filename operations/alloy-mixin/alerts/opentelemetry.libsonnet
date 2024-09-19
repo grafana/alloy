@@ -11,9 +11,9 @@ local alert = import './utils/alert.jsonnet';
         alert.newRule(
           'OtelcolReceiverRefusedSpans',
           if enableK8sCluster then
-            'sum by (cluster, namespace, job) (rate(receiver_refused_spans_ratio_total{}[1m])) > 0'
+            'sum by (cluster, namespace, job) (rate(otelcol_receiver_refused_spans_total{}[1m])) > 0'
           else
-            'sum by (job) (rate(receiver_refused_spans_ratio_total{}[1m])) > 0'
+            'sum by (job) (rate(otelcol_receiver_refused_spans_total{}[1m])) > 0'
           ,
           'The receiver could not push some spans to the pipeline.',
           'The receiver could not push some spans to the pipeline under job {{ $labels.job }}. This could be due to reaching a limit such as the ones imposed by otelcol.processor.memory_limiter.',
@@ -25,9 +25,9 @@ local alert = import './utils/alert.jsonnet';
         alert.newRule(
           'OtelcolExporterFailedSpans',
           if enableK8sCluster then
-            'sum by (cluster, namespace, job) (rate(exporter_send_failed_spans_ratio_total{}[1m])) > 0'
+            'sum by (cluster, namespace, job) (rate(otelcol_exporter_send_failed_spans_total{}[1m])) > 0'
           else
-            'sum by (job) (rate(exporter_send_failed_spans_ratio_total{}[1m])) > 0'
+            'sum by (job) (rate(otelcol_exporter_send_failed_spans_total{}[1m])) > 0'
           ,
           'The exporter failed to send spans to their destination.',
           'The exporter failed to send spans to their destination under job {{ $labels.job }}. There could be an issue with the payload or with the destination endpoint.',
