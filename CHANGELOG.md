@@ -16,6 +16,9 @@ Main (unreleased)
 - Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morreymeyer)
   - Fixes a bug where cloudwatch S3 metrics are reported as `0`
 
+### Other changes
+
+- Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
 
 v1.4.0-rc.2
 -----------------
