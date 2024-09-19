@@ -19,37 +19,7 @@ type DistributedTargets struct {
 // NewDistributedTargets creates the abstraction that allows components to
 // dynamically shard targets between components.
 func NewDistributedTargets(clusteringEnabled bool, cluster cluster.Cluster, allTargets []Target) *DistributedTargets {
-	if !clusteringEnabled || cluster == nil {
-		cluster = disabledCluster{}
-	}
-
-	localCap := len(allTargets) + 1
-	if peerCount := len(cluster.Peers()); peerCount != 0 {
-		localCap = (len(allTargets) + 1) / peerCount
-	}
-
-	localTargets := make([]Target, 0, localCap)
-	localTargetKeys := make([]shard.Key, 0, localCap)
-	remoteTargetKeys := make(map[shard.Key]struct{}, len(allTargets)-localCap)
-
-	for _, tgt := range allTargets {
-		targetKey := keyFor(tgt)
-		peers, err := cluster.Lookup(targetKey, 1, shard.OpReadWrite)
-		belongsToLocal := err != nil || len(peers) == 0 || peers[0].Self
-
-		if belongsToLocal {
-			localTargets = append(localTargets, tgt)
-			localTargetKeys = append(localTargetKeys, targetKey)
-		} else {
-			remoteTargetKeys[targetKey] = struct{}{}
-		}
-	}
-
-	return &DistributedTargets{
-		localTargets:     localTargets,
-		localTargetKeys:  localTargetKeys,
-		remoteTargetKeys: remoteTargetKeys,
-	}
+	return NewDistributedTargetsWithCustomLabels(clusteringEnabled, cluster, allTargets, nil)
 }
 
 // NewDistributedTargetsWithCustomLabels creates the abstraction that allows components to
@@ -71,7 +41,13 @@ func NewDistributedTargetsWithCustomLabels(clusteringEnabled bool, cluster clust
 	// Need to handle duplicate entries.
 	singlular := make(map[shard.Key]struct{})
 	for _, tgt := range allTargets {
-		targetKey := keyForLabels(tgt, labels)
+		var targetKey shard.Key
+		// If we have no custom labels check all non-meta labels.
+		if len(labels) == 0 {
+			targetKey = keyFor(tgt)
+		} else {
+			targetKey = keyForLabels(tgt, labels)
+		}
 		if _, ok := singlular[targetKey]; ok {
 			continue
 		}
