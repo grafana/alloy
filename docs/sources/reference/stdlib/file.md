@@ -11,7 +11,7 @@ The `file` namespace contains functions related to files.
 
 ## file.path_join
 
-The `file.path_join` function joins any number of path elements into a single path, separating them with an OS specific separator.
+The `file.path_join` function joins any number of path elements into a single path, separating them with an OS-specific separator.
 
 ### Examples
 
