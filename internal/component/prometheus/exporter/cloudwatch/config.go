@@ -41,6 +41,7 @@ type Arguments struct {
 	DiscoveryExportedTags TagsPerNamespace      `alloy:"discovery_exported_tags,attr,optional"`
 	Discovery             []DiscoveryJob        `alloy:"discovery,block,optional"`
 	Static                []StaticJob           `alloy:"static,block,optional"`
+	CustomNamespace       []CustomNamespaceJob  `alloy:"custom_namespace,block,optional"`
 	DecoupledScrape       DecoupledScrapeConfig `alloy:"decoupled_scraping,block,optional"`
 	UseAWSSDKVersion2     bool                  `alloy:"aws_sdk_version_v2,attr,optional"`
 }
@@ -55,6 +56,7 @@ type DecoupledScrapeConfig struct {
 type TagsPerNamespace = cloudwatch_exporter.TagsPerNamespace
 
 // DiscoveryJob configures a discovery job for a given service.
+// TODO: Add a recently_active_only attribute.
 type DiscoveryJob struct {
 	Auth                      RegionAndRoles `alloy:",squash"`
 	CustomTags                Tags           `alloy:"custom_tags,attr,optional"`
@@ -62,7 +64,8 @@ type DiscoveryJob struct {
 	Type                      string         `alloy:"type,attr"`
 	DimensionNameRequirements []string       `alloy:"dimension_name_requirements,attr,optional"`
 	Metrics                   []Metric       `alloy:"metric,block"`
-	NilToZero                 *bool          `alloy:"nil_to_zero,attr,optional"`
+	//TODO: Remove NilToZero, because it is deprecated upstream.
+	NilToZero *bool `alloy:"nil_to_zero,attr,optional"`
 }
 
 // Tags represents a series of tags configured on an AWS resource. Each tag is a
@@ -77,7 +80,20 @@ type StaticJob struct {
 	Namespace  string         `alloy:"namespace,attr"`
 	Dimensions Dimensions     `alloy:"dimensions,attr"`
 	Metrics    []Metric       `alloy:"metric,block"`
-	NilToZero  *bool          `alloy:"nil_to_zero,attr,optional"`
+	//TODO: Remove NilToZero, because it is deprecated upstream.
+	NilToZero *bool `alloy:"nil_to_zero,attr,optional"`
+}
+
+type CustomNamespaceJob struct {
+	Auth                      RegionAndRoles `alloy:",squash"`
+	Name                      string         `alloy:",label"`
+	CustomTags                Tags           `alloy:"custom_tags,attr,optional"`
+	DimensionNameRequirements []string       `alloy:"dimension_name_requirements,attr,optional"`
+	Namespace                 string         `alloy:"namespace,attr"`
+	RecentlyActiveOnly        bool           `alloy:"recently_active_only,attr,optional"`
+	Metrics                   []Metric       `alloy:"metric,block"`
+	//TODO: Remove NilToZero, because it is deprecated upstream.
+	NilToZero *bool `alloy:"nil_to_zero,attr,optional"`
 }
 
 // RegionAndRoles exposes for each supported job, the AWS regions and IAM roles
@@ -181,6 +197,10 @@ func convertToYACE(a Arguments) (yaceModel.JobsConfig, error) {
 	for _, stat := range a.Static {
 		staticJobs = append(staticJobs, toYACEStaticJob(stat))
 	}
+	var customNamespaceJobs []*yaceConf.CustomNamespace
+	for _, cn := range a.CustomNamespace {
+		customNamespaceJobs = append(customNamespaceJobs, toYACECustomNamespaceJob(cn))
+	}
 	conf := yaceConf.ScrapeConf{
 		APIVersion: "v1alpha1",
 		StsRegion:  a.STSRegion,
@@ -188,7 +208,8 @@ func convertToYACE(a Arguments) (yaceModel.JobsConfig, error) {
 			ExportedTagsOnMetrics: yaceConf.ExportedTagsOnMetrics(a.DiscoveryExportedTags),
 			Jobs:                  discoveryJobs,
 		},
-		Static: staticJobs,
+		Static:          staticJobs,
+		CustomNamespace: customNamespaceJobs,
 	}
 
 	// Run the exporter's config validation. Between other things, it will check that the service for which a discovery
@@ -297,18 +318,29 @@ func toYACEDiscoveryJob(rj DiscoveryJob) *yaceConf.Job {
 		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
 		// metrics, with the smallest period in the retrieved batch.
 		RoundingPeriod: nil,
-		JobLevelMetricFields: yaceConf.JobLevelMetricFields{
-			// Set to zero job-wide scraping time settings. This should be configured at the metric level to make the data
-			// being fetched more explicit.
-			Period:                 0,
-			Length:                 0,
-			Delay:                  0,
-			NilToZero:              nilToZero,
-			AddCloudwatchTimestamp: &addCloudwatchTimestamp,
-		},
 		Metrics: toYACEMetrics(rj.Metrics, nilToZero),
 	}
 	return job
+}
+
+func toYACECustomNamespaceJob(cn CustomNamespaceJob) *yaceConf.CustomNamespace {
+	nilToZero := cn.NilToZero
+	if nilToZero == nil {
+		nilToZero = &defaultNilToZero
+	}
+	return &yaceConf.CustomNamespace{
+		Name:                      cn.Name,
+		Namespace:                 cn.Namespace,
+		Regions:                   cn.Auth.Regions,
+		Roles:                     toYACERoles(cn.Auth.Roles),
+		CustomTags:                cn.CustomTags.toYACE(),
+		DimensionNameRequirements: cn.DimensionNameRequirements,
+		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
+		// metrics, with the smallest period in the retrieved batch.
+		RoundingPeriod:     nil,
+		RecentlyActiveOnly: cn.RecentlyActiveOnly,
+		Metrics: toYACEMetrics(cn.Metrics, nilToZero),
+	}
 }
 
 // getHash calculates the MD5 hash of the Alloy representation of the config.

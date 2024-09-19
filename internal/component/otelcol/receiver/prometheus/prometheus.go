@@ -143,7 +143,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		return err
 	}
 
-	settings := otelreceiver.CreateSettings{
+	settings := otelreceiver.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
 
@@ -151,8 +151,6 @@ func (c *Component) Update(newConfig component.Arguments) error {
 			TracerProvider: traceNoop.NewTracerProvider(),
 			MeterProvider:  metricNoop.NewMeterProvider(),
 			MetricsLevel:   metricsLevel,
-
-			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{

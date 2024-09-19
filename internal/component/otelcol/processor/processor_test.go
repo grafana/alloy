@@ -122,7 +122,7 @@ func newTestEnvironment(
 				},
 				otelprocessor.WithTraces(func(
 					_ context.Context,
-					_ otelprocessor.CreateSettings,
+					_ otelprocessor.Settings,
 					_ otelcomponent.Config,
 					t otelconsumer.Traces,
 				) (otelprocessor.Traces, error) {

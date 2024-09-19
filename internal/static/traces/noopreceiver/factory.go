@@ -30,7 +30,7 @@ func createDefaultConfig() component.Config {
 // implement a metrics receiver.
 func createMetricsReceiver(
 	_ context.Context,
-	_ receiver.CreateSettings,
+	_ receiver.Settings,
 	_ component.Config,
 	_ consumer.Metrics,
 ) (receiver.Metrics, error) {

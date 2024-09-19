@@ -35,7 +35,7 @@ func createDefaultConfig() component.Config {
 	}
 }
 
-func createTracesReceiver(_ context.Context, params receiver.CreateSettings, cfg component.Config, consumer consumer.Traces) (_ receiver.Traces, err error) {
+func createTracesReceiver(_ context.Context, params receiver.Settings, cfg component.Config, consumer consumer.Traces) (_ receiver.Traces, err error) {
 	rcfg := cfg.(*Config)
 	r := receivers.GetOrAdd(rcfg, func() (dd component.Component) {
 		dd, err = newDataDogReceiver(rcfg, params)
@@ -49,7 +49,7 @@ func createTracesReceiver(_ context.Context, params receiver.CreateSettings, cfg
 	return r, nil
 }
 
-func createMetricsReceiver(_ context.Context, params receiver.CreateSettings, cfg component.Config, consumer consumer.Metrics) (_ receiver.Metrics, err error) {
+func createMetricsReceiver(_ context.Context, params receiver.Settings, cfg component.Config, consumer consumer.Metrics) (_ receiver.Metrics, err error) {
 	rcfg := cfg.(*Config)
 	r := receivers.GetOrAdd(cfg, func() (dd component.Component) {
 		dd, err = newDataDogReceiver(rcfg, params)

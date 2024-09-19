@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/receiver/scraperhelper"
 )
 
@@ -26,7 +27,7 @@ func (filestatsReceiverConverter) Factory() component.Factory { return filestats
 
 func (filestatsReceiverConverter) InputComponentName() string { return "" }
 
-func (filestatsReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (filestatsReceiverConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -43,7 +44,7 @@ func (filestatsReceiverConverter) ConvertAndAppend(state *State, id component.In
 	return diags
 }
 
-func toFilestatsReceiver(state *State, id component.InstanceID, cfg *filestatsreceiver.Config) *file_stats.Arguments {
+func toFilestatsReceiver(state *State, id componentstatus.InstanceID, cfg *filestatsreceiver.Config) *file_stats.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 	)
