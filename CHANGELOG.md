@@ -10,15 +10,13 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-### Breaking changes
-
-- Debug metric names in `otelcol.exporter.awss3`, `otelcol.exporter.otlp`, `otelcol.processor.batch` and `otelcol.processor.otlp`
-  have changed due to an upstream breaking change. The dashboards and alerts in the mixin have been updated.
-
 ### Bugfixes
 
 - Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morreymeyer)
   - Fixes a bug where cloudwatch S3 metrics are reported as `0`
+
+- Fixed incorrect debug metric names in `otelcol.exporter.awss3`, `otelcol.exporter.otlp`, `otelcol.processor.batch` and `otelcol.processor.otlp`
+  which have changed due to an upstream breaking change. The dashboards and alerts in the mixin have also been fixed. (@thampiotr)
 
 
 v1.4.0-rc.2
