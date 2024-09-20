@@ -12,7 +12,11 @@ labels:
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`loki.secretfilter` receives log entries and redacts sensitive information, such as secrets, from them.
+`loki.secretfilter` receives log entries and redacts sensitive information, such as secrets, from them. The detection is based on regex patterns, defined in the gitleaks configuration file embedded within the component. It can also use a custom configuration file based on the gitleaks configuration file structure.
+
+Note that Personally Identifiable Information (PII) or undefined secret types could remain undetected.
+
+[Gitleaks configuration file]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
 ## Usage
 

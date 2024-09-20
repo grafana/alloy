@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
 //go:embed gitleaks.toml
@@ -71,7 +72,8 @@ func (args *Arguments) SetToDefault() {
 }
 
 var (
-	_ component.Component = (*Component)(nil)
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
 )
 
 // Component implements the loki.secretfilter component.
@@ -84,6 +86,8 @@ type Component struct {
 	fanout    []loki.LogsReceiver
 	Rules     []Rule
 	AllowList []AllowRule
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
 // Non-exhaustive representation. See https://github.com/gitleaks/gitleaks/blob/master/config/config.go
@@ -109,9 +113,15 @@ type GitLeaksConfig struct {
 
 // New creates a new loki.secretfilter component.
 func New(o component.Options, args Arguments) (*Component, error) {
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
-		opts:     o,
-		receiver: loki.NewLogsReceiver(),
+		opts:               o,
+		receiver:           loki.NewLogsReceiver(),
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	// Call to Update() once at the start.
@@ -128,13 +138,19 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	componentID := livedebugging.ComponentID(c.opts.ID)
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case entry := <-c.receiver.Chan():
 			// Start processing the log entry to redact secrets
-			entry = c.processEntry(entry)
+			newEntry := c.processEntry(entry)
+			if c.debugDataPublisher.IsActive(componentID) {
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("incoming entry: %s, redacted entry: %s", entry.Line, newEntry.Line))
+			}
+			entry = newEntry
 
 			for _, f := range c.fanout {
 				select {
@@ -165,11 +181,9 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 			// If a secretGroup is provided, use that instead
 			if r.secretGroup > 0 && len(occ) > r.secretGroup {
 				secret = occ[r.secretGroup]
-			} else {
+			} else if len(occ) == 2 {
 				// If not and there are two submatches, the first one is the secret
-				if len(occ) == 2 {
-					secret = occ[1]
-				}
+				secret = occ[1]
 			}
 
 			// Check if the secret is in the allowlist
@@ -192,7 +206,7 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 			}
 			// If allowed, skip redaction
 			if allowRule != nil {
-				level.Info(c.opts.Logger).Log("msg", "secret in allowlist", "rule", r.name, "source", allowRule.Source)
+				level.Debug(c.opts.Logger).Log("msg", "secret in allowlist", "rule", r.name, "source", allowRule.Source)
 				continue
 			}
 
@@ -262,7 +276,7 @@ func (c *Component) Update(args component.Arguments) error {
 			for _, t := range c.args.Types {
 				if strings.HasPrefix(strings.ToLower(rule.ID), strings.ToLower(t)) {
 					found = true
-					continue
+					break
 				}
 			}
 			if !found {
@@ -333,3 +347,5 @@ func (c *Component) Update(args component.Arguments) error {
 
 	return nil
 }
+
+func (c *Component) LiveDebugging(_ int) {}
