@@ -25,7 +25,8 @@ v1.4.0-rc.3
 
 ### Breaking changes
 
-- Some debug metrics for `otelcol` components have changed to include an `otelcol_` prefix. (@thampiotr)
+- Some debug metrics for `otelcol` components have changed. (@thampiotr)
+  For example, `otelcol.exporter.otlp`'s `exporter_sent_spans_ratio_total` metric is now `otelcol_exporter_sent_spans_total`.
 
 - [otelcol.processor.transform] The functions `convert_sum_to_gauge` and `convert_gauge_to_sum` must now be used in the `metric` `context` rather than in the `datapoint` context.
   https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/34567 (@wildum)
