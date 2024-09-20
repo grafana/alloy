@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
 
+- Changed OTEL alerts in Alloy mixin to use success rate for tracing. (@thampiotr)
+
 v1.4.0-rc.3
 -----------------
 
