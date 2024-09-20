@@ -32,7 +32,7 @@ type loop struct {
 	client         *http.Client
 	batchCount     int
 	flushFrequency time.Duration
-	cfg            ConnectionConfig
+	cfg            types.ConnectionConfig
 	log            log.Logger
 	lastSend       time.Time
 	statsFunc      func(s types.NetworkStats)
@@ -46,7 +46,7 @@ type loop struct {
 	sendBuffer     []byte
 }
 
-func newLoop(cc ConnectionConfig, isMetaData bool, log log.Logger, stats func(s types.NetworkStats)) *loop {
+func newLoop(cc types.ConnectionConfig, isMetaData bool, log log.Logger, stats func(s types.NetworkStats)) *loop {
 	// TODO @mattdurham add TLS support afer the initial push.
 	l := &loop{
 		isMeta: isMetaData,

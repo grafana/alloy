@@ -230,7 +230,7 @@ func (s *PrometheusStats) UpdateNetwork(stats NetworkStats) {
 	s.SentBytesTotal.Add(float64(stats.SeriesBytes))
 }
 
-func (s *PrometheusStats) UpdateFileQueue(stats FileQueueStats) {
+func (s *PrometheusStats) UpdateFileQueue(stats SerializerStats) {
 	s.FilequeueInSeries.Add(float64(stats.SeriesStored))
 	s.FilequeueErrors.Add(float64(stats.Errors))
 	if stats.NewestTimestamp != 0 {
