@@ -1198,8 +1198,6 @@ github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2 h1:ju6EcY2aEobeBg
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2/go.mod h1:8sLW/G7rcFe1CKMaA4pYT4mX3P1xQVGqM6luzEzx/2g=
 github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d h1:6sNPBwOokfCxAyateu7iLdtyWDUzaLLShPs7F4eTLfw=
 github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d/go.mod h1:aGPSALDAkw18nn8M7gumhM/MbJG+zgOA3jNWTwPYtLg=
-github.com/grafana/ckit v0.0.0-20240913130805-0ee98bafad88 h1:GgbYRGz2+/Vgz8/lk19Ht8TQDsAudl51Qenuw+COs5k=
-github.com/grafana/ckit v0.0.0-20240913130805-0ee98bafad88/go.mod h1:dDqep1rKTbq2ppMYEgIM88GaPXHp4i6Cp3qantiloA0=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 h1:qhugDMdQ4Vp68H0tp/0iN17DM2ehRo1rLEdOFe/gB8I=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2/go.mod h1:w/aiO1POVIeXUQyl0VQSZjl5OAGDTL5aX+4v0RA1tcw=
 github.com/grafana/dskit v0.0.0-20240104111617-ea101a3b86eb h1:AWE6+kvtE18HP+lRWNUCyvymyrFSXs6TcS2vXIXGIuw=
@@ -2394,6 +2392,8 @@ github.com/testcontainers/testcontainers-go v0.33.0 h1:zJS9PfXYT5O0ZFXM2xxXfk4J5
 github.com/testcontainers/testcontainers-go v0.33.0/go.mod h1:W80YpTa8D5C3Yy16icheD01UTDu+LmXIA2Keo+jWtT8=
 github.com/tg123/go-htpasswd v1.2.2 h1:tmNccDsQ+wYsoRfiONzIhDm5OkVHQzN3w4FOBAlN6BY=
 github.com/tg123/go-htpasswd v1.2.2/go.mod h1:FcIrK0J+6zptgVwK1JDlqyajW/1B4PtuJ/FLWl7nx8A=
+github.com/tiagorossig/ckit v0.0.0-20240920184404-077657c65a6f h1:k8YmA8sNzKYlbHtrMkZXikDSajqkYuLdM9Eerw14qBA=
+github.com/tiagorossig/ckit v0.0.0-20240920184404-077657c65a6f/go.mod h1:dDqep1rKTbq2ppMYEgIM88GaPXHp4i6Cp3qantiloA0=
 github.com/tidwall/gjson v1.6.0/go.mod h1:P256ACg0Mn+j1RXIDXoss50DeIABTYK1PULOJHhxOls=
 github.com/tidwall/match v1.0.1/go.mod h1:LujAq0jyVjBy028G1WhWfIzbpQfMO8bBZ6Tyb0+pL9E=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=

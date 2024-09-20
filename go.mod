@@ -917,3 +917,6 @@ replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 // It's important to remove it asap because in version v0.13.1 there is a fix for Beyla.
 // PR to track it: https://github.com/opencontainers/runc/pull/4397
 replace github.com/opencontainers/runc => github.com/rafaelroquetto/runc v1.1.14-1
+
+// Temporary replace until ckit changes are merged upstream
+replace github.com/grafana/ckit => github.com/tiagorossig/ckit v0.0.0-20240920184404-077657c65a6f

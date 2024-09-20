@@ -131,6 +131,16 @@ depending on the nature of the reload error.
 		IntVar(&r.clusterMaxJoinPeers, "cluster.max-join-peers", r.clusterMaxJoinPeers, "Number of peers to join from the discovered set")
 	cmd.Flags().
 		StringVar(&r.clusterName, "cluster.name", r.clusterName, "The name of the cluster to join")
+	cmd.Flags().
+		BoolVar(&r.clusterEnableTLS, "cluster.enable-tls", r.clusterEnableTLS, "Specifies whether TLS should be used for communication between peers")
+	cmd.Flags().
+		StringVar(&r.clusterTLSCAPath, "cluster.tls-ca-path", r.clusterTLSCAPath, "Path to the CA certificate file")
+	cmd.Flags().
+		StringVar(&r.clusterTLSCertPath, "cluster.tls-cert-path", r.clusterTLSCertPath, "Path to the certificate file")
+	cmd.Flags().
+		StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
+	cmd.Flags().
+		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
 	// TODO(alloy/#1274): make this flag a no-op once we have more confidence in this feature, and add issue to
 	// remove it in the next major release
 	cmd.Flags().
@@ -168,6 +178,11 @@ type alloyRun struct {
 	clusterMaxJoinPeers          int
 	clusterName                  string
 	clusterUseDiscoveryV1        bool
+	clusterEnableTLS             bool
+	clusterTLSCAPath             string
+	clusterTLSCertPath           string
+	clusterTLSKeyPath            string
+	clusterTLSServerName         string
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
@@ -258,6 +273,11 @@ func (fr *alloyRun) Run(configPath string) error {
 		//TODO(alloy/#1274): graduate to GA once we have more confidence in this feature
 		EnableStateUpdatesLimiter: fr.minStability.Permits(featuregate.StabilityPublicPreview),
 		EnableDiscoveryV2:         !fr.clusterUseDiscoveryV1,
+		EnableTLS:                 fr.clusterEnableTLS,
+		TLSCertPath:               fr.clusterTLSCertPath,
+		TLSCAPath:                 fr.clusterTLSCAPath,
+		TLSKeyPath:                fr.clusterTLSKeyPath,
+		TLSServerName:             fr.clusterTLSServerName,
 	})
 	if err != nil {
 		return err

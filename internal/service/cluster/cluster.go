@@ -5,6 +5,7 @@ package cluster
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"math/rand"
 	"net"
@@ -76,6 +77,11 @@ type Options struct {
 
 	NodeName                  string        // Name to use for this node in the cluster.
 	AdvertiseAddress          string        // Address to advertise to other nodes in the cluster.
+	EnableTLS                 bool          // Specifies whether TLS should be used for communication between peers.
+	TLSCAPath                 string        // Path to the CA file.
+	TLSCertPath               string        // Path to the certificate file.
+	TLSKeyPath                string        // Path to the key file.
+	TLSServerName             string        // Server name to use for TLS communication.
 	RejoinInterval            time.Duration // How frequently to rejoin the cluster to address split brain issues.
 	ClusterMaxJoinPeers       int           // Number of initial peers to join from the discovered set.
 	ClusterName               string        // Name to prevent nodes without this identifier from joining the cluster.
@@ -121,25 +127,34 @@ func New(opts Options) (*Service, error) {
 		Log:           l,
 		Sharder:       shard.Ring(tokensPerNode),
 		Label:         opts.ClusterName,
+		EnableTLS:     opts.EnableTLS,
 	}
 
-	httpClient := &http.Client{
-		Transport: &http2.Transport{
-			AllowHTTP: true,
-			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
-				// Set a maximum timeout for establishing the connection. If our
-				// context has a deadline earlier than our timeout, we shrink the
-				// timeout to it.
-				//
-				// TODO(rfratto): consider making the max timeout configurable.
-				timeout := 30 * time.Second
-				if dur, ok := deadlineDuration(ctx); ok && dur < timeout {
-					timeout = dur
-				}
-
-				return net.DialTimeout(network, addr, timeout)
-			},
+	httpTransport := &http2.Transport{
+		AllowHTTP: false,
+		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+			return net.DialTimeout(network, addr, calcTimeout(ctx))
 		},
+	}
+	if opts.EnableTLS {
+		tlsConfig, err := loadTLSConfigFromFile(opts.TLSCAPath, opts.TLSCertPath, opts.TLSKeyPath, opts.TLSServerName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load TLS config from file: %w", err)
+		}
+		level.Debug(l).Log(
+			"msg", "loaded TLS config for cluster http transport",
+			"TLSCAPath", opts.TLSCAPath,
+			"TLSCertPath", opts.TLSCertPath,
+			"TLSKeyPath", opts.TLSKeyPath,
+			"TLSServerName", opts.TLSServerName,
+		)
+		httpTransport.TLSClientConfig = tlsConfig
+		httpTransport.DialTLSContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return tls.DialWithDialer(&net.Dialer{Timeout: calcTimeout(ctx)}, network, addr, cfg)
+		}
+	}
+	httpClient := &http.Client{
+		Transport: httpTransport,
 	}
 
 	node, err := ckit.NewNode(httpClient, ckitConfig)
@@ -161,6 +176,41 @@ func New(opts Options) (*Service, error) {
 		node:    node,
 		randGen: rand.New(rand.NewSource(time.Now().UnixNano())),
 	}, nil
+}
+
+func loadTLSConfigFromFile(TLSCAPath string, TLSCertPath string, TLSKeyPath string, serverName string) (*tls.Config, error) {
+	pem, err := os.ReadFile(TLSCAPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read TLS CA file: %w", err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(pem)
+	if !caCertPool.AppendCertsFromPEM(pem) {
+		return nil, fmt.Errorf("failed to append CA from PEM with path %w", TLSCAPath)
+	}
+
+	cert, err := tls.LoadX509KeyPair(TLSCertPath, TLSKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load X509 key pair: %w", err)
+	}
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      caCertPool,
+		ServerName:   serverName,
+	}, nil
+}
+
+// TODO(rfratto): consider making the max timeout configurable.
+// Set a maximum timeout for establishing the connection. If our
+// context has a deadline earlier than our timeout, we shrink the
+// timeout to it.
+func calcTimeout(ctx context.Context) time.Duration {
+	timeout := 30 * time.Second
+	if dur, ok := deadlineDuration(ctx); ok && dur < timeout {
+		timeout = dur
+	}
+	return timeout
 }
 
 func deadlineDuration(ctx context.Context) (d time.Duration, ok bool) {
