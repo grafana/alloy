@@ -16,15 +16,15 @@ local alert = import './utils/alert.jsonnet';
     alert.newGroup(
       'alloy_otelcol',
       [
-        // An otelcol.exporter component rcould not push some spans to the pipeline.
+        // An otelcol.receiver component could not push over 5% of spans to the pipeline.
         // This could be due to reaching a limit such as the ones
         // imposed by otelcol.processor.memory_limiter.
         alert.newRule(
           'OtelcolReceiverRefusedSpans',
           successRateQuery(enableK8sCluster, "otelcol_receiver_refused_spans_total", "otelcol_receiver_accepted_spans_total"),
-          'The receiver could not push some spans to the pipeline.',
+          'The receiver pushing spans to the pipeline success rate is below 95%.',
           'The receiver could not push some spans to the pipeline under job {{ $labels.job }}. This could be due to reaching a limit such as the ones imposed by otelcol.processor.memory_limiter.',
-          '5m',
+          '10m',
         ),
 
         // The exporter success rate is below 95%.
@@ -32,7 +32,7 @@ local alert = import './utils/alert.jsonnet';
         alert.newRule(
           'OtelcolExporterFailedSpans',
           successRateQuery(enableK8sCluster, "otelcol_exporter_send_failed_spans_total", "otelcol_exporter_sent_spans_total"),
-          'The exporter span sending success rate is below 95%.',
+          'The exporter sending spans success rate is below 95%.',
           'The exporter failed to send spans to their destination under job {{ $labels.job }}. There could be an issue with the payload or with the destination endpoint.',
           '10m',
         ),
