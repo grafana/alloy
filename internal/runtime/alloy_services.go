@@ -98,7 +98,8 @@ func (sc ServiceController) LoadSource(b []byte, args map[string]any) error {
 	if err != nil {
 		return err
 	}
-	return sc.f.LoadSource(source, args)
+	// The config is loaded via a service, the config path is left empty.
+	return sc.f.LoadSource(source, args, "")
 }
 func (sc ServiceController) Ready() bool { return sc.f.Ready() }
 
