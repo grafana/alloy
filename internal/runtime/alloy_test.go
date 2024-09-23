@@ -43,7 +43,7 @@ func TestController_LoadSource_Evaluation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil)
+	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 	require.Len(t, ctrl.loader.Components(), 4)
 
@@ -52,6 +52,41 @@ func TestController_LoadSource_Evaluation(t *testing.T) {
 	in, out := getFields(t, ctrl.loader.Graph(), "testcomponents.passthrough.static")
 	require.Equal(t, "hello, world!", in.(testcomponents.PassthroughConfig).Input)
 	require.Equal(t, "hello, world!", out.(testcomponents.PassthroughExports).Output)
+}
+
+var modulePathTestFile = `
+	testcomponents.tick "ticker" {
+		frequency = "1s"
+	}
+	testcomponents.passthrough "static" {
+		input = module_path
+	}
+	testcomponents.passthrough "ticker" {
+		input = testcomponents.tick.ticker.tick_time
+	}
+	testcomponents.passthrough "forwarded" {
+		input = testcomponents.passthrough.ticker.output
+	}
+`
+
+func TestController_LoadSource_WithModulePath_Evaluation(t *testing.T) {
+	defer verifyNoGoroutineLeaks(t)
+	ctrl := New(testOptions(t))
+	defer cleanUpController(ctrl)
+
+	f, err := ParseSource(t.Name(), []byte(modulePathTestFile))
+	require.NoError(t, err)
+	require.NotNil(t, f)
+
+	err = ctrl.LoadSource(f, nil, "path/to/config/main.alloy")
+	require.NoError(t, err)
+	require.Len(t, ctrl.loader.Components(), 4)
+
+	// Check the inputs and outputs of things that should be immediately resolved
+	// without having to run the components.
+	in, out := getFields(t, ctrl.loader.Graph(), "testcomponents.passthrough.static")
+	require.Equal(t, "path/to/config", in.(testcomponents.PassthroughConfig).Input)
+	require.Equal(t, "path/to/config", out.(testcomponents.PassthroughExports).Output)
 }
 
 func getFields(t *testing.T, g *dag.Graph, nodeID string) (component.Arguments, component.Exports) {
