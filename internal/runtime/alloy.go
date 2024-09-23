@@ -61,6 +61,8 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // Options holds static options for an Alloy controller.
@@ -296,22 +298,36 @@ func (f *Runtime) Run(ctx context.Context) {
 // The controller will only start running components after Load is called once
 // without any configuration errors.
 // LoadSource uses default loader configuration.
-func (f *Runtime) LoadSource(source *Source, args map[string]any) error {
-	return f.loadSource(source, args, nil)
+func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath string) error {
+	return f.applyLoaderConfig(controller.ApplyOptions{
+		Args:            args,
+		ComponentBlocks: source.components,
+		ConfigBlocks:    source.configBlocks,
+		DeclareBlocks:   source.declareBlocks,
+		ArgScope: &vm.Scope{
+			Parent: nil,
+			Variables: map[string]interface{}{
+				"module_path": util.ExtractDirPath(configPath),
+			},
+		},
+	})
 }
 
 // Same as above but with a customComponentRegistry that provides custom component definitions.
 func (f *Runtime) loadSource(source *Source, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
-	f.loadMut.Lock()
-	defer f.loadMut.Unlock()
-
-	applyOptions := controller.ApplyOptions{
+	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:                    args,
 		ComponentBlocks:         source.components,
 		ConfigBlocks:            source.configBlocks,
 		DeclareBlocks:           source.declareBlocks,
 		CustomComponentRegistry: customComponentRegistry,
-	}
+		ArgScope:                customComponentRegistry.Scope(),
+	})
+}
+
+func (f *Runtime) applyLoaderConfig(applyOptions controller.ApplyOptions) error {
+	f.loadMut.Lock()
+	defer f.loadMut.Unlock()
 
 	diags := f.loader.Apply(applyOptions)
 	if !f.loadedOnce.Load() && diags.HasErrors() {

@@ -340,7 +340,7 @@ func (fr *alloyRun) Run(configPath string) error {
 		if err != nil {
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
-		if err := f.LoadSource(alloySource, nil); err != nil {
+		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
 			return alloySource, fmt.Errorf("error during the initial load: %w", err)
 		}
 

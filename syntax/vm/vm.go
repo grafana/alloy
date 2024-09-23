@@ -485,8 +485,14 @@ func (s *Scope) Lookup(name string) (interface{}, bool) {
 	return nil, false
 }
 
-// IsDeprecated returns true if the identifier exists and is deprecated.
-func (s *Scope) IsDeprecated(name string) bool {
+// IsStdlibIdentifiers returns true if the identifier exists.
+func (s *Scope) IsStdlibIdentifiers(name string) bool {
+	_, exist := stdlib.Identifiers[name]
+	return exist
+}
+
+// IsStdlibDeprecated returns true if the identifier exists and is deprecated.
+func (s *Scope) IsStdlibDeprecated(name string) bool {
 	_, exist := stdlib.DeprecatedIdentifiers[name]
 	return exist
 }

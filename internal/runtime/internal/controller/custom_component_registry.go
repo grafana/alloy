@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // CustomComponentRegistry holds custom component definitions that are available in the context.
@@ -14,6 +15,7 @@ type CustomComponentRegistry struct {
 	parent *CustomComponentRegistry // nil if root config
 
 	mut      sync.RWMutex
+	scope    *vm.Scope
 	imports  map[string]*CustomComponentRegistry // importNamespace: importScope
 	declares map[string]ast.Body                 // customComponentName: template
 }
@@ -40,6 +42,12 @@ func (s *CustomComponentRegistry) getImport(name string) (*CustomComponentRegist
 	defer s.mut.RUnlock()
 	im, ok := s.imports[name]
 	return im, ok
+}
+
+func (s *CustomComponentRegistry) Scope() *vm.Scope {
+	s.mut.RLock()
+	defer s.mut.RUnlock()
+	return s.scope
 }
 
 // registerDeclare stores a local declare block.
@@ -71,6 +79,7 @@ func (s *CustomComponentRegistry) updateImportContent(importNode *ImportConfigNo
 	}
 	importScope := NewCustomComponentRegistry(nil)
 	importScope.declares = importNode.ImportedDeclares()
+	importScope.scope = importNode.Scope()
 	importScope.updateImportContentChildren(importNode)
 	s.imports[importNode.label] = importScope
 }
@@ -81,6 +90,7 @@ func (s *CustomComponentRegistry) updateImportContentChildren(importNode *Import
 	for _, child := range importNode.ImportConfigNodesChildren() {
 		childScope := NewCustomComponentRegistry(nil)
 		childScope.declares = child.ImportedDeclares()
+		childScope.scope = child.Scope()
 		childScope.updateImportContentChildren(child)
 		s.imports[child.label] = childScope
 	}

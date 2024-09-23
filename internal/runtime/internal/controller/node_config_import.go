@@ -289,6 +289,11 @@ func (cn *ImportConfigNode) processImportBlock(stmt *ast.BlockStmt, fullName str
 	childGlobals.OnBlockNodeUpdate = cn.onChildrenContentUpdate
 	// Children data paths are nested inside their parents to avoid collisions.
 	childGlobals.DataPath = filepath.Join(childGlobals.DataPath, cn.globalID)
+
+	if importsource.GetSourceType(cn.block.GetBlockName()) == importsource.HTTP && sourceType == importsource.File {
+		return fmt.Errorf("importing a module via import.http (nodeID: %s) that contains an import.file block is not supported", cn.nodeID)
+	}
+
 	cn.importConfigNodesChildren[stmt.Label] = NewImportConfigNode(stmt, childGlobals, sourceType)
 	return nil
 }
@@ -297,7 +302,12 @@ func (cn *ImportConfigNode) processImportBlock(stmt *ast.BlockStmt, fullName str
 func (cn *ImportConfigNode) evaluateChildren() error {
 	for _, child := range cn.importConfigNodesChildren {
 		err := child.Evaluate(&vm.Scope{
-			Parent:    nil,
+			Parent: &vm.Scope{
+				Parent: nil,
+				Variables: map[string]interface{}{
+					"module_path": cn.source.ModulePath(),
+				},
+			},
 			Variables: make(map[string]interface{}),
 		})
 		if err != nil {
@@ -422,6 +432,15 @@ func (cn *ImportConfigNode) ImportedDeclares() map[string]ast.Body {
 	cn.mut.RLock()
 	defer cn.mut.RUnlock()
 	return cn.importedDeclares
+}
+
+// Scope returns the scope associated with the import source.
+func (cn *ImportConfigNode) Scope() *vm.Scope {
+	return &vm.Scope{
+		Variables: map[string]interface{}{
+			"module_path": cn.source.ModulePath(),
+		},
+	}
 }
 
 // ImportConfigNodesChildren returns the ImportConfigNodesChildren of this ImportConfigNode.
