@@ -17,6 +17,9 @@ Imported directories are treated as single modules to support composability.
 That means that you can define a custom component in one file and use it in another custom component in another file
 in the same directory.
 
+The keyword `module_path` can be used in combination with the stdlib function [file.path_join][] to import a module relative to the current module's path.
+It works for modules that are imported via `import.file`, `import.git` and `import.string`.
+
 ## Usage
 
 ```alloy
@@ -41,6 +44,21 @@ The following arguments are supported:
 
 This example imports a module from a file and instantiates a custom component from the import that adds two numbers:
 
+{{< collapse title="main.alloy" >}}
+
+```alloy
+import.file "math" {
+  filename = "module.alloy"
+}
+
+math.add "default" {
+  a = 15
+  b = 45
+}
+```
+
+{{< /collapse >}}
+
 {{< collapse title="module.alloy" >}}
 
 ```alloy
@@ -56,11 +74,15 @@ declare "add" {
 
 {{< /collapse >}}
 
-{{< collapse title="importer.alloy" >}}
+
+This example imports a module from a file inside of a module that is imported via [import.git][]:
+
+{{< collapse title="main.alloy" >}}
 
 ```alloy
-import.file "math" {
-  filename = "module.alloy"
+import.git "math" {
+  repository = "https://github.com/wildum/module.git"
+  path       = "relative_math.alloy"
 }
 
 math.add "default" {
@@ -70,3 +92,103 @@ math.add "default" {
 ```
 
 {{< /collapse >}}
+
+{{< collapse title="relative_math.alloy" >}}
+
+```alloy
+import.file "lib" {
+  filename = file.path_join(module_path, "lib.alloy")
+}
+
+declare "add" {
+  argument "a" {}
+  argument "b" {}
+
+  lib.plus "default" {
+    a = argument.a.value
+    b = argument.b.value
+  }
+
+  export "output" {
+    value = lib.plus.default.sum
+  }
+}
+```
+
+{{< /collapse >}}
+
+{{< collapse title="lib.alloy" >}}
+
+```alloy
+declare "plus" {
+  argument "a" {}
+  argument "b" {}
+
+  export "sum" {
+    value = argument.a.value + argument.b.value
+  }
+}
+```
+
+{{< /collapse >}}
+
+This example imports a module from a file inside of a module that is imported via another `import.file`:
+
+{{< collapse title="main.alloy" >}}
+
+```alloy
+import.file "math" {
+  filename = "path/to/module/relative_math.alloy"
+}
+
+math.add "default" {
+  a = 15
+  b = 45
+}
+```
+
+{{< /collapse >}}
+
+{{< collapse title="relative_math.alloy" >}}
+
+```alloy
+import.file "lib" {
+  filename = file.path_join(module_path, "lib.alloy")
+}
+
+declare "add" {
+  argument "a" {}
+  argument "b" {}
+
+  lib.plus "default" {
+    a = argument.a.value
+    b = argument.b.value
+  }
+
+  export "output" {
+    value = lib.plus.default.sum
+  }
+}
+```
+
+{{< /collapse >}}
+
+{{< collapse title="lib.alloy" >}}
+
+```alloy
+declare "plus" {
+  argument "a" {}
+  argument "b" {}
+
+  export "sum" {
+    value = argument.a.value + argument.b.value
+  }
+}
+```
+
+{{< /collapse >}}
+
+
+
+[file.path_join]: ../../stdlib/file/
+[import.git]: ../import.git/
