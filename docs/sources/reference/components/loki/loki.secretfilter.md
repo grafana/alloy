@@ -37,7 +37,7 @@ loki.secretfilter "<LABEL>" {
 Name                     | Type                 | Description                                     | Default                          | Required
 -------------------------|----------------------|-------------------------------------------------|----------------------------------|---------
 `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.       |                                  | yes
-`gitleaks_config`        | `string`             | Path to the custom `gitleaks.toml` file.        | Embedded Gitleaks file      | no
+`gitleaks_config`        | `string`             | Path to the custom `gitleaks.toml` file.        | Embedded Gitleaks file           | no
 `types`                  | `map(string)`        | Types of secret to look for.                    | All types                        | no
 `redact_with`            | `string`             | String to use to redact secrets.                | `<REDACTED-SECRET:$SECRET_NAME>` | no
 `exclude_generic`        | `bool`               | Exclude the generic API key rule.               | `false`                          | no
