@@ -105,7 +105,7 @@ The rest of the `--cluster.*` command-line flags can be used to configure how no
 Each cluster member’s name must be unique within the cluster.
 Nodes which try to join with a conflicting name are rejected and will fall back to bootstrapping a new cluster of their own.
 
-Peers communicate over HTTP/2 on the built-in HTTP server. 
+Peers communicate over HTTP/2 on the built-in HTTP server.
 Each node must be configured to accept connections on `--server.http.listen-addr` and the address defined or inferred in `--cluster.advertise-address`.
 
 If the `--cluster.advertise-address` flag isn't explicitly set, {{< param "PRODUCT_NAME" >}} tries to infer a suitable one from `--cluster.advertise-interfaces`.
@@ -117,8 +117,8 @@ The comma-separated list of addresses provided in `--cluster.join-addresses` can
 In both cases, the port number can be specified with a `:<port>` suffix. If ports are not provided, default of the port used for the HTTP listener is used.
 If you do not provide the port number explicitly, you must ensure that all instances use the same port for the HTTP listener.
 
-The `--cluster.enable-tls` flag can be set to enable TLS for peer-to-peer communications. Additional arguments are required to configure the TLS client, including the CA certificate (`--cluster.tls-ca-path`), 
-the certificate (`--cluster.tls-cert-path`), the key (`--cluster.tls-key-path`), and the server name (`--cluster.tls-server-name`).
+The `--cluster.enable-tls` flag can be set to enable TLS for peer-to-peer communications.
+Additional arguments are required to configure the TLS client, including the CA certificate, the TLS certificate, the key, and the server name.
 
 The `--cluster.discover-peers` command-line flag expects a list of tuples in the form of `provider=XXX key=val key=val ...`.
 Clustering uses the [go-discover] package to discover peers and fetch their IP addresses, based on the chosen provider and the filtering key-values it supports.
