@@ -17,8 +17,8 @@ Imported directories are treated as single modules to support composability.
 That means that you can define a custom component in one file and use it in another custom component in another file
 in the same directory.
 
-The keyword `module_path` can be used in combination with the stdlib function [file.path_join][] to import a module relative to the current module's path.
-It works for modules that are imported via `import.file`, `import.git` and `import.string`.
+You can use the keyword `module_path` in combination with the `stdlib` function [file.path_join][] to import a module relative to the current module's path.
+The `module_path` keyword works for modules that are imported via `import.file`, `import.git` and `import.string`.
 
 ## Usage
 
