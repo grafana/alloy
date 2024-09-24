@@ -142,10 +142,10 @@ information.
 
 ## Debug metrics
 
-* `exporter_sent_spans_ratio_total` (counter): Number of spans successfully sent to destination.
-* `exporter_send_failed_spans_ratio_total` (counter): Number of spans in failed attempts to send to destination.
-* `exporter_queue_capacity_ratio` (gauge): Fixed capacity of the retry queue (in batches).
-* `exporter_queue_size_ratio` (gauge): Current size of the retry queue (in batches).
+* `otelcol_exporter_sent_spans_total` (counter): Number of spans successfully sent to destination.
+* `otelcol_exporter_send_failed_spans_total` (counter): Number of spans in failed attempts to send to destination.
+* `otelcol_exporter_queue_capacity` (gauge): Fixed capacity of the retry queue (in batches).
+* `otelcol_exporter_queue_size` (gauge): Current size of the retry queue (in batches).
 * `rpc_client_duration_milliseconds` (histogram): Measures the duration of inbound RPC.
 * `rpc_client_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
 * `rpc_client_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.

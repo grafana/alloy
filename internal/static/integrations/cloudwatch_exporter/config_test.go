@@ -219,14 +219,6 @@ var expectedConfig = model.JobsConfig{
 			Regexp:          regexp.MustCompile("instance/(?P<InstanceId>[^/]+)"),
 			DimensionsNames: []string{"InstanceId"},
 		}},
-		JobLevelMetricFields: model.JobLevelMetricFields{
-			Statistics:             []string(nil),
-			Period:                 0,
-			Length:                 0,
-			Delay:                  0,
-			NilToZero:              &truePtr,
-			AddCloudwatchTimestamp: &falsePtr,
-		},
 	}, {
 		Regions:                   []string{"us-east-2"},
 		Type:                      "AWS/S3",
@@ -253,14 +245,6 @@ var expectedConfig = model.JobsConfig{
 			Regexp:          regexp.MustCompile("(?P<BucketName>[^:]+)$"),
 			DimensionsNames: []string{"BucketName"},
 		}},
-		JobLevelMetricFields: model.JobLevelMetricFields{
-			Statistics:             []string(nil),
-			Period:                 0,
-			Length:                 0,
-			Delay:                  0,
-			NilToZero:              &truePtr,
-			AddCloudwatchTimestamp: &falsePtr,
-		},
 	}},
 	StaticJobs: []model.StaticJob{{
 		Name:       "custom_tesis_metrics",
@@ -314,14 +298,6 @@ var expectedConfig3 = model.JobsConfig{
 				Regexp:          regexp.MustCompile("instance/(?P<InstanceId>[^/]+)"),
 				DimensionsNames: []string{"InstanceId"},
 			}},
-			JobLevelMetricFields: model.JobLevelMetricFields{
-				Statistics:             []string(nil),
-				Period:                 0,
-				Length:                 0,
-				Delay:                  0,
-				NilToZero:              &falsePtr,
-				AddCloudwatchTimestamp: &falsePtr,
-			},
 		},
 		{
 			Regions: []string{"us-east-2"},
@@ -350,14 +326,6 @@ var expectedConfig3 = model.JobsConfig{
 				Regexp:          regexp.MustCompile("(?P<BucketName>[^:]+)$"),
 				DimensionsNames: []string{"BucketName"},
 			}},
-			JobLevelMetricFields: model.JobLevelMetricFields{
-				Statistics:             []string(nil),
-				Period:                 0,
-				Length:                 0,
-				Delay:                  0,
-				NilToZero:              &truePtr,
-				AddCloudwatchTimestamp: &falsePtr,
-			},
 		},
 	},
 	StaticJobs: []model.StaticJob{{

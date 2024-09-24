@@ -425,6 +425,7 @@ discovery job, the `type` field of each `discovery_job` must match the desired j
 - Namespace: `AWS/Backup`
 - Namespace: `AWS/ApiGateway`
 - Namespace: `AWS/AmazonMQ`
+- Namespace: `AWS/AppRunner`
 - Namespace: `AWS/AppSync`
 - Namespace: `AWS/Athena`
 - Namespace: `AWS/AutoScaling`
@@ -444,6 +445,7 @@ discovery job, the `type` field of each `discovery_job` must match the desired j
 - Namespace: `AWS/MemoryDB`
 - Namespace: `AWS/EC2`
 - Namespace: `AWS/EC2Spot`
+- Namespace: `AWS/EC2CapacityReservations`
 - Namespace: `AWS/ECS`
 - Namespace: `ECS/ContainerInsights`
 - Namespace: `AWS/EFS`
@@ -467,6 +469,7 @@ discovery job, the `type` field of each `discovery_job` must match the desired j
 - Namespace: `AWS/Logs`
 - Namespace: `AWS/MediaConnect`
 - Namespace: `AWS/MediaConvert`
+- Namespace: `AWS/MediaPackage`
 - Namespace: `AWS/MediaLive`
 - Namespace: `AWS/MediaTailor`
 - Namespace: `AWS/Neptune`
