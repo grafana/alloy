@@ -148,15 +148,14 @@ func (c *Component) Run(ctx context.Context) error {
 			// Start processing the log entry to redact secrets
 			newEntry := c.processEntry(entry)
 			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("incoming entry: %s, redacted entry: %s", entry.Line, newEntry.Line))
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", entry.Line, newEntry.Line))
 			}
-			entry = newEntry
 
 			for _, f := range c.fanout {
 				select {
 				case <-ctx.Done():
 					return nil
-				case f.Chan() <- entry:
+				case f.Chan() <- newEntry:
 				}
 			}
 		}
