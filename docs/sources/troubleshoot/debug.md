@@ -106,6 +106,7 @@ Live debugging is not yet available in all components.
 Supported components:
 * `loki.process`
 * `loki.relabel`
+* `loki.secretfilter`
 * `otelcol.processor.*`
 * `otelcol.receiver.*`
 * `prometheus.relabel`
