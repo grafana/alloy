@@ -64,7 +64,7 @@ The following blocks are supported inside the definition of `otelcol.receiver.in
 
 ## Debug information
 
-`otelcol.receiver.influxdb` does not expose any component-specific debug information.
+`otelcol.receiver.influxdb` doesn't expose any component-specific debug information.
 
 ## Example
 
