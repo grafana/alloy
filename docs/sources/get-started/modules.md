@@ -108,7 +108,7 @@ loki.write "default" {
 
 Since modules can load an arbitrary configuration from a potentially remote source, it is important to carefully consider the security of your solution. 
 The best practice is to ensure that Alloy configuration cannot be changed by attackers. This includes Alloy's main configuration files as well as 
-modules fetched from a remote locations such as Git repositories or HTTP servers.
+modules fetched from remote locations such as Git repositories or HTTP servers.
 
 [custom components]: ../custom_components/
 [run]: ../../reference/cli/run/
