@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.influxdb/
-aliases:
-  - ../otelcol.receiver.influxdb/ # /docs/alloy/latest/reference/otelcol.receiver.influxdb/
 description: Learn about otelcol.receiver.influxdb
 title: otelcol.receiver.influxdb
 ---
