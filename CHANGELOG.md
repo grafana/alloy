@@ -7,8 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-v1.4.0-rc.3
+v1.4.0
 -----------------
+
+### Security fixes
+
+- Add quotes to windows service path to prevent path interception attack. [CVE-2024-8975](https://grafana.com/security/security-advisories/cve-2024-8975/) (@mattdurham)
+
 ### Breaking changes
 
 - Some debug metrics for `otelcol` components have changed. (@thampiotr)
