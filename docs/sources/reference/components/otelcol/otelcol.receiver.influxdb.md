@@ -56,7 +56,7 @@ The following blocks are supported inside the definition of `otelcol.receiver.in
 
 ## Exported fields
 
-`otelcol.receiver.influxdb` does not export any fields.
+`otelcol.receiver.influxdb` doesn't export any fields.
 
 ## Component health
 
