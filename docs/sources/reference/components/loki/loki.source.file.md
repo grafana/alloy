@@ -9,6 +9,7 @@ title: loki.source.file
 # loki.source.file
 
 `loki.source.file` reads log entries from files and forwards them to other `loki.*` components.
+New log entries are forwarded whenever a log entry line ends with the `\n` character.
 
 You can specify multiple `loki.source.file` components by giving them different labels.
 
