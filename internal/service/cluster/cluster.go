@@ -198,7 +198,6 @@ func loadTLSConfigFromFile(TLSCAPath string, TLSCertPath string, TLSKeyPath stri
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      caCertPool,
 		ServerName:   serverName,
-		ClientAuth:   tls.RequireAndVerifyClientCert,
 	}, nil
 }
 
