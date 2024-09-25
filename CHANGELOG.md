@@ -138,6 +138,13 @@ v1.4.0
 
 - Updated the docker base image to Ubuntu 24.04 (Noble Numbat). (@mattiasa )
 
+v1.3.2
+-----------------
+
+### Security fixes
+
+- Add quotes to windows service path to prevent path interception attack. [CVE-2024-8975](https://grafana.com/security/security-advisories/cve-2024-8975/) (@mattdurham)
+
 v1.3.1
 -----------------
 
