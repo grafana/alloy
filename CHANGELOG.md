@@ -26,8 +26,12 @@ Main (unreleased)
 
 - Changed OTEL alerts in Alloy mixin to use success rate for tracing. (@thampiotr)
 
-v1.4.0-rc.3
+v1.4.0
 -----------------
+
+### Security fixes
+
+- Add quotes to windows service path to prevent path interception attack. [CVE-2024-8975](https://grafana.com/security/security-advisories/cve-2024-8975/) (@mattdurham)
 
 ### Breaking changes
 
