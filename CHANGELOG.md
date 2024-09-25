@@ -52,7 +52,7 @@ v1.4.0
 - (_Experimental_) Add an `otelcol.processor.interval` component to aggregate metrics and periodically
   forward the latest values to the next component in the pipeline.
 - (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
-
+- Added InfluxDB receiver that converts influx metric into OTEL. (@EHSchmitt4395)
 
 ### Enhancements
 
