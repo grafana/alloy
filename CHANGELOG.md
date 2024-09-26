@@ -16,8 +16,6 @@ Main (unreleased)
 
 ### Bugfixes
 
-- Windows installer: Don't quote alloy binary path in registy (@jkroepke)
-
 - Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
   - Fixes a bug where cloudwatch S3 metrics are reported as `0`
 
@@ -26,6 +24,13 @@ Main (unreleased)
 - Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
 
 - Changed OTEL alerts in Alloy mixin to use success rate for tracing. (@thampiotr)
+
+v1.4.1
+-----------------
+
+### Bugfixes
+
+- Windows installer: Don't quote Alloy's binary path in the Windows Registry. (@jkroepke)
 
 v1.4.0
 -----------------
