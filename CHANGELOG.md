@@ -144,6 +144,13 @@ v1.4.0
 
 - Updated the docker base image to Ubuntu 24.04 (Noble Numbat). (@mattiasa )
 
+v1.3.4
+-----------------
+
+### Bugfixes
+
+- Windows installer: Don't quote Alloy's binary path in the Windows Registry. (@jkroepke)
+
 v1.3.2
 -----------------
 
