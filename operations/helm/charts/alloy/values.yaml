@@ -106,6 +106,14 @@ alloy:
   # -- Resource requests and limits to apply to the Grafana Alloy container.
   resources: {}
 
+  # -- Set lifecycle hooks for the Grafana Alloy container.
+  lifecycle: {}
+    # preStop:
+    #   exec:
+    #     command:
+    #     - /bin/sleep
+    #     - "10"
+
 image:
   # -- Grafana Alloy image registry (defaults to docker.io)
   registry: "docker.io"

@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add lifecyle hook to the Helm chart. (@etiennep)
+
 0.8.1 (2024-09-26)
 ------------------
 
