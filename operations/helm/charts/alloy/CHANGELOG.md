@@ -10,6 +10,13 @@ internal API changes are not present.
 Unreleased
 ----------
 
+0.8.1 (2024-09-26)
+------------------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.4.1. (@ptodev)
+
 0.8.0 (2024-09-25)
 ------------------
 
