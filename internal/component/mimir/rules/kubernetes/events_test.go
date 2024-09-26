@@ -251,6 +251,18 @@ func TestAdditionalLabels(t *testing.T) {
 		metrics:           newMetrics(),
 		logger:            log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
 		externalLabels:    map[string]string{"foo": "bar"},
+		extraQueryLabels: []queryLabel{
+			{
+				name:      "cluster",
+				matchType: "=",
+				value:     "big",
+			},
+			{
+				name:      "job",
+				matchType: "=",
+				value:     "good",
+			},
+		},
 	}
 
 	ctx := context.Background()
@@ -287,11 +299,11 @@ func TestAdditionalLabels(t *testing.T) {
 		expectedRule := `- name: group1
   rules:
   - alert: alert1
-    expr: expr1
+    expr: expr1{cluster="big",job="good"}
     labels:
       foo: bar
   - alert: alert2
-    expr: expr2
+    expr: expr2{cluster="big",job="good"}
     labels:
       foo: bar
 `

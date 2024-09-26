@@ -3,6 +3,7 @@ package rules
 import (
 	"context"
 	"fmt"
+	"github.com/prometheus/prometheus/promql/parser"
 	"maps"
 	"regexp"
 	"sync"
@@ -15,7 +16,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
+	promlabels "github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/rulefmt"
+	yamlv3 "gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/labels"
 	coreListers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -38,6 +41,8 @@ type eventProcessor struct {
 	ruleSelector      labels.Selector
 	namespacePrefix   string
 	externalLabels    map[string]string
+	//TODO: this needs to still be exposed properly to users
+	extraQueryLabels []queryLabel
 
 	metrics *metrics
 	logger  log.Logger
@@ -195,11 +200,89 @@ func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.RuleGroupsByNa
 				}
 			}
 
+			if len(e.extraQueryLabels) > 0 {
+				for _, rg := range groups {
+					for i, r := range rg.Rules {
+						query := r.Expr.Value
+						newQuery, err := addLabelsToQuery(query, e.extraQueryLabels)
+						if err != nil {
+							level.Error(e.logger).Log("msg", "failed to add labels to query", "query", query, "err", err)
+						}
+						rg.Rules[i].Expr = yamlv3.Node{
+							Kind:  yamlv3.ScalarNode,
+							Value: newQuery,
+						}
+					}
+				}
+			}
+
 			desiredState[mimirNs] = groups
 		}
 	}
 
 	return desiredState, nil
+}
+
+type queryLabel struct {
+	name      string
+	value     string
+	matchType string
+}
+
+func addLabelsToQuery(query string, labelsToAdd []queryLabel) (string, error) {
+	var err error
+	for _, label := range labelsToAdd {
+		query, err = labelsSetPromQL(query, label.matchType, label.name, label.value)
+		if err != nil {
+			return "", err
+		}
+	}
+	return query, nil
+}
+
+// Lifted from: https://github.com/prometheus/prometheus/blob/79a6238e195ecc1c20937036c1e3b4e3bdaddc49/cmd/promtool/main.go#L1242
+func labelsSetPromQL(query, labelMatchType, name, value string) (string, error) {
+	expr, err := parser.ParseExpr(query)
+	if err != nil {
+		return query, err
+	}
+
+	var matchType promlabels.MatchType
+	switch labelMatchType {
+	case parser.ItemType(parser.EQL).String():
+		matchType = promlabels.MatchEqual
+	case parser.ItemType(parser.NEQ).String():
+		matchType = promlabels.MatchNotEqual
+	case parser.ItemType(parser.EQL_REGEX).String():
+		matchType = promlabels.MatchRegexp
+	case parser.ItemType(parser.NEQ_REGEX).String():
+		matchType = promlabels.MatchNotRegexp
+	default:
+		return query, fmt.Errorf("invalid label match type: %s", labelMatchType)
+	}
+
+	parser.Inspect(expr, func(node parser.Node, path []parser.Node) error {
+		if n, ok := node.(*parser.VectorSelector); ok {
+			var found bool
+			for i, l := range n.LabelMatchers {
+				if l.Name == name {
+					n.LabelMatchers[i].Type = matchType
+					n.LabelMatchers[i].Value = value
+					found = true
+				}
+			}
+			if !found {
+				n.LabelMatchers = append(n.LabelMatchers, &promlabels.Matcher{
+					Type:  matchType,
+					Name:  name,
+					Value: value,
+				})
+			}
+		}
+		return nil
+	})
+
+	return expr.Pretty(0), nil
 }
 
 func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.RuleGroup, error) {
