@@ -298,7 +298,7 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2 // indirect
-	github.com/BurntSushi/toml v1.3.2 // indirect
+	github.com/BurntSushi/toml v1.3.2
 	github.com/ClickHouse/clickhouse-go v1.5.4 // indirect
 	github.com/Code-Hex/go-generics-cache v1.5.1 // indirect
 	github.com/DataDog/agent-payload/v5 v5.0.131 // indirect
@@ -813,9 +813,21 @@ require (
 )
 
 require (
+	github.com/influxdata/influxdb-client-go/v2 v2.14.0
+	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.108.0
+)
+
+require (
+	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/iam v1.33.1 // indirect
 	github.com/checkpoint-restore/go-criu/v6 v6.3.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
+	github.com/influxdata/influxdb-observability/common v0.5.12 // indirect
+	github.com/influxdata/influxdb-observability/influx2otel v0.5.12 // indirect
+	github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 // indirect
+	github.com/influxdata/line-protocol/v2 v2.2.1 // indirect
+	github.com/oapi-codegen/runtime v1.0.0 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.
