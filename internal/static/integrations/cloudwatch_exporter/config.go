@@ -4,10 +4,12 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"time"
 
 	"github.com/go-kit/log"
 	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
+	"github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/logging"
 	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
 	"gopkg.in/yaml.v2"
 
@@ -38,12 +40,13 @@ func init() {
 
 // Config is the configuration for the CloudWatch metrics integration
 type Config struct {
-	STSRegion       string                `yaml:"sts_region"`
-	FIPSDisabled    bool                  `yaml:"fips_disabled"`
-	Discovery       DiscoveryConfig       `yaml:"discovery"`
-	Static          []StaticJob           `yaml:"static"`
-	Debug           bool                  `yaml:"debug"`
-	DecoupledScrape DecoupledScrapeConfig `yaml:"decoupled_scraping"`
+	STSRegion         string                `yaml:"sts_region"`
+	FIPSDisabled      bool                  `yaml:"fips_disabled"`
+	Discovery         DiscoveryConfig       `yaml:"discovery"`
+	Static            []StaticJob           `yaml:"static"`
+	Debug             bool                  `yaml:"debug"`
+	DecoupledScrape   DecoupledScrapeConfig `yaml:"decoupled_scraping"`
+	UseAWSSDKVersion2 bool                  `yaml:"aws_sdk_version_v2"`
 }
 
 // DecoupledScrapeConfig is the configuration for decoupled scraping feature.
@@ -129,7 +132,7 @@ func (c *Config) InstanceKey(agentKey string) (string, error) {
 
 // NewIntegration creates a new integration from the config.
 func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
-	exporterConfig, fipsEnabled, err := ToYACEConfig(c)
+	exporterConfig, fipsEnabled, err := ToYACEConfig(c, l)
 	if err != nil {
 		return nil, fmt.Errorf("invalid cloudwatch exporter configuration: %w", err)
 	}
@@ -138,10 +141,10 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 		if v := c.DecoupledScrape.ScrapeInterval; v != nil {
 			scrapeInterval = *v
 		}
-		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, c.Debug), nil
+		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, c.Debug, c.UseAWSSDKVersion2)
 	}
 
-	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, c.Debug), nil
+	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, c.Debug, c.UseAWSSDKVersion2)
 }
 
 // getHash calculates the MD5 hash of the yaml representation of the config
@@ -157,7 +160,49 @@ func getHash(c *Config) (string, error) {
 // ToYACEConfig converts a Config into YACE's config model. Note that the conversion is not direct, some values
 // have been opinionated to simplify the config model the agent exposes for this integration.
 // The returned boolean is whether or not AWS FIPS endpoints will be enabled.
-func ToYACEConfig(c *Config) (yaceConf.ScrapeConf, bool, error) {
+func ToYACEConfig(c *Config, logger log.Logger) (yaceModel.JobsConfig, bool, error) {
+	// Once the support for deprecated aliases is dropped, this function (convertAliasesToNamespaces) can be removed.
+	convertAliasesToNamespaces(c, logger)
+	return toYACEConfig(c)
+}
+
+// convertAliasesToNamespaces converts the deprecated service aliases to their corresponding namespaces.
+// This function is added for the backward compatibility of the deprecated service aliases. This compatability
+// may be removed in the future.
+func convertAliasesToNamespaces(c *Config, logger log.Logger) {
+	for i, job := range c.Discovery.Jobs {
+		if job.Type != "" {
+			if svc := yaceConf.SupportedServices.GetService(job.Type); svc == nil {
+				if namespace := getServiceByAlias(job.Type); namespace != "" {
+					level.Warn(logger).Log("msg", "service alias is deprecated, use the namespace instead", "alias", job.Type, "namespace", namespace)
+					c.Discovery.Jobs[i].Type = namespace
+				}
+			}
+		}
+	}
+
+	for i, job := range c.Static {
+		if svc := yaceConf.SupportedServices.GetService(job.Namespace); svc == nil {
+			if namespace := getServiceByAlias(job.Namespace); namespace != "" {
+				level.Warn(logger).Log("msg", "service alias is deprecated, use the namespace instead", "alias", job.Namespace, "namespace", namespace)
+				c.Static[i].Namespace = namespace
+			}
+		}
+	}
+}
+
+// getServiceByAlias returns the namespace for a given service alias.
+func getServiceByAlias(alias string) string {
+	for _, supportedServices := range yaceConf.SupportedServices {
+		if supportedServices.Alias == alias {
+			return supportedServices.Namespace
+		}
+	}
+
+	return ""
+}
+
+func toYACEConfig(c *Config) (yaceModel.JobsConfig, bool, error) {
 	discoveryJobs := []*yaceConf.Job{}
 	for _, job := range c.Discovery.Jobs {
 		discoveryJobs = append(discoveryJobs, toYACEDiscoveryJob(job))
@@ -170,7 +215,7 @@ func ToYACEConfig(c *Config) (yaceConf.ScrapeConf, bool, error) {
 		APIVersion: "v1alpha1",
 		StsRegion:  c.STSRegion,
 		Discovery: yaceConf.Discovery{
-			ExportedTagsOnMetrics: yaceModel.ExportedTagsOnMetrics(c.Discovery.ExportedTags),
+			ExportedTagsOnMetrics: yaceConf.ExportedTagsOnMetrics(c.Discovery.ExportedTags),
 			Jobs:                  discoveryJobs,
 		},
 		Static: staticJobs,
@@ -181,25 +226,26 @@ func ToYACEConfig(c *Config) (yaceConf.ScrapeConf, bool, error) {
 
 	// Run the exporter's config validation. Between other things, it will check that the service for which a discovery
 	// job is instantiated, it's supported.
-	if err := conf.Validate(); err != nil {
-		return conf, fipsEnabled, err
+	modelConf, err := conf.Validate(logging.NewNopLogger())
+	if err != nil {
+		return yaceModel.JobsConfig{}, fipsEnabled, err
 	}
-	PatchYACEDefaults(&conf)
+	PatchYACEDefaults(&modelConf)
 
-	return conf, fipsEnabled, nil
+	return modelConf, fipsEnabled, nil
 }
 
 // PatchYACEDefaults overrides some default values YACE applies after validation.
-func PatchYACEDefaults(yc *yaceConf.ScrapeConf) {
+func PatchYACEDefaults(yc *yaceModel.JobsConfig) {
 	// YACE doesn't allow during validation a zero-delay in each metrics scrape. Override this behaviour since it's taken
 	// into account by the rounding period.
 	// https://github.com/nerdswords/yet-another-cloudwatch-exporter/blob/7e5949124bb5f26353eeff298724a5897de2a2a4/pkg/config/config.go#L320
-	for _, job := range yc.Discovery.Jobs {
+	for _, job := range yc.DiscoveryJobs {
 		for _, metric := range job.Metrics {
 			metric.Delay = 0
 		}
 	}
-	for _, staticConf := range yc.Static {
+	for _, staticConf := range yc.StaticJobs {
 		for _, metric := range staticConf.Metrics {
 			metric.Delay = 0
 		}
@@ -251,16 +297,6 @@ func toYACEDiscoveryJob(job *DiscoveryJob) *yaceConf.Job {
 		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
 		// metrics, with the smallest period in the retrieved batch.
 		RoundingPeriod: nil,
-
-		JobLevelMetricFields: yaceConf.JobLevelMetricFields{
-			// Set to zero job-wide scraping time settings. This should be configured at the metric level to make the data
-			// being fetched more explicit.
-			Period:                 0,
-			Length:                 0,
-			Delay:                  0,
-			NilToZero:              nilToZero,
-			AddCloudwatchTimestamp: &addCloudwatchTimestamp,
-		},
 	}
 	return &yaceJob
 }
@@ -318,10 +354,10 @@ func toYACERoles(roles []Role) []yaceConf.Role {
 	return yaceRoles
 }
 
-func toYACETags(tags []Tag) []yaceModel.Tag {
-	outTags := []yaceModel.Tag{}
+func toYACETags(tags []Tag) []yaceConf.Tag {
+	outTags := []yaceConf.Tag{}
 	for _, t := range tags {
-		outTags = append(outTags, yaceModel.Tag{
+		outTags = append(outTags, yaceConf.Tag{
 			Key:   t.Key,
 			Value: t.Value,
 		})

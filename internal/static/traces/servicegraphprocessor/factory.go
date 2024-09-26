@@ -51,7 +51,7 @@ func createDefaultConfig() component.Config {
 
 func createTracesProcessor(
 	_ context.Context,
-	set otelprocessor.CreateSettings,
+	set otelprocessor.Settings,
 	cfg component.Config,
 	nextConsumer consumer.Traces,
 ) (otelprocessor.Traces, error) {

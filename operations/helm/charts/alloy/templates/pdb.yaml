@@ -1,0 +1,31 @@
+{{- if .Values.controller.podDisruptionBudget.enabled }}
+{{- if eq .Values.controller.type "daemonset" }}
+{{- fail "PDBs (Pod Disruption Budgets) are not intended for DaemonSets. Please use a different controller type." }}
+{{- end }}
+
+{{- if and .Values.controller.podDisruptionBudget.minAvailable .Values.controller.podDisruptionBudget.maxUnavailable }}
+{{- fail "Only one of minAvailable or maxUnavailable should be defined for PodDisruptionBudget" }}
+{{- end }}
+
+{{- if not (or .Values.controller.podDisruptionBudget.minAvailable .Values.controller.podDisruptionBudget.maxUnavailable) }}
+{{- fail "Either minAvailable or maxUnavailable must be defined for PodDisruptionBudget" }}
+{{- end }}
+
+apiVersion: {{ include "alloy.controller.pdb.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "alloy.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "alloy.selectorLabels" . | nindent 6 }}
+  {{- if .Values.controller.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.controller.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.controller.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.controller.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+{{- end }}

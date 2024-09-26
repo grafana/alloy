@@ -30,7 +30,7 @@ func TestDatadogReceiver_Lifecycle(t *testing.T) {
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig()
 	cfg.(*Config).Endpoint = "localhost:0"
-	ddr, err := factory.CreateTracesReceiver(context.Background(), receivertest.NewNopCreateSettings(), cfg, consumertest.NewNop())
+	ddr, err := factory.CreateTracesReceiver(context.Background(), receivertest.NewNopSettings(), cfg, consumertest.NewNop())
 	assert.NoError(t, err, "Receiver should be created")
 
 	err = ddr.Start(context.Background(), componenttest.NewNopHost())
@@ -44,7 +44,7 @@ func TestDatadogMetricsReceiver_Lifecycle(t *testing.T) {
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig()
 	cfg.(*Config).Endpoint = "localhost:0"
-	ddr, err := factory.CreateMetricsReceiver(context.Background(), receivertest.NewNopCreateSettings(), cfg, consumertest.NewNop())
+	ddr, err := factory.CreateMetricsReceiver(context.Background(), receivertest.NewNopSettings(), cfg, consumertest.NewNop())
 
 	assert.NoError(t, err, "Receiver should be created")
 
@@ -60,7 +60,7 @@ func TestDatadogServer(t *testing.T) {
 	cfg.Endpoint = "localhost:0" // Using a randomly assigned address
 	dd, err := newDataDogReceiver(
 		cfg,
-		receivertest.NewNopCreateSettings(),
+		receivertest.NewNopSettings(),
 	)
 	require.NoError(t, err, "Must not error when creating receiver")
 	dd.(*datadogReceiver).nextTracesConsumer = consumertest.NewNop()
@@ -117,7 +117,7 @@ func TestDatadogSketches_EndToEnd(t *testing.T) {
 
 	dd, err := newDataDogReceiver(
 		cfg,
-		receivertest.NewNopCreateSettings(),
+		receivertest.NewNopSettings(),
 	)
 	require.NoError(t, err, "Must not error when creating receiver")
 	dd.(*datadogReceiver).nextMetricsConsumer = sink
@@ -204,7 +204,7 @@ func TestDatadogServices_EndToEnd(t *testing.T) {
 
 	dd, err := newDataDogReceiver(
 		cfg,
-		receivertest.NewNopCreateSettings(),
+		receivertest.NewNopSettings(),
 	)
 	require.NoError(t, err, "Must not error when creating receiver")
 	dd.(*datadogReceiver).nextMetricsConsumer = sink
@@ -264,7 +264,7 @@ func TestDatadogMetricsV1_EndToEnd(t *testing.T) {
 
 	dd, err := newDataDogReceiver(
 		cfg,
-		receivertest.NewNopCreateSettings(),
+		receivertest.NewNopSettings(),
 	)
 	require.NoError(t, err, "Must not error when creating receiver")
 	dd.(*datadogReceiver).nextMetricsConsumer = sink
@@ -326,7 +326,7 @@ func TestDatadogMetricsV2_EndToEnd(t *testing.T) {
 
 	dd, err := newDataDogReceiver(
 		cfg,
-		receivertest.NewNopCreateSettings(),
+		receivertest.NewNopSettings(),
 	)
 	require.NoError(t, err, "Must not error when creating receiver")
 	dd.(*datadogReceiver).nextMetricsConsumer = sink

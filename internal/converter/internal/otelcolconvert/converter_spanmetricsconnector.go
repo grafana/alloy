@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -26,7 +27,7 @@ func (spanmetricsConnectorConverter) InputComponentName() string {
 	return "otelcol.connector.spanmetrics"
 }
 
-func (spanmetricsConnectorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (spanmetricsConnectorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -43,7 +44,7 @@ func (spanmetricsConnectorConverter) ConvertAndAppend(state *State, id component
 	return diags
 }
 
-func toSpanmetricsConnector(state *State, id component.InstanceID, cfg *spanmetricsconnector.Config) *spanmetrics.Arguments {
+func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *spanmetricsconnector.Config) *spanmetrics.Arguments {
 	if cfg == nil {
 		return nil
 	}
