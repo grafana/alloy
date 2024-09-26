@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.3.4
+-----------------
+
+### Bugfixes
+
+- Windows installer: Don't quote Alloy binary path in registy (@jkroepke)
+
 v1.3.3
 -----------------
 
