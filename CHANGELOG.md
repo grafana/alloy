@@ -12,7 +12,7 @@ v1.3.4
 
 ### Bugfixes
 
-- Windows installer: Don't quote Alloy binary path in registy (@jkroepke)
+- Windows installer: Don't quote Alloy's binary path in the Windows Registry. (@jkroepke)
 
 v1.3.3
 -----------------
