@@ -13,6 +13,7 @@ Main (unreleased)
 ### Features
 
 - Add the function `path_join` to the stdlib. (@wildum)
+- Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
 
 ### Bugfixes
 

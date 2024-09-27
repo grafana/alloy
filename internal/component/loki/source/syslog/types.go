@@ -11,6 +11,13 @@ import (
 	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 )
 
+const (
+	// A modern Syslog RFC
+	SyslogFormatRFC5424 = "rfc5424"
+	// A legacy Syslog RFC also known as BSD-syslog
+	SyslogFormatRFC3164 = "rfc3164"
+)
+
 // ListenerConfig defines a syslog listener.
 type ListenerConfig struct {
 	ListenAddress        string            `alloy:"address,attr"`
@@ -22,6 +29,7 @@ type ListenerConfig struct {
 	UseRFC5424Message    bool              `alloy:"use_rfc5424_message,attr,optional"`
 	MaxMessageLength     int               `alloy:"max_message_length,attr,optional"`
 	TLSConfig            config.TLSConfig  `alloy:"tls_config,block,optional"`
+	SyslogFormat         string            `alloy:"syslog_format,attr,optional"`
 }
 
 // DefaultListenerConfig provides the default arguments for a syslog listener.
@@ -29,6 +37,7 @@ var DefaultListenerConfig = ListenerConfig{
 	ListenProtocol:   st.DefaultProtocol,
 	IdleTimeout:      st.DefaultIdleTimeout,
 	MaxMessageLength: st.DefaultMaxMessageLength,
+	SyslogFormat:     SyslogFormatRFC5424,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -42,14 +51,24 @@ func (sc *ListenerConfig) Validate() error {
 		return fmt.Errorf("syslog listener protocol should be either 'tcp' or 'udp', got %s", sc.ListenProtocol)
 	}
 
+	_, err := convertSyslogFormat(sc.SyslogFormat)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // Convert is used to bridge between the Alloy and Promtail types.
-func (sc ListenerConfig) Convert() *scrapeconfig.SyslogTargetConfig {
+func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 	lbls := make(model.LabelSet, len(sc.Labels))
 	for k, v := range sc.Labels {
 		lbls[model.LabelName(k)] = model.LabelValue(v)
+	}
+
+	syslogFormat, err := convertSyslogFormat(sc.SyslogFormat)
+	if err != nil {
+		return nil, err
 	}
 
 	return &scrapeconfig.SyslogTargetConfig{
@@ -62,5 +81,17 @@ func (sc ListenerConfig) Convert() *scrapeconfig.SyslogTargetConfig {
 		UseRFC5424Message:    sc.UseRFC5424Message,
 		MaxMessageLength:     sc.MaxMessageLength,
 		TLSConfig:            *sc.TLSConfig.Convert(),
+		SyslogFormat:         syslogFormat,
+	}, nil
+}
+
+func convertSyslogFormat(format string) (scrapeconfig.SyslogFormat, error) {
+	switch format {
+	case SyslogFormatRFC3164:
+		return scrapeconfig.SyslogFormatRFC3164, nil
+	case SyslogFormatRFC5424:
+		return scrapeconfig.SyslogFormatRFC5424, nil
+	default:
+		return "", fmt.Errorf("unknown syslog format %q", format)
 	}
 }
