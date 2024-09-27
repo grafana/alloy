@@ -14,6 +14,23 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
 
+## v1.4
+
+### Breaking change: Some debug metrics for `otelcol` components have changed
+
+For example, `otelcol.exporter.otlp`'s `exporter_sent_spans_ratio_total` metric is now `otelcol_exporter_sent_spans_total`.
+You may need to change your dashboard and alert settings to reference the new metrics.
+Refer to each component's documentation page for more information.
+
+### Breaking change: The `convert_sum_to_gauge` and `convert_gauge_to_sum` functions in `otelcol.processor.transform` change context
+
+The `convert_sum_to_gauge` and `convert_gauge_to_sum` functions must now be used in the `metric` context rather than in the `datapoint` context.
+This is due to a [change upstream](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/34567).
+
+### Breaking change: Renamed metrics in `beyla.ebpf`
+
+`process.cpu.state` is renamed to `cpu.mode` and `beyla_build_info` is renamed to `beyla_internal_build_info`.
+
 ## v1.3
 
 ### Breaking change: `remotecfg` block updated argument name from `metadata` to `attributes`

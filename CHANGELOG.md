@@ -10,14 +10,40 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-### Enhancements
+### Features
 
-- Added support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
+- Add the function `path_join` to the stdlib. (@wildum)
+- Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
 
-v1.4.0-rc.0
+### Bugfixes
+
+- Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
+  - Fixes a bug where cloudwatch S3 metrics are reported as `0`
+
+### Other changes
+
+- Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
+
+- Changed OTEL alerts in Alloy mixin to use success rate for tracing. (@thampiotr)
+
+v1.4.1
 -----------------
 
+### Bugfixes
+
+- Windows installer: Don't quote Alloy's binary path in the Windows Registry. (@jkroepke)
+
+v1.4.0
+-----------------
+
+### Security fixes
+
+- Add quotes to windows service path to prevent path interception attack. [CVE-2024-8975](https://grafana.com/security/security-advisories/cve-2024-8975/) (@mattdurham)
+
 ### Breaking changes
+
+- Some debug metrics for `otelcol` components have changed. (@thampiotr)
+  For example, `otelcol.exporter.otlp`'s `exporter_sent_spans_ratio_total` metric is now `otelcol_exporter_sent_spans_total`.
 
 - [otelcol.processor.transform] The functions `convert_sum_to_gauge` and `convert_gauge_to_sum` must now be used in the `metric` `context` rather than in the `datapoint` context.
   https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/34567 (@wildum)
@@ -32,6 +58,8 @@ v1.4.0-rc.0
 - Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
 - (_Experimental_) Add an `otelcol.processor.interval` component to aggregate metrics and periodically
   forward the latest values to the next component in the pipeline.
+- (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
+
 
 ### Enhancements
 
@@ -116,6 +144,20 @@ v1.4.0-rc.0
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33607
 
 - Updated the docker base image to Ubuntu 24.04 (Noble Numbat). (@mattiasa )
+
+v1.3.4
+-----------------
+
+### Bugfixes
+
+- Windows installer: Don't quote Alloy's binary path in the Windows Registry. (@jkroepke)
+
+v1.3.2
+-----------------
+
+### Security fixes
+
+- Add quotes to windows service path to prevent path interception attack. [CVE-2024-8975](https://grafana.com/security/security-advisories/cve-2024-8975/) (@mattdurham)
 
 v1.3.1
 -----------------
