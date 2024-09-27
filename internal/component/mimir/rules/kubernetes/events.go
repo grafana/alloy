@@ -3,26 +3,26 @@ package rules
 import (
 	"context"
 	"fmt"
-	"github.com/prometheus/prometheus/promql/parser"
 	"maps"
 	"regexp"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	"github.com/grafana/alloy/internal/mimir/client"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	promlabels "github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/rulefmt"
-	yamlv3 "gopkg.in/yaml.v3"
+	"github.com/prometheus/prometheus/promql/parser"
 	"k8s.io/apimachinery/pkg/labels"
 	coreListers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/yaml" // Used for CRD compatibility instead of gopkg.in/yaml.v2
+
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/mimir/client"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -34,15 +34,14 @@ type eventProcessor struct {
 	stopChan chan struct{}
 	health   healthReporter
 
-	mimirClient       client.Interface
-	namespaceLister   coreListers.NamespaceLister
-	ruleLister        promListers.PrometheusRuleLister
-	namespaceSelector labels.Selector
-	ruleSelector      labels.Selector
-	namespacePrefix   string
-	externalLabels    map[string]string
-	//TODO: this needs to still be exposed properly to users
-	extraQueryLabels []queryLabel
+	mimirClient        client.Interface
+	namespaceLister    coreListers.NamespaceLister
+	ruleLister         promListers.PrometheusRuleLister
+	namespaceSelector  labels.Selector
+	ruleSelector       labels.Selector
+	namespacePrefix    string
+	externalLabels     map[string]string
+	extraQueryMatchers *ExtraQueryMatchers
 
 	metrics *metrics
 	logger  log.Logger
@@ -188,30 +187,27 @@ func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.RuleGroupsByNa
 			}
 
 			if len(e.externalLabels) > 0 {
-				for _, rule_group := range groups {
+				for _, ruleGroup := range groups {
 					// Refer to the slice element via its index,
 					// to make sure we mutate on the original and not a copy.
-					for i := range rule_group.Rules {
-						if rule_group.Rules[i].Labels == nil {
-							rule_group.Rules[i].Labels = make(map[string]string, len(e.externalLabels))
+					for i := range ruleGroup.Rules {
+						if ruleGroup.Rules[i].Labels == nil {
+							ruleGroup.Rules[i].Labels = make(map[string]string, len(e.externalLabels))
 						}
-						maps.Copy(rule_group.Rules[i].Labels, e.externalLabels)
+						maps.Copy(ruleGroup.Rules[i].Labels, e.externalLabels)
 					}
 				}
 			}
 
-			if len(e.extraQueryLabels) > 0 {
-				for _, rg := range groups {
-					for i, r := range rg.Rules {
-						query := r.Expr.Value
-						newQuery, err := addLabelsToQuery(query, e.extraQueryLabels)
+			if e.extraQueryMatchers != nil {
+				for _, ruleGroup := range groups {
+					for i := range ruleGroup.Rules {
+						query := ruleGroup.Rules[i].Expr.Value
+						newQuery, err := addMatchersToQuery(query, e.extraQueryMatchers.Matchers)
 						if err != nil {
-							level.Error(e.logger).Log("msg", "failed to add labels to query", "query", query, "err", err)
+							level.Error(e.logger).Log("msg", "failed to add labels to PrometheusRule query", "query", query, "err", err)
 						}
-						rg.Rules[i].Expr = yamlv3.Node{
-							Kind:  yamlv3.ScalarNode,
-							Value: newQuery,
-						}
+						ruleGroup.Rules[i].Expr.Value = newQuery
 					}
 				}
 			}
@@ -223,16 +219,10 @@ func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.RuleGroupsByNa
 	return desiredState, nil
 }
 
-type queryLabel struct {
-	name      string
-	value     string
-	matchType string
-}
-
-func addLabelsToQuery(query string, labelsToAdd []queryLabel) (string, error) {
+func addMatchersToQuery(query string, matchers []Matcher) (string, error) {
 	var err error
-	for _, label := range labelsToAdd {
-		query, err = labelsSetPromQL(query, label.matchType, label.name, label.value)
+	for _, s := range matchers {
+		query, err = labelsSetPromQL(query, s.MatchType, s.Name, s.Value)
 		if err != nil {
 			return "", err
 		}
@@ -282,7 +272,7 @@ func labelsSetPromQL(query, labelMatchType, name, value string) (string, error) 
 		return nil
 	})
 
-	return expr.Pretty(0), nil
+	return expr.String(), nil
 }
 
 func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.RuleGroup, error) {
