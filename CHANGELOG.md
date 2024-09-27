@@ -45,6 +45,9 @@ Main (unreleased)
 
 - Fixed a bug with `loki.source.podlogs` not starting in large clusters due to short informer sync timeout. (@elburnetto-intapp) 
 
+- `prometheus.operator.*` components: Fixed a bug which would sometimes cause a 
+  "failed to create service discovery refresh metrics" error after a config reload. (@ptodev)
+
 ### Other changes
 
 - Small fix in UI stylesheet to fit more content into visible table area. (@defanator)

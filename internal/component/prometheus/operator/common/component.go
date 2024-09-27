@@ -74,6 +74,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 	c.reportHealth(nil)
 	errChan := make(chan error, 1)
+	runWg := sync.WaitGroup{}
+	defer runWg.Wait()
 	for {
 		select {
 		case <-ctx.Done():
@@ -87,15 +89,23 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.Lock()
 			manager := newCrdManager(c.opts, c.cluster, c.opts.Logger, c.config, c.kind, c.ls)
 			c.manager = manager
+
+			// Wait for the old manager to stop.
+			// If we start the new manager before stopping the old one,
+			// the new manager might not be able to register its debug metrics due to a duplicate registration error.
 			if cancel != nil {
 				cancel()
 			}
+			runWg.Wait()
+
 			innerCtx, cancel = context.WithCancel(ctx)
+			runWg.Add(1)
 			go func() {
 				if err := manager.Run(innerCtx); err != nil {
 					level.Error(c.opts.Logger).Log("msg", "error running crd manager", "err", err)
 					errChan <- err
 				}
+				runWg.Done()
 			}()
 			c.mut.Unlock()
 		}
