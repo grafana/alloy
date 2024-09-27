@@ -1,6 +1,7 @@
-# Update Version in Code
+# Update the "main" and "release/" branches
 
-The project must be updated to reference the upcoming release tag whenever a new release is being made.
+You need to update the CHANGELOG and the [VERSION file][VERSION-file].
+You may also need to cherry pick commits on the `release/` branch.
 
 ## Before you begin
 
@@ -8,53 +9,66 @@ The project must be updated to reference the upcoming release tag whenever a new
 
 2. Determine the [VERSION_PREFIX](concepts/version.md)
 
-## Steps
+## 1. Update the "release/VERSION_PREFIX" branch
 
-1. Create a branch from `main` for [grafana/alloy](https://github.com/grafana/alloy).
+Example PRs:
 
-2. Update the `CHANGELOG.md`:
+* [Release Candidate](https://github.com/grafana/alloy/pull/1410).
+  Here the PR is done on the main branch, before creating the release branch.
+  You can do this to save time by not having to update the release branch separately.
+* [Additional Release Candidate](https://github.com/grafana/alloy/pull/1701)
+* [Stable Release](https://github.com/grafana/alloy/pull/1747)
+  There is no need to update the VERSION file in this PR.
+  The VERSION file is already pointing to the version being released ever since the `release/` branch was created.
+* [Patch Release](https://github.com/grafana/alloy/pull/1767)
 
-    1. `CHANGELOG.md` Header
-        - First Release Candidate or a Patch Release
-            - Add a new header under `Main (unreleased)` for `VERSION`.
-        - Additional RCV or SRV
-            - Update the header `PREVIOUS_RELEASE_CANDIDATE_VERSION` to `VERSION`. The date may need updating.
+### 1.1. Add the new version to the CHANGELOG
 
-    2. Move the unreleased changes we want to add to the release branch from `Main (unreleased)` to `VERSION`.
+For a First Release Candidate (`rc.0`), replace the `Main (unreleased)` header with a new one for  `VERSION`.
 
-3. Create a PR to merge to main (must be merged before continuing).
+For an Additional Release Candidate or SRV, update the header `PREVIOUS_RELEASE_CANDIDATE_VERSION` to `VERSION`.
 
-    - Release Candidate example PR [here](https://github.com/grafana/agent/pull/3065)
-    - Stable Release example PR [here](https://github.com/grafana/agent/pull/3119)
-    - Patch Release example PR [here](https://github.com/grafana/agent/pull/3191)
+For a patch release, add a new header for `VERSION`.
 
-4. If one doesn't exist yet, create a branch called `release/VERSION_PREFIX` for [grafana/alloy](https://github.com/grafana/alloy).
+### 1.2. Cherry pick commits
 
-5. Cherry pick the commit on main from the merged PR in Step 3 from main into the branch from Step 4:
+If you need certain changes on the release branch but they're not yet there, cherry-pick them onto the release branch.
+In the CHANGELOG, make sure they are listed under the header for the new VERSION and not under `Main (unreleased)`.
 
-    ```
-    git cherry-pick -x COMMIT_SHA
-    ```
+### 1.3. Update the VERSION file
 
-    Delete the `Main (unreleased)` header and anything underneath it as part of the cherry-pick. Alternatively, do it after the cherry-pick is completed.
+The [VERSION file][VERSION-file] on the `release/` branch should point to the stable (or patch) version you're about to release.
 
-6. **If you are creating a patch release,** ensure that the file called `VERSION` in your branch matches the version being published, without any release candidate or build information:
+The contents of the VERSION file should not contain `rc` information.
+Therefore, there is no need to update the VERSION file for additional release candidates (e.g. `rc.1`, `rc.2`).
 
-   > **NOTE**: Only perform this step for patch releases, and make sure that
-   > the change is not pushed to the main branch.
+For example:
+* If you are going to release `v1.2.0-rc.0`, then the VERSION file should contain `v1.2.0`.
+* If you are going to release `v1.5.1`, then the VERSION file should contain `v1.5.1`.
 
-   After updating `VERSION`, run:
+## 2. Update the "main" branch
 
-   ```bash
-   make generate-versioned-files
-   ```
+Examples:
 
-   Next, commit the changes (including those to `VERSION`, as a workflow will use this version to ensure that the templates and generated files are in sync).
+* Release Candidate example PR [here](https://github.com/grafana/alloy/pull/1410)
+* Stable Release example PR [here](https://github.com/grafana/alloy/pull/1419)
+* Patch Release example PR [here](https://github.com/grafana/alloy/pull/1769)
 
+### 2.1. Add the new version to the CHANGELOG
 
-6. Create a PR to merge to `release/VERSION_PREFIX` (must be merged before continuing).
+For a First Release Candidate or a Patch Release, add a new header under `Main (unreleased)` for `VERSION`.
 
-    - Release Candidate example PR [here](https://github.com/grafana/agent/pull/3066)
-    - Stable Release example PR [here](https://github.com/grafana/agent/pull/3123)
-    - Patch Release example PR [here](https://github.com/grafana/agent/pull/3193)
-        - The `CHANGELOG.md` was updated in cherry-pick commits prior for this example. Make sure it is all set on this PR.
+For an Additional Release Candidate or SRV, update the header `PREVIOUS_RELEASE_CANDIDATE_VERSION` to `VERSION`.
+
+### 2.2. Update the VERSION file
+
+The [VERSION file][VERSION-file] on the "main" branch should point to the next major version.
+For example:
+* If you are going to release `v1.2.0-rc.0`, then the VERSION file should contain `v1.3.0`.
+* If you are going to release `v1.5.1`, then the VERSION file should contain `v1.6.0`.
+
+The reasoning behind this is that any builds of the main branch should contain the next major version they are meant to go to.
+If the latest release branch that was cut is `release/1.3`, then `main` is preparing for `1.4.0`.
+Any builds of the main branch will therefore be labeled `devel-1.4.0`.
+
+[VERSION-file]: https://github.com/grafana/alloy/blob/main/VERSION
