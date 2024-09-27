@@ -14,6 +14,11 @@ Main (unreleased)
 
 - Add the function `path_join` to the stdlib. (@wildum)
 
+### Enhancements
+
+- The `mimir.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs. (@thampiotr)
+
 ### Bugfixes
 
 - Windows installer: Don't quote alloy binary path in registy (@jkroepke)
