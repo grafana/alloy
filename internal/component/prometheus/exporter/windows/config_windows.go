@@ -35,6 +35,9 @@ func (a *Arguments) SetToDefault() {
 			Include:   col.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
 			Exclude:   col.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
 		},
+		MSCluster: MSClusterConfig{
+			CollectorsEnabled: col.ConfigDefaults.Mscluster.CollectorsEnabled,
+		},
 		MSMQ: MSMQConfig{
 			Where: *col.ConfigDefaults.Msmq.QueryWhereClause,
 		},

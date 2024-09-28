@@ -23,6 +23,7 @@ func TestAlloyUnmarshalWithDefaultConfig(t *testing.T) {
 	require.Equal(t, defaultArgs.IIS.SiteInclude, args.IIS.SiteInclude)
 	require.Equal(t, defaultArgs.LogicalDisk.Exclude, args.LogicalDisk.Exclude)
 	require.Equal(t, defaultArgs.LogicalDisk.Include, args.LogicalDisk.Include)
+	require.Equal(t, defaultArgs.MSCluster.CollectorsEnabled, args.MSCluster.CollectorsEnabled)
 	require.Equal(t, defaultArgs.MSMQ.Where, args.MSMQ.Where)
 	require.Equal(t, defaultArgs.MSSQL.EnabledClasses, args.MSSQL.EnabledClasses)
 	require.Equal(t, defaultArgs.Network.Exclude, args.Network.Exclude)

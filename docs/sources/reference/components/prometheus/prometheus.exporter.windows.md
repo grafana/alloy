@@ -40,6 +40,9 @@ All arguments are optional. Omitted fields take their default values.
 If set, anything not provided in that list is disabled by default.
 Refer to the [Collectors list](#collectors-list) for the default set.
 
+The collectors `mscluster_cluster`, `mscluster_node`, `mscluster_network`, `mscluster_resource`, `mscluster_resourcegroups` 
+are deprecated and merged into a new collector `mscluster`. 
+
 ## Blocks
 
 The following blocks are supported inside the definition of
@@ -51,6 +54,7 @@ dfsr           | [dfsr][]           | Configures the dfsr collector.           |
 exchange       | [exchange][]       | Configures the exchange collector.       | no
 iis            | [iis][]            | Configures the iis collector.            | no
 logical_disk   | [logical_disk][]   | Configures the logical_disk collector.   | no
+mscluster      | [mscluster][]      | Configures the mscluster collector.      | no
 msmq           | [msmq][]           | Configures the msmq collector.           | no
 mssql          | [mssql][]          | Configures the mssql collector.          | no
 network        | [network][]        | Configures the network collector.        | no
@@ -67,6 +71,7 @@ text_file      | [text_file][]      | Configures the text_file collector.      |
 [exchange]: #exchange-block
 [iis]: #iis-block
 [logical_disk]: #logicaldisk-block
+[mscluster]: #mscluster-block
 [msmq]: #msmq-block
 [mssql]: #mssql-block
 [network]: #network-block
@@ -126,6 +131,12 @@ Name      | Type     | Description                               | Default | Req
 
 Volume names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
+
+### mscluster block
+
+Name                 | Type     | Description                                           | Default                                            | Required
+---------------------|----------|-------------------------------------------------------|----------------------------------------------------|---------
+`enabled_collectors` | `string` | Comma-separated list of sub-collectors to be enabled. | `"cluster,node,network,resource,resourcegroup"`    | no
 
 ### msmq block
 
@@ -291,11 +302,7 @@ Name     | Description | Enabled by default
 [logical_disk](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.logical_disk.md) | Logical disks, disk I/O | &#10003;
 [logon](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.logon.md) | User logon sessions |
 [memory](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.memory.md) | Memory usage metrics |
-[mscluster_cluster](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.mscluster_cluster.md) | MSCluster cluster metrics |
-[mscluster_network](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.mscluster_network.md) | MSCluster network metrics |
-[mscluster_node](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.mscluster_node.md) | MSCluster Node metrics |
-[mscluster_resource](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.mscluster_resource.md) | MSCluster Resource metrics |
-[mscluster_resourcegroup](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.mscluster_resourcegroup.md) | MSCluster ResourceGroup metrics |
+[mscluster](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.mscluster.md) | MSCluster cluster metrics |
 [msmq](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.msmq.md) | MSMQ queues |
 [mssql](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.mssql.md) | [SQL Server Performance Objects](https://docs.microsoft.com/en-us/sql/relational-databases/performance-monitor/use-sql-server-objects#SQLServerPOs) metrics  |
 [netframework_clrexceptions](https://github.com/prometheus-community/windows_exporter/blob/master/docs/collector.netframework_clrexceptions.md) | .NET Framework CLR Exceptions |
@@ -331,7 +338,7 @@ Refer to the linked documentation on each collector for more information on repo
 
 {{< admonition type="caution" >}}
 Certain collectors will cause {{< param "PRODUCT_NAME" >}} to crash if those collectors are used and the required infrastructure isn't installed.
-These include but aren't limited to mscluster_*, vmware, nps, dns, msmq, teradici_pcoip, ad, hyperv, and scheduled_task.
+These include but aren't limited to mscluster, vmware, nps, dns, msmq, teradici_pcoip, ad, hyperv, and scheduled_task.
 {{< /admonition >}}
 
 ## Example

@@ -17,21 +17,21 @@ import (
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	// Filter down to the enabled collectors
 	enabledCollectorNames := enabledCollectors(c.EnabledCollectors)
-	winExporterConfig, err := c.ToWindowsExporterConfig()
+	winExporterConfig, err := c.ToWindowsExporterConfig(enabledCollectorNames)
 	if err != nil {
 		return nil, err
 	}
 
-	winCol := collector.NewWithConfig(logger, winExporterConfig)
+	winCol := collector.NewWithConfig(winExporterConfig)
 	winCol.Enable(enabledCollectorNames)
 	sort.Strings(enabledCollectorNames)
 	level.Info(logger).Log("msg", "enabled windows_exporter collectors", "collectors", strings.Join(enabledCollectorNames, ","))
 
-	err = winCol.Build()
+	err = winCol.Build(logger)
 	if err != nil {
 		return nil, err
 	}
-	err = winCol.SetPerfCounterQuery()
+	err = winCol.SetPerfCounterQuery(logger)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		integrations.WithCollectors(
 			// Hard-coded 4m timeout to represent the time a series goes stale.
 			// TODO: Make configurable if useful.
-			collector.NewPrometheus(4*time.Minute, &winCol, logger),
+			collector.NewPrometheus(4*time.Minute, winCol, logger),
 		),
 		integrations.WithRunner(func(ctx context.Context) error {
 			<-ctx.Done()
