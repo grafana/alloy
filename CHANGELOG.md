@@ -15,6 +15,11 @@ Main (unreleased)
 - Add the function `path_join` to the stdlib. (@wildum)
 - Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
 
+### Enhancements
+
+- The `mimir.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs. (@thampiotr)
+
 ### Bugfixes
 
 - Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
