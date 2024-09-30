@@ -37,7 +37,9 @@ In the CHANGELOG, make sure they are listed under the header for the new VERSION
 
 ### 1.3. Update the VERSION file
 
-The [VERSION file][VERSION-file] on the `release/` branch should point to the stable (or patch) version you're about to release.
+The [VERSION file][VERSION-file] is used by the CI to ensure that templates and generated files are in sync.
+
+The VERSION file on the `release/` branch should point to the stable (or patch) version you're about to release.
 
 The contents of the VERSION file should not contain `rc` information.
 Therefore, there is no need to update the VERSION file for additional release candidates (e.g. `rc.1`, `rc.2`).
@@ -45,6 +47,12 @@ Therefore, there is no need to update the VERSION file for additional release ca
 For example:
 * If you are going to release `v1.2.0-rc.0`, then the VERSION file should contain `v1.2.0`.
 * If you are going to release `v1.5.1`, then the VERSION file should contain `v1.5.1`.
+
+After updating the VERSION file, run:
+
+```bash
+make generate-versioned-files
+```
 
 ## 2. Update the "main" branch
 
@@ -70,5 +78,11 @@ For example:
 The reasoning behind this is that any builds of the main branch should contain the next major version they are meant to go to.
 If the latest release branch that was cut is `release/1.3`, then `main` is preparing for `1.4.0`.
 Any builds of the main branch will therefore be labeled `devel-1.4.0`.
+
+After updating the VERSION file, run:
+
+```bash
+make generate-versioned-files
+```
 
 [VERSION-file]: https://github.com/grafana/alloy/blob/main/VERSION
