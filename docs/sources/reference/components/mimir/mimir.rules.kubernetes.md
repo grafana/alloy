@@ -135,7 +135,7 @@ an `oauth2` block.
 ### extra_query_matchers block
 
 The `extra_query_matchers` block has no attributes. It contains zero or more [matcher][] blocks.
-These blocks allow to add extra label matchers to all queries that are discovered by `mimir.rules.kubernetes`
+These blocks allow you to add extra label matchers to all queries that are discovered by `mimir.rules.kubernetes`
 component. The algorithm of adding the label matchers to queries is the same as the one provided by 
 `promtool promql label-matchers set` command in [promtool](https://github.com/prometheus/prometheus/tree/main/cmd/promtool).
 
@@ -148,7 +148,7 @@ The following arguments are supported:
 | Name         | Type     | Description                                        | Default | Required |
 |--------------|----------|----------------------------------------------------|---------|----------|
 | `name`       | `string` | Name of the label to match.                        |         | yes      |
-| `match_type` | `string` | The type of match. One of `=`, `!=`, `=~` and `!~` |         | yes      |
+| `match_type` | `string` | The type of match. One of `=`, `!=`, `=~` and `!~`. |         | yes      |
 | `value`      | `string` | Value of the label to match.                       |         | yes      |
 
 
