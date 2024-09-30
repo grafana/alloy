@@ -10,8 +10,13 @@ internal API changes are not present.
 v1.4.2
 -----------------
 
+### Bugfixes
+
 - Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
   - Fixes a bug where cloudwatch S3 metrics are reported as `0`
+
+- Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
+  - Fixes a bug where scraping Windows service crashes alloy
 
 v1.4.1
 -----------------
