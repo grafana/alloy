@@ -56,6 +56,7 @@ import (
 
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
+	"github.com/grafana/alloy/internal/runtime/internal/importsource"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -307,7 +308,7 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 		ArgScope: &vm.Scope{
 			Parent: nil,
 			Variables: map[string]interface{}{
-				"module_path": util.ExtractDirPath(configPath),
+				importsource.ModulePath: util.ExtractDirPath(configPath),
 			},
 		},
 	})

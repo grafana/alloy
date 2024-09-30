@@ -24,6 +24,8 @@ const (
 	BlockImportGit    = "import.git"
 )
 
+const ModulePath = "module_path"
+
 // ImportSource retrieves a module from a source.
 type ImportSource interface {
 	// Evaluate updates the arguments provided via the Alloy block.

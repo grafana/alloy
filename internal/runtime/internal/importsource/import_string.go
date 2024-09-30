@@ -42,7 +42,7 @@ func (im *ImportString) Evaluate(scope *vm.Scope) error {
 	}
 	im.arguments = arguments
 
-	im.modulePath, _ = scope.Variables["module_path"].(string)
+	im.modulePath, _ = scope.Variables[ModulePath].(string)
 
 	// notifies that the content has changed
 	im.onContentChange(map[string]string{"import_string": arguments.Content.Value})

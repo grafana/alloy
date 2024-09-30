@@ -305,7 +305,7 @@ func (cn *ImportConfigNode) evaluateChildren() error {
 			Parent: &vm.Scope{
 				Parent: nil,
 				Variables: map[string]interface{}{
-					"module_path": cn.source.ModulePath(),
+					importsource.ModulePath: cn.source.ModulePath(),
 				},
 			},
 			Variables: make(map[string]interface{}),
@@ -438,7 +438,7 @@ func (cn *ImportConfigNode) ImportedDeclares() map[string]ast.Body {
 func (cn *ImportConfigNode) Scope() *vm.Scope {
 	return &vm.Scope{
 		Variables: map[string]interface{}{
-			"module_path": cn.source.ModulePath(),
+			importsource.ModulePath: cn.source.ModulePath(),
 		},
 	}
 }
