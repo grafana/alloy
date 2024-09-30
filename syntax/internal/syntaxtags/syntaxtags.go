@@ -277,6 +277,8 @@ func parseFlags(input string) (f Flags, ok bool) {
 		f |= FlagEnum | FlagOptional
 	case "label":
 		f |= FlagLabel
+	case "label,optional":
+		f |= FlagLabel | FlagOptional
 	case "squash":
 		f |= FlagSquash
 	default:

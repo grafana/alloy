@@ -247,7 +247,7 @@ func (vm *Evaluator) evaluateBlockLabel(node *ast.BlockStmt, tfs []syntaxtags.Fi
 	// the name. We might be able to clean this up in the future by extending
 	// ValueError to have an explicit position.
 	switch {
-	case node.Label == "" && foundField: // No user label, but struct expects one
+	case node.Label == "" && foundField && !labelField.IsOptional(): // No user label, but struct expects one
 		return diag.Diagnostic{
 			Severity: diag.SeverityLevelError,
 			StartPos: node.NamePos.Position(),

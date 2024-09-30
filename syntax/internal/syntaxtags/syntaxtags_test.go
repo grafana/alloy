@@ -37,6 +37,20 @@ func Test_Get(t *testing.T) {
 	require.Equal(t, expect, fs)
 }
 
+func Test_GetOptionalLabel(t *testing.T) {
+	type Struct struct {
+		Label string `alloy:",label,optional"`
+	}
+
+	fs := syntaxtags.Get(reflect.TypeOf(Struct{}))
+
+	expect := []syntaxtags.Field{
+		{[]string{""}, []int{0}, syntaxtags.FlagLabel | syntaxtags.FlagOptional},
+	}
+
+	require.Equal(t, expect, fs)
+}
+
 func TestEmbedded(t *testing.T) {
 	type InnerStruct struct {
 		InnerField1 string `alloy:"inner_field_1,attr"`
@@ -175,6 +189,15 @@ func Test_Get_Panics(t *testing.T) {
 		type Struct struct {
 			Label1 string `alloy:",label"`
 			Label2 string `alloy:",label"`
+		}
+		expect := `syntax: label field already used by syntaxtags_test.Struct.Label2`
+		expectPanic(t, expect, Struct{})
+	})
+
+	t.Run("Only one label field may exist (with an optional label)", func(t *testing.T) {
+		type Struct struct {
+			Label1 string `alloy:",label"`
+			Label2 string `alloy:",label,optional"`
 		}
 		expect := `syntax: label field already used by syntaxtags_test.Struct.Label2`
 		expectPanic(t, expect, Struct{})
