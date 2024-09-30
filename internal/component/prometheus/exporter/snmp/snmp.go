@@ -48,7 +48,7 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 			target[k] = v
 		}
 
-		target["job"] = target["job"] + "/" + tgt.Name
+		target["job"] = target["job"] + "/" + tgt.Name()
 		target["__param_target"] = tgt.Target
 		if tgt.Module != "" {
 			target["__param_module"] = tgt.Module
@@ -71,7 +71,9 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 
 // SNMPTarget defines a target to be used by the exporter.
 type SNMPTarget struct {
-	Name        string `alloy:",label"`
+	//TODO: For Alloy 2.0: Remove NameLbl and make NameArg mandatory.
+	NameLbl     string `alloy:",label,optional"`
+	NameArg     string `alloy:"name,attr,optional"`
 	Target      string `alloy:"address,attr"`
 	Module      string `alloy:"module,attr,optional"`
 	Auth        string `alloy:"auth,attr,optional"`
@@ -86,7 +88,7 @@ func (t TargetBlock) Convert() []snmp_exporter.SNMPTarget {
 	targets := make([]snmp_exporter.SNMPTarget, 0, len(t))
 	for _, target := range t {
 		targets = append(targets, snmp_exporter.SNMPTarget{
-			Name:        target.Name,
+			Name:        target.Name(),
 			Target:      target.Target,
 			Module:      target.Module,
 			Auth:        target.Auth,
@@ -97,8 +99,25 @@ func (t TargetBlock) Convert() []snmp_exporter.SNMPTarget {
 	return targets
 }
 
+// Name() assumes that either NameLbl or NameArg is set.
+// It also that both NameLbl and NameArg are not set at the same time,
+// as this is checked during unmarshalling.
+func (t *SNMPTarget) Name() string {
+	if t == nil {
+		return ""
+	}
+
+	if len(t.NameArg) > 0 {
+		return t.NameArg
+	}
+
+	return t.NameLbl
+}
+
 type WalkParam struct {
-	Name                    string        `alloy:",label"`
+	//TODO: For Alloy 2.0: Remove NameLbl and make NameArg mandatory.
+	NameLbl                 string        `alloy:",label,optional"`
+	NameArg                 string        `alloy:"name,attr,optional"`
 	MaxRepetitions          uint32        `alloy:"max_repetitions,attr,optional"`
 	Retries                 int           `alloy:"retries,attr,optional"`
 	Timeout                 time.Duration `alloy:"timeout,attr,optional"`
@@ -111,7 +130,7 @@ type WalkParams []WalkParam
 func (w WalkParams) Convert() map[string]snmp_config.WalkParams {
 	walkParams := make(map[string]snmp_config.WalkParams)
 	for _, walkParam := range w {
-		walkParams[walkParam.Name] = snmp_config.WalkParams{
+		walkParams[walkParam.Name()] = snmp_config.WalkParams{
 			MaxRepetitions:          walkParam.MaxRepetitions,
 			Retries:                 &walkParam.Retries,
 			Timeout:                 walkParam.Timeout,
@@ -119,6 +138,21 @@ func (w WalkParams) Convert() map[string]snmp_config.WalkParams {
 		}
 	}
 	return walkParams
+}
+
+// Name() assumes that either NameLbl or NameArg is set.
+// It also that both NameLbl and NameArg are not set at the same time,
+// as this is checked during unmarshalling.
+func (p *WalkParam) Name() string {
+	if p == nil {
+		return ""
+	}
+
+	if len(p.NameArg) > 0 {
+		return p.NameArg
+	}
+
+	return p.NameLbl
 }
 
 type Arguments struct {
@@ -155,7 +189,7 @@ func (t TargetsList) convert() []SNMPTarget {
 	for _, target := range t {
 		address, _ := getAddress(target)
 		targets = append(targets, SNMPTarget{
-			Name:        target["name"],
+			NameArg:     target["name"],
 			Target:      address,
 			Module:      target["module"],
 			Auth:        target["auth"],
@@ -179,6 +213,26 @@ func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 
 	if len(a.Targets) != 0 && len(a.TargetsList) != 0 {
 		return fmt.Errorf("the block `target` and the attribute `targets` are mutually exclusive")
+	}
+
+	for _, walkParam := range a.WalkParams {
+		if walkParam.NameArg != "" && walkParam.NameLbl != "" {
+			return errors.New("the label of a `walk_param` block and the `name` argument are mutually exclusive")
+		}
+
+		if walkParam.NameArg == "" && walkParam.NameLbl == "" {
+			return errors.New("either the label of a `walk_param` block or the `name` argument must be set")
+		}
+	}
+
+	for _, target := range a.Targets {
+		if target.NameArg != "" && target.NameLbl != "" {
+			return errors.New("the label of a `target` block and the `name` argument are mutually exclusive")
+		}
+
+		if target.NameArg == "" && target.NameLbl == "" {
+			return errors.New("either the label of a `target` block or the `name` argument must be set")
+		}
 	}
 
 	for _, target := range a.TargetsList {

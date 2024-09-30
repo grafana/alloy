@@ -20,6 +20,10 @@ Main (unreleased)
 - The `mimir.rules.kubernetes` component now supports adding extra label matchers
   to all queries discovered via `PrometheusRule` CRDs. (@thampiotr)
 
+- `prometheus.exporter.snmp`: The names of `target` and `walk_param` blocks can now be set 
+  via an argument instead of block label. The block label syntax for
+  the `target` and `walk_param` blocks will be removed in Alloy 2.0. (@ptodev)
+
 ### Bugfixes
 
 - Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)

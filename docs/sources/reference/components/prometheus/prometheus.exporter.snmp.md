@@ -21,7 +21,8 @@ The `prometheus.exporter.snmp` component embeds
 prometheus.exporter.snmp "LABEL" {
   config_file = SNMP_CONFIG_FILE_PATH
 
-  target "TARGET_NAME" {
+  target {
+    name    = TARGET_NAME
     address = TARGET_ADDRESS
   }
 }
@@ -48,7 +49,7 @@ Omitted fields take their default values.
 | `targets`     | `list(map(string))`  | SNMP targets.                                    |         | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
-Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter#generating-configuration) for details on how to generate a configuration file.
+Refer to [snmp_exporter][snmp_exporter-cfg] for details on how to generate a configuration file.
 
 The `config` argument must be a YAML document as string defining which SNMP modules and auths to use.
 `config` is typically loaded by using the exports of another component. For example,
@@ -64,6 +65,8 @@ The following labels can be set to a target:
 * `module`: The SNMP module to use for polling.
 * `auth`: The SNMP authentication profile to use.
 * `walk_params`: The config to use for this target.
+
+[snmp_exporter-cfg]: https://github.com/prometheus/snmp_exporter#generating-configuration
 
 ## Blocks
 
@@ -81,15 +84,25 @@ The following blocks are supported inside the definition of
 ### target block
 
 The `target` block defines an individual SNMP target.
-The `target` block may be specified multiple times to define multiple targets. The label of the block is required and will be used in the target's `job` label.
+The `target` block may be specified multiple times to define multiple targets.
 
 | Name           | Type     | Description                                                           | Default | Required |
 | -------------- | -------- | --------------------------------------------------------------------- | ------- | -------- |
+| `name`         | `string` | The name of the target.                                               |         | yes      |
 | `address`      | `string` | The address of SNMP device.                                           |         | yes      |
 | `module`       | `string` | SNMP module to use for polling.                                       | `""`    | no       |
 | `auth`         | `string` | SNMP authentication profile to use.                                   | `""`    | no       |
 | `walk_params`  | `string` | Config to use for this target.                                        | `""`    | no       |
 | `snmp_context` | `string` | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
+
+The value of the `name` argument will be set as the value of the target's `job` label.
+
+{{< admonition type="note" >}}
+Instead of a `name` argument, previous versions of Alloy used to use a block label.
+See the [Deprecated features](#deprecated-features) section for more information.
+{{< /admonition >}}
+
+If `name` is not set, the target's `job` label will be set to the label of the `target` block.
 
 ### walk_param block
 
@@ -98,10 +111,15 @@ The `walk_param` block may be specified multiple times to define multiple SNMP c
 
 | Name              | Type       | Description                                   | Default | Required |
 | ----------------- | ---------- | --------------------------------------------- | ------- | -------- |
-| `name`            | `string`   | Name of the module to override.               |         | no       |
+| `name`            | `string`   | Name of the module to override.               |         | yes      |
 | `max_repetitions` | `int`      | How many objects to request with GET/GETBULK. | `25`    | no       |
 | `retries`         | `int`      | How many times to retry a failed request.     | `3`     | no       |
 | `timeout`         | `duration` | Timeout for each individual SNMP request.     |         | no       |
+
+{{< admonition type="note" >}}
+Instead of a `name` argument, previous versions of Alloy used to use a block label.
+See the [Deprecated features](#deprecated-features) section for more information.
+{{< /admonition >}}
 
 ## Exported fields
 
@@ -123,6 +141,46 @@ debug information.
 `prometheus.exporter.snmp` does not expose any component-specific
 debug metrics.
 
+## Deprecated features
+
+In previous versions of Alloy, the names `target` blocks and `walk_param` blocks were specified via a block label:
+
+```alloy
+target "example_name_of_target" {
+    ...
+}
+
+walk_param "example_name_of_walk_param" {
+    ...
+}
+```
+
+Users are now advised to switch to using a `name` attribute instead:
+
+```alloy
+target {
+    name = "example_name_of_target"
+    ...
+}
+
+walk_param {
+    name = "example_name_of_walk_param"
+    ...
+}
+```
+
+Block labels for `target` and `walk_param` are deprecated and will be removed in version 2.0 of Alloy.
+In Alloy version 1, it will remain possible to use a block label instead of the `name` attribute.
+However, the `name` attribute is documented as "required" to encourage users to use it and to remove confusion.
+
+The benefits of using a `name` attribute include:
+* Not being subject to restrictions on [Alloy Syntax Identifiers][syntax-identifiers].
+* It is possible to get the value of a `name` argument from a component such as [local.file][] or [remote.http][].
+
+[syntax-identifiers]: ../../../../get-started/configuration-syntax/syntax/#identifiers
+[local.file]: ../../local.file
+[remote.http]: ../../remote.http
+
 ## Example
 
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
@@ -132,23 +190,27 @@ from `prometheus.exporter.snmp`:
 prometheus.exporter.snmp "example" {
     config_file = "snmp_modules.yml"
 
-    target "network_switch_1" {
+    target {
+        name        = "network_switch_1"
         address     = "192.168.1.2"
         module      = "if_mib"
         walk_params = "public"
     }
 
-    target "network_router_2" {
+    target {
+        name        = "network_router_2"
         address     = "192.168.1.3"
         module      = "mikrotik"
         walk_params = "private"
     }
 
-    walk_param "private" {
+    walk_param {
+        name    = "private"
         retries = "2"
     }
 
-    walk_param "public" {
+    walk_param {
+        name    = "public"
         retries = "2"
     }
 }
@@ -171,23 +233,27 @@ local.file "snmp_config" {
 prometheus.exporter.snmp "example" {
     config = local.file.snmp_config.content
 
-    target "network_switch_1" {
+    target {
+        name        = "network_switch_1"
         address     = "192.168.1.2"
         module      = "if_mib"
         walk_params = "public"
     }
 
-    target "network_router_2" {
+    target {
+        name        = "network_router_2"
         address     = "192.168.1.3"
         module      = "mikrotik"
         walk_params = "private"
     }
 
-    walk_param "private" {
+    walk_param {
+        name    = "private"
         retries = "2"
     }
 
-    walk_param "public" {
+    walk_param {
+        name    = "public"
         retries = "2"
     }
 }
@@ -236,11 +302,13 @@ prometheus.exporter.snmp "example" {
         },
     ]
 
-    walk_param "private" {
+    walk_param {
+        name    = "private"
         retries = "2"
     }
 
-    walk_param "public" {
+    walk_param {
+        name    = "public"
         retries = "2"
     }
 }
@@ -264,11 +332,13 @@ prometheus.exporter.snmp "example" {
 
     targets = encoding.from_yaml(local.file.targets.content)
 
-    walk_param "private" {
+    walk_param {
+        name    = "private"
         retries = "2"
     }
 
-    walk_param "public" {
+    walk_param {
+        name    = "public"
         retries = "2"
     }
 }
