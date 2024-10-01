@@ -27,6 +27,16 @@ pyroscope.java "LABEL" {
 }
 ```
 
+## Target JVM configuration
+
+When you use `pyroscope.java` to profile Java applications, you can configure the target JVMs with some command line flags that ensure accurate profiling, especially for inlined methods. Add the following flags to your Java application's startup command:
+
+```java
+-XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints
+```
+
+For more details, refer to [Restrictions/Limitations](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#restrictionslimitations) in the async-profiler documentation.
+
 ## Arguments
 
 The following arguments are supported:
