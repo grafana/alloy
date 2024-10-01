@@ -292,6 +292,7 @@ func (fr *alloyRun) Run(configPath string) error {
 
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
 		Logger:      log.With(l, "service", "remotecfg"),
+		ConfigPath:  configPath,
 		StoragePath: fr.storagePath,
 		Metrics:     reg,
 	})

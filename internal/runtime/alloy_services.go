@@ -93,13 +93,12 @@ type ServiceController struct {
 }
 
 func (sc ServiceController) Run(ctx context.Context) { sc.f.Run(ctx) }
-func (sc ServiceController) LoadSource(b []byte, args map[string]any) error {
+func (sc ServiceController) LoadSource(b []byte, args map[string]any, configPath string) error {
 	source, err := ParseSource("", b)
 	if err != nil {
 		return err
 	}
-	// The config is loaded via a service, the config path is left empty.
-	return sc.f.LoadSource(source, args, "")
+	return sc.f.LoadSource(source, args, configPath)
 }
 func (sc ServiceController) Ready() bool { return sc.f.Ready() }
 
