@@ -22,9 +22,6 @@ Main (unreleased)
 
 ### Bugfixes
 
-- Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
-  - Fixes a bug where scraping Windows service crashes alloy
-
 - Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
   - Fixes a bug where cloudwatch S3 metrics are reported as `0`
 
@@ -33,6 +30,14 @@ Main (unreleased)
 - Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
 
 - Changed OTEL alerts in Alloy mixin to use success rate for tracing. (@thampiotr)
+
+v1.4.2
+-----------------
+
+### Bugfixes
+
+- Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
+  - Fixes a bug where scraping Windows service crashes alloy
 
 v1.4.1
 -----------------
