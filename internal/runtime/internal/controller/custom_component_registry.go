@@ -22,9 +22,10 @@ type CustomComponentRegistry struct {
 
 // NewCustomComponentRegistry creates a new CustomComponentRegistry with a parent.
 // parent can be nil.
-func NewCustomComponentRegistry(parent *CustomComponentRegistry) *CustomComponentRegistry {
+func NewCustomComponentRegistry(parent *CustomComponentRegistry, scope *vm.Scope) *CustomComponentRegistry {
 	return &CustomComponentRegistry{
 		parent:   parent,
+		scope:    scope,
 		declares: make(map[string]ast.Body),
 		imports:  make(map[string]*CustomComponentRegistry),
 	}
@@ -77,9 +78,8 @@ func (s *CustomComponentRegistry) updateImportContent(importNode *ImportConfigNo
 	if _, exist := s.imports[importNode.label]; !exist {
 		panic(fmt.Errorf("import %q was not registered", importNode.label))
 	}
-	importScope := NewCustomComponentRegistry(nil)
+	importScope := NewCustomComponentRegistry(nil, importNode.Scope())
 	importScope.declares = importNode.ImportedDeclares()
-	importScope.scope = importNode.Scope()
 	importScope.updateImportContentChildren(importNode)
 	s.imports[importNode.label] = importScope
 }
@@ -88,9 +88,8 @@ func (s *CustomComponentRegistry) updateImportContent(importNode *ImportConfigNo
 // and update their scope with the imported declare blocks.
 func (s *CustomComponentRegistry) updateImportContentChildren(importNode *ImportConfigNode) {
 	for _, child := range importNode.ImportConfigNodesChildren() {
-		childScope := NewCustomComponentRegistry(nil)
+		childScope := NewCustomComponentRegistry(nil, child.Scope())
 		childScope.declares = child.ImportedDeclares()
-		childScope.scope = child.Scope()
 		childScope.updateImportContentChildren(child)
 		s.imports[child.label] = childScope
 	}

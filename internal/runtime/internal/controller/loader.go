@@ -158,7 +158,7 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 
 	// Create a new CustomComponentRegistry based on the provided one.
 	// The provided one should be nil for the root config.
-	l.componentNodeManager.setCustomComponentRegistry(NewCustomComponentRegistry(options.CustomComponentRegistry))
+	l.componentNodeManager.setCustomComponentRegistry(NewCustomComponentRegistry(options.CustomComponentRegistry, options.ArgScope))
 	newGraph, diags := l.loadNewGraph(options.Args, options.ComponentBlocks, options.ConfigBlocks, options.DeclareBlocks)
 	if diags.HasErrors() {
 		return diags

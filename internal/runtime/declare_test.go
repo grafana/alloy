@@ -358,6 +358,42 @@ func TestDeclare(t *testing.T) {
 	}
 }
 
+func TestDeclareModulePath(t *testing.T) {
+	config := `
+		declare "mod" {			
+			export "output" {
+				value = module_path
+			}
+		}
+
+		mod "myModule" {}
+
+		testcomponents.passthrough "pass" {
+			input = mod.myModule.output
+		}
+	`
+	ctrl := runtime.New(testOptions(t))
+	f, err := runtime.ParseSource(t.Name(), []byte(config))
+	require.NoError(t, err)
+	require.NotNil(t, f)
+
+	err = ctrl.LoadSource(f, nil, "")
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		ctrl.Run(ctx)
+		close(done)
+	}()
+	defer func() {
+		cancel()
+		<-done
+	}()
+	passthrough := getExport[testcomponents.PassthroughExports](t, ctrl, "", "testcomponents.passthrough.pass")
+	require.Equal(t, passthrough.Output, "")
+}
+
 type errorTestCase struct {
 	name          string
 	config        string
