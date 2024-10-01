@@ -6,20 +6,20 @@ menuTitle: Profile resource consumption
 weight: 300
 ---
 
-# Profile Grafana Alloy resource consumption
+# Profile {{% param "FULL_PRODUCT_NAME" %}} resource consumption
 
-Alloy is written in the Go programming language, which offers [built-in][pprof-pkg] support for profiling.
-Just like other applications written in Go, you can profile Alloy by sending an HTTP request which returns you a "pprof" Go profile.
+{{< param "PRODUCT_NAME" >}} is written in the Go programming language, which offers [built-in][pprof-pkg] support for profiling.
+Like other applications written in Go, you can profile {{< param "PRODUCT_NAME" >}} by sending an HTTP request, which returns a pprof Go profile.
 
-Once you have the pprof file, simply visualize it as a [flame graph][flame-graph] in [Grafana Pyroscope][pyroscope-getstarted].
-Alternatively, you could visualize it on [Grafana Play][pyroscope-adhoc] or by using Go's built-in [pprof tool][go-pprof] locally.
+Once you have the pprof file, visualize it as a [flame graph][flame-graph] in [Grafana Pyroscope][pyroscope-getstarted].
+Alternatively, you could visualize it on [Grafana Play][pyroscope-adhoc] or locally by using Go's built-in [pprof tool][go-pprof].
 
 {{< admonition type="note" >}}
 A profile may contain sensitive information about your environment.
 You may not want to upload your profiles to a public location.
 {{< /admonition >}}
 
-The port on which you need to send the HTTP request is governed by Alloy's `--server.http.listen-addr` [command line argument][cmd-cli].
+The port you use to send the HTTP request is governed by Alloy's `--server.http.listen-addr` [command line argument][cmd-cli].
 It is set to `127.0.0.1:12345` by default.
 
 [pprof-pkg]: https://pkg.go.dev/net/http/pprof
@@ -35,37 +35,37 @@ Different types of HTTP requests will retrieve different profiles.
 
 ### Memory consumption
 
-Memory leaks are often caused by goroutine leaks. 
+Goroutine leaks often cause memory leaks. 
 This is why obtaining a goroutine profile is usually necessary when investigating memory issues.
 For example:
 
-```
+```bash
 curl localhost:12345/debug/pprof/heap -o heap.pprof
 curl localhost:12345/debug/pprof/goroutine -o goroutine.pprof
 ```
 
-It is often helpful to collect profiles both when the memory usage is low, and also when it is high.
-That way it may be more clear what caused the consumption to increase.
+It is often helpful to collect profiles both when memory usage is low and when it is high.
+You can compare the profiles, and it may be easier to identify what caused the memory consumption to increase.
 
 ### CPU consumption
 
 If you are experiencing high CPU consumption, you can collect a CPU profile:
 
-```
+```bash
 curl http://localhost:12345/debug/pprof/profile?seconds=30 -o cpu.pprof
 ```
 
-The `?seconds=30` part of the URL above means that the profiling will continue for 30 seconds.
+The `?seconds=30` part of the URL above means the profiling will continue for 30 seconds.
 
 ## Continuous profiling
 
-You don't have to send manual `curl` commands every time you want to collect profiles.
-You can also profile continuously using Alloy's built-in [pyroscope components][].
+You don't have to send manual `curl` commands each time you want to collect profiles.
+You can also profile continuously using the [pyroscope components][] in {{< param "PRODUCT_NAME" >}}.
 
-If you have very few Alloy instances, you can even configure them to profile themselves.
-However, if you have a large cluster of collectors, it is best to set up Alloy instances whose sole job is to profile other Alloy instances.
+If you have very few {{< param "PRODUCT_NAME" >}} instances, you can even configure them to profile themselves.
+However, if you have a large cluster of collectors, it is best to set up {{< param "PRODUCT_NAME" >}} instances whose sole job is to profile other {{< param "PRODUCT_NAME" >}} instances.
 
-An example of an Alloy instance profiling itself:
+The following is an example of an {{< param "PRODUCT_NAME" >}} instance profiling itself:
 
 ```alloy
 pyroscope.scrape "default" {
@@ -86,16 +86,16 @@ pyroscope.write "default" {
 
 [pyroscope components]: ../../reference/components/pyroscope
 
-## What is Alloy's expected resource consumption?
+## Expected resource consumption
 
-Refer to the [Estimate resource usage][res-usage] page.
+Refer to [Estimate resource usage][res-usage] for more information about the expected resource consumption in {{< param "PRODUCT_NAME" >}}.
 
 [res-usage]: ../../introduction/estimate-resource-usage
 
-## What if my Alloy instance consumes an abnormally large amount of resources?
+## {{% param "PRODUCT_NAME" %}} consumes an abnormally large amount of resources
 
-You could open an issue in [Alloy's repository][alloy-repo]. 
-It would be helpful to attach pprof files and Alloy's configuration file.
-Make sure any secrets are redacted.
+If {{< param "PRODUCT_NAME" >}} consumes an abnormally large amount of resources, you can open an issue in the [Alloy repository][alloy-repo]. 
+Attach your pprof files and your {{< param "PRODUCT_NAME" >}} configuration file.
+Make sure you redact any secrets in the attachments.
 
 [alloy-repo]: https://github.com/grafana/alloy/issues
