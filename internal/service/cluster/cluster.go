@@ -186,7 +186,7 @@ func loadTLSConfigFromFile(TLSCAPath string, TLSCertPath string, TLSKeyPath stri
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(pem)
 	if !caCertPool.AppendCertsFromPEM(pem) {
-		return nil, fmt.Errorf("failed to append CA from PEM with path %w", TLSCAPath)
+		return nil, fmt.Errorf("failed to append CA from PEM with path %s", TLSCAPath)
 	}
 
 	cert, err := tls.LoadX509KeyPair(TLSCertPath, TLSKeyPath)
