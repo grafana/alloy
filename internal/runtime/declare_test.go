@@ -359,6 +359,7 @@ func TestDeclare(t *testing.T) {
 }
 
 func TestDeclareModulePath(t *testing.T) {
+	defer verifyNoGoroutineLeaks(t)
 	config := `
 		declare "mod" {			
 			export "output" {
@@ -390,6 +391,7 @@ func TestDeclareModulePath(t *testing.T) {
 		cancel()
 		<-done
 	}()
+	time.Sleep(30 * time.Millisecond)
 	passthrough := getExport[testcomponents.PassthroughExports](t, ctrl, "", "testcomponents.passthrough.pass")
 	require.Equal(t, passthrough.Output, "")
 }
