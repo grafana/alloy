@@ -54,13 +54,6 @@ spec:
               scheme: HTTP
             initialDelaySeconds: 10
             timeoutSeconds: 1
-          lifecycle:
-            preStop:
-              exec:
-                command:
-                - /bin/sh
-                - -c
-                - sleep 1
           volumeMounts:
             - name: config
               mountPath: /etc/alloy
@@ -77,6 +70,7 @@ spec:
               cpu: 1m
               memory: 5Mi
       dnsPolicy: ClusterFirst
+      terminationGracePeriodSeconds: 20
       volumes:
         - name: config
           configMap:

@@ -3,6 +3,6 @@ controller:
 
 alloy:
   lifecycle:
-     preStop:
-       exec:
-         command: ["/bin/sh", "-c", "sleep 1"]
+    preStop:
+      exec:
+        command: ["/bin/sh", "-c", "sleep 1"]

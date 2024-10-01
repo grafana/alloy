@@ -94,6 +94,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.podLabels | object | `{}` | Extra pod labels to add. |
 | controller.priorityClassName | string | `""` | priorityClassName to apply to Grafana Alloy pods. |
 | controller.replicas | int | `1` | Number of pods to deploy. Ignored when controller.type is 'daemonset'. |
+| controller.terminationGracePeriodSeconds | string | `nil` | Termination grace period in seconds for the Grafana Alloy pods. The default value used by Kubernetes if unspecifed is 30 seconds. |
 | controller.tolerations | list | `[]` | Tolerations to apply to Grafana Alloy pods. |
 | controller.topologySpreadConstraints | list | `[]` | Topology Spread Constraints to apply to Grafana Alloy pods. |
 | controller.type | string | `"daemonset"` | Type of controller to use for deploying Grafana Alloy in the cluster. Must be one of 'daemonset', 'deployment', or 'statefulset'. |
