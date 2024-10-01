@@ -89,6 +89,12 @@ alloy:
   #   protocol: "TCP"
   #   appProtocol: "h2c"
 
+  # -- Host aliases to add to the Alloy container.
+  hostAliases: []
+  # - ip: "20.21.22.23"
+  #   hostnames:
+  #     - "company.grafana.net"
+
   mounts:
     # -- Mount /var/log from the host into the container for log collection.
     varlog: false

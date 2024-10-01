@@ -80,4 +80,8 @@ spec:
     {{- if .Values.controller.volumes.extra }}
     {{- toYaml .Values.controller.volumes.extra | nindent 4 }}
     {{- end }}
+  {{- if $values.hostAliases }}
+  hostAliases:
+    {{- toYaml $values.hostAliases | nindent 4 }}
+  {{- end }}
 {{- end }}
