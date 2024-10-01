@@ -23,7 +23,7 @@ import (
 
 var _ actor.Worker = (*loop)(nil)
 
-// loop handles the low level sending of data. It conceptually a queue.
+// loop handles the low level sending of data. It's conceptually a queue.
 // loop makes no attempt to save or restore signals in the queue.
 // loop config cannot be updated, it is easier to recreate. This does mean we lose any signals in the queue.
 type loop struct {
