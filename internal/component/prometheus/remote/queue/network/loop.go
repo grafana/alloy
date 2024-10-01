@@ -30,8 +30,6 @@ type loop struct {
 	isMeta         bool
 	seriesMbx      actor.Mailbox[*types.TimeSeriesBinary]
 	client         *http.Client
-	batchCount     int
-	flushFrequency time.Duration
 	cfg            types.ConnectionConfig
 	log            log.Logger
 	lastSend       time.Time
@@ -48,12 +46,10 @@ type loop struct {
 
 func newLoop(cc types.ConnectionConfig, isMetaData bool, log log.Logger, stats func(s types.NetworkStats)) *loop {
 	// TODO @mattdurham add TLS support afer the initial push.
-	l := &loop{
+	return &loop{
 		isMeta: isMetaData,
 		// In general we want a healthy queue of items, in this case we want to have 2x our maximum send sized ready.
 		seriesMbx:      actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(2 * cc.BatchCount)),
-		batchCount:     cc.BatchCount,
-		flushFrequency: cc.FlushFrequency,
 		client:         &http.Client{},
 		cfg:            cc,
 		log:            log,
@@ -62,13 +58,11 @@ func newLoop(cc types.ConnectionConfig, isMetaData bool, log log.Logger, stats f
 		ticker:         time.NewTicker(1 * time.Second),
 		buf:            proto.NewBuffer(nil),
 		sendBuffer:     make([]byte, 0),
+		req: &prompb.WriteRequest{
+			// We know BatchCount is the most we will ever send.
+			Timeseries: make([]prompb.TimeSeries, 0, cc.BatchCount),
+		},
 	}
-	l.req = &prompb.WriteRequest{
-		// We know BatchCount is the most we will ever send.
-		Timeseries: make([]prompb.TimeSeries, 0, cc.BatchCount),
-	}
-
-	return l
 }
 
 func (l *loop) Start() {
@@ -92,14 +86,13 @@ func (l *loop) DoWork(ctx actor.Context) actor.WorkerStatus {
 	// Main select loop
 	select {
 	case <-ctx.Done():
-		l.stopCalled.Store(true)
 		return actor.WorkerEnd
 	// Ticker is to ensure the flush timer is called.
 	case <-l.ticker.C:
 		if len(l.series) == 0 {
 			return actor.WorkerContinue
 		}
-		if time.Since(l.lastSend) > l.flushFrequency {
+		if time.Since(l.lastSend) > l.cfg.FlushFrequency {
 			l.trySend(ctx)
 		}
 		return actor.WorkerContinue
@@ -108,7 +101,7 @@ func (l *loop) DoWork(ctx actor.Context) actor.WorkerStatus {
 			return actor.WorkerEnd
 		}
 		l.series = append(l.series, series)
-		if len(l.series) >= l.batchCount {
+		if len(l.series) >= l.cfg.BatchCount {
 			l.trySend(ctx)
 		}
 		return actor.WorkerContinue
@@ -118,34 +111,37 @@ func (l *loop) DoWork(ctx actor.Context) actor.WorkerStatus {
 // trySend is the core functionality for sending data to a endpoint. It will attempt retries as defined in MaxRetryBackoffAttempts.
 func (l *loop) trySend(ctx context.Context) {
 	attempts := 0
-attempt:
-	start := time.Now()
-	result := l.send(ctx, attempts)
-	duration := time.Since(start)
-	l.statsFunc(types.NetworkStats{
-		SendDuration: duration,
-	})
-	if result.successful {
-		l.sendingCleanup()
-		return
+	for {
+		start := time.Now()
+		result := l.send(ctx, attempts)
+		duration := time.Since(start)
+		l.statsFunc(types.NetworkStats{
+			SendDuration: duration,
+		})
+		if result.err != nil {
+			level.Error(l.log).Log("msg", "error in sending telemetry", "err", result.err.Error())
+		}
+		if result.successful {
+			l.sendingCleanup()
+			return
+		}
+		if !result.recoverableError {
+			l.sendingCleanup()
+			return
+		}
+		attempts++
+		if attempts > int(l.cfg.MaxRetryBackoffAttempts) && l.cfg.MaxRetryBackoffAttempts > 0 {
+			level.Debug(l.log).Log("msg", "max retry attempts reached", "attempts", attempts)
+			l.sendingCleanup()
+			return
+		}
+		// This helps us short circuit the loop if we are stopping.
+		if l.stopCalled.Load() {
+			return
+		}
+		// Sleep between attempts.
+		time.Sleep(result.retryAfter)
 	}
-	if !result.recoverableError {
-		l.sendingCleanup()
-		return
-	}
-	attempts++
-	if attempts > int(l.cfg.MaxRetryBackoffAttempts) && l.cfg.MaxRetryBackoffAttempts > 0 {
-		level.Debug(l.log).Log("msg", "max retry attempts reached", "attempts", attempts)
-		l.sendingCleanup()
-		return
-	}
-	// This helps us short circuit the loop if we are stopping.
-	if l.stopCalled.Load() {
-		return
-	}
-	// Sleep between attempts.
-	time.Sleep(result.retryAfter)
-	goto attempt
 }
 
 type sendResult struct {
@@ -160,7 +156,7 @@ type sendResult struct {
 func (l *loop) sendingCleanup() {
 	types.PutTimeSeriesSliceIntoPool(l.series)
 	l.sendBuffer = l.sendBuffer[:0]
-	l.series = make([]*types.TimeSeriesBinary, 0, l.batchCount)
+	l.series = make([]*types.TimeSeriesBinary, 0, l.cfg.BatchCount)
 	l.lastSend = time.Now()
 }
 
@@ -170,14 +166,13 @@ func (l *loop) send(ctx context.Context, retryCount int) sendResult {
 	defer func() {
 		recordStats(l.series, l.isMeta, l.statsFunc, result, len(l.sendBuffer))
 	}()
-	var err error
 	// Check to see if this is a retry and we can reuse the buffer.
 	// I wonder if we should do this, its possible we are sending things that have exceeded the TTL.
 	if len(l.sendBuffer) == 0 {
 		var data []byte
 		var wrErr error
 		if l.isMeta {
-			data, wrErr = createWriteRequestMetadata(l.req, l.series, l.buf)
+			data, wrErr = createWriteRequestMetadata(l.log, l.req, l.series, l.buf)
 		} else {
 			data, wrErr = createWriteRequest(l.req, l.series, l.externalLabels, l.buf)
 		}
@@ -313,7 +308,7 @@ func createWriteRequest(wr *prompb.WriteRequest, series []*types.TimeSeriesBinar
 	return data.Bytes(), err
 }
 
-func createWriteRequestMetadata(wr *prompb.WriteRequest, series []*types.TimeSeriesBinary, data *proto.Buffer) ([]byte, error) {
+func createWriteRequestMetadata(l log.Logger, wr *prompb.WriteRequest, series []*types.TimeSeriesBinary, data *proto.Buffer) ([]byte, error) {
 	if cap(wr.Metadata) < len(series) {
 		wr.Metadata = make([]prompb.MetricMetadata, len(series))
 	} else {
@@ -323,6 +318,7 @@ func createWriteRequestMetadata(wr *prompb.WriteRequest, series []*types.TimeSer
 	for i, ts := range series {
 		mt, valid := toMetadata(ts)
 		if !valid {
+			level.Error(l).Log("msg", "invalid metadata was found", "labels", ts.Labels.String())
 			continue
 		}
 		wr.Metadata[i] = mt

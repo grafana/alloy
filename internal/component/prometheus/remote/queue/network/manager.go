@@ -12,17 +12,16 @@ import (
 
 // manager manages loops. Mostly it exists to control their lifecycle and send work to them.
 type manager struct {
-	connectionCount uint64
-	loops           []*loop
-	metadata        *loop
-	logger          log.Logger
-	inbox           actor.Mailbox[*types.TimeSeriesBinary]
-	metaInbox       actor.Mailbox[*types.TimeSeriesBinary]
-	configInbox     actor.Mailbox[types.ConnectionConfig]
-	self            actor.Actor
-	cfg             types.ConnectionConfig
-	stats           func(types.NetworkStats)
-	metaStats       func(types.NetworkStats)
+	loops       []*loop
+	metadata    *loop
+	logger      log.Logger
+	inbox       actor.Mailbox[*types.TimeSeriesBinary]
+	metaInbox   actor.Mailbox[*types.TimeSeriesBinary]
+	configInbox actor.Mailbox[types.ConnectionConfig]
+	self        actor.Actor
+	cfg         types.ConnectionConfig
+	stats       func(types.NetworkStats)
+	metaStats   func(types.NetworkStats)
 }
 
 var _ types.NetworkClient = (*manager)(nil)
@@ -31,9 +30,8 @@ var _ actor.Worker = (*manager)(nil)
 
 func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStats func(types.NetworkStats)) (types.NetworkClient, error) {
 	s := &manager{
-		connectionCount: cc.Connections,
-		loops:           make([]*loop, 0, cc.Connections),
-		logger:          logger,
+		loops:  make([]*loop, 0, cc.Connections),
+		logger: logger,
 		// This provides blocking to only handle one at a time, so that if a queue blocks
 		// it will stop the filequeue from feeding more.
 		inbox:       actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
@@ -44,8 +42,7 @@ func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStat
 	}
 
 	// start kicks off a number of concurrent connections.
-	var i uint64
-	for ; i < s.connectionCount; i++ {
+	for i := uint64(0); i < s.cfg.Connections; i++ {
 		l := newLoop(cc, false, logger, seriesStats)
 		l.self = actor.New(l)
 		s.loops = append(s.loops, l)
@@ -120,10 +117,11 @@ func (s *manager) updateConfig(cc types.ConnectionConfig) {
 	// Ideally we would drain the queues and re add them but that is a future need.
 	// In practice this shouldn't change often so data loss should be minimal.
 	// For the moment we will stop all the items and recreate them.
+	level.Debug(s.logger).Log("msg", "dropping all series in loops and creating queue due to config change")
 	s.stopLoops()
-	s.loops = make([]*loop, 0, s.connectionCount)
+	s.loops = make([]*loop, 0, s.cfg.Connections)
 	var i uint64
-	for ; i < s.connectionCount; i++ {
+	for ; i < s.cfg.Connections; i++ {
 		l := newLoop(cc, false, s.logger, s.stats)
 		l.self = actor.New(l)
 
@@ -145,10 +143,8 @@ func (s *manager) Stop() {
 
 func (s *manager) stopLoops() {
 	for _, l := range s.loops {
-		l.stopCalled.Store(true)
 		l.Stop()
 	}
-	s.metadata.stopCalled.Store(true)
 	s.metadata.Stop()
 }
 
@@ -162,7 +158,7 @@ func (s *manager) startLoops() {
 // Queue adds anything thats not metadata to the queue.
 func (s *manager) queue(ctx context.Context, ts *types.TimeSeriesBinary) {
 	// Based on a hash which is the label hash add to the queue.
-	queueNum := ts.Hash % s.connectionCount
+	queueNum := ts.Hash % s.cfg.Connections
 	// This will block if the queue is full.
 	err := s.loops[queueNum].seriesMbx.Send(ctx, ts)
 	if err != nil {
