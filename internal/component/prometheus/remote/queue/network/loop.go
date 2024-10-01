@@ -357,8 +357,7 @@ func toMetadata(ts *types.TimeSeriesBinary) (prompb.MetricMetadata, bool) {
 }
 
 func retryAfterDuration(defaultDuration time.Duration, t string) time.Duration {
-	parsedTime, err := time.Parse(http.TimeFormat, t)
-	if err == nil {
+	if parsedTime, err := time.Parse(http.TimeFormat, t); err == nil {
 		return time.Until(parsedTime)
 	}
 	// The duration can be in seconds.
