@@ -279,7 +279,7 @@ func lintSyntaxTag(ty *types.Var, tag string) (diagnostics []string) {
 			}
 		}
 
-	case "label":
+	case "label", "label,optional":
 		if name != "" {
 			diagnostics = append(diagnostics, "label field must have an empty value for name")
 		}
