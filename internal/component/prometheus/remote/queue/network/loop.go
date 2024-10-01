@@ -44,7 +44,7 @@ type loop struct {
 	sendBuffer     []byte
 }
 
-func newLoop(cc types.ConnectionConfig, isMetaData bool, log log.Logger, stats func(s types.NetworkStats)) *loop {
+func newLoop(cc types.ConnectionConfig, isMetaData bool, l log.Logger, stats func(s types.NetworkStats)) *loop {
 	// TODO @mattdurham add TLS support afer the initial push.
 	return &loop{
 		isMeta: isMetaData,
@@ -52,7 +52,7 @@ func newLoop(cc types.ConnectionConfig, isMetaData bool, log log.Logger, stats f
 		seriesMbx:      actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(2 * cc.BatchCount)),
 		client:         &http.Client{},
 		cfg:            cc,
-		log:            log,
+		log:            log.With(l, "name", "loop", "url", cc.URL),
 		statsFunc:      stats,
 		externalLabels: cc.ExternalLabels,
 		ticker:         time.NewTicker(1 * time.Second),
@@ -215,6 +215,7 @@ func (l *loop) send(ctx context.Context, retryCount int) sendResult {
 	defer resp.Body.Close()
 	// 500 errors are considered recoverable.
 	if resp.StatusCode/100 == 5 || resp.StatusCode == http.StatusTooManyRequests {
+		result.err = fmt.Errorf("server responded with status code %d", resp.StatusCode)
 		result.retryAfter = retryAfterDuration(l.cfg.RetryBackoff, resp.Header.Get("Retry-After"))
 		result.recoverableError = true
 		return result
