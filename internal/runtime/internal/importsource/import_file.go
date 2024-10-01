@@ -257,5 +257,10 @@ func (im *ImportFile) SetEval(eval *vm.Evaluator) {
 }
 
 func (im *ImportFile) ModulePath() string {
-	return util.ExtractDirPath(im.args.Filename)
+	path, err := util.ExtractDirPath(im.args.Filename)
+
+	if err != nil {
+		level.Error(im.managedOpts.Logger).Log("msg", "failed to extract module path", "module path", im.args.Filename, "err", err)
+	}
+	return path
 }

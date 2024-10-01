@@ -1,13 +1,21 @@
 package util
 
-import "path/filepath"
+import (
+	"os"
+	"path/filepath"
+)
 
 // ExtractDirPath removes the file part of a path if it exists.
-func ExtractDirPath(p string) string {
-	// If the base of the path has an extension, it's likely a file.
-	if filepath.Ext(filepath.Base(p)) != "" {
-		return filepath.Dir(p)
+func ExtractDirPath(p string) (string, error) {
+	info, err := os.Stat(p)
+
+	if err != nil {
+		return "", err
 	}
-	// Otherwise, return the path as is.
-	return p
+
+	if !info.IsDir() {
+		return filepath.Dir(p), nil
+	}
+
+	return p, nil
 }

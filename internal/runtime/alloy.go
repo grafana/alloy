@@ -300,6 +300,10 @@ func (f *Runtime) Run(ctx context.Context) {
 // without any configuration errors.
 // LoadSource uses default loader configuration.
 func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath string) error {
+	modulePath, err := util.ExtractDirPath(configPath)
+	if err != nil {
+		level.Warn(f.log).Log("msg", "failed to extract directory path from configPath", "configPath", configPath, "err", err)
+	}
 	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:            args,
 		ComponentBlocks: source.components,
@@ -308,7 +312,7 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 		ArgScope: &vm.Scope{
 			Parent: nil,
 			Variables: map[string]interface{}{
-				importsource.ModulePath: util.ExtractDirPath(configPath),
+				importsource.ModulePath: modulePath,
 			},
 		},
 	})

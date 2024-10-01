@@ -78,15 +78,47 @@ func TestController_LoadSource_WithModulePath_Evaluation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "path/to/config/main.alloy")
+	filePath := "tmp_modulePath_test/test/main.alloy"
+	require.NoError(t, os.Mkdir("tmp_modulePath_test", 0700))
+	require.NoError(t, os.Mkdir("tmp_modulePath_test/test", 0700))
+	defer os.RemoveAll("tmp_modulePath_test")
+	require.NoError(t, os.WriteFile(filePath, []byte(""), 0664))
+
+	err = ctrl.LoadSource(f, nil, filePath)
 	require.NoError(t, err)
 	require.Len(t, ctrl.loader.Components(), 4)
 
 	// Check the inputs and outputs of things that should be immediately resolved
 	// without having to run the components.
 	in, out := getFields(t, ctrl.loader.Graph(), "testcomponents.passthrough.static")
-	require.Equal(t, "path/to/config", in.(testcomponents.PassthroughConfig).Input)
-	require.Equal(t, "path/to/config", out.(testcomponents.PassthroughExports).Output)
+	require.Equal(t, "tmp_modulePath_test/test", in.(testcomponents.PassthroughConfig).Input)
+	require.Equal(t, "tmp_modulePath_test/test", out.(testcomponents.PassthroughExports).Output)
+}
+
+func TestController_LoadSource_WithModulePathWithoutFileExtension_Evaluation(t *testing.T) {
+	defer verifyNoGoroutineLeaks(t)
+	ctrl := New(testOptions(t))
+	defer cleanUpController(ctrl)
+
+	f, err := ParseSource(t.Name(), []byte(modulePathTestFile))
+	require.NoError(t, err)
+	require.NotNil(t, f)
+
+	filePath := "tmp_modulePath_test/test/main"
+	require.NoError(t, os.Mkdir("tmp_modulePath_test", 0700))
+	require.NoError(t, os.Mkdir("tmp_modulePath_test/test", 0700))
+	defer os.RemoveAll("tmp_modulePath_test")
+	require.NoError(t, os.WriteFile(filePath, []byte(""), 0664))
+
+	err = ctrl.LoadSource(f, nil, filePath)
+	require.NoError(t, err)
+	require.Len(t, ctrl.loader.Components(), 4)
+
+	// Check the inputs and outputs of things that should be immediately resolved
+	// without having to run the components.
+	in, out := getFields(t, ctrl.loader.Graph(), "testcomponents.passthrough.static")
+	require.Equal(t, "tmp_modulePath_test/test", in.(testcomponents.PassthroughConfig).Input)
+	require.Equal(t, "tmp_modulePath_test/test", out.(testcomponents.PassthroughExports).Output)
 }
 
 func getFields(t *testing.T, g *dag.Graph, nodeID string) (component.Arguments, component.Exports) {
