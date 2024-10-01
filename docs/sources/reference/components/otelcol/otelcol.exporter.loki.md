@@ -23,7 +23,7 @@ To convert them, the OTLP log should contain special "hint" attributes:
 * To convert OTLP log attributes to Loki labels,
   use the `loki.attribute.labels` hint attribute.
 
-Labels will be translated to a [Prometheus format](), which is more constrained than the OTLP format.
+Labels will be translated to a [Prometheus format][], which is more constrained than the OTLP format.
 For examples on label translation, see the [Converting OTLP attributes to Loki labels][] section.
 
 Multiple `otelcol.exporter.loki` components can be specified by giving them different labels.
@@ -153,7 +153,7 @@ loki.write "local" {
 }
 ```
 
-[Prometheus format](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels)
+[Prometheus format]: https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
