@@ -9,14 +9,20 @@ import (
 // recordStats determines what values to send to the stats function. This allows for any
 // number of metrics/signals libraries to be used. Prometheus, OTel, and any other.
 func recordStats(series []*types.TimeSeriesBinary, isMeta bool, stats func(s types.NetworkStats), r sendResult, bytesSent int) {
+	seriesCount := getSeriesCount(series)
+	histogramCount := getHistogramCount(series)
+	metadataCount := getMetadataCount(series)
 	switch {
 	case r.networkError:
 		stats(types.NetworkStats{
 			Series: types.CategoryStats{
-				NetworkSamplesFailed: getSeriesCount(series),
+				NetworkSamplesFailed: seriesCount,
 			},
 			Histogram: types.CategoryStats{
-				NetworkSamplesFailed: getHistogramCount(series),
+				NetworkSamplesFailed: histogramCount,
+			},
+			Metadata: types.CategoryStats{
+				NetworkSamplesFailed: metadataCount,
 			},
 		})
 	case r.successful:
@@ -37,10 +43,13 @@ func recordStats(series []*types.TimeSeriesBinary, isMeta bool, stats func(s typ
 		}
 		stats(types.NetworkStats{
 			Series: types.CategoryStats{
-				SeriesSent: getSeriesCount(series),
+				SeriesSent: seriesCount,
 			},
 			Histogram: types.CategoryStats{
-				SeriesSent: getHistogramCount(series),
+				SeriesSent: histogramCount,
+			},
+			Metadata: types.CategoryStats{
+				SeriesSent: metadataCount,
 			},
 			MetadataBytes:   metaBytesSent,
 			SeriesBytes:     sampleBytesSent,
@@ -49,33 +58,40 @@ func recordStats(series []*types.TimeSeriesBinary, isMeta bool, stats func(s typ
 	case r.statusCode == http.StatusTooManyRequests:
 		stats(types.NetworkStats{
 			Series: types.CategoryStats{
-				RetriedSamples:    getSeriesCount(series),
-				RetriedSamples429: getSeriesCount(series),
+				RetriedSamples:    seriesCount,
+				RetriedSamples429: seriesCount,
 			},
 			Histogram: types.CategoryStats{
-				RetriedSamples:    getHistogramCount(series),
-				RetriedSamples429: getHistogramCount(series),
+				RetriedSamples:    histogramCount,
+				RetriedSamples429: histogramCount,
+			},
+			Metadata: types.CategoryStats{
+				RetriedSamples:    metadataCount,
+				RetriedSamples429: metadataCount,
 			},
 		})
 	case r.statusCode/100 == 5:
 		stats(types.NetworkStats{
 			Series: types.CategoryStats{
-				RetriedSamples5XX: getSeriesCount(series),
+				RetriedSamples5XX: seriesCount,
 			},
 			Histogram: types.CategoryStats{
-				RetriedSamples5XX: getHistogramCount(series),
+				RetriedSamples5XX: histogramCount,
+			},
+			Metadata: types.CategoryStats{
+				RetriedSamples: metadataCount,
 			},
 		})
 	case r.statusCode != 200:
 		stats(types.NetworkStats{
 			Series: types.CategoryStats{
-				FailedSamples: getSeriesCount(series),
+				FailedSamples: seriesCount,
 			},
 			Histogram: types.CategoryStats{
-				FailedSamples: getHistogramCount(series),
+				FailedSamples: histogramCount,
 			},
 			Metadata: types.CategoryStats{
-				FailedSamples: getMetadataCount(series),
+				FailedSamples: metadataCount,
 			},
 		})
 	}
