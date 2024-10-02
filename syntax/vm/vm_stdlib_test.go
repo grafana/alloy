@@ -215,6 +215,30 @@ func TestStdlib_StringFunc(t *testing.T) {
 	}
 }
 
+func TestStdlibFileFunc(t *testing.T) {
+	tt := []struct {
+		name   string
+		input  string
+		expect interface{}
+	}{
+		{"file.path_join", `file.path_join("this/is", "a/path")`, "this/is/a/path"},
+		{"file.path_join empty", `file.path_join()`, ""},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			expr, err := parser.ParseExpression(tc.input)
+			require.NoError(t, err)
+
+			eval := vm.New(expr)
+
+			rv := reflect.New(reflect.TypeOf(tc.expect))
+			require.NoError(t, eval.Evaluate(nil, rv.Interface()))
+			require.Equal(t, tc.expect, rv.Elem().Interface())
+		})
+	}
+}
+
 func BenchmarkConcat(b *testing.B) {
 	// There's a bit of setup work to do here: we want to create a scope holding
 	// a slice of the Person type, which has a fair amount of data in it.
