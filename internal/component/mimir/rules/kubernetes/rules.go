@@ -445,18 +445,19 @@ func (c *Component) newEventProcessor(queue workqueue.RateLimitingInterface, sto
 	maps.Copy(externalLabels, c.args.ExternalLabels)
 
 	return &eventProcessor{
-		queue:             queue,
-		stopChan:          stopChan,
-		health:            c,
-		mimirClient:       c.mimirClient,
-		namespaceLister:   namespaceLister,
-		ruleLister:        ruleLister,
-		namespaceSelector: c.namespaceSelector,
-		ruleSelector:      c.ruleSelector,
-		namespacePrefix:   c.args.MimirNameSpacePrefix,
-		metrics:           c.metrics,
-		logger:            c.log,
-		externalLabels:    externalLabels,
+		queue:              queue,
+		stopChan:           stopChan,
+		health:             c,
+		mimirClient:        c.mimirClient,
+		namespaceLister:    namespaceLister,
+		ruleLister:         ruleLister,
+		namespaceSelector:  c.namespaceSelector,
+		ruleSelector:       c.ruleSelector,
+		namespacePrefix:    c.args.MimirNameSpacePrefix,
+		metrics:            c.metrics,
+		logger:             c.log,
+		externalLabels:     externalLabels,
+		extraQueryMatchers: c.args.ExtraQueryMatchers,
 	}
 }
 

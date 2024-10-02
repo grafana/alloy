@@ -116,7 +116,13 @@ func (c *Component) Update(args component.Arguments) error {
 		entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
 		for _, cfg := range newArgs.SyslogListeners {
-			t, err := st.NewSyslogTarget(c.metrics, c.opts.Logger, entryHandler, rcs, cfg.Convert())
+			promtailCfg, cfgErr := cfg.Convert()
+			if cfgErr != nil {
+				level.Error(c.opts.Logger).Log("msg", "failed to convert syslog listener config", "err", cfgErr)
+				continue
+			}
+
+			t, err := st.NewSyslogTarget(c.metrics, c.opts.Logger, entryHandler, rcs, promtailCfg)
 			if err != nil {
 				level.Error(c.opts.Logger).Log("msg", "failed to create syslog listener with provided config", "err", err)
 				continue

@@ -13,22 +13,38 @@ Main (unreleased)
 ### Features
 
 - Add the function `path_join` to the stdlib. (@wildum)
-
-### Bugfixes
-
-- Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
-  - Fixes a bug where cloudwatch S3 metrics are reported as `0`
+- Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
 
 ### Enhancements
 
+- The `mimir.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs. (@thampiotr)
+
 - Add a new Secret resource into the helm chart to allow passing values into
   config via environement variables.
+
+### Bugfixes
+
+- Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
+  - Fixes a bug where scraping Windows service crashes alloy
+
+- Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
+  - Fixes a bug where cloudwatch S3 metrics are reported as `0`
 
 ### Other changes
 
 - Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
 
 - Changed OTEL alerts in Alloy mixin to use success rate for tracing. (@thampiotr)
+
+- Support TLS client settings for clustering (@tiagorossig)
+
+v1.4.1
+-----------------
+
+### Bugfixes
+
+- Windows installer: Don't quote Alloy's binary path in the Windows Registry. (@jkroepke)
 
 v1.4.0
 -----------------
@@ -141,6 +157,13 @@ v1.4.0
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33607
 
 - Updated the docker base image to Ubuntu 24.04 (Noble Numbat). (@mattiasa )
+
+v1.3.4
+-----------------
+
+### Bugfixes
+
+- Windows installer: Don't quote Alloy's binary path in the Windows Registry. (@jkroepke)
 
 v1.3.2
 -----------------
