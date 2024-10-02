@@ -156,10 +156,10 @@ func (s *PushAPIServer) getRelabelRules() []*relabel.Config {
 // Only the HTTP handler functions are copied to allow for Alloy-specific server configuration and lifecycle management.
 func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	logger := util_log.WithContext(r.Context(), util_log.Logger)
-	userID, _ := tenant.TenantID(r.Context())
+	tenantID, _ := tenant.TenantID(r.Context())
 	req, err := push.ParseRequest(
 		logger,
-		userID,
+		tenantID,
 		r,
 		nil, // tenants retention
 		nil, // limits
@@ -210,8 +210,8 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Add tenant ID to the filtered labels if it is set
-		if userID != "" {
-			filtered[model.LabelName(client.ReservedLabelTenantID)] = model.LabelValue(userID)
+		if tenantID != "" {
+			filtered[model.LabelName(client.ReservedLabelTenantID)] = model.LabelValue(tenantID)
 		}
 
 		for _, entry := range stream.Entries {
