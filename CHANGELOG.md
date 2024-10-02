@@ -34,6 +34,8 @@ Main (unreleased)
 
 - Changed OTEL alerts in Alloy mixin to use success rate for tracing. (@thampiotr)
 
+- Support TLS client settings for clustering (@tiagorossig)
+
 v1.4.1
 -----------------
 
