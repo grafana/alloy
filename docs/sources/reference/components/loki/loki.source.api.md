@@ -122,9 +122,11 @@ loki.source.api "loki_push_api" {
 
 ### Technical details
 
-`loki.source.api` filters out all labels that start with `__` like `__tenant_id__`.
+`loki.source.api` filters out all labels that start with `__`, for example,  `__tenant_id__`.
 
-If you need to be able to set the tenant id, you should either make sure the `X-Scope-OrgID` header or use the `loki.process` component.
+If you need to be able to set the tenant ID, you must either make sure the `X-Scope-OrgID` header or use the [`loki.process`][loki.process] component.
+
+[loki.process]: ../loki.process/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
