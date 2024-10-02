@@ -63,22 +63,38 @@ func NewPushAPIServer(logger log.Logger,
 func (s *PushAPIServer) Run() error {
 	level.Info(s.logger).Log("msg", "starting push API server")
 
+	tenantHeaderExtractor = func (next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, ctx, _ := user.ExtractOrgIDFromHTTPRequest(r)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+		
+	
 	err := s.server.MountAndRun(func(router *mux.Router) {
 		// This redirecting is so we can avoid breaking changes where we originally implemented it with
 		// the loki prefix.
-		router.Path("/api/v1/push").Methods("POST").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r.URL.Path = "/loki/api/v1/push"
-			r.RequestURI = "/loki/api/v1/push"
-			s.handleLoki(w, r)
-		}))
-		router.Path("/api/v1/raw").Methods("POST").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r.URL.Path = "/loki/api/v1/raw"
-			r.RequestURI = "/loki/api/v1/raw"
-			s.handlePlaintext(w, r)
-		}))
+		router.Path("/api/v1/push").Methods("POST").Handler(
+			tenantHeaderExtractor(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					r.URL.Path = "/loki/api/v1/push"
+					r.RequestURI = "/loki/api/v1/push"
+					s.handleLoki(w, r)
+				})
+			)
+		)
+		router.Path("/api/v1/raw").Methods("POST").Handler(
+			tenantHeaderExtractor(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					r.URL.Path = "/loki/api/v1/raw"
+					r.RequestURI = "/loki/api/v1/raw"
+					s.handlePlaintext(w, r)
+				})
+			)
+		)
 		router.Path("/ready").Methods("GET").Handler(http.HandlerFunc(s.ready))
-		router.Path("/loki/api/v1/push").Methods("POST").Handler(http.HandlerFunc(s.handleLoki))
-		router.Path("/loki/api/v1/raw").Methods("POST").Handler(http.HandlerFunc(s.handlePlaintext))
+		router.Path("/loki/api/v1/push").Methods("POST").Handler(tenantHeaderExtractor(http.HandlerFunc(s.handleLoki)))
+		router.Path("/loki/api/v1/raw").Methods("POST").Handler(tenantHeaderExtractor(http.HandlerFunc(s.handlePlaintext)))
 	})
 	return err
 }
