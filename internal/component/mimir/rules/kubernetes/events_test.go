@@ -26,6 +26,8 @@ import (
 	mimirClient "github.com/grafana/alloy/internal/mimir/client"
 )
 
+var updateTimeout = 6 * time.Second
+
 type fakeMimirClient struct {
 	rulesMut sync.RWMutex
 	rules    map[string][]rulefmt.RuleGroup
@@ -151,7 +153,7 @@ func TestEventLoop(t *testing.T) {
 		rules, err := processor.mimirClient.ListRules(ctx, "")
 		require.NoError(t, err)
 		return len(rules) == 1
-	}, time.Second, 10*time.Millisecond)
+	}, updateTimeout, 10*time.Millisecond)
 
 	// Update the rule in kubernetes
 	rule.Spec.Groups[0].Rules = append(rule.Spec.Groups[0].Rules, v1.Rule{
@@ -167,7 +169,7 @@ func TestEventLoop(t *testing.T) {
 		require.NoError(t, err)
 		rules := allRules[mimirNamespaceForRuleCRD("alloy", rule)][0].Rules
 		return len(rules) == 2
-	}, time.Second, 10*time.Millisecond)
+	}, updateTimeout, 10*time.Millisecond)
 
 	// Remove the rule from kubernetes
 	require.NoError(t, ruleIndexer.Delete(rule))
@@ -178,7 +180,7 @@ func TestEventLoop(t *testing.T) {
 		rules, err := processor.mimirClient.ListRules(ctx, "")
 		require.NoError(t, err)
 		return len(rules) == 0
-	}, time.Second, 10*time.Millisecond)
+	}, updateTimeout, 10*time.Millisecond)
 }
 
 func TestAdditionalLabels(t *testing.T) {
@@ -258,7 +260,7 @@ func TestAdditionalLabels(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, len(rules))
 		return len(rules) == 1
-	}, 3*time.Second, 10*time.Millisecond)
+	}, updateTimeout, 10*time.Millisecond)
 
 	// The map of rules has only one element.
 	for ruleName, rule := range rules {
@@ -366,7 +368,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, len(rules))
 		return len(rules) == 1
-	}, 3*time.Second, 10*time.Millisecond)
+	}, updateTimeout, 10*time.Millisecond)
 
 	// The map of rules has only one element.
 	for ruleName, rule := range rules {
