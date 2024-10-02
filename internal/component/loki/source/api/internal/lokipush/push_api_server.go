@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/tenant"
+	"github.com/grafana/dskit/user"
 	"github.com/grafana/loki/v3/pkg/loghttp/push"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	util_log "github.com/grafana/loki/v3/pkg/util/log"
@@ -22,6 +23,7 @@ import (
 	promql_parser "github.com/prometheus/prometheus/promql/parser"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/client"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	frelabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -64,21 +66,38 @@ func (s *PushAPIServer) Run() error {
 	level.Info(s.logger).Log("msg", "starting push API server")
 
 	err := s.server.MountAndRun(func(router *mux.Router) {
+
+		// Extract the tenant ID from the request and add it to the context.
+		tenantHeaderExtractor := func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, ctx, _ := user.ExtractOrgIDFromHTTPRequest(r)
+				next.ServeHTTP(w, r.WithContext(ctx))
+			})
+		}
+
 		// This redirecting is so we can avoid breaking changes where we originally implemented it with
 		// the loki prefix.
-		router.Path("/api/v1/push").Methods("POST").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r.URL.Path = "/loki/api/v1/push"
-			r.RequestURI = "/loki/api/v1/push"
-			s.handleLoki(w, r)
-		}))
-		router.Path("/api/v1/raw").Methods("POST").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r.URL.Path = "/loki/api/v1/raw"
-			r.RequestURI = "/loki/api/v1/raw"
-			s.handlePlaintext(w, r)
-		}))
+		router.Path("/api/v1/push").Methods("POST").Handler(
+			tenantHeaderExtractor(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					r.URL.Path = "/loki/api/v1/push"
+					r.RequestURI = "/loki/api/v1/push"
+					s.handleLoki(w, r)
+				}),
+			),
+		)
+		router.Path("/api/v1/raw").Methods("POST").Handler(
+			tenantHeaderExtractor(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					r.URL.Path = "/loki/api/v1/raw"
+					r.RequestURI = "/loki/api/v1/raw"
+					s.handlePlaintext(w, r)
+				}),
+			),
+		)
 		router.Path("/ready").Methods("GET").Handler(http.HandlerFunc(s.ready))
-		router.Path("/loki/api/v1/push").Methods("POST").Handler(http.HandlerFunc(s.handleLoki))
-		router.Path("/loki/api/v1/raw").Methods("POST").Handler(http.HandlerFunc(s.handlePlaintext))
+		router.Path("/loki/api/v1/push").Methods("POST").Handler(tenantHeaderExtractor(http.HandlerFunc(s.handleLoki)))
+		router.Path("/loki/api/v1/raw").Methods("POST").Handler(tenantHeaderExtractor(http.HandlerFunc(s.handlePlaintext)))
 	})
 	return err
 }
@@ -137,10 +156,10 @@ func (s *PushAPIServer) getRelabelRules() []*relabel.Config {
 // Only the HTTP handler functions are copied to allow for Alloy-specific server configuration and lifecycle management.
 func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	logger := util_log.WithContext(r.Context(), util_log.Logger)
-	userID, _ := tenant.TenantID(r.Context())
+	tenantID, _ := tenant.TenantID(r.Context())
 	req, err := push.ParseRequest(
 		logger,
-		userID,
+		tenantID,
 		r,
 		nil, // tenants retention
 		nil, // limits
@@ -188,6 +207,11 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			filtered[model.LabelName(processed[i].Name)] = model.LabelValue(processed[i].Value)
+		}
+
+		// Add tenant ID to the filtered labels if it is set
+		if tenantID != "" {
+			filtered[model.LabelName(client.ReservedLabelTenantID)] = model.LabelValue(tenantID)
 		}
 
 		for _, entry := range stream.Entries {
