@@ -15,16 +15,20 @@ type NetworkClient interface {
 }
 type ConnectionConfig struct {
 	URL                     string
-	Username                string
-	Password                string
+	BasicAuth               *BasicAuth
 	UserAgent               string
 	Timeout                 time.Duration
 	RetryBackoff            time.Duration
-	MaxRetryBackoffAttempts time.Duration
+	MaxRetryBackoffAttempts uint
 	BatchCount              int
 	FlushFrequency          time.Duration
 	ExternalLabels          map[string]string
-	Connections             uint64
+	Connections             uint
+}
+
+type BasicAuth struct {
+	Username string
+	Password string
 }
 
 func (cc ConnectionConfig) Equals(bb ConnectionConfig) bool {
