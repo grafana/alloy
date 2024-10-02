@@ -20,6 +20,7 @@ Main (unreleased)
 - Add the function `path_join` to the stdlib. (@wildum)
 - Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
 - Add support to `loki.source.api` to be able to extract the tenant from the HTTP `X-Scope-OrgID` header (@QuentinBisson)
+- (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
 
 ### Enhancements
 
@@ -76,7 +77,6 @@ v1.4.0
 - Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
 - (_Experimental_) Add an `otelcol.processor.interval` component to aggregate metrics and periodically
   forward the latest values to the next component in the pipeline.
-- (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
 
 
 ### Enhancements
