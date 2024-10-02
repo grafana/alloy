@@ -44,6 +44,7 @@ var _ exporter.Arguments = Arguments{}
 func (args *Arguments) SetToDefault() {
 	args.MarshalerName.SetToDefault()
 	args.S3Uploader.SetToDefault()
+	args.DebugMetrics.SetToDefault()
 }
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
