@@ -35,6 +35,12 @@ Main (unreleased)
   - Fixes a bug where cloudwatch S3 metrics are reported as `0`
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
+ 
+- Fixed an issue with `loki.process` where `stage.luhn` and `stage.timestamp` would not apply 
+  default configuration settings correctly (@thampiotr)
+
+- Fixed an issue with `loki.process` where configuration could be reloaded even if there
+  were no changes. (@ptodev, @thampiotr)
 
 ### Other changes
 
