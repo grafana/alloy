@@ -10,6 +10,11 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- `import.git`: The default value for `revision` has changed from `HEAD` to `main`. (@ptodev)
+  It is no longer allowed to set `revision` to `"HEAD"`, `"FETCH_HEAD"`, `"ORIG_HEAD"`, `"MERGE_HEAD"`, or `"CHERRY_PICK_HEAD"`.
+
 ### Features
 
 - Add the function `path_join` to the stdlib. (@wildum)
@@ -27,6 +32,8 @@ Main (unreleased)
 
 - Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
   - Fixes a bug where cloudwatch S3 metrics are reported as `0`
+
+- Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
 
 ### Other changes
 
