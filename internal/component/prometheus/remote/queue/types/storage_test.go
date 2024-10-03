@@ -8,15 +8,16 @@ import (
 )
 
 func TestStorage(t *testing.T) {
-	ts := GetTimeSeriesBinary()
+	ts := GetTimeSeriesFromPool()
 	ts.Labels = labels.FromStrings("one", "two")
 	ts.LabelsValues = make([]uint32, 1)
 	ts.LabelsNames = make([]uint32, 1)
 	ts.LabelsValues[0] = 1
 	ts.LabelsNames[0] = 2
 
-	PutTimeSeriesBinary(ts)
-	ts = GetTimeSeriesBinary()
+	PutTimeSeriesIntoPool(ts)
+	ts = GetTimeSeriesFromPool()
+	defer PutTimeSeriesIntoPool(ts)
 	require.Len(t, ts.Labels, 0)
 	require.True(t, cap(ts.LabelsValues) == 1)
 	require.True(t, cap(ts.LabelsNames) == 1)

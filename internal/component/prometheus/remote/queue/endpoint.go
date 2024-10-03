@@ -74,7 +74,7 @@ func (ep *endpoint) DoWork(ctx actor.Context) actor.WorkerStatus {
 
 func (ep *endpoint) deserializeAndSend(ctx context.Context, meta map[string]string, buf []byte) {
 	var err error
-	ep.buf, err = snappy.Decode(buf)
+	ep.buf, err = snappy.DecodeInto(ep.buf, buf)
 	if err != nil {
 		level.Debug(ep.log).Log("msg", "error snappy decoding", "err", err)
 		return
@@ -100,6 +100,7 @@ func (ep *endpoint) deserializeAndSend(ctx context.Context, meta map[string]stri
 		Metadata: make([]*types.TimeSeriesBinary, metaCount),
 		Strings:  make([]string, stringsCount),
 	}
+	// Prefill our series with items from the pool to limit allocs.
 	for i := 0; i < seriesCount; i++ {
 		sg.Series[i] = types.GetTimeSeriesFromPool()
 	}
@@ -107,7 +108,6 @@ func (ep *endpoint) deserializeAndSend(ctx context.Context, meta map[string]stri
 		sg.Metadata[i] = types.GetTimeSeriesFromPool()
 	}
 	sg, ep.buf, err = types.DeserializeToSeriesGroup(sg, ep.buf)
-
 	if err != nil {
 		level.Debug(ep.log).Log("msg", "error deserializing", "err", err)
 		return
@@ -119,6 +119,7 @@ func (ep *endpoint) deserializeAndSend(ctx context.Context, meta map[string]stri
 		// data that will get rejected.
 		seriesAge := time.Since(time.Unix(series.TS, 0))
 		if seriesAge > ep.ttl {
+			// TODO @mattdurham add metric here for ttl expired.
 			continue
 		}
 		sendErr := ep.network.SendSeries(ctx, series)

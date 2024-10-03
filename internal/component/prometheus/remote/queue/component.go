@@ -5,17 +5,15 @@ import (
 	"path/filepath"
 	"reflect"
 	"sync"
-	"time"
-
-	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/filequeue"
-	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/network"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/filequeue"
+	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/network"
 	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/serialization"
 	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/storage"
 )
 
@@ -60,6 +58,9 @@ type Queue struct {
 // suffers a fatal error. Run is guaranteed to be called exactly once per
 // Component.
 func (s *Queue) Run(ctx context.Context) error {
+	for _, ep := range s.endpoints {
+		ep.Start()
+	}
 	defer func() {
 		s.mut.Lock()
 		defer s.mut.Unlock()
@@ -100,7 +101,14 @@ func (s *Queue) Update(args component.Arguments) error {
 		}
 		s.endpoints = map[string]*endpoint{}
 	}
-	return s.createEndpoints()
+	err := s.createEndpoints()
+	if err != nil {
+		return err
+	}
+	for _, ep := range s.endpoints {
+		ep.Start()
+	}
+	return nil
 }
 
 func (s *Queue) createEndpoints() error {
@@ -110,14 +118,13 @@ func (s *Queue) createEndpoints() error {
 		stats.BackwardsCompatibility(reg)
 		meta := types.NewStats("alloy", "queue_metadata", reg)
 		cfg := types.ConnectionConfig{
-			URL:        ep.URL,
-			BatchCount: ep.BatchCount,
-			// Functionally this cannot go below 1s
+			URL:            ep.URL,
+			BatchCount:     ep.BatchCount,
 			FlushFrequency: ep.FlushFrequency,
 			Timeout:        ep.Timeout,
 			UserAgent:      "alloy",
 			ExternalLabels: s.args.ExternalLabels,
-			Connections:    ep.Connections,
+			Connections:    ep.QueueCount,
 		}
 		if ep.BasicAuth != nil {
 			cfg.BasicAuth = &types.BasicAuth{
@@ -126,13 +133,10 @@ func (s *Queue) createEndpoints() error {
 			}
 		}
 		client, err := network.New(cfg, s.log, stats.UpdateNetwork, meta.UpdateNetwork)
-
 		if err != nil {
 			return err
 		}
-		// Serializer is set after
 		end := NewEndpoint(client, nil, stats, meta, s.args.TTL, s.opts.Logger)
-		// This wait group is to ensure we are started before we send on the mailbox.
 		fq, err := filequeue.NewQueue(filepath.Join(s.opts.DataPath, ep.Name, "wal"), func(ctx context.Context, dh types.DataHandle) {
 			_ = end.incoming.Send(ctx, dh)
 		}, s.opts.Logger)
@@ -140,17 +144,14 @@ func (s *Queue) createEndpoints() error {
 			return err
 		}
 		serial, err := serialization.NewSerializer(types.SerializerConfig{
-			MaxSignalsInBatch: 10_000,
-			FlushFrequency:    1 * time.Second,
+			MaxSignalsInBatch: uint32(s.args.MaxSignalsToBatch),
+			FlushFrequency:    s.args.BatchFrequency,
 		}, fq, stats.UpdateFileQueue, s.opts.Logger)
 		if err != nil {
 			return err
 		}
 		end.serializer = serial
 		s.endpoints[ep.Name] = end
-		// endpoint is responsible for starting all the children, this way they spin up
-		// together and are town down together. Or at least handled internally.
-		end.Start()
 	}
 	return nil
 }

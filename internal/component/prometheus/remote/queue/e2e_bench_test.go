@@ -79,7 +79,6 @@ func runBenchmark(t *testing.B, add func(index int, appendable storage.Appender)
 	case <-tm.C:
 	}
 	cancel()
-
 }
 
 func newComponentBenchmark(t *testing.B, l log.Logger, url string, exp chan Exports) (*Queue, error) {
@@ -93,9 +92,9 @@ func newComponentBenchmark(t *testing.B, l log.Logger, url string, exp chan Expo
 		Registerer: fakeRegistry{},
 		Tracer:     nil,
 	}, Arguments{
-		TTL:           2 * time.Hour,
-		MaxFlushSize:  100_000,
-		FlushDuration: 1 * time.Second,
+		TTL:               2 * time.Hour,
+		MaxSignalsToBatch: 100_000,
+		BatchFrequency:    1 * time.Second,
 		Connections: []ConnectionConfig{{
 			Name:                    "test",
 			URL:                     url,
@@ -104,10 +103,9 @@ func newComponentBenchmark(t *testing.B, l log.Logger, url string, exp chan Expo
 			MaxRetryBackoffAttempts: 0,
 			BatchCount:              50,
 			FlushFrequency:          1 * time.Second,
-			Connections:             1,
+			QueueCount:              1,
 		}},
-		AppenderBatchSize: 1_000,
-		ExternalLabels:    nil,
+		ExternalLabels: nil,
 	})
 }
 

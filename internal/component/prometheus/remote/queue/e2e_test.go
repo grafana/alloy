@@ -121,8 +121,10 @@ func TestE2E(t *testing.T) {
 	}
 }
 
-const iterations = 100
-const items = 10_000
+const (
+	iterations = 100
+	items      = 10_000
+)
 
 func runTest(t *testing.T, add func(index int, appendable storage.Appender) (float64, labels.Labels), test func(samples []prompb.TimeSeries), metaTest func(meta []prompb.MetricMetadata)) {
 	l := util.TestAlloyLogger(t)
@@ -172,7 +174,6 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 			}
 			require.NoError(t, app.Commit())
 		}()
-
 	}
 	// This is a weird use case to handle eventually.
 	tm := time.NewTimer(15 * time.Second)
@@ -197,7 +198,6 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 				require.True(t, lbls[i].Value == sLbl.Value)
 			}
 		}
-
 	}
 	if test != nil {
 		test(samples)
@@ -219,7 +219,6 @@ func handlePost(t *testing.T, _ http.ResponseWriter, r *http.Request) ([]prompb.
 	err = req.Unmarshal(data)
 	require.NoError(t, err)
 	return req.GetTimeseries(), req.Metadata
-
 }
 
 func makeSeries(index int) (int64, float64, labels.Labels) {
@@ -237,6 +236,7 @@ func makeMetadata(index int) (metadata.Metadata, labels.Labels) {
 func makeHistogram(index int) (int64, labels.Labels, *histogram.Histogram) {
 	return time.Now().UTC().Unix(), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)), hist(index)
 }
+
 func makeExemplar(index int) exemplar.Exemplar {
 	return exemplar.Exemplar{
 		Labels: labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)),
@@ -345,9 +345,9 @@ func newComponent(t *testing.T, l *logging.Logger, url string, exp chan Exports,
 		Registerer: reg,
 		Tracer:     nil,
 	}, Arguments{
-		TTL:           2 * time.Hour,
-		MaxFlushSize:  10_000,
-		FlushDuration: 1 * time.Second,
+		TTL:               2 * time.Hour,
+		MaxSignalsToBatch: 10_000,
+		BatchFrequency:    1 * time.Second,
 		Connections: []ConnectionConfig{{
 			Name:                    "test",
 			URL:                     url,
@@ -356,9 +356,8 @@ func newComponent(t *testing.T, l *logging.Logger, url string, exp chan Exports,
 			MaxRetryBackoffAttempts: 1,
 			BatchCount:              50,
 			FlushFrequency:          1 * time.Second,
-			Connections:             1,
+			QueueCount:              1,
 		}},
-		AppenderBatchSize: 1_000,
-		ExternalLabels:    nil,
+		ExternalLabels: nil,
 	})
 }
