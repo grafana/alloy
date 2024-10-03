@@ -640,6 +640,45 @@ func TestVM_Block_Label(t *testing.T) {
 		err := eval.Evaluate(nil, &block{})
 		require.EqualError(t, err, `1:1: block "some_block" requires non-empty label`)
 	})
+
+	t.Run("Block may have an optional label", func(t *testing.T) {
+		type block struct {
+			Label string `alloy:",label,optional"`
+		}
+
+		input := `some_block "asdf" {}`
+		eval := vm.New(parseBlock(t, input))
+
+		var actual block
+		require.NoError(t, eval.Evaluate(nil, &actual))
+		require.Equal(t, "asdf", actual.Label)
+	})
+
+	t.Run("Block may have an optional label with explicit empty value", func(t *testing.T) {
+		type block struct {
+			Label string `alloy:",label,optional"`
+		}
+
+		input := `some_block "" {}`
+		eval := vm.New(parseBlock(t, input))
+
+		var actual block
+		require.NoError(t, eval.Evaluate(nil, &actual))
+		require.Equal(t, "", actual.Label)
+	})
+
+	t.Run("Block may have an optional label with no value", func(t *testing.T) {
+		type block struct {
+			Label string `alloy:",label,optional"`
+		}
+
+		input := `some_block {}`
+		eval := vm.New(parseBlock(t, input))
+
+		var actual block
+		require.NoError(t, eval.Evaluate(nil, &actual))
+		require.Equal(t, "", actual.Label)
+	})
 }
 
 func TestVM_Block_Unmarshaler(t *testing.T) {

@@ -3,7 +3,6 @@ package build
 import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/snmp"
-	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
 	snmp_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/snmp_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -37,7 +36,7 @@ func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
 		}
 
 		walkParams[index] = snmp.WalkParam{
-			Name:                    common.SanitizeIdentifierPanics(name),
+			NameArg:                 name,
 			MaxRepetitions:          p.MaxRepetitions,
 			Retries:                 retries,
 			Timeout:                 p.Timeout,
@@ -86,7 +85,7 @@ func toSnmpExporterV2(config *snmp_exporter_v2.Config) *snmp.Arguments {
 		}
 
 		walkParams[index] = snmp.WalkParam{
-			Name:                    common.SanitizeIdentifierPanics(name),
+			NameArg:                 name,
 			MaxRepetitions:          p.MaxRepetitions,
 			Retries:                 retries,
 			Timeout:                 p.Timeout,

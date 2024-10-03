@@ -23,7 +23,8 @@ func TestUnmarshalAlloy(t *testing.T) {
 			auth = "public_v2"
 			snmp_context = "testcontext"
 		}
-		target "network_router_2" {
+		target {
+			name = "network-router-2"
 			address = "192.168.1.3"
 			module = "mikrotik"
 			walk_params = "private"
@@ -31,9 +32,10 @@ func TestUnmarshalAlloy(t *testing.T) {
 		walk_param "private" {
 			retries = 1
 		}
-		walk_param "public" {
+		walk_param {
+			name = "public"
 			retries = 2
-		}		
+		}	
 `
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
@@ -41,14 +43,14 @@ func TestUnmarshalAlloy(t *testing.T) {
 	require.Equal(t, "modules.yml", args.ConfigFile)
 	require.Equal(t, 2, len(args.Targets))
 
-	require.Contains(t, "network_switch_1", args.Targets[0].Name)
+	require.Contains(t, "network_switch_1", args.Targets[0].Name())
 	require.Contains(t, "192.168.1.2", args.Targets[0].Target)
 	require.Contains(t, "if_mib", args.Targets[0].Module)
 	require.Contains(t, "public", args.Targets[0].WalkParams)
 	require.Contains(t, "public_v2", args.Targets[0].Auth)
 	require.Contains(t, "testcontext", args.Targets[0].SNMPContext)
 
-	require.Contains(t, "network_router_2", args.Targets[1].Name)
+	require.Contains(t, "network-router-2", args.Targets[1].Name())
 	require.Contains(t, "192.168.1.3", args.Targets[1].Target)
 	require.Contains(t, "mikrotik", args.Targets[1].Module)
 	require.Contains(t, "private", args.Targets[1].WalkParams)
@@ -56,9 +58,9 @@ func TestUnmarshalAlloy(t *testing.T) {
 
 	require.Equal(t, 2, len(args.WalkParams))
 
-	require.Contains(t, "private", args.WalkParams[0].Name)
+	require.Contains(t, "private", args.WalkParams[0].Name())
 	require.Equal(t, 1, args.WalkParams[0].Retries)
-	require.Contains(t, "public", args.WalkParams[1].Name)
+	require.Contains(t, "public", args.WalkParams[1].Name())
 	require.Equal(t, 2, args.WalkParams[1].Retries)
 }
 
@@ -107,17 +109,17 @@ func TestUnmarshalAlloyTargets(t *testing.T) {
 
 	require.Equal(t, 2, len(args.WalkParams))
 
-	require.Contains(t, "private", args.WalkParams[0].Name)
+	require.Contains(t, "private", args.WalkParams[0].Name())
 	require.Equal(t, 1, args.WalkParams[0].Retries)
-	require.Contains(t, "public", args.WalkParams[1].Name)
+	require.Contains(t, "public", args.WalkParams[1].Name())
 	require.Equal(t, 2, args.WalkParams[1].Retries)
 }
 
 func TestConvertConfig(t *testing.T) {
 	args := Arguments{
 		ConfigFile: "modules.yml",
-		Targets:    TargetBlock{{Name: "network_switch_1", Target: "192.168.1.2", Module: "if_mib"}},
-		WalkParams: WalkParams{{Name: "public", Retries: 2}},
+		Targets:    TargetBlock{{NameLbl: "network_switch_1", Target: "192.168.1.2", Module: "if_mib"}},
+		WalkParams: WalkParams{{NameLbl: "public", Retries: 2}},
 	}
 
 	res := args.Convert()
@@ -129,8 +131,8 @@ func TestConvertConfig(t *testing.T) {
 func TestConvertConfigWithInlineConfig(t *testing.T) {
 	args := Arguments{
 		ConfigStruct: config.Config{Modules: map[string]*config.Module{"if_mib": {Walk: []string{"1.3.6.1.2.1.2"}}}},
-		Targets:      TargetBlock{{Name: "network_switch_1", Target: "192.168.1.2", Module: "if_mib"}},
-		WalkParams:   WalkParams{{Name: "public", Retries: 2}},
+		Targets:      TargetBlock{{NameLbl: "network_switch_1", Target: "192.168.1.2", Module: "if_mib"}},
+		WalkParams:   WalkParams{{NameLbl: "public", Retries: 2}},
 	}
 
 	res := args.Convert()
@@ -141,7 +143,7 @@ func TestConvertConfigWithInlineConfig(t *testing.T) {
 
 func TestConvertTargets(t *testing.T) {
 	targets := TargetBlock{{
-		Name:        "network_switch_1",
+		NameLbl:     "network_switch_1",
 		Target:      "192.168.1.2",
 		Module:      "if_mib",
 		Auth:        "public_v2",
@@ -252,6 +254,81 @@ func TestValidateTargetMissingAddress(t *testing.T) {
 	require.ErrorContains(t, err, "all targets must have an `address`")
 }
 
+func TestUseBothLabelAndNameParam(t *testing.T) {
+	testCfg := []struct {
+		name string
+		cfg  string
+		err  string
+	}{
+		{
+			name: "target_different_label_and_name",
+			cfg: `
+			target "t2" {
+				name = "t5"
+				address = "192.168.1.3"
+				module = "mikrotik"
+				walk_params = "private"
+			}`,
+			err: "the label of a `target` block and the `name` argument are mutually exclusive",
+		},
+		{
+			name: "target_same_label_and_name",
+			cfg: `
+			target "t2" {
+				name = "t2"
+				address = "192.168.1.3"
+				module = "mikrotik"
+				walk_params = "private"
+			}`,
+			err: "the label of a `target` block and the `name` argument are mutually exclusive",
+		},
+		{
+			name: "target_neither_label_nor_name",
+			cfg: `
+			target {
+				address = "192.168.1.3"
+				module = "mikrotik"
+				walk_params = "private"
+			}`,
+			err: "either the label of a `target` block or the `name` argument must be set",
+		},
+		{
+			name: "walk_param_different_label_and_name",
+			cfg: `
+			walk_param "w3" {
+				name = "w5"
+				retries = 2
+			}`,
+			err: "the label of a `walk_param` block and the `name` argument are mutually exclusive",
+		},
+		{
+			name: "walk_param_same_label_and_name",
+			cfg: `
+			walk_param "w3" {
+				name = "w3"
+				retries = 2
+			}`,
+			err: "the label of a `walk_param` block and the `name` argument are mutually exclusive",
+		},
+		{
+			name: "walk_neither_label_nor_name",
+			cfg: `
+			walk_param {
+				retries = 2
+			}`,
+			err: "either the label of a `walk_param` block or the `name` argument must be set",
+		},
+	}
+
+	for _, tt := range testCfg {
+		t.Run(tt.name, func(t *testing.T) {
+			var args Arguments
+			err := syntax.Unmarshal([]byte(tt.cfg), &args)
+			require.ErrorContains(t, err, tt.err)
+		})
+	}
+}
+
 func TestValidateTargetsMutualExclusivity(t *testing.T) {
 	alloyCfg := `
 		config_file = "modules.yml"
@@ -278,7 +355,7 @@ func TestValidateTargetsMutualExclusivity(t *testing.T) {
 func TestConvertWalkParams(t *testing.T) {
 	retries := 3
 	walkParams := WalkParams{{
-		Name:                    "public",
+		NameLbl:                 "public",
 		MaxRepetitions:          uint32(10),
 		Retries:                 retries,
 		Timeout:                 time.Duration(5),
@@ -296,9 +373,9 @@ func TestConvertWalkParams(t *testing.T) {
 func TestBuildSNMPTargets(t *testing.T) {
 	baseArgs := Arguments{
 		ConfigFile: "modules.yml",
-		Targets: TargetBlock{{Name: "network_switch_1", Target: "192.168.1.2", Module: "if_mib",
+		Targets: TargetBlock{{NameLbl: "network_switch_1", Target: "192.168.1.2", Module: "if_mib",
 			WalkParams: "public", Auth: "public_v2"}},
-		WalkParams: WalkParams{{Name: "public", Retries: 2}},
+		WalkParams: WalkParams{{NameLbl: "public", Retries: 2}},
 	}
 	baseTarget := discovery.Target{
 		model.SchemeLabel:                   "http",
@@ -351,13 +428,13 @@ func TestUnmarshalAlloyWithInlineConfig(t *testing.T) {
 	require.Equal(t, args.ConfigStruct.Auths["public_v1"].Version, 1)
 
 	require.Equal(t, 2, len(args.Targets))
-	require.Contains(t, "network_switch_1", args.Targets[0].Name)
+	require.Contains(t, "network_switch_1", args.Targets[0].Name())
 	require.Contains(t, "192.168.1.2", args.Targets[0].Target)
 	require.Contains(t, "if_mib", args.Targets[0].Module)
 	require.Contains(t, "public", args.Targets[0].WalkParams)
 	require.Contains(t, "public_v1", args.Targets[0].Auth)
 
-	require.Contains(t, "network_router_2", args.Targets[1].Name)
+	require.Contains(t, "network_router_2", args.Targets[1].Name())
 	require.Contains(t, "192.168.1.3", args.Targets[1].Target)
 	require.Contains(t, "if_mib", args.Targets[1].Module)
 	require.Contains(t, "private", args.Targets[1].WalkParams)
