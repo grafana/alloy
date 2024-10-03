@@ -141,10 +141,6 @@ depending on the nature of the reload error.
 		StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
 	cmd.Flags().
 		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
-	// TODO(alloy/#1274): make this flag a no-op once we have more confidence in this feature, and add issue to
-	// remove it in the next major release
-	cmd.Flags().
-		BoolVar(&r.clusterUseDiscoveryV1, "cluster.use-discovery-v1", r.clusterUseDiscoveryV1, "Use the older, v1 version of cluster peers discovery. Note that this flag will be deprecated in the future and eventually removed.")
 
 	// Config flags
 	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
@@ -157,6 +153,8 @@ depending on the nature of the reload error.
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
+
+	addDeprecatedFlags(cmd)
 	return cmd
 }
 
@@ -177,7 +175,6 @@ type alloyRun struct {
 	clusterRejoinInterval        time.Duration
 	clusterMaxJoinPeers          int
 	clusterName                  string
-	clusterUseDiscoveryV1        bool
 	clusterEnableTLS             bool
 	clusterTLSCAPath             string
 	clusterTLSCertPath           string
@@ -270,14 +267,11 @@ func (fr *alloyRun) Run(configPath string) error {
 		AdvertiseInterfaces: fr.clusterAdvInterfaces,
 		ClusterMaxJoinPeers: fr.clusterMaxJoinPeers,
 		ClusterName:         fr.clusterName,
-		//TODO(alloy/#1274): graduate to GA once we have more confidence in this feature
-		EnableStateUpdatesLimiter: fr.minStability.Permits(featuregate.StabilityPublicPreview),
-		EnableDiscoveryV2:         !fr.clusterUseDiscoveryV1,
-		EnableTLS:                 fr.clusterEnableTLS,
-		TLSCertPath:               fr.clusterTLSCertPath,
-		TLSCAPath:                 fr.clusterTLSCAPath,
-		TLSKeyPath:                fr.clusterTLSKeyPath,
-		TLSServerName:             fr.clusterTLSServerName,
+		EnableTLS:           fr.clusterEnableTLS,
+		TLSCertPath:         fr.clusterTLSCertPath,
+		TLSCAPath:           fr.clusterTLSCAPath,
+		TLSKeyPath:          fr.clusterTLSKeyPath,
+		TLSServerName:       fr.clusterTLSServerName,
 	})
 	if err != nil {
 		return err
@@ -496,6 +490,16 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 	}
 
 	return alloy_runtime.ParseSource(path, bb)
+}
+
+// addDeprecatedFlags adds flags that are deprecated, but we keep them for backwards compatibility.
+func addDeprecatedFlags(cmd *cobra.Command) {
+	_ = cmd.Flags().
+		Bool("cluster.use-discovery-v1", false, "This flag is deprecated and has no effect.")
+	err := cmd.Flags().MarkDeprecated("cluster.use-discovery-v1", "This flag is deprecated and has no effect.")
+	if err != nil { // this should never fail
+		panic(err)
+	}
 }
 
 func interruptContext() (context.Context, context.CancelFunc) {
