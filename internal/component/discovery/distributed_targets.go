@@ -19,6 +19,13 @@ type DistributedTargets struct {
 // NewDistributedTargets creates the abstraction that allows components to
 // dynamically shard targets between components.
 func NewDistributedTargets(clusteringEnabled bool, cluster cluster.Cluster, allTargets []Target) *DistributedTargets {
+	return NewDistributedTargetsWithCustomLabels(clusteringEnabled, cluster, allTargets, nil)
+}
+
+// NewDistributedTargetsWithCustomLabels creates the abstraction that allows components to
+// dynamically shard targets between components. Passing in labels will limit the sharding to only use those labels for computing the hash key.
+// Passing in nil or empty array means look at all labels.
+func NewDistributedTargetsWithCustomLabels(clusteringEnabled bool, cluster cluster.Cluster, allTargets []Target, labels []string) *DistributedTargets {
 	if !clusteringEnabled || cluster == nil {
 		cluster = disabledCluster{}
 	}
@@ -32,8 +39,20 @@ func NewDistributedTargets(clusteringEnabled bool, cluster cluster.Cluster, allT
 	localTargetKeys := make([]shard.Key, 0, localCap)
 	remoteTargetKeys := make(map[shard.Key]struct{}, len(allTargets)-localCap)
 
+	// Need to handle duplicate entries.
+	singlular := make(map[shard.Key]struct{})
 	for _, tgt := range allTargets {
-		targetKey := keyFor(tgt)
+		var targetKey shard.Key
+		// If we have no custom labels check all non-meta labels.
+		if len(labels) == 0 {
+			targetKey = keyFor(tgt)
+		} else {
+			targetKey = keyForLabels(tgt, labels)
+		}
+		if _, ok := singlular[targetKey]; ok {
+			continue
+		}
+		singlular[targetKey] = struct{}{}
 		peers, err := cluster.Lookup(targetKey, 1, shard.OpReadWrite)
 		belongsToLocal := err != nil || len(peers) == 0 || peers[0].Self
 
@@ -57,6 +76,10 @@ func (dt *DistributedTargets) LocalTargets() []Target {
 	return dt.localTargets
 }
 
+func (dt *DistributedTargets) TargetCount() int {
+	return len(dt.localTargetKeys) + len(dt.remoteTargetKeys)
+}
+
 // MovedToRemoteInstance returns the set of local targets from prev
 // that are no longer local in dt, indicating an active target has moved.
 // Only targets which exist in both prev and dt are returned. If prev
@@ -77,6 +100,10 @@ func (dt *DistributedTargets) MovedToRemoteInstance(prev *DistributedTargets) []
 
 func keyFor(tgt Target) shard.Key {
 	return shard.Key(tgt.NonMetaLabels().Hash())
+}
+
+func keyForLabels(tgt Target, lbls []string) shard.Key {
+	return shard.Key(tgt.SpecificLabels(lbls).Hash())
 }
 
 type disabledCluster struct{}

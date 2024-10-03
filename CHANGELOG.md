@@ -48,6 +48,9 @@ Main (unreleased)
 - Fixed an issue with `loki.process` where configuration could be reloaded even if there
   were no changes. (@ptodev, @thampiotr)
 
+- Fix issue where `loki.source.kubernetes` took into account all labels, instead of specific logs labels. Resulting in duplication. (@mattdurham)
+
+
 ### Other changes
 
 - Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
