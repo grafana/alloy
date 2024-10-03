@@ -23,7 +23,8 @@ func NewDistributedTargets(clusteringEnabled bool, cluster cluster.Cluster, allT
 }
 
 // NewDistributedTargetsWithCustomLabels creates the abstraction that allows components to
-// dynamically shard targets between components.
+// dynamically shard targets between components. Passing in labels will limit the sharding to only use those labels for computing the hash key.
+// Passing in nil or empty array means look at all labels.
 func NewDistributedTargetsWithCustomLabels(clusteringEnabled bool, cluster cluster.Cluster, allTargets []Target, labels []string) *DistributedTargets {
 	if !clusteringEnabled || cluster == nil {
 		cluster = disabledCluster{}
