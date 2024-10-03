@@ -404,8 +404,8 @@ type Browser struct {
 	Language       string `json:"language,omitempty"`
 	// TODO: properly serialize brands
 	// Brands json.RawMessage `json:"brands,omitempty"` 
-	ViewportWidth  float64 `json:"viewportWidth,omitempty"`
-	ViewportHeight float64 `json:"viewportHeight,omitempty"`
+	ViewportWidth  string `json:"viewportWidth,omitempty"`
+	ViewportHeight string `json:"viewportHeight,omitempty"`
 }
 
 // KeyVal produces key->value representation of the Browser metadata
@@ -417,8 +417,8 @@ func (b Browser) KeyVal() *KeyVal {
 	KeyValAdd(kv, "mobile", fmt.Sprintf("%v", b.Mobile))
 	KeyValAdd(kv, "userAgent", b.UserAgent)
 	KeyValAdd(kv, "language", b.Language)
-	KeyValAdd(kv, "viewportWidth", fmt.Sprintf("%d", int(b.ViewportWidth)))
-	KeyValAdd(kv, "viewportHeight", fmt.Sprintf("%d", int(b.ViewportHeight)))
+	KeyValAdd(kv, "viewportWidth", b.ViewportWidth)
+	KeyValAdd(kv, "viewportHeight", b.ViewportHeight)
 	return kv
 }
 
