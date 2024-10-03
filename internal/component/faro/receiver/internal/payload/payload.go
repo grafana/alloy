@@ -417,8 +417,8 @@ func (b Browser) KeyVal() *KeyVal {
 	KeyValAdd(kv, "mobile", fmt.Sprintf("%v", b.Mobile))
 	KeyValAdd(kv, "userAgent", b.UserAgent)
 	KeyValAdd(kv, "language", b.Language)
-	KeyValAdd(kv, "viewportWidth", fmt.Sprintf("%d", int(b.ViewportWidth))
-	KeyValAdd(kv, "viewportHeight", fmt.Sprintf("%d", int(b.ViewportHeight))
+	KeyValAdd(kv, "viewportWidth", fmt.Sprintf("%d", int(b.ViewportWidth)))
+	KeyValAdd(kv, "viewportHeight", fmt.Sprintf("%d", int(b.ViewportHeight)))
 	return kv
 }
 
