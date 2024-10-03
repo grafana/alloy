@@ -10,6 +10,10 @@ import (
 	"go.uber.org/atomic"
 )
 
+const MetaType = "__alloy_metadata_type__"
+const MetaUnit = "__alloy_metadata_unit__"
+const MetaHelp = "__alloy_metadata_help__"
+
 // SeriesGroup is the holder for TimeSeries, Metadata, and the strings array.
 // When serialized the Labels Key,Value array will be transformed into
 // LabelNames and LabelsValues that point to the index in Strings.
@@ -20,6 +24,9 @@ type SeriesGroup struct {
 	Metadata []*TimeSeriesBinary
 }
 
+// TimeSeriesBinary is an optimized format for handling metrics and metadata. It should never be instantiated directly
+// but instead use GetTimeSeriesFromPool and PutTimeSeriesSliceIntoPool. This allows us to reuse these objects and avoid
+// allocations.
 type TimeSeriesBinary struct {
 	// Labels are not serialized to msgp, instead we store separately a dictionary of strings and use `LabelNames` and `LabelValues` to refer to the dictionary by ID.
 	Labels       labels.Labels `msg:"-"`
