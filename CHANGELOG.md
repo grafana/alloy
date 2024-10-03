@@ -27,6 +27,9 @@ Main (unreleased)
 - The `mimir.rules.kubernetes` component now supports adding extra label matchers
   to all queries discovered via `PrometheusRule` CRDs. (@thampiotr)
 
+- Add a new Secret resource into the helm chart to allow passing values into
+  config via environement variables.
+
 ### Bugfixes
 
 - Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)

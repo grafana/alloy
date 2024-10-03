@@ -35,9 +35,15 @@
     {{- range $values.extraEnv }}
     - {{- toYaml . | nindent 6 }}
     {{- end }}
-  {{- if $values.envFrom }}
+  {{- if or $values.envFrom $values.extraSecretEnv }}
   envFrom:
-    {{- toYaml $values.envFrom | nindent 4 }}
+    {{- if $values.extraSecretEnv }}
+    - secretRef:
+        name: {{ include "alloy.fullname" . }}
+    {{- end }}
+    {{- if $values.envFrom }}
+      {{- toYaml $values.envFrom | nindent 4 }}
+    {{- end }}
   {{- end }}
   ports:
     - containerPort: {{ $values.listenPort }}

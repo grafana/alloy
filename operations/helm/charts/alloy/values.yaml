@@ -75,6 +75,15 @@ alloy:
   # -- Extra environment variables to pass to the Alloy container.
   extraEnv: []
 
+  # -- Extra environment variables to store in a Secret and pass to Alloy container.
+  extraSecretEnv: []
+  # - name: PROMETHEUS_REMOTEWRITE_URL
+  #   value: https://some-prometheus:9090/api/v1/write
+  # - name: PROMETHEUS_REMOTEWRITE_USERNAME
+  #   value: foo
+  # - name: PROMETHEUS_REMOTEWRITE_PASSWORD
+  #   value: bar
+
   # -- Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core
   envFrom: []
 

@@ -45,6 +45,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.extraArgs | list | `[]` | Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/ |
 | alloy.extraEnv | list | `[]` | Extra environment variables to pass to the Alloy container. |
 | alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. |
+| alloy.extraSecretEnv | list | `[]` | Extra environment variables to store in a Secret and pass to Alloy container. |
 | alloy.lifecycle | object | `{}` | Set lifecycle hooks for the Grafana Alloy container. |
 | alloy.listenAddr | string | `"0.0.0.0"` | Address to listen for traffic on. 0.0.0.0 exposes the UI to other containers. |
 | alloy.listenPort | int | `12345` | Port to listen for traffic on. |

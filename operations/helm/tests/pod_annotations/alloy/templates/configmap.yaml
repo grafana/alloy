@@ -41,3 +41,14 @@ data:
     discovery.kubernetes "ingresses" {
     	role = "ingress"
     }
+    
+    prometheus.remote_write "demo" {
+      endpoint {
+        url = env("PROMETHEUS_REMOTEWRITE_URL")
+    
+        basic_auth {
+          username = env("PROMETHEUS_REMOTEWRITE_USERNAME")
+          password = env("PROMETHEUS_REMOTEWRITE_PASSWORD")
+        }
+      }
+    }
