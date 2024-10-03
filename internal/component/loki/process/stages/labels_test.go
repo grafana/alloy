@@ -72,10 +72,8 @@ func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
 }
 
 var (
-	lv1  = "lv1"
-	lv2c = "l2"
-	lv3  = ""
-	lv3c = "l3"
+	lv1 = "lv1"
+	lv3 = ""
 )
 
 var emptyLabelsConfig = LabelsConfig{nil}
@@ -84,19 +82,19 @@ func TestLabels(t *testing.T) {
 	tests := map[string]struct {
 		config       LabelsConfig
 		err          error
-		expectedCfgs LabelsConfig
+		expectedCfgs map[string]string
 	}{
 		"missing config": {
 			config:       emptyLabelsConfig,
 			err:          errors.New(ErrEmptyLabelStageConfig),
-			expectedCfgs: emptyLabelsConfig,
+			expectedCfgs: nil,
 		},
 		"invalid label name": {
 			config: LabelsConfig{
 				Values: map[string]*string{"#*FDDS*": nil},
 			},
 			err:          fmt.Errorf(ErrInvalidLabelName, "#*FDDS*"),
-			expectedCfgs: emptyLabelsConfig,
+			expectedCfgs: nil,
 		},
 		"label value is set from name": {
 			config: LabelsConfig{Values: map[string]*string{
@@ -105,18 +103,18 @@ func TestLabels(t *testing.T) {
 				"l3": &lv3,
 			}},
 			err: nil,
-			expectedCfgs: LabelsConfig{Values: map[string]*string{
-				"l1": &lv1,
-				"l2": &lv2c,
-				"l3": &lv3c,
-			}},
+			expectedCfgs: map[string]string{
+				"l1": lv1,
+				"l2": "l2",
+				"l3": "l3",
+			},
 		},
 	}
 	for name, test := range tests {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			err := validateLabelsConfig(test.config)
+			actual, err := validateLabelsConfig(test.config)
 			if (err != nil) != (test.err != nil) {
 				t.Errorf("validateLabelsConfig() expected error = %v, actual error = %v", test.err, err)
 				return
@@ -125,8 +123,8 @@ func TestLabels(t *testing.T) {
 				t.Errorf("validateLabelsConfig() expected error = %v, actual error = %v", test.err, err)
 				return
 			}
-			if test.expectedCfgs.Values != nil {
-				assert.Equal(t, test.expectedCfgs, test.config)
+			if test.expectedCfgs != nil {
+				assert.Equal(t, test.expectedCfgs, actual)
 			}
 		})
 	}

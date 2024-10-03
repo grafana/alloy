@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"reflect"
 	"time"
+	_ "time/tzdata" // embed timezone data
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/common/model"
 
-	_ "time/tzdata" // embed timezone data
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Config errors.
@@ -53,7 +53,7 @@ type TimestampConfig struct {
 
 type parser func(string) (time.Time, error)
 
-func validateTimestampConfig(cfg TimestampConfig) (parser, error) {
+func validateTimestampConfig(cfg *TimestampConfig) (parser, error) {
 	if cfg.Source == "" {
 		return nil, ErrTimestampSourceRequired
 	}
@@ -99,7 +99,7 @@ func validateTimestampConfig(cfg TimestampConfig) (parser, error) {
 
 // newTimestampStage creates a new timestamp extraction pipeline stage.
 func newTimestampStage(logger log.Logger, config TimestampConfig) (Stage, error) {
-	parser, err := validateTimestampConfig(config)
+	parser, err := validateTimestampConfig(&config)
 	if err != nil {
 		return nil, err
 	}

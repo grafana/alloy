@@ -13,13 +13,11 @@ import (
 
 // Configuration errors.
 var (
-	ErrEmptyMatchStageConfig = errors.New("match stage config cannot be empty")
-	ErrPipelineNameRequired  = errors.New("match stage pipeline name can be omitted but cannot be an empty string")
-	ErrSelectorRequired      = errors.New("selector statement required for match stage")
-	ErrMatchRequiresStages   = errors.New("match stage requires at least one additional stage to be defined in '- stages'")
-	ErrSelectorSyntax        = errors.New("invalid selector syntax for match stage")
-	ErrStagesWithDropLine    = errors.New("match stage configured to drop entries cannot contains stages")
-	ErrUnknownMatchAction    = errors.New("match stage action should be 'keep' or 'drop'")
+	ErrSelectorRequired    = errors.New("selector statement required for match stage")
+	ErrMatchRequiresStages = errors.New("match stage requires at least one additional stage to be defined in '- stages'")
+	ErrSelectorSyntax      = errors.New("invalid selector syntax for match stage")
+	ErrStagesWithDropLine  = errors.New("match stage configured to drop entries cannot contains stages")
+	ErrUnknownMatchAction  = errors.New("match stage action should be 'keep' or 'drop'")
 
 	MatchActionKeep = "keep"
 	MatchActionDrop = "drop"
