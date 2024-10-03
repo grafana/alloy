@@ -1,0 +1,10 @@
+---
+# Source: alloy/templates/extra_objects.yaml
+apiVersion: v1
+data:
+  conf.ini: |-
+    [hosts]
+    localhost = 127.0.0.1
+kind: ConfigMap
+metadata:
+  name: hosts

@@ -360,3 +360,17 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
+
+## Additional Kubernetes manifests
+
+# -- Create dynamic manifests via values.
+# See values.yaml or the documentation for examples.
+extraObjects: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: hosts
+  #   data:
+  #     conf.ini: |-
+  #       [hosts]
+  #       localhost = 127.0.0.1
