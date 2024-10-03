@@ -71,7 +71,6 @@ func TestE2E(t *testing.T) {
 					require.True(t, s.Unit == "seconds")
 					require.True(t, s.Type == prompb.MetricMetadata_COUNTER)
 					require.True(t, strings.HasPrefix(s.MetricFamilyName, "name_"))
-
 				}
 			},
 		},
@@ -205,7 +204,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	} else {
 		metaTest(metaSamples)
 	}
-	require.True(t, types.OutStandingTimeSeriesBinary.Load() == 0)
+	require.Truef(t, types.OutStandingTimeSeriesBinary.Load() == 0, "there are %d time series not collected", types.OutStandingTimeSeriesBinary.Load())
 }
 
 func handlePost(t *testing.T, _ http.ResponseWriter, r *http.Request) ([]prompb.TimeSeries, []prompb.MetricMetadata) {
@@ -349,15 +348,15 @@ func newComponent(t *testing.T, l *logging.Logger, url string, exp chan Exports,
 		TTL:           2 * time.Hour,
 		MaxFlushSize:  10_000,
 		FlushDuration: 1 * time.Second,
-		Connections: []types.ConnectionConfig{{
+		Connections: []ConnectionConfig{{
 			Name:                    "test",
 			URL:                     url,
 			Timeout:                 20 * time.Second,
 			RetryBackoff:            5 * time.Second,
 			MaxRetryBackoffAttempts: 1,
 			BatchCount:              50,
-			FlushDuration:           1 * time.Second,
-			QueueCount:              1,
+			FlushFrequency:          1 * time.Second,
+			Connections:             1,
 		}},
 		AppenderBatchSize: 1_000,
 		ExternalLabels:    nil,

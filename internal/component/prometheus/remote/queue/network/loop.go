@@ -195,7 +195,9 @@ func (l *loop) send(ctx context.Context, retryCount int) sendResult {
 	httpReq.Header.Set("Content-Type", "application/x-protobuf")
 	httpReq.Header.Set("User-Agent", l.cfg.UserAgent)
 	httpReq.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
-	httpReq.SetBasicAuth(l.cfg.Username, l.cfg.Password)
+	if l.cfg.BasicAuth != nil {
+		httpReq.SetBasicAuth(l.cfg.BasicAuth.Username, l.cfg.BasicAuth.Password)
+	}
 
 	if retryCount > 0 {
 		httpReq.Header.Set("Retry-Attempt", strconv.Itoa(retryCount))

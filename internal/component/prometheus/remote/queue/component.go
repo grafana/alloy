@@ -109,18 +109,23 @@ func (s *Queue) createEndpoints() error {
 		stats := types.NewStats("alloy", "queue_series", reg)
 		stats.BackwardsCompatibility(reg)
 		meta := types.NewStats("alloy", "queue_metadata", reg)
-		client, err := network.New(network.ConnectionConfig{
+		cfg := types.ConnectionConfig{
 			URL:        ep.URL,
-			Username:   ep.BasicAuth.Username,
-			Password:   string(ep.BasicAuth.Password),
 			BatchCount: ep.BatchCount,
 			// Functionally this cannot go below 1s
-			FlushFrequency: ep.FlushDuration,
+			FlushFrequency: ep.FlushFrequency,
 			Timeout:        ep.Timeout,
 			UserAgent:      "alloy",
 			ExternalLabels: s.args.ExternalLabels,
-			Connections:    uint64(ep.QueueCount),
-		}, s.log, stats.UpdateNetwork, meta.UpdateNetwork)
+			Connections:    ep.Connections,
+		}
+		if ep.BasicAuth != nil {
+			cfg.BasicAuth = &types.BasicAuth{
+				Username: ep.BasicAuth.Username,
+				Password: string(ep.BasicAuth.Password),
+			}
+		}
+		client, err := network.New(cfg, s.log, stats.UpdateNetwork, meta.UpdateNetwork)
 
 		if err != nil {
 			return err
@@ -137,7 +142,7 @@ func (s *Queue) createEndpoints() error {
 		serial, err := serialization.NewSerializer(types.SerializerConfig{
 			MaxSignalsInBatch: 10_000,
 			FlushFrequency:    1 * time.Second,
-		}, fq, s.opts.Logger)
+		}, fq, stats.UpdateFileQueue, s.opts.Logger)
 		if err != nil {
 			return err
 		}
@@ -159,7 +164,7 @@ func (c *Queue) Appender(ctx context.Context) storage.Appender {
 
 	children := make([]storage.Appender, 0)
 	for _, ep := range c.endpoints {
-		children = append(children, serialization.NewAppender(ctx, c.args.TTL, ep.serializer, c.args.AppenderBatchSize, ep.stat.UpdateFileQueue, c.opts.Logger))
+		children = append(children, serialization.NewAppender(ctx, c.args.TTL, ep.serializer, c.opts.Logger))
 	}
 	return &fanout{children: children}
 }

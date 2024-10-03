@@ -42,7 +42,7 @@ func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStat
 	}
 
 	// start kicks off a number of concurrent connections.
-	for i := uint64(0); i < s.cfg.Connections; i++ {
+	for i := uint(0); i < s.cfg.Connections; i++ {
 		l := newLoop(cc, false, logger, seriesStats)
 		l.self = actor.New(l)
 		s.loops = append(s.loops, l)
@@ -120,8 +120,7 @@ func (s *manager) updateConfig(cc types.ConnectionConfig) {
 	level.Debug(s.logger).Log("msg", "dropping all series in loops and creating queue due to config change")
 	s.stopLoops()
 	s.loops = make([]*loop, 0, s.cfg.Connections)
-	var i uint64
-	for ; i < s.cfg.Connections; i++ {
+	for i := uint(0); i < s.cfg.Connections; i++ {
 		l := newLoop(cc, false, s.logger, s.stats)
 		l.self = actor.New(l)
 
@@ -158,7 +157,7 @@ func (s *manager) startLoops() {
 // Queue adds anything thats not metadata to the queue.
 func (s *manager) queue(ctx context.Context, ts *types.TimeSeriesBinary) {
 	// Based on a hash which is the label hash add to the queue.
-	queueNum := ts.Hash % s.cfg.Connections
+	queueNum := ts.Hash % uint64(s.cfg.Connections)
 	// This will block if the queue is full.
 	err := s.loops[queueNum].seriesMbx.Send(ctx, ts)
 	if err != nil {

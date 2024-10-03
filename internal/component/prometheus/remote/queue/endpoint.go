@@ -62,7 +62,7 @@ func (ep *endpoint) DoWork(ctx actor.Context) actor.WorkerStatus {
 		if !ok {
 			return actor.WorkerEnd
 		}
-		meta, buf, err := file.Get()
+		meta, buf, err := file.Pop()
 		if err != nil {
 			level.Error(ep.log).Log("msg", "unable to get file contents", "name", file.Name, "err", err)
 			return actor.WorkerContinue
@@ -101,10 +101,10 @@ func (ep *endpoint) deserializeAndSend(ctx context.Context, meta map[string]stri
 		Strings:  make([]string, stringsCount),
 	}
 	for i := 0; i < seriesCount; i++ {
-		sg.Series[i] = types.GetTimeSeriesBinary()
+		sg.Series[i] = types.GetTimeSeriesFromPool()
 	}
 	for i := 0; i < metaCount; i++ {
-		sg.Metadata[i] = types.GetTimeSeriesBinary()
+		sg.Metadata[i] = types.GetTimeSeriesFromPool()
 	}
 	sg, ep.buf, err = types.DeserializeToSeriesGroup(sg, ep.buf)
 

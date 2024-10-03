@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/storage"
@@ -26,6 +25,7 @@ func BenchmarkE2E(b *testing.B) {
 	}
 	tests := []e2eTest{
 		{
+			// This should be ~1200 allocs an op
 			name: "normal",
 			maker: func(index int, app storage.Appender) {
 				ts, v, lbls := makeSeries(index)
@@ -65,16 +65,14 @@ func runBenchmark(t *testing.B, add func(index int, appendable storage.Appender)
 	exp := <-expCh
 
 	index := 0
+	app := exp.Receiver.Appender(ctx)
+
 	for i := 0; i < t.N; i++ {
-		go func() {
-			app := exp.Receiver.Appender(ctx)
-			for j := 0; j < items; j++ {
-				index++
-				add(index, app)
-			}
-			require.NoError(t, app.Commit())
-		}()
+		index++
+		add(index, app)
 	}
+	require.NoError(t, app.Commit())
+
 	tm := time.NewTimer(10 * time.Second)
 	select {
 	case <-done:
@@ -98,22 +96,22 @@ func newComponentBenchmark(t *testing.B, l log.Logger, url string, exp chan Expo
 		TTL:           2 * time.Hour,
 		MaxFlushSize:  100_000,
 		FlushDuration: 1 * time.Second,
-		Connections: []types.ConnectionConfig{{
+		Connections: []ConnectionConfig{{
 			Name:                    "test",
 			URL:                     url,
 			Timeout:                 10 * time.Second,
 			RetryBackoff:            1 * time.Second,
 			MaxRetryBackoffAttempts: 0,
 			BatchCount:              50,
-			FlushDuration:           1 * time.Second,
-			QueueCount:              1,
+			FlushFrequency:          1 * time.Second,
+			Connections:             1,
 		}},
 		AppenderBatchSize: 1_000,
 		ExternalLabels:    nil,
 	})
 }
 
-var _ (prometheus.Registerer) = (*fakeRegistry)(nil)
+var _ prometheus.Registerer = (*fakeRegistry)(nil)
 
 type fakeRegistry struct{}
 

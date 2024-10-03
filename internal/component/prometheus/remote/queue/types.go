@@ -24,8 +24,8 @@ type Arguments struct {
 	// The batch size to persist to the file queue.
 	MaxFlushSize int `alloy:"max_flush_size,attr,optional"`
 	// How often to flush to the file queue if BatchSizeBytes isn't met.
-	FlushDuration time.Duration            `alloy:"flush_duration,attr,optional"`
-	Connections   []types.ConnectionConfig `alloy:"endpoint,block"`
+	FlushDuration time.Duration      `alloy:"flush_duration,attr,optional"`
+	Connections   []ConnectionConfig `alloy:"endpoint,block"`
 	// AppenderBatchSize determines how often to flush the appender batch size.
 	AppenderBatchSize int               `alloy:"appender_batch_size,attr,optional"`
 	ExternalLabels    map[string]string `alloy:"external_labels,attr,optional"`
@@ -84,7 +84,7 @@ type ConnectionConfig struct {
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
 }
 
-func (cc ConnectionConfig) ToTypesCC() types.ConnectionConfig {
+func (cc ConnectionConfig) ToNativeType() types.ConnectionConfig {
 	tcc := types.ConnectionConfig{
 		URL:                     cc.URL,
 		UserAgent:               "alloy",
