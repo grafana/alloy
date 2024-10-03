@@ -24,6 +24,9 @@ type SeriesGroup struct {
 	Metadata []*TimeSeriesBinary
 }
 
+// TimeSeriesBinary is an optimized format for handling metrics and metadata. It should never be instantiated directly
+// but instead use GetTimeSeriesFromPool and PutTimeSeriesSliceIntoPool. This allows us to reuse these objects and avoid
+// allocations.
 type TimeSeriesBinary struct {
 	// Labels are not serialized to msgp, instead we store separately a dictionary of strings and use `LabelNames` and `LabelValues` to refer to the dictionary by ID.
 	Labels       labels.Labels `msg:"-"`

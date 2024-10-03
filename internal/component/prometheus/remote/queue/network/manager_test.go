@@ -1,5 +1,3 @@
-//go:build !race
-
 package network
 
 import (
@@ -59,7 +57,9 @@ func TestUpdatingConfig(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	recordsFound := atomic.Uint32{}
+	lastBatchSize := atomic.Uint32{}
 	svr := httptest.NewServer(handler(t, http.StatusOK, func(wr *prompb.WriteRequest) {
+		lastBatchSize.Store(uint32(len(wr.Timeseries)))
 		recordsFound.Add(uint32(len(wr.Timeseries)))
 	}))
 
@@ -98,8 +98,7 @@ func TestUpdatingConfig(t *testing.T) {
 		return recordsFound.Load() == 1_000
 	}, 10*time.Second, 1*time.Second, "record count should be 1000 but is %d", recordsFound.Load())
 
-	require.Truef(t, wr.(*manager).cfg.BatchCount == 100, "batch_count should be 100 but is %d", wr.(*manager).cfg.BatchCount)
-
+	require.Truef(t, lastBatchSize.Load() == 100, "batch_count should be 100 but is %d", lastBatchSize.Load())
 }
 
 func TestRetry(t *testing.T) {
