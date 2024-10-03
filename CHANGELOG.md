@@ -10,16 +10,38 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- `import.git`: The default value for `revision` has changed from `HEAD` to `main`. (@ptodev)
+  It is no longer allowed to set `revision` to `"HEAD"`, `"FETCH_HEAD"`, `"ORIG_HEAD"`, `"MERGE_HEAD"`, or `"CHERRY_PICK_HEAD"`.
+
 ### Features
 
 - Add the function `path_join` to the stdlib. (@wildum)
+- Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
+- Add support to `loki.source.api` to be able to extract the tenant from the HTTP `X-Scope-OrgID` header (@QuentinBisson)
+- (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
+
+### Enhancements
+
+- The `mimir.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs. (@thampiotr)
 
 ### Bugfixes
 
+- Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
+  - Fixes a bug where scraping Windows service crashes alloy
+
 - Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
   - Fixes a bug where cloudwatch S3 metrics are reported as `0`
+- Issue 1687 - otelcol.exporter.awss3 fails to configure (@cydergoth)
+  - Fix parsing of the Level configuration attribute in debug_metrics config block
+  - Ensure "optional" debug_metrics config block really is optional
+
+- Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
 
 - Fix issue where `loki.source.kubernetes` took into account all labels, instead of specific logs labels. Resulting in duplication. (@mattdurham)
+
 
 ### Other changes
 
@@ -27,8 +49,21 @@ Main (unreleased)
 
 - Changed OTEL alerts in Alloy mixin to use success rate for tracing. (@thampiotr)
 
-v1.4.0-rc.3
+- Support TLS client settings for clustering (@tiagorossig)
+
+v1.4.1
 -----------------
+
+### Bugfixes
+
+- Windows installer: Don't quote Alloy's binary path in the Windows Registry. (@jkroepke)
+
+v1.4.0
+-----------------
+
+### Security fixes
+
+- Add quotes to windows service path to prevent path interception attack. [CVE-2024-8975](https://grafana.com/security/security-advisories/cve-2024-8975/) (@mattdurham)
 
 ### Breaking changes
 
@@ -48,6 +83,7 @@ v1.4.0-rc.3
 - Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
 - (_Experimental_) Add an `otelcol.processor.interval` component to aggregate metrics and periodically
   forward the latest values to the next component in the pipeline.
+
 
 ### Enhancements
 
@@ -132,6 +168,20 @@ v1.4.0-rc.3
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33607
 
 - Updated the docker base image to Ubuntu 24.04 (Noble Numbat). (@mattiasa )
+
+v1.3.4
+-----------------
+
+### Bugfixes
+
+- Windows installer: Don't quote Alloy's binary path in the Windows Registry. (@jkroepke)
+
+v1.3.2
+-----------------
+
+### Security fixes
+
+- Add quotes to windows service path to prevent path interception attack. [CVE-2024-8975](https://grafana.com/security/security-advisories/cve-2024-8975/) (@mattdurham)
 
 v1.3.1
 -----------------
