@@ -6,17 +6,24 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/runtime/tracing"
 )
 
 func TestBuildClusterService(t *testing.T) {
+	tracer, err := tracing.New(tracing.DefaultOptions)
+	require.NoError(t, err)
+
 	opts := clusterOptions{
 		JoinPeers:     []string{"foo", "bar"},
 		DiscoverPeers: "provider=aws key1=val1 key2=val2",
+		Log:           log.NewLogfmtLogger(os.Stderr),
+		Tracer:        tracer,
 	}
 
 	cs, err := buildClusterService(opts)
 	require.Nil(t, cs)
-	require.EqualError(t, err, "at most one of join peers and discover peers may be set")
+	require.ErrorContains(t, err, "at most one of join peers and discover peers may be set")
 }
 
 func TestGetAdvertiseAddress(t *testing.T) {
@@ -53,56 +60,5 @@ func TestGetAdvertiseAddress(t *testing.T) {
 		addr, err := getAdvertiseAddress(opts, 80)
 		require.Nil(t, err)
 		require.Equal(t, "127.0.0.1:80", addr)
-	})
-}
-
-func TestStaticDiscovery(t *testing.T) {
-	t.Run("no addresses provided", func(t *testing.T) {
-		logger := log.NewLogfmtLogger(os.Stdout)
-		sd := newStaticDiscovery([]string{}, 12345, logger)
-		actual, err := sd()
-		require.NoError(t, err)
-		require.Nil(t, actual)
-	})
-	t.Run("host and port provided", func(t *testing.T) {
-		logger := log.NewLogfmtLogger(os.Stdout)
-		sd := newStaticDiscovery([]string{"host:8080"}, 12345, logger)
-		actual, err := sd()
-		require.NoError(t, err)
-		require.Equal(t, []string{"host:8080"}, actual)
-	})
-	t.Run("IP provided and default port added", func(t *testing.T) {
-		logger := log.NewLogfmtLogger(os.Stdout)
-		sd := newStaticDiscovery([]string{"192.168.0.1"}, 12345, logger)
-		actual, err := sd()
-		require.NoError(t, err)
-		require.Equal(t, []string{"192.168.0.1:12345"}, actual)
-	})
-	t.Run("fallback to next host and port provided", func(t *testing.T) {
-		logger := log.NewLogfmtLogger(os.Stdout)
-		sd := newStaticDiscovery([]string{"this | wont | work", "host2:8080"}, 12345, logger)
-		actual, err := sd()
-		require.NoError(t, err)
-		require.Equal(t, []string{"host2:8080"}, actual)
-	})
-	t.Run("fallback to next host and port provided", func(t *testing.T) {
-		logger := log.NewLogfmtLogger(os.Stdout)
-		sd := newStaticDiscovery([]string{"this | wont | work", "host2:8080"}, 12345, logger)
-		actual, err := sd()
-		require.NoError(t, err)
-		require.Equal(t, []string{"host2:8080"}, actual)
-	})
-	t.Run("nothing found", func(t *testing.T) {
-		logger := log.NewLogfmtLogger(os.Stdout)
-		sd := newStaticDiscovery([]string{"this | wont | work"}, 12345, logger)
-		actual, err := sd()
-		require.Nil(t, actual)
-		require.ErrorContains(t, err, "failed to find any valid join addresses")
-		// We can only check the error messages in Alloy's code.
-		// We cannot check for error messages from other Go libraries,
-		// because they may differ based on operating system and
-		// on env var settings such as GODEBUG=netdns.
-		require.ErrorContains(t, err, "failed to extract host and port")
-		require.ErrorContains(t, err, "failed to resolve SRV records")
 	})
 }

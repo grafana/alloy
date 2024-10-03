@@ -27,6 +27,8 @@ Main (unreleased)
 - The `mimir.rules.kubernetes` component now supports adding extra label matchers
   to all queries discovered via `PrometheusRule` CRDs. (@thampiotr)
 
+- The `cluster.use-discovery-v1` flag is now deprecated since there were no issues found with the v2 cluster discovery mechanism. (@thampiotr)
+
 ### Bugfixes
 
 - Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
