@@ -31,25 +31,7 @@ Main (unreleased)
 
 ### Bugfixes
 
-- Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
-  - Fixes a bug where scraping Windows service crashes alloy
-
-- Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
-  - Fixes a bug where cloudwatch S3 metrics are reported as `0`
-- Issue 1687 - otelcol.exporter.awss3 fails to configure (@cydergoth)
-  - Fix parsing of the Level configuration attribute in debug_metrics config block
-  - Ensure "optional" debug_metrics config block really is optional
-
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
- 
-- Fixed an issue with `loki.process` where `stage.luhn` and `stage.timestamp` would not apply 
-  default configuration settings correctly (@thampiotr)
-
-- Fixed an issue with `loki.process` where configuration could be reloaded even if there
-  were no changes. (@ptodev, @thampiotr)
-
-- Fix issue where `loki.source.kubernetes` took into account all labels, instead of specific logs labels. Resulting in duplication. (@mattdurham)
-
 
 ### Other changes
 
@@ -58,6 +40,29 @@ Main (unreleased)
 - Changed OTEL alerts in Alloy mixin to use success rate for tracing. (@thampiotr)
 
 - Support TLS client settings for clustering (@tiagorossig)
+
+v1.4.2
+-----------------
+
+### Bugfixes
+
+- Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
+  - Fixes a bug where scraping Windows service crashes alloy
+
+- Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
+  - Fixes a bug where cloudwatch S3 metrics are reported as `0`
+
+- Issue 1687 - otelcol.exporter.awss3 fails to configure (@cydergoth)
+  - Fix parsing of the Level configuration attribute in debug_metrics config block
+  - Ensure "optional" debug_metrics config block really is optional
+
+- Fixed an issue with `loki.process` where `stage.luhn` and `stage.timestamp` would not apply 
+  default configuration settings correctly (@thampiotr)
+
+- Fixed an issue with `loki.process` where configuration could be reloaded even if there
+  were no changes. (@ptodev, @thampiotr)
+
+- Fix issue where `loki.source.kubernetes` took into account all labels, instead of specific logs labels. Resulting in duplication. (@mattdurham)
 
 v1.4.1
 -----------------
