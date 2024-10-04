@@ -128,6 +128,23 @@ func (*pointerMarshaler) MarshalText() ([]byte, error) {
 }
 
 func TestValue_Call(t *testing.T) {
+	// t.Run("slices with maps", func(t *testing.T) {
+	// 	add := func(a, b []map[string]string) []map[string]string {
+	// 		res := make([]map[string]string, 0, len(a)+len(b))
+	// 		res = append(res, a...)
+	// 		res = append(res, b...)
+	// 		return res
+	// 	}
+	// 	addVal := value.Encode(add)
+
+	// 	res, err := addVal.Call(
+	// 		value.Array(map[string]string{"a": "b"}),
+	// 		value.Int(43),
+	// 	)
+	// 	require.NoError(t, err)
+	// 	require.Equal(t, int64(15+43), res.Int())
+	// })
+
 	t.Run("simple", func(t *testing.T) {
 		add := func(a, b int) int { return a + b }
 		addVal := value.Encode(add)

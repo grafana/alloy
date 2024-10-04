@@ -39,6 +39,28 @@ func TestVM_Stdlib(t *testing.T) {
 		{"encoding.from_yaml nil field", "encoding.from_yaml(`foo: null`)", map[string]interface{}{"foo": nil}},
 		{"encoding.from_yaml nil array element", `encoding.from_yaml("[0, null]")`, []interface{}{0, nil}},
 		{"encoding.from_base64", `encoding.from_base64("Zm9vYmFyMTIzIT8kKiYoKSctPUB+")`, string(`foobar123!?$*&()'-=@~`)},
+
+		// Map tests
+		{
+			"map.inner_join",
+			`map.inner_join([{"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}},
+		},
+		{
+			"map.inner_join",
+			`map.inner_join([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}, {"a": "a1", "b": "b1", "c": "c1"}},
+		},
+		{
+			"map.inner_join",
+			`map.inner_join([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}, {"a": "a1", "b": "b1", "c": "c1"}},
+		},
+		{
+			"map.inner_join",
+			`map.inner_join([{"a" = 1, "b" = 2.2}], [{"a" = 1, "c" = "c1"}], ["a"])`,
+			[]map[string]interface{}{{"a": 1, "b": 2.2, "c": "c1"}},
+		},
 	}
 
 	for _, tc := range tt {
