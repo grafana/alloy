@@ -10,6 +10,16 @@ internal API changes are not present.
 Unreleased
 ----------
 
+0.9.1 (2024-10-04)
+------------------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.4.2. (@ptodev)
+
+0.9.0 (2024-10-02)
+------------------
+
 ### Enhancements
 
 - Add lifecyle hook to the Helm chart. (@etiennep)

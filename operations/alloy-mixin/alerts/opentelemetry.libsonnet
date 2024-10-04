@@ -4,13 +4,13 @@ local alert = import './utils/alert.jsonnet';
   local successRateQuery(enableK8sCluster, failed, success) =
         local sumBy = if enableK8sCluster then "cluster, namespace, job" else "job";
         |||
-          (1 - sum by (%s) (
-                  rate(%s{}[1m])
+          (1 - (
+                  sum by (%s) (rate(%s{}[1m]))
                   /
-                  (rate(%s{}[1m]) + rate(%s{}[1m]))
+                  sum by (%s) (rate(%s{}[1m]) + rate(%s{}[1m]))
                )
           ) < 0.95
-        ||| % [sumBy, failed, failed, success],
+        ||| % [sumBy, failed, sumBy, failed, success],
 
   newOpenTelemetryAlertsGroup(enableK8sCluster=true):
     alert.newGroup(
