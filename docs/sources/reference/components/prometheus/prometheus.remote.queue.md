@@ -202,7 +202,7 @@ Any labels that start with `__` will be removed before sending to the endpoint.
 ### Data retention
 
 Data is written to disk in blocks utilizing [snappy][] compression. These blocks are read on startup and resent if they are still within the TTL. 
-Any data that has not been written to disk, or that is in the network queues is lost if Alloy is restarted.
+Any data that has not been written to disk, or that is in the network queues is lost if {{< param "PRODUCT_NAME" >}} is restarted.
 
 ### Retries
 
