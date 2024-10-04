@@ -102,8 +102,8 @@ information.
 
 ## Debug metrics
 
-The below metrics are provided for backwards compatibility, they behave generally the same but there are likely
-edge cases where they differ.
+The following metrics are provided for backward compatibility.
+They generally behave the same, but there are likely edge cases where they differ.
 
 * `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created
   series appended to the WAL.
