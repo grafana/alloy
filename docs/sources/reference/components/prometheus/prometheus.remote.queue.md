@@ -11,8 +11,7 @@ Write-Ahead Log (WAL) and forwards them over the network to a series of
 user-supplied endpoints. Metrics are sent over the network using the
 [Prometheus Remote Write protocol][remote_write-spec].
 
-Multiple `prometheus.remote.queue` components can be specified by giving them
-different labels.
+You can specify multiple `prometheus.remote.queue` components by giving them different labels.
 
 [remote_write-spec]: https://docs.google.com/document/d/1LPhVRSFkGNSuU1fBd81ulhsCPR4hkSZyyBj1SZ8fWOM/edit
 
