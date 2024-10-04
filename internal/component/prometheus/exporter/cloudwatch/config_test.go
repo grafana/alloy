@@ -308,13 +308,6 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 							},
 						},
 						RoundingPeriod: nil,
-						JobLevelMetricFields: yaceModel.JobLevelMetricFields{
-							Period:                 0,
-							Length:                 0,
-							Delay:                  0,
-							AddCloudwatchTimestamp: &falsePtr,
-							NilToZero:              &defaultNilToZero,
-						},
 						ExportedTagsOnMetrics: []string{"name"},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -343,13 +336,6 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 							},
 						},
 						RoundingPeriod: nil,
-						JobLevelMetricFields: yaceModel.JobLevelMetricFields{
-							Period:                 0,
-							Length:                 0,
-							Delay:                  0,
-							AddCloudwatchTimestamp: &falsePtr,
-							NilToZero:              &defaultNilToZero,
-						},
 						ExportedTagsOnMetrics: []string{},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -383,13 +369,6 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 							},
 						},
 						RoundingPeriod: nil,
-						JobLevelMetricFields: yaceModel.JobLevelMetricFields{
-							Period:                 0,
-							Length:                 0,
-							Delay:                  0,
-							AddCloudwatchTimestamp: &falsePtr,
-							NilToZero:              &defaultNilToZero,
-						},
 						ExportedTagsOnMetrics: []string{},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -435,13 +414,6 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 							},
 						},
 						RoundingPeriod: nil,
-						JobLevelMetricFields: yaceModel.JobLevelMetricFields{
-							Period:                 0,
-							Length:                 0,
-							Delay:                  0,
-							AddCloudwatchTimestamp: &falsePtr,
-							NilToZero:              &defaultNilToZero,
-						},
 					},
 				},
 			},
@@ -546,13 +518,6 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 							},
 						},
 						RoundingPeriod: nil,
-						JobLevelMetricFields: yaceModel.JobLevelMetricFields{
-							Period:                 0,
-							Length:                 0,
-							Delay:                  0,
-							AddCloudwatchTimestamp: &falsePtr,
-							NilToZero:              &falsePtr,
-						},
 						ExportedTagsOnMetrics: []string{"name"},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -598,13 +563,6 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 							},
 						},
 						RoundingPeriod: nil,
-						JobLevelMetricFields: yaceModel.JobLevelMetricFields{
-							Period:                 0,
-							Length:                 0,
-							Delay:                  0,
-							AddCloudwatchTimestamp: &falsePtr,
-							NilToZero:              &falsePtr,
-						},
 					},
 				},
 			},
