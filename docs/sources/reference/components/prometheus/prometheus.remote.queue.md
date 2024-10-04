@@ -139,7 +139,7 @@ They generally behave the same, but there are likely edge cases where they diffe
   samples which were dropped after being read from the WAL before being sent to
   remote_write because of an unknown reference ID.
 * `prometheus_remote_storage_exemplars_dropped_total` (counter): Total number
-  of exemplars which were dropped after being read from the WAL before being
+  of exemplars that were dropped after being read from the WAL before being
   sent to remote_write because of an unknown reference ID.
 * `prometheus_remote_storage_enqueue_retries_total` (counter): Total number of
   times enqueue has failed because a shard's queue was full.
