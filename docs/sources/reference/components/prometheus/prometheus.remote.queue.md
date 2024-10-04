@@ -87,7 +87,7 @@ The following fields are exported and can be referenced by other components:
 
 Name | Type | Description
 ---- | ---- | -----------
-`receiver` | `MetricsReceiver` | A value which other components can use to send metrics to.
+`receiver` | `MetricsReceiver` | A value that other components can use to send metrics to.
 
 ## Component health
 
