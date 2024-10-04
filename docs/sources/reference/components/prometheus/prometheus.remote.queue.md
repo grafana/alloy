@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.remote.queue/
-aliases:
-  - ../prometheus.remote.queue/ # /docs/alloy/latest/reference/components/prometheus.remote.queue/
 description: Learn about prometheus.remote.queue
 title: prometheus.remote.queue
 ---
