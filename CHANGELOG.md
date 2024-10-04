@@ -12,15 +12,15 @@ v1.4.2
 
 ### Bugfixes
 
+- Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
+  - Fixes a bug where scraping Windows service crashes alloy
+
 - Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
   - Fixes a bug where cloudwatch S3 metrics are reported as `0`
 
 - Issue 1687 - otelcol.exporter.awss3 fails to configure (@cydergoth)
   - Fix parsing of the Level configuration attribute in debug_metrics config block
   - Ensure "optional" debug_metrics config block really is optional
-
-- Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
-  - Fixes a bug where scraping Windows service crashes alloy
 
 - Fixed an issue with `loki.process` where `stage.luhn` and `stage.timestamp` would not apply 
   default configuration settings correctly (@thampiotr)
