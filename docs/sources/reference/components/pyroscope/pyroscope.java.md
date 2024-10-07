@@ -49,10 +49,12 @@ alloy:
         - SYS_RESOURCE
         - SYS_ADMIN
 ```
-These capabilities enable Alloy to access performance monitoring subsystems, trace processes, override resource limits, and perform necessary system administration tasks for profiling.
+These capabilities enable {{< param "PRODUCT_NAME" >}} to access performance monitoring subsystems, trace processes, override resource limits, and perform necessary system administration tasks for profiling.
 
 {{< admonition type="note" >}}
-Adjust capabilities based on your specific security requirements and environment, following the principle of least privilege. Note that capability behavior depends on Container Runtime Interface (CRI) settings. For example, in Docker, non-whitelisted capabilities are dropped by default.
+Adjust capabilities based on your specific security requirements and environment, following the principle of least privilege.
+The capability behavior depends on Container Runtime Interface (CRI) settings.
+For example, in Docker, non-whitelisted capabilities are dropped by default.
 {{< /admonition >}}
 
 ## Arguments
