@@ -659,7 +659,7 @@ The following arguments are supported:
 | Name                | Type       | Description                                                                                               | Default                  | Required |
 |---------------------|------------|-----------------------------------------------------------------------------------------------------------|--------------------------|----------|
 | `name`              | `string`   | The metric name.                                                                                          |                          | yes      |
-| `action`            | `string`   | The action to take. Valid actions are `set`, `inc`, `dec`,` add`, or `sub`.                               |                          | yes      |
+| `action`            | `string`   | The action to take. Valid actions are `inc` and `add`.                                                    |                          | yes      |
 | `description`       | `string`   | The metric's description and help text.                                                                   | `""`                     | no       |
 | `source`            | `string`   | Key from the extracted data map to use for the metric. Defaults to the metric name.                       | `""`                     | no       |
 | `prefix`            | `string`   | The prefix to the metric name.                                                                            | `"loki_process_custom_"` | no       |
@@ -682,7 +682,7 @@ The following arguments are supported:
 | Name                | Type       | Description                                                                         | Default                  | Required |
 |---------------------|------------|-------------------------------------------------------------------------------------|--------------------------|----------|
 | `name`              | `string`   | The metric name.                                                                    |                          | yes      |
-| `action`            | `string`   | The action to take. Valid actions are `inc` and `add`.                              |                          | yes      |
+| `action`            | `string`   | The action to take. Valid actions are  `inc`, `dec`, `set`, `add`, or `sub`.        |                          | yes      |
 | `description`       | `string`   | The metric's description and help text.                                             | `""`                     | no       |
 | `source`            | `string`   | Key from the extracted data map to use for the metric. Defaults to the metric name. | `""`                     | no       |
 | `prefix`            | `string`   | The prefix to the metric name.                                                      | `"loki_process_custom_"` | no       |
@@ -692,7 +692,7 @@ The following arguments are supported:
 
 The valid `action` values are `inc`, `dec`, `set`, `add`, or `sub`.
 `inc` and `dec` increment and decrement the metric's value by 1 respectively.
-If `set`, `add, or `sub` is chosen, the extracted value must be convertible to a positive float and is set, added to, or subtracted from the metric's value.
+If `set`, `add`, or `sub` is chosen, the extracted value must be convertible to a positive float and is set, added to, or subtracted from the metric's value.
 
 
 #### metric.histogram block
@@ -704,7 +704,7 @@ The following arguments are supported:
 | Name                | Type          | Description                                                                         | Default                  | Required |
 |---------------------|---------------|-------------------------------------------------------------------------------------|--------------------------|----------|
 | `name`              | `string`      | The metric name.                                                                    |                          | yes      |
-| `buckets`           | `list(float)` | The action to take. Valid actions are `set`, `inc`, `dec`,` add`, or `sub`.         |                          | yes      |
+| `buckets`           | `list(float)` | Prefined buckets                                                                    |                          | yes      |
 | `description`       | `string`      | The metric's description and help text.                                             | `""`                     | no       |
 | `source`            | `string`      | Key from the extracted data map to use for the metric. Defaults to the metric name. | `""`                     | no       |
 | `prefix`            | `string`      | The prefix to the metric name.                                                      | `"loki_process_custom_"` | no       |
@@ -1032,21 +1032,23 @@ The following arguments are supported:
 
 | Name         | Type     | Description                                                     | Default | Required |
 | ------------ | -------- | --------------------------------------------------------------- | ------- | -------- |
-| `expression` | `string` | Name from extracted data to use for the log entry.              |         | yes      |
+| `expression` | `string` | A RE2 regular expression containing capture groups.            |         | yes      |
 | `source`     | `string` | Source of the data to parse. If empty, it uses the log message. |         | no       |
 | `replace`    | `string` | Value replaced by the capture group.                            |         | no       |
 
+Each capture group and named capture group in `expression` is replaced with the value given in `replace`.
+
+`expression` must contain valid RE2 regular expression capture groups.
+You can also name some groups using syntax such as `(?P<name>re)`.
+If any of the capture groups are named, their values will be set into the shared extracted map under the name of the regular expression group.
 
 The `source` field defines the source of data to parse using `expression`.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
 The replaced value is assigned back to the `source` key.
 
-The `expression` must be a valid RE2 regex.
-Every named capture group `(?P<name>re)` is set into the extracted map with its name.
-
 Because of how {{< param "PRODUCT_NAME" >}} syntax treats backslashes in double-quoted strings, note that all backslashes in a regex expression must be escaped like `"\\w*"`.
 
-Let's see how this works with the following log line and stage. Since `source` is omitted, the replacement occurs  on the log line itself.
+Let's see how this works with the following log line and stage. Since `source` is omitted, the replacement occurs on the log line itself.
 
 ```
 2023-01-01T01:00:00.000000001Z stderr P i'm a log message who has sensitive information with password xyz!

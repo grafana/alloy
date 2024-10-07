@@ -7,15 +7,15 @@ import (
 	"reflect"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/jmespath/go-jmespath"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var (
-	ErrEmptyGeoIPStageConfig                = errors.New("geoip stage config cannot be empty")
 	ErrEmptyDBPathGeoIPStageConfig          = errors.New("db path cannot be empty")
 	ErrEmptySourceGeoIPStageConfig          = errors.New("source cannot be empty")
 	ErrEmptyDBTypeGeoIPStageConfig          = errors.New("db type should be either city or asn")

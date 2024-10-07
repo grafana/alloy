@@ -178,7 +178,7 @@ loki.source.kubernetes_events "example" {
 
 loki.write "local" {
   endpoint {
-    url = env("LOKI_URL")
+    url = sys.env("LOKI_URL")
   }
 }
 ```

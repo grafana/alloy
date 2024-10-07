@@ -54,7 +54,7 @@ To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry da
    ```alloy
    otelcol.exporter.otlp "<EXPORTER_LABEL>" {
      client {
-       url = "<HOST>:<PORT>"
+       endpoint = "<HOST>:<PORT>"
      }
    }
    ```
@@ -118,8 +118,8 @@ otelcol.exporter.otlp "default" {
 otelcol.auth.basic "credentials" {
   // Retrieve credentials using environment variables.
 
-  username = env("BASIC_AUTH_USER")
-  password = env("API_KEY")
+  username = sys.env("BASIC_AUTH_USER")
+  password = sys.env("API_KEY")
 }
 
 otelcol.receiver.otlp "example" {

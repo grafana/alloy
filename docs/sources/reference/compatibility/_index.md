@@ -218,6 +218,7 @@ The following components, grouped by namespace, _export_ Loki `LogsReceiver`.
 - [loki.echo](../components/loki/loki.echo)
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
+- [loki.secretfilter](../components/loki/loki.secretfilter)
 - [loki.write](../components/loki/loki.write)
 {{< /collapse >}}
 
@@ -241,6 +242,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 {{< collapse title="loki" >}}
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
+- [loki.secretfilter](../components/loki/loki.secretfilter)
 - [loki.source.api](../components/loki/loki.source.api)
 - [loki.source.awsfirehose](../components/loki/loki.source.awsfirehose)
 - [loki.source.azure_event_hubs](../components/loki/loki.source.azure_event_hubs)
@@ -287,6 +289,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
 - [otelcol.connector.spanmetrics](../components/otelcol/otelcol.connector.spanmetrics)
 - [otelcol.exporter.awss3](../components/otelcol/otelcol.exporter.awss3)
+- [otelcol.exporter.datadog](../components/otelcol/otelcol.exporter.datadog)
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
 - [otelcol.exporter.loadbalancing](../components/otelcol/otelcol.exporter.loadbalancing)
@@ -300,6 +303,8 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.processor.deltatocumulative](../components/otelcol/otelcol.processor.deltatocumulative)
 - [otelcol.processor.discovery](../components/otelcol/otelcol.processor.discovery)
 - [otelcol.processor.filter](../components/otelcol/otelcol.processor.filter)
+- [otelcol.processor.groupbyattrs](../components/otelcol/otelcol.processor.groupbyattrs)
+- [otelcol.processor.interval](../components/otelcol/otelcol.processor.interval)
 - [otelcol.processor.k8sattributes](../components/otelcol/otelcol.processor.k8sattributes)
 - [otelcol.processor.memory_limiter](../components/otelcol/otelcol.processor.memory_limiter)
 - [otelcol.processor.probabilistic_sampler](../components/otelcol/otelcol.processor.probabilistic_sampler)
@@ -336,6 +341,8 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.deltatocumulative](../components/otelcol/otelcol.processor.deltatocumulative)
 - [otelcol.processor.discovery](../components/otelcol/otelcol.processor.discovery)
 - [otelcol.processor.filter](../components/otelcol/otelcol.processor.filter)
+- [otelcol.processor.groupbyattrs](../components/otelcol/otelcol.processor.groupbyattrs)
+- [otelcol.processor.interval](../components/otelcol/otelcol.processor.interval)
 - [otelcol.processor.k8sattributes](../components/otelcol/otelcol.processor.k8sattributes)
 - [otelcol.processor.memory_limiter](../components/otelcol/otelcol.processor.memory_limiter)
 - [otelcol.processor.probabilistic_sampler](../components/otelcol/otelcol.processor.probabilistic_sampler)

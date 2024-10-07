@@ -197,8 +197,8 @@ information.
 
 ## Debug metrics
 
-* `receiver_accepted_spans_ratio_total` (counter): Number of spans successfully pushed into the pipeline.
-* `receiver_refused_spans_ratio_total` (counter): Number of spans that could not be pushed into the pipeline.
+* `otelcol_receiver_accepted_spans_total` (counter): Number of spans successfully pushed into the pipeline.
+* `otelcol_receiver_refused_spans_total` (counter): Number of spans that could not be pushed into the pipeline.
 * `rpc_server_duration_milliseconds` (histogram): Duration of RPC requests from a gRPC server.
 * `rpc_server_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
 * `rpc_server_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
@@ -232,7 +232,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "default" {
   client {
-    endpoint = env("OTLP_ENDPOINT")
+    endpoint = sys.env("OTLP_ENDPOINT")
   }
 }
 ```

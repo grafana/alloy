@@ -10,6 +10,100 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- `import.git`: The default value for `revision` has changed from `HEAD` to `main`. (@ptodev)
+  It is no longer allowed to set `revision` to `"HEAD"`, `"FETCH_HEAD"`, `"ORIG_HEAD"`, `"MERGE_HEAD"`, or `"CHERRY_PICK_HEAD"`.
+
+### Features
+
+- Add the function `path_join` to the stdlib. (@wildum)
+- Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
+- Add support to `loki.source.api` to be able to extract the tenant from the HTTP `X-Scope-OrgID` header (@QuentinBisson)
+- (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
+
+### Enhancements
+
+- The `mimir.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs. (@thampiotr)
+
+- The `cluster.use-discovery-v1` flag is now deprecated since there were no issues found with the v2 cluster discovery mechanism. (@thampiotr)
+
+- Fix an issue where some `faro.receiver` would drop multiple fields defined in `payload.meta.browser`, as fields were defined in the struct.
+
+### Bugfixes
+
+- Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
+
+- `pyroscope.scrape` no longer tries to scrape endpoints which are not active targets anymore. (@wildum @mattdurham @dehaansa @ptodev)
+
+### Other changes
+
+- Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
+
+- Changed OTEL alerts in Alloy mixin to use success rate for tracing. (@thampiotr)
+
+- Support TLS client settings for clustering (@tiagorossig)
+
+v1.4.2
+-----------------
+
+### Bugfixes
+
+- Update windows_exporter from v0.27.2 vo v0.27.3: (@jkroepke)
+  - Fixes a bug where scraping Windows service crashes alloy
+
+- Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
+  - Fixes a bug where cloudwatch S3 metrics are reported as `0`
+
+- Issue 1687 - otelcol.exporter.awss3 fails to configure (@cydergoth)
+  - Fix parsing of the Level configuration attribute in debug_metrics config block
+  - Ensure "optional" debug_metrics config block really is optional
+
+- Fixed an issue with `loki.process` where `stage.luhn` and `stage.timestamp` would not apply 
+  default configuration settings correctly (@thampiotr)
+
+- Fixed an issue with `loki.process` where configuration could be reloaded even if there
+  were no changes. (@ptodev, @thampiotr)
+
+- Fix issue where `loki.source.kubernetes` took into account all labels, instead of specific logs labels. Resulting in duplication. (@mattdurham)
+
+- Fix an issue where some `faro.receiver` would drop multiple fields defined in `payload.meta.browser`, as fields were defined in the struct 
+
+v1.4.1
+-----------------
+
+### Bugfixes
+
+- Windows installer: Don't quote Alloy's binary path in the Windows Registry. (@jkroepke)
+
+v1.4.0
+-----------------
+
+### Security fixes
+
+- Add quotes to windows service path to prevent path interception attack. [CVE-2024-8975](https://grafana.com/security/security-advisories/cve-2024-8975/) (@mattdurham)
+
+### Breaking changes
+
+- Some debug metrics for `otelcol` components have changed. (@thampiotr)
+  For example, `otelcol.exporter.otlp`'s `exporter_sent_spans_ratio_total` metric is now `otelcol_exporter_sent_spans_total`.
+
+- [otelcol.processor.transform] The functions `convert_sum_to_gauge` and `convert_gauge_to_sum` must now be used in the `metric` `context` rather than in the `datapoint` context.
+  https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/34567 (@wildum)
+
+- Upgrade Beyla from 1.7.0 to 1.8.2. A complete list of changes can be found on the Beyla releases page: https://github.com/grafana/beyla/releases. (@wildum)
+  It contains a few breaking changes for the component `beyla.ebpf`:
+  - renamed metric `process.cpu.state` to `cpu.mode`
+  - renamed metric `beyla_build_info` to `beyla_internal_build_info`
+
+### Features
+
+- Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
+- (_Experimental_) Add an `otelcol.processor.interval` component to aggregate metrics and periodically
+  forward the latest values to the next component in the pipeline.
+
+
 ### Enhancements
 
 - Clustering peer resolution through `--cluster.join-addresses` flag has been
@@ -23,7 +117,31 @@ Main (unreleased)
   seen by each instance in the cluster. This can help diagnose cluster split
   brain issues. (@thampiotr)
 
+- Updated Snowflake exporter with performance improvements for larger environments.
+  Also added a new panel to track deleted tables to the Snowflake mixin. (@Caleb-Hurshman)
+- Add a `otelcol.processor.groupbyattrs` component to reassociate collected metrics that match specified attributes
+    from opentelemetry. (@kehindesalaam)
+
+- Update windows_exporter to v0.27.2. (@jkroepke)
+  The `smb.enabled_list` and `smb_client.enabled_list` doesn't have any effect anymore. All sub-collectors are enabled by default.
+
+- Live debugging of `loki.process` will now also print the timestamp of incoming and outgoing log lines.
+  This is helpful for debugging `stage.timestamp`. (@ptodev)
+
+- Add extra validation in `beyla.ebpf` to avoid panics when network feature is enabled. (@marctc)
+
+- A new parameter `aws_sdk_version_v2` is added for the cloudwatch exporters configuration. It enables the use of aws sdk v2 which has shown to have significant performance benefits. (@kgeckhart, @andriikushch)
+
+- `prometheus.exporter.cloudwatch` can now collect metrics from custom namespaces via the `custom_namespace` block. (@ptodev)
+
+- Add the label `alloy_cluster` in the metric `alloy_config_hash` when the flag `cluster.name` is set to help differentiate between
+  configs from the same alloy cluster or different alloy clusters. (@wildum)
+
 ### Bugfixes
+
+- Fix a bug where the scrape timeout for a Probe resource was not applied, overwriting the scrape interval instead. (@morremeyer, @stefanandres)
+
+- Fix a bug where custom components don't always get updated when the config is modified in an imported directory. (@ante012)
 
 - Fixed an issue which caused loss of context data in Faro exception. (@codecapitano)
 
@@ -41,6 +159,60 @@ Main (unreleased)
 - Fixed an issue where the `connection_string` for the `loki.source.azure_event_hubs` component
   was displayed in the UI in plaintext. (@MorrisWitthein)
 
+- Fix a bug in `discovery.*` components where old `targets` would continue to be
+  exported to downstream components. This would only happen if the config
+  for `discovery.*`  is reloaded in such a way that no new targets were
+  discovered. (@ptodev, @thampiotr)
+
+- Fixed bug in `loki.process` with `sampling` stage where all components use same `drop_counter_reason`. (@captncraig)
+
+- Fixed an issue (see https://github.com/grafana/alloy/issues/1599) where specifying both path and key in the remote.vault `path`
+  configuration could result in incorrect URLs. The `path` and `key` arguments have been separated to allow for clear and accurate
+  specification of Vault secrets. (@PatMis16)
+
+### Other
+
+- Renamed standard library functions. Old names are still valid but are marked deprecated. (@wildum)
+
+- Aliases for the namespaces are deprecated in the Cloudwatch exporter. For example: "s3" is not allowed, "AWS/S3" should be used. Usage of the aliases will generate warnings in the logs. Support for the aliases will be dropped in the upcoming releases. (@kgeckhart, @andriikushch)
+
+- Update OTel from v0.105.0 vo v0.108.0: (@wildum)
+  - [`otelcol.receiver.vcenter`] New VSAN metrics.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33556
+  - [`otelcol.receiver.kafka`] Add `session_timeout` and `heartbeat_interval` attributes.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33082
+  - [`otelcol.processor.transform`] Add `aggregate_on_attributes` function for metrics.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33334
+  - [`otelcol.receiver.vcenter`] Enable metrics by default
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33607
+
+- Updated the docker base image to Ubuntu 24.04 (Noble Numbat). (@mattiasa )
+
+v1.3.4
+-----------------
+
+### Bugfixes
+
+- Windows installer: Don't quote Alloy's binary path in the Windows Registry. (@jkroepke)
+
+v1.3.2
+-----------------
+
+### Security fixes
+
+- Add quotes to windows service path to prevent path interception attack. [CVE-2024-8975](https://grafana.com/security/security-advisories/cve-2024-8975/) (@mattdurham)
+
+v1.3.1
+-----------------
+
+### Bugfixes
+
+- Changed the cluster startup behaviour, reverting to the previous logic where
+  a failure to resolve cluster join peers results in the node creating its own cluster. This is
+  to facilitate the process of bootstrapping a new cluster following user feedback (@thampiotr)
+
+- Fix a memory leak which would occur any time `loki.process` had its configuration reloaded. (@ptodev)
+
 v1.3.0
 -----------------
 
@@ -54,16 +226,17 @@ v1.3.0
 
 - Update Public preview `remotecfg` argument from `metadata` to `attributes`. (@erikbaranowski)
 
-- The default value of the argument `unmatched` in the block `routes` of the component `beyla.ebpf` was changed from `unset` to `heuristic` (@marctc) 
+- The default value of the argument `unmatched` in the block `routes` of the component `beyla.ebpf` was changed from `unset` to `heuristic` (@marctc)
 
 ### Features
 
 - Added community components support, enabling community members to implement and maintain components. (@wildum)
 
-- A new `otelcol.exporter.debug` component for printing OTel telemetry from 
+- A new `otelcol.exporter.debug` component for printing OTel telemetry from
   other `otelcol` components to the console. (@BarunKGP)
 
 ### Enhancements
+- Added custom metrics capability to oracle exporter. (@EHSchmitt4395)
 
 - Added a success rate panel on the Prometheus Components dashboard. (@thampiotr)
 
@@ -97,7 +270,7 @@ v1.3.0
 - `prometheus.exporter.unix` component now exposes hwmon collector config. (@dtrejod)
 
 - Upgrade from OpenTelemetry v0.102.1 to v0.105.0.
-  - [`otelcol.receiver.*`] A new `compression_algorithms` attribute to configure which 
+  - [`otelcol.receiver.*`] A new `compression_algorithms` attribute to configure which
     compression algorithms are allowed by the HTTP server.
     https://github.com/open-telemetry/opentelemetry-collector/pull/10295
   - [`otelcol.exporter.*`] Fix potential deadlock in the batch sender.
@@ -115,7 +288,7 @@ v1.3.0
   - [`otelcol.processor.tail_sampling`] Simple LRU Decision Cache for "keep" decisions.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33533
   - [`otelcol.processor.tail_sampling`] Fix precedence of inverted match in and policy.
-    Previously if the decision from a policy evaluation was `NotSampled` or `InvertNotSampled` 
+    Previously if the decision from a policy evaluation was `NotSampled` or `InvertNotSampled`
     it would return a `NotSampled` decision regardless, effectively downgrading the result.
     This was breaking the documented behaviour that inverted decisions should take precedence over all others.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33671
@@ -145,7 +318,7 @@ v1.3.0
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33607
   - [`otelcol.receiver.vcenter`] Drop support for vCenter 6.7.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33607
-  - [`otelcol.processor.attributes`] Add an option to extract value from a client address 
+  - [`otelcol.processor.attributes`] Add an option to extract value from a client address
     by specifying `client.address` value in the `from_context` field.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/34048
   - `otelcol.connector.spanmetrics`: Produce delta temporality span metrics with StartTimeUnixNano and TimeUnixNano values representing an uninterrupted series.
@@ -167,9 +340,10 @@ v1.3.0
 - Fixed a clustering mode issue where a fatal startup failure of the clustering service
   would exit the service silently, without also exiting the Alloy process. (@thampiotr)
 
-- Fix a bug which prevented config reloads to work if a Loki `metrics` stage is in the pipeline. 
+- Fix a bug which prevented config reloads to work if a Loki `metrics` stage is in the pipeline.
   Previously, the reload would fail for `loki.process` without an error in the logs and the metrics
   from the `metrics` stage would get stuck at the same values. (@ptodev)
+
 
 v1.2.1
 -----------------
@@ -229,6 +403,8 @@ v1.2.0
   metrics and traces from Datadog. (@carrieedwards, @jesusvazquez, @alexgreenbank, @fedetorres93)
 
 - Add a `prometheus.exporter.catchpoint` component to collect metrics from Catchpoint. (@bominrahmani)
+
+- Add the `-t/--test` flag to `alloy fmt` to check if a alloy config file is formatted correctly. (@kavfixnel)
 
 ### Enhancements
 

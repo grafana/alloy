@@ -215,6 +215,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 			labelstore.New(nil, prometheus.DefaultRegisterer),
 			remotecfgService,
 		},
+		EnableCommunityComps: true,
 	})
 	err = f.LoadSource(cfg, nil)
 

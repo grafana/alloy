@@ -194,7 +194,7 @@ Name              | Type           | Description                                
 
 ### network block
 
-This block configures network metrics options for Beyla.
+This block configures network metrics options for Beyla. You must append `network` to the `features` list in the `metrics` block to enable network metrics.
 
 Name              | Type           | Description                                             | Default | Required
 ------------------|----------------|---------------------------------------------------------|---------|---------
@@ -291,7 +291,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "default" {
     client {
-        endpoint = env("<OTLP_ENDPOINT>")
+        endpoint = sys.env("<OTLP_ENDPOINT>")
     }
 }
 ```

@@ -97,7 +97,7 @@ type processor struct {
 	closeCh chan struct{}
 }
 
-func newProcessor(nextConsumer consumer.Traces, cfg *Config, set otelprocessor.CreateSettings) (*processor, error) {
+func newProcessor(nextConsumer consumer.Traces, cfg *Config, set otelprocessor.Settings) (*processor, error) {
 	logger := log.With(util.Logger, "component", "service graphs")
 
 	if cfg.Wait == 0 {

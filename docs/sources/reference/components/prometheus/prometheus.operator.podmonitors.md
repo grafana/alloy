@@ -250,7 +250,7 @@ prometheus.operator.podmonitors "pods" {
     forward_to = [prometheus.remote_write.staging.receiver]
     rule {
       action = "keep"
-      regex = env("HOSTNAME")
+      regex = sys.env("HOSTNAME")
       source_labels = ["__meta_kubernetes_pod_node_name"]
     }
 }

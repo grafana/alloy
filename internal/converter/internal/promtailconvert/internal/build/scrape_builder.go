@@ -222,7 +222,7 @@ func (s *ScrapeConfigBuilder) getAllTargetsJoinedExpr() string {
 		for i, t := range s.allTargetsExps {
 			formatted[i] = fmt.Sprintf("\t\t%s,", t)
 		}
-		targetsExpr = fmt.Sprintf("concat(\n%s\n\t)", strings.Join(formatted, "\n"))
+		targetsExpr = fmt.Sprintf("array.concat(\n%s\n\t)", strings.Join(formatted, "\n"))
 	}
 	return targetsExpr
 }

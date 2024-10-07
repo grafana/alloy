@@ -51,6 +51,9 @@ spec:
   affinity:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- if .Values.controller.terminationGracePeriodSeconds }}
+  terminationGracePeriodSeconds: {{ .Values.controller.terminationGracePeriodSeconds | int }}
+  {{- end }}
   {{- with .Values.controller.nodeSelector }}
   nodeSelector:
     {{- toYaml . | nindent 4 }}

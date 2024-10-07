@@ -37,7 +37,7 @@ An {{< param "PRODUCT_NAME" >}} configuration file contains three elements:
 
    Expressions are used to compute values.
    They can be constant values (for example, `"localhost:9090"`), or they can be more complex (for example, referencing a component's export: `prometheus.exporter.unix.targets`.
-   They can also be a mathematical expression: `(1 + 2) * 3`, or a standard library function call: `env("HOME")`). We will use more expressions as we go along the examples.
+   They can also be a mathematical expression: `(1 + 2) * 3`, or a standard library function call: `sys.env("HOME")`). We will use more expressions as we go along the examples.
    If you are curious, you can find a list of available standard library functions in the [Standard library documentation][].
 
 1. **Blocks**
@@ -81,7 +81,7 @@ Look at the following simple pipeline:
 
 ```alloy
 local.file "example" {
-    filename = env("HOME") + "/file.txt"
+    filename = sys.env("HOME") + "/file.txt"
 }
 
 prometheus.remote_write "local_prom" {
@@ -104,7 +104,7 @@ Each component has a link to its documentation, which contains a description of 
 {{< /admonition >}}
 
 This pipeline has two components: `local.file` and `prometheus.remote_write`.
-The `local.file` component is configured with a single argument, `filename`, which is set by calling the [env][] standard library function to retrieve the value of the `HOME` environment variable and concatenating it with the string `"file.txt"`.
+The `local.file` component is configured with a single argument, `filename`, which is set by calling the [sys.env][] standard library function to retrieve the value of the `HOME` environment variable and concatenating it with the string `"file.txt"`.
 The `local.file` component has a single export, `content`, which contains the contents of the file.
 
 The `prometheus.remote_write` component is configured with an `endpoint` block, containing the `url` attribute and a `basic_auth` block.
@@ -216,9 +216,9 @@ To give a visual hint, you want to create a pipeline that looks like this:
 {{< figure src="/media/docs/alloy/diagram-example-pipeline-exercise-alloy.png" alt="Exercise pipeline, with a scrape, unix_exporter, redis_exporter, and remote_write component" >}}
 
 {{< admonition type="tip" >}}
-Refer to the [concat][] standard library function for information about combining lists of values into a single list.
+Refer to the [array.concat][] standard library function for information about combining lists of values into a single list.
 
-[concat]: ../../reference/stdlib/concat/
+[array.concat]: ../../reference/stdlib/array/
 {{< /admonition >}}
 
 You can run {{< param "PRODUCT_NAME" >}} with the new configuration file with the following command:
@@ -265,8 +265,8 @@ prometheus.scrape "default" {
     // of the prometheus.exporter.redis component with the label "local_redis".
     //
     // If you have more than one set of targets that you would like to scrape, you can use
-    // the 'concat' function from the standard library to combine them.
-    targets    = concat(prometheus.exporter.redis.local_redis.targets, prometheus.exporter.unix.localhost.targets)
+    // the 'array.concat' function from the standard library to combine them.
+    targets    = array.concat(prometheus.exporter.redis.local_redis.targets, prometheus.exporter.unix.localhost.targets)
     forward_to = [prometheus.remote_write.local_prom.receiver]
 }
 
@@ -305,4 +305,4 @@ You also learn how to use different components to process metrics and logs.
 [Components]: ../../get-started/components/
 [Component controller]: ../../get-started/component_controller/
 [Components configuration language]: ../../get-started/configuration-syntax/components/
-[env]: ../../reference/stdlib/env/
+[sys.env]: ../../reference/stdlib/sys/

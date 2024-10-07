@@ -168,7 +168,7 @@ discovery.process "all" {
 ```alloy
 discovery.kubernetes "pyroscope_kubernetes" {
   selectors {
-    field = "spec.nodeName=" + env("HOSTNAME")
+    field = "spec.nodeName=" + sys.env("HOSTNAME")
     role = "pod"
   }
   role = "pod"

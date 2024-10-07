@@ -1,6 +1,6 @@
 # Test Release
 
-Validate the new version is working by running it.
+Validate the new version is working by running it incrementally in all dogfooding clusters.
 
 ## Steps
 

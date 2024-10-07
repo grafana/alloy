@@ -10,6 +10,55 @@ internal API changes are not present.
 Unreleased
 ----------
 
+0.9.1 (2024-10-04)
+------------------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.4.2. (@ptodev)
+
+0.9.0 (2024-10-02)
+------------------
+
+### Enhancements
+
+- Add lifecyle hook to the Helm chart. (@etiennep)
+- Add terminationGracePeriodSeconds setting to the Helm chart. (@etiennep)
+
+0.8.1 (2024-09-26)
+------------------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.4.1. (@ptodev)
+
+0.8.0 (2024-09-25)
+------------------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.4.0. (@ptodev)
+
+0.7.0 (2024-08-26)
+------------------
+
+### Enhancements
+
+- Add PodDisruptionBudget to the Helm chart. (@itspouya)
+
+0.6.1 (2024-08-23)
+----------
+
+### Enhancements
+
+- Add the ability to set --cluster.name in the Helm chart with alloy.clustering.name. (@petewall)
+- Add the ability to set appProtocol in extraPorts to help OpenShift users to expose gRPC. (@clementduveau)
+
+### Other changes
+
+- Update helm chart to use v1.3.1.
+
+
 0.6.0 (2024-08-05)
 ------------------
 

@@ -14,6 +14,7 @@ import (
 	"github.com/DataDog/agent-payload/v5/gogen"
 	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/receiverhelper"
@@ -23,7 +24,7 @@ import (
 type datadogReceiver struct {
 	address string
 	config  *Config
-	params  receiver.CreateSettings
+	params  receiver.Settings
 
 	nextTracesConsumer  consumer.Traces
 	nextMetricsConsumer consumer.Metrics
@@ -34,7 +35,7 @@ type datadogReceiver struct {
 	tReceiver *receiverhelper.ObsReport
 }
 
-func newDataDogReceiver(config *Config, params receiver.CreateSettings) (component.Component, error) {
+func newDataDogReceiver(config *Config, params receiver.Settings) (component.Component, error) {
 	instance, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{LongLivedCtx: false, ReceiverID: params.ID, Transport: "http", ReceiverCreateSettings: params})
 	if err != nil {
 		return nil, err
@@ -98,7 +99,7 @@ func (ddr *datadogReceiver) Start(ctx context.Context, host component.Host) erro
 
 	go func() {
 		if err := ddr.server.Serve(hln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			ddr.params.TelemetrySettings.ReportStatus(component.NewFatalErrorEvent(fmt.Errorf("error starting datadog receiver: %w", err)))
+			componentstatus.ReportStatus(host, componentstatus.NewFatalErrorEvent(fmt.Errorf("error starting datadog receiver: %w", err)))
 		}
 	}()
 	return nil

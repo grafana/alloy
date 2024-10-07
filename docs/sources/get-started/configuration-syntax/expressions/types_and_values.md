@@ -16,7 +16,7 @@ The {{< param "PRODUCT_NAME" >}} syntax uses the following types for its values:
 * `bool`: A boolean value, either `true` or `false`.
 * `array`: A sequence of values, like `[1, 2, 3]`. Elements within the list are indexed by whole numbers, starting with zero.
 * `object`: A group of values identified by named labels, like `{ name = "John" }`.
-* `function`: A value representing a routine that runs with arguments to compute another value, like `env("HOME")`.
+* `function`: A value representing a routine that runs with arguments to compute another value, like `sys.env("HOME")`.
   Functions take zero or more arguments as input and always return a single value as output.
 * `null`: A type that has no value.
 

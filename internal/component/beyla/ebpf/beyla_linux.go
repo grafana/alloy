@@ -370,6 +370,9 @@ func (args *Arguments) Validate() error {
 		if _, ok := validFeatures[feature]; !ok {
 			return fmt.Errorf("invalid prometheus.features entry: %s", feature)
 		}
+		if feature == "network" && !args.Metrics.Network.Enable {
+			return fmt.Errorf("network feature can only be enabled if network is enabled")
+		}
 	}
 	return nil
 }

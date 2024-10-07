@@ -89,13 +89,13 @@ Name    | Type               | Description
 
 ## Debug metrics
 
-* `processor_deltatocumulative_streams_tracked` (gauge): Number of streams currently tracked by the aggregation state.
-* `processor_deltatocumulative_streams_limit` (gauge): Upper limit of tracked streams.
-* `processor_deltatocumulative_streams_evicted` (counter): Total number of streams removed from tracking to ingest newer streams.
-* `processor_deltatocumulative_streams_max_stale` (gauge): Duration without new samples after which streams are dropped.
-* `processor_deltatocumulative_datapoints_processed` (counter): Total number of datapoints processed (successfully or unsuccessfully).
-* `processor_deltatocumulative_datapoints_dropped` (counter): Faulty datapoints that were dropped due to the reason given in the `reason` label.
-* `processor_deltatocumulative_gaps_length` (counter): Total length of all gaps in the streams, such as being due to lost in transit.
+* `otelcol_deltatocumulative_streams_tracked` (gauge): Number of streams currently tracked by the aggregation state.
+* `otelcol_deltatocumulative_streams_limit` (gauge): Upper limit of tracked streams.
+* `otelcol_deltatocumulative_streams_evicted` (counter): Total number of streams removed from tracking to ingest newer streams.
+* `otelcol_deltatocumulative_streams_max_stale_seconds` (gauge): Duration without new samples after which streams are dropped.
+* `otelcol_deltatocumulative_datapoints_processed` (counter): Total number of datapoints processed (successfully or unsuccessfully).
+* `otelcol_deltatocumulative_datapoints_dropped` (counter): Faulty datapoints that were dropped due to the reason given in the `reason` label.
+* `otelcol_deltatocumulative_gaps_length` (counter): Total length of all gaps in the streams, such as being due to lost in transit.
 
 ## Examples
 
@@ -112,7 +112,7 @@ otelcol.processor.deltatocumulative "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
@@ -136,7 +136,7 @@ otelcol.exporter.prometheus "default" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = env("PROMETHEUS_SERVER_URL")
+    url = sys.env("PROMETHEUS_SERVER_URL")
   }
 }
 ```

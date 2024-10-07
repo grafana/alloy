@@ -89,7 +89,7 @@ func Test_ExtractAnnotations(t *testing.T) {
 func Test_FilterNodeEnvironmentVariable(t *testing.T) {
 	cfg := `
 		filter {
-			node = env("K8S_ATTRIBUTES_TEST_HOSTNAME")
+			node = sys.env("K8S_ATTRIBUTES_TEST_HOSTNAME")
 		}
 
 		output {

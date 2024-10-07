@@ -89,7 +89,7 @@ otelcol.exporter.otlp "example" {
 }
 
 otelcol.auth.bearer "creds" {
-  token = env("API_KEY")
+  token = sys.env("API_KEY")
 }
 ```
 
@@ -109,7 +109,7 @@ otelcol.exporter.otlphttp "example" {
 }
 
 otelcol.auth.bearer "creds" {
-  token = env("API_KEY")
+  token = sys.env("API_KEY")
   scheme = "MyScheme"
 }
 ```

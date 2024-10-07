@@ -8,7 +8,7 @@ discovery.consulagent "uber_pipeline" {
 }
 
 discovery.relabel "uber_pipeline" {
-	targets = concat(
+	targets = array.concat(
 		discovery.kubernetes.uber_pipeline.targets,
 		discovery.consulagent.uber_pipeline.targets,
 	)

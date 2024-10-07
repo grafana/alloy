@@ -12,6 +12,7 @@ func (b *ConfigBuilder) appendCloudwatchExporter(config *cloudwatch_exporter.Con
 }
 
 func toCloudwatchExporter(config *cloudwatch_exporter.Config) *cloudwatch.Arguments {
+	// There's no need to fill out CustomNamespace, because static mode doesn't support it.
 	return &cloudwatch.Arguments{
 		STSRegion:             config.STSRegion,
 		FIPSDisabled:          config.FIPSDisabled,
@@ -19,6 +20,7 @@ func toCloudwatchExporter(config *cloudwatch_exporter.Config) *cloudwatch.Argume
 		DiscoveryExportedTags: config.Discovery.ExportedTags,
 		Discovery:             toDiscoveryJobs(config.Discovery.Jobs),
 		Static:                toStaticJobs(config.Static),
+		UseAWSSDKVersion2:     config.UseAWSSDKVersion2,
 	}
 }
 
