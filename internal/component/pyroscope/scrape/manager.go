@@ -112,6 +112,14 @@ func (m *Manager) reload() {
 			wg.Done()
 		}(m.targetsGroups[setName], groups)
 	}
+
+	for tgName, sp := range m.targetsGroups {
+		if _, ok := m.targetSets[tgName]; !ok {
+			sp.stop()
+			delete(m.targetsGroups, tgName)
+		}
+	}
+
 	wg.Wait()
 }
 
