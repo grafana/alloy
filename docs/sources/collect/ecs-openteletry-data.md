@@ -8,12 +8,13 @@ weight: 500
 
 # Collect Amazon Elastic Container Service or AWS Fargate OpenTelemetry data
 
-You can configure {{< param "FULL_PRODUCT_NAME" >}} to collect [OpenTelemetry][]-compatible data from Amazon Elastic Container Service (ECS) or AWS Fargate and forward it to any OpenTelemetry-compatible endpoint.
+You can configure {{< param "FULL_PRODUCT_NAME" >}} to collect OpenTelemetry-compatible data from Amazon Elastic Container Service (ECS) or AWS Fargate and forward it to any OpenTelemetry-compatible endpoint.
 
-This topic describes how to:
+There are three different ways you can use {{< param "PRODUCT_NAME" >}} to collect Amazon ECS or AWS Fargate telemetry data.
 
-* Set up and configure an ECS task to use {{< param "PRODUCT_NAME" >}} to collect telemetry.
-* Run {{% param "PRODUCT_NAME" %}} directly in your Amazon ECS or AWS Fargate instance, or as a sidecar.
+1. [Use a custom OpenTelemetry configuration file from the SSM Parameter store](#use-a-custom-opentelemetry-configuration-file-from-the-ssm-parameter-store).
+1. [Create an ECS task definition](#create-an-ecs-task-definition).
+1. [Run {{< param "PRODUCT_NAME" >}} directly in your instance, or as a Kubernetes sidecar](#run-alloy-directly-in-your-instance-or-as-a-kubernetes-sidecar).
 
 ## Before you begin
 
@@ -22,15 +23,7 @@ This topic describes how to:
 * Identify where {{< param "PRODUCT_NAME" >}} writes received telemetry data.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
-## Use {{% param "PRODUCT_NAME" %}} to collect telemetry data
-
-There are three different ways you can use {{< param "PRODUCT_NAME" >}} to collect Amazon ECS or AWS Fargate telemetry data.
-
-1. [Use a custom OpenTelemetry configuration file from the SSM Parameter store](#use-a-custom-opentelemetry-configuration-file-from-the-ssm-parameter-store).
-1. [Create an ECS task definition](#create-an-ecs-task-definition).
-1. [Run {{< param "PRODUCT_NAME" >}} directly in your instance, or as a Kubernetes sidecar](#run-alloy-directly-in-your-instance-or-as-a-kubernetes-sidecar).
-
-### Use a custom OpenTelemetry configuration file from the SSM Parameter store
+## Use a custom OpenTelemetry configuration file from the SSM Parameter store
 
 You can upload a custom OpenTelemetry configuration file to the SSM Parameter store and use {{< param "PRODUCT_NAME" >}} as a telemetry data collector.
 
@@ -38,7 +31,7 @@ You can configure the AWS Distro for OpenTelemetry Collector with the `AOT_CONFI
 This environment variable contains a full collector configuration file and it overrides the configuration file used in the collector entry point command.
 In ECS, you can set the values of environment variables from AWS Systems Manager Parameters.
 
-#### Update the task definition
+### Update the task definition
 
  1. Select the task definition.
     1. Go to the AWS Management Console and select Elastic Container Service.
@@ -47,10 +40,10 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
 1. Add an environment variable.
    1. From the container definition section, click the AWS Distro for OpenTelemetry Collector container and go to the Environment variables section.
    1. Add a new environment variable `AOT_CONFIG_CONTENT`.
-   1.  Select ValueFrom, to tell ECS to get the value from the SSM Parameter, and set the value to `otel-collector-config`.
+   1. Select ValueFrom, to tell ECS to get the value from the SSM Parameter, and set the value to `otel-collector-config`.
 1. Finish updating the task definition and creating a new revision.
 
-#### Create the SSM parameter
+### Create the SSM parameter
 
 1. Go to the System Manager service from AWS Management Console
 1. Select Parameter Store from the left side navigation panel.
@@ -63,11 +56,11 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
       * `Data type`: Text
       * `Value`: Copy and paste your custom OpenTelemetry configuration file or [{{< param "PRODUCT_NAME" >}} configuration file][configure].
 
-#### Run your new task
+### Run your new task
 
 When you run a task with this new Task Definition, it will use your custom OpenTelemetry configuration file from the SSM Parameter.
 
-### Create an ECS Task definition
+## Create an ECS Task definition
 
 To create an ECS Task Definition for AWS Fargate with an ADOT collector, complete the following steps.
 
@@ -82,13 +75,13 @@ To create an ECS Task Definition for AWS Fargate with an ADOT collector, complet
      * Use `--config=/etc/ecs/container-insights/otel-task-metrics-config.yaml` to Use StatsD, OTLP, Xray, and Container Resource utilization metrics.
 1. Follow the ECS Fargate setup instructions to create a task definition using the template.
 
-### Run {{% param "PRODUCT_NAME" %}} directly in your instance, or as a Kubernetes sidecar
+## Run {{% param "PRODUCT_NAME" %}} directly in your instance, or as a Kubernetes sidecar
 
 SSH or connect to the Amazon ECS or AWS Fargate-managed container. Refer to [9 steps to SSH into an AWS Fargate managed container][steps] for more information about using SSH with Amazon ECS or AWS Fargate.
 
 You can also use your own method to connect to the Amazon ECS or AWS Fargate-managed container as long as you can pass the parameters needed to install and configure {{< param "PRODUCT_NAME" >}}.
 
-#### Install Grafana Alloy
+### Install Grafana Alloy
 
 After connecting to your instance, follow the {{< param "PRODUCT_NAME" >}} [installation][install], [configuration][configure] and [deployment][deploy] instructions.
 
