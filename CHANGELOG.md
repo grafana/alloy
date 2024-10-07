@@ -35,6 +35,8 @@ Main (unreleased)
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
 
+- `pyroscope.scrape` no longer tries to scrape endpoints which are not active targets anymore. (@wildum @mattdurham @dehaansa @ptodev)
+
 ### Other changes
 
 - Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
