@@ -10,6 +10,10 @@ internal API changes are not present.
 v1.4.3
 -----------------
 
+### Bugfixes
+
+- Fix an issue where some `faro.receiver` would drop multiple fields defined in `payload.meta.browser`, as fields were defined in the struct 
+
 v1.4.2
 -----------------
 
