@@ -19,7 +19,7 @@ A profile may contain sensitive information about your environment.
 You may not want to upload your profiles to a public location.
 {{< /admonition >}}
 
-The port you use to send the HTTP request is governed by Alloy's `--server.http.listen-addr` [command line argument][cmd-cli].
+The port you use to send the HTTP request is controlled by the `--server.http.listen-addr` [command line argument][cmd-cli].
 It is set to `127.0.0.1:12345` by default.
 
 [pprof-pkg]: https://pkg.go.dev/net/http/pprof
