@@ -428,11 +428,13 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 		return nil, err
 	}
 	s.metrics.getConfigTime.Observe(time.Since(start).Seconds())
-	if gcr.Msg.Hash != "" {
-		s.remoteHash = gcr.Msg.Hash
-	}
 	if gcr.Msg.NotModified {
 		return nil, errNotModified
+	}
+	if gcr.Msg.Hash != "" {
+		s.mut.Lock()
+		s.remoteHash = gcr.Msg.Hash
+		s.mut.Unlock()
 	}
 	return []byte(gcr.Msg.GetContent()), nil
 }
