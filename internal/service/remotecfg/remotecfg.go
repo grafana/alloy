@@ -2,6 +2,7 @@ package remotecfg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"maps"
@@ -40,6 +41,8 @@ func getHash(in []byte) string {
 
 const baseJitter = 100 * time.Millisecond
 
+var errNotModified = errors.New("config not modified since last fetch")
+
 // Service implements a service for remote configuration.
 // The default value of ch is nil; this means it will block forever if the
 // remotecfg service is not configured. In addition, we're keeping track of
@@ -60,10 +63,15 @@ type Service struct {
 	systemAttrs       map[string]string
 	attrs             map[string]string
 	metrics           *metrics
+
+	// This is the hash received from the API. It is used to determine if
+	// the configuration has changed since the last fetch
+	remoteHash string
 }
 
 type metrics struct {
 	lastFetchSuccess     prometheus.Gauge
+	lastFetchNotModified prometheus.Gauge
 	totalFailures        prometheus.Counter
 	configHash           *prometheus.GaugeVec
 	lastFetchSuccessTime prometheus.Gauge
@@ -176,6 +184,12 @@ func (s *Service) registerMetrics() {
 			prometheus.GaugeOpts{
 				Name: "remotecfg_last_load_successful",
 				Help: "Remote config loaded successfully",
+			},
+		),
+		lastFetchNotModified: prom.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "remotecfg_last_load_not_modified",
+				Help: "Remote config not modified since last fetch",
 			},
 		),
 		totalFailures: prom.NewCounter(
@@ -345,15 +359,27 @@ func (s *Service) fetchRemote() error {
 		return nil
 	}
 
+	level.Debug(s.opts.Logger).Log("msg", "fetching remote configuration")
+
 	b, err := s.getAPIConfig()
 	s.metrics.totalAttempts.Add(1)
-	if err != nil {
+
+	if err == nil || err == errNotModified {
+		s.metrics.lastFetchSuccess.Set(1)
+		s.metrics.lastFetchSuccessTime.SetToCurrentTime()
+	} else {
 		s.metrics.totalFailures.Add(1)
 		s.metrics.lastFetchSuccess.Set(0)
 		return err
 	}
-	s.metrics.lastFetchSuccess.Set(1)
-	s.metrics.lastFetchSuccessTime.SetToCurrentTime()
+
+	if err == errNotModified {
+		level.Debug(s.opts.Logger).Log("msg", "skipping over API response since it has not been modified since last fetch")
+		s.metrics.lastFetchNotModified.Set(1)
+		return nil
+	} else {
+		s.metrics.lastFetchNotModified.Set(0)
+	}
 
 	// API return the same configuration, no need to reload.
 	newConfigHash := getHash(b)
@@ -391,6 +417,7 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 	req := connect.NewRequest(&collectorv1.GetConfigRequest{
 		Id:         s.args.ID,
 		Attributes: s.attrs,
+		Hash:       s.remoteHash,
 	})
 	client := s.asClient
 	s.mut.RUnlock()
@@ -401,6 +428,12 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 		return nil, err
 	}
 	s.metrics.getConfigTime.Observe(time.Since(start).Seconds())
+	if gcr.Msg.Hash != "" {
+		s.remoteHash = gcr.Msg.Hash
+	}
+	if gcr.Msg.NotModified {
+		return nil, errNotModified
+	}
 	return []byte(gcr.Msg.GetContent()), nil
 }
 
