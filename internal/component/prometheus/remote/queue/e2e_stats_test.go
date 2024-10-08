@@ -47,6 +47,8 @@ const alloyMetadataFailed = "alloy_queue_metadata_network_failed"
 const alloyMetadataRetried429 = "alloy_queue_metadata_network_retried_429"
 const alloyMetadataRetried = "alloy_queue_metadata_network_retried"
 
+const alloyNetworkTimestamp = "alloy_queue_series_network_timestamp_seconds"
+
 // TestMetadata is the large end to end testing for the queue based wal, specifically for metadata.
 func TestMetadata(t *testing.T) {
 	// Check assumes you are checking for any value that is not 0.
@@ -187,6 +189,10 @@ func TestMetrics(t *testing.T) {
 					name:      inTimestamp,
 					valueFunc: isReasonableTimeStamp,
 				},
+				{
+					name:      alloyNetworkTimestamp,
+					valueFunc: greaterThenZero,
+				},
 			},
 		},
 		{
@@ -308,6 +314,10 @@ func TestMetrics(t *testing.T) {
 					name:      inTimestamp,
 					valueFunc: isReasonableTimeStamp,
 				},
+				{
+					name:      alloyNetworkTimestamp,
+					valueFunc: greaterThenZero,
+				},
 			},
 		},
 		{
@@ -428,6 +438,10 @@ func TestMetrics(t *testing.T) {
 				{
 					name:      inTimestamp,
 					valueFunc: isReasonableTimeStamp,
+				},
+				{
+					name:      alloyNetworkTimestamp,
+					valueFunc: greaterThenZero,
 				},
 			},
 		},
