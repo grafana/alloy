@@ -4,6 +4,9 @@ description: Learn about prometheus.remote.queue
 title: prometheus.remote.queue
 ---
 
+
+<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
+
 # prometheus.remote.queue
 
 `prometheus.remote.queue` collects metrics sent from other components into a
@@ -13,13 +16,16 @@ user-supplied endpoints. Metrics are sent over the network using the
 
 You can specify multiple `prometheus.remote.queue` components by giving them different labels.
 
-[remote_write-spec]: https://docs.google.com/document/d/1LPhVRSFkGNSuU1fBd81ulhsCPR4hkSZyyBj1SZ8fWOM/edit
+Everything here should be considered extremely experimental and highly subject to change.
+[emote_write-spec]: https://docs.google.com/document/d/1LPhVRSFkGNSuU1fBd81ulhsCPR4hkSZyyBj1SZ8fWOM/edit
+
+  
 
 ## Usage
 
 ```alloy
 prometheus.remote.queue "LABEL" {
-  endpoint {
+  endpoint "default "{
     url = REMOTE_WRITE_URL
 
     ...
@@ -36,9 +42,6 @@ The following arguments are supported:
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `ttl` | `time` | `duration` | How long the timestamp of a signal is valid for, before the signal is discarded. | `2h` | no
-`max_signals_to_batch` | `uint` | The maximum number of signals before they are batched to disk. | `10,000` | no
-`batch_frequency` | `duration` | How often to batch signals to disk if `max_signals_to_batch` is not reached. | no
-
 
 ## Blocks
 
@@ -47,6 +50,7 @@ The following blocks are supported inside the definition of
 
 Hierarchy | Block | Description | Required
 --------- | ----- | ----------- | --------
+serialization | [serialization][] | Configuration for serializing and writing to disk | no
 endpoint | [endpoint][] | Location to send metrics to. | no
 endpoint > basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the endpoint. | no
 
@@ -56,11 +60,26 @@ basic_auth` refers to a `basic_auth` block defined inside an
 
 [endpoint]: #endpoint-block
 [basic_auth]: #basic_auth-block
+[serialization]: #serialization-block
+
+### serialization block
+
+The `serialization` block describes how often and at what limits to write to disk. Serialization settings
+are shared for each `endpoint.`
+
+The following arguments are supported:
+
+Name | Type | Description | Default | Required
+---- | ---- | ----------- | ------- | --------
+`max_signals_to_batch` | `uint` | The maximum number of signals before they are batched to disk. | `10,000` | no
+`batch_frequency` | `duration` | How often to batch signals to disk if `max_signals_to_batch` is not reached. | no
+
 
 ### endpoint block
 
 The `endpoint` block describes a single location to send metrics to. Multiple
-`endpoint` blocks can be provided to send metrics to multiple locations.
+`endpoint` blocks can be provided to send metrics to multiple locations. Each
+`endpoint` will have it's own WAL folder
 
 The following arguments are supported:
 
@@ -156,7 +175,28 @@ They generally behave the same, but there are likely edge cases where they diffe
 * `prometheus_remote_storage_exemplars_in_total` (counter): Exemplars read into
   remote storage.
 
-TODO document new metrics.
+Metrics that are new to `prometheus.remote.write`. These are highly subject to change.
+
+* `alloy_queue_series_serializer_incoming_signals` (counter): Total number of series written to serialization.
+* `alloy_queue_metadata_serializer_incoming_signals` (counter): Total number of metadata written to serialization.
+* `alloy_queue_series_serializer_incoming_timestamp_seconds` (gauge): Highest timestamp of incoming series.
+* `alloy_queue_series_serializer_errors` (gauge): Number of errors for series written to serializer.
+* `alloy_queue_metadata_serializer_errors` (gauge): Number of errors for metadata written to serializer.
+* `alloy_queue_series_network_timestamp_seconds` (gauge): Highest timestamp written to an endpoint.
+* `alloy_queue_series_network_sent` (counter): Number of series sent successfully.
+* `alloy_queue_metadata_network_sent` (counter): Number of metadata sent successful.
+* `alloy_queue_network_series_failed` (counter): Number of series failed.
+* `alloy_queue_network_metadata_failed` (counter): Number of metadata failed.
+* `alloy_queue_network_series_retried` (counter): Number of series retried due to network issues.
+* `alloy_queue_network_metadata_retried` (counter): Number of metadata retried due to network issues.
+* `alloy_queue_network_series_retried_429` (counter): Number of series retried due to status code 429.
+* `alloy_queue_network_metadata_retried_429` (counter): Number of metadata retried due to status code 429.
+* `alloy_queue_network_series_retried_5xx` (counter): Number of series retried due to status code 5xx.
+* `alloy_queue_network_metadata_retried_5xx` (counter): Number of metadata retried due to status code 5xx.
+* `alloy_queue_network_series_network_duration_seconds` (histogram): Duration writing series to endpoint.
+* `alloy_queue_network_metadata_network_duration_seconds` (histogram): Duration writing metadata to endpoint.
+* `alloy_queue_network_series_network_errors` (counter): Number of errors writing series to network.
+* `alloy_queue_network_metadata_network_errors` (counter): Number of errors writing metadata to network.
 
 ## Examples
 

@@ -6,6 +6,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// TODO @mattdurham separate this into more manageable chunks, and likely 3 stats series: series, metadata and new ones.
+
 type SerializerStats struct {
 	SeriesStored    int
 	MetadataStored  int
