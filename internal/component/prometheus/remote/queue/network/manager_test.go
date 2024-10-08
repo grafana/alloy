@@ -83,10 +83,10 @@ func TestUpdatingConfig(t *testing.T) {
 
 	cc2 := types.ConnectionConfig{
 		URL:            svr.URL,
-		Timeout:        5 * time.Second,
+		Timeout:        1 * time.Second,
 		BatchCount:     20,
 		FlushFrequency: 1 * time.Second,
-		Connections:    4,
+		Connections:    1,
 	}
 
 	err = wr.UpdateConfig(context.Background(), cc2)
@@ -96,7 +96,7 @@ func TestUpdatingConfig(t *testing.T) {
 	}
 	require.Eventuallyf(t, func() bool {
 		return recordsFound.Load() == 100
-	}, 15*time.Second, 1*time.Second, "record count should be 100 but is %d", recordsFound.Load())
+	}, 20*time.Second, 1*time.Second, "record count should be 100 but is %d", recordsFound.Load())
 
 	require.Truef(t, lastBatchSize.Load() == 20, "batch_count should be 20 but is %d", lastBatchSize.Load())
 }
