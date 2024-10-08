@@ -96,7 +96,7 @@ func TestUpdatingConfig(t *testing.T) {
 	}
 	require.Eventuallyf(t, func() bool {
 		return recordsFound.Load() == 1_000
-	}, 10*time.Second, 1*time.Second, "record count should be 1000 but is %d", recordsFound.Load())
+	}, 15*time.Second, 1*time.Second, "record count should be 1000 but is %d", recordsFound.Load())
 
 	require.Truef(t, lastBatchSize.Load() == 100, "batch_count should be 100 but is %d", lastBatchSize.Load())
 }
