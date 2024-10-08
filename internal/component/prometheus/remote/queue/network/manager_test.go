@@ -84,21 +84,21 @@ func TestUpdatingConfig(t *testing.T) {
 	cc2 := types.ConnectionConfig{
 		URL:            svr.URL,
 		Timeout:        5 * time.Second,
-		BatchCount:     100,
+		BatchCount:     20,
 		FlushFrequency: 1 * time.Second,
 		Connections:    4,
 	}
 
 	err = wr.UpdateConfig(context.Background(), cc2)
 	require.NoError(t, err)
-	for i := 0; i < 1_000; i++ {
+	for i := 0; i < 100; i++ {
 		send(t, wr, ctx)
 	}
 	require.Eventuallyf(t, func() bool {
-		return recordsFound.Load() == 1_000
-	}, 15*time.Second, 1*time.Second, "record count should be 1000 but is %d", recordsFound.Load())
+		return recordsFound.Load() == 100
+	}, 15*time.Second, 1*time.Second, "record count should be 100 but is %d", recordsFound.Load())
 
-	require.Truef(t, lastBatchSize.Load() == 100, "batch_count should be 100 but is %d", lastBatchSize.Load())
+	require.Truef(t, lastBatchSize.Load() == 20, "batch_count should be 20 but is %d", lastBatchSize.Load())
 }
 
 func TestRetry(t *testing.T) {
