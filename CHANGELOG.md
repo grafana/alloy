@@ -31,6 +31,8 @@ Main (unreleased)
 
 - Fix an issue where some `faro.receiver` would drop multiple fields defined in `payload.meta.browser`, as fields were defined in the struct.
 
+- Added the `DisplayVersion` value to the Windows NSIS installer to simplify patch management for enterprise environments. (@charlygott)
+
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
