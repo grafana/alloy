@@ -45,6 +45,8 @@ Main (unreleased)
 
 - Support TLS client settings for clustering (@tiagorossig)
 
+- Add support for `not_modified` response in `remotecfg`. (@spartan0x117)
+
 v1.4.2
 -----------------
 
