@@ -37,11 +37,11 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
     1. Open the AWS Systems Manager console.
     1. Select Elastic Container Service.
     1. In the navigation pane, choose *Task definition*.
-    1. Select the TaskDefinition you just created to run AWS Distro for OpenTelemetry Collector and click the Create new revision button at the top.
+    1. Choose *Create new revision*.
 1. Add an environment variable.
-   1. From the container definition section, click the AWS Distro for OpenTelemetry Collector container and go to the Environment variables section.
-   1. Add a new environment variable `AOT_CONFIG_CONTENT`.
-   1. Select ValueFrom, to tell ECS to get the value from the SSM Parameter, and set the value to `otel-collector-config`.
+   1. Select the AWS Distro for OpenTelemetry Collector container and navigate to the Environment variables section.
+   1. Add an environment variable named `AOT_CONFIG_CONTENT`.
+   1. Select `ValueFrom` to tell ECS to get the value from the SSM Parameter, and set the value to `otel-collector-config`.
 1. Finish updating the task definition and creating a new revision.
 
 ### Create the SSM parameter
@@ -49,23 +49,23 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
 1. Open the AWS Systems Manager console.
 1. In the navigation pane, choose *Parameter Store*.
 1. Choose *Create parameter*.
-1. Create a new parameter with the following values:
+1. Create a parameter with the following values:
    * `Name`: otel-collector-config
    * `Tier`: Standard
    * `Type`: String
    * `Data type`: Text
    * `Value`: Copy and paste your custom OpenTelemetry configuration file or [{{< param "PRODUCT_NAME" >}} configuration file][configure].
 
-### Run your new task
+### Run your task
 
-When you run a task with this new Task Definition, it will use your custom OpenTelemetry configuration file from the SSM Parameter.
+When you run a task with this Task Definition, it uses your custom OpenTelemetry configuration file from the SSM Parameter store.
 
 ## Create an ECS Task definition
 
 To create an ECS Task Definition for AWS Fargate with an ADOT collector, complete the following steps.
 
 1. Download the [ECS Fargate task definition template][template] from GitHub.
-1. Enter the following parameters in the task definition templates.
+1. Edit the task definition template and add the following parameters.
    * `{{region}}`: The region the data is sent to.
    * `{{ecsTaskRoleArn}}`: The AWSOTTaskRole ARN.
    * `{{ecsExecutionRoleArn}}`: The AWSOTTaskExcutionRole ARN.
@@ -85,6 +85,7 @@ You can also use your own method to connect to the Amazon ECS or AWS Fargate-man
 
 After connecting to your instance, follow the {{< param "PRODUCT_NAME" >}} [installation][install], [configuration][configure] and [deployment][deploy] instructions.
 
+[Components]: ../../get-started/components
 [template]: https://github.com/aws-observability/aws-otel-collector/blob/master/examples/ecs/aws-cloudwatch/ecs-fargate-sidecar.json
 [configure]: https://grafana.com/docs/alloy/latest/configure/
 [steps]: https://medium.com/ci-t/9-steps-to-ssh-into-an-aws-fargate-managed-container-46c1d5f834e2
