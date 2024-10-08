@@ -34,8 +34,9 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
 ### Update the task definition
 
  1. Select the task definition.
-    1. Go to the AWS Management Console and select Elastic Container Service.
-    1. From the left-side navigation, select Task definition.
+    1. Open the AWS Systems Manager console.
+    1. Select Elastic Container Service.
+    1. In the navigation pane, choose *Task definition*.
     1. Select the TaskDefinition you just created to run AWS Distro for OpenTelemetry Collector and click the Create new revision button at the top.
 1. Add an environment variable.
    1. From the container definition section, click the AWS Distro for OpenTelemetry Collector container and go to the Environment variables section.
@@ -45,16 +46,15 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
 
 ### Create the SSM parameter
 
-1. Go to the System Manager service from AWS Management Console
-1. Select Parameter Store from the left side navigation panel.
-1. Create a new parameter
-   1. From the top-right corner, click the Create new parameter button.
-   1. Create a new parameter with the following information.
-      * `Name`: otel-collector-config
-      * `Tier`: Standard
-      * `Type`: String
-      * `Data type`: Text
-      * `Value`: Copy and paste your custom OpenTelemetry configuration file or [{{< param "PRODUCT_NAME" >}} configuration file][configure].
+1. Open the AWS Systems Manager console.
+1. In the navigation pane, choose *Parameter Store*.
+1. Choose *Create parameter*.
+1. Create a new parameter with the following values:
+   * `Name`: otel-collector-config
+   * `Tier`: Standard
+   * `Type`: String
+   * `Data type`: Text
+   * `Value`: Copy and paste your custom OpenTelemetry configuration file or [{{< param "PRODUCT_NAME" >}} configuration file][configure].
 
 ### Run your new task
 
