@@ -272,3 +272,17 @@ Refer to the linked documentation for more details.
 [WAL block]: #wal-block
 [Stop]: ../../../../set-up/run/
 [run]: ../../../cli/run/
+<!-- START GENERATED COMPATIBLE COMPONENTS -->
+
+## Compatible components
+
+`prometheus.remote.queue` has exports that can be consumed by the following components:
+
+- Components that consume [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-consumers)
+
+{{< admonition type="note" >}}
+Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
+Refer to the linked documentation for more details.
+{{< /admonition >}}
+
+<!-- END GENERATED COMPATIBLE COMPONENTS -->
