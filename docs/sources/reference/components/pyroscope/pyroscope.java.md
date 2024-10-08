@@ -54,7 +54,7 @@ These capabilities enable {{< param "PRODUCT_NAME" >}} to access performance mon
 {{< admonition type="note" >}}
 Adjust capabilities based on your specific security requirements and environment, following the principle of least privilege.
 The capability behavior depends on Container Runtime Interface (CRI) settings.
-For example, in Docker, non-whitelisted capabilities are dropped by default.
+For example, in Docker, capabilities that are not on the allowlist are dropped by default.
 {{< /admonition >}}
 
 ## Arguments
