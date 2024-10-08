@@ -33,13 +33,112 @@ const retriedMetadata = "prometheus_remote_storage_metadata_retried_total"
 
 const prometheusDuration = "prometheus_remote_storage_queue_duration_seconds"
 
-const filequeueIncoming = "alloy_queue_series_filequeue_incoming"
+const serializerIncoming = "alloy_queue_series_serializer_incoming_signals"
 const alloySent = "alloy_queue_series_network_sent"
-const alloyFileQueueIncoming = "alloy_queue_series_filequeue_incoming_timestamp_seconds"
+const alloySerializerIncoming = "alloy_queue_series_serializer_incoming_timestamp_seconds"
 const alloyNetworkDuration = "alloy_queue_series_network_duration_seconds"
 const alloyFailures = "alloy_queue_series_network_failed"
 const alloyRetries = "alloy_queue_series_network_retried"
 const alloy429 = "alloy_queue_series_network_retried_429"
+
+const alloyMetadataDuration = "alloy_queue_metadata_network_duration_seconds"
+const alloyMetadataSent = "alloy_queue_metadata_network_sent"
+const alloyMetadataFailed = "alloy_queue_metadata_network_failed"
+const alloyMetadataRetried429 = "alloy_queue_metadata_network_retried_429"
+const alloyMetadataRetried = "alloy_queue_metadata_network_retried"
+
+// TestMetadata is the large end to end testing for the queue based wal, specifically for metadata.
+func TestMetadata(t *testing.T) {
+	// Check assumes you are checking for any value that is not 0.
+	// The test at the end will see if there are any values that were not 0.
+	tests := []statsTest{
+		// Metadata Tests
+		{
+			name:             "metadata success",
+			returnStatusCode: http.StatusOK,
+			dtype:            Metadata,
+			checks: []check{
+				{
+					name:  serializerIncoming,
+					value: 10,
+				},
+				{
+					name:  remoteMetadata,
+					value: 10,
+				},
+				{
+					name:      sentMetadataBytes,
+					valueFunc: greaterThenZero,
+				},
+				{
+					name:      alloyMetadataDuration,
+					valueFunc: greaterThenZero,
+				},
+				{
+					name:  alloyMetadataSent,
+					value: 10,
+				},
+			},
+		},
+		{
+			name:             "metadata failure",
+			returnStatusCode: http.StatusBadRequest,
+			dtype:            Metadata,
+			checks: []check{
+				{
+					name:  alloyMetadataFailed,
+					value: 10,
+				},
+				{
+					name:  serializerIncoming,
+					value: 10,
+				},
+				{
+					name:  failedMetadata,
+					value: 10,
+				},
+				{
+					name:      alloyMetadataDuration,
+					valueFunc: greaterThenZero,
+				},
+			},
+		},
+		{
+			name:             "metadata retry",
+			returnStatusCode: http.StatusTooManyRequests,
+			dtype:            Metadata,
+			checks: []check{
+				{
+					name:  serializerIncoming,
+					value: 10,
+				},
+				{
+					name: retriedMetadata,
+					// This will be more than 10 since it retries in a loop.
+					valueFunc: greaterThenZero,
+				},
+				{
+					name:      alloyMetadataDuration,
+					valueFunc: greaterThenZero,
+				},
+				{
+					name:      alloyMetadataRetried,
+					valueFunc: greaterThenZero,
+				},
+				{
+					name:      alloyMetadataRetried429,
+					valueFunc: greaterThenZero,
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			runE2eStats(t, test)
+		})
+	}
+
+}
 
 // TestMetrics is the large end to end testing for the queue based wal.
 func TestMetrics(t *testing.T) {
@@ -53,7 +152,7 @@ func TestMetrics(t *testing.T) {
 			dtype:            Sample,
 			checks: []check{
 				{
-					name:  filequeueIncoming,
+					name:  serializerIncoming,
 					value: 10,
 				},
 				{
@@ -73,7 +172,7 @@ func TestMetrics(t *testing.T) {
 					valueFunc: greaterThenZero,
 				},
 				{
-					name:      alloyFileQueueIncoming,
+					name:      alloySerializerIncoming,
 					valueFunc: isReasonableTimeStamp,
 				},
 				{
@@ -100,7 +199,7 @@ func TestMetrics(t *testing.T) {
 					value: 10,
 				},
 				{
-					name:  filequeueIncoming,
+					name:  serializerIncoming,
 					value: 10,
 				},
 				{
@@ -116,7 +215,7 @@ func TestMetrics(t *testing.T) {
 					valueFunc: greaterThenZero,
 				},
 				{
-					name:      alloyFileQueueIncoming,
+					name:      alloySerializerIncoming,
 					valueFunc: isReasonableTimeStamp,
 				},
 				{
@@ -131,7 +230,7 @@ func TestMetrics(t *testing.T) {
 			dtype:            Sample,
 			checks: []check{
 				{
-					name:  filequeueIncoming,
+					name:  serializerIncoming,
 					value: 10,
 				},
 				{
@@ -158,7 +257,7 @@ func TestMetrics(t *testing.T) {
 					valueFunc: greaterThenZero,
 				},
 				{
-					name:      alloyFileQueueIncoming,
+					name:      alloySerializerIncoming,
 					valueFunc: isReasonableTimeStamp,
 				},
 				{
@@ -174,7 +273,7 @@ func TestMetrics(t *testing.T) {
 			dtype:            Histogram,
 			checks: []check{
 				{
-					name:  filequeueIncoming,
+					name:  serializerIncoming,
 					value: 10,
 				},
 				{
@@ -194,7 +293,7 @@ func TestMetrics(t *testing.T) {
 					valueFunc: greaterThenZero,
 				},
 				{
-					name:      alloyFileQueueIncoming,
+					name:      alloySerializerIncoming,
 					valueFunc: isReasonableTimeStamp,
 				},
 				{
@@ -221,7 +320,7 @@ func TestMetrics(t *testing.T) {
 					value: 10,
 				},
 				{
-					name:  filequeueIncoming,
+					name:  serializerIncoming,
 					value: 10,
 				},
 				{
@@ -237,7 +336,7 @@ func TestMetrics(t *testing.T) {
 					valueFunc: greaterThenZero,
 				},
 				{
-					name:      alloyFileQueueIncoming,
+					name:      alloySerializerIncoming,
 					valueFunc: isReasonableTimeStamp,
 				},
 				{
@@ -252,7 +351,7 @@ func TestMetrics(t *testing.T) {
 			dtype:            Histogram,
 			checks: []check{
 				{
-					name:  filequeueIncoming,
+					name:  serializerIncoming,
 					value: 10,
 				},
 				{
@@ -279,7 +378,7 @@ func TestMetrics(t *testing.T) {
 					valueFunc: greaterThenZero,
 				},
 				{
-					name:      alloyFileQueueIncoming,
+					name:      alloySerializerIncoming,
 					valueFunc: isReasonableTimeStamp,
 				},
 				{
@@ -295,7 +394,7 @@ func TestMetrics(t *testing.T) {
 			dtype:            Exemplar,
 			checks: []check{
 				{
-					name:  filequeueIncoming,
+					name:  serializerIncoming,
 					value: 10,
 				},
 				{
@@ -315,7 +414,7 @@ func TestMetrics(t *testing.T) {
 					valueFunc: greaterThenZero,
 				},
 				{
-					name:      alloyFileQueueIncoming,
+					name:      alloySerializerIncoming,
 					valueFunc: isReasonableTimeStamp,
 				},
 				{
@@ -342,7 +441,7 @@ func TestMetrics(t *testing.T) {
 					value: 10,
 				},
 				{
-					name:  filequeueIncoming,
+					name:  serializerIncoming,
 					value: 10,
 				},
 				{
@@ -358,7 +457,7 @@ func TestMetrics(t *testing.T) {
 					valueFunc: greaterThenZero,
 				},
 				{
-					name:      alloyFileQueueIncoming,
+					name:      alloySerializerIncoming,
 					valueFunc: isReasonableTimeStamp,
 				},
 				{
@@ -373,7 +472,7 @@ func TestMetrics(t *testing.T) {
 			dtype:            Exemplar,
 			checks: []check{
 				{
-					name:  filequeueIncoming,
+					name:  serializerIncoming,
 					value: 10,
 				},
 				{
@@ -400,7 +499,7 @@ func TestMetrics(t *testing.T) {
 					valueFunc: greaterThenZero,
 				},
 				{
-					name:      alloyFileQueueIncoming,
+					name:      alloySerializerIncoming,
 					valueFunc: isReasonableTimeStamp,
 				},
 				{
@@ -491,6 +590,10 @@ func runE2eStats(t *testing.T, test statsTest) {
 				ex := makeExemplar(index)
 				_, errApp := app.AppendExemplar(0, nil, ex)
 				require.NoError(t, errApp)
+			case Metadata:
+				md, lbls := makeMetadata(index)
+				_, errApp := app.UpdateMetadata(0, lbls, md)
+				require.NoError(t, errApp)
 			default:
 				require.True(t, false)
 			}
@@ -504,6 +607,7 @@ func runE2eStats(t *testing.T, test statsTest) {
 	require.Eventually(t, func() bool {
 		dtos, gatherErr := reg.Gather()
 		require.NoError(t, gatherErr)
+		// Check if we have some valid metrics.
 		for _, d := range dtos {
 			if getValue(d) > 0 {
 				return true
@@ -514,12 +618,15 @@ func runE2eStats(t *testing.T, test statsTest) {
 	metrics := make(map[string]float64)
 	dtos, err := reg.Gather()
 	require.NoError(t, err)
+	// Get the value of metrics.
 	for _, d := range dtos {
 		metrics[*d.Name] = getValue(d)
 	}
 
 	// Check for the metrics that matter.
 	for _, valChk := range test.checks {
+		// These check functions will return the list of metrics with the one checked for deleted.
+		// Ideally at the end we should only be left with metrics with a value of zero.s
 		if valChk.valueFunc != nil {
 			metrics = checkValueCondition(t, valChk.name, valChk.valueFunc, metrics)
 		} else {
@@ -561,8 +668,8 @@ func checkValue(t *testing.T, name string, value float64, metrics map[string]flo
 
 func checkValueCondition(t *testing.T, name string, chk func(float64) bool, metrics map[string]float64) map[string]float64 {
 	v, ok := metrics[name]
-	require.True(t, ok)
-	require.True(t, chk(v))
+	require.Truef(t, ok, "invalid metric name %s", name)
+	require.Truef(t, chk(v), "false test for metric name %s", name)
 	delete(metrics, name)
 	return metrics
 }

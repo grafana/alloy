@@ -345,10 +345,12 @@ func newComponent(t *testing.T, l *logging.Logger, url string, exp chan Exports,
 		Registerer: reg,
 		Tracer:     nil,
 	}, Arguments{
-		TTL:               2 * time.Hour,
-		MaxSignalsToBatch: 10_000,
-		BatchFrequency:    1 * time.Second,
-		Connections: []ConnectionConfig{{
+		TTL: 2 * time.Hour,
+		Serialization: Serialization{
+			MaxSignalsToBatch: 10_000,
+			BatchFrequency:    1 * time.Second,
+		},
+		Endpoints: []EndpointConfig{{
 			Name:                    "test",
 			URL:                     url,
 			Timeout:                 20 * time.Second,
@@ -358,6 +360,5 @@ func newComponent(t *testing.T, l *logging.Logger, url string, exp chan Exports,
 			FlushFrequency:          1 * time.Second,
 			QueueCount:              1,
 		}},
-		ExternalLabels: nil,
 	})
 }

@@ -182,21 +182,26 @@ func NewStats(namespace, subsystem string, registry prometheus.Registerer) *Prom
 	return s
 }
 
-func (s *PrometheusStats) BackwardsCompatibility(registry prometheus.Registerer) {
+func (s *PrometheusStats) SeriesBackwardsCompatibility(registry prometheus.Registerer) {
 	registry.MustRegister(
 		s.RemoteStorageDuration,
 		s.RemoteStorageInTimestamp,
 		s.RemoteStorageOutTimestamp,
 		s.SamplesTotal,
 		s.HistogramsTotal,
-		s.MetadataTotal,
 		s.FailedSamplesTotal,
 		s.FailedHistogramsTotal,
-		s.FailedMetadataTotal,
 		s.RetriedSamplesTotal,
 		s.RetriedHistogramsTotal,
-		s.RetriedMetadataTotal,
 		s.SentBytesTotal,
+	)
+}
+
+func (s *PrometheusStats) MetaBackwardsCompatibility(registry prometheus.Registerer) {
+	registry.MustRegister(
+		s.MetadataTotal,
+		s.FailedMetadataTotal,
+		s.RetriedMetadataTotal,
 		s.MetadataBytesTotal,
 	)
 }
@@ -212,6 +217,7 @@ func (s *PrometheusStats) UpdateNetwork(stats NetworkStats) {
 	// The newest timestamp is no always sent.
 	if stats.NewestTimestamp != 0 {
 		s.RemoteStorageOutTimestamp.Set(float64(stats.NewestTimestamp))
+		s.NetworkNewestOutTimeStampSeconds.Set(float64(stats.NewestTimestamp))
 	}
 
 	s.SamplesTotal.Add(float64(stats.Series.SeriesSent))
@@ -230,13 +236,15 @@ func (s *PrometheusStats) UpdateNetwork(stats NetworkStats) {
 	s.SentBytesTotal.Add(float64(stats.SeriesBytes))
 }
 
-func (s *PrometheusStats) UpdateFileQueue(stats SerializerStats) {
+func (s *PrometheusStats) UpdateSerializer(stats SerializerStats) {
 	s.SerializerInSeries.Add(float64(stats.SeriesStored))
+	s.SerializerInSeries.Add(float64(stats.MetadataStored))
 	s.SerializerErrors.Add(float64(stats.Errors))
 	if stats.NewestTimestamp != 0 {
 		s.SerializerNewestInTimeStampSeconds.Set(float64(stats.NewestTimestamp))
 		s.RemoteStorageInTimestamp.Set(float64(stats.NewestTimestamp))
 	}
+
 }
 
 type NetworkStats struct {

@@ -6,26 +6,32 @@ import (
 
 	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
 	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/prometheus/common/version"
 	"github.com/prometheus/prometheus/storage"
 )
 
 func defaultArgs() Arguments {
 	return Arguments{
-		TTL:               2 * time.Hour,
-		MaxSignalsToBatch: 10_000,
-		BatchFrequency:    5 * time.Second,
+		TTL: 2 * time.Hour,
+		Serialization: Serialization{
+			MaxSignalsToBatch: 10_000,
+			BatchFrequency:    5 * time.Second,
+		},
 	}
 }
 
 type Arguments struct {
 	// TTL is how old a series can be.
-	TTL time.Duration `alloy:"ttl,attr,optional"`
+	TTL           time.Duration    `alloy:"ttl,attr,optional"`
+	Serialization Serialization    `alloy:"serialization,block,optional"`
+	Endpoints     []EndpointConfig `alloy:"endpoint,block"`
+}
+
+type Serialization struct {
 	// The batch size to persist to the file queue.
 	MaxSignalsToBatch int `alloy:"max_signals_to_batch,attr,optional"`
 	// How often to flush to the file queue if BatchSize isn't met.
-	// TODO @mattdurham this may need to go into a specific block for the serializer.
-	BatchFrequency time.Duration      `alloy:"batch_frequency,attr,optional"`
-	Connections    []ConnectionConfig `alloy:"endpoint,block"`
+	BatchFrequency time.Duration `alloy:"batch_frequency,attr,optional"`
 }
 
 type Exports struct {
@@ -37,8 +43,8 @@ func (rc *Arguments) SetToDefault() {
 	*rc = defaultArgs()
 }
 
-func defaultCC() ConnectionConfig {
-	return ConnectionConfig{
+func defaultEndpointConfig() EndpointConfig {
+	return EndpointConfig{
 		Timeout:                 30 * time.Second,
 		RetryBackoff:            1 * time.Second,
 		MaxRetryBackoffAttempts: 0,
@@ -48,12 +54,12 @@ func defaultCC() ConnectionConfig {
 	}
 }
 
-func (cc *ConnectionConfig) SetToDefault() {
-	*cc = defaultCC()
+func (cc *EndpointConfig) SetToDefault() {
+	*cc = defaultEndpointConfig()
 }
 
 func (r *Arguments) Validate() error {
-	for _, conn := range r.Connections {
+	for _, conn := range r.Endpoints {
 		if conn.BatchCount <= 0 {
 			return fmt.Errorf("batch_count must be greater than 0")
 		}
@@ -65,11 +71,8 @@ func (r *Arguments) Validate() error {
 	return nil
 }
 
-// ConnectionConfig is the alloy specific version of ConnectionConfig. This looks odd, the idea
-//
-//	is that once this code is tested that the bulk of the underlying code will be used elsewhere.
-//	this means we need a very generic interface for that code, and a specific alloy implementation here.
-type ConnectionConfig struct {
+// EndpointConfig is the alloy specific version of ConnectionConfig.
+type EndpointConfig struct {
 	Name      string        `alloy:",label"`
 	URL       string        `alloy:"url,attr"`
 	BasicAuth *BasicAuth    `alloy:"basic_auth,block,optional"`
@@ -83,16 +86,16 @@ type ConnectionConfig struct {
 	// How long to wait before sending regardless of batch count.
 	FlushFrequency time.Duration `alloy:"flush_frequency,attr,optional"`
 	// How many concurrent queues to have.
-	QueueCount uint `alloy:"queue_count,attr,optional"`
-
+	QueueCount     uint              `alloy:"queue_count,attr,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
 }
 
-func (cc ConnectionConfig) ToNativeType() types.ConnectionConfig {
+var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
+
+func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 	tcc := types.ConnectionConfig{
-		URL: cc.URL,
-		// TODO @mattdurham generate this with build information.
-		UserAgent:               "alloy",
+		URL:                     cc.URL,
+		UserAgent:               UserAgent,
 		Timeout:                 cc.Timeout,
 		RetryBackoff:            cc.RetryBackoff,
 		MaxRetryBackoffAttempts: cc.MaxRetryBackoffAttempts,

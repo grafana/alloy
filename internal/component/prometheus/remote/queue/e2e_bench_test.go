@@ -92,10 +92,12 @@ func newComponentBenchmark(t *testing.B, l log.Logger, url string, exp chan Expo
 		Registerer: fakeRegistry{},
 		Tracer:     nil,
 	}, Arguments{
-		TTL:               2 * time.Hour,
-		MaxSignalsToBatch: 100_000,
-		BatchFrequency:    1 * time.Second,
-		Connections: []ConnectionConfig{{
+		TTL: 2 * time.Hour,
+		Serialization: Serialization{
+			MaxSignalsToBatch: 100_000,
+			BatchFrequency:    1 * time.Second,
+		},
+		Endpoints: []EndpointConfig{{
 			Name:                    "test",
 			URL:                     url,
 			Timeout:                 10 * time.Second,
@@ -105,7 +107,6 @@ func newComponentBenchmark(t *testing.B, l log.Logger, url string, exp chan Expo
 			FlushFrequency:          1 * time.Second,
 			QueueCount:              1,
 		}},
-		ExternalLabels: nil,
 	})
 }
 

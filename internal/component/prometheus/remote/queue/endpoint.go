@@ -18,8 +18,6 @@ var _ actor.Worker = (*endpoint)(nil)
 type endpoint struct {
 	network    types.NetworkClient
 	serializer types.Serializer
-	stat       *types.PrometheusStats
-	metaStats  *types.PrometheusStats
 	log        log.Logger
 	ttl        time.Duration
 	incoming   actor.Mailbox[types.DataHandle]
@@ -27,12 +25,10 @@ type endpoint struct {
 	self       actor.Actor
 }
 
-func NewEndpoint(client types.NetworkClient, serializer types.Serializer, stats, metatStats *types.PrometheusStats, ttl time.Duration, logger log.Logger) *endpoint {
+func NewEndpoint(client types.NetworkClient, serializer types.Serializer, ttl time.Duration, logger log.Logger) *endpoint {
 	return &endpoint{
 		network:    client,
 		serializer: serializer,
-		stat:       stats,
-		metaStats:  metatStats,
 		log:        logger,
 		ttl:        ttl,
 		incoming:   actor.NewMailbox[types.DataHandle](actor.OptCapacity(1)),

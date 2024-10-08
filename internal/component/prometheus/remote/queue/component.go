@@ -38,6 +38,9 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 	}
 	s.opts.OnStateChange(Exports{Receiver: s})
 	err := s.createEndpoints()
+	for _, ep := range s.endpoints {
+		ep.Start()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -58,9 +61,6 @@ type Queue struct {
 // suffers a fatal error. Run is guaranteed to be called exactly once per
 // Component.
 func (s *Queue) Run(ctx context.Context) error {
-	for _, ep := range s.endpoints {
-		ep.Start()
-	}
 	defer func() {
 		s.mut.Lock()
 		defer s.mut.Unlock()
@@ -94,7 +94,8 @@ func (s *Queue) Update(args component.Arguments) error {
 		return nil
 	}
 	s.args = newArgs
-	// TODO @mattdurham need to cycle through the endpoints figuring out what changed instead of this global stop and start..
+	// TODO @mattdurham need to cycle through the endpoints figuring out what changed instead of this global stop and start.
+	// TODO @mattdurham is there an issue/race condition with stopping these while the appender is still going on.
 	if len(s.endpoints) > 0 {
 		for _, ep := range s.endpoints {
 			ep.Stop()
@@ -112,31 +113,19 @@ func (s *Queue) Update(args component.Arguments) error {
 }
 
 func (s *Queue) createEndpoints() error {
-	for _, ep := range s.args.Connections {
+	// @mattdurham not in love with this code.
+	for _, ep := range s.args.Endpoints {
 		reg := prometheus.WrapRegistererWith(prometheus.Labels{"endpoint": ep.Name}, s.opts.Registerer)
 		stats := types.NewStats("alloy", "queue_series", reg)
-		stats.BackwardsCompatibility(reg)
+		stats.SeriesBackwardsCompatibility(reg)
 		meta := types.NewStats("alloy", "queue_metadata", reg)
-		cfg := types.ConnectionConfig{
-			URL:            ep.URL,
-			BatchCount:     ep.BatchCount,
-			FlushFrequency: ep.FlushFrequency,
-			Timeout:        ep.Timeout,
-			UserAgent:      "alloy",
-			ExternalLabels: s.args.ExternalLabels,
-			Connections:    ep.QueueCount,
-		}
-		if ep.BasicAuth != nil {
-			cfg.BasicAuth = &types.BasicAuth{
-				Username: ep.BasicAuth.Username,
-				Password: string(ep.BasicAuth.Password),
-			}
-		}
+		meta.MetaBackwardsCompatibility(reg)
+		cfg := ep.ToNativeType()
 		client, err := network.New(cfg, s.log, stats.UpdateNetwork, meta.UpdateNetwork)
 		if err != nil {
 			return err
 		}
-		end := NewEndpoint(client, nil, stats, meta, s.args.TTL, s.opts.Logger)
+		end := NewEndpoint(client, nil, s.args.TTL, s.opts.Logger)
 		fq, err := filequeue.NewQueue(filepath.Join(s.opts.DataPath, ep.Name, "wal"), func(ctx context.Context, dh types.DataHandle) {
 			_ = end.incoming.Send(ctx, dh)
 		}, s.opts.Logger)
@@ -144,9 +133,9 @@ func (s *Queue) createEndpoints() error {
 			return err
 		}
 		serial, err := serialization.NewSerializer(types.SerializerConfig{
-			MaxSignalsInBatch: uint32(s.args.MaxSignalsToBatch),
-			FlushFrequency:    s.args.BatchFrequency,
-		}, fq, stats.UpdateFileQueue, s.opts.Logger)
+			MaxSignalsInBatch: uint32(s.args.Serialization.MaxSignalsToBatch),
+			FlushFrequency:    s.args.Serialization.BatchFrequency,
+		}, fq, stats.UpdateSerializer, s.opts.Logger)
 		if err != nil {
 			return err
 		}

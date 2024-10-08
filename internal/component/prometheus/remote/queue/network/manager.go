@@ -38,6 +38,7 @@ func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStat
 		metaInbox:   actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
 		configInbox: actor.NewMailbox[types.ConnectionConfig](),
 		stats:       seriesStats,
+		metaStats:   metadataStats,
 		cfg:         cc,
 	}
 
