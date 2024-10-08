@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"github.com/grafana/alloy/internal/util"
 	"io"
 	"math/rand"
 	"net/http"
@@ -64,20 +65,19 @@ func TestUpdatingConfig(t *testing.T) {
 	}))
 
 	defer svr.Close()
-	ctx := context.Background()
-	ctx, cncl := context.WithCancel(ctx)
-	defer cncl()
 
 	cc := types.ConnectionConfig{
 		URL:            svr.URL,
 		Timeout:        1 * time.Second,
 		BatchCount:     10,
-		FlushFrequency: 1 * time.Second,
-		Connections:    4,
+		FlushFrequency: 5 * time.Second,
+		Connections:    1,
 	}
 
-	logger := log.NewNopLogger()
+	logger := util.TestAlloyLogger(t)
+
 	wr, err := New(cc, logger, func(s types.NetworkStats) {}, func(s types.NetworkStats) {})
+	require.NoError(t, err)
 	wr.Start()
 	defer wr.Stop()
 
@@ -85,12 +85,13 @@ func TestUpdatingConfig(t *testing.T) {
 		URL:            svr.URL,
 		Timeout:        1 * time.Second,
 		BatchCount:     20,
-		FlushFrequency: 1 * time.Second,
+		FlushFrequency: 5 * time.Second,
 		Connections:    1,
 	}
-
-	err = wr.UpdateConfig(context.Background(), cc2)
+	ctx := context.Background()
+	err = wr.UpdateConfig(ctx, cc2)
 	require.NoError(t, err)
+	time.Sleep(1 * time.Second)
 	for i := 0; i < 100; i++ {
 		send(t, wr, ctx)
 	}

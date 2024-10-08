@@ -2,11 +2,9 @@ package network
 
 import (
 	"context"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/vladopajic/go-actor/actor"
 )
 
@@ -17,11 +15,17 @@ type manager struct {
 	logger      log.Logger
 	inbox       actor.Mailbox[*types.TimeSeriesBinary]
 	metaInbox   actor.Mailbox[*types.TimeSeriesBinary]
-	configInbox actor.Mailbox[types.ConnectionConfig]
+	configInbox actor.Mailbox[configCallback]
 	self        actor.Actor
 	cfg         types.ConnectionConfig
 	stats       func(types.NetworkStats)
 	metaStats   func(types.NetworkStats)
+}
+
+// configCallback allows the config to be synchronous.
+type configCallback struct {
+	cc types.ConnectionConfig
+	ch chan struct{}
 }
 
 var _ types.NetworkClient = (*manager)(nil)
@@ -36,7 +40,7 @@ func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStat
 		// it will stop the filequeue from feeding more.
 		inbox:       actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
 		metaInbox:   actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
-		configInbox: actor.NewMailbox[types.ConnectionConfig](),
+		configInbox: actor.NewMailbox[configCallback](),
 		stats:       seriesStats,
 		metaStats:   metadataStats,
 		cfg:         cc,
@@ -72,7 +76,17 @@ func (s *manager) SendMetadata(ctx context.Context, data *types.TimeSeriesBinary
 }
 
 func (s *manager) UpdateConfig(ctx context.Context, cc types.ConnectionConfig) error {
-	return s.configInbox.Send(ctx, cc)
+	ch := make(chan struct{})
+	defer close(ch)
+	err := s.configInbox.Send(ctx, configCallback{
+		cc: cc,
+		ch: ch,
+	})
+	if err != nil {
+		return err
+	}
+	<-ch
+	return nil
 }
 
 func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
@@ -80,30 +94,47 @@ func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
 	select {
 	case cfg, ok := <-s.configInbox.ReceiveC():
 		if !ok {
+			level.Debug(s.logger).Log("msg", "config inbox closed")
 			return actor.WorkerEnd
 		}
-		s.updateConfig(cfg)
+		s.updateConfig(cfg.cc)
+		// Notify the caller we have applied the config.
+		cfg.ch <- struct{}{}
 		return actor.WorkerContinue
 	default:
 	}
+
+	// main work queue.
 	select {
 	case <-ctx.Done():
 		s.Stop()
 		return actor.WorkerEnd
 	case ts, ok := <-s.inbox.ReceiveC():
 		if !ok {
+			level.Debug(s.logger).Log("msg", "series inbox closed")
 			return actor.WorkerEnd
 		}
 		s.queue(ctx, ts)
 		return actor.WorkerContinue
 	case ts, ok := <-s.metaInbox.ReceiveC():
 		if !ok {
+			level.Debug(s.logger).Log("msg", "meta inbox closed")
 			return actor.WorkerEnd
 		}
 		err := s.metadata.seriesMbx.Send(ctx, ts)
 		if err != nil {
 			level.Error(s.logger).Log("msg", "failed to send to metadata loop", "err", err)
 		}
+		return actor.WorkerContinue
+		// We need to also check the config here, else its possible this will deadlock.
+	case cfg, ok := <-s.configInbox.ReceiveC():
+		if !ok {
+			level.Debug(s.logger).Log("msg", "config inbox closed")
+			return actor.WorkerEnd
+		}
+		s.updateConfig(cfg.cc)
+		// Notify the caller we have applied the config.
+		cfg.ch <- struct{}{}
 		return actor.WorkerContinue
 	}
 }
@@ -124,13 +155,14 @@ func (s *manager) updateConfig(cc types.ConnectionConfig) {
 	for i := uint(0); i < s.cfg.Connections; i++ {
 		l := newLoop(cc, false, s.logger, s.stats)
 		l.self = actor.New(l)
-
 		s.loops = append(s.loops, l)
 	}
 
 	s.metadata = newLoop(cc, true, s.logger, s.metaStats)
 	s.metadata.self = actor.New(s.metadata)
+	level.Debug(s.logger).Log("msg", "starting loops")
 	s.startLoops()
+	level.Debug(s.logger).Log("msg", "loops started")
 }
 
 func (s *manager) Stop() {
