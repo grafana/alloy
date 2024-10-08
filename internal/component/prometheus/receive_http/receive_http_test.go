@@ -376,7 +376,8 @@ func request(ctx context.Context, rawRemoteWriteURL string, req *prompb.WriteReq
 	}
 
 	compressed := snappy.Encode(buf, buf)
-	return client.Store(ctx, compressed, 0)
+	_, err = client.Store(ctx, compressed, 0)
+	return err
 }
 
 func testOptions(t *testing.T) component.Options {

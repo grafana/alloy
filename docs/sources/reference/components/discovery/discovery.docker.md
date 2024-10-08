@@ -30,6 +30,7 @@ Name                     | Type                | Description                    
 `port`                   | `number`            | Port to use for collecting metrics when containers don't have any port mappings.                 | `80`          | no
 `host_networking_host`   | `string`            | Host to use if the container is in host networking mode.                                         | `"localhost"` | no
 `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                         | `"1m"`        | no
+`match_first_network`    | `bool`              | Match the first network if the container has multiple networks defined, thus avoiding collecting duplicate targets. | `true`        | no
 `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |               | no
 `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |               | no
 `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no

@@ -38,6 +38,7 @@ Name                     | Type                | Description                    
 `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no
 `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no
 `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no
+`region`                 | `string`            | A region to filter on.                                                                           | `""`    | no
 `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no
 `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no
 `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no
@@ -106,11 +107,15 @@ The following meta labels are available on targets and can be used by the discov
 * `__meta_linode_private_ipv4`: the private IPv4 of the Linode instance
 * `__meta_linode_public_ipv4`: the public IPv4 of the Linode instance
 * `__meta_linode_public_ipv6`: the public IPv6 of the Linode instance
+* `__meta_linode_private_ipv4_rdns`: the reverse DNS for the first private IPv4 of the linode instance
+* `__meta_linode_public_ipv4_rdns`: the reverse DNS for the first public IPv4 of the linode instance
+* `__meta_linode_public_ipv6_rdns`: the reverse DNS for the first public IPv6 of the linode instance
 * `__meta_linode_region`: the region of the Linode instance
 * `__meta_linode_type`: the type of the Linode instance
 * `__meta_linode_status`: the status of the Linode instance
 * `__meta_linode_tags`: a list of tags of the Linode instance joined by the tag separator
 * `__meta_linode_group`: the display group a Linode instance is a member of
+* `__meta_linode_gpus`: the number of GPU's of the linode instance
 * `__meta_linode_hypervisor`: the virtualization software powering the Linode instance
 * `__meta_linode_backups`: the backup service status of the Linode instance
 * `__meta_linode_specs_disk_bytes`: the amount of storage space the Linode instance has access to
@@ -118,6 +123,7 @@ The following meta labels are available on targets and can be used by the discov
 * `__meta_linode_specs_vcpus`: the number of VCPUS this Linode has access to
 * `__meta_linode_specs_transfer_bytes`: the amount of network transfer the Linode instance is allotted each month
 * `__meta_linode_extra_ips`: a list of all extra IPv4 addresses assigned to the Linode instance joined by the tag separator
+* `__meta_linode_ipv6_ranges`: a list of IPv6 ranges with mask assigned to the linode instance joined by the tag separator
 
 ## Component health
 
