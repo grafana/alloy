@@ -33,6 +33,30 @@ When you use `pyroscope.java` to profile Java applications, you can configure th
 
 For more details, refer to [Restrictions/Limitations](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#restrictionslimitations) in the async-profiler documentation.
 
+## Additional Configuration for Linux Capabilities
+
+If your Kubernetes environment has Linux capabilities enabled, configure the following in your Helm values to ensure `pyroscope.java` functions properly:
+
+```yaml
+alloy:
+  securityContext:
+    runAsUser: 0
+    runAsNonRoot: false
+    capabilities:
+      add:
+        - PERFMON
+        - SYS_PTRACE
+        - SYS_RESOURCE
+        - SYS_ADMIN
+```
+These capabilities enable {{< param "PRODUCT_NAME" >}} to access performance monitoring subsystems, trace processes, override resource limits, and perform necessary system administration tasks for profiling.
+
+{{< admonition type="note" >}}
+Adjust capabilities based on your specific security requirements and environment, following the principle of least privilege.
+The capability behavior depends on Container Runtime Interface (CRI) settings.
+For example, in Docker, capabilities that are not on the allowlist are dropped by default.
+{{< /admonition >}}
+
 ## Arguments
 
 The following arguments are supported:
