@@ -16,7 +16,7 @@ user-supplied endpoints. Metrics are sent over the network using the
 
 You can specify multiple `prometheus.remote.queue` components by giving them different labels.
 
-Everything here should be considered extremely experimental and highly subject to change.
+You should consider everything here extremely experimental and highly subject to change.
 [emote_write-spec]: https://docs.google.com/document/d/1LPhVRSFkGNSuU1fBd81ulhsCPR4hkSZyyBj1SZ8fWOM/edit
 
   
