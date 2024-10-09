@@ -184,7 +184,7 @@ Metrics that are new to `prometheus.remote.write`. These are highly subject to c
 * `alloy_queue_metadata_serializer_errors` (gauge): Number of errors for metadata written to serializer.
 * `alloy_queue_series_network_timestamp_seconds` (gauge): Highest timestamp written to an endpoint.
 * `alloy_queue_series_network_sent` (counter): Number of series sent successfully.
-* `alloy_queue_metadata_network_sent` (counter): Number of metadata sent successful.
+* `alloy_queue_metadata_network_sent` (counter): Number of metadata sent successfully.
 * `alloy_queue_network_series_failed` (counter): Number of series failed.
 * `alloy_queue_network_metadata_failed` (counter): Number of metadata failed.
 * `alloy_queue_network_series_retried` (counter): Number of series retried due to network issues.
