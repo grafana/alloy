@@ -250,10 +250,12 @@ Network errors will be retried. 429 errors will be retried. 5XX errors will retr
 
 ### Memory
 
-`prometheus.remote.queue` is meant to be memory efficient. By adjusting the `max_signals_to_batch`, `queue_count`, and `batch_size` the amount of memory
-can be controlled. A higher `max_signals_to_batch` allows for more efficient disk compression. A higher `queue_count` allows more concurrent writes and `batch_size`
-allows more data sent at one time. This can allow greater throughput, at the cost of more memory on both {{< param "PRODUCT_NAME" >}} and the endpoint. The defaults are good for most 
-common usages. 
+`prometheus.remote.queue` is meant to be memory efficient.
+You can adjust the `max_signals_to_batch`, `queue_count`, and `batch_size` to control how much memory is used.
+A higher `max_signals_to_batch` allows for more efficient disk compression.
+A higher `queue_count` allows more concurrent writes, and `batch_size` allows more data sent at one time.
+This can allow greater throughput at the cost of more memory on both {{< param "PRODUCT_NAME" >}} and the endpoint.
+The defaults are suitable for most common usages. 
 
 ## Compatible components
 
