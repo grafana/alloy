@@ -129,12 +129,13 @@ func New(opts Options) (*Service, error) {
 	}
 
 	httpTransport := &http2.Transport{
-		AllowHTTP: false,
+		AllowHTTP: true,
 		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
 			return net.DialTimeout(network, addr, calcTimeout(ctx))
 		},
 	}
 	if opts.EnableTLS {
+		httpTransport.AllowHTTP = false
 		tlsConfig, err := loadTLSConfigFromFile(opts.TLSCAPath, opts.TLSCertPath, opts.TLSKeyPath, opts.TLSServerName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load TLS config from file: %w", err)
