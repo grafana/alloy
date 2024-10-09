@@ -52,7 +52,7 @@ var Identifiers = map[string]interface{}{
 	"sys":      sys,
 	"convert":  convert,
 	"array":    array,
-	"map":      mapFuncs,
+	"targets":  targets,
 	"encoding": encoding,
 	"string":   str,
 	"file":     file,
@@ -90,8 +90,8 @@ var array = map[string]interface{}{
 	"concat": concat,
 }
 
-var mapFuncs = map[string]interface{}{
-	"inner_join": innerJoin,
+var targets = map[string]interface{}{
+	"merge": targetsMerge,
 }
 
 var convert = map[string]interface{}{
@@ -151,122 +151,63 @@ var concat = value.RawFunction(func(funcValue value.Value, args ...value.Value) 
 	return value.Array(raw...), nil
 })
 
-func shouldJoinOld(left map[string]value.Value, right map[string]value.Value, conditions []string) bool {
-	for _, c := range conditions {
-		if !left[c].Equal(right[c]) {
-			return false
-		}
-	}
-	return true
-}
-
-func concatMapsOld(left map[string]value.Value, right map[string]value.Value) map[string]value.Value {
-	res := make(map[string]value.Value)
-	for k, v := range left {
-		res[k] = v
-	}
-	for k, v := range right {
-		res[k] = v
-	}
-	return res
-}
-
-// We can assume that conditions is an value.TypeArray,
-// because it is checked in the innerJoin function.
-func shouldJoin(left, right value.Value, conditions value.Value) bool {
+// This function assumes that the types of the value.Value objects are correct.
+func shouldJoin(left, right value.Value, conditions value.Value) (bool, error) {
 	for i := 0; i < conditions.Len(); i++ {
 		c := conditions.Index(i)
-		// if c.Type() != value.TypeString {
-		// 	//TODO: Throw error
-		// 	panic("")
-		// }
 		condition := c.Text()
-
-		// if left.Type() != value.TypeArray || right.Type() != value.TypeArray {
-		// 	//TODO: Throw error
-		// 	panic("")
-		// }
 
 		leftVal, ok := left.Key(condition)
 		if !ok {
-			//TODO: Throw error
-			panic("")
+			return false, fmt.Errorf("concatMaps: key %s not found in left map", condition)
 		}
 
 		rightVal, ok := right.Key(condition)
 		if !ok {
-			//TODO: Throw error
-			panic("")
+			return false, fmt.Errorf("concatMaps: key %s not found in right map", condition)
 		}
 
 		if !leftVal.Equal(rightVal) {
-			return false
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
-// TODO: Make strategy an enum
-func concatMaps(left, right value.Value, strategy string, allowlist, denylist map[string]struct{}) value.Value {
+// Merge two maps.
+// If a key exists in both maps, the value from the right map will be used.
+func concatMaps(left, right value.Value) (value.Value, error) {
 	res := make(map[string]value.Value)
 
 	for _, key := range left.Keys() {
-
-		// Insert the value into the result map
 		val, ok := left.Key(key)
 		if !ok {
-			//TODO: Throw error
-			panic("")
+			return value.Null, fmt.Errorf("concatMaps: key %s not found in left map", key)
 		}
 		res[key] = val
 	}
 
 	for _, key := range right.Keys() {
-		if len(denylist) > 0 {
-			// Make sure the key is not in the denylist
-			_, found := denylist[key]
-			if found {
-				continue
-			}
-		}
-
-		if len(allowlist) > 0 {
-			// Make sure we only insert keys listed in the allowlist
-			_, found := allowlist[key]
-			if !found {
-				continue
-			}
-		}
-
 		val, ok := right.Key(key)
 		if !ok {
-			//TODO: Throw error
-			panic("")
+			return value.Null, fmt.Errorf("concatMaps: key %s not found in right map", key)
 		}
 		res[key] = val
 	}
 
-	return value.Object(res)
+	return value.Object(res), nil
 }
 
-// TODO: What if conditions are empty?
 // Inputs:
-// 1. []map[string]string
-// 2. []map[string]string
-// 3. []string
-// 4. string: update strategy
-// 5. []string: key allowlist
-// 6. []string: key denylist
-var innerJoin = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
-	// left := make([]map[string]value.Value, 0)
-	// right := make([]map[string]value.Value, 0)
-	// conditions := make([]string, 0)
-
-	//TODO: Should the last 3 params be optional?
-	if len(args) < 3 {
-		return value.Value{}, fmt.Errorf("inner_join: expected at lest 3 arguments, got %d", len(args))
+// args[0]: []map[string]string: lhs array
+// args[1]: []map[string]string: rhs array
+// args[2]: []string:             merge conditions
+var targetsMerge = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
+	if len(args) != 3 {
+		return value.Value{}, fmt.Errorf("inner_join: expected 3 arguments, got %d", len(args))
 	}
 
+	// Validate args[0] and args[1]
 	for i := range []int{0, 1} {
 		if args[i].Type() != value.TypeArray {
 			return value.Null, value.ArgError{
@@ -294,32 +235,48 @@ var innerJoin = value.RawFunction(func(funcValue value.Value, args ...value.Valu
 		}
 	}
 
-	//TODO: Preallocate memory?
-	res := make([]value.Value, 0, 0)
-
-	conditions := args[2]
-
-	var strategy string
-	if len(args) >= 4 {
-		strategy = args[3].Text()
+	// Validate args[2]
+	if args[2].Type() != value.TypeArray {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[2],
+			Index:    2,
+			Inner: value.TypeError{
+				Value:    args[2],
+				Expected: value.TypeArray,
+			},
+		}
+	}
+	if args[2].Len() == 0 {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[2],
+			Index:    2,
+			Inner:    fmt.Errorf("inner_join: merge conditions must not be empty"),
+		}
 	}
 
-	allowlist := make(map[string]struct{}, args[4].Len())
-	for i := 0; i < args[4].Len(); i++ {
-		allowlist[args[4].Index(i).Text()] = struct{}{}
-	}
-
-	denylist := make(map[string]struct{}, args[5].Len())
-	for i := 0; i < args[5].Len(); i++ {
-		denylist[args[5].Index(i).Text()] = struct{}{}
-	}
+	// We cannot preallocate the size of the result array, because we don't know
+	// how well the merge is going to go. If none of the merge conditions are met,
+	// the result array will be empty.
+	res := []value.Value{}
 
 	for i := 0; i < args[0].Len(); i++ {
 		for j := 0; j < args[1].Len(); j++ {
 			left := args[0].Index(i)
 			right := args[1].Index(j)
-			if shouldJoin(left, right, conditions) {
-				res = append(res, concatMaps(left, right, strategy, allowlist, denylist))
+
+			join, err := shouldJoin(left, right, args[2])
+			if err != nil {
+				return value.Null, err
+			}
+
+			if join {
+				val, err := concatMaps(left, right)
+				if err != nil {
+					return value.Null, err
+				}
+				res = append(res, val)
 			}
 		}
 	}

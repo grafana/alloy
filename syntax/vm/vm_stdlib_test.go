@@ -42,24 +42,47 @@ func TestVM_Stdlib(t *testing.T) {
 
 		// Map tests
 		{
-			"map.inner_join",
-			`map.inner_join([{"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			// Basic case. No conflicting key/val pairs.
+			"targets.merge",
+			`targets.merge([{"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
 			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}},
 		},
 		{
-			"map.inner_join",
-			`map.inner_join([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			// The first array has 2 maps, each with the same key/val pairs.
+			"targets.merge",
+			`targets.merge([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
 			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}, {"a": "a1", "b": "b1", "c": "c1"}},
 		},
 		{
-			"map.inner_join",
-			`map.inner_join([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
-			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}, {"a": "a1", "b": "b1", "c": "c1"}},
-		},
-		{
-			"map.inner_join",
-			`map.inner_join([{"a" = 1, "b" = 2.2}], [{"a" = 1, "c" = "c1"}], ["a"])`,
+			// Basic case. Integer and string values.
+			"targets.merge",
+			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = 1, "c" = "c1"}], ["a"])`,
 			[]map[string]interface{}{{"a": 1, "b": 2.2, "c": "c1"}},
+		},
+		{
+			// The second map will override a value from the first.
+			"targets.merge",
+			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = 1, "b" = "3.3"}], ["a"])`,
+			[]map[string]interface{}{{"a": 1, "b": "3.3"}},
+		},
+		{
+			// Not enough matches for a join.
+			"targets.merge",
+			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = 2, "b" = "3.3"}], ["a"])`,
+			[]map[string]interface{}{},
+		},
+		{
+			// Not enough matches for a join.
+			// The "a" value has differing types.
+			"targets.merge",
+			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = "1", "b" = "3.3"}], ["a"])`,
+			[]map[string]interface{}{},
+		},
+		{
+			// Basic case. Some values are arrays and maps.
+			"targets.merge",
+			`targets.merge([{"a" = 1, "b" = [1,2,3]}], [{"a" = 1, "c" = {"d" = {"e" = 10}}}], ["a"])`,
+			[]map[string]interface{}{{"a": 1, "b": []interface{}{1, 2, 3}, "c": map[string]interface{}{"d": map[string]interface{}{"e": 10}}}},
 		},
 	}
 
