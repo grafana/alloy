@@ -41,7 +41,7 @@ The following arguments are supported:
 
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
-`ttl` | `time` | `duration` | How long the timestamp of a signal is valid for, before the signal is discarded. | `2h` | no
+`ttl` | `time` | `duration` | How long the timestamp of a signal is valid before the signal is discarded. | `2h` | no
 
 ## Blocks
 
