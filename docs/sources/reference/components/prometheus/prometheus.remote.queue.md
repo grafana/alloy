@@ -79,7 +79,7 @@ Name | Type | Description | Default | Required
 
 The `endpoint` block describes a single location to send metrics to. Multiple
 `endpoint` blocks can be provided to send metrics to multiple locations. Each
-`endpoint` will have it's own WAL folder
+`endpoint` will have its own WAL folder
 
 The following arguments are supported:
 
