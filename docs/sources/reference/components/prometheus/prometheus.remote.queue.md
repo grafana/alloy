@@ -246,7 +246,13 @@ Any data that has not been written to disk, or that is in the network queues is 
 
 ### Retries
 
-Network errors will be retried. 429 errors will be retried. 5XX errors will retry. Any other non-2XX return codes will not be tried. 
+`prometheus.remote.queue`  will retry sending data if the following errors or HTTP status codes are returned:
+
+ * Network errors. 
+ * HTTP 429 error.s 
+ * HTTP 5XX errors.
+ 
+`prometheus.remote.queue`  will  not retry sending data if any other unsuccessful status codes are returned. 
 
 ### Memory
 
