@@ -51,6 +51,7 @@ Name                          | Type       | Description                        
 `decision_wait`               | `duration` | Wait time since the first span of a trace before making a sampling decision. | `"30s"` | no
 `num_traces`                  | `int`      | Number of traces kept in memory.                                             | `50000` | no
 `expected_new_traces_per_sec` | `int`      | Expected number of new traces (helps in allocating data structures).         | `0`     | no
+`decision_cache`              | `object`   | Configures the number of trace IDs to be kept in an LRU cache.               | `{}`    | no
 
 `decision_wait` determines the number of batches to maintain on a channel. Its value must convert to a number of seconds greater than zero.
 
@@ -58,53 +59,53 @@ Name                          | Type       | Description                        
 
 `expected_new_traces_per_sec` determines the initial slice sizing of the current batch. A larger number will use more memory but be more efficient when adding traces to the batch.
 
+`decision_cache` requires a key `sampled_cache_size` with a value that indicates the number of trace IDs to keep in the cache. When `sampled_cache_size` is set to `0`, the cache is inactive. When you use `decision_cache`, make sure you set `sampled_cache_size` to a value much higher than `num_traces` so that decisions for trace IDs are kept longer than the span data for the trace.
+
 ## Blocks
 
 The following blocks are supported inside the definition of
 `otelcol.processor.tail_sampling`:
 
-Hierarchy | Block | Description  | Required
---------- | ----- | -----------  | --------
-decision_cache                                                | [decision_cache] [] | Configures amount of trace IDs to be kept in an LRU cache. | no
-policy                                                        | [policy] [] | Policies used to make a sampling decision. | yes
-policy > latency                                              | [latency] | The policy will sample based on the duration of the trace. | no
-policy > numeric_attribute                                    | [numeric_attribute] | The policy will sample based on number attributes (resource and record). | no
-policy > probabilistic                                        | [probabilistic] | The policy will sample a percentage of traces. | no
-policy > status_code                                          | [status_code] | The policy will sample based upon the status code. | no
-policy > string_attribute                                     | [string_attribute] | The policy will sample based on string attributes (resource and record) value matches. | no
-policy > rate_limiting                                        | [rate_limiting] | The policy will sample based on rate. | no
-policy > span_count                                           | [span_count] | The policy will sample based on the minimum number of spans within a batch. | no
-policy > boolean_attribute                                    | [boolean_attribute] | The policy will sample based on a boolean attribute (resource and record). | no
-policy > ottl_condition                                       | [ottl_condition] | The policy will sample based on a given boolean OTTL condition (span and span event).| no
-policy > trace_state                                          | [trace_state] | The policy will sample based on TraceState value matches. | no
-policy > and                                                  | [and] | The policy will sample based on multiple policies, creates an `and` policy. | no
-policy > and > and_sub_policy                                 | [and_sub_policy] [] | A set of policies underneath an `and` policy type. | no
-policy > and > and_sub_policy > latency                       | [latency] | The policy will sample based on the duration of the trace. | no
-policy > and > and_sub_policy > numeric_attribute             | [numeric_attribute] | The policy will sample based on number attributes (resource and record). | no
-policy > and > and_sub_policy > probabilistic                 | [probabilistic] | The policy will sample a percentage of traces. | no
-policy > and > and_sub_policy > status_code                   | [status_code] | The policy will sample based upon the status code. | no
-policy > and > and_sub_policy > string_attribute              | [string_attribute] | The policy will sample based on string attributes (resource and record) value matches. | no
-policy > and > and_sub_policy > rate_limiting                 | [rate_limiting] | The policy will sample based on rate. | no
-policy > and > and_sub_policy > span_count                    | [span_count] | The policy will sample based on the minimum number of spans within a batch. | no
-policy > and > and_sub_policy > boolean_attribute             | [boolean_attribute] | The policy will sample based on a boolean attribute (resource and record). | no
-policy > and > and_sub_policy > ottl_condition                | [ottl_condition] | The policy will sample based on a given boolean OTTL condition (span and span event). | no
-policy > and > and_sub_policy > trace_state                   | [trace_state] | The policy will sample based on TraceState value matches. | no
-policy > composite                                            | [composite] | This policy will sample based on a combination of above samplers, with ordering and rate allocation per sampler. | no
-policy > composite > composite_sub_policy                     | [composite_sub_policy] [] | A set of policies underneath a `composite` policy type. | no
-policy > composite > composite_sub_policy > latency           | [latency] | The policy will sample based on the duration of the trace. | no
-policy > composite > composite_sub_policy > numeric_attribute | [numeric_attribute] | The policy will sample based on number attributes (resource and record). | no
-policy > composite > composite_sub_policy > probabilistic     | [probabilistic] | The policy will sample a percentage of traces. | no
-policy > composite > composite_sub_policy > status_code       | [status_code] | The policy will sample based upon the status code. | no
-policy > composite > composite_sub_policy > string_attribute  | [string_attribute] | The policy will sample based on string attributes (resource and record) value matches. | no
-policy > composite > composite_sub_policy > rate_limiting     | [rate_limiting] | The policy will sample based on rate. | no
-policy > composite > composite_sub_policy > span_count        | [span_count] | The policy will sample based on the minimum number of spans within a batch. | no
-policy > composite > composite_sub_policy > boolean_attribute | [boolean_attribute] | The policy will sample based on a boolean attribute (resource and record). | no
-policy > composite > composite_sub_policy > ottl_condition    | [ottl_condition] | The policy will sample based on a given boolean OTTL condition (span and span event). | no
-policy > composite > composite_sub_policy > trace_state       | [trace_state] | The policy will sample based on TraceState value matches. | no
-output                                                        | [output] [] | Configures where to send received telemetry data. | yes
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+Hierarchy                                                     | Block                    | Description                                                                                                 | Required
+--------------------------------------------------------------|--------------------------|-------------------------------------------------------------------------------------------------------------|---------
+policy                                                        | [policy][]               | Policies used to make a sampling decision.                                                                  | yes
+policy > latency                                              | [latency][]              | The policy samples based on the duration of the trace.                                                      | no
+policy > numeric_attribute                                    | [numeric_attribute][]    | The policy samples based on the number attributes (resource and record).                                    | no
+policy > probabilistic                                        | [probabilistic][]        | The policy samples a percentage of traces.                                                                  | no
+policy > status_code                                          | [status_code][]          | The policy samples based upon the status code.                                                              | no
+policy > string_attribute                                     | [string_attribute][]     | The policy samples based on string attributes (resource and record) value matches.                          | no
+policy > rate_limiting                                        | [rate_limiting][]        | The policy samples based on rate.                                                                           | no
+policy > span_count                                           | [span_count][]           | The policy samples based on the minimum number of spans within a batch.                                     | no
+policy > boolean_attribute                                    | [boolean_attribute][]    | The policy samples based on a boolean attribute (resource and record).                                      | no
+policy > ottl_condition                                       | [ottl_condition][]       | The policy samples based on a given boolean OTTL condition (span and span event).                           | no
+policy > trace_state                                          | [trace_state][]          | The policy samples based on TraceState value matches.                                                       | no
+policy > and                                                  | [and][]                  | The policy samples based on multiple policies, creates an `and` policy.                                     | no
+policy > and > and_sub_policy                                 | [and_sub_policy][]       | A set of policies underneath an `and` policy type.                                                          | no
+policy > and > and_sub_policy > latency                       | [latency][]              | The policy samples based on the duration of the trace.                                                      | no
+policy > and > and_sub_policy > numeric_attribute             | [numeric_attribute][]    | The policy samples based on number attributes (resource and record).                                        | no
+policy > and > and_sub_policy > probabilistic                 | [probabilistic][]        | The policy samples a percentage of traces.                                                                  | no
+policy > and > and_sub_policy > status_code                   | [status_code][]          | The policy samples based upon the status code.                                                              | no
+policy > and > and_sub_policy > string_attribute              | [string_attribute][]     | The policy samples based on string attributes (resource and record) value matches.                          | no
+policy > and > and_sub_policy > rate_limiting                 | [rate_limiting][]        | The policy samples based on rate.                                                                           | no
+policy > and > and_sub_policy > span_count                    | [span_count][]           | The policy samples based on the minimum number of spans within a batch.                                     | no
+policy > and > and_sub_policy > boolean_attribute             | [boolean_attribute][]    | The policy samples based on a boolean attribute (resource and record).                                      | no
+policy > and > and_sub_policy > ottl_condition                | [ottl_condition][]       | The policy samples based on a given boolean OTTL condition (span and span event).                           | no
+policy > and > and_sub_policy > trace_state                   | [trace_state][]          | The policy samples based on TraceState value matches.                                                       | no
+policy > composite                                            | [composite][]            | The policy samples based on a combination of above samplers, with ordering and rate allocation per sampler. | no
+policy > composite > composite_sub_policy                     | [composite_sub_policy][] | A set of policies underneath a `composite` policy type.                                                     | no
+policy > composite > composite_sub_policy > latency           | [latency][]              | The policy samples based on the duration of the trace.                                                      | no
+policy > composite > composite_sub_policy > numeric_attribute | [numeric_attribute][]    | The policy samples based on number attributes (resource and record).                                        | no
+policy > composite > composite_sub_policy > probabilistic     | [probabilistic][]        | The policy samples a percentage of traces.                                                                  | no
+policy > composite > composite_sub_policy > status_code       | [status_code][]          | The policy samples based upon the status code.                                                              | no
+policy > composite > composite_sub_policy > string_attribute  | [string_attribute][]     | The policy samples based on string attributes (resource and record) value matches.                          | no
+policy > composite > composite_sub_policy > rate_limiting     | [rate_limiting][]        | The policy samples based on rate.                                                                           | no
+policy > composite > composite_sub_policy > span_count        | [span_count][]           | The policy samples based on the minimum number of spans within a batch.                                     | no
+policy > composite > composite_sub_policy > boolean_attribute | [boolean_attribute][]    | The policy samples based on a boolean attribute (resource and record).                                      | no
+policy > composite > composite_sub_policy > ottl_condition    | [ottl_condition][]       | The policy samples based on a given boolean OTTL condition (span and span event).                           | no
+policy > composite > composite_sub_policy > trace_state       | [trace_state][]          | The policy samples based on TraceState value matches.                                                       | no
+output                                                        | [output][]               | Configures where to send received telemetry data.                                                           | yes
+debug_metrics                                                 | [debug_metrics][]        | Configures the metrics that this component generates to monitor its state.                                  | no
 
-[decision_cache]: #decision_cache-block
 [policy]: #policy-block
 [latency]: #latency-block
 [numeric_attribute]: #numeric_attribute-block
@@ -123,21 +124,6 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 [output]: #output-block
 [otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
 [debug_metrics]: #debug_metrics-block
-
-### decision_cache block
-
-The `decision_cache` block configures the number of trace IDs to be kept in an LRU cache, 
-persisting the "keep" decisions for traces that may have already been released from memory. 
-
-The following arguments are supported:
-
-Name                 | Type     | Description                                 | Default | Required
----------------------|----------|---------------------------------------------|---------|---------
-`sampled_cache_size` | `number` | Amount of trace IDs to keep in the cache.   | `0`     | no
-
-When `sampled_cache_size` is set to `0`, the cache is inactive. 
-
-When using `decision_cache`, configure `sampled_cache_size` much higher than `num_traces` so that decisions for trace IDs are kept longer than the span data for the trace.
 
 ### policy block
 
@@ -369,6 +355,9 @@ tracing {
 }
 
 otelcol.processor.tail_sampling "default" {
+  decision_cache = {
+    sampled_cache_size = 100000,
+    }
   decision_wait               = "10s"
   num_traces                  = 100
   expected_new_traces_per_sec = 10
