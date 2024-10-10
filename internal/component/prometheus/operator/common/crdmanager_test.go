@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"testing"
 
 	"golang.org/x/exp/maps"
@@ -166,4 +167,35 @@ func (m *mockScrapeManager) TargetsActive() map[string][]*scrape.Target {
 
 func (m *mockScrapeManager) ApplyConfig(cfg *config.Config) error {
 	return nil
+}
+
+type crdManagerFactoryHungRun struct{}
+
+func (crdManagerFactoryHungRun) New(opts component.Options, cluster cluster.Cluster, logger log.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface {
+	return &crdManagerHungRun{}
+}
+
+type crdManagerHungRun struct{}
+
+func (c *crdManagerHungRun) Run(ctx context.Context) error {
+
+}
+
+func (c *crdManagerHungRun) ClusteringUpdated() {}
+
+func (c *crdManagerHungRun) DebugInfo() interface{} {
+	return nil
+}
+
+func (c *crdManagerHungRun) GetScrapeConfig(ns, name string) []*config.ScrapeConfig {
+	return nil
+}
+
+func TestRunExit(t *testing.T) {
+	// Create a Component
+	// Call component.Run
+	// Cancel the context.
+	// Make sure component.Run didn't exit for a few seconds
+	// Make crdManager.Run exit
+	// Make sure component.Run exits
 }
