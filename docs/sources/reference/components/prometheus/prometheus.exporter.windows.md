@@ -54,6 +54,7 @@ logical_disk   | [logical_disk][]   | Configures the logical_disk collector.   |
 msmq           | [msmq][]           | Configures the msmq collector.           | no
 mssql          | [mssql][]          | Configures the mssql collector.          | no
 network        | [network][]        | Configures the network collector.        | no
+physical_disk  | [physical_disk][]  | Configures the physical_disk collector.  | no
 printer        | [printer][]        | Configures the printer collector.        | no
 process        | [process][]        | Configures the process collector.        | no
 scheduled_task | [scheduled_task][] | Configures the scheduled_task collector. | no
@@ -66,13 +67,14 @@ text_file      | [text_file][]      | Configures the text_file collector.      |
 [dfsr]: #dfsr-block
 [exchange]: #exchange-block
 [iis]: #iis-block
-[logical_disk]: #logicaldisk-block
+[logical_disk]: #logical_disk-block
 [msmq]: #msmq-block
 [mssql]: #mssql-block
 [network]: #network-block
+[physical_disk]: #physical_disk-block
 [printer]: #printer-block
 [process]: #process-block
-[scheduled_task]: #scheduledtask-block
+[scheduled_task]: #scheduled_task-block
 [service]: #service-block
 [smb]: #smb-block
 [smb_client]: #smb_client-block
@@ -152,6 +154,12 @@ Name      | Type     | Description                             | Default | Requi
 
 NIC names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
+### physical_disk block
+
+Name      | Type     | Description                                     | Default | Required
+----------|----------|-------------------------------------------------|---------|---------
+`exclude` | `string` | Regular expression of physical disc to exclude. | `""`    | no
+`include` | `string` | Regular expression of physical disc to include. | `".*"`  | no
 
 ### printer block
 
