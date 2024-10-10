@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	filedetector "github.com/grafana/alloy/internal/filedetector"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/vm"
 )
 
@@ -253,4 +254,13 @@ func collectFilesFromDir(path string) ([]string, error) {
 // Update the evaluator.
 func (im *ImportFile) SetEval(eval *vm.Evaluator) {
 	im.eval = eval
+}
+
+func (im *ImportFile) ModulePath() string {
+	path, err := util.ExtractDirPath(im.args.Filename)
+
+	if err != nil {
+		level.Error(im.managedOpts.Logger).Log("msg", "failed to extract module path", "module path", im.args.Filename, "err", err)
+	}
+	return path
 }

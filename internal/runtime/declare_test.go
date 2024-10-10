@@ -336,7 +336,7 @@ func TestDeclare(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, f)
 
-			err = ctrl.LoadSource(f, nil)
+			err = ctrl.LoadSource(f, nil, "")
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -356,6 +356,44 @@ func TestDeclare(t *testing.T) {
 			}, 3*time.Second, 10*time.Millisecond)
 		})
 	}
+}
+
+func TestDeclareModulePath(t *testing.T) {
+	defer verifyNoGoroutineLeaks(t)
+	config := `
+		declare "mod" {			
+			export "output" {
+				value = module_path
+			}
+		}
+
+		mod "myModule" {}
+
+		testcomponents.passthrough "pass" {
+			input = mod.myModule.output
+		}
+	`
+	ctrl := runtime.New(testOptions(t))
+	f, err := runtime.ParseSource(t.Name(), []byte(config))
+	require.NoError(t, err)
+	require.NotNil(t, f)
+
+	err = ctrl.LoadSource(f, nil, "")
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		ctrl.Run(ctx)
+		close(done)
+	}()
+	defer func() {
+		cancel()
+		<-done
+	}()
+	time.Sleep(30 * time.Millisecond)
+	passthrough := getExport[testcomponents.PassthroughExports](t, ctrl, "", "testcomponents.passthrough.pass")
+	require.Equal(t, passthrough.Output, "")
 }
 
 type errorTestCase struct {
@@ -461,7 +499,7 @@ func TestDeclareError(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, f)
 
-			err = ctrl.LoadSource(f, nil)
+			err = ctrl.LoadSource(f, nil, "")
 			if err == nil {
 				t.Errorf("Expected error to match regex %q, but got: nil", tc.expectedError)
 			} else if !tc.expectedError.MatchString(err.Error()) {
@@ -545,7 +583,7 @@ func TestDeclareUpdateConfig(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, f)
 
-			err = ctrl.LoadSource(f, nil)
+			err = ctrl.LoadSource(f, nil, "")
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -569,7 +607,7 @@ func TestDeclareUpdateConfig(t *testing.T) {
 			require.NotNil(t, f)
 
 			// Reload the controller with the new config.
-			err = ctrl.LoadSource(f, nil)
+			err = ctrl.LoadSource(f, nil, "")
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {

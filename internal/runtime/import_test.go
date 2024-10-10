@@ -27,13 +27,15 @@ const mainFile = "main.alloy"
 
 // The tests are using the .txtar files stored in the testdata folder.
 type testImportFile struct {
-	description       string      // description at the top of the txtar file
-	main              string      // root config that the controller should load
-	module            string      // module imported by the root config
-	nestedModule      string      // nested module that can be imported by the module
-	reloadConfig      string      // root config that the controller should apply on reload
-	otherNestedModule string      // another nested module
-	update            *updateFile // update can be used to update the content of a file at runtime
+	description            string      // description at the top of the txtar file
+	main                   string      // root config that the controller should load
+	module                 string      // module imported by the root config
+	nestedModule           string      // nested module that can be imported by the module
+	reloadConfig           string      // root config that the controller should apply on reload
+	otherNestedModule      string      // another nested module
+	nestedPathModule       string      // a module in a subdirectory
+	deeplyNestedPathModule string      // a module in a sub-subdirectory
+	update                 *updateFile // update can be used to update the content of a file at runtime
 }
 
 type updateFile struct {
@@ -70,6 +72,10 @@ func buildTestImportFile(t *testing.T, filename string) testImportFile {
 			tc.reloadConfig = string(alloyConfig.Data)
 		case "other_nested_module.alloy":
 			tc.otherNestedModule = string(alloyConfig.Data)
+		case "nested_test/module.alloy":
+			tc.nestedPathModule = string(alloyConfig.Data)
+		case "nested_test/utils/module.alloy":
+			tc.deeplyNestedPathModule = string(alloyConfig.Data)
 		}
 	}
 	return tc
@@ -89,6 +95,18 @@ func TestImportFile(t *testing.T) {
 			if tc.otherNestedModule != "" {
 				defer os.Remove("other_nested_module.alloy")
 				require.NoError(t, os.WriteFile("other_nested_module.alloy", []byte(tc.otherNestedModule), 0664))
+			}
+
+			if tc.nestedPathModule != "" || tc.deeplyNestedPathModule != "" {
+				require.NoError(t, os.Mkdir("nested_test", 0700))
+				defer os.RemoveAll("nested_test")
+				if tc.nestedPathModule != "" {
+					require.NoError(t, os.WriteFile("nested_test/module.alloy", []byte(tc.nestedPathModule), 0664))
+				}
+				if tc.deeplyNestedPathModule != "" {
+					require.NoError(t, os.Mkdir("nested_test/utils", 0700))
+					require.NoError(t, os.WriteFile("nested_test/utils/module.alloy", []byte(tc.deeplyNestedPathModule), 0664))
+				}
 			}
 
 			if tc.update != nil {
@@ -117,6 +135,8 @@ func TestImportGit(t *testing.T) {
 	// Extract repo.git.tar so tests can make use of it.
 	// Make repo.git.tar with:
 	//   tar -C repo.git -cvf repo.git.tar .
+	// NOTE: when modifying the files in the repo, make sure to commit the files else
+	// the changes will not be taken into account.
 	require.NoError(t, util.Untar("./testdata/repo.git.tar", "./testdata/repo.git"))
 	require.NoError(t, util.Untar("./testdata/repo2.git.tar", "./testdata/repo2.git"))
 	t.Cleanup(func() {
@@ -146,13 +166,14 @@ func TestImportHTTP(t *testing.T) {
 }
 
 type testImportFileFolder struct {
-	description string      // description at the top of the txtar file
-	main        string      // root config that the controller should load
-	module1     string      // module imported by the root config
-	module2     string      // another module imported by the root config
-	removed     string      // module will be removed in the dir on update
-	added       string      // module which will be added in the dir on update
-	update      *updateFile // update can be used to update the content of a file at runtime
+	description  string      // description at the top of the txtar file
+	main         string      // root config that the controller should load
+	module1      string      // module imported by the root config
+	module2      string      // another module imported by the root config
+	utilsModule2 string      // another module in a nested subdirectory
+	removed      string      // module will be removed in the dir on update
+	added        string      // module which will be added in the dir on update
+	update       *updateFile // update can be used to update the content of a file at runtime
 }
 
 func buildTestImportFileFolder(t *testing.T, filename string) testImportFileFolder {
@@ -168,6 +189,8 @@ func buildTestImportFileFolder(t *testing.T, filename string) testImportFileFold
 			tc.module1 = string(alloyConfig.Data)
 		case "module2.alloy":
 			tc.module2 = string(alloyConfig.Data)
+		case "utils/module2.alloy":
+			tc.utilsModule2 = string(alloyConfig.Data)
 		case "added.alloy":
 			tc.added = string(alloyConfig.Data)
 		case "removed.alloy":
@@ -182,6 +205,12 @@ func buildTestImportFileFolder(t *testing.T, filename string) testImportFileFold
 			require.Nil(t, tc.update)
 			tc.update = &updateFile{
 				name:         "module2.alloy",
+				updateConfig: string(alloyConfig.Data),
+			}
+		case "utils/update_module2.alloy":
+			require.Nil(t, tc.update)
+			tc.update = &updateFile{
+				name:         "utils/module2.alloy",
 				updateConfig: string(alloyConfig.Data),
 			}
 		}
@@ -208,6 +237,12 @@ func TestImportFileFolder(t *testing.T) {
 
 			if tc.removed != "" {
 				require.NoError(t, os.WriteFile(filepath.Join(dir, "removed.alloy"), []byte(tc.removed), 0700))
+			}
+
+			if tc.utilsModule2 != "" {
+				nestedDir := filepath.Join(dir, "utils")
+				require.NoError(t, os.Mkdir(nestedDir, 0700))
+				require.NoError(t, os.WriteFile(filepath.Join(nestedDir, "module2.alloy"), []byte(tc.utilsModule2), 0700))
 			}
 
 			// TODO: ideally we would like to check the health of the node but that's not yet possible for import nodes.
@@ -265,7 +300,7 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 	defer verifyNoGoroutineLeaks(t)
 	ctrl, f := setup(t, config)
 
-	err := ctrl.LoadSource(f, nil)
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -303,7 +338,7 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 		require.NotNil(t, f)
 
 		// Reload the controller with the new config.
-		err = ctrl.LoadSource(f, nil)
+		err = ctrl.LoadSource(f, nil, "")
 		require.NoError(t, err)
 
 		// Export should be -10 after update
@@ -317,7 +352,7 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 func testConfigError(t *testing.T, config string, expectedError string) {
 	defer verifyNoGoroutineLeaks(t)
 	ctrl, f := setup(t, config)
-	err := ctrl.LoadSource(f, nil)
+	err := ctrl.LoadSource(f, nil, "")
 	require.ErrorContains(t, err, expectedError)
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup

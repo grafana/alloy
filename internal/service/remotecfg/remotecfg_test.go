@@ -290,11 +290,11 @@ type serviceController struct {
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
-func (sc serviceController) LoadSource(b []byte, args map[string]any) error {
+func (sc serviceController) LoadSource(b []byte, args map[string]any, configPath string) error {
 	source, err := alloy_runtime.ParseSource("", b)
 	if err != nil {
 		return err
 	}
-	return sc.f.LoadSource(source, args)
+	return sc.f.LoadSource(source, args, configPath)
 }
 func (sc serviceController) Ready() bool { return sc.f.Ready() }

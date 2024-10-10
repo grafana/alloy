@@ -29,7 +29,7 @@ type Reference struct {
 
 // ComponentReferences returns the list of references a component is making to
 // other components.
-func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger) ([]Reference, diag.Diagnostics) {
+func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger, scope *vm.Scope) ([]Reference, diag.Diagnostics) {
 	var (
 		traversals []Traversal
 
@@ -48,25 +48,20 @@ func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger) ([]Reference, 
 		ref, resolveDiags := resolveTraversal(t, g)
 		componentRefMatch := !resolveDiags.HasErrors()
 
-		// We use an empty scope to determine if a reference refers to something in
-		// the stdlib, since vm.Scope.Lookup will search the scope tree + the
-		// stdlib.
-		//
-		// Any call to an stdlib function is ignored.
-		var emptyScope vm.Scope
-		_, stdlibMatch := emptyScope.Lookup(t[0].Name)
+		// we look for a match in the provided scope and the stdlib
+		_, scopeMatch := scope.Lookup(t[0].Name)
 
-		if !componentRefMatch && !stdlibMatch {
+		if !componentRefMatch && !scopeMatch {
 			diags = append(diags, resolveDiags...)
 			continue
 		}
 
 		if componentRefMatch {
-			if stdlibMatch {
+			if scope.IsStdlibIdentifiers(t[0].Name) {
 				level.Warn(l).Log("msg", "a component is shadowing an existing stdlib name", "component", strings.Join(ref.Target.Block().Name, "."), "stdlib name", t[0].Name)
 			}
 			refs = append(refs, ref)
-		} else if stdlibMatch && emptyScope.IsDeprecated(t[0].Name) {
+		} else if scope.IsStdlibDeprecated(t[0].Name) {
 			level.Warn(l).Log("msg", "this stdlib function is deprecated; please refer to the documentation for updated usage and alternatives", "function", t[0].Name)
 		}
 	}

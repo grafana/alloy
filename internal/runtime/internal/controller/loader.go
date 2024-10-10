@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
+	"github.com/grafana/alloy/syntax/vm"
 	"github.com/grafana/dskit/backoff"
 	"github.com/hashicorp/go-multierror"
 	"go.opentelemetry.io/otel/attribute"
@@ -124,6 +125,9 @@ type ApplyOptions struct {
 	// The definition of a custom component instantiated inside of the loaded config
 	// should be passed via this field if it's not declared or imported in the config.
 	CustomComponentRegistry *CustomComponentRegistry
+
+	// ArgScope contains additional variables that can be used in the current module.
+	ArgScope *vm.Scope
 }
 
 // Apply loads a new set of components into the Loader. Apply will drop any
@@ -145,6 +149,8 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 	l.cm.controllerEvaluation.Set(1)
 	defer l.cm.controllerEvaluation.Set(0)
 
+	l.cache.SetScope(options.ArgScope)
+
 	for key, value := range options.Args {
 		l.cache.CacheModuleArgument(key, value)
 	}
@@ -152,7 +158,7 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 
 	// Create a new CustomComponentRegistry based on the provided one.
 	// The provided one should be nil for the root config.
-	l.componentNodeManager.setCustomComponentRegistry(NewCustomComponentRegistry(options.CustomComponentRegistry))
+	l.componentNodeManager.setCustomComponentRegistry(NewCustomComponentRegistry(options.CustomComponentRegistry, options.ArgScope))
 	newGraph, diags := l.loadNewGraph(options.Args, options.ComponentBlocks, options.ConfigBlocks, options.DeclareBlocks)
 	if diags.HasErrors() {
 		return diags
@@ -608,7 +614,9 @@ func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 		}
 
 		// Finally, wire component references.
-		refs, nodeDiags := ComponentReferences(n, g, l.log)
+		l.cache.mut.RLock()
+		refs, nodeDiags := ComponentReferences(n, g, l.log, l.cache.scope)
+		l.cache.mut.RUnlock()
 		for _, ref := range refs {
 			g.AddEdge(dag.Edge{From: n, To: ref.Target})
 		}

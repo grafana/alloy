@@ -9,6 +9,9 @@ title: import.git
 The `import.git` block imports custom components from a Git repository and exposes them to the importer.
 `import.git` blocks must be given a label that determines the namespace where custom components are exposed.
 
+The entire repository is cloned, and the module path is accessible via the `module_path` keyword.
+This enables your module to import other modules within the repository by setting relative paths in the [import.file][] blocks.
+
 ## Usage
 
 ```alloy
@@ -101,5 +104,6 @@ math.add "default" {
 }
 ```
 
+[import.file]: ../import.file/
 [basic_auth]: #basic_auth-block
 [ssh_key]: #ssh_key-block
