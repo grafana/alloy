@@ -5,7 +5,7 @@ go 1.22.7
 require (
 	cloud.google.com/go/pubsub v1.40.0
 	connectrpc.com/connect v1.16.2
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.13.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.14.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.7.0
 	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/IBM/sarama v1.43.3
@@ -156,7 +156,7 @@ require (
 	github.com/prometheus/blackbox_exporter v0.24.1-0.20230623125439-bd22efa1c900
 	github.com/prometheus/client_golang v1.20.4
 	github.com/prometheus/client_model v0.6.1
-	github.com/prometheus/common v0.55.0
+	github.com/prometheus/common v0.59.1
 	github.com/prometheus/common/sigv4 v0.1.0
 	github.com/prometheus/consul_exporter v0.8.0
 	github.com/prometheus/memcached_exporter v0.13.0
@@ -183,7 +183,7 @@ require (
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/vincent-petithory/dataurl v1.0.0
 	github.com/webdevops/azure-metrics-exporter v0.0.0-20230717202958-8701afc2b013
-	github.com/webdevops/go-common v0.0.0-20231022162947-a6adfb05a7e9
+	github.com/webdevops/go-common v0.0.0-20241004201801-87c5aa8dbf70
 	github.com/wk8/go-ordered-map v0.2.0
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xdg-go/scram v1.1.2
@@ -229,14 +229,14 @@ require (
 	go.opentelemetry.io/collector/semconv v0.108.1
 	go.opentelemetry.io/collector/service v0.108.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.45.0
-	go.opentelemetry.io/otel v1.28.0
+	go.opentelemetry.io/otel v1.30.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.28.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.28.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.50.0
-	go.opentelemetry.io/otel/metric v1.28.0
+	go.opentelemetry.io/otel/metric v1.30.0
 	go.opentelemetry.io/otel/sdk v1.28.0
 	go.opentelemetry.io/otel/sdk/metric v1.28.0
-	go.opentelemetry.io/otel/trace v1.28.0
+	go.opentelemetry.io/otel/trace v1.30.0
 	go.opentelemetry.io/proto/otlp v1.3.1
 	go.uber.org/atomic v1.11.0
 	go.uber.org/goleak v1.3.0
@@ -246,10 +246,10 @@ require (
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 	golang.org/x/net v0.29.0
-	golang.org/x/oauth2 v0.22.0
+	golang.org/x/oauth2 v0.23.0
 	golang.org/x/sys v0.25.0
 	golang.org/x/text v0.18.0
-	golang.org/x/time v0.5.0
+	golang.org/x/time v0.6.0
 	golang.org/x/tools v0.25.0
 	google.golang.org/api v0.188.0
 	google.golang.org/grpc v1.65.0
@@ -257,12 +257,12 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools v2.2.0+incompatible
-	k8s.io/api v0.31.0
-	k8s.io/apimachinery v0.31.0
-	k8s.io/client-go v0.31.0
+	k8s.io/api v0.31.1
+	k8s.io/apimachinery v0.31.1
+	k8s.io/client-go v0.31.1
 	k8s.io/component-base v0.31.0
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
+	k8s.io/utils v0.0.0-20240902221715-702e33fdd3c3
 	sigs.k8s.io/controller-runtime v0.19.0
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -283,10 +283,10 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5 v5.7.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/monitor/armmonitor v0.10.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4 v4.3.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph v0.8.2 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.1.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions v1.2.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.2.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph v0.9.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.2.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions v1.3.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.4.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.23 // indirect
@@ -806,7 +806,7 @@ require (
 	gopkg.in/zorkian/go-datadog-api.v2 v2.30.0 // indirect
 	howett.net/plist v1.0.0 // indirect
 	k8s.io/apiextensions-apiserver v0.31.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20240620174524-b456828f718b // indirect
+	k8s.io/kube-openapi v0.0.0-20240903163716-9e1beecbcb38 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 
