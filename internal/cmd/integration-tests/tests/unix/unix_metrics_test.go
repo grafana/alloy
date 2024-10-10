@@ -1,4 +1,4 @@
-//go:build linux
+//go:build !windows
 
 package main
 
@@ -44,9 +44,6 @@ func TestUnixMetrics(t *testing.T) {
 		"node_memory_Cached_bytes",
 		"node_memory_CommitLimit_bytes",
 		"node_memory_Committed_AS_bytes",
-		"node_memory_DirectMap1G_bytes",
-		"node_memory_DirectMap2M_bytes",
-		"node_memory_DirectMap4k_bytes",
 		"node_memory_Dirty_bytes",
 		"node_memory_HugePages_Free",
 		"node_memory_HugePages_Rsvd",

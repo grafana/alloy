@@ -4,7 +4,7 @@ This document provides an outline of how to run and add new integration tests to
 
 The purpose of these tests is to verify simple, happy-path pipelines to catch issues between Alloy and external dependencies.
 
-The external dependencies are launched as Docker containers.
+The tests are using [testcontainers-go][].
 
 ## Running tests
 
@@ -12,7 +12,7 @@ Execute the integration tests using the following command:
 
 `go run .`
 
-**_NOTE:_** The tests don't run on Windows. If you want to run the tests on Linux, you need to set the environment variable OTEL_EXPORTER_ENDPOINT=172.17.0.1:4318.
+**_NOTE:_** The tests don't run on Windows.
 
 ### Flags
 
@@ -29,3 +29,6 @@ Follow these steps to add a new integration test to the project:
 4. Create a `_test.go` file within the new test directory. This file should contain the Go code necessary to run the test and verify the data processing through the pipeline.
 
  _NOTE_: The tests run concurrently. Each Alloy instance must tag its data with a label that corresponds to its specific configuration. This ensures the correct data verification during the Go testing process.
+
+
+[testcontainers-go]: https://github.com/testcontainers/testcontainers-go
