@@ -167,10 +167,11 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 		Timestamps: true, // Should be forced to true so we can parse the original timestamp back out.
 	})
 
-	stream, err := req.Stream(ctx)
+	stream, err := req.Stream(context.Background())
 	if err != nil {
 		return err
 	}
+	defer stream.Close()
 
 	k8sServerVersion, err := t.opts.Client.Discovery().ServerVersion()
 	if err != nil {
@@ -207,7 +208,6 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 			rolledFileTicker := time.NewTicker(1 * time.Second)
 			defer func() {
 				rolledFileTicker.Stop()
-				_ = stream.Close()
 			}()
 			for {
 				select {
@@ -222,15 +222,12 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 					s := time.Since(last)
 					if s > avg*3 {
 						level.Debug(t.log).Log("msg", "have not seen a log line in 3x average time between lines, closing and re-opening tailer", "rolling_average", avg, "time_since_last", s)
+
+						cancel()
 						return
 					}
 				}
 			}
-		}()
-	} else {
-		go func() {
-			<-ctx.Done()
-			_ = stream.Close()
 		}()
 	}
 
