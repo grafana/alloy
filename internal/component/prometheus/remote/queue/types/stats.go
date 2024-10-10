@@ -6,6 +6,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// TODO @mattdurham separate this into more manageable chunks, and likely 3 stats series: series, metadata and new ones.
+
 type SerializerStats struct {
 	SeriesStored    int
 	MetadataStored  int
@@ -24,10 +26,10 @@ type PrometheusStats struct {
 	NetworkErrors                    prometheus.Counter
 	NetworkNewestOutTimeStampSeconds prometheus.Gauge
 
-	// Filequeue Stats
-	FilequeueInSeries                 prometheus.Counter
-	FilequeueNewestInTimeStampSeconds prometheus.Gauge
-	FilequeueErrors                   prometheus.Counter
+	// Serializer Stats
+	SerializerInSeries                 prometheus.Counter
+	SerializerNewestInTimeStampSeconds prometheus.Gauge
+	SerializerErrors                   prometheus.Counter
 
 	// Backwards compatibility metrics
 	SamplesTotal    prometheus.Counter
@@ -55,20 +57,20 @@ type PrometheusStats struct {
 
 func NewStats(namespace, subsystem string, registry prometheus.Registerer) *PrometheusStats {
 	s := &PrometheusStats{
-		FilequeueInSeries: prometheus.NewCounter(prometheus.CounterOpts{
+		SerializerInSeries: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "filequeue_incoming",
+			Name:      "serializer_incoming_signals",
 		}),
-		FilequeueNewestInTimeStampSeconds: prometheus.NewGauge(prometheus.GaugeOpts{
+		SerializerNewestInTimeStampSeconds: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "filequeue_incoming_timestamp_seconds",
+			Name:      "serializer_incoming_timestamp_seconds",
 		}),
-		FilequeueErrors: prometheus.NewGauge(prometheus.GaugeOpts{
+		SerializerErrors: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "filequeue_errors",
+			Name:      "serializer_errors",
 		}),
 		NetworkNewestOutTimeStampSeconds: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -175,28 +177,33 @@ func NewStats(namespace, subsystem string, registry prometheus.Registerer) *Prom
 		s.NetworkSeriesSent,
 		s.NetworkErrors,
 		s.NetworkNewestOutTimeStampSeconds,
-		s.FilequeueInSeries,
-		s.FilequeueErrors,
-		s.FilequeueNewestInTimeStampSeconds,
+		s.SerializerInSeries,
+		s.SerializerErrors,
+		s.SerializerNewestInTimeStampSeconds,
 	)
 	return s
 }
 
-func (s *PrometheusStats) BackwardsCompatibility(registry prometheus.Registerer) {
+func (s *PrometheusStats) SeriesBackwardsCompatibility(registry prometheus.Registerer) {
 	registry.MustRegister(
 		s.RemoteStorageDuration,
 		s.RemoteStorageInTimestamp,
 		s.RemoteStorageOutTimestamp,
 		s.SamplesTotal,
 		s.HistogramsTotal,
-		s.MetadataTotal,
 		s.FailedSamplesTotal,
 		s.FailedHistogramsTotal,
-		s.FailedMetadataTotal,
 		s.RetriedSamplesTotal,
 		s.RetriedHistogramsTotal,
-		s.RetriedMetadataTotal,
 		s.SentBytesTotal,
+	)
+}
+
+func (s *PrometheusStats) MetaBackwardsCompatibility(registry prometheus.Registerer) {
+	registry.MustRegister(
+		s.MetadataTotal,
+		s.FailedMetadataTotal,
+		s.RetriedMetadataTotal,
 		s.MetadataBytesTotal,
 	)
 }
@@ -212,6 +219,7 @@ func (s *PrometheusStats) UpdateNetwork(stats NetworkStats) {
 	// The newest timestamp is no always sent.
 	if stats.NewestTimestamp != 0 {
 		s.RemoteStorageOutTimestamp.Set(float64(stats.NewestTimestamp))
+		s.NetworkNewestOutTimeStampSeconds.Set(float64(stats.NewestTimestamp))
 	}
 
 	s.SamplesTotal.Add(float64(stats.Series.SeriesSent))
@@ -230,13 +238,15 @@ func (s *PrometheusStats) UpdateNetwork(stats NetworkStats) {
 	s.SentBytesTotal.Add(float64(stats.SeriesBytes))
 }
 
-func (s *PrometheusStats) UpdateFileQueue(stats SerializerStats) {
-	s.FilequeueInSeries.Add(float64(stats.SeriesStored))
-	s.FilequeueErrors.Add(float64(stats.Errors))
+func (s *PrometheusStats) UpdateSerializer(stats SerializerStats) {
+	s.SerializerInSeries.Add(float64(stats.SeriesStored))
+	s.SerializerInSeries.Add(float64(stats.MetadataStored))
+	s.SerializerErrors.Add(float64(stats.Errors))
 	if stats.NewestTimestamp != 0 {
-		s.FilequeueNewestInTimeStampSeconds.Set(float64(stats.NewestTimestamp))
+		s.SerializerNewestInTimeStampSeconds.Set(float64(stats.NewestTimestamp))
 		s.RemoteStorageInTimestamp.Set(float64(stats.NewestTimestamp))
 	}
+
 }
 
 type NetworkStats struct {

@@ -2,6 +2,7 @@ package serialization
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-kit/log"
@@ -99,10 +100,13 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 
 // UpdateMetadata updates metadata.
 func (a *appender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (_ storage.SeriesRef, _ error) {
+	if !l.Has("__name__") {
+		return ref, fmt.Errorf("missing __name__ label for metadata")
+	}
 	ts := types.GetTimeSeriesFromPool()
 	// We are going to handle converting some strings to hopefully not reused label names. TimeSeriesBinary has a lot of work
 	// to ensure its efficient it makes sense to encode metadata into it.
-	combinedLabels := l.Copy()
+	combinedLabels := labels.EmptyLabels()
 	combinedLabels = append(combinedLabels, labels.Label{
 		Name:  types.MetaType,
 		Value: string(m.Type),
@@ -114,6 +118,11 @@ func (a *appender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m meta
 	combinedLabels = append(combinedLabels, labels.Label{
 		Name:  types.MetaUnit,
 		Value: m.Unit,
+	})
+	// We ONLY want __name__ from labels
+	combinedLabels = append(combinedLabels, labels.Label{
+		Name:  "__name__",
+		Value: l.Get("__name__"),
 	})
 	ts.Labels = combinedLabels
 	err := a.s.SendMetadata(a.ctx, ts)
