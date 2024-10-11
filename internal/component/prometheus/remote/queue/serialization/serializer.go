@@ -192,7 +192,7 @@ func (s *serializer) flushToDisk(ctx actor.Context) error {
 	out := snappy.Encode(buf)
 	meta := map[string]string{
 		// product.signal_type.schema.version
-		"version":       "alloy.metrics.queue.v1",
+		"version":       types.AlloyFileVersion,
 		"compression":   "snappy",
 		"series_count":  strconv.Itoa(len(group.Series)),
 		"meta_count":    strconv.Itoa(len(group.Metadata)),

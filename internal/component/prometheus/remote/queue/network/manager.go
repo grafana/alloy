@@ -22,10 +22,10 @@ type manager struct {
 	metaStats   func(types.NetworkStats)
 }
 
-// configCallback allows the config to be synchronous.
+// configCallback allows actors to notify via `done` channel when they're done processing the config `cc`. Useful when synchronous processing is required.
 type configCallback struct {
-	cc types.ConnectionConfig
-	ch chan struct{}
+	cc   types.ConnectionConfig
+	done chan struct{}
 }
 
 var _ types.NetworkClient = (*manager)(nil)
@@ -76,16 +76,16 @@ func (s *manager) SendMetadata(ctx context.Context, data *types.TimeSeriesBinary
 }
 
 func (s *manager) UpdateConfig(ctx context.Context, cc types.ConnectionConfig) error {
-	ch := make(chan struct{})
-	defer close(ch)
+	done := make(chan struct{})
+	defer close(done)
 	err := s.configInbox.Send(ctx, configCallback{
-		cc: cc,
-		ch: ch,
+		cc:   cc,
+		done: done,
 	})
 	if err != nil {
 		return err
 	}
-	<-ch
+	<-done
 	return nil
 }
 
@@ -99,7 +99,7 @@ func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
 		}
 		s.updateConfig(cfg.cc)
 		// Notify the caller we have applied the config.
-		cfg.ch <- struct{}{}
+		cfg.done <- struct{}{}
 		return actor.WorkerContinue
 	default:
 	}
@@ -134,7 +134,7 @@ func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
 		}
 		s.updateConfig(cfg.cc)
 		// Notify the caller we have applied the config.
-		cfg.ch <- struct{}{}
+		cfg.done <- struct{}{}
 		return actor.WorkerContinue
 	}
 }

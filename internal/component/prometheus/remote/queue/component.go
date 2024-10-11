@@ -96,6 +96,7 @@ func (s *Queue) Update(args component.Arguments) error {
 	}
 	s.args = newArgs
 	// TODO @mattdurham need to cycle through the endpoints figuring out what changed instead of this global stop and start.
+	// This will cause data in the endpoints and their children to be lost.
 	if len(s.endpoints) > 0 {
 		for _, ep := range s.endpoints {
 			ep.Stop()

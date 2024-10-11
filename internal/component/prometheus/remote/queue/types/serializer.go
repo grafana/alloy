@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const AlloyFileVersion = "alloy.metrics.queue.v1"
+
 type SerializerConfig struct {
 	// MaxSignalsInBatch controls what the max batch size is.
 	MaxSignalsInBatch uint32

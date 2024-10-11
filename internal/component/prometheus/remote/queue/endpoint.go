@@ -47,7 +47,6 @@ func (ep *endpoint) Stop() {
 	// Stop in order of data flow. This prevents errors around stopped mailboxes that can pop up.
 	ep.serializer.Stop()
 	ep.network.Stop()
-	ep.network.Stop()
 	ep.self.Stop()
 }
 
@@ -84,7 +83,7 @@ func (ep *endpoint) deserializeAndSend(ctx context.Context, meta map[string]stri
 		level.Error(ep.log).Log("msg", "version not found for deserialization")
 		return
 	}
-	if version != "alloy.metrics.queue.v1" {
+	if version != types.AlloyFileVersion {
 		level.Error(ep.log).Log("msg", "invalid version found for deserialization", "version", version)
 		return
 	}
