@@ -38,11 +38,12 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 	}
 	s.opts.OnStateChange(Exports{Receiver: s})
 	err := s.createEndpoints()
-	for _, ep := range s.endpoints {
-		ep.Start()
-	}
 	if err != nil {
 		return nil, err
+	}
+
+	for _, ep := range s.endpoints {
+		ep.Start()
 	}
 	return s, nil
 }
@@ -95,7 +96,6 @@ func (s *Queue) Update(args component.Arguments) error {
 	}
 	s.args = newArgs
 	// TODO @mattdurham need to cycle through the endpoints figuring out what changed instead of this global stop and start.
-	// TODO @mattdurham is there an issue/race condition with stopping these while the appender is still going on.
 	if len(s.endpoints) > 0 {
 		for _, ep := range s.endpoints {
 			ep.Stop()

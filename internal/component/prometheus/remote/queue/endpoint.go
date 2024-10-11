@@ -44,6 +44,7 @@ func (ep *endpoint) Start() {
 }
 
 func (ep *endpoint) Stop() {
+	// Stop in order of data flow. This prevents errors around stopped mailboxes that can pop up.
 	ep.serializer.Stop()
 	ep.network.Stop()
 	ep.network.Stop()

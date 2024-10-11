@@ -65,32 +65,31 @@ basic_auth` refers to a `basic_auth` block defined inside an
 ### serialization block
 
 The `serialization` block describes how often and at what limits to write to disk. Serialization settings
-are shared for each `endpoint.`
+are shared for each `endpoint`.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`max_signals_to_batch` | `uint` | The maximum number of signals before they are batched to disk. | `10,000` | no
-`batch_frequency` | `duration` | How often to batch signals to disk if `max_signals_to_batch` is not reached. | no
+Name | Type | Description                                                                   | Default | Required
+---- | ---- |-------------------------------------------------------------------------------|---------| --------
+`max_signals_to_batch` | `uint` | The maximum number of signals before they are batched to disk.                | `10000` | no
+`batch_frequency` | `duration` | How often to batch signals to disk if `max_signals_to_batch` is not reached. | `5s`     | no
 
 
 ### endpoint block
 
 The `endpoint` block describes a single location to send metrics to. Multiple
 `endpoint` blocks can be provided to send metrics to multiple locations. Each
-`endpoint` will have its own WAL folder
+`endpoint` will have its own WAL folder.
 
 The following arguments are supported:
 
 Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
+---- | ---- | ----------- | ------ | --------
 `url` | `string` | Full URL to send metrics to. | | yes
-`name` | `string` | Optional name to identify the endpoint in metrics. | | no
 `write_timeout` | `duration` | Timeout for requests made to the URL. | `"30s"` | no
 `retry_backoff` | `duration` | How often to wait between retries. | `1s` | no
 `max_retry_backoff_attempts` | Maximum number of retries before dropping the batch. | `1s` | no
-`batch_count` | `uint` | How many series to queue in each queue. | `1,000` | no
+`batch_count` | `uint` | How many series to queue in each queue. | `1000` | no
 `flush_frequency` | `duration` | How often to wait until sending if `batch_count` is not trigger. | `1s` | no
 `queue_count` | `uint` | How many concurrent batches to write. | 10 | no
 `external_labels` | `map(string)` | Labels to add to metrics sent over the network. | | no
@@ -116,7 +115,7 @@ values.
 
 ## Debug information
 
-`prometheus.remote_write` does not expose any component-specific debug
+`prometheus.remote.queue` does not expose any component-specific debug
 information.
 
 ## Debug metrics
@@ -200,7 +199,7 @@ Metrics that are new to `prometheus.remote.write`. These are highly subject to c
 
 ## Examples
 
-The following examples show you how to create `prometheus.remote_write` components that send metrics to different destinations.
+The following examples show you how to create `prometheus.remote.queue` components that send metrics to different destinations.
 
 ### Send metrics to a local Mimir instance
 
@@ -220,7 +219,7 @@ prometheus.remote.queue "staging" {
 }
 
 // Configure a prometheus.scrape component to send metrics to
-// prometheus.remote_write component.
+// prometheus.remote.queue component.
 prometheus.scrape "demo" {
   targets = [
     // Collect metrics from the default HTTP listen address.
@@ -230,8 +229,6 @@ prometheus.scrape "demo" {
 }
 
 ```
-
-## TODO Metadata settings
 
 ## Technical details
 
@@ -263,6 +260,8 @@ A higher `queue_count` allows more concurrent writes, and `batch_size` allows mo
 This can allow greater throughput at the cost of more memory on both {{< param "PRODUCT_NAME" >}} and the endpoint.
 The defaults are suitable for most common usages. 
 
+<!-- START GENERATED COMPATIBLE COMPONENTS -->
+
 ## Compatible components
 
 `prometheus.remote.queue` has exports that can be consumed by the following components:
@@ -280,17 +279,3 @@ Refer to the linked documentation for more details.
 [WAL block]: #wal-block
 [Stop]: ../../../../set-up/run/
 [run]: ../../../cli/run/
-<!-- START GENERATED COMPATIBLE COMPONENTS -->
-
-## Compatible components
-
-`prometheus.remote.queue` has exports that can be consumed by the following components:
-
-- Components that consume [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-consumers)
-
-{{< admonition type="note" >}}
-Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
-Refer to the linked documentation for more details.
-{{< /admonition >}}
-
-<!-- END GENERATED COMPATIBLE COMPONENTS -->
