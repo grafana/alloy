@@ -70,9 +70,9 @@ var testConfigs = map[string]string{
 		forward_to = []
 		allowlist = [".*foobar.*"]
 	`,
-	"exclude_generic": `
+	"include_generic": `
 		forward_to = []
-		exclude_generic = true
+		include_generic = true
 	`,
 	"custom_gitleaks_file_simple": `
 		forward_to = []
@@ -230,14 +230,14 @@ var tt = []struct {
 		testConfigs["default"],
 		"",
 		testLogs["simple_secret_generic"].log,
-		replaceSecrets(testLogs["simple_secret_generic"].log, testLogs["simple_secret_generic"].secrets, true, false, defaultRedactionString),
+		testLogs["simple_secret_generic"].log, // Generic secret is excluded so no redaction expected
 	},
 	{
-		"exclude_generic",
-		testConfigs["exclude_generic"],
+		"include_generic",
+		testConfigs["include_generic"],
 		"",
 		testLogs["simple_secret_generic"].log,
-		testLogs["simple_secret_generic"].log, // Generic secret is excluded so no redaction expected
+		replaceSecrets(testLogs["simple_secret_generic"].log, testLogs["simple_secret_generic"].secrets, true, false, defaultRedactionString),
 	},
 	{
 		"custom_gitleaks_file_simple",
