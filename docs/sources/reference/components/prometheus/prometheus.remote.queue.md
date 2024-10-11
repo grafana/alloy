@@ -91,7 +91,7 @@ Name | Type | Description                                                      |
 `max_retry_attempts` | Maximum number of retries before dropping the batch. | `0`                                                              | no
 `batch_count` | `uint` | How many series to queue in each queue.                          | `1000` | no
 `flush_frequency` | `duration` | How often to wait until sending if `batch_count` is not trigger. | `1s` | no
-`queue_count` | `uint` | How many concurrent batches to write.                            | 10 | no
+`parallelism` | `uint` | How many parallel batches to write.                              | 10 | no
 `external_labels` | `map(string)` | Labels to add to metrics sent over the network.                  | | no
 
 ### basic_auth block

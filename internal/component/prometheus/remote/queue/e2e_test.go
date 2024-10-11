@@ -367,7 +367,7 @@ func newComponent(t *testing.T, l *logging.Logger, url string, exp chan Exports,
 			MaxRetryAttempts: 1,
 			BatchCount:       50,
 			FlushFrequency:   1 * time.Second,
-			QueueCount:       1,
+			Parallelism:      1,
 		}},
 	})
 }

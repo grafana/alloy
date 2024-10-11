@@ -50,7 +50,7 @@ func defaultEndpointConfig() EndpointConfig {
 		MaxRetryAttempts: 0,
 		BatchCount:       1_000,
 		FlushFrequency:   1 * time.Second,
-		QueueCount:       4,
+		Parallelism:      4,
 	}
 }
 
@@ -86,7 +86,7 @@ type EndpointConfig struct {
 	// How long to wait before sending regardless of batch count.
 	FlushFrequency time.Duration `alloy:"flush_frequency,attr,optional"`
 	// How many concurrent queues to have.
-	QueueCount     uint              `alloy:"queue_count,attr,optional"`
+	Parallelism    uint              `alloy:"parallelism,attr,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
 }
 
@@ -102,7 +102,7 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		BatchCount:       cc.BatchCount,
 		FlushFrequency:   cc.FlushFrequency,
 		ExternalLabels:   cc.ExternalLabels,
-		Connections:      cc.QueueCount,
+		Connections:      cc.Parallelism,
 	}
 	if cc.BasicAuth != nil {
 		tcc.BasicAuth = &types.BasicAuth{

@@ -105,7 +105,7 @@ func newComponentBenchmark(t *testing.B, l log.Logger, url string, exp chan Expo
 			MaxRetryAttempts: 0,
 			BatchCount:       50,
 			FlushFrequency:   1 * time.Second,
-			QueueCount:       1,
+			Parallelism:      1,
 		}},
 	})
 }
