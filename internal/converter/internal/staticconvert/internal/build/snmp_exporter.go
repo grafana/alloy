@@ -25,6 +25,9 @@ func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
 		target["auth"] = t.Auth
 		target["walk_params"] = t.WalkParams
 		target["snmp_context"] = t.SNMPContext
+		for k, v := range t.Labels {
+			target[k] = v
+		}
 		targets = append(targets, target)
 	}
 
