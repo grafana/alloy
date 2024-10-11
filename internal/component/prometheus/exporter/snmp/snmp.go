@@ -45,6 +45,10 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 
 	for _, tgt := range snmpTargets {
 		target := make(discovery.Target)
+		// Set extra labels first, meaning that any other labels will override
+		for k, v := range tgt.Labels {
+			target[k] = v
+		}
 		for k, v := range baseTarget {
 			target[k] = v
 		}
