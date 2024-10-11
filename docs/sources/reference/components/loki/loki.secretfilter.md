@@ -51,7 +51,7 @@ The `types` argument is a map of secret types to look for. The values are used a
 
 The `redact_with` argument is a string that can use variables such as `$SECRET_NAME` (replaced with the matching secret type) and `$SECRET_HASH`(replaced with the sha1 hash of the secret).
 
-The `include_generic` argument is a boolean that includes the generic API key rule in the Gitleaks configuration file if set to `true`. It is disabled by default because it can generate false positives.
+The `include_generic` argument is a boolean that includes the generic API key rule in the Gitleaks configuration file if set to `true`. It's disabled by default because it can generate false positives.
 
 The `allowlist` argument is a map of regular expressions to allow matching secrets.
 A secret will not be redacted if it matches any of the regular expressions. The allowlist in the Gitleaks configuration file is also applied.
