@@ -9,7 +9,6 @@ import (
 type Arguments struct {
 	Join            []discovery.Target `alloy:"join,attr,optional"`
 	RefreshInterval time.Duration      `alloy:"refresh_interval,attr,optional"`
-	CgroupIDRegex   string             `alloy:"cgroup_id_regex,attr,optional"`
 	DiscoverConfig  DiscoverConfig     `alloy:"discover_config,block,optional"`
 }
 
@@ -20,7 +19,7 @@ type DiscoverConfig struct {
 	Username    bool `alloy:"username,attr,optional"`
 	UID         bool `alloy:"uid,attr,optional"`
 	ContainerID bool `alloy:"container_id,attr,optional"`
-	CgroupID    bool `alloy:"cgroup_id,attr,optional"`
+	CgroupPath  bool `alloy:"cgroup_path,attr,optional"`
 }
 
 var DefaultConfig = Arguments{
@@ -31,7 +30,7 @@ var DefaultConfig = Arguments{
 		Exe:         true,
 		Commandline: true,
 		ContainerID: true,
-		CgroupID:    true,
+		CgroupPath:  true,
 	},
 }
 

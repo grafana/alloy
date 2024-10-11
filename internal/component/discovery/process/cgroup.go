@@ -5,22 +5,22 @@ package process
 import (
 	"bufio"
 	"io"
-	"regexp"
+	"strings"
 )
 
-func getIDFromCGroup(cgroup io.Reader, regexp *regexp.Regexp) string {
-	if regexp == nil {
-		return ""
-	}
-
+// getPathFromCGroup fetches cgroup path(s) from process.
+// In the case of cgroups v2 (unified), there will be only
+// one path and function returns that path. In the case
+// cgroups v1, there will be one path for each controller.
+// The function will join all the paths using `|` and
+// returns as one string. Users can use relabel component
+// to retrieve the path that they are interested.
+func getPathFromCGroup(cgroup io.Reader) string {
+	var paths []string
 	scanner := bufio.NewScanner(cgroup)
 	for scanner.Scan() {
 		line := scanner.Bytes()
-		matches := regexp.FindSubmatch(line)
-		if len(matches) <= 1 {
-			continue
-		}
-		return string(matches[1])
+		paths = append(paths, string(line))
 	}
-	return ""
+	return strings.Join(paths, "|")
 }

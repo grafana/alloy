@@ -4,7 +4,6 @@ package process
 
 import (
 	"context"
-	"regexp"
 	"time"
 
 	"github.com/go-kit/log"
@@ -27,37 +26,27 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
-	var cgroupIDRegexp *regexp.Regexp
-	var err error
-	if args.CgroupIDRegex != "" {
-		if cgroupIDRegexp, err = regexp.Compile(args.CgroupIDRegex); err != nil {
-			return nil, err
-		}
-	}
-
 	c := &Component{
-		l:              opts.Logger,
-		onStateChange:  opts.OnStateChange,
-		cgroupIDRegexp: cgroupIDRegexp,
-		argsUpdates:    make(chan Arguments),
-		args:           args,
+		l:             opts.Logger,
+		onStateChange: opts.OnStateChange,
+		argsUpdates:   make(chan Arguments),
+		args:          args,
 	}
 
 	return c, nil
 }
 
 type Component struct {
-	l              log.Logger
-	onStateChange  func(e component.Exports)
-	processes      []discovery.Target
-	cgroupIDRegexp *regexp.Regexp
-	argsUpdates    chan Arguments
-	args           Arguments
+	l             log.Logger
+	onStateChange func(e component.Exports)
+	processes     []discovery.Target
+	argsUpdates   chan Arguments
+	args          Arguments
 }
 
 func (c *Component) Run(ctx context.Context) error {
 	doDiscover := func() error {
-		processes, err := discover(c.l, &c.args.DiscoverConfig, c.cgroupIDRegexp)
+		processes, err := discover(c.l, &c.args.DiscoverConfig)
 		if err != nil {
 			return err
 		}
@@ -91,15 +80,6 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	a := args.(Arguments)
 	c.argsUpdates <- a
-
-	// Compile updated regexp
-	if a.CgroupIDRegex != "" {
-		var err error
-		if c.cgroupIDRegexp, err = regexp.Compile(a.CgroupIDRegex); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 

@@ -29,7 +29,6 @@ The following arguments are supported:
 | Name               | Type                | Description                                                                              | Default | Required |
 |--------------------|---------------------|------------------------------------------------------------------------------------------|---------|----------|
 | `join`             | `list(map(string))` | Join external targets to discovered processes targets based on `__container_id__` label. |         | no       |
-| `cgroup_id_regex`  | `string`            | Regular expression that captures only one group that will used as cgroup ID of process.  |         | no       |
 | `refresh_interval` | `duration`          | How often to sync targets.                                                               | "60s"   | no       |
 
 ### Targets joining
@@ -88,11 +87,6 @@ The resulting targets are:
 ]
 ```
 
-### Cgroup ID regex
-
-The `cgroup_id_regex` argument allows you to capture the cgroup ID of the process managed by other resource managers like SLURM or Libvirt.
-When it is enabled, you can export the cgroup ID as the `__meta_process_cgroup_id` field.
-
 ## Blocks
 
 The following blocks are supported inside the definition of
@@ -117,7 +111,7 @@ The following arguments are supported:
 | `commandline`  | `bool` | A flag to enable discovering `__meta_process_commandline` label. | true    | no       |
 | `uid`          | `bool` | A flag to enable discovering `__meta_process_uid`: label.        | true    | no       |
 | `username`     | `bool` | A flag to enable discovering `__meta_process_username`: label.   | true    | no       |
-| `cgroup_id`    | `bool` | A flag to enable discovering `__meta_cgroup_id__` label.         | true    | no       |
+| `cgroup_path`  | `bool` | A flag to enable discovering `__meta_cgroup_path__` label.       | true    | no       |
 | `container_id` | `bool` | A flag to enable discovering `__container_id__` label.           | true    | no       |
 
 ## Exported fields
@@ -136,7 +130,7 @@ Each target includes the following labels:
 * `__meta_process_commandline`: The process command line. Taken from `/proc/<pid>/cmdline`.
 * `__meta_process_uid`: The process UID. Taken from `/proc/<pid>/status`.
 * `__meta_process_username`: The process username. Taken from `__meta_process_uid` and `os/user/LookupID`.
-* `__meta_cgroup_id`: The cgroup ID under which the process is running. This will be set only when `cgroup_regex_id` argument is passed and valid.
+* `__meta_cgroup_path`: The cgroup path under which the process is running. In the case of cgroups v1, this label includes all the controllers paths delimited by `|`.
 * `__container_id__`: The container ID. Taken from `/proc/<pid>/cgroup`. If the process is not running in a container, this label is not set.
 
 ## Component health
@@ -165,25 +159,7 @@ discovery.process "all" {
     commandline = true
     username = true
     uid = true
-    container_id = true
-  }
-}
-
-```
-
-### Example discovering processes on a hypervisor managed by libvirt
-
-```alloy
-discovery.process "all" {
-  cgroup_id_regex = "^.*/(?:.+?)instance-([0-9]+)(?:.*$)"
-  refresh_interval = "60s"
-  discover_config {
-    cwd = true
-    exe = true
-    commandline = true
-    username = true
-    uid = true
-    cgroup_id = true
+    cgroup_path = true
     container_id = true
   }
 }

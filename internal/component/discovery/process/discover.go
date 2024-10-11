@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/user"
 	"path"
-	"regexp"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -24,7 +23,7 @@ const (
 	labelProcessCommandline = "__meta_process_commandline"
 	labelProcessUsername    = "__meta_process_username"
 	labelProcessUID         = "__meta_process_uid"
-	labelProcessCgroupID    = "__meta_process_cgroup_id"
+	labelProcessCgroupPath  = "__meta_process_cgroup_path"
 	labelProcessContainerID = "__container_id__"
 )
 
@@ -34,13 +33,13 @@ type process struct {
 	cwd         string
 	commandline string
 	containerID string
-	cgroupID    string
+	cgroupPath  string
 	username    string
 	uid         string
 }
 
 func (p process) String() string {
-	return fmt.Sprintf("pid=%s exe=%s cwd=%s commandline=%s cgroupID=%s containerID=%s", p.pid, p.exe, p.cwd, p.commandline, p.cgroupID, p.containerID)
+	return fmt.Sprintf("pid=%s exe=%s cwd=%s commandline=%s cgrouppath=%s containerID=%s", p.pid, p.exe, p.cwd, p.commandline, p.cgroupPath, p.containerID)
 }
 
 func convertProcesses(ps []process) []discovery.Target {
@@ -53,7 +52,7 @@ func convertProcesses(ps []process) []discovery.Target {
 }
 
 func convertProcess(p process) discovery.Target {
-	t := make(discovery.Target, 5)
+	t := make(discovery.Target, 8)
 	t[labelProcessID] = p.pid
 	if p.exe != "" {
 		t[labelProcessExe] = p.exe
@@ -73,13 +72,13 @@ func convertProcess(p process) discovery.Target {
 	if p.uid != "" {
 		t[labelProcessUID] = p.uid
 	}
-	if p.cgroupID != "" {
-		t[labelProcessCgroupID] = p.cgroupID
+	if p.cgroupPath != "" {
+		t[labelProcessCgroupPath] = p.cgroupPath
 	}
 	return t
 }
 
-func discover(l log.Logger, cfg *DiscoverConfig, cgroupIDRegexp *regexp.Regexp) ([]process, error) {
+func discover(l log.Logger, cfg *DiscoverConfig) ([]process, error) {
 	processes, err := gopsutil.Processes()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list processes: %w", err)
@@ -97,7 +96,7 @@ func discover(l log.Logger, cfg *DiscoverConfig, cgroupIDRegexp *regexp.Regexp) 
 	for _, p := range processes {
 		spid := fmt.Sprintf("%d", p.Pid)
 		var (
-			exe, cwd, commandline, containerID, cgroupID, username, uid string
+			exe, cwd, commandline, containerID, cgroupPath, username, uid string
 		)
 		if cfg.Exe {
 			exe, err = p.Exe()
@@ -143,8 +142,8 @@ func discover(l log.Logger, cfg *DiscoverConfig, cgroupIDRegexp *regexp.Regexp) 
 				continue
 			}
 		}
-		if cfg.CgroupID && cgroupIDRegexp != nil {
-			cgroupID, err = getLinuxProcessCgroupID(spid, cgroupIDRegexp)
+		if cfg.CgroupPath {
+			cgroupPath, err = getLinuxProcessCgroupPath(spid)
 			if err != nil {
 				loge(int(p.Pid), err)
 				continue
@@ -156,7 +155,7 @@ func discover(l log.Logger, cfg *DiscoverConfig, cgroupIDRegexp *regexp.Regexp) 
 			cwd:         cwd,
 			commandline: commandline,
 			containerID: containerID,
-			cgroupID:    cgroupID,
+			cgroupPath:  cgroupPath,
 			username:    username,
 			uid:         uid,
 		})
@@ -179,14 +178,14 @@ func getLinuxProcessContainerID(pid string) (string, error) {
 	return "", nil
 }
 
-func getLinuxProcessCgroupID(pid string, regexp *regexp.Regexp) (string, error) {
+func getLinuxProcessCgroupPath(pid string) (string, error) {
 	cgroup, err := os.Open(path.Join("/proc", pid, "cgroup"))
 	if err != nil {
 		return "", err
 	}
 	defer cgroup.Close()
-	if cgroupID := getIDFromCGroup(cgroup, regexp); cgroupID != "" {
-		return cgroupID, nil
+	if cgroupPath := getPathFromCGroup(cgroup); cgroupPath != "" {
+		return cgroupPath, nil
 	}
 
 	return "", nil
