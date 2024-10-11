@@ -159,13 +159,13 @@ func TestRetryBounded(t *testing.T) {
 	defer cncl()
 
 	cc := types.ConnectionConfig{
-		URL:                     svr.URL,
-		Timeout:                 1 * time.Second,
-		BatchCount:              1,
-		FlushFrequency:          1 * time.Second,
-		RetryBackoff:            100 * time.Millisecond,
-		MaxRetryBackoffAttempts: 1,
-		Connections:             1,
+		URL:              svr.URL,
+		Timeout:          1 * time.Second,
+		BatchCount:       1,
+		FlushFrequency:   1 * time.Second,
+		RetryBackoff:     100 * time.Millisecond,
+		MaxRetryAttempts: 1,
+		Connections:      1,
 	}
 
 	logger := log.NewNopLogger()
@@ -197,13 +197,13 @@ func TestRecoverable(t *testing.T) {
 	defer cncl()
 
 	cc := types.ConnectionConfig{
-		URL:                     svr.URL,
-		Timeout:                 1 * time.Second,
-		BatchCount:              1,
-		FlushFrequency:          1 * time.Second,
-		RetryBackoff:            100 * time.Millisecond,
-		MaxRetryBackoffAttempts: 1,
-		Connections:             1,
+		URL:              svr.URL,
+		Timeout:          1 * time.Second,
+		BatchCount:       1,
+		FlushFrequency:   1 * time.Second,
+		RetryBackoff:     100 * time.Millisecond,
+		MaxRetryAttempts: 1,
+		Connections:      1,
 	}
 
 	logger := log.NewNopLogger()
@@ -238,13 +238,13 @@ func TestNonRecoverable(t *testing.T) {
 	defer cncl()
 
 	cc := types.ConnectionConfig{
-		URL:                     svr.URL,
-		Timeout:                 1 * time.Second,
-		BatchCount:              1,
-		FlushFrequency:          1 * time.Second,
-		RetryBackoff:            100 * time.Millisecond,
-		MaxRetryBackoffAttempts: 1,
-		Connections:             1,
+		URL:              svr.URL,
+		Timeout:          1 * time.Second,
+		BatchCount:       1,
+		FlushFrequency:   1 * time.Second,
+		RetryBackoff:     100 * time.Millisecond,
+		MaxRetryAttempts: 1,
+		Connections:      1,
 	}
 
 	logger := log.NewNopLogger()

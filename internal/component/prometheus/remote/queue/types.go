@@ -45,12 +45,12 @@ func (rc *Arguments) SetToDefault() {
 
 func defaultEndpointConfig() EndpointConfig {
 	return EndpointConfig{
-		Timeout:                 30 * time.Second,
-		RetryBackoff:            1 * time.Second,
-		MaxRetryBackoffAttempts: 0,
-		BatchCount:              1_000,
-		FlushFrequency:          1 * time.Second,
-		QueueCount:              4,
+		Timeout:          30 * time.Second,
+		RetryBackoff:     1 * time.Second,
+		MaxRetryAttempts: 0,
+		BatchCount:       1_000,
+		FlushFrequency:   1 * time.Second,
+		QueueCount:       4,
 	}
 }
 
@@ -80,7 +80,7 @@ type EndpointConfig struct {
 	// How long to wait between retries.
 	RetryBackoff time.Duration `alloy:"retry_backoff,attr,optional"`
 	// Maximum number of retries.
-	MaxRetryBackoffAttempts uint `alloy:"max_retry_backoff_attempts,attr,optional"`
+	MaxRetryAttempts uint `alloy:"max_retry_attempts,attr,optional"`
 	// How many series to write at a time.
 	BatchCount int `alloy:"batch_count,attr,optional"`
 	// How long to wait before sending regardless of batch count.
@@ -94,15 +94,15 @@ var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
 
 func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 	tcc := types.ConnectionConfig{
-		URL:                     cc.URL,
-		UserAgent:               UserAgent,
-		Timeout:                 cc.Timeout,
-		RetryBackoff:            cc.RetryBackoff,
-		MaxRetryBackoffAttempts: cc.MaxRetryBackoffAttempts,
-		BatchCount:              cc.BatchCount,
-		FlushFrequency:          cc.FlushFrequency,
-		ExternalLabels:          cc.ExternalLabels,
-		Connections:             cc.QueueCount,
+		URL:              cc.URL,
+		UserAgent:        UserAgent,
+		Timeout:          cc.Timeout,
+		RetryBackoff:     cc.RetryBackoff,
+		MaxRetryAttempts: cc.MaxRetryAttempts,
+		BatchCount:       cc.BatchCount,
+		FlushFrequency:   cc.FlushFrequency,
+		ExternalLabels:   cc.ExternalLabels,
+		Connections:      cc.QueueCount,
 	}
 	if cc.BasicAuth != nil {
 		tcc.BasicAuth = &types.BasicAuth{

@@ -98,14 +98,14 @@ func newComponentBenchmark(t *testing.B, l log.Logger, url string, exp chan Expo
 			BatchFrequency:    1 * time.Second,
 		},
 		Endpoints: []EndpointConfig{{
-			Name:                    "test",
-			URL:                     url,
-			Timeout:                 10 * time.Second,
-			RetryBackoff:            1 * time.Second,
-			MaxRetryBackoffAttempts: 0,
-			BatchCount:              50,
-			FlushFrequency:          1 * time.Second,
-			QueueCount:              1,
+			Name:             "test",
+			URL:              url,
+			Timeout:          10 * time.Second,
+			RetryBackoff:     1 * time.Second,
+			MaxRetryAttempts: 0,
+			BatchCount:       50,
+			FlushFrequency:   1 * time.Second,
+			QueueCount:       1,
 		}},
 	})
 }

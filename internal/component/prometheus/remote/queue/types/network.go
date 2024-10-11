@@ -16,16 +16,16 @@ type NetworkClient interface {
 	UpdateConfig(ctx context.Context, cfg ConnectionConfig) error
 }
 type ConnectionConfig struct {
-	URL                     string
-	BasicAuth               *BasicAuth
-	UserAgent               string
-	Timeout                 time.Duration
-	RetryBackoff            time.Duration
-	MaxRetryBackoffAttempts uint
-	BatchCount              int
-	FlushFrequency          time.Duration
-	ExternalLabels          map[string]string
-	Connections             uint
+	URL              string
+	BasicAuth        *BasicAuth
+	UserAgent        string
+	Timeout          time.Duration
+	RetryBackoff     time.Duration
+	MaxRetryAttempts uint
+	BatchCount       int
+	FlushFrequency   time.Duration
+	ExternalLabels   map[string]string
+	Connections      uint
 }
 
 type BasicAuth struct {

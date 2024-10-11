@@ -108,7 +108,7 @@ func (l *loop) DoWork(ctx actor.Context) actor.WorkerStatus {
 	}
 }
 
-// trySend is the core functionality for sending data to a endpoint. It will attempt retries as defined in MaxRetryBackoffAttempts.
+// trySend is the core functionality for sending data to a endpoint. It will attempt retries as defined in MaxRetryAttempts.
 func (l *loop) trySend(ctx context.Context) {
 	attempts := 0
 	for {
@@ -130,7 +130,7 @@ func (l *loop) trySend(ctx context.Context) {
 			return
 		}
 		attempts++
-		if attempts > int(l.cfg.MaxRetryBackoffAttempts) && l.cfg.MaxRetryBackoffAttempts > 0 {
+		if attempts > int(l.cfg.MaxRetryAttempts) && l.cfg.MaxRetryAttempts > 0 {
 			level.Debug(l.log).Log("msg", "max retry attempts reached", "attempts", attempts)
 			l.sendingCleanup()
 			return

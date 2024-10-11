@@ -50,7 +50,7 @@ The following blocks are supported inside the definition of
 
 Hierarchy | Block | Description | Required
 --------- | ----- | ----------- | --------
-serialization | [serialization][] | Configuration for serializing and writing to disk | no
+persistence | [persistence][] | Configuration for persistence | no
 endpoint | [endpoint][] | Location to send metrics to. | no
 endpoint > basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the endpoint. | no
 
@@ -60,11 +60,11 @@ basic_auth` refers to a `basic_auth` block defined inside an
 
 [endpoint]: #endpoint-block
 [basic_auth]: #basic_auth-block
-[serialization]: #serialization-block
+[persistence]: #persistence-block
 
-### serialization block
+### persistence block
 
-The `serialization` block describes how often and at what limits to write to disk. Serialization settings
+The `persistence` block describes how often and at what limits to write to disk. Persistence settings
 are shared for each `endpoint`.
 
 The following arguments are supported:
@@ -83,16 +83,16 @@ The `endpoint` block describes a single location to send metrics to. Multiple
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------ | --------
-`url` | `string` | Full URL to send metrics to. | | yes
-`write_timeout` | `duration` | Timeout for requests made to the URL. | `"30s"` | no
-`retry_backoff` | `duration` | How often to wait between retries. | `1s` | no
-`max_retry_backoff_attempts` | Maximum number of retries before dropping the batch. | `1s` | no
-`batch_count` | `uint` | How many series to queue in each queue. | `1000` | no
+Name | Type | Description                                                      | Default | Required
+---- | ---- |------------------------------------------------------------------| ------ | --------
+`url` | `string` | Full URL to send metrics to.                                     | | yes
+`write_timeout` | `duration` | Timeout for requests made to the URL.                            | `"30s"` | no
+`retry_backoff` | `duration` | How often to wait between retries.                               | `1s` | no
+`max_retry_attempts` | Maximum number of retries before dropping the batch. | `0`                                                              | no
+`batch_count` | `uint` | How many series to queue in each queue.                          | `1000` | no
 `flush_frequency` | `duration` | How often to wait until sending if `batch_count` is not trigger. | `1s` | no
-`queue_count` | `uint` | How many concurrent batches to write. | 10 | no
-`external_labels` | `map(string)` | Labels to add to metrics sent over the network. | | no
+`queue_count` | `uint` | How many concurrent batches to write.                            | 10 | no
+`external_labels` | `map(string)` | Labels to add to metrics sent over the network.                  | | no
 
 ### basic_auth block
 
