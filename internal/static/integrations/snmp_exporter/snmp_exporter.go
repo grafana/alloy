@@ -33,6 +33,7 @@ type SNMPTarget struct {
 	Auth        string `yaml:"auth"`
 	WalkParams  string `yaml:"walk_params,omitempty"`
 	SNMPContext string `yaml:"snmp_context,omitempty"`
+	Labels      map[string]string
 }
 
 // Config configures the SNMP integration.
@@ -191,6 +192,7 @@ func (i *Integration) ScrapeConfigs() []config.ScrapeConfig {
 	for _, target := range i.sh.cfg.SnmpTargets {
 		queryParams := url.Values{}
 		queryParams.Add("target", target.Target)
+		queryParams.Add("name", target.Name)
 		if target.Module != "" {
 			queryParams.Add("module", target.Module)
 		}

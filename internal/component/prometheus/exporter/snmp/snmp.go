@@ -3,6 +3,7 @@ package snmp
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -50,6 +51,7 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 
 		target["job"] = target["job"] + "/" + tgt.Name
 		target["__param_target"] = tgt.Target
+		target["__param_name"] = tgt.Name
 		if tgt.Module != "" {
 			target["__param_module"] = tgt.Module
 		}
@@ -71,12 +73,13 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 
 // SNMPTarget defines a target to be used by the exporter.
 type SNMPTarget struct {
-	Name        string `alloy:",label"`
-	Target      string `alloy:"address,attr"`
-	Module      string `alloy:"module,attr,optional"`
-	Auth        string `alloy:"auth,attr,optional"`
-	WalkParams  string `alloy:"walk_params,attr,optional"`
-	SNMPContext string `alloy:"snmp_context,attr,optional"`
+	Name        string            `alloy:",label"`
+	Target      string            `alloy:"address,attr"`
+	Module      string            `alloy:"module,attr,optional"`
+	Auth        string            `alloy:"auth,attr,optional"`
+	WalkParams  string            `alloy:"walk_params,attr,optional"`
+	SNMPContext string            `alloy:"snmp_context,attr,optional"`
+	Labels      map[string]string `alloy:"labels,attr,optional"`
 }
 
 type TargetBlock []SNMPTarget
@@ -92,6 +95,7 @@ func (t TargetBlock) Convert() []snmp_exporter.SNMPTarget {
 			Auth:        target.Auth,
 			WalkParams:  target.WalkParams,
 			SNMPContext: target.SNMPContext,
+			Labels:      target.Labels,
 		})
 	}
 	return targets
@@ -134,6 +138,22 @@ type Arguments struct {
 
 type TargetsList []map[string]string
 
+// target technically isnt required but its so overloaded within snmp I dont want it leaking.
+var ignoredLabels = []string{"name", "module", "auth", "walk_params", "snmp_context", "address", "__address__", "target"}
+
+func createUserLabels(t map[string]string) map[string]string {
+	// Need to create labels.
+	userLabels := make(map[string]string)
+	for k, v := range t {
+		// ignore the special labels
+		if slices.Contains(ignoredLabels, k) {
+			continue
+		}
+		userLabels[k] = v
+	}
+	return userLabels
+}
+
 func (t TargetsList) Convert() []snmp_exporter.SNMPTarget {
 	targets := make([]snmp_exporter.SNMPTarget, 0, len(t))
 	for _, target := range t {
@@ -145,6 +165,7 @@ func (t TargetsList) Convert() []snmp_exporter.SNMPTarget {
 			Auth:        target["auth"],
 			WalkParams:  target["walk_params"],
 			SNMPContext: target["snmp_context"],
+			Labels:      createUserLabels(target),
 		})
 	}
 	return targets
@@ -161,6 +182,7 @@ func (t TargetsList) convert() []SNMPTarget {
 			Auth:        target["auth"],
 			WalkParams:  target["walk_params"],
 			SNMPContext: target["snmp_context"],
+			Labels:      createUserLabels(target),
 		})
 	}
 	return targets

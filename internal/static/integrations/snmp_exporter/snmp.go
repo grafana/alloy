@@ -36,21 +36,21 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 	for _, target := range targets {
 		snmpTargets[target.Name] = target
 	}
-
-	var target string
-	targetName := query.Get("target")
-	if len(query["target"]) != 1 || targetName == "" {
+	address := query.Get("target")
+	if len(query["target"]) != 1 || address == "" {
 		http.Error(w, "'target' parameter must be specified once", http.StatusBadRequest)
 		return
 	}
 
-	t, ok := snmpTargets[targetName]
+	// We only started adding name recently so it may not exist, if it doesnt use target/address.
+	name := query.Get("name")
+	t, ok := snmpTargets[name]
 	if ok {
-		target = t.Target
-	} else {
-		target = targetName
+		address = t.Target
 	}
 
+	// These parameters are passed into the query if it is a known Target so no need to look them up in snmpTargets
+	// Labels are the only special case because encoding them could be painful.
 	moduleName := query.Get("module")
 	if len(query["module"]) > 1 {
 		http.Error(w, "'module' parameter must only be specified once", http.StatusBadRequest)
@@ -109,9 +109,9 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 			http.Error(w, fmt.Sprintf("Unknown walk_params '%s'", walkParams), http.StatusBadRequest)
 			return
 		}
-		logger = log.With(logger, "module", moduleName, "target", target, "walk_params", walkParams)
+		logger = log.With(logger, "module", moduleName, "address", address, "walk_params", walkParams)
 	} else {
-		logger = log.With(logger, "module", moduleName, "target", target)
+		logger = log.With(logger, "module", moduleName, "target", address)
 	}
 	var nmodules []*collector.NamedModule
 	nmodules = append(nmodules, collector.NewNamedModule(moduleName, module))
@@ -119,8 +119,16 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 
 	start := time.Now()
 	registry := prometheus.NewRegistry()
-	c := collector.New(r.Context(), target, authName, snmpContext, auth, nmodules, logger, NewSNMPMetrics(registry), concurrency, false)
-	registry.MustRegister(c)
+	var c *collector.Collector
+	if len(t.Labels) > 0 {
+		wrapped := prometheus.WrapRegistererWith(t.Labels, registry)
+		c = collector.New(r.Context(), address, authName, snmpContext, auth, nmodules, logger, NewSNMPMetrics(wrapped), concurrency, false)
+		wrapped.MustRegister(c)
+	} else {
+		c = collector.New(r.Context(), address, authName, snmpContext, auth, nmodules, logger, NewSNMPMetrics(registry), concurrency, false)
+		registry.MustRegister(c)
+	}
+
 	// Delegate http serving to Prometheus client library, which will call collector.Collect.
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
