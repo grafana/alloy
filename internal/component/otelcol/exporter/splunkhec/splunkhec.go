@@ -35,8 +35,6 @@ type Arguments struct {
 
 	// Splunk specific configuration settings
 	Splunk splunkhec_config.SplunkConf `alloy:"splunk,block"`
-	// OnlyMetadata bool                        `alloy:"only_metadata,attr,optional"`
-	// Hostname     string                      `alloy:"hostname,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
