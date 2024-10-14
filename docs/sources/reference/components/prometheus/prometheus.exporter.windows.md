@@ -158,8 +158,8 @@ NIC names must match the regular expression specified by `include` and must _not
 
 Name      | Type     | Description                                     | Default | Required
 ----------|----------|-------------------------------------------------|---------|---------
-`exclude` | `string` | Regular expression of physical disc to exclude. | `""`    | no
-`include` | `string` | Regular expression of physical disc to include. | `".*"`  | no
+`exclude` | `string` | Regular expression of physical disk to exclude. | `""`    | no
+`include` | `string` | Regular expression of physical disk to include. | `".*"`  | no
 
 ### printer block
 
