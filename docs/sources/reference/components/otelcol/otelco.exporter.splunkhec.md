@@ -1,0 +1,271 @@
+---
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.splunkhec/
+description: Learn about otelcol.exporter.splunkhec
+aliases:
+  - ../otelcol.exporter.splunkhec/ # /docs/alloy/latest/reference/components/otelcol.exporter.splunkhec/
+title: otelcol.exporter.splunkhec
+---
+
+
+<span class="badge docs-labels__stage docs-labels__item">Community</span>
+
+# otelcol.exporter.splunkhec
+
+{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+`otelcol.exporter.splunkhec` accepts metrics and traces telemetry data from other `otelcol` components and sends it to Splunk HEC.
+
+{{< admonition type="note" >}}
+`otelcol.exporter.splunkhec` is a wrapper over the upstream OpenTelemetry Collector `splunkhec` exporter from the `otelcol-contrib`  distribution.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
+
+You can specify multiple `otelcol.exporter.splunkhec` components by giving them different labels.
+
+## Usage
+
+```alloy
+otelcol.exporter.splunkhec "LABEL" {
+    splunk {
+        token = "your_splunk_token"
+    }
+    client {
+        endpoint = "http://splunk.yourdomain.com:8088"
+    }
+}
+```
+
+## Arguments
+
+The ``otelcol.exporter.splunkhec`` component does not support any arguments, and is configured
+fully through child blocks.
+
+## Blocks
+
+The following blocks are supported inside the definition of `otelcol.exporter.splunkhec`:
+
+Hierarchy                  | Block                         | Description                                                               | Required
+---------------------------|-------------------------------|---------------------------------------------------------------------------|---------
+splunk                     | [splunk][]                    | Configures the Splunk HEC exporter                                        | yes
+splunk->otel_to_hec_fields | [otel_to_hec_fields][]        | Configures mapping of Open Telemetry to HEC Fields                        | no
+splunk->telemetry          | [telemetry][]                 | Configure the exporters telemetry                                         | no
+splunk->heartbeat          | [heartbeat][]                 | Configure the exporters heartbeat settings                                | no
+client                     | [client][]                    | Configures the HTTP client used to send data to Splunk HEC.               | yes
+<!-- host_metadata        | [host_metadata][]    | Host metadata specific configuration.                                      | no -->
+<!-- retry_on_failure     | [retry_on_failure][] | Configures retry mechanism for failed requests.                            | no -->
+<!-- queue                | [queue][]            | Configures batching of data before sending.                                | no -->
+debug_metrics             | [debug_metrics][]              | Configures the metrics that this component generates to monitor its state. | no
+
+
+[splunk]: #splunk-block
+[otel_to_hec_fields]: #otel_to_hec_fields-block
+[telemetry]: #telemetry-block
+[heartbeat]: #heartbeat-block
+[client]: #client-block
+[tls]: #tls-block
+<!-- [retry_on_failure]: #retry_on_failure-block
+[queue]: #queue-block
+[debug_metrics]: #debug_metrics-block -->
+
+### splunk block
+
+The `splunk` block configures Splunk HEC specific settings.
+
+The following arguments are supported:
+
+Name                       | Type     | Description                                                     | Default                       | Required
+---------------------------|----------|-----------------------------------------------------------------|-------------------------------|---------
+`token`                    | `secret` | Splunk HEC Token                                                |                               | yes
+`log_data_enabled`         | `bool`   | Enable sending logs from the exporter                           | `true`                        | no
+`profiling_data_enabled`   | `bool`   | Enable sending profiling data from the exporter                 | `true`                        | no
+`source`                   | `string` | Splunk Source https://docs.splunk.com/Splexicon:Source          | `""`                          | no
+`source_type`              | `string` | Splunk Source Type https://docs.splunk.com/Splexicon:Sourcetype | `""`                          | no
+`index`                    | `string` | Splunk Index Name                                               | `""`                          | no
+`disable_compression`      | `bool`   | Disable GZip compression                                        | `false`                       | no
+`MaxContentLengthLogs`     | `int`    | Maximum log payload size in bytes                               | `2097152`                     | no
+`MaxContentLengthMetrics`  | `int`    | Maximum metric payload size in bytes                            | `2097152`                     | no
+`MaxContentLengthTraces`   | `int`    | Maximum trace payload size in bytes.                            | `2097152`                     | no
+`MaxEventSize`             | `int`    | Maximum event payload size in bytes.                            | `5242880`                     | no
+`splunk_app_name`          | `string` | Used to track telemetry for Splunks Apps by name                | `Alloy`                       | no
+`splunk_app_version`       | `string` | Used to track telemetry by App version                          | `""`                          | no
+`otel_to_hec_fields`       | `block`  | Creates a mapping from attributes to HEC fields                 | `null`                        | no
+`health_path`              | `string` | Path for the health API                                         | `/services/collector/health'` | no
+`health_check_enabled`     | `bool`   | Can be used to verify Splunk HEC health on exporter startup     | `true`                        | no
+`export_raw`               | `bool`   | Send only the logs body when targeting HEC raw endpoint         | `false`                       | no
+`use_multi_metrics_format` | `bool`   | Use multi metrics format to save space during ingestion.        | `false`                       | no
+`heartbeat`                | `block`  | Configuration to enable heartbeat                               | `false`                       | no
+`telemetry`                | `block`  | Configuation for splunk hec exporter telemetry                  | `null`                        | no
+
+#### otel_to_hec_fields block
+
+Name                       | Type     | Description                                                     | Default                       | Required
+---------------------------|----------|-----------------------------------------------------------------|-------------------------------|---------
+`severity_text`            | `string` | Maps severity text field to a specific hec field                |   `""`                        | no
+`severity_number`          | `string` | Maps severity number field to a specific hec field              |   `""`                        | no
+
+
+#### heartbeat block    
+
+Name                       | Type     | Description                                                     | Default                       | Required
+---------------------------|----------|-----------------------------------------------------------------|-------------------------------|---------
+`interval`                 | `int`    | Time interval for the heartbeat interval, in seconds            |   `0`                         | no
+`startup`                  | `bool`   | Send heartbeat events on exporter startup                       |   `false`                        | no
+
+
+#### telemetry block
+
+Name                       | Type                  | Description                                                     | Default                       | Required
+---------------------------|-----------------------|-----------------------------------------------------------------|-------------------------------|---------
+`enabled`                  | `bool`                | Enable telemetry inside the exporter                            |   `false`                     | no
+`override_metrics_names`   | `map[string]string`   | Override metrics for internal metrics in the exporter           |   `map[string]{}`             | no
+
+
+
+### client block
+
+The `client` block configures the HTTP client used by the component.
+
+The following arguments are supported:
+
+Name                      | Type       | Description                                                                 | Default | Required
+--------------------------|------------|-----------------------------------------------------------------------------|---------|---------
+`endpoint`                | `string`   | The splunk HEC endpoint to use                                              |         | yes
+`read_buffer_size`        | `string`   | Size of the read buffer the HTTP client uses for reading server responses.  |         | no
+`write_buffer_size`       | `string`   | Size of the write buffer the HTTP client uses for writing requests.         |         | no
+`timeout`                 | `duration` | Time to wait before marking a request as failed.                            | `"15s"` | no
+`max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        | `100`   | no
+`max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          | `5`     | no
+`max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. |         | no
+`idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `"45s"` | no
+`disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |         | no
+`insecure_skip_verify`    | `boolean`  | Ignores insecure server TLS certificates.                                   |         | no
+
+<!-- ### retry_on_failure block
+
+The `retry_on_failure` block configures how failed requests to splunkhec are retried.
+
+{{< docs/shared lookup="reference/components/otelcol-retry-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### queue block
+
+The `queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}} -->
+
+### debug_metrics block
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+## Exported fields
+
+The following fields are exported and can be referenced by other components:
+
+Name    | Type               | Description
+--------|--------------------|-----------------------------------------------------------------
+`input` | `otelcol.Consumer` | A value other components can use to send telemetry data to.
+
+`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
+
+## Component health
+
+`otelcol.exporter.splunkhec` is only reported as unhealthy if given an invalid
+configuration.
+
+## Debug information
+
+`otelcol.exporter.splunkhec` does not expose any component-specific debug
+information.
+
+## Example
+
+### Forward Prometheus Metrics
+This example forwards Prometheus metrics from {{< param "PRODUCT_NAME" >}} through a receiver for conversion to Open Telemetry format before finally sending them to splunkhec.
+If you are using the US splunkhec APIs, the `api` field is required for the exporter to function.
+
+```alloy
+prometheus.exporter.self "default" {
+}
+
+prometheus.scrape "metamonitoring" {
+  targets    = prometheus.exporter.self.default.targets
+  forward_to = [otelcol.receiver.prometheus.default.receiver]
+}
+
+otelcol.receiver.prometheus "default" {
+  output {
+    metrics = [otelcol.exporter.splunkhec.default.input]
+  }
+}
+
+
+otelcol.exporter.splunkhec "default" {
+    api {
+        api_key = "API_KEY"
+    }
+
+     metrics {
+        endpoint = "https://api.ap1.splunkhechq.com"
+        resource_attributes_as_tags = true
+    }
+}
+```
+
+### Full OTel pipeline
+
+This example forwards metrics and traces received in splunkhec format to {{< param "PRODUCT_NAME" >}}, converts them to OTel format, and exports them to splunkhec.
+
+```alloy
+otelcol.receiver.splunkhec "default" {
+	output {
+		metrics = [otelcol.exporter.otlp.default.input, otelcol.exporter.splunkhec.default input]
+		traces  = [otelcol.exporter.otlp.default.input, otelcol.exporter.splunkhec.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
+
+otelcol.exporter.splunkhec "default" {
+	client {
+		timeout = "10s"
+	}
+
+	api {
+		api_key             = "abc"
+		fail_on_invalid_key = true
+	}
+
+	traces {
+		endpoint             = "https://trace.agent.splunkhechq.com"
+		ignore_resources     = ["(GET|POST) /healthcheck"]
+		span_name_remappings = {
+			"instrumentation:express.server" = "express",
+		}
+	}
+
+	metrics {
+		delta_ttl = 1200
+		endpoint  = "https://api.splunkhechq.com"
+
+		exporter {
+			resource_attributes_as_tags = true
+		}
+
+		histograms {
+			mode = "counters"
+		}
+
+		sums {
+			initial_cumulative_monotonic_value = "keep"
+		}
+
+		summaries {
+			mode = "noquantiles"
+		}
+	}
+}
+```
+
