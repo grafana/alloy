@@ -145,7 +145,6 @@ func (t SMTPConfig) Convert() windows_integration.SMTPConfig {
 
 // ServiceConfig handles settings for the windows_exporter service collector
 type ServiceConfig struct {
-	//TODO: Should we make use_api and enable_v2_collector bool in Alloy v2?
 	UseApi string `alloy:"use_api,attr,optional"`
 	Where  string `alloy:"where_clause,attr,optional"`
 	V2     string `alloy:"enable_v2_collector,attr,optional"`
