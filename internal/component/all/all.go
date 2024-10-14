@@ -77,6 +77,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"                    // Import otelcol.exporter.otlp
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"                // Import otelcol.exporter.otlphttp
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus"              // Import otelcol.exporter.prometheus
+	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec"               // Import otelcol.exporter.splunkhec
 	_ "github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling" // Import otelcol.extension.jaeger_remote_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/attributes"             // Import otelcol.processor.attributes
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/batch"                  // Import otelcol.processor.batch
