@@ -104,6 +104,7 @@ Name           | Type     | Description                                      | D
 `site_exclude` | `string` | Regular expression of sites to ignore.           | `"^$"`    | no
 `site_include` | `string` | Regular expression of sites to report on.        | `"^.+$"`  | no
 
+User-supplied `app_exclude`, `app_include`, `site_exclude` and `site_include` strings will be [wrapped][wrap-regex] in a regex.
 
 ### logical_disk block
 
@@ -114,6 +115,7 @@ Name      | Type     | Description                               | Default   | R
 
 Volume names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
 
 ### msmq block
 
@@ -130,7 +132,6 @@ Name | Type     | Description | Default | Required
 ---- |----------| ----------- | ------- | --------
 `enabled_classes` | `list(string)` | A list of MSSQL WMI classes to use. | `["accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "locks", "memmgr", "sqlstats", "sqlerrors", "transactions", "waitstats"]` | no
 
-
 ### network block
 
 Name      | Type     | Description                             | Default   | Required
@@ -140,12 +141,16 @@ Name      | Type     | Description                             | Default   | Req
 
 NIC names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
+
 ### physical_disk block
 
 Name      | Type     | Description                                     | Default   | Required
 ----------|----------|-------------------------------------------------|-----------|---------
 `exclude` | `string` | Regular expression of physical disk to exclude. | `"^$"`    | no
 `include` | `string` | Regular expression of physical disk to include. | `"^.+$"`  | no
+
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
 
 ### printer block
 
@@ -156,6 +161,7 @@ Name      | Type     | Description                               | Default   | R
 
 Printer must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
 
 ### process block
 
@@ -166,6 +172,7 @@ Name      | Type     | Description                                 | Default   |
 
 Processes must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
 
 ### scheduled_task block
 
@@ -176,6 +183,7 @@ Name      | Type     | Description                 | Default   | Required
 
 For a server name to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
 
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
 
 ### service block
 
@@ -224,6 +232,7 @@ Name      | Type     | Description                           | Default   | Requi
 
 For a server name to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
 
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
 
 ### text_file block
 
@@ -258,6 +267,15 @@ debug information.
 
 `prometheus.exporter.windows` does not expose any component-specific
 debug metrics.
+
+[wrap-regex]: #wrapping-of-regex-strings
+## Wrapping of regex strings
+
+Some collector blocks such as [scheduled_task][] accept a regular expression as a string argument.
+`prometheus.exporter.windows` will prefix some regex string arguments with `^(?:` and will suffix them with `)$`.
+For example, if a user sets an `exclude` argument to `".*"`, Alloy will set it to `"^(?:.*)$"`.
+
+To find out if a particular regex argument will be wrapped, refer to the collector block documentation.
 
 ## Collectors list
 The following table lists the available collectors that `windows_exporter` brings
