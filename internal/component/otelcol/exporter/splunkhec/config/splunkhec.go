@@ -181,7 +181,6 @@ func (args *SplunkHecClientArguments) SetToDefault() {
 }
 
 func (args *SplunkConf) SetToDefault() {
-	// args.BatcherConfig.SetToDefault()
 	args.LogDataEnabled = true
 	args.ProfilingDataEnabled = true
 	args.Source = ""
