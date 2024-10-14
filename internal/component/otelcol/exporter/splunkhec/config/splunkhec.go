@@ -73,7 +73,7 @@ type SplunkConf struct {
 	// App version is used to track telemetry information for Splunk App's using HEC by App version. Defaults to the current OpenTelemetry Collector Contrib build version.
 	SplunkAppVersion string `alloy:"splunk_app_version,attr,optional"`
 	// HecFields creates a mapping from attributes to HEC fields.
-	HecFields HecFields `alloy:"otel_to_hec_fields,attr,optional"`
+	HecFields HecFields `alloy:"otel_to_hec_fields,block,optional"`
 	// HealthPath for health API, default is '/services/collector/health'
 	HealthPath string `alloy:"health_path,attr,optional"`
 	// HecHealthCheckEnabled can be used to verify Splunk HEC health on exporter's startup
@@ -83,9 +83,9 @@ type SplunkConf struct {
 	// UseMultiMetricFormat combines metric events to save space during ingestion.
 	UseMultiMetricFormat bool `alloy:"use_multi_metric_format,attr,optional"`
 	// Heartbeat is the configuration to enable heartbeat
-	Heartbeat SplunkHecHeartbeat `alloy:"heartbeat,attr,optional"`
+	Heartbeat SplunkHecHeartbeat `alloy:"heartbeat,block,optional"`
 	// Telemetry is the configuration for splunk hec exporter telemetry
-	Telemetry SplunkHecTelemetry `alloy:"telemetry,attr,optional"`
+	Telemetry SplunkHecTelemetry `alloy:"telemetry,block,optional"`
 }
 
 type HecFields struct {
@@ -150,10 +150,10 @@ func (args *SplunkHecTelemetry) Convert() *splunkhecexporter.HecTelemetry {
 
 // SplunkHecClientArguments defines the configuration for the Splunk HEC exporter.
 type SplunkHecArguments struct {
-	SplunkHecClientArguments SplunkHecClientArguments `alloy:"client,block"`
-	//	QueueSettings           exporterhelper.QueueSettings `alloy:"queue,block,optional"`
-	//configretry.BackOffConfig `alloy:"retry_on_failure,attribute,optional"`
-	Splunk SplunkConf `alloy:"splunk,block"`
+	SplunkHecClientArguments SplunkHecClientArguments     `alloy:"client,block"`
+	QueueSettings            exporterhelper.QueueSettings `alloy:"queue,block,optional"`
+	RetrySettings            configretry.BackOffConfig    `alloy:"retry_on_failure,block,optional"`
+	Splunk                   SplunkConf                   `alloy:"splunk,block"`
 }
 
 func (args *SplunkHecClientArguments) Convert() *confighttp.ClientConfig {
@@ -209,8 +209,8 @@ func (args *SplunkHecArguments) Convert() *splunkhecexporter.Config {
 	}
 	return &splunkhecexporter.Config{
 		ClientConfig:            *args.SplunkHecClientArguments.Convert(),
-		QueueSettings:           exporterhelper.NewDefaultQueueSettings(),
-		BackOffConfig:           configretry.NewDefaultBackOffConfig(),
+		QueueSettings:           args.QueueSettings,
+		BackOffConfig:           args.RetrySettings,
 		BatcherConfig:           args.Splunk.BatcherConfig,
 		LogDataEnabled:          args.Splunk.LogDataEnabled,
 		ProfilingDataEnabled:    args.Splunk.ProfilingDataEnabled,

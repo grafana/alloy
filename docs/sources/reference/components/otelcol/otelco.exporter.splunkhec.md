@@ -44,16 +44,15 @@ fully through child blocks.
 
 The following blocks are supported inside the definition of `otelcol.exporter.splunkhec`:
 
-Hierarchy                  | Block                         | Description                                                               | Required
----------------------------|-------------------------------|---------------------------------------------------------------------------|---------
-splunk                     | [splunk][]                    | Configures the Splunk HEC exporter                                        | yes
-splunk->otel_to_hec_fields | [otel_to_hec_fields][]        | Configures mapping of Open Telemetry to HEC Fields                        | no
-splunk->telemetry          | [telemetry][]                 | Configure the exporters telemetry                                         | no
-splunk->heartbeat          | [heartbeat][]                 | Configure the exporters heartbeat settings                                | no
-client                     | [client][]                    | Configures the HTTP client used to send data to Splunk HEC.               | yes
-<!-- host_metadata        | [host_metadata][]    | Host metadata specific configuration.                                      | no -->
-<!-- retry_on_failure     | [retry_on_failure][] | Configures retry mechanism for failed requests.                            | no -->
-<!-- queue                | [queue][]            | Configures batching of data before sending.                                | no -->
+Hierarchy                  | Block                         | Description                                                                | Required
+---------------------------|-------------------------------|----------------------------------------------------------------------------|---------
+splunk                     | [splunk][]                    | Configures the Splunk HEC exporter                                         | yes
+splunk->otel_to_hec_fields | [otel_to_hec_fields][]        | Configures mapping of Open Telemetry to HEC Fields                         | no
+splunk->telemetry          | [telemetry][]                 | Configure the exporters telemetry                                          | no
+splunk->heartbeat          | [heartbeat][]                 | Configure the exporters heartbeat settings                                 | no
+client                     | [client][]                    | Configures the HTTP client used to send data to Splunk HEC.                | yes
+retry_on_failure          | [retry_on_failure][] | Configures retry mechanism for failed requests.                                      | no
+queue                     | [queue][]            | Configures batching of data before sending.                                          | no
 debug_metrics             | [debug_metrics][]              | Configures the metrics that this component generates to monitor its state. | no
 
 
@@ -63,9 +62,9 @@ debug_metrics             | [debug_metrics][]              | Configures the metr
 [heartbeat]: #heartbeat-block
 [client]: #client-block
 [tls]: #tls-block
-<!-- [retry_on_failure]: #retry_on_failure-block
+[retry_on_failure]: #retry_on_failure-block
 [queue]: #queue-block
-[debug_metrics]: #debug_metrics-block -->
+[debug_metrics]: #debug_metrics-block
 
 ### splunk block
 
@@ -140,7 +139,7 @@ Name                      | Type       | Description                            
 `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |         | no
 `insecure_skip_verify`    | `boolean`  | Ignores insecure server TLS certificates.                                   |         | no
 
-<!-- ### retry_on_failure block
+### retry_on_failure block
 
 The `retry_on_failure` block configures how failed requests to splunkhec are retried.
 
@@ -150,7 +149,7 @@ The `retry_on_failure` block configures how failed requests to splunkhec are ret
 
 The `queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
 
-{{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}} -->
+{{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}} 
 
 ### debug_metrics block
 

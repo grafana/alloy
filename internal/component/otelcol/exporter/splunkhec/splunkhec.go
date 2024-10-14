@@ -30,8 +30,8 @@ func init() {
 
 type Arguments struct {
 	Client splunkhec_config.SplunkHecClientArguments `alloy:"client,block"`
-	//Queue  otelcol.QueueArguments                    `alloy:"sending_queue,block,optional"`
-	//Retry  otelcol.RetryArguments                    `alloy:"retry_on_failure,block,optional"`
+	Queue  otelcol.QueueArguments                    `alloy:"sending_queue,block,optional"`
+	Retry  otelcol.RetryArguments                    `alloy:"retry_on_failure,block,optional"`
 
 	// Splunk specific configuration settings
 	Splunk splunkhec_config.SplunkConf `alloy:"splunk,block"`
@@ -45,8 +45,8 @@ type Arguments struct {
 var _ exporter.Arguments = Arguments{}
 
 func (args *Arguments) SetToDefault() {
-	//args.Queue.SetToDefault()
-	//args.Retry.SetToDefault()
+	args.Queue.SetToDefault()
+	args.Retry.SetToDefault()
 	args.Client.SetToDefault()
 	args.Splunk.SetToDefault()
 	args.DebugMetrics.SetToDefault()
@@ -55,8 +55,9 @@ func (args *Arguments) SetToDefault() {
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	return splunkhec_config.SplunkHecArguments{
-		Splunk: args.Splunk,
-		//QueueSettings:           *args.Queue.Convert(),
+		Splunk:                   args.Splunk,
+		QueueSettings:            *args.Queue.Convert(),
+		RetrySettings:            *args.Retry.Convert(),
 		SplunkHecClientArguments: args.Client,
 	}, nil
 
