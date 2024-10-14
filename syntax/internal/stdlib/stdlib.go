@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -53,11 +54,16 @@ var Identifiers = map[string]interface{}{
 	"array":    array,
 	"encoding": encoding,
 	"string":   str,
+	"file":     file,
 }
 
 func init() {
 	// Adds the deprecatedIdentifiers to the map of valid identifiers.
 	maps.Copy(Identifiers, DeprecatedIdentifiers)
+}
+
+var file = map[string]interface{}{
+	"path_join": filepath.Join,
 }
 
 var encoding = map[string]interface{}{
