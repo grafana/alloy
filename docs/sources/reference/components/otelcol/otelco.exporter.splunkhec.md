@@ -61,7 +61,6 @@ debug_metrics             | [debug_metrics][]              | Configures the metr
 [telemetry]: #telemetry-block
 [heartbeat]: #heartbeat-block
 [client]: #client-block
-[tls]: #tls-block
 [retry_on_failure]: #retry_on_failure-block
 [queue]: #queue-block
 [debug_metrics]: #debug_metrics-block
