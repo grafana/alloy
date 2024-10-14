@@ -200,9 +200,9 @@ The v2 collector can query service states much more efficiently, but can't provi
 
 ### smb block
 
-Name           | Type           | Description                  | Default | Required
----------------|----------------|------------------------------|---------|---------
-`enabled_list` | `list(string)` | A list of collectors to use. | `[]`    | no
+Name           | Type           | Description                                      | Default | Required
+---------------|----------------|--------------------------------------------------|---------|---------
+`enabled_list` | `list(string)` | Deprecated (no-op), a list of collectors to use. | `[]`    | no
 
 The collectors specified by `enabled_list` can include the following:
 
