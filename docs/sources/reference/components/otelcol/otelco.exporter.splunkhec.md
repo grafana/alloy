@@ -180,7 +180,6 @@ information.
 
 ### Forward Prometheus Metrics
 This example forwards Prometheus metrics from {{< param "PRODUCT_NAME" >}} through a receiver for conversion to Open Telemetry format before finally sending them to splunkhec.
-If you are using the US splunkhec APIs, the `api` field is required for the exporter to function.
 
 ```alloy
 prometheus.exporter.self "default" {
@@ -199,73 +198,14 @@ otelcol.receiver.prometheus "default" {
 
 
 otelcol.exporter.splunkhec "default" {
-    api {
-        api_key = "API_KEY"
+    splunk {
+        token = "SPLUNK_TOKEN"
     }
-
-     metrics {
-        endpoint = "https://api.ap1.splunkhechq.com"
-        resource_attributes_as_tags = true
+    client {
+        endpoint = "http://splunkhec.domain.com:8088"
     }
 }
 ```
 
-### Full OTel pipeline
 
-This example forwards metrics and traces received in splunkhec format to {{< param "PRODUCT_NAME" >}}, converts them to OTel format, and exports them to splunkhec.
-
-```alloy
-otelcol.receiver.splunkhec "default" {
-	output {
-		metrics = [otelcol.exporter.otlp.default.input, otelcol.exporter.splunkhec.default input]
-		traces  = [otelcol.exporter.otlp.default.input, otelcol.exporter.splunkhec.default.input]
-	}
-}
-
-otelcol.exporter.otlp "default" {
-	client {
-		endpoint = "database:4317"
-	}
-}
-
-otelcol.exporter.splunkhec "default" {
-	client {
-		timeout = "10s"
-	}
-
-	api {
-		api_key             = "abc"
-		fail_on_invalid_key = true
-	}
-
-	traces {
-		endpoint             = "https://trace.agent.splunkhechq.com"
-		ignore_resources     = ["(GET|POST) /healthcheck"]
-		span_name_remappings = {
-			"instrumentation:express.server" = "express",
-		}
-	}
-
-	metrics {
-		delta_ttl = 1200
-		endpoint  = "https://api.splunkhechq.com"
-
-		exporter {
-			resource_attributes_as_tags = true
-		}
-
-		histograms {
-			mode = "counters"
-		}
-
-		sums {
-			initial_cumulative_monotonic_value = "keep"
-		}
-
-		summaries {
-			mode = "noquantiles"
-		}
-	}
-}
-```
 
