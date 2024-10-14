@@ -18,8 +18,11 @@ Main (unreleased)
 ### Features
 
 - Add the function `path_join` to the stdlib. (@wildum)
+
 - Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
+
 - Add support to `loki.source.api` to be able to extract the tenant from the HTTP `X-Scope-OrgID` header (@QuentinBisson)
+- 
 - (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
 
 ### Enhancements
@@ -30,6 +33,9 @@ Main (unreleased)
 - The `cluster.use-discovery-v1` flag is now deprecated since there were no issues found with the v2 cluster discovery mechanism. (@thampiotr)
 
 - Fix an issue where some `faro.receiver` would drop multiple fields defined in `payload.meta.browser`, as fields were defined in the struct.
+
+- SNMP exporter now supports labels in both `target` and `targets` parameters. (@mattdurham)
+
 
 ### Bugfixes
 
