@@ -8,7 +8,7 @@ import (
 )
 
 // Wrap some regex strings to prevent issues with user-supplied empty strings.
-// Version 0.27 of the upstream exporter used to wrap regexes like this.
+// Prior to v0.27, the upstream exporter used to wrap regexes like this.
 // Alloy is now doing this instead, to maintain backwards compatibility.
 // See https://github.com/grafana/alloy/issues/1845
 // TODO: Remove this in Alloy v2.
