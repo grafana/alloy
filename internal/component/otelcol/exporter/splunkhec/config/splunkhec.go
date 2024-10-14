@@ -73,7 +73,7 @@ type SplunkConf struct {
 	// App version is used to track telemetry information for Splunk App's using HEC by App version. Defaults to the current OpenTelemetry Collector Contrib build version.
 	SplunkAppVersion string `alloy:"splunk_app_version,attr,optional"`
 	// HecFields creates a mapping from attributes to HEC fields.
-	HecFields splunkhecexporter.OtelToHecFields `alloy:"otel_to_hec_fields,attr,optional"`
+	HecFields HecFields `alloy:"otel_to_hec_fields,attr,optional"`
 	// HealthPath for health API, default is '/services/collector/health'
 	HealthPath string `alloy:"health_path,attr,optional"`
 	// HecHealthCheckEnabled can be used to verify Splunk HEC health on exporter's startup
@@ -83,9 +83,69 @@ type SplunkConf struct {
 	// UseMultiMetricFormat combines metric events to save space during ingestion.
 	UseMultiMetricFormat bool `alloy:"use_multi_metric_format,attr,optional"`
 	// Heartbeat is the configuration to enable heartbeat
-	Heartbeat splunkhecexporter.HecHeartbeat `alloy:"heartbeat,attr,optional"`
+	Heartbeat SplunkHecHeartbeat `alloy:"heartbeat,attr,optional"`
 	// Telemetry is the configuration for splunk hec exporter telemetry
-	Telemetry splunkhecexporter.HecTelemetry `alloy:"telemetry,attr,optional"`
+	Telemetry SplunkHecTelemetry `alloy:"telemetry,attr,optional"`
+}
+
+type HecFields struct {
+	// SeverityText informs the exporter to map the severity text field to a specific HEC field.
+	SeverityText string `alloy:"severity_text,attr,optional"`
+	// SeverityNumber informs the exporter to map the severity number field to a specific HEC field.
+	SeverityNumber string `alloy:"severity_number,attr,optional"`
+}
+
+func (args *HecFields) Convert() *splunkhecexporter.OtelToHecFields {
+	if args == nil {
+		return nil
+	}
+	return &splunkhecexporter.OtelToHecFields{
+		SeverityText:   args.SeverityText,
+		SeverityNumber: args.SeverityNumber,
+	}
+}
+
+// SplunkHecHeartbeat defines the configuration for the Splunk HEC exporter heartbeat.
+type SplunkHecHeartbeat struct {
+	// Interval represents the time interval for the heartbeat interval. If nothing or 0 is set,
+	// heartbeat is not enabled.
+	// A heartbeat is an event sent to _internal index with metadata for the current collector/host.
+	// In seconds
+	Interval int `alloy:"interval,attr,optional"`
+
+	// Startup is used to send heartbeat events on exporter's startup.
+	Startup bool `alloy:"startup,attr,optional"`
+}
+
+func (args *SplunkHecHeartbeat) Convert() *splunkhecexporter.HecHeartbeat {
+	if args == nil {
+		return nil
+	}
+	return &splunkhecexporter.HecHeartbeat{
+		Interval: time.Duration(args.Interval) * time.Second,
+		Startup:  args.Startup,
+	}
+}
+
+// SplunkHecTelemetry defines the configuration for the Splunk HEC exporter internal telemetry.
+type SplunkHecTelemetry struct {
+	// Enabled can be used to disable sending telemetry data by the exporter.
+	Enabled bool `alloy:"enabled,attr,optional"`
+	// Override metrics names for telemetry.
+	OverrideMetricsNames map[string]string `alloy:"override_metrics_names,attr,optional"`
+	// extra attributes to be added to telemetry data.
+	ExtraAttributes map[string]string `alloy:"extra_attributes,attr,optional"`
+}
+
+func (args *SplunkHecTelemetry) Convert() *splunkhecexporter.HecTelemetry {
+	if args == nil {
+		return nil
+	}
+	return &splunkhecexporter.HecTelemetry{
+		Enabled:              args.Enabled,
+		OverrideMetricsNames: args.OverrideMetricsNames,
+		ExtraAttributes:      args.ExtraAttributes,
+	}
 }
 
 // SplunkHecClientArguments defines the configuration for the Splunk HEC exporter.
@@ -138,8 +198,8 @@ func (args *SplunkConf) SetToDefault() {
 	args.HecHealthCheckEnabled = false
 	args.ExportRaw = false
 	args.UseMultiMetricFormat = false
-	args.Heartbeat = splunkhecexporter.HecHeartbeat{}
-	args.Telemetry = splunkhecexporter.HecTelemetry{}
+	args.Heartbeat = SplunkHecHeartbeat{}
+	args.Telemetry = SplunkHecTelemetry{}
 }
 
 // Convert converts args into the upstream type
@@ -165,12 +225,12 @@ func (args *SplunkHecArguments) Convert() *splunkhecexporter.Config {
 		MaxEventSize:            args.Splunk.MaxEventSize,
 		SplunkAppName:           args.Splunk.SplunkAppName,
 		SplunkAppVersion:        args.Splunk.SplunkAppVersion,
-		HecFields:               args.Splunk.HecFields,
+		HecFields:               *args.Splunk.HecFields.Convert(),
 		HealthPath:              args.Splunk.HealthPath,
 		HecHealthCheckEnabled:   args.Splunk.HecHealthCheckEnabled,
 		ExportRaw:               args.Splunk.ExportRaw,
 		UseMultiMetricFormat:    args.Splunk.UseMultiMetricFormat,
-		Heartbeat:               args.Splunk.Heartbeat,
-		Telemetry:               args.Splunk.Telemetry,
+		Heartbeat:               *args.Splunk.Heartbeat.Convert(),
+		Telemetry:               *args.Splunk.Telemetry.Convert(),
 	}
 }

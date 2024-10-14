@@ -4,8 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
-
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec"
 	splunkhec_config "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
 	"github.com/grafana/alloy/syntax"
@@ -52,8 +50,8 @@ func TestConfigConversion(t *testing.T) {
 					HecHealthCheckEnabled:   false,
 					ExportRaw:               false,
 					UseMultiMetricFormat:    false,
-					Heartbeat:               splunkhecexporter.HecHeartbeat{},
-					Telemetry:               splunkhecexporter.HecTelemetry{},
+					Heartbeat:               splunkhec_config.SplunkHecHeartbeat{},
+					Telemetry:               splunkhec_config.SplunkHecTelemetry{},
 				},
 				SplunkHecClientArguments: splunkhec_config.SplunkHecClientArguments{
 					Endpoint:           "http://localhost:8088",
@@ -91,8 +89,8 @@ func TestConfigConversion(t *testing.T) {
 					HecHealthCheckEnabled:   false,
 					ExportRaw:               false,
 					UseMultiMetricFormat:    false,
-					Heartbeat:               splunkhecexporter.HecHeartbeat{},
-					Telemetry:               splunkhecexporter.HecTelemetry{},
+					Heartbeat:               splunkhec_config.SplunkHecHeartbeat{},
+					Telemetry:               splunkhec_config.SplunkHecTelemetry{},
 				},
 				SplunkHecClientArguments: splunkhec_config.SplunkHecClientArguments{
 					Endpoint: "http://localhost:8088",
