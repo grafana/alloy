@@ -67,6 +67,7 @@ func TestUnmarshalSplunkConf(t *testing.T) {
 				max_content_length_metrics = 200
 				max_content_length_traces = 300
 				max_event_size = 400
+
 			`,
 		},
 		{
@@ -86,7 +87,7 @@ func TestUnmarshalSplunkConf(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name: "valid splunk config - no index",
+			name: "valid splunk config - nested blocks",
 			cfg: `
 				log_data_enabled = true
 				profiling_data_enabled = true
@@ -98,6 +99,14 @@ func TestUnmarshalSplunkConf(t *testing.T) {
 				max_content_length_metrics = 200
 				max_content_length_traces = 300
 				max_event_size = 400
+				heartbeat {
+				   interval = 10
+				   startup = true
+				}
+				telemetry {
+				   enabled = true
+		        }
+				
 				`,
 		},
 	} {

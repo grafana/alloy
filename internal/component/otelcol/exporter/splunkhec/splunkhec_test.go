@@ -8,6 +8,8 @@ import (
 	splunkhec_config "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configretry"
+	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
 func TestConfigConversion(t *testing.T) {
@@ -32,6 +34,8 @@ func TestConfigConversion(t *testing.T) {
 		        }
 			`,
 			expected: splunkhec_config.SplunkHecArguments{
+				QueueSettings: exporterhelper.NewDefaultQueueSettings(),
+				RetrySettings: configretry.NewDefaultBackOffConfig(),
 				Splunk: splunkhec_config.SplunkConf{
 					Token:                   "token",
 					Source:                  "source",
@@ -71,6 +75,8 @@ func TestConfigConversion(t *testing.T) {
 				}
 				`,
 			expected: splunkhec_config.SplunkHecArguments{
+				QueueSettings: exporterhelper.NewDefaultQueueSettings(),
+				RetrySettings: configretry.NewDefaultBackOffConfig(),
 				Splunk: splunkhec_config.SplunkConf{
 					Token:                   "token",
 					Source:                  "",
