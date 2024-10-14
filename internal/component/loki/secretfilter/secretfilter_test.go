@@ -2,16 +2,20 @@ package secretfilter
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/jaswdr/faker/v2"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 )
@@ -65,6 +69,11 @@ var testConfigs = map[string]string{
 		forward_to = []
 		redact_with = "<` + customRedactionString + `:$SECRET_NAME>"
 		types = ["aws", "gcp"]
+	`,
+	"custom_type": `
+		forward_to = []
+		redact_with = "<` + customRedactionString + `:$SECRET_NAME>"
+		types = ["gcp"]
 	`,
 	"allow_list": `
 		forward_to = []
@@ -335,4 +344,68 @@ func createTempGitleaksConfig(t *testing.T, content string) string {
 
 func deleteTempGitLeaksConfig(t *testing.T, path string) {
 	require.NoError(t, os.Remove(path))
+}
+
+func BenchmarkAllTypesNoSecret(b *testing.B) {
+	// Run benchmarks with no secrets in the logs, with all regexes enabled
+	runBenchmarks(b, testConfigs["default"], 0, "")
+}
+
+func BenchmarkAllTypesWithSecret(b *testing.B) {
+	// Run benchmarks with secrets in the logs (20% of log entries), with all regexes enabled
+	runBenchmarks(b, testConfigs["default"], 20, "gcp_secret")
+}
+
+func BenchmarkOneRuleNoSecret(b *testing.B) {
+	// Run benchmarks with no secrets in the logs, with a single regex enabled
+	runBenchmarks(b, testConfigs["custom_type"], 0, "")
+}
+
+func BenchmarkOneRuleWithSecret(b *testing.B) {
+	// Run benchmarks with secrets in the logs (20% of log entries), with a single regex enabled
+	runBenchmarks(b, testConfigs["custom_type"], 20, "gcp_secret")
+}
+
+func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretName string) {
+	ch1 := loki.NewLogsReceiver()
+	var args Arguments
+	require.NoError(b, syntax.Unmarshal([]byte(config), &args))
+	args.ForwardTo = []loki.LogsReceiver{ch1}
+	opts := component.Options{
+		Logger:         util.TestAlloyLogger(b),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+
+	// Create component
+	c, err := New(opts, args)
+	require.NoError(b, err)
+
+	// Generate fake log entries with a fixed seed so that it's reproducible
+	fake := faker.NewWithSeed(rand.NewSource(2013))
+	benchInputs := fake.Lorem().Paragraphs(100)
+
+	// Replace some of the log entries with secrets (as defined by the percentageSecrets)
+	for i, _ := range benchInputs {
+		if percentageSecrets != 0 && i%(100/percentageSecrets) == 0 {
+			benchInputs[i] = testLogs[secretName].log
+		}
+	}
+
+	// Run benchmark
+	for i := 0; i < b.N; i++ {
+		for _, input := range benchInputs {
+			entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: input}}
+			c.processEntry(entry)
+		}
+	}
+}
+
+func getServiceData(name string) (interface{}, error) {
+	switch name {
+	case livedebugging.ServiceName:
+		return livedebugging.NewLiveDebugging(), nil
+	default:
+		return nil, fmt.Errorf("service not found %s", name)
+	}
 }
