@@ -297,6 +297,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.loki](../components/otelcol/otelcol.exporter.loki)
 - [otelcol.exporter.otlp](../components/otelcol/otelcol.exporter.otlp)
 - [otelcol.exporter.otlphttp](../components/otelcol/otelcol.exporter.otlphttp)
+- [otelcol.exporter.splunkhec](../components/otelcol/otelcol.exporter.splunkhec)
 - [otelcol.exporter.prometheus](../components/otelcol/otelcol.exporter.prometheus)
 - [otelcol.processor.attributes](../components/otelcol/otelcol.processor.attributes)
 - [otelcol.processor.batch](../components/otelcol/otelcol.processor.batch)
