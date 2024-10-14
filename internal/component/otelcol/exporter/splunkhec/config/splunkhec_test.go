@@ -86,7 +86,7 @@ func TestUnmarshalSplunkConf(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name: "invalid splunk config - no index",
+			name: "valid splunk config - no index",
 			cfg: `
 				log_data_enabled = true
 				profiling_data_enabled = true
@@ -99,7 +99,6 @@ func TestUnmarshalSplunkConf(t *testing.T) {
 				max_content_length_traces = 300
 				max_event_size = 400
 				`,
-			expectErr: true,
 		},
 	} {
 		tt := tt

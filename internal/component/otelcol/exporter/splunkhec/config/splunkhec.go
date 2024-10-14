@@ -3,6 +3,7 @@ package splunkhec_config
 import (
 	"time"
 
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -45,7 +46,7 @@ type SplunkConf struct {
 	// ProfilingDataEnabled can be used to disable sending profiling data by the exporter.
 	ProfilingDataEnabled bool `alloy:"profiling_data_enabled,attr,optional"`
 	// HEC Token is the authentication token provided by Splunk: https://docs.splunk.com/Documentation/Splunk/latest/Data/UsetheHTTPEventCollector.
-	Token string `alloy:"token,alloytypes.Secret"`
+	Token alloytypes.Secret `alloy:"token,attr"`
 	// Optional Splunk source: https://docs.splunk.com/Splexicon:Source.
 	// Sources identify the incoming data.
 	Source string `alloy:"source,attr,optional"`
