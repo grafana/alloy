@@ -45,7 +45,7 @@ type SplunkConf struct {
 	// ProfilingDataEnabled can be used to disable sending profiling data by the exporter.
 	ProfilingDataEnabled bool `alloy:"profiling_data_enabled,attr,optional"`
 	// HEC Token is the authentication token provided by Splunk: https://docs.splunk.com/Documentation/Splunk/latest/Data/UsetheHTTPEventCollector.
-	Token string `alloy:"token,attr"`
+	Token string `alloy:"token,alloytypes.Secret"`
 	// Optional Splunk source: https://docs.splunk.com/Splexicon:Source.
 	// Sources identify the incoming data.
 	Source string `alloy:"source,attr,optional"`
@@ -131,7 +131,7 @@ func (args *SplunkConf) SetToDefault() {
 	args.MaxContentLengthMetrics = 2097152
 	args.MaxContentLengthTraces = 2097152
 	args.MaxEventSize = 5242880
-	args.SplunkAppName = "OpenTelemetry Collector Contrib"
+	args.SplunkAppName = "Alloy"
 	args.SplunkAppVersion = ""
 	args.HealthPath = "/services/collector/health"
 	args.HecHealthCheckEnabled = false

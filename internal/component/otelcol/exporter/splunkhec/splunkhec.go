@@ -29,7 +29,7 @@ func init() {
 }
 
 type Arguments struct {
-	Client splunkhec_config.SplunkHecClientArguments `alloy:"client,block,optional"`
+	Client splunkhec_config.SplunkHecClientArguments `alloy:"client,block"`
 	//Queue  otelcol.QueueArguments                    `alloy:"sending_queue,block,optional"`
 	//Retry  otelcol.RetryArguments                    `alloy:"retry_on_failure,block,optional"`
 
