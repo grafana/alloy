@@ -26,7 +26,7 @@ Main (unreleased)
 - (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
 
 - (_Experimental_) Add a `prometheus.write.queue` component to add an alternative to `prometheus.remote_write`
-  allowing the writing of metrics and metadata to a prometheus endpoint. (@mattdurham)
+  which allowing the writing of metrics  to a prometheus endpoint. (@mattdurham)
 
 ### Enhancements
 
