@@ -219,6 +219,7 @@ The following components, grouped by namespace, _export_ Loki `LogsReceiver`.
 - [loki.echo](../components/loki/loki.echo)
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
+- [loki.secretfilter](../components/loki/loki.secretfilter)
 - [loki.write](../components/loki/loki.write)
 {{< /collapse >}}
 
@@ -242,6 +243,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 {{< collapse title="loki" >}}
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
+- [loki.secretfilter](../components/loki/loki.secretfilter)
 - [loki.source.api](../components/loki/loki.source.api)
 - [loki.source.awsfirehose](../components/loki/loki.source.awsfirehose)
 - [loki.source.azure_event_hubs](../components/loki/loki.source.azure_event_hubs)

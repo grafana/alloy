@@ -19,6 +19,13 @@ const (
 	LevelDetailed = "detailed"
 )
 
+var levels = map[Level]bool{
+	LevelNone:     true,
+	LevelBasic:    true,
+	LevelNormal:   true,
+	LevelDetailed: true,
+}
+
 func (l Level) Convert() (configtelemetry.Level, error) {
 	switch l {
 	case LevelNone:
@@ -32,6 +39,16 @@ func (l Level) Convert() (configtelemetry.Level, error) {
 	default:
 		return configtelemetry.LevelBasic, fmt.Errorf("unrecognized debug metric level: %s", l)
 	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler for Level.
+func (l *Level) UnmarshalText(text []byte) error {
+	alloyLevelStr := Level(text)
+	if _, exists := levels[alloyLevelStr]; exists {
+		*l = alloyLevelStr
+		return nil
+	}
+	return fmt.Errorf("unrecognized debug level %q", string(text))
 }
 
 // DebugMetricsArguments configures internal metrics of the components

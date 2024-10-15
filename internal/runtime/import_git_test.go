@@ -43,6 +43,7 @@ testImport.add "cc" {
 `
 	// Create our git repository.
 	runGit(t, testRepo, "init", testRepo)
+	runGit(t, testRepo, "checkout", "-b", "main")
 
 	// Add the file we want.
 	math := filepath.Join(testRepo, "math.alloy")
@@ -108,6 +109,7 @@ testImport.add "cc" {
 }
 `
 	runGit(t, testRepo, "init", testRepo)
+	runGit(t, testRepo, "checkout", "-b", "main")
 
 	runGit(t, testRepo, "checkout", "-b", "testor")
 
@@ -161,6 +163,8 @@ func TestPullUpdatingFromHash(t *testing.T) {
 	testRepo := t.TempDir()
 
 	runGit(t, testRepo, "init", testRepo)
+	runGit(t, testRepo, "checkout", "-b", "main")
+
 	math := filepath.Join(testRepo, "math.alloy")
 	err := os.WriteFile(math, []byte(contents), 0666)
 	require.NoError(t, err)
@@ -229,6 +233,7 @@ func TestPullUpdatingFromTag(t *testing.T) {
 	testRepo := t.TempDir()
 
 	runGit(t, testRepo, "init", testRepo)
+	runGit(t, testRepo, "checkout", "-b", "main")
 
 	math := filepath.Join(testRepo, "math.alloy")
 	err := os.WriteFile(math, []byte(contents), 0666)
@@ -336,6 +341,7 @@ testImport.add "cc" {
 }
 `
 	runGit(t, testRepo, "init", testRepo)
+	runGit(t, testRepo, "checkout", "-b", "main")
 
 	runGit(t, testRepo, "checkout", "-b", "testor")
 

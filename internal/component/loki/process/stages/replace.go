@@ -2,7 +2,6 @@ package stages
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -10,14 +9,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/common/model"
-)
 
-// Config Errors
-var (
-	ErrEmptyReplaceStageConfig = errors.New("empty replace stage configuration")
-	ErrEmptyReplaceStageSource = errors.New("empty source in replace stage")
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {

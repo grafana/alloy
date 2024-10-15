@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/intervalprocessor"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -25,7 +26,7 @@ func (intervalProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.interval"
 }
 
-func (intervalProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (intervalProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,7 +43,7 @@ func (intervalProcessorConverter) ConvertAndAppend(state *State, id component.In
 	return diags
 }
 
-func toIntervalProcessor(state *State, id component.InstanceID, cfg *intervalprocessor.Config) *interval.Arguments {
+func toIntervalProcessor(state *State, id componentstatus.InstanceID, cfg *intervalprocessor.Config) *interval.Arguments {
 	var (
 		nextMetrics = state.Next(id, component.DataTypeMetrics)
 		nextLogs    = state.Next(id, component.DataTypeLogs)

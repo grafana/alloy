@@ -153,7 +153,7 @@ loki.write "local" {
 }
 ```
 
-[Prometheus format](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels)
+[Prometheus format]: https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

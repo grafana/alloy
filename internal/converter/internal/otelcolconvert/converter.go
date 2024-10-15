@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/otelcol"
 )
 
@@ -39,7 +40,7 @@ type ComponentConverter interface {
 	// ConvertAndAppend may be called more than once with the same component used
 	// in different pipelines. Use [state.AlloyComponentLabel] to get a guaranteed
 	// unique Alloy component label for the current state.
-	ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics
+	ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics
 }
 
 // List of component converters. This slice is appended to by init functions in
@@ -62,9 +63,9 @@ type State struct {
 	// extensionLookup maps OTel extensions to Alloy component IDs.
 	extensionLookup map[component.ID]componentID
 
-	componentID          component.InstanceID // ID of the current component being converted.
-	componentConfig      component.Config     // Config of the current component being converted.
-	componentLabelPrefix string               // Prefix for the label of the current component being converted.
+	componentID          componentstatus.InstanceID // ID of the current component being converted.
+	componentConfig      component.Config           // Config of the current component being converted.
+	componentLabelPrefix string                     // Prefix for the label of the current component being converted.
 }
 
 type converterKey struct {
@@ -85,7 +86,7 @@ func (state *State) AlloyComponentLabel() string {
 
 // alloyLabelForComponent returns the unique Alloy label for the given
 // OpenTelemetry Collector component.
-func (state *State) alloyLabelForComponent(c component.InstanceID) string {
+func (state *State) alloyLabelForComponent(c componentstatus.InstanceID) string {
 	const defaultLabel = "default"
 
 	// We need to prove that it's possible to statelessly compute the label for a
@@ -112,7 +113,7 @@ func (state *State) alloyLabelForComponent(c component.InstanceID) string {
 
 	var (
 		groupName     = state.group.Name
-		componentName = c.ID.Name()
+		componentName = c.ComponentID().Name()
 	)
 
 	// We want to make the component label as idiomatic as possible. If both the
@@ -144,15 +145,15 @@ func (state *State) alloyLabelForComponent(c component.InstanceID) string {
 
 // Next returns the set of Alloy component IDs for a given data type that the
 // current component being converted should forward data to.
-func (state *State) Next(c component.InstanceID, dataType component.DataType) []componentID {
+func (state *State) Next(c componentstatus.InstanceID, dataType component.DataType) []componentID {
 	instances := state.nextInstances(c, dataType)
 
 	var ids []componentID
 
 	for _, instance := range instances {
 		key := converterKey{
-			Kind: instance.Kind,
-			Type: instance.ID.Type(),
+			Kind: instance.Kind(),
+			Type: instance.ComponentID().Type(),
 		}
 
 		// Look up the converter associated with the instance and retrieve the name
@@ -180,7 +181,7 @@ func (state *State) Next(c component.InstanceID, dataType component.DataType) []
 	return ids
 }
 
-func (state *State) nextInstances(c component.InstanceID, dataType component.DataType) []component.InstanceID {
+func (state *State) nextInstances(c componentstatus.InstanceID, dataType component.DataType) []componentstatus.InstanceID {
 	switch dataType {
 	case component.DataTypeMetrics:
 		return state.group.NextMetrics(c)
