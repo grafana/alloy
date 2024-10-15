@@ -270,7 +270,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// Compile regexes
 	for _, rule := range gitleaksCfg.Rules {
 		// If specific secret types are provided, only include rules that match the types
-		if c.args.Types != nil && len(c.args.Types) > 0 {
+		if len(c.args.Types) > 0 {
 			var found bool
 			for _, t := range c.args.Types {
 				if strings.HasPrefix(strings.ToLower(rule.ID), strings.ToLower(t)) {
