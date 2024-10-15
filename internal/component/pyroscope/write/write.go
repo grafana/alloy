@@ -1,9 +1,11 @@
 package write
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -338,7 +340,10 @@ func (e *PyroscopeWriteError) Error() string {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
-	for _, endpoint := range f.config.Endpoints {
+	var buf bytes.Buffer
+	tee := io.TeeReader(profile.Body, &buf)
+
+	for i, endpoint := range f.config.Endpoints {
 		u, err := url.Parse(endpoint.URL)
 		if err != nil {
 			return fmt.Errorf("parse endpoint URL: %w", err)
@@ -347,7 +352,14 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 		u.Path = path.Join(u.Path, profile.URL.Path)
 		u.RawQuery = profile.URL.RawQuery
 
-		req, err := http.NewRequestWithContext(ctx, "POST", u.String(), profile.Body)
+		var bodyReader io.Reader
+		if i == 0 {
+			bodyReader = tee
+		} else {
+			bodyReader = bytes.NewReader(buf.Bytes())
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bodyReader)
 		if err != nil {
 			return fmt.Errorf("create request: %w", err)
 		}
