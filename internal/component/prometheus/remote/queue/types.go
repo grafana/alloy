@@ -15,7 +15,7 @@ func defaultArgs() Arguments {
 		TTL: 2 * time.Hour,
 		Serialization: Serialization{
 			MaxSignalsToBatch: 10_000,
-			BatchFrequency:    5 * time.Second,
+			BatchInterval:     5 * time.Second,
 		},
 	}
 }
@@ -31,7 +31,7 @@ type Serialization struct {
 	// The batch size to persist to the file queue.
 	MaxSignalsToBatch int `alloy:"max_signals_to_batch,attr,optional"`
 	// How often to flush to the file queue if BatchSize isn't met.
-	BatchFrequency time.Duration `alloy:"batch_frequency,attr,optional"`
+	BatchInterval time.Duration `alloy:"batch_interval,attr,optional"`
 }
 
 type Exports struct {
@@ -49,7 +49,7 @@ func defaultEndpointConfig() EndpointConfig {
 		RetryBackoff:     1 * time.Second,
 		MaxRetryAttempts: 0,
 		BatchCount:       1_000,
-		FlushFrequency:   1 * time.Second,
+		FlushInterval:    1 * time.Second,
 		Parallelism:      4,
 	}
 }
@@ -63,8 +63,8 @@ func (r *Arguments) Validate() error {
 		if conn.BatchCount <= 0 {
 			return fmt.Errorf("batch_count must be greater than 0")
 		}
-		if conn.FlushFrequency < 1*time.Second {
-			return fmt.Errorf("flush_frequency must be greater or equal to 1s, the internal timers resolution is 1s")
+		if conn.FlushInterval < 1*time.Second {
+			return fmt.Errorf("flush_interval must be greater or equal to 1s, the internal timers resolution is 1s")
 		}
 	}
 
@@ -84,7 +84,7 @@ type EndpointConfig struct {
 	// How many series to write at a time.
 	BatchCount int `alloy:"batch_count,attr,optional"`
 	// How long to wait before sending regardless of batch count.
-	FlushFrequency time.Duration `alloy:"flush_frequency,attr,optional"`
+	FlushInterval time.Duration `alloy:"flush_interval,attr,optional"`
 	// How many concurrent queues to have.
 	Parallelism    uint              `alloy:"parallelism,attr,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
@@ -100,7 +100,7 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		RetryBackoff:     cc.RetryBackoff,
 		MaxRetryAttempts: cc.MaxRetryAttempts,
 		BatchCount:       cc.BatchCount,
-		FlushFrequency:   cc.FlushFrequency,
+		FlushInterval:    cc.FlushInterval,
 		ExternalLabels:   cc.ExternalLabels,
 		Connections:      cc.Parallelism,
 	}

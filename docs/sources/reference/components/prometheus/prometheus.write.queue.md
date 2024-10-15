@@ -1,20 +1,20 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.remote.queue/
-description: Learn about prometheus.remote.queue
-title: prometheus.remote.queue
+canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.write.queue/
+description: Learn about prometheus.write.queue
+title: prometheus.write.queue
 ---
 
 
 <span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
-# prometheus.remote.queue
+# prometheus.write.queue
 
-`prometheus.remote.queue` collects metrics sent from other components into a
+`prometheus.write.queue` collects metrics sent from other components into a
 Write-Ahead Log (WAL) and forwards them over the network to a series of
 user-supplied endpoints. Metrics are sent over the network using the
 [Prometheus Remote Write protocol][remote_write-spec].
 
-You can specify multiple `prometheus.remote.queue` components by giving them different labels.
+You can specify multiple `prometheus.write.queue` components by giving them different labels.
 
 You should consider everything here extremely experimental and highly subject to change.
 [emote_write-spec]: https://prometheus.io/docs/specs/remote_write_spec/
@@ -24,7 +24,7 @@ You should consider everything here extremely experimental and highly subject to
 ## Usage
 
 ```alloy
-prometheus.remote.queue "LABEL" {
+prometheus.write.queue "LABEL" {
   endpoint "default "{
     url = REMOTE_WRITE_URL
 
@@ -46,7 +46,7 @@ Name | Type | Description | Default | Required
 ## Blocks
 
 The following blocks are supported inside the definition of
-`prometheus.remote.queue`:
+`prometheus.write.queue`:
 
 Hierarchy | Block | Description | Required
 --------- | ----- | ----------- | --------
@@ -72,7 +72,7 @@ The following arguments are supported:
 Name | Type | Description                                                                   | Default | Required
 ---- | ---- |-------------------------------------------------------------------------------|---------| --------
 `max_signals_to_batch` | `uint` | The maximum number of signals before they are batched to disk.                | `10000` | no
-`batch_frequency` | `duration` | How often to batch signals to disk if `max_signals_to_batch` is not reached. | `5s`     | no
+`batch_interval` | `duration` | How often to batch signals to disk if `max_signals_to_batch` is not reached. | `5s`     | no
 
 
 ### endpoint block
@@ -90,7 +90,7 @@ Name | Type | Description                                                      |
 `retry_backoff` | `duration` | How often to wait between retries.                               | `1s` | no
 `max_retry_attempts` | Maximum number of retries before dropping the batch. | `0`                                                              | no
 `batch_count` | `uint` | How many series to queue in each queue.                          | `1000` | no
-`flush_frequency` | `duration` | How often to wait until sending if `batch_count` is not trigger. | `1s` | no
+`flush_interval` | `duration` | How often to wait until sending if `batch_count` is not trigger. | `1s` | no
 `parallelism` | `uint` | How many parallel batches to write.                              | 10 | no
 `external_labels` | `map(string)` | Labels to add to metrics sent over the network.                  | | no
 
@@ -109,13 +109,13 @@ Name | Type | Description
 
 ## Component health
 
-`prometheus.remote.queue` is only reported as unhealthy if given an invalid
+`prometheus.write.queue` is only reported as unhealthy if given an invalid
 configuration. In those cases, exported fields are kept at their last healthy
 values.
 
 ## Debug information
 
-`prometheus.remote.queue` does not expose any component-specific debug
+`prometheus.write.queue` does not expose any component-specific debug
 information.
 
 ## Debug metrics
@@ -199,14 +199,14 @@ Metrics that are new to `prometheus.remote.write`. These are highly subject to c
 
 ## Examples
 
-The following examples show you how to create `prometheus.remote.queue` components that send metrics to different destinations.
+The following examples show you how to create `prometheus.write.queue` components that send metrics to different destinations.
 
 ### Send metrics to a local Mimir instance
 
-You can create a `prometheus.remote.queue` component that sends your metrics to a local Mimir instance:
+You can create a `prometheus.write.queue` component that sends your metrics to a local Mimir instance:
 
 ```alloy
-prometheus.remote.queue "staging" {
+prometheus.write.queue "staging" {
   // Send metrics to a locally running Mimir.
   endpoint "mimir" {
     url = "http://mimir:9009/api/v1/push"
@@ -219,21 +219,21 @@ prometheus.remote.queue "staging" {
 }
 
 // Configure a prometheus.scrape component to send metrics to
-// prometheus.remote.queue component.
+// prometheus.write.queue component.
 prometheus.scrape "demo" {
   targets = [
     // Collect metrics from the default HTTP listen address.
     {"__address__" = "127.0.0.1:12345"},
   ]
-  forward_to = [prometheus.remote.queue.staging.receiver]
+  forward_to = [prometheus.write.queue.staging.receiver]
 }
 
 ```
 
 ## Technical details
 
-`prometheus.remote.queue` uses [snappy][] for compression.
-`prometheus.remote.queue` sends native histograms by default.
+`prometheus.write.queue` uses [snappy][] for compression.
+`prometheus.write.queue` sends native histograms by default.
 Any labels that start with `__` will be removed before sending to the endpoint.
 
 ### Data retention
@@ -243,17 +243,17 @@ Any data that has not been written to disk, or that is in the network queues is 
 
 ### Retries
 
-`prometheus.remote.queue`  will retry sending data if the following errors or HTTP status codes are returned:
+`prometheus.write.queue`  will retry sending data if the following errors or HTTP status codes are returned:
 
  * Network errors. 
  * HTTP 429 errors. 
  * HTTP 5XX errors.
  
-`prometheus.remote.queue`  will  not retry sending data if any other unsuccessful status codes are returned. 
+`prometheus.write.queue`  will  not retry sending data if any other unsuccessful status codes are returned. 
 
 ### Memory
 
-`prometheus.remote.queue` is meant to be memory efficient.
+`prometheus.write.queue` is meant to be memory efficient.
 You can adjust the `max_signals_to_batch`, `queue_count`, and `batch_size` to control how much memory is used.
 A higher `max_signals_to_batch` allows for more efficient disk compression.
 A higher `queue_count` allows more concurrent writes, and `batch_size` allows more data sent at one time.
@@ -264,7 +264,7 @@ The defaults are suitable for most common usages.
 
 ## Compatible components
 
-`prometheus.remote.queue` has exports that can be consumed by the following components:
+`prometheus.write.queue` has exports that can be consumed by the following components:
 
 - Components that consume [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-consumers)
 

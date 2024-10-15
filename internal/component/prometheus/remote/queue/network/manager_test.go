@@ -34,11 +34,11 @@ func TestSending(t *testing.T) {
 	defer cncl()
 
 	cc := types.ConnectionConfig{
-		URL:            svr.URL,
-		Timeout:        1 * time.Second,
-		BatchCount:     10,
-		FlushFrequency: 1 * time.Second,
-		Connections:    4,
+		URL:           svr.URL,
+		Timeout:       1 * time.Second,
+		BatchCount:    10,
+		FlushInterval: 1 * time.Second,
+		Connections:   4,
 	}
 
 	logger := log.NewNopLogger()
@@ -67,11 +67,11 @@ func TestUpdatingConfig(t *testing.T) {
 	defer svr.Close()
 
 	cc := types.ConnectionConfig{
-		URL:            svr.URL,
-		Timeout:        1 * time.Second,
-		BatchCount:     10,
-		FlushFrequency: 5 * time.Second,
-		Connections:    1,
+		URL:           svr.URL,
+		Timeout:       1 * time.Second,
+		BatchCount:    10,
+		FlushInterval: 5 * time.Second,
+		Connections:   1,
 	}
 
 	logger := util.TestAlloyLogger(t)
@@ -82,11 +82,11 @@ func TestUpdatingConfig(t *testing.T) {
 	defer wr.Stop()
 
 	cc2 := types.ConnectionConfig{
-		URL:            svr.URL,
-		Timeout:        1 * time.Second,
-		BatchCount:     20,
-		FlushFrequency: 5 * time.Second,
-		Connections:    1,
+		URL:           svr.URL,
+		Timeout:       1 * time.Second,
+		BatchCount:    20,
+		FlushInterval: 5 * time.Second,
+		Connections:   1,
 	}
 	ctx := context.Background()
 	err = wr.UpdateConfig(ctx, cc2)
@@ -122,12 +122,12 @@ func TestRetry(t *testing.T) {
 	defer cncl()
 
 	cc := types.ConnectionConfig{
-		URL:            svr.URL,
-		Timeout:        1 * time.Second,
-		BatchCount:     1,
-		FlushFrequency: 1 * time.Second,
-		RetryBackoff:   100 * time.Millisecond,
-		Connections:    1,
+		URL:           svr.URL,
+		Timeout:       1 * time.Second,
+		BatchCount:    1,
+		FlushInterval: 1 * time.Second,
+		RetryBackoff:  100 * time.Millisecond,
+		Connections:   1,
 	}
 
 	logger := log.NewNopLogger()
@@ -162,7 +162,7 @@ func TestRetryBounded(t *testing.T) {
 		URL:              svr.URL,
 		Timeout:          1 * time.Second,
 		BatchCount:       1,
-		FlushFrequency:   1 * time.Second,
+		FlushInterval:    1 * time.Second,
 		RetryBackoff:     100 * time.Millisecond,
 		MaxRetryAttempts: 1,
 		Connections:      1,
@@ -200,7 +200,7 @@ func TestRecoverable(t *testing.T) {
 		URL:              svr.URL,
 		Timeout:          1 * time.Second,
 		BatchCount:       1,
-		FlushFrequency:   1 * time.Second,
+		FlushInterval:    1 * time.Second,
 		RetryBackoff:     100 * time.Millisecond,
 		MaxRetryAttempts: 1,
 		Connections:      1,
@@ -241,7 +241,7 @@ func TestNonRecoverable(t *testing.T) {
 		URL:              svr.URL,
 		Timeout:          1 * time.Second,
 		BatchCount:       1,
-		FlushFrequency:   1 * time.Second,
+		FlushInterval:    1 * time.Second,
 		RetryBackoff:     100 * time.Millisecond,
 		MaxRetryAttempts: 1,
 		Connections:      1,

@@ -92,7 +92,7 @@ func (l *loop) DoWork(ctx actor.Context) actor.WorkerStatus {
 		if len(l.series) == 0 {
 			return actor.WorkerContinue
 		}
-		if time.Since(l.lastSend) > l.cfg.FlushFrequency {
+		if time.Since(l.lastSend) > l.cfg.FlushInterval {
 			l.trySend(ctx)
 		}
 		return actor.WorkerContinue

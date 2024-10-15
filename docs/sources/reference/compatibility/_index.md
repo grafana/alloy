@@ -174,7 +174,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 
 {{< collapse title="prometheus" >}}
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
-- [prometheus.remote.queue](../components/prometheus/prometheus.remote.queue)
+- [prometheus.write.queue](../components/prometheus/prometheus.write.queue)
 - [prometheus.remote_write](../components/prometheus/prometheus.remote_write)
 {{< /collapse >}}
 

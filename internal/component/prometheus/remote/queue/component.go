@@ -19,7 +19,7 @@ import (
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "prometheus.remote.queue",
+		Name:      "prometheus.write.queue",
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Stability: featuregate.StabilityExperimental,
@@ -42,9 +42,6 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 		return nil, err
 	}
 
-	for _, ep := range s.endpoints {
-		ep.Start()
-	}
 	return s, nil
 }
 
@@ -62,6 +59,12 @@ type Queue struct {
 // suffers a fatal error. Run is guaranteed to be called exactly once per
 // Component.
 func (s *Queue) Run(ctx context.Context) error {
+	s.mut.Lock()
+	for _, ep := range s.endpoints {
+		ep.Start()
+	}
+	s.mut.Unlock()
+
 	defer func() {
 		s.mut.Lock()
 		defer s.mut.Unlock()
@@ -135,7 +138,7 @@ func (s *Queue) createEndpoints() error {
 		}
 		serial, err := serialization.NewSerializer(types.SerializerConfig{
 			MaxSignalsInBatch: uint32(s.args.Serialization.MaxSignalsToBatch),
-			FlushFrequency:    s.args.Serialization.BatchFrequency,
+			FlushFrequency:    s.args.Serialization.BatchInterval,
 		}, fq, stats.UpdateSerializer, s.opts.Logger)
 		if err != nil {
 			return err

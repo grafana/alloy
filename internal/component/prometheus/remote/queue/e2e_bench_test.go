@@ -95,7 +95,7 @@ func newComponentBenchmark(t *testing.B, l log.Logger, url string, exp chan Expo
 		TTL: 2 * time.Hour,
 		Serialization: Serialization{
 			MaxSignalsToBatch: 100_000,
-			BatchFrequency:    1 * time.Second,
+			BatchInterval:     1 * time.Second,
 		},
 		Endpoints: []EndpointConfig{{
 			Name:             "test",
@@ -104,7 +104,7 @@ func newComponentBenchmark(t *testing.B, l log.Logger, url string, exp chan Expo
 			RetryBackoff:     1 * time.Second,
 			MaxRetryAttempts: 0,
 			BatchCount:       50,
-			FlushFrequency:   1 * time.Second,
+			FlushInterval:    1 * time.Second,
 			Parallelism:      1,
 		}},
 	})

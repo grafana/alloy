@@ -357,7 +357,7 @@ func newComponent(t *testing.T, l *logging.Logger, url string, exp chan Exports,
 		TTL: 2 * time.Hour,
 		Serialization: Serialization{
 			MaxSignalsToBatch: 10_000,
-			BatchFrequency:    1 * time.Second,
+			BatchInterval:     1 * time.Second,
 		},
 		Endpoints: []EndpointConfig{{
 			Name:             "test",
@@ -366,7 +366,7 @@ func newComponent(t *testing.T, l *logging.Logger, url string, exp chan Exports,
 			RetryBackoff:     5 * time.Second,
 			MaxRetryAttempts: 1,
 			BatchCount:       50,
-			FlushFrequency:   1 * time.Second,
+			FlushInterval:    1 * time.Second,
 			Parallelism:      1,
 		}},
 	})
