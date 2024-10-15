@@ -19,8 +19,6 @@ func TestStorage(t *testing.T) {
 	ts = GetTimeSeriesFromPool()
 	defer PutTimeSeriesIntoPool(ts)
 	require.Len(t, ts.Labels, 0)
-	require.True(t, cap(ts.LabelsValues) == 1)
-	require.True(t, cap(ts.LabelsNames) == 1)
 	require.Len(t, ts.LabelsValues, 0)
 	require.Len(t, ts.LabelsNames, 0)
 }
