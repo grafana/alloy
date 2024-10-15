@@ -8,7 +8,7 @@ import (
 	snappy "github.com/eapache/go-xerial-snappy"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
+	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/vladopajic/go-actor/actor"
 )
 

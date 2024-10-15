@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
+	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/prometheus/storage"

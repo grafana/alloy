@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/golang/snappy"
-	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
+	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/require"

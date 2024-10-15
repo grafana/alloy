@@ -3,7 +3,7 @@ package network
 import (
 	"net/http"
 
-	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
+	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 )
 
 // recordStats determines what values to send to the stats function. This allows for any

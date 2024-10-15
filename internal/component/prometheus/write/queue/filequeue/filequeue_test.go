@@ -11,7 +11,7 @@ import (
 	"github.com/vladopajic/go-actor/actor"
 	"go.uber.org/goleak"
 
-	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
+	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"

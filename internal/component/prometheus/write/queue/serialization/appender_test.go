@@ -3,7 +3,7 @@ package serialization
 import (
 	"context"
 	log2 "github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
+	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 	"testing"
