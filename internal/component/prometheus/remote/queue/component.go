@@ -36,11 +36,17 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 		log:       opts.Logger,
 		endpoints: map[string]*endpoint{},
 	}
-	s.opts.OnStateChange(Exports{Receiver: s})
+
 	err := s.createEndpoints()
 	if err != nil {
 		return nil, err
 	}
+	// This needs to be started before we export the onstatechange so that it can accept
+	// signals.
+	for _, ep := range s.endpoints {
+		ep.Start()
+	}
+	s.opts.OnStateChange(Exports{Receiver: s})
 
 	return s, nil
 }
@@ -59,12 +65,6 @@ type Queue struct {
 // suffers a fatal error. Run is guaranteed to be called exactly once per
 // Component.
 func (s *Queue) Run(ctx context.Context) error {
-	s.mut.Lock()
-	for _, ep := range s.endpoints {
-		ep.Start()
-	}
-	s.mut.Unlock()
-
 	defer func() {
 		s.mut.Lock()
 		defer s.mut.Unlock()
