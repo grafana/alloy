@@ -343,7 +343,9 @@ func createTempGitleaksConfig(t *testing.T, content string) string {
 }
 
 func deleteTempGitLeaksConfig(t *testing.T, path string) {
-	eros.Remove(path)
+	if err := os.Remove(path); err != nil {
+		t.Logf("Error deleting temporary gitleaks config file: %v", err)
+	}
 }
 
 func BenchmarkAllTypesNoSecret(b *testing.B) {
