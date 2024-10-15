@@ -343,7 +343,7 @@ func createTempGitleaksConfig(t *testing.T, content string) string {
 }
 
 func deleteTempGitLeaksConfig(t *testing.T, path string) {
-	require.NoError(t, os.Remove(path))
+	eros.Remove(path)
 }
 
 func BenchmarkAllTypesNoSecret(b *testing.B) {
