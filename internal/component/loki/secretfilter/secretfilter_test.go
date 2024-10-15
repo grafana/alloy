@@ -356,6 +356,11 @@ func BenchmarkAllTypesWithSecret(b *testing.B) {
 	runBenchmarks(b, testConfigs["default"], 20, "gcp_secret")
 }
 
+func BenchmarkAllTypesWithLotsOfSecrets(b *testing.B) {
+	// Run benchmarks with secrets in the logs (80% of log entries), with all regexes enabled
+	runBenchmarks(b, testConfigs["default"], 80, "gcp_secret")
+}
+
 func BenchmarkOneRuleNoSecret(b *testing.B) {
 	// Run benchmarks with no secrets in the logs, with a single regex enabled
 	runBenchmarks(b, testConfigs["custom_type"], 0, "")
@@ -366,13 +371,19 @@ func BenchmarkOneRuleWithSecret(b *testing.B) {
 	runBenchmarks(b, testConfigs["custom_type"], 20, "gcp_secret")
 }
 
+func BenchmarkOneRuleWithLotsOfSecrets(b *testing.B) {
+	// Run benchmarks with secrets in the logs (80% of log entries), with a single regex enabled
+	runBenchmarks(b, testConfigs["custom_type"], 80, "gcp_secret")
+}
+
 func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretName string) {
 	ch1 := loki.NewLogsReceiver()
 	var args Arguments
 	require.NoError(b, syntax.Unmarshal([]byte(config), &args))
 	args.ForwardTo = []loki.LogsReceiver{ch1}
+
 	opts := component.Options{
-		Logger:         util.TestAlloyLogger(b),
+		Logger:         &noopLogger{}, // Disable logging so that it keeps a clean benchmark output
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
 	}
@@ -382,17 +393,23 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 	require.NoError(b, err)
 
 	// Generate fake log entries with a fixed seed so that it's reproducible
-	fake := faker.NewWithSeed(rand.NewSource(2013))
-	benchInputs := fake.Lorem().Paragraphs(100)
+	fake := faker.NewWithSeed(rand.NewSource(2014))
+	nbLogs := 100
+	benchInputs := make([]string, nbLogs)
+	for i := range benchInputs {
+		beginningStr := fake.Lorem().Paragraph(2)
+		middleStr := fake.Lorem().Sentence(10)
+		endingStr := fake.Lorem().Paragraph(2)
 
-	// Replace some of the log entries with secrets (as defined by the percentageSecrets)
-	for i, _ := range benchInputs {
-		if percentageSecrets != 0 && i%(100/percentageSecrets) == 0 {
-			benchInputs[i] = testLogs[secretName].log
+		// Add fake secrets in some log entries
+		if i < nbLogs*percentageSecrets/100 {
+			middleStr = testLogs[secretName].log
 		}
+
+		benchInputs[i] = beginningStr + middleStr + endingStr
 	}
 
-	// Run benchmark
+	// Run benchmarks
 	for i := 0; i < b.N; i++ {
 		for _, input := range benchInputs {
 			entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: input}}
@@ -408,4 +425,10 @@ func getServiceData(name string) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("service not found %s", name)
 	}
+}
+
+type noopLogger struct{}
+
+func (d *noopLogger) Log(_ ...interface{}) error {
+	return nil
 }

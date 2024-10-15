@@ -816,6 +816,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.33.1 // indirect
 	github.com/checkpoint-restore/go-criu/v6 v6.3.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
+	github.com/jaswdr/faker/v2 v2.3.2
 )
 
 // NOTE: replace directives below must always be *temporary*.
