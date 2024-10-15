@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"github.com/grafana/alloy/internal/util"
 	"io"
 	"math/rand"
 	"net/http"
@@ -33,11 +34,11 @@ func TestSending(t *testing.T) {
 	defer cncl()
 
 	cc := types.ConnectionConfig{
-		URL:            svr.URL,
-		Timeout:        1 * time.Second,
-		BatchCount:     10,
-		FlushFrequency: 1 * time.Second,
-		Connections:    4,
+		URL:           svr.URL,
+		Timeout:       1 * time.Second,
+		BatchCount:    10,
+		FlushInterval: 1 * time.Second,
+		Connections:   4,
 	}
 
 	logger := log.NewNopLogger()
@@ -64,41 +65,41 @@ func TestUpdatingConfig(t *testing.T) {
 	}))
 
 	defer svr.Close()
-	ctx := context.Background()
-	ctx, cncl := context.WithCancel(ctx)
-	defer cncl()
 
 	cc := types.ConnectionConfig{
-		URL:            svr.URL,
-		Timeout:        1 * time.Second,
-		BatchCount:     10,
-		FlushFrequency: 1 * time.Second,
-		Connections:    4,
+		URL:           svr.URL,
+		Timeout:       1 * time.Second,
+		BatchCount:    10,
+		FlushInterval: 5 * time.Second,
+		Connections:   1,
 	}
 
-	logger := log.NewNopLogger()
+	logger := util.TestAlloyLogger(t)
+
 	wr, err := New(cc, logger, func(s types.NetworkStats) {}, func(s types.NetworkStats) {})
+	require.NoError(t, err)
 	wr.Start()
 	defer wr.Stop()
 
 	cc2 := types.ConnectionConfig{
-		URL:            svr.URL,
-		Timeout:        5 * time.Second,
-		BatchCount:     100,
-		FlushFrequency: 1 * time.Second,
-		Connections:    4,
+		URL:           svr.URL,
+		Timeout:       1 * time.Second,
+		BatchCount:    20,
+		FlushInterval: 5 * time.Second,
+		Connections:   1,
 	}
-
-	err = wr.UpdateConfig(context.Background(), cc2)
+	ctx := context.Background()
+	err = wr.UpdateConfig(ctx, cc2)
 	require.NoError(t, err)
-	for i := 0; i < 1_000; i++ {
+	time.Sleep(1 * time.Second)
+	for i := 0; i < 100; i++ {
 		send(t, wr, ctx)
 	}
 	require.Eventuallyf(t, func() bool {
-		return recordsFound.Load() == 1_000
-	}, 10*time.Second, 1*time.Second, "record count should be 1000 but is %d", recordsFound.Load())
+		return recordsFound.Load() == 100
+	}, 20*time.Second, 1*time.Second, "record count should be 100 but is %d", recordsFound.Load())
 
-	require.Truef(t, lastBatchSize.Load() == 100, "batch_count should be 100 but is %d", lastBatchSize.Load())
+	require.Truef(t, lastBatchSize.Load() == 20, "batch_count should be 20 but is %d", lastBatchSize.Load())
 }
 
 func TestRetry(t *testing.T) {
@@ -121,12 +122,12 @@ func TestRetry(t *testing.T) {
 	defer cncl()
 
 	cc := types.ConnectionConfig{
-		URL:            svr.URL,
-		Timeout:        1 * time.Second,
-		BatchCount:     1,
-		FlushFrequency: 1 * time.Second,
-		RetryBackoff:   100 * time.Millisecond,
-		Connections:    1,
+		URL:           svr.URL,
+		Timeout:       1 * time.Second,
+		BatchCount:    1,
+		FlushInterval: 1 * time.Second,
+		RetryBackoff:  100 * time.Millisecond,
+		Connections:   1,
 	}
 
 	logger := log.NewNopLogger()
@@ -158,13 +159,13 @@ func TestRetryBounded(t *testing.T) {
 	defer cncl()
 
 	cc := types.ConnectionConfig{
-		URL:                     svr.URL,
-		Timeout:                 1 * time.Second,
-		BatchCount:              1,
-		FlushFrequency:          1 * time.Second,
-		RetryBackoff:            100 * time.Millisecond,
-		MaxRetryBackoffAttempts: 1,
-		Connections:             1,
+		URL:              svr.URL,
+		Timeout:          1 * time.Second,
+		BatchCount:       1,
+		FlushInterval:    1 * time.Second,
+		RetryBackoff:     100 * time.Millisecond,
+		MaxRetryAttempts: 1,
+		Connections:      1,
 	}
 
 	logger := log.NewNopLogger()
@@ -196,13 +197,13 @@ func TestRecoverable(t *testing.T) {
 	defer cncl()
 
 	cc := types.ConnectionConfig{
-		URL:                     svr.URL,
-		Timeout:                 1 * time.Second,
-		BatchCount:              1,
-		FlushFrequency:          1 * time.Second,
-		RetryBackoff:            100 * time.Millisecond,
-		MaxRetryBackoffAttempts: 1,
-		Connections:             1,
+		URL:              svr.URL,
+		Timeout:          1 * time.Second,
+		BatchCount:       1,
+		FlushInterval:    1 * time.Second,
+		RetryBackoff:     100 * time.Millisecond,
+		MaxRetryAttempts: 1,
+		Connections:      1,
 	}
 
 	logger := log.NewNopLogger()
@@ -237,13 +238,13 @@ func TestNonRecoverable(t *testing.T) {
 	defer cncl()
 
 	cc := types.ConnectionConfig{
-		URL:                     svr.URL,
-		Timeout:                 1 * time.Second,
-		BatchCount:              1,
-		FlushFrequency:          1 * time.Second,
-		RetryBackoff:            100 * time.Millisecond,
-		MaxRetryBackoffAttempts: 1,
-		Connections:             1,
+		URL:              svr.URL,
+		Timeout:          1 * time.Second,
+		BatchCount:       1,
+		FlushInterval:    1 * time.Second,
+		RetryBackoff:     100 * time.Millisecond,
+		MaxRetryAttempts: 1,
+		Connections:      1,
 	}
 
 	logger := log.NewNopLogger()

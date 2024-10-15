@@ -2,6 +2,7 @@ package serialization
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/vladopajic/go-actor/actor"
+	"go.uber.org/atomic"
 )
 
 // serializer collects data from multiple appenders in-memory and will periodically flush the data to file.Storage.
@@ -30,6 +32,7 @@ type serializer struct {
 	meta           []*types.TimeSeriesBinary
 	msgpBuffer     []byte
 	stats          func(stats types.SerializerStats)
+	stopped        *atomic.Bool
 }
 
 func NewSerializer(cfg types.SerializerConfig, q types.FileStorage, stats func(stats types.SerializerStats), l log.Logger) (types.Serializer, error) {
@@ -46,6 +49,7 @@ func NewSerializer(cfg types.SerializerConfig, q types.FileStorage, stats func(s
 		msgpBuffer:          make([]byte, 0),
 		lastFlush:           time.Now(),
 		stats:               stats,
+		stopped:             atomic.NewBool(false),
 	}
 
 	return s, nil
@@ -58,19 +62,29 @@ func (s *serializer) Start() {
 }
 
 func (s *serializer) Stop() {
+	s.stopped.Store(true)
 	s.queue.Stop()
 	s.self.Stop()
 }
 
 func (s *serializer) SendSeries(ctx context.Context, data *types.TimeSeriesBinary) error {
+	if s.stopped.Load() {
+		return fmt.Errorf("serializer is stopped")
+	}
 	return s.inbox.Send(ctx, data)
 }
 
 func (s *serializer) SendMetadata(ctx context.Context, data *types.TimeSeriesBinary) error {
+	if s.stopped.Load() {
+		return fmt.Errorf("serializer is stopped")
+	}
 	return s.metaInbox.Send(ctx, data)
 }
 
 func (s *serializer) UpdateConfig(ctx context.Context, cfg types.SerializerConfig) error {
+	if s.stopped.Load() {
+		return fmt.Errorf("serializer is stopped")
+	}
 	return s.cfgInbox.Send(ctx, cfg)
 }
 
@@ -150,7 +164,7 @@ func (s *serializer) flushToDisk(ctx actor.Context) error {
 		types.PutTimeSeriesSliceIntoPool(s.series)
 		types.PutTimeSeriesSliceIntoPool(s.meta)
 		s.series = s.series[:0]
-		s.meta = s.series[:0]
+		s.meta = s.meta[:0]
 	}()
 
 	// This maps strings to index position in a slice. This is doing to reduce the file size of the data.
@@ -178,7 +192,7 @@ func (s *serializer) flushToDisk(ctx actor.Context) error {
 	out := snappy.Encode(buf)
 	meta := map[string]string{
 		// product.signal_type.schema.version
-		"version":       "alloy.metrics.queue.v1",
+		"version":       types.AlloyFileVersion,
 		"compression":   "snappy",
 		"series_count":  strconv.Itoa(len(group.Series)),
 		"meta_count":    strconv.Itoa(len(group.Metadata)),
@@ -197,7 +211,6 @@ func (s *serializer) storeStats(err error) {
 	for _, ts := range s.series {
 		if ts.TS > newestTS {
 			newestTS = ts.TS
-
 		}
 	}
 	s.stats(types.SerializerStats{

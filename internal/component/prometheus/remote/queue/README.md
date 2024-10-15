@@ -4,9 +4,9 @@
 
 ## Overview
 
-The `prometheus.remote.queue` goals are to set reliable and repeatable memory and cpu usage based on the number of incoming and outgoing series. There are four broad parts to the system.
+The `prometheus.write.queue` goals are to set reliable and repeatable memory and cpu usage based on the number of incoming and outgoing series. There are four broad parts to the system.
 
-1. The `prometheus.remote.queue` component itself. This handles the lifecycle of the Alloy system.
+1. The `prometheus.write.queue` component itself. This handles the lifecycle of the Alloy system.
 2. The `serialization` converts an array of series into a serializable format. This is handled via [msgp]() library. 
 3. The `filequeue` is where the buffers are written to. This has a series of files that are committed to disk and then are read.
 4. The `network` handles sending data. The data is sharded by the label hash across any number of loops that send data.

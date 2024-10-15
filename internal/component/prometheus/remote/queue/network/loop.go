@@ -92,7 +92,7 @@ func (l *loop) DoWork(ctx actor.Context) actor.WorkerStatus {
 		if len(l.series) == 0 {
 			return actor.WorkerContinue
 		}
-		if time.Since(l.lastSend) > l.cfg.FlushFrequency {
+		if time.Since(l.lastSend) > l.cfg.FlushInterval {
 			l.trySend(ctx)
 		}
 		return actor.WorkerContinue
@@ -108,7 +108,7 @@ func (l *loop) DoWork(ctx actor.Context) actor.WorkerStatus {
 	}
 }
 
-// trySend is the core functionality for sending data to a endpoint. It will attempt retries as defined in MaxRetryBackoffAttempts.
+// trySend is the core functionality for sending data to a endpoint. It will attempt retries as defined in MaxRetryAttempts.
 func (l *loop) trySend(ctx context.Context) {
 	attempts := 0
 	for {
@@ -130,7 +130,7 @@ func (l *loop) trySend(ctx context.Context) {
 			return
 		}
 		attempts++
-		if attempts > int(l.cfg.MaxRetryBackoffAttempts) && l.cfg.MaxRetryBackoffAttempts > 0 {
+		if attempts > int(l.cfg.MaxRetryAttempts) && l.cfg.MaxRetryAttempts > 0 {
 			level.Debug(l.log).Log("msg", "max retry attempts reached", "attempts", attempts)
 			l.sendingCleanup()
 			return
@@ -195,7 +195,9 @@ func (l *loop) send(ctx context.Context, retryCount int) sendResult {
 	httpReq.Header.Set("Content-Type", "application/x-protobuf")
 	httpReq.Header.Set("User-Agent", l.cfg.UserAgent)
 	httpReq.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
-	httpReq.SetBasicAuth(l.cfg.Username, l.cfg.Password)
+	if l.cfg.BasicAuth != nil {
+		httpReq.SetBasicAuth(l.cfg.BasicAuth.Username, l.cfg.BasicAuth.Password)
+	}
 
 	if retryCount > 0 {
 		httpReq.Header.Set("Retry-Attempt", strconv.Itoa(retryCount))
@@ -310,19 +312,16 @@ func createWriteRequest(wr *prompb.WriteRequest, series []*types.TimeSeriesBinar
 }
 
 func createWriteRequestMetadata(l log.Logger, wr *prompb.WriteRequest, series []*types.TimeSeriesBinary, data *proto.Buffer) ([]byte, error) {
-	if cap(wr.Metadata) < len(series) {
-		wr.Metadata = make([]prompb.MetricMetadata, len(series))
-	} else {
-		wr.Metadata = wr.Metadata[:len(series)]
-	}
-
-	for i, ts := range series {
+	// Metadata is rarely sent so having this being less than optimal is fine.
+	wr.Metadata = make([]prompb.MetricMetadata, 0)
+	for _, ts := range series {
 		mt, valid := toMetadata(ts)
+		// TODO @mattdurham somewhere there is a bug where metadata with no labels are being passed through.
 		if !valid {
 			level.Error(l).Log("msg", "invalid metadata was found", "labels", ts.Labels.String())
 			continue
 		}
-		wr.Metadata[i] = mt
+		wr.Metadata = append(wr.Metadata, mt)
 	}
 	data.Reset()
 	err := data.Marshal(wr)

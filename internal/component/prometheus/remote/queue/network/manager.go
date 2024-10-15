@@ -2,11 +2,9 @@ package network
 
 import (
 	"context"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/prometheus/remote/queue/types"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/vladopajic/go-actor/actor"
 )
 
@@ -17,11 +15,17 @@ type manager struct {
 	logger      log.Logger
 	inbox       actor.Mailbox[*types.TimeSeriesBinary]
 	metaInbox   actor.Mailbox[*types.TimeSeriesBinary]
-	configInbox actor.Mailbox[types.ConnectionConfig]
+	configInbox actor.Mailbox[configCallback]
 	self        actor.Actor
 	cfg         types.ConnectionConfig
 	stats       func(types.NetworkStats)
 	metaStats   func(types.NetworkStats)
+}
+
+// configCallback allows actors to notify via `done` channel when they're done processing the config `cc`. Useful when synchronous processing is required.
+type configCallback struct {
+	cc   types.ConnectionConfig
+	done chan struct{}
 }
 
 var _ types.NetworkClient = (*manager)(nil)
@@ -36,13 +40,14 @@ func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStat
 		// it will stop the filequeue from feeding more.
 		inbox:       actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
 		metaInbox:   actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
-		configInbox: actor.NewMailbox[types.ConnectionConfig](),
+		configInbox: actor.NewMailbox[configCallback](),
 		stats:       seriesStats,
+		metaStats:   metadataStats,
 		cfg:         cc,
 	}
 
 	// start kicks off a number of concurrent connections.
-	for i := uint64(0); i < s.cfg.Connections; i++ {
+	for i := uint(0); i < s.cfg.Connections; i++ {
 		l := newLoop(cc, false, logger, seriesStats)
 		l.self = actor.New(l)
 		s.loops = append(s.loops, l)
@@ -71,7 +76,17 @@ func (s *manager) SendMetadata(ctx context.Context, data *types.TimeSeriesBinary
 }
 
 func (s *manager) UpdateConfig(ctx context.Context, cc types.ConnectionConfig) error {
-	return s.configInbox.Send(ctx, cc)
+	done := make(chan struct{})
+	defer close(done)
+	err := s.configInbox.Send(ctx, configCallback{
+		cc:   cc,
+		done: done,
+	})
+	if err != nil {
+		return err
+	}
+	<-done
+	return nil
 }
 
 func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
@@ -79,30 +94,47 @@ func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
 	select {
 	case cfg, ok := <-s.configInbox.ReceiveC():
 		if !ok {
+			level.Debug(s.logger).Log("msg", "config inbox closed")
 			return actor.WorkerEnd
 		}
-		s.updateConfig(cfg)
+		s.updateConfig(cfg.cc)
+		// Notify the caller we have applied the config.
+		cfg.done <- struct{}{}
 		return actor.WorkerContinue
 	default:
 	}
+
+	// main work queue.
 	select {
 	case <-ctx.Done():
 		s.Stop()
 		return actor.WorkerEnd
 	case ts, ok := <-s.inbox.ReceiveC():
 		if !ok {
+			level.Debug(s.logger).Log("msg", "series inbox closed")
 			return actor.WorkerEnd
 		}
 		s.queue(ctx, ts)
 		return actor.WorkerContinue
 	case ts, ok := <-s.metaInbox.ReceiveC():
 		if !ok {
+			level.Debug(s.logger).Log("msg", "meta inbox closed")
 			return actor.WorkerEnd
 		}
 		err := s.metadata.seriesMbx.Send(ctx, ts)
 		if err != nil {
 			level.Error(s.logger).Log("msg", "failed to send to metadata loop", "err", err)
 		}
+		return actor.WorkerContinue
+		// We need to also check the config here, else its possible this will deadlock.
+	case cfg, ok := <-s.configInbox.ReceiveC():
+		if !ok {
+			level.Debug(s.logger).Log("msg", "config inbox closed")
+			return actor.WorkerEnd
+		}
+		s.updateConfig(cfg.cc)
+		// Notify the caller we have applied the config.
+		cfg.done <- struct{}{}
 		return actor.WorkerContinue
 	}
 }
@@ -120,17 +152,17 @@ func (s *manager) updateConfig(cc types.ConnectionConfig) {
 	level.Debug(s.logger).Log("msg", "dropping all series in loops and creating queue due to config change")
 	s.stopLoops()
 	s.loops = make([]*loop, 0, s.cfg.Connections)
-	var i uint64
-	for ; i < s.cfg.Connections; i++ {
+	for i := uint(0); i < s.cfg.Connections; i++ {
 		l := newLoop(cc, false, s.logger, s.stats)
 		l.self = actor.New(l)
-
 		s.loops = append(s.loops, l)
 	}
 
 	s.metadata = newLoop(cc, true, s.logger, s.metaStats)
 	s.metadata.self = actor.New(s.metadata)
+	level.Debug(s.logger).Log("msg", "starting loops")
 	s.startLoops()
+	level.Debug(s.logger).Log("msg", "loops started")
 }
 
 func (s *manager) Stop() {
@@ -158,7 +190,7 @@ func (s *manager) startLoops() {
 // Queue adds anything thats not metadata to the queue.
 func (s *manager) queue(ctx context.Context, ts *types.TimeSeriesBinary) {
 	// Based on a hash which is the label hash add to the queue.
-	queueNum := ts.Hash % s.cfg.Connections
+	queueNum := ts.Hash % uint64(s.cfg.Connections)
 	// This will block if the queue is full.
 	err := s.loops[queueNum].seriesMbx.Send(ctx, ts)
 	if err != nil {
