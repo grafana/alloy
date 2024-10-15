@@ -622,12 +622,14 @@ func runE2eStats(t *testing.T, test statsTest) {
 		dtos, gatherErr := reg.Gather()
 		require.NoError(t, gatherErr)
 		// Check if we have some valid metrics.
+		found := 0
 		for _, d := range dtos {
 			if getValue(d) > 0 {
-				return true
+				found++
 			}
 		}
-		return false
+		// Make sure we have a few metrics.
+		return found > 1
 	}, 10*time.Second, 1*time.Second)
 	metrics := make(map[string]float64)
 	dtos, err := reg.Gather()
