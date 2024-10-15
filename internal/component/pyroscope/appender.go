@@ -2,6 +2,9 @@ package pyroscope
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -22,11 +25,18 @@ type Appendable interface {
 
 type Appender interface {
 	Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error
+	AppendIngest(ctx context.Context, profile *IncomingProfile) error
 }
 
 type RawSample struct {
 	// raw_profile is the set of bytes of the pprof profile
 	RawProfile []byte
+}
+
+type IncomingProfile struct {
+	Body    io.ReadCloser
+	Headers http.Header
+	URL     *url.URL
 }
 
 var _ Appendable = (*Fanout)(nil)
@@ -118,6 +128,18 @@ func (f AppendableFunc) Append(ctx context.Context, labels labels.Labels, sample
 	return f(ctx, labels, samples)
 }
 
-func (f AppendableFunc) Appender() Appender {
-	return f
+// AppendIngest satisfies the AppenderIngest interface.
+func (a *appender) AppendIngest(ctx context.Context, profile *IncomingProfile) error {
+	now := time.Now()
+	defer func() {
+		a.writeLatency.Observe(time.Since(now).Seconds())
+	}()
+	var multiErr error
+	for _, x := range a.children {
+		err := x.AppendIngest(ctx, profile)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
 }

@@ -3,6 +3,10 @@ package write
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -149,34 +153,40 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 type fanOutClient struct {
 	// The list of push clients to fan out to.
-	clients []pushv1connect.PusherServiceClient
-
-	config  Arguments
-	opts    component.Options
-	metrics *metrics
+	clients    []pushv1connect.PusherServiceClient
+	httpClient *http.Client
+	config     Arguments
+	opts       component.Options
+	metrics    *metrics
 }
 
 // NewFanOut creates a new fan out client that will fan out to all endpoints.
 func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fanOutClient, error) {
 	clients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
 	uid := alloyseed.Get().UID
+
+	var httpClient *http.Client
 	for _, endpoint := range config.Endpoints {
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
 		endpoint.Headers[alloyseed.LegacyHeaderName] = uid
 		endpoint.Headers[alloyseed.HeaderName] = uid
-		httpClient, err := commonconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
+		client, err := commonconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
 		if err != nil {
 			return nil, err
 		}
-		clients = append(clients, pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)))
+		clients = append(clients, pushv1connect.NewPusherServiceClient(client, endpoint.URL, WithUserAgent(userAgent)))
+		if httpClient == nil {
+			httpClient = client
+		}
 	}
 	return &fanOutClient{
-		clients: clients,
-		config:  config,
-		opts:    opts,
-		metrics: metrics,
+		clients:    clients,
+		httpClient: httpClient,
+		config:     config,
+		opts:       opts,
+		metrics:    metrics,
 	}, nil
 }
 
@@ -271,7 +281,7 @@ func requestSize(req *connect.Request[pushv1.PushRequest]) (int64, int64) {
 	return size, profiles
 }
 
-// Append implements the pyroscope.Appendable interface.
+// Appender implements the pyroscope.Appendable interface.
 func (f *fanOutClient) Appender() pyroscope.Appender {
 	return f
 }
@@ -316,6 +326,50 @@ func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []
 		},
 	}))
 	return err
+}
+
+type PyroscopeWriteError struct {
+	StatusCode int
+}
+
+func (e *PyroscopeWriteError) Error() string {
+	return fmt.Sprintf("pyroscope write error: status %d", e.StatusCode)
+}
+
+// AppendIngest implements the pyroscope.Appender interface.
+func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
+	for _, endpoint := range f.config.Endpoints {
+		u, err := url.Parse(endpoint.URL)
+		if err != nil {
+			return fmt.Errorf("parse endpoint URL: %w", err)
+		}
+
+		u.Path = path.Join(u.Path, profile.URL.Path)
+		u.RawQuery = profile.URL.RawQuery
+
+		req, err := http.NewRequestWithContext(ctx, "POST", u.String(), profile.Body)
+		if err != nil {
+			return fmt.Errorf("create request: %w", err)
+		}
+
+		for k, v := range endpoint.Headers {
+			req.Header.Set(k, v)
+		}
+		for k, v := range profile.Headers {
+			req.Header[k] = v
+		}
+
+		resp, err := f.httpClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("do request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return &PyroscopeWriteError{StatusCode: resp.StatusCode}
+		}
+	}
+	return nil
 }
 
 // WithUserAgent returns a `connect.ClientOption` that sets the User-Agent header on.

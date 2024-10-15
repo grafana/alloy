@@ -394,6 +394,7 @@ The following components, grouped by namespace, _consume_ Pyroscope `ProfilesRec
 {{< collapse title="pyroscope" >}}
 - [pyroscope.ebpf](../components/pyroscope/pyroscope.ebpf)
 - [pyroscope.java](../components/pyroscope/pyroscope.java)
+- [pyroscope.receive_http](../components/pyroscope/pyroscope.receive_http)
 - [pyroscope.scrape](../components/pyroscope/pyroscope.scrape)
 {{< /collapse >}}
 
