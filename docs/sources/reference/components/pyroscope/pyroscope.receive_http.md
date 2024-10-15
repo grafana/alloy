@@ -82,9 +82,6 @@ pyroscope.receive_http "default" {
 pyroscope.write "staging" {
   endpoint {
     url = "http://pyroscope-staging:4040"
-    headers = {
-      "X-Scope-OrgID" = "squad-1",
-    }
   }
 }
 
@@ -92,9 +89,6 @@ pyroscope.write "staging" {
 pyroscope.write "production" {
   endpoint {
     url = "http://pyroscope-production:4040"
-    headers = {
-      "X-Scope-OrgID" = "squad-1",
-    }
   }
 }
 ```
@@ -110,6 +104,7 @@ You can also create multiple `pyroscope.receive_http` components with different 
 `pyroscope.receive_http` can accept arguments from the following components:
 
 - Components that export [Pyroscope `ProfilesReceiver`](../../../compatibility/#pyroscope-profilesreceiver-exporters)
+
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

@@ -122,12 +122,6 @@ func (a *appender) Append(ctx context.Context, labels labels.Labels, samples []*
 	return multiErr
 }
 
-type AppendableFunc func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
-
-func (f AppendableFunc) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
-	return f(ctx, labels, samples)
-}
-
 // AppendIngest satisfies the AppenderIngest interface.
 func (a *appender) AppendIngest(ctx context.Context, profile *IncomingProfile) error {
 	now := time.Now()
@@ -142,4 +136,19 @@ func (a *appender) AppendIngest(ctx context.Context, profile *IncomingProfile) e
 		}
 	}
 	return multiErr
+}
+
+type AppendableFunc func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
+
+func (f AppendableFunc) Appender() Appender {
+	return f
+}
+
+func (f AppendableFunc) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
+	return f(ctx, labels, samples)
+}
+
+func (f AppendableFunc) AppendIngest(_ context.Context, _ *IncomingProfile) error {
+	// This is a no-op implementation
+	return nil
 }
