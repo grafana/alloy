@@ -174,7 +174,7 @@ They generally behave the same, but there are likely edge cases where they diffe
 * `prometheus_remote_storage_exemplars_in_total` (counter): Exemplars read into
   remote storage.
 
-Metrics that are new to `prometheus.remote.write`. These are highly subject to change.
+Metrics that are new to `prometheus.write.queue`. These are highly subject to change.
 
 * `alloy_queue_series_serializer_incoming_signals` (counter): Total number of series written to serialization.
 * `alloy_queue_metadata_serializer_incoming_signals` (counter): Total number of metadata written to serialization.
