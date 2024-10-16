@@ -62,55 +62,70 @@ func (c *Component) CurrentHealth() component.Health {
 	return c.health
 }
 
+type cancelHandler struct {
+	mut            sync.RWMutex
+	cancel         context.CancelFunc
+	alreadyTrigger bool
+}
+
+func (ch *cancelHandler) Set(cncl context.CancelFunc) {
+	ch.mut.Lock()
+	defer ch.mut.Unlock()
+	ch.cancel = cncl
+}
+
+func (ch *cancelHandler) Cancel() {
+	ch.mut.Lock()
+	defer ch.mut.Unlock()
+	if ch.alreadyTrigger {
+		return
+	}
+	if ch.cancel == nil {
+		return
+	}
+	ch.cancel()
+	ch.alreadyTrigger = true
+}
+
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	// innerCtx gets passed to things we create, so we can restart everything anytime we get an update.
 	// Ideally, this component has very little dynamic config, and won't have frequent updates.
 	var innerCtx context.Context
 	// cancel is the func we use to trigger a stop to all downstream processors we create
-	var cancel func()
-	defer func() {
-		if cancel != nil {
-			cancel()
-		}
-	}()
+	var cancel cancelHandler
+
+	wg := sync.WaitGroup{}
 
 	c.reportHealth(nil)
 	errChan := make(chan error, 1)
-	runWg := sync.WaitGroup{}
-	defer runWg.Wait()
+
+	defer wg.Wait()
 	for {
 		select {
 		case <-ctx.Done():
-			if cancel != nil {
-				cancel()
-			}
+			cancel.Cancel()
 			return nil
 		case err := <-errChan:
 			c.reportHealth(err)
 		case <-c.onUpdate:
-			c.mut.Lock()
-			manager := c.crdManagerFactory.New(c.opts, c.cluster, c.opts.Logger, c.config, c.kind, c.ls)
-			c.manager = manager
+			c.manager = c.crdManagerFactory.New(c.opts, c.cluster, c.opts.Logger, c.config, c.kind, c.ls)
 
 			// Wait for the old manager to stop.
 			// If we start the new manager before stopping the old one,
 			// the new manager might not be able to register its debug metrics due to a duplicate registration error.
-			if cancel != nil {
-				cancel()
-			}
-			runWg.Wait()
-
-			innerCtx, cancel = context.WithCancel(ctx)
-			runWg.Add(1)
+			cancel.Cancel()
+			var cncl context.CancelFunc
+			innerCtx, cncl = context.WithCancel(ctx)
+			cancel.Set(cncl)
+			wg.Add(1)
 			go func() {
-				if err := manager.Run(innerCtx); err != nil {
+				if err := c.manager.Run(innerCtx); err != nil {
 					level.Error(c.opts.Logger).Log("msg", "error running crd manager", "err", err)
 					errChan <- err
 				}
-				runWg.Done()
+				wg.Done()
 			}()
-			c.mut.Unlock()
 		}
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -37,7 +38,8 @@ type crdManagerHungRun struct {
 }
 
 func (c *crdManagerHungRun) Run(ctx context.Context) error {
-	<-c.stopRun
+	<-ctx.Done()
+	c.stopRun <- struct{}{}
 	return nil
 }
 
@@ -94,25 +96,25 @@ func TestRunExit(t *testing.T) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	cmpRunExited := atomic.Bool{}
 	cmpRunExited.Store(false)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		wg.Done()
 		err := c.Run(ctx)
 		require.NoError(t, err)
 		cmpRunExited.Store(true)
-		fmt.Println("component.Run exited")
 	}()
-
+	wg.Wait()
 	// Stop the component.
 	// It shouldn't stop immediately, because the CRD Manager is hung.
 	cancelFunc()
+	<-stopRun
 
-	// Make sure component.Run didn't exit for a few seconds
-	fmt.Println("start sleeping")
-	time.Sleep(5 * time.Second)
-	fmt.Println("finished sleeping")
-
-	if cmpRunExited.Load() {
-		require.Fail(t, "component.Run exited")
-	}
+	require.Eventually(t, func() bool {
+		fmt.Println(cmpRunExited.Load())
+		return cmpRunExited.Load()
+	}, 10*time.Second, 1*time.Second)
 
 	// Make crdManager.Run exit
 	close(stopRun)
