@@ -124,7 +124,7 @@ The following arguments are supported:
 
 Name                      | Type       | Description                                                                 | Default | Required
 --------------------------|------------|-----------------------------------------------------------------------------|---------|---------
-`endpoint`                | `string`   | The splunk HEC endpoint to use                                              |         | yes
+`endpoint`                | `string`   | The Splunk HEC endpoint to use.                                              |         | yes
 `read_buffer_size`        | `string`   | Size of the read buffer the HTTP client uses for reading server responses.  |         | no
 `write_buffer_size`       | `string`   | Size of the write buffer the HTTP client uses for writing requests.         |         | no
 `timeout`                 | `duration` | Time to wait before marking a request as failed.                            | `"15s"` | no
