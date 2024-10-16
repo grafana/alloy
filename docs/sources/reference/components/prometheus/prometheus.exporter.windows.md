@@ -46,24 +46,24 @@ Refer to the [Collectors list](#collectors-list) for the default set.
 The following blocks are supported inside the definition of
 `prometheus.exporter.windows` to configure collector-specific options:
 
-Hierarchy      | Name               | Description                                       | Required
----------------|--------------------|---------------------------------------------------|---------
-dfsr           | [dfsr][]           | Configures the dfsr collector.                    | no
-exchange       | [exchange][]       | Configures the exchange collector.                | no
-iis            | [iis][]            | Configures the iis collector.                     | no
-logical_disk   | [logical_disk][]   | Configures the logical_disk collector.            | no
-msmq           | [msmq][]           | Configures the msmq collector.                    | no
-mssql          | [mssql][]          | Configures the mssql collector.                   | no
-network        | [network][]        | Configures the network collector.                 | no
-physical_disk  | [physical_disk][]  | Configures the physical_disk collector.           | no
-printer        | [printer][]        | Configures the printer collector.                 | no
-process        | [process][]        | Configures the process collector.                 | no
-scheduled_task | [scheduled_task][] | Configures the scheduled_task collector.          | no
-service        | [service][]        | Configures the service collector.                 | no
-smb            | [smb][]            | Configures the smb collector.                     | no
-smb_client     | [smb_client][]     | (Deprecated) Configures the smb_client collector. | no
-smtp           | [smtp][]           | Configures the smtp collector.                    | no
-text_file      | [text_file][]      | Configures the text_file collector.               | no
+Hierarchy      | Name               | Description                              | Required
+---------------|--------------------|------------------------------------------|---------
+dfsr           | [dfsr][]           | Configures the dfsr collector.           | no
+exchange       | [exchange][]       | Configures the exchange collector.       | no
+iis            | [iis][]            | Configures the iis collector.            | no
+logical_disk   | [logical_disk][]   | Configures the logical_disk collector.   | no
+msmq           | [msmq][]           | Configures the msmq collector.           | no
+mssql          | [mssql][]          | Configures the mssql collector.          | no
+network        | [network][]        | Configures the network collector.        | no
+physical_disk  | [physical_disk][]  | Configures the physical_disk collector.  | no
+printer        | [printer][]        | Configures the printer collector.        | no
+process        | [process][]        | Configures the process collector.        | no
+scheduled_task | [scheduled_task][] | Configures the scheduled_task collector. | no
+service        | [service][]        | Configures the service collector.        | no
+smb            | [smb][]            | Configures the smb collector.            | no
+smb_client     | [smb_client][]     | Configures the smb_client collector.     | no
+smtp           | [smtp][]           | Configures the smtp collector.           | no
+text_file      | [text_file][]      | Configures the text_file collector.      | no
 
 [dfsr]: #dfsr-block
 [exchange]: #exchange-block
@@ -277,6 +277,12 @@ For example, if a user sets an `exclude` argument to `".*"`, Alloy will set it t
 
 To find out if a particular regex argument will be wrapped, refer to the collector block documentation.
 
+{{< admonition type="note" >}}
+The wrapping may change the behaviour of your regex.
+For example, the `e.*` regex would normally match both the "service" and "email" strings.
+However, `^(?:e.*)$` would only match "email".
+{{< /admonition >}}
+
 ## Collectors list
 The following table lists the available collectors that `windows_exporter` brings
 bundled in. Some collectors only work on specific operating systems; enabling a
@@ -332,6 +338,7 @@ Name     | Description | Enabled by default
 [scheduled_task](https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.scheduled_task.md) | Scheduled Tasks metrics |
 [service](https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.service.md) | Service state metrics | &#10003;
 [smb](https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.smb.md) | IIS SMTP Server |
+[smb_client](https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.smbclient.md) | IIS SMTP Server |
 [smtp](https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.smtp.md) | IIS SMTP Server |
 [system](https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.system.md) | System calls | &#10003;
 [tcp](https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.tcp.md) | TCP connections |

@@ -10,6 +10,11 @@ import (
 // Wrap some regex strings to prevent issues with user-supplied empty strings.
 // Prior to v0.27, the upstream exporter used to wrap regexes like this.
 // Alloy is now doing this instead, to maintain backwards compatibility.
+//
+// This is mostly to prevent issues with `exclude` arguments.
+// If `exclude` is set to `""` and there is no wrapping, the regex will match everything.
+// Therefore, all collectors will be excluded.
+//
 // See https://github.com/grafana/alloy/issues/1845
 // TODO: Remove this in Alloy v2.
 func wrapRegex(regex string) string {
