@@ -161,8 +161,7 @@ Name    | Type               | Description
 
 ## Component health
 
-`otelcol.exporter.splunkhec` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.exporter.splunkhec` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
