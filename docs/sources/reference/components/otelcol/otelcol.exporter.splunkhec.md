@@ -103,8 +103,8 @@ Name                       | Type     | Description                             
 
 Name                       | Type     | Description                                                     | Default                       | Required
 ---------------------------|----------|-----------------------------------------------------------------|-------------------------------|---------
-`interval`                 | `int`    | Time interval for the heartbeat interval, in seconds            |   `0`                         | no
-`startup`                  | `bool`   | Send heartbeat events on exporter startup                       |   `false`                        | no
+`interval`                 | `int`    | Time interval for the heartbeat interval, in seconds.            |   `0`                         | no
+`startup`                  | `bool`   | Send heartbeat events on exporter startup.                       |   `false`                        | no
 
 
 #### telemetry block
