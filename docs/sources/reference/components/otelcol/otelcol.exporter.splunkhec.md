@@ -4,7 +4,6 @@ description: Learn about otelcol.exporter.splunkhec
 title: otelcol.exporter.splunkhec
 ---
 
-
 <span class="badge docs-labels__stage docs-labels__item">Community</span>
 
 # otelcol.exporter.splunkhec
