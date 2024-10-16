@@ -111,10 +111,8 @@ Name                       | Type     | Description                             
 
 Name                       | Type                  | Description                                                     | Default                       | Required
 ---------------------------|-----------------------|-----------------------------------------------------------------|-------------------------------|---------
-`enabled`                  | `bool`                | Enable telemetry inside the exporter                            |   `false`                     | no
-`override_metrics_names`   | `map[string]string`   | Override metrics for internal metrics in the exporter           |   `map[string]{}`             | no
-
-
+`enabled`                  | `bool`                | Enable telemetry inside the exporter.                            |   `false`                     | no
+`override_metrics_names`   | `map[string]string`   | Override metrics for internal metrics in the exporter.           |   `map[string]{}`             | no
 
 ### client block
 
