@@ -309,12 +309,9 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 		ComponentBlocks: source.components,
 		ConfigBlocks:    source.configBlocks,
 		DeclareBlocks:   source.declareBlocks,
-		ArgScope: &vm.Scope{
-			Parent: nil,
-			Variables: map[string]interface{}{
-				importsource.ModulePath: modulePath,
-			},
-		},
+		ArgScope: vm.NewScope(map[string]interface{}{
+			importsource.ModulePath: modulePath,
+		}),
 	})
 }
 

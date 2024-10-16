@@ -171,10 +171,7 @@ func (vc *valueCache) BuildContext() *vm.Scope {
 	vc.mut.RLock()
 	defer vc.mut.RUnlock()
 
-	scope := &vm.Scope{
-		Parent:    vc.scope,
-		Variables: make(map[string]interface{}),
-	}
+	scope := vm.NewScopeWithParent(vc.scope, make(map[string]interface{}))
 
 	// First, partition components by Alloy block name.
 	var componentsByBlockName = make(map[string][]ComponentID)

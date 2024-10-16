@@ -63,11 +63,9 @@ func TestVM_Evaluate_Literals(t *testing.T) {
 
 func TestVM_Evaluate(t *testing.T) {
 	// Shared scope across all tests below
-	scope := &vm.Scope{
-		Variables: map[string]interface{}{
-			"foobar": int(42),
-		},
-	}
+	scope := vm.NewScope(map[string]interface{}{
+		"foobar": int(42),
+	})
 
 	tt := []struct {
 		input  string
@@ -176,11 +174,9 @@ func TestVM_Evaluate_Null(t *testing.T) {
 
 func TestVM_Evaluate_IdentifierExpr(t *testing.T) {
 	t.Run("Valid lookup", func(t *testing.T) {
-		scope := &vm.Scope{
-			Variables: map[string]interface{}{
-				"foobar": 15,
-			},
-		}
+		scope := vm.NewScope(map[string]interface{}{
+			"foobar": 15,
+		})
 
 		expr, err := parser.ParseExpression(`foobar`)
 		require.NoError(t, err)
@@ -210,11 +206,9 @@ func TestVM_Evaluate_AccessExpr(t *testing.T) {
 			Name string `alloy:"name,attr,optional"`
 		}
 
-		scope := &vm.Scope{
-			Variables: map[string]interface{}{
-				"person": Person{},
-			},
-		}
+		scope := vm.NewScope(map[string]interface{}{
+			"person": Person{},
+		})
 
 		expr, err := parser.ParseExpression(`person.name`)
 		require.NoError(t, err)

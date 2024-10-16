@@ -46,15 +46,13 @@ func TestVM_ExprErrors(t *testing.T) {
 			name:  "deeply nested indirect",
 			input: `key = key_value`,
 			into:  &Target{},
-			scope: &vm.Scope{
-				Variables: map[string]interface{}{
-					"key_value": map[string]interface{}{
-						"object": map[string]interface{}{
-							"field1": []interface{}{15, 30, "Hello, world!"},
-						},
+			scope: vm.NewScope(map[string]interface{}{
+				"key_value": map[string]interface{}{
+					"object": map[string]interface{}{
+						"field1": []interface{}{15, 30, "Hello, world!"},
 					},
 				},
-			},
+			}),
 			expect: `test:1:7: key_value.object.field1[2] should be number, got string`,
 		},
 		{

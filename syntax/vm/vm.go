@@ -469,6 +469,19 @@ type Scope struct {
 	Variables map[string]interface{}
 }
 
+func NewScope(variables map[string]interface{}) *Scope {
+	return &Scope{
+		Variables: variables,
+	}
+}
+
+func NewScopeWithParent(parent *Scope, variables map[string]interface{}) *Scope {
+	return &Scope{
+		Parent:    parent,
+		Variables: variables,
+	}
+}
+
 // Lookup looks up a named identifier from the scope, all of the scope's
 // parents, and the stdlib.
 func (s *Scope) Lookup(name string) (interface{}, bool) {
