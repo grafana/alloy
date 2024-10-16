@@ -95,8 +95,8 @@ Name                       | Type     | Description                             
 
 Name                       | Type     | Description                                                     | Default                       | Required
 ---------------------------|----------|-----------------------------------------------------------------|-------------------------------|---------
-`severity_text`            | `string` | Maps severity text field to a specific hec field                |   `""`                        | no
-`severity_number`          | `string` | Maps severity number field to a specific hec field              |   `""`                        | no
+`severity_text`            | `string` | Maps severity text field to a specific HEC field.                |   `""`                        | no
+`severity_number`          | `string` | Maps severity number field to a specific HEC field.              |   `""`                        | no
 
 
 #### heartbeat block    
