@@ -43,10 +43,10 @@ The following blocks are supported inside the definition of `otelcol.exporter.sp
 
 Hierarchy                  | Block                         | Description                                                                | Required
 ---------------------------|-------------------------------|----------------------------------------------------------------------------|---------
-splunk                     | [splunk][]                    | Configures the Splunk HEC exporter                                         | yes
-splunk->otel_to_hec_fields | [otel_to_hec_fields][]        | Configures mapping of Open Telemetry to HEC Fields                         | no
-splunk->telemetry          | [telemetry][]                 | Configure the exporters telemetry                                          | no
-splunk->heartbeat          | [heartbeat][]                 | Configure the exporters heartbeat settings                                 | no
+splunk                     | [splunk][]                    | Configures the Splunk HEC exporter.                                        | yes
+splunk->otel_to_hec_fields | [otel_to_hec_fields][]        | Configures mapping of Open Telemetry to HEC Fields.                        | no
+splunk->telemetry          | [telemetry][]                 | Configure the exporters telemetry.                                         | no
+splunk->heartbeat          | [heartbeat][]                 | Configure the exporters heartbeat settings.                                | no
 client                     | [client][]                    | Configures the HTTP client used to send data to Splunk HEC.                | yes
 retry_on_failure          | [retry_on_failure][] | Configures retry mechanism for failed requests.                                      | no
 queue                     | [queue][]            | Configures batching of data before sending.                                          | no
