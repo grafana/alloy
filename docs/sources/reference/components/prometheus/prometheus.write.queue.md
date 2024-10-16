@@ -17,7 +17,7 @@ user-supplied endpoints. Metrics are sent over the network using the
 You can specify multiple `prometheus.write.queue` components by giving them different labels.
 
 You should consider everything here extremely experimental and highly subject to change.
-[emote_write-spec]: https://prometheus.io/docs/specs/remote_write_spec/
+[remote_write-spec]: https://prometheus.io/docs/specs/remote_write_spec/
 
   
 
