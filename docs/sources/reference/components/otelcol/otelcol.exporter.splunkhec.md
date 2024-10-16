@@ -24,7 +24,7 @@ You can specify multiple `otelcol.exporter.splunkhec` components by giving them 
 ```alloy
 otelcol.exporter.splunkhec "LABEL" {
     splunk {
-        token = "your_splunk_token"
+        token = "YOUR_SPLUNK_TOKEN"
     }
     client {
         endpoint = "http://splunk.yourdomain.com:8088"
