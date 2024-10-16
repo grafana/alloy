@@ -168,8 +168,7 @@ configuration.
 
 ## Debug information
 
-`otelcol.exporter.splunkhec` does not expose any component-specific debug
-information.
+`otelcol.exporter.splunkhec` does not expose any component-specific debug information.
 
 ## Example
 
