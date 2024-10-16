@@ -817,7 +817,7 @@ require (
 	github.com/checkpoint-restore/go-criu/v6 v6.3.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/jaswdr/faker/v2 v2.3.2
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.108.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/splunk v0.108.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchperresourceattr v0.108.0 // indirect
 )
