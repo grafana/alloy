@@ -78,7 +78,7 @@ The `tls_config` block configures TLS settings for connecting to HTTPS servers.
 
 This example imports custom components from an HTTP response and instantiates a custom component for adding two numbers:
 
-{{< collapse title="HTTP response" >}}
+module.alloy
 ```alloy
 declare "add" {
   argument "a" {}
@@ -89,9 +89,8 @@ declare "add" {
   }
 }
 ```
-{{< /collapse >}}
 
-{{< collapse title="importer.alloy" >}}
+main.alloy
 ```alloy
 import.http "math" {
   url = SERVER_URL
@@ -102,7 +101,7 @@ math.add "default" {
   b = 45
 }
 ```
-{{< /collapse >}}
+
 
 [client]: #client-block
 [basic_auth]: #basic_auth-block

@@ -40,12 +40,13 @@ The following arguments are supported:
 
 {{< docs/shared lookup="reference/components/local-file-arguments-text.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-## Example
+## Examples
+
+### Import a module from a local file
 
 This example imports a module from a file and instantiates a custom component from the import that adds two numbers:
 
-{{< collapse title="main.alloy" >}}
-
+main.alloy
 ```alloy
 import.file "math" {
   filename = "module.alloy"
@@ -57,10 +58,7 @@ math.add "default" {
 }
 ```
 
-{{< /collapse >}}
-
-{{< collapse title="module.alloy" >}}
-
+module.alloy
 ```alloy
 declare "add" {
   argument "a" {}
@@ -72,13 +70,11 @@ declare "add" {
 }
 ```
 
-{{< /collapse >}}
-
+### Import a module in a module imported via import.git 
 
 This example imports a module from a file inside of a module that is imported via [import.git][]:
 
-{{< collapse title="main.alloy" >}}
-
+main.alloy
 ```alloy
 import.git "math" {
   repository = "https://github.com/wildum/module.git"
@@ -91,10 +87,8 @@ math.add "default" {
 }
 ```
 
-{{< /collapse >}}
 
-{{< collapse title="relative_math.alloy" >}}
-
+relative_math.alloy
 ```alloy
 import.file "lib" {
   filename = file.path_join(module_path, "lib.alloy")
@@ -115,10 +109,7 @@ declare "add" {
 }
 ```
 
-{{< /collapse >}}
-
-{{< collapse title="lib.alloy" >}}
-
+lib.alloy
 ```alloy
 declare "plus" {
   argument "a" {}
@@ -130,11 +121,11 @@ declare "plus" {
 }
 ```
 
-{{< /collapse >}}
+### Import a module in a module imported via import.file 
 
 This example imports a module from a file inside of a module that is imported via another `import.file`:
 
-{{< collapse title="main.alloy" >}}
+main.alloy
 
 ```alloy
 import.file "math" {
@@ -147,10 +138,7 @@ math.add "default" {
 }
 ```
 
-{{< /collapse >}}
-
-{{< collapse title="relative_math.alloy" >}}
-
+relative_math.alloy
 ```alloy
 import.file "lib" {
   filename = file.path_join(module_path, "lib.alloy")
@@ -171,10 +159,7 @@ declare "add" {
 }
 ```
 
-{{< /collapse >}}
-
-{{< collapse title="lib.alloy" >}}
-
+lib.alloy
 ```alloy
 declare "plus" {
   argument "a" {}
@@ -185,8 +170,6 @@ declare "plus" {
   }
 }
 ```
-
-{{< /collapse >}}
 
 
 
