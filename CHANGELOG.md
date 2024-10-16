@@ -55,6 +55,8 @@ Main (unreleased)
 
 - Add support for `not_modified` response in `remotecfg`. (@spartan0x117)
 
+- Fix dead link for RelabelConfig in the PodLog documentation page (@TheoBrigitte)
+
 v1.4.2
 -----------------
 
