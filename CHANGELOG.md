@@ -22,8 +22,11 @@ Main (unreleased)
 - Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
 
 - Add support to `loki.source.api` to be able to extract the tenant from the HTTP `X-Scope-OrgID` header (@QuentinBisson)
-- 
+
 - (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
+
+- (_Experimental_) Add a `prometheus.write.queue` component to add an alternative to `prometheus.remote_write`
+  which allowing the writing of metrics  to a prometheus endpoint. (@mattdurham)
 
 ### Enhancements
 

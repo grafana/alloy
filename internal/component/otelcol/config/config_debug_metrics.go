@@ -20,10 +20,10 @@ const (
 )
 
 var levels = map[Level]bool{
-        LevelNone: true,
-        LevelBasic: true,
-        LevelNormal:true,
-        LevelDetailed: true,
+	LevelNone:     true,
+	LevelBasic:    true,
+	LevelNormal:   true,
+	LevelDetailed: true,
 }
 
 func (l Level) Convert() (configtelemetry.Level, error) {
