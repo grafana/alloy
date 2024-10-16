@@ -70,26 +70,26 @@ The following arguments are supported:
 
 Name                       | Type     | Description                                                     | Default                       | Required
 ---------------------------|----------|-----------------------------------------------------------------|-------------------------------|---------
-`token`                    | `secret` | Splunk HEC Token                                                |                               | yes
-`log_data_enabled`         | `bool`   | Enable sending logs from the exporter                           | `true`                        | no
-`profiling_data_enabled`   | `bool`   | Enable sending profiling data from the exporter                 | `true`                        | no
-`source`                   | `string` | Splunk Source https://docs.splunk.com/Splexicon:Source          | `""`                          | no
-`source_type`              | `string` | Splunk Source Type https://docs.splunk.com/Splexicon:Sourcetype | `""`                          | no
-`index`                    | `string` | Splunk Index Name                                               | `""`                          | no
-`disable_compression`      | `bool`   | Disable GZip compression                                        | `false`                       | no
-`MaxContentLengthLogs`     | `int`    | Maximum log payload size in bytes                               | `2097152`                     | no
-`MaxContentLengthMetrics`  | `int`    | Maximum metric payload size in bytes                            | `2097152`                     | no
+`token`                    | `secret` | Splunk HEC Token.                                              |                               | yes
+`log_data_enabled`         | `bool`   | Enable sending logs from the exporter.                          | `true`                        | no
+`profiling_data_enabled`   | `bool`   | Enable sending profiling data from the exporter.                | `true`                        | no
+`source`                   | `string` | [Splunk Source](https://docs.splunk.com/Splexicon:Source).      | `""`                          | no
+`source_type`              | `string` | [Splunk Source Type}(https://docs.splunk.com/Splexicon:Sourcetype). | `""`                          | no
+`index`                    | `string` | Splunk Index Name.                                               | `""`                          | no
+`disable_compression`      | `bool`   | Disable GZip compression.                                        | `false`                       | no
+`MaxContentLengthLogs`     | `int`    | Maximum log payload size in bytes.                               | `2097152`                     | no
+`MaxContentLengthMetrics`  | `int`    | Maximum metric payload size in bytes.                            | `2097152`                     | no
 `MaxContentLengthTraces`   | `int`    | Maximum trace payload size in bytes.                            | `2097152`                     | no
 `MaxEventSize`             | `int`    | Maximum event payload size in bytes.                            | `5242880`                     | no
-`splunk_app_name`          | `string` | Used to track telemetry for Splunks Apps by name                | `Alloy`                       | no
-`splunk_app_version`       | `string` | Used to track telemetry by App version                          | `""`                          | no
-`otel_to_hec_fields`       | `block`  | Creates a mapping from attributes to HEC fields                 | `null`                        | no
-`health_path`              | `string` | Path for the health API                                         | `/services/collector/health'` | no
-`health_check_enabled`     | `bool`   | Can be used to verify Splunk HEC health on exporter startup     | `true`                        | no
-`export_raw`               | `bool`   | Send only the logs body when targeting HEC raw endpoint         | `false`                       | no
-`use_multi_metrics_format` | `bool`   | Use multi metrics format to save space during ingestion.        | `false`                       | no
-`heartbeat`                | `block`  | Configuration to enable heartbeat                               | `false`                       | no
-`telemetry`                | `block`  | Configuation for splunk hec exporter telemetry                  | `null`                        | no
+`splunk_app_name`          | `string` | Used to track telemetry for Splunk Apps by name.                | `Alloy`                       | no
+`splunk_app_version`       | `string` | Used to track telemetry by App version.                          | `""`                          | no
+`otel_to_hec_fields`       | `block`  | Creates a mapping from attributes to HEC fields.                 | `null`                        | no
+`health_path`              | `string` | Path for the health API.                                         | `/services/collector/health'` | no
+`health_check_enabled`     | `bool`   | Used to verify Splunk HEC health on exporter startup.     | `true`                        | no
+`export_raw`               | `bool`   | Send only the logs body when targeting HEC raw endpoint.         | `false`                       | no
+`use_multi_metrics_format` | `bool`   | Use multi-metrics format to save space during ingestion.        | `false`                       | no
+`heartbeat`                | `block`  | Configuration to enable heartbeat.                               | `false`                       | no
+`telemetry`                | `block`  | Configuration for Splunk HEC exporter telemetry.                  | `null`                        | no
 
 #### otel_to_hec_fields block
 
