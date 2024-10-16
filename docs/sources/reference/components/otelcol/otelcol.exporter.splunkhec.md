@@ -1,8 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.splunkhec/
 description: Learn about otelcol.exporter.splunkhec
-aliases:
-  - ../otelcol.exporter.splunkhec/ # /docs/alloy/latest/reference/components/otelcol.exporter.splunkhec/
 title: otelcol.exporter.splunkhec
 ---
 
