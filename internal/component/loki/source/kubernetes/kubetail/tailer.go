@@ -167,18 +167,28 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 		Timestamps: true, // Should be forced to true so we can parse the original timestamp back out.
 	})
 
-	stream, err := req.Stream(ctx)
+	//TODO: Write a test with a fake req. Make sure Close() was called.
+	stream, err := req.Stream(context.Background())
 	if err != nil {
 		return err
 	}
+	defer stream.Close()
 
-	k8sServerVersion, err := t.opts.Client.Discovery().ServerVersion()
-	if err != nil {
-		return err
-	}
-	k8sComparableServerVersion, err := semver.ParseTolerant(k8sServerVersion.GitVersion)
-	if err != nil {
-		return err
+	//TODO: The make some sort of interface to retrieve the k8s version.
+	// That way we can mock it in tests.
+	// Unfortunately, we can't set a version for the fake k8s API to return.
+	//
+	// k8sServerVersion, err := t.opts.Client.Discovery().ServerVersion()
+	// if err != nil {
+	// 	return err
+	// }
+	// k8sComparableServerVersion, err := semver.ParseTolerant(k8sServerVersion.GitVersion)
+	// if err != nil {
+	// 	return err
+	// }
+	k8sComparableServerVersion := semver.Version{
+		Major: 1,
+		Minor: 20,
 	}
 
 	// Create a new rolling average calculator to determine the average delta
@@ -207,7 +217,6 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 			rolledFileTicker := time.NewTicker(1 * time.Second)
 			defer func() {
 				rolledFileTicker.Stop()
-				_ = stream.Close()
 			}()
 			for {
 				select {
@@ -222,15 +231,12 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 					s := time.Since(last)
 					if s > avg*3 {
 						level.Debug(t.log).Log("msg", "have not seen a log line in 3x average time between lines, closing and re-opening tailer", "rolling_average", avg, "time_since_last", s)
+
+						cancel()
 						return
 					}
 				}
 			}
-		}()
-	} else {
-		go func() {
-			<-ctx.Done()
-			_ = stream.Close()
 		}()
 	}
 
