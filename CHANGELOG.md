@@ -18,6 +18,8 @@ v1.4.3
 
 - Fixed a bug with `loki.source.podlogs` not starting in large clusters due to short informer sync timeout. (@elburnetto-intapp) 
 
+- `prometheus.exporter.windows`: Fixed bug with `exclude` regular expression config arguments which caused missing metrics. (@ptodev)
+
 v1.4.2
 -----------------
 
