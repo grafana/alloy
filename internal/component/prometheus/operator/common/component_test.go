@@ -109,6 +109,7 @@ func TestRunExit(t *testing.T) {
 	// Stop the component.
 	// It shouldn't stop immediately, because the CRD Manager is hung.
 	cancelFunc()
+	time.Sleep(5 * time.Second)
 	<-stopRun
 
 	require.Eventually(t, func() bool {

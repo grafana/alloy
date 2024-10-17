@@ -71,12 +71,14 @@ type cancelHandler struct {
 func (ch *cancelHandler) Set(cncl context.CancelFunc) {
 	ch.mut.Lock()
 	defer ch.mut.Unlock()
+
 	ch.cancel = cncl
 }
 
 func (ch *cancelHandler) Cancel() {
 	ch.mut.Lock()
 	defer ch.mut.Unlock()
+
 	if ch.alreadyTrigger {
 		return
 	}
