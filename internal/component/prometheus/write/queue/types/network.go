@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"reflect"
 	"time"
 )
@@ -18,6 +19,7 @@ type NetworkClient interface {
 type ConnectionConfig struct {
 	URL              string
 	BasicAuth        *BasicAuth
+	BearerToken      alloytypes.Secret
 	UserAgent        string
 	Timeout          time.Duration
 	RetryBackoff     time.Duration

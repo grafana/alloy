@@ -45,6 +45,8 @@ Main (unreleased)
 - `prometheus.exporter.cloudwatch`: The `discovery` block now has a `recently_active_only` configuration attribute 
   to return only metrics which have been active in the last 3 hours.
 
+- Add Prometheus bearer authentication to a `prometheus.write.queue` component (@freak12techno)
+
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
