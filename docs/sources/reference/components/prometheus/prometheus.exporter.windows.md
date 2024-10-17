@@ -115,7 +115,7 @@ Name      | Type     | Description                               | Default   | R
 
 Volume names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
-User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regular expression.
 
 ### msmq block
 
@@ -272,14 +272,14 @@ debug metrics.
 ## Wrapping of regex strings
 
 Some collector blocks such as [scheduled_task][] accept a regular expression as a string argument.
-`prometheus.exporter.windows` will prefix some regex string arguments with `^(?:` and will suffix them with `)$`.
+`prometheus.exporter.windows` will prefix some regular expression string arguments with `^(?:` and will suffix them with `)$`.
 For example, if a user sets an `exclude` argument to `".*"`, Alloy will set it to `"^(?:.*)$"`.
 
-To find out if a particular regex argument will be wrapped, refer to the collector block documentation.
+To find out if a particular regular expression argument will be wrapped, refer to the collector block documentation.
 
 {{< admonition type="note" >}}
-The wrapping may change the behaviour of your regex.
-For example, the `e.*` regex would normally match both the "service" and "email" strings.
+The wrapping may change the behaviour of your regular expression.
+For example, the `e.*` regular expression would normally match both the "service" and "email" strings.
 However, `^(?:e.*)$` would only match "email".
 {{< /admonition >}}
 
