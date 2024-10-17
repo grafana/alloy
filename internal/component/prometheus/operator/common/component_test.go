@@ -113,7 +113,6 @@ func TestRunExit(t *testing.T) {
 	<-stopRun
 
 	require.Eventually(t, func() bool {
-		fmt.Println(cmpRunExited.Load())
 		return cmpRunExited.Load()
 	}, 10*time.Second, 1*time.Second)
 
