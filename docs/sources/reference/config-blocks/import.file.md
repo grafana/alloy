@@ -79,6 +79,7 @@ main.alloy
 import.git "math" {
   repository = "https://github.com/wildum/module.git"
   path       = "relative_math.alloy"
+  revision   = "master"
 }
 
 math.add "default" {
