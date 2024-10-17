@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -30,26 +31,37 @@ func main() {
 
 func runIntegrationTests(cmd *cobra.Command, args []string) {
 	defer reportResults()
-	defer cleanUpEnvironment()
+
+	testFolder := "./tests/"
+	alloyBinaryPath := "../../../../../build/alloy"
+	alloyBinary := "build/alloy"
+
+	if runtime.GOOS == "windows" {
+		testFolder = "./tests-windows/"
+		alloyBinaryPath = "..\\..\\..\\..\\..\\build\\alloy.exe"
+		alloyBinary = "build/alloy.exe"
+	} else {
+		setupEnvironment()
+		defer cleanUpEnvironment()
+	}
 
 	if !skipBuild {
-		buildAlloy()
+		buildAlloy(alloyBinary)
 	}
-	setupEnvironment()
 
 	if specificTest != "" {
 		fmt.Println("Running", specificTest)
-		if !filepath.IsAbs(specificTest) && !strings.HasPrefix(specificTest, "./tests/") {
-			specificTest = "./tests/" + specificTest
+		if !filepath.IsAbs(specificTest) && !strings.HasPrefix(specificTest, testFolder) {
+			specificTest = testFolder + specificTest
 		}
 		logChan = make(chan TestLog, 1)
-		runSingleTest(specificTest, 12345)
+		runSingleTest(alloyBinaryPath, specificTest, 12345)
 	} else {
-		testDirs, err := filepath.Glob("./tests/*")
+		testDirs, err := filepath.Glob(testFolder + "*")
 		if err != nil {
 			panic(err)
 		}
 		logChan = make(chan TestLog, len(testDirs))
-		runAllTests()
+		runAllTests(alloyBinaryPath, testFolder)
 	}
 }

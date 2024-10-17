@@ -1,0 +1,23 @@
+prometheus.exporter.windows "default" { }
+
+prometheus.scrape "default" {
+  targets    = prometheus.exporter.windows.default.targets
+  forward_to = [prometheus.remote_write.default.receiver]
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://localhost:9090/receive"
+    metadata_config {
+        send_interval = "1s"
+    }
+    queue_config {
+        max_samples_per_send = 100
+    }
+  }
+  external_labels = {
+    test_name = "win_metrics",
+  }
+}

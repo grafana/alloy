@@ -12,10 +12,6 @@ import (
 	"time"
 )
 
-const (
-	alloyBinaryPath = "../../../../../build/alloy"
-)
-
 type TestLog struct {
 	TestDir    string
 	AlloyLog   string
@@ -34,8 +30,8 @@ func executeCommand(command string, args []string, taskDescription string) {
 	}
 }
 
-func buildAlloy() {
-	executeCommand("make", []string{"-C", "../../..", "alloy"}, "Building Alloy")
+func buildAlloy(alloyBinary string) {
+	executeCommand("make", []string{"-C", "../../..", "alloy", fmt.Sprintf("ALLOY_BINARY=%s", alloyBinary)}, "Building Alloy")
 }
 
 func setupEnvironment() {
@@ -44,7 +40,7 @@ func setupEnvironment() {
 	time.Sleep(45 * time.Second)
 }
 
-func runSingleTest(testDir string, port int) {
+func runSingleTest(alloyBinaryPath string, testDir string, port int) {
 	info, err := os.Stat(testDir)
 	if err != nil {
 		panic(err)
@@ -88,14 +84,17 @@ func runSingleTest(testDir string, port int) {
 		}
 	}
 
+	// sleep for a few seconds before deleting the files to make sure that they are not use anymore
+	time.Sleep(5 * time.Second)
+
 	err = os.RemoveAll(filepath.Join(testDir, "data-alloy"))
 	if err != nil {
 		panic(err)
 	}
 }
 
-func runAllTests() {
-	testDirs, err := filepath.Glob("./tests/*")
+func runAllTests(alloyBinaryPath string, testFolder string) {
+	testDirs, err := filepath.Glob(testFolder + "*")
 	if err != nil {
 		panic(err)
 	}
@@ -106,7 +105,7 @@ func runAllTests() {
 		wg.Add(1)
 		go func(td string, offset int) {
 			defer wg.Done()
-			runSingleTest(td, port+offset)
+			runSingleTest(alloyBinaryPath, td, port+offset)
 		}(testDir, i)
 	}
 	wg.Wait()
