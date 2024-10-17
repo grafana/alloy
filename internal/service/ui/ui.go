@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/web/api"
 	"github.com/grafana/alloy/internal/web/ui"
 )
@@ -48,7 +49,7 @@ func (s *Service) Definition() service.Definition {
 	return service.Definition{
 		Name:       ServiceName,
 		ConfigType: nil, // ui does not accept configuration
-		DependsOn:  []string{http_service.ServiceName, livedebugging.ServiceName},
+		DependsOn:  []string{http_service.ServiceName, livedebugging.ServiceName, remotecfg_service.ServiceName},
 		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
@@ -77,7 +78,10 @@ func (s *Service) Data() any {
 func (s *Service) ServiceHandler(host service.Host) (base string, handler http.Handler) {
 	r := mux.NewRouter()
 
-	fa := api.NewAlloyAPI(host, s.opts.CallbackManager)
+	remotecfgSvc, _ := host.GetService(remotecfg_service.ServiceName)
+	remotecfgHost := remotecfgSvc.Data().(remotecfg_service.Data).Host
+
+	fa := api.NewAlloyAPI(host, remotecfgHost, s.opts.CallbackManager)
 	fa.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), r)
 	ui.RegisterRoutes(s.opts.UIPrefix, r)
 

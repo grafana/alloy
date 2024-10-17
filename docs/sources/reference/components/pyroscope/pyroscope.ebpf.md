@@ -8,7 +8,7 @@ title: pyroscope.ebpf
 
 # pyroscope.ebpf
 
-`pyroscope.ebpf` configures an ebpf profiling job for the current host.
+`pyroscope.ebpf` configures an eBPF profiling job for the current host.
 The collected performance profiles are forwarded to the list of receivers passed in `forward_to`.
 
 {{< admonition type="note" >}}
@@ -16,6 +16,14 @@ To use the  `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}}
 {{< /admonition >}}
 
 You can specify multiple `pyroscope.ebpf` components by giving them different labels, however it's not recommended as it can lead to additional memory and CPU usage.
+
+## Supported languages
+
+This eBPF profiler only collects CPU profiles. Generally, natively compiled languages like C/C++, Go, and Rust are supported. Refer to [Troubleshooting unknown symbols][troubleshooting] for additional requirements.
+
+Python is the only supported high-level language, as long as `python_enabled=true`.
+Other high-level languages like Java, Ruby, PHP, and JavaScript require additional work to show stack traces of methods in these languages correctly.
+Currently, the CPU usage for these languages is reported as belonging to the runtime's methods.
 
 ## Usage
 
@@ -28,7 +36,7 @@ pyroscope.ebpf "LABEL" {
 
 ## Arguments
 
-The component configures and starts a new ebpf profiling job to collect performance profiles from the current host.
+The component configures and starts a new eBPF profiling job to collect performance profiles from the current host.
 
 You can use the following arguments to configure a `pyroscope.ebpf`.
 Only the `forward_to` and `targets` fields are required.
@@ -71,7 +79,7 @@ Name                      | Type                     | Description              
 * `pyroscope_ebpf_active_targets` (gauge): Number of active targets the component tracks.
 * `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
 * `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
-* `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the ebpf component.
+* `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the eBPF component.
 
 ## Profile collecting behavior
 
@@ -121,7 +129,7 @@ Symbols are extracted from various sources, including:
 - The `.symtab` and `.dynsym` sections in the debug ELF file.
 - The `.gopclntab` section in Go language ELF files.
 
-The search for debug files follows [gdb algorithm](https://sourceware.org/gdb/onlinedocs/gdb/Separate-Debug-Files.html).
+The search for debug files follows [gdb algorithm][].
 For example, if the profiler wants to find the debug file for `/lib/x86_64-linux-gnu/libc.so.6` with a `.gnu_debuglink` set to `libc.so.6.debug` and a build ID `0123456789abcdef`.
 The following paths are examined:
 
@@ -171,13 +179,6 @@ If your profiles show many shallow stack traces, typically 1-2 frames deep, your
 
 To compile your code with frame pointers, include the `-fno-omit-frame-pointer` flag in your compiler options.
 
-### Profiling interpreted languages
-
-Profiling interpreted languages like Python, Ruby, JavaScript, etc., isn't ideal using this implementation.
-The JIT-compiled methods in these languages are typically not in ELF file format, demanding additional steps for profiling.
-For instance, using perf-map-agent and enabling frame pointers for Java.
-
-Interpreted methods will display the interpreter function’s name rather than the actual function.
 
 ## Example
 
@@ -191,7 +192,7 @@ The `service_name` label is set to `{__meta_kubernetes_namespace}/{__meta_kubern
 discovery.kubernetes "all_pods" {
   role = "pod"
   selectors {
-    field = "spec.nodeName=" + env("HOSTNAME")
+    field = "spec.nodeName=" + sys.env("HOSTNAME")
     role = "pod"
   }
 }
@@ -243,7 +244,7 @@ pyroscope.ebpf "local_pods" {
 
 pyroscope.write "endpoint" {
   endpoint {
-    url = "http://pyroscope:4100"
+    url = "http://pyroscope:4040"
   }
 }
 ```
@@ -269,7 +270,7 @@ discovery.relabel "local_containers" {
 
 pyroscope.write "staging" {
   endpoint {
-    url = "http://pyroscope:4100"
+    url = "http://pyroscope:4040"
   }
 }
 
@@ -278,6 +279,10 @@ pyroscope.ebpf "default" {
   targets      = discovery.relabel.local_containers.output
 }
 ```
+
+[troubleshooting]: #troubleshooting-unknown-symbols
+[gdb algorithm]: https://sourceware.org/gdb/onlinedocs/gdb/Separate-Debug-Files.html
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

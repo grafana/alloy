@@ -50,24 +50,25 @@ mimir.rules.kubernetes "LABEL" {
 
 `mimir.rules.kubernetes` supports the following arguments:
 
-Name                     | Type                | Description                                                                                      | Default       | Required
--------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------------|---------
-`address`                | `string`            | URL of the Mimir ruler.                                                                          |               | yes
-`tenant_id`              | `string`            | Mimir tenant ID.                                                                                 |               | no
-`use_legacy_routes`      | `bool`              | Whether to use [deprecated][gem-2_2] ruler API endpoints.                                        | false         | no
-`prometheus_http_prefix` | `string`            | Path prefix for [Mimir's Prometheus endpoint][gem-path-prefix].                                  | `/prometheus` | no
-`sync_interval`          | `duration`          | Amount of time between reconciliations with Mimir.                                               | "5m"          | no
-`mimir_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.                  | "alloy"       | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |               | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |               | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`        | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |               | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |               | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`       | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |               | no
+| Name                     | Type                | Description                                                                                      | Default       | Required |
+|--------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------------|----------|
+| `address`                | `string`            | URL of the Mimir ruler.                                                                          |               | yes      |
+| `tenant_id`              | `string`            | Mimir tenant ID.                                                                                 |               | no       |
+| `use_legacy_routes`      | `bool`              | Whether to use [deprecated][gem-2_2] ruler API endpoints.                                        | false         | no       |
+| `prometheus_http_prefix` | `string`            | Path prefix for [Mimir's Prometheus endpoint][gem-path-prefix].                                  | `/prometheus` | no       |
+| `sync_interval`          | `duration`          | Amount of time between reconciliations with Mimir.                                               | "5m"          | no       |
+| `mimir_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.                  | "alloy"       | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |               | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |               | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`        | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |               | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |               | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`       | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |               | no       |
+| `external_labels`        | `map(string)`       | Labels to add to each rule.                                                                      | `{}`          | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
  - [`bearer_token` argument](#arguments).
  - [`bearer_token_file` argument](#arguments).
  - [`basic_auth` block][basic_auth].
@@ -97,22 +98,26 @@ This is useful if you configure Mimir to use a different [prefix][gem-path-prefi
 
 `prometheus_http_prefix` is ignored if `use_legacy_routes` is set to `true`.
 
+`external_labels` will override label values if labels with the same names already exist inside the rule.
+
 ## Blocks
 
 The following blocks are supported inside the definition of
 `mimir.rules.kubernetes`:
 
-Hierarchy                                  | Block                  | Description                                              | Required
--------------------------------------------|------------------------|----------------------------------------------------------|---------
-rule_namespace_selector                    | [label_selector][]     | Label selector for `Namespace` resources.                | no
-rule_namespace_selector > match_expression | [match_expression][]   | Label match expression for `Namespace` resources.        | no
-rule_selector                              | [label_selector][]     | Label selector for `PrometheusRule` resources.           | no
-rule_selector > match_expression           | [match_expression][]   | Label match expression for `PrometheusRule` resources.   | no
-basic_auth                                 | [basic_auth][]         | Configure basic_auth for authenticating to the endpoint. | no
-authorization                              | [authorization][]      | Configure generic authorization to the endpoint.         | no
-oauth2                                     | [oauth2][]             | Configure OAuth2 for authenticating to the endpoint.     | no
-oauth2 > tls_config                        | [tls_config][]         | Configure TLS settings for connecting to the endpoint.   | no
-tls_config                                 | [tls_config][]         | Configure TLS settings for connecting to the endpoint.   | no
+| Hierarchy                                  | Block                    | Description                                              | Required |
+|--------------------------------------------|--------------------------|----------------------------------------------------------|----------|
+| extra_query_matchers                       | [extra_query_matchers][] | Additional label matchers to add to each query.          | no       |
+| extra_query_matchers > matcher             | [matcher][]              | A label matcher to add to query.                         | no       |
+| rule_namespace_selector                    | [label_selector][]       | Label selector for `Namespace` resources.                | no       |
+| rule_namespace_selector > match_expression | [match_expression][]     | Label match expression for `Namespace` resources.        | no       |
+| rule_selector                              | [label_selector][]       | Label selector for `PrometheusRule` resources.           | no       |
+| rule_selector > match_expression           | [match_expression][]     | Label match expression for `PrometheusRule` resources.   | no       |
+| basic_auth                                 | [basic_auth][]           | Configure basic_auth for authenticating to the endpoint. | no       |
+| authorization                              | [authorization][]        | Configure generic authorization to the endpoint.         | no       |
+| oauth2                                     | [oauth2][]               | Configure OAuth2 for authenticating to the endpoint.     | no       |
+| oauth2 > tls_config                        | [tls_config][]           | Configure TLS settings for connecting to the endpoint.   | no       |
+| tls_config                                 | [tls_config][]           | Configure TLS settings for connecting to the endpoint.   | no       |
 
 The `>` symbol indicates deeper levels of nesting. For example,
 `oauth2 > tls_config` refers to a `tls_config` block defined inside
@@ -124,6 +129,28 @@ an `oauth2` block.
 [tls_config]: #tls_config-block
 [label_selector]: #label_selector-block
 [match_expression]: #match_expression-block
+[extra_query_matchers]: #extra_query_matchers-block
+[matcher]: #matcher-block
+
+### extra_query_matchers block
+
+The `extra_query_matchers` block has no attributes. It contains zero or more [matcher][] blocks.
+These blocks allow you to add extra label matchers to all queries that are discovered by `mimir.rules.kubernetes`
+component. The algorithm of adding the label matchers to queries is the same as the one provided by 
+`promtool promql label-matchers set` command in [promtool](https://github.com/prometheus/prometheus/tree/main/cmd/promtool).
+
+### matcher block
+
+The `matcher` block describes a label matcher that will be added to each query found in `PrometheusRule` CRDs.
+
+The following arguments are supported:
+
+| Name         | Type     | Description                                        | Default | Required |
+|--------------|----------|----------------------------------------------------|---------|----------|
+| `name`       | `string` | Name of the label to match.                        |         | yes      |
+| `match_type` | `string` | The type of match. One of `=`, `!=`, `=~` and `!~`. |         | yes      |
+| `value`      | `string` | Value of the label to match.                       |         | yes      |
+
 
 ### label_selector block
 
@@ -131,9 +158,9 @@ The `label_selector` block describes a Kubernetes label selector for rule or nam
 
 The following arguments are supported:
 
-Name           | Type          | Description                                       | Default                     | Required
----------------|---------------|---------------------------------------------------|-----------------------------|---------
-`match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}` | yes
+| Name           | Type          | Description                                       | Default | Required |
+|----------------|---------------|---------------------------------------------------|---------|----------|
+| `match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}`    | yes      |
 
 When the `match_labels` argument is empty, all resources will be matched.
 
@@ -143,11 +170,11 @@ The `match_expression` block describes a Kubernetes label match expression for r
 
 The following arguments are supported:
 
-Name       | Type           | Description                                        | Default | Required
------------|----------------|----------------------------------------------------|---------|---------
-`key`      | `string`       | The label name to match against.                   |         | yes
-`operator` | `string`       | The operator to use when matching.                 |         | yes
-`values`   | `list(string)` | The values used when matching.                     |         | no
+| Name       | Type           | Description                        | Default | Required |
+|------------|----------------|------------------------------------|---------|----------|
+| `key`      | `string`       | The label name to match against.   |         | yes      |
+| `operator` | `string`       | The operator to use when matching. |         | yes      |
+| `values`   | `list(string)` | The values used when matching.     |         | no       |
 
 The `operator` argument should be one of the following strings:
 
@@ -201,13 +228,13 @@ actually exist.
 
 ## Debug metrics
 
-Metric Name                                   | Type        | Description
-----------------------------------------------|-------------|-------------------------------------------------------------------------
-`mimir_rules_config_updates_total`            | `counter`   | Number of times the configuration has been updated.
-`mimir_rules_events_total`                    | `counter`   | Number of events processed, partitioned by event type.
-`mimir_rules_events_failed_total`             | `counter`   | Number of events that failed to be processed, partitioned by event type.
-`mimir_rules_events_retried_total`            | `counter`   | Number of events that were retried, partitioned by event type.
-`mimir_rules_client_request_duration_seconds` | `histogram` | Duration of requests to the Mimir API.
+| Metric Name                                   | Type        | Description                                                              |
+|-----------------------------------------------|-------------|--------------------------------------------------------------------------|
+| `mimir_rules_config_updates_total`            | `counter`   | Number of times the configuration has been updated.                      |
+| `mimir_rules_events_total`                    | `counter`   | Number of events processed, partitioned by event type.                   |
+| `mimir_rules_events_failed_total`             | `counter`   | Number of events that failed to be processed, partitioned by event type. |
+| `mimir_rules_events_retried_total`            | `counter`   | Number of events that were retried, partitioned by event type.           |
+| `mimir_rules_client_request_duration_seconds` | `histogram` | Duration of requests to the Mimir API.                                   |
 
 ## Example
 
@@ -234,8 +261,8 @@ mimir.rules.kubernetes "local" {
 }
 ```
 
-This example creates a `mimir.rules.kubernetes` component that loads discovered
-rules to Grafana Cloud.
+This example creates a `mimir.rules.kubernetes` component that loads discovered rules to Grafana Cloud. 
+It also adds a `"label1"` label to each rule. If that label already exists, it is overwritten with `"value1"`.
 
 ```alloy
 mimir.rules.kubernetes "default" {
@@ -246,8 +273,27 @@ mimir.rules.kubernetes "default" {
         // Alternatively, load the password from a file:
         // password_file = "GRAFANA_CLOUD_API_KEY_PATH"
     }
+    external_labels = {"label1" = "value1"}
 }
 ```
+
+This example adds label matcher `{cluster=~"prod-.*"}` to all the queries discovered by `mimir.rules.kubernetes`.
+
+```alloy
+mimir.rules.kubernetes "default" {
+    address = "GRAFANA_CLOUD_METRICS_URL"
+    extra_query_matchers {
+        matcher {
+            name = "cluster"
+            match_type = "=~"
+            value = "prod-.*"
+        }
+    }
+}
+```
+
+If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, 
+it will be modified to `up{cluster=~"prod-.*"} != 1` before sending it to Mimir.
 
 The following example is an RBAC configuration for Kubernetes. It authorizes {{< param "PRODUCT_NAME" >}} to query the Kubernetes REST API:
 

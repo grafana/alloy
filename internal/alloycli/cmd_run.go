@@ -62,7 +62,7 @@ func runCommand() *cobra.Command {
 		enablePprof:           true,
 		configFormat:          "alloy",
 		clusterAdvInterfaces:  advertise.DefaultInterfaces,
-		ClusterMaxJoinPeers:   5,
+		clusterMaxJoinPeers:   5,
 		clusterRejoinInterval: 60 * time.Second,
 	}
 
@@ -128,9 +128,19 @@ depending on the nature of the reload error.
 	cmd.Flags().
 		DurationVar(&r.clusterRejoinInterval, "cluster.rejoin-interval", r.clusterRejoinInterval, "How often to rejoin the list of peers")
 	cmd.Flags().
-		IntVar(&r.ClusterMaxJoinPeers, "cluster.max-join-peers", r.ClusterMaxJoinPeers, "Number of peers to join from the discovered set")
+		IntVar(&r.clusterMaxJoinPeers, "cluster.max-join-peers", r.clusterMaxJoinPeers, "Number of peers to join from the discovered set")
 	cmd.Flags().
 		StringVar(&r.clusterName, "cluster.name", r.clusterName, "The name of the cluster to join")
+	cmd.Flags().
+		BoolVar(&r.clusterEnableTLS, "cluster.enable-tls", r.clusterEnableTLS, "Specifies whether TLS should be used for communication between peers")
+	cmd.Flags().
+		StringVar(&r.clusterTLSCAPath, "cluster.tls-ca-path", r.clusterTLSCAPath, "Path to the CA certificate file")
+	cmd.Flags().
+		StringVar(&r.clusterTLSCertPath, "cluster.tls-cert-path", r.clusterTLSCertPath, "Path to the certificate file")
+	cmd.Flags().
+		StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
+	cmd.Flags().
+		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
 
 	// Config flags
 	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
@@ -143,6 +153,8 @@ depending on the nature of the reload error.
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
+
+	addDeprecatedFlags(cmd)
 	return cmd
 }
 
@@ -161,8 +173,13 @@ type alloyRun struct {
 	clusterDiscoverPeers         string
 	clusterAdvInterfaces         []string
 	clusterRejoinInterval        time.Duration
-	ClusterMaxJoinPeers          int
+	clusterMaxJoinPeers          int
 	clusterName                  string
+	clusterEnableTLS             bool
+	clusterTLSCAPath             string
+	clusterTLSCertPath           string
+	clusterTLSKeyPath            string
+	clusterTLSServerName         string
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
@@ -246,10 +263,13 @@ func (fr *alloyRun) Run(configPath string) error {
 		DiscoverPeers:       fr.clusterDiscoverPeers,
 		RejoinInterval:      fr.clusterRejoinInterval,
 		AdvertiseInterfaces: fr.clusterAdvInterfaces,
-		ClusterMaxJoinPeers: fr.ClusterMaxJoinPeers,
+		ClusterMaxJoinPeers: fr.clusterMaxJoinPeers,
 		ClusterName:         fr.clusterName,
-		//TODO(alloy/#1274): graduate to GA once we have more confidence in this feature
-		EnableStateUpdatesLimiter: fr.minStability.Permits(featuregate.StabilityPublicPreview),
+		EnableTLS:           fr.clusterEnableTLS,
+		TLSCertPath:         fr.clusterTLSCertPath,
+		TLSCAPath:           fr.clusterTLSCAPath,
+		TLSKeyPath:          fr.clusterTLSKeyPath,
+		TLSServerName:       fr.clusterTLSServerName,
 	})
 	if err != nil {
 		return err
@@ -270,6 +290,7 @@ func (fr *alloyRun) Run(configPath string) error {
 
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
 		Logger:      log.With(l, "service", "remotecfg"),
+		ConfigPath:  configPath,
 		StoragePath: fr.storagePath,
 		Metrics:     reg,
 	})
@@ -313,13 +334,12 @@ func (fr *alloyRun) Run(configPath string) error {
 	ready = f.Ready
 	reload = func() (*alloy_runtime.Source, error) {
 		alloySource, err := loadAlloySource(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-		defer instrumentation.InstrumentSHA256(alloySource.SHA256())
-		defer instrumentation.InstrumentLoad(err == nil)
+		defer instrumentation.InstrumentConfig(err == nil, alloySource.SHA256(), fr.clusterName)
 
 		if err != nil {
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
-		if err := f.LoadSource(alloySource, nil); err != nil {
+		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
 			return alloySource, fmt.Errorf("error during the initial load: %w", err)
 		}
 
@@ -468,9 +488,17 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 		}
 	}
 
-	instrumentation.InstrumentConfig(bb)
-
 	return alloy_runtime.ParseSource(path, bb)
+}
+
+// addDeprecatedFlags adds flags that are deprecated, but we keep them for backwards compatibility.
+func addDeprecatedFlags(cmd *cobra.Command) {
+	_ = cmd.Flags().
+		Bool("cluster.use-discovery-v1", false, "This flag is deprecated and has no effect.")
+	err := cmd.Flags().MarkDeprecated("cluster.use-discovery-v1", "This flag is deprecated and has no effect.")
+	if err != nil { // this should never fail
+		panic(err)
+	}
 }
 
 func interruptContext() (context.Context, context.CancelFunc) {

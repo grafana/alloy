@@ -141,7 +141,7 @@ local.file_match "node_logs" {
       // Monitor syslog to scrape node-logs
       __path__  = "/var/log/syslog",
       job       = "node/syslog",
-      node_name = env("HOSTNAME"),
+      node_name = sys.env("HOSTNAME"),
       cluster   = <CLUSTER_NAME>,
   }]
 }
@@ -320,13 +320,13 @@ Replace the following values:
 [Field Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
 [Labels and Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#set-based-requirement
 [Configure logs delivery]: #configure-logs-delivery
-[discovery.kubernetes]: ../../reference/components/discovery.kubernetes/
-[loki.write]: ../../reference/components/loki.write/
-[local.file_match]: ../../reference/components/local.file_match/
-[loki.source.file]: ../../reference/components/loki.source.file/
-[discovery.relabel]: ../../reference/components/discovery.relabel/
-[loki.source.kubernetes]: ../../reference/components/loki.source.kubernetes/
-[loki.process]: ../../reference/components/loki.process/
-[loki.source.kubernetes_events]: ../../reference/components/loki.source.kubernetes_events/
+[discovery.kubernetes]: ../../reference/components/discovery/discovery.kubernetes/
+[loki.write]: ../../reference/components/loki/loki.write/
+[local.file_match]: ../../reference/components/local/local.file_match/
+[loki.source.file]: ../../reference/components/loki/loki.source.file/
+[discovery.relabel]: ../../reference/components/discovery/discovery.relabel/
+[loki.source.kubernetes]: ../../reference/components/loki/loki.source.kubernetes/
+[loki.process]: ../../reference/components/loki/loki.process/
+[loki.source.kubernetes_events]: ../../reference/components/loki/loki.source.kubernetes_events/
 [Components]: ../../get-started/components/
 [Objects]: ../../concepts/configuration-syntax/expressions/types_and_values/#objects

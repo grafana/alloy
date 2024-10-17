@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/converter/expandconverter"
 	"go.opentelemetry.io/collector/confmap/provider/yamlprovider"
@@ -182,7 +183,8 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, e
 	extensionTable := make(map[component.ID]componentID, len(cfg.Service.Extensions))
 
 	for _, ext := range cfg.Service.Extensions {
-		cid := component.InstanceID{Kind: component.KindExtension, ID: ext}
+		cidPtr := componentstatus.NewInstanceID(ext, component.KindExtension)
+		cid := *cidPtr
 
 		state := &State{
 			cfg:  cfg,
@@ -231,7 +233,8 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, e
 
 		for _, componentSet := range componentSets {
 			for _, id := range componentSet.ids {
-				componentID := component.InstanceID{Kind: componentSet.kind, ID: id}
+				componentIDPtr := componentstatus.NewInstanceID(id, componentSet.kind)
+				componentID := *componentIDPtr
 
 				state := &State{
 					cfg:   cfg,

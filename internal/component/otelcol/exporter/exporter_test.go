@@ -99,7 +99,7 @@ func newTestEnvironment(t *testing.T, fe *fakeExporter) *testEnvironment {
 					require.NoError(t, err)
 					return res
 				},
-				otelexporter.WithTraces(func(ctx context.Context, ecs otelexporter.CreateSettings, e otelcomponent.Config) (otelexporter.Traces, error) {
+				otelexporter.WithTraces(func(ctx context.Context, ecs otelexporter.Settings, e otelcomponent.Config) (otelexporter.Traces, error) {
 					return fe, nil
 				}, otelcomponent.StabilityLevelUndefined),
 			)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -439,18 +440,24 @@ func (c *Component) startRuleInformer(queue workqueue.RateLimitingInterface, sto
 }
 
 func (c *Component) newEventProcessor(queue workqueue.RateLimitingInterface, stopChan chan struct{}, namespaceLister coreListers.NamespaceLister, ruleLister promListers.PrometheusRuleLister) *eventProcessor {
+	// Copy the label map to make sure that a change in arguments won't immediately propagate to the event processor.
+	externalLabels := make(map[string]string, len(c.args.ExternalLabels))
+	maps.Copy(externalLabels, c.args.ExternalLabels)
+
 	return &eventProcessor{
-		queue:             queue,
-		stopChan:          stopChan,
-		health:            c,
-		mimirClient:       c.mimirClient,
-		namespaceLister:   namespaceLister,
-		ruleLister:        ruleLister,
-		namespaceSelector: c.namespaceSelector,
-		ruleSelector:      c.ruleSelector,
-		namespacePrefix:   c.args.MimirNameSpacePrefix,
-		metrics:           c.metrics,
-		logger:            c.log,
+		queue:              queue,
+		stopChan:           stopChan,
+		health:             c,
+		mimirClient:        c.mimirClient,
+		namespaceLister:    namespaceLister,
+		ruleLister:         ruleLister,
+		namespaceSelector:  c.namespaceSelector,
+		ruleSelector:       c.ruleSelector,
+		namespacePrefix:    c.args.MimirNameSpacePrefix,
+		metrics:            c.metrics,
+		logger:             c.log,
+		externalLabels:     externalLabels,
+		extraQueryMatchers: c.args.ExtraQueryMatchers,
 	}
 }
 

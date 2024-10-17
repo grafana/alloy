@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/vcs"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/vm"
 )
 
@@ -28,6 +29,7 @@ type ImportGit struct {
 	repo            *vcs.GitRepo
 	repoOpts        vcs.GitRepoOptions
 	args            GitArguments
+	repoPath        string
 	onContentChange func(map[string]string)
 
 	argsChanged chan struct{}
@@ -51,8 +53,23 @@ type GitArguments struct {
 }
 
 var DefaultGitArguments = GitArguments{
-	Revision:      "HEAD",
+	Revision:      "main",
 	PullFrequency: time.Minute,
+}
+
+var (
+	_ syntax.Validator = (*GitArguments)(nil)
+	_ syntax.Defaulter = (*GitArguments)(nil)
+)
+
+// Validate implements syntax.Validator.
+func (args *GitArguments) Validate() error {
+	switch args.Revision {
+	case "HEAD", "FETCH_HEAD", "ORIG_HEAD", "MERGE_HEAD", "CHERRY_PICK_HEAD":
+		return fmt.Errorf("revision cannot be a special git reference such as HEAD, FETCH_HEAD, ORIG_HEAD, MERGE_HEAD, or CHERRY_PICK_HEAD")
+	}
+
+	return nil
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -181,7 +198,7 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 	// TODO(rfratto): store in a repo-specific directory so changing repositories
 	// doesn't risk break the module loader if there's a SHA collision between
 	// the two different repositories.
-	repoPath := filepath.Join(im.opts.DataPath, "repo")
+	im.repoPath = filepath.Join(im.opts.DataPath, "repo")
 
 	repoOpts := vcs.GitRepoOptions{
 		Repository: newArgs.Repository,
@@ -192,7 +209,7 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 	// Create or update the repo field.
 	// Failure to update repository makes the module loader temporarily use cached contents on disk
 	if im.repo == nil || !reflect.DeepEqual(repoOpts, im.repoOpts) {
-		r, err := vcs.NewGitRepo(context.Background(), repoPath, repoOpts)
+		r, err := vcs.NewGitRepo(context.Background(), im.repoPath, repoOpts)
 		if err != nil {
 			if errors.As(err, &vcs.UpdateFailedError{}) {
 				level.Error(im.log).Log("msg", "failed to update repository", "err", err)
@@ -286,4 +303,8 @@ func (im *ImportGit) CurrentHealth() component.Health {
 // Update the evaluator.
 func (im *ImportGit) SetEval(eval *vm.Evaluator) {
 	im.eval = eval
+}
+
+func (im *ImportGit) ModulePath() string {
+	return im.repoPath
 }

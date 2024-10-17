@@ -13,15 +13,21 @@ otelcol.extension.jaeger_remote_sampling "default" {
 
 otelcol.receiver.jaeger "default" {
 	protocols {
-		grpc { }
+		grpc {
+			endpoint = "localhost:14250"
+		}
 
-		thrift_http { }
+		thrift_http {
+			endpoint = "localhost:14268"
+		}
 
 		thrift_binary {
+			endpoint        = "localhost:6832"
 			max_packet_size = "63KiB488B"
 		}
 
 		thrift_compact {
+			endpoint        = "localhost:6831"
 			max_packet_size = "63KiB488B"
 		}
 	}

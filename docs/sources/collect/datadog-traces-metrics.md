@@ -131,7 +131,7 @@ We recommend this approach for current Datadog users who want to try using {{< p
 1. Add the following environment variable to your datadog-agent installation.
 
    ```bash
-   DD_ADDITIONAL_ENDPOINTS='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_HOST>": ["datadog-receiver"]}'
+   DD_ADDITIONAL_ENDPOINTS='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_PORT>": ["datadog-receiver"]}'
    ```
 
    Replace the following:
@@ -151,7 +151,7 @@ Or by setting an environment variable:
 
 
    ```bash
-   DD_DD_URL='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_HOST>": ["datadog-receiver"]}'
+   DD_DD_URL='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_PORT>": ["datadog-receiver"]}'
    ```
 
 ## Run {{% param "PRODUCT_NAME" %}} with the Datadog Receiver
@@ -166,5 +166,6 @@ Some of the components used here are experimental. In order to run them, you nee
 [Datadog Agent]: https://docs.datadoghq.com/agent/
 [Prometheus]: https://prometheus.io
 [OTLP]: https://opentelemetry.io/docs/specs/otlp/
-[otelcol.exporter.otlp]: ../../reference/components/otelcol.exporter.otlp
+[otelcol.exporter.otlp]: ../../reference/components/otelcol/otelcol.exporter.otlp
+[otelcol.exporter.otlp]: ../../reference/components/otelcol/otelcol.exporter.otlp
 [Components]: ../../get-started/components

@@ -2,6 +2,8 @@ package stages
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // Test cases for the Luhn algorithm validation
@@ -51,4 +53,82 @@ func TestReplaceLuhnValidNumbers(t *testing.T) {
 			t.Errorf("replaceLuhnValidNumbers(%q, %q) == %q, want %q", c.input, c.replacement, got, c.want)
 		}
 	}
+}
+
+func TestValidateConfig(t *testing.T) {
+	source := ".*"
+	emptySource := ""
+	cases := []struct {
+		name             string
+		input            LuhnFilterConfig
+		expected         LuhnFilterConfig
+		errorContainsStr string
+	}{
+		{
+			name: "successful validation",
+			input: LuhnFilterConfig{
+				Replacement: "ABC",
+				Source:      &source,
+				MinLength:   10,
+			},
+			expected: LuhnFilterConfig{
+				Replacement: "ABC",
+				Source:      &source,
+				MinLength:   10,
+			},
+		},
+		{
+			name: "nil source",
+			input: LuhnFilterConfig{
+				Replacement: "ABC",
+				Source:      nil,
+				MinLength:   10,
+			},
+			expected: LuhnFilterConfig{
+				Replacement: "ABC",
+				Source:      nil,
+				MinLength:   10,
+			},
+		},
+		{
+			name: "empty source error",
+			input: LuhnFilterConfig{
+				Replacement: "ABC",
+				Source:      &emptySource,
+				MinLength:   11,
+			},
+			expected: LuhnFilterConfig{
+				Replacement: "ABC",
+				Source:      &emptySource,
+				MinLength:   11,
+			},
+			errorContainsStr: "empty source",
+		},
+		{
+			name: "defaults update",
+			input: LuhnFilterConfig{
+				Replacement: "",
+				Source:      &source,
+				MinLength:   -10,
+			},
+			expected: LuhnFilterConfig{
+				Replacement: "**REDACTED**",
+				Source:      &source,
+				MinLength:   13,
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			err := validateLuhnFilterConfig(&c.input)
+			if c.errorContainsStr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, c.errorContainsStr)
+			}
+			require.Equal(t, c.expected, c.input)
+		})
+	}
+
 }

@@ -185,6 +185,7 @@ prometheus.exporter.cloudwatch "integrations_cloudwatch_exporter" {
 	}
 
 	decoupled_scraping { }
+	aws_sdk_version_v2 = true
 }
 
 discovery.relabel "integrations_cloudwatch" {

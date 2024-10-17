@@ -47,7 +47,7 @@ func (f ConvertTargets) AlloyTokenize() []builder.Token {
 	}
 
 	if targetCount > 1 {
-		toks = append(toks, builder.Token{Tok: token.LITERAL, Lit: "concat"})
+		toks = append(toks, builder.Token{Tok: token.LITERAL, Lit: "array.concat"})
 		toks = append(toks, builder.Token{Tok: token.LPAREN})
 		toks = append(toks, builder.Token{Tok: token.LITERAL, Lit: "\n"})
 	}

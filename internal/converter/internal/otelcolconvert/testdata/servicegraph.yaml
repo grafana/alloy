@@ -22,7 +22,7 @@ exporters:
     # Our defaults have drifted from upstream, so we explicitly set our
     # defaults below (balancer_name and queue_size).
     endpoint: database:4317
-    balancer_name: pick_first
+    balancer_name: round_robin
     sending_queue:
       queue_size: 5000
 

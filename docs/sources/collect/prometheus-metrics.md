@@ -84,8 +84,8 @@ prometheus.remote_write "default" {
 
     // Get basic authentication based on environment variables.
     basic_auth {
-      username = env("<REMOTE_WRITE_USERNAME>")
-      password = env("<REMOTE_WRITE_PASSWORD>")
+      username = sys.env("<REMOTE_WRITE_USERNAME>")
+      password = sys.env("<REMOTE_WRITE_PASSWORD>")
     }
   }
 }
@@ -427,8 +427,8 @@ prometheus.remote_write "default" {
 [Field Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
 [Labels and Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#set-based-requirement
 [Configure metrics delivery]: #configure-metrics-delivery
-[discovery.kubernetes]: ../../reference/components/discovery.kubernetes/
-[prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
-[prometheus.scrape]: ../../reference/components/prometheus.scrape/
+[discovery.kubernetes]: ../../reference/components/discovery/discovery.kubernetes/
+[prometheus.remote_write]: ../../reference/components/prometheus/prometheus.remote_write/
+[prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/
 [Components]: ../../get-started/components/
 [Objects]: ../../get-started/configuration-syntax/expressions/types_and_values/#objects

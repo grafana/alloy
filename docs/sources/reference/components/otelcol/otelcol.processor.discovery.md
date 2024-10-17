@@ -141,7 +141,7 @@ otelcol.processor.discovery "default" {
 
 ### Using more than one discovery process
 
-Outputs from more than one discovery process can be combined via the `concat` function.
+Outputs from more than one discovery process can be combined via the `array.concat` function.
 
 ```alloy
 discovery.http "dynamic_targets" {
@@ -155,7 +155,7 @@ discovery.kubelet "k8s_pods" {
 }
 
 otelcol.processor.discovery "default" {
-    targets = concat(discovery.http.dynamic_targets.targets, discovery.kubelet.k8s_pods.targets)
+    targets = array.concat(discovery.http.dynamic_targets.targets, discovery.kubelet.k8s_pods.targets)
 
     output {
         traces = [otelcol.exporter.otlp.default.input]

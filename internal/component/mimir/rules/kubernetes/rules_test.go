@@ -20,31 +20,90 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
-func TestAlloyConfig(t *testing.T) {
-	var exampleAlloyConfig = `
+func TestAlloyConfigs(t *testing.T) {
+	var testCases = []struct {
+		name                  string
+		config                string
+		expectedErrorContains string
+	}{
+		{
+			name: "basic working config",
+			config: `
 	address = "GRAFANA_CLOUD_METRICS_URL"
 	basic_auth {
 		username = "GRAFANA_CLOUD_USER"
 		password = "GRAFANA_CLOUD_API_KEY"
 	}
-`
-
-	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
-	require.NoError(t, err)
-}
-
-func TestBadAlloyConfig(t *testing.T) {
-	var exampleAlloyConfig = `
+	external_labels = {"label1" = "value1"}`,
+		},
+		{
+			name: "invalid http config",
+			config: `
 	address = "GRAFANA_CLOUD_METRICS_URL"
 	bearer_token = "token"
-	bearer_token_file = "/path/to/file.token"
-`
+	bearer_token_file = "/path/to/file.token"`,
+			expectedErrorContains: `at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured`,
+		},
+		{
+			name: "query matchers valid",
+			config: `
+	address = "GRAFANA_CLOUD_METRICS_URL"
+	extra_query_matchers {
+		matcher {
+			name = "job"
+			match_type = "!="
+			value = "bar"
+		}
+		matcher {
+			name = "namespace"
+			match_type = "="
+			value = "all"
+		}
+		matcher {
+			name = "namespace"
+			match_type = "!~"
+			value = ".+"
+		}
+		matcher {
+			name = "cluster"
+			match_type = "=~"
+			value = "prod-.*"
+		}
+	}
+`,
+		},
+		{
+			name: "query matchers empty",
+			config: `
+	address = "GRAFANA_CLOUD_METRICS_URL"
+	extra_query_matchers {}`,
+		},
+		{
+			name: "query matchers invalid",
+			config: `
+	address = "GRAFANA_CLOUD_METRICS_URL"
+	extra_query_matchers {
+		matcher {
+			name = "job"
+			match_type = "!!"
+			value = "bar"
+		}
+	}`,
+			expectedErrorContains: `invalid match type`,
+		},
+	}
 
-	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
-	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
-	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var args Arguments
+			err := syntax.Unmarshal([]byte(tc.config), &args)
+			if tc.expectedErrorContains == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tc.expectedErrorContains)
+			}
+		})
+	}
 }
 
 type fakeCluster struct{}

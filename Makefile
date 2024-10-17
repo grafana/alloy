@@ -1,6 +1,6 @@
 ## Build, test, and generate code for various parts of Alloy.
 ##
-## At least Go 1.19, git, and a moderately recent version of Docker is required
+## At least Go 1.22, git, and a moderately recent version of Docker is required
 ## to be able to use the Makefile. This list isn't exhaustive and there are other
 ## dependencies for the generate-* targets. If you do not have the full list of
 ## build dependencies, you may set USE_CONTAINER=1 to proxy build commands to a
@@ -36,7 +36,7 @@
 ##
 ##   dist                 Produce release assets for everything.
 ##   dist-alloy-binaries  Produce release-ready Alloy binaries.
-##   dist-packages        Produce release-ready DEB and RPM packages.
+##   dist-alloy-packages  Produce release-ready DEB and RPM packages.
 ##   dist-alloy-installer Produce a Windows installer for Alloy.
 ##
 ## Targets for generating assets:
@@ -141,7 +141,7 @@ lint: alloylint
 # final command runs tests for all other submodules.
 test:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/)
-	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker
+	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker ./internal/component/prometheus/write/queue/serialization  ./internal/component/prometheus/write/queue/network
 	$(GO_ENV) find . -name go.mod -not -path "./go.mod" -execdir go test -race ./... \;
 
 test-packages:

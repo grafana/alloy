@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
-	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	otelprocessor "go.opentelemetry.io/collector/processor"
@@ -78,12 +77,10 @@ func TestConsumeMetrics(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			reg := prometheus.NewRegistry()
 
-			processorSettings := otelprocessor.CreateSettings{
+			processorSettings := otelprocessor.Settings{
 				ID: component.NewID(component.MustNewType("FakeID")),
 				TelemetrySettings: component.TelemetrySettings{
 					MeterProvider: getTestMeterProvider(t, reg),
-
-					ReportStatus: func(*otelcomponent.StatusEvent) {},
 				},
 				BuildInfo: component.BuildInfo{},
 			}

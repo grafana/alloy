@@ -5,7 +5,6 @@ import (
 
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
-	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/service"
 )
 
@@ -13,13 +12,13 @@ import (
 // [component.Component] and [service.Service]s which declared a dependency on
 // the named service.
 func (f *Runtime) GetServiceConsumers(serviceName string) []service.Consumer {
-	consumers := serviceConsumersForGraph(f.loader.OriginalGraph(), serviceName, true)
+	consumers := serviceConsumersForGraph(f.loader.Graph(), serviceName, true)
 
 	// Iterate through all modules to find other components that depend on the
 	// service. Peer services aren't checked here, since the services are always
 	// a subset of the services from the root controller.
 	for _, mod := range f.modules.List() {
-		moduleGraph := mod.f.loader.OriginalGraph()
+		moduleGraph := mod.f.loader.Graph()
 		consumers = append(consumers, serviceConsumersForGraph(moduleGraph, serviceName, false)...)
 	}
 
@@ -70,7 +69,7 @@ func serviceConsumersForGraph(graph *dag.Graph, serviceName string, includePeerS
 // NewController returns a new, unstarted, isolated Alloy controller so that
 // services can instantiate their own components.
 func (f *Runtime) NewController(id string) service.Controller {
-	return serviceController{
+	return ServiceController{
 		f: newController(controllerOptions{
 			Options: Options{
 				ControllerID:    id,
@@ -84,21 +83,23 @@ func (f *Runtime) NewController(id string) service.Controller {
 			},
 			IsModule:       true,
 			ModuleRegistry: newModuleRegistry(),
-			WorkerPool:     worker.NewDefaultWorkerPool(),
+			WorkerPool:     f.opts.WorkerPool, // NOTE(@tpaschalis) Reuse the worker pool since the worker cleanup is triggered from the root controller.
 		}),
 	}
 }
 
-type serviceController struct {
+type ServiceController struct {
 	f *Runtime
 }
 
-func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
-func (sc serviceController) LoadSource(b []byte, args map[string]any) error {
+func (sc ServiceController) Run(ctx context.Context) { sc.f.Run(ctx) }
+func (sc ServiceController) LoadSource(b []byte, args map[string]any, configPath string) error {
 	source, err := ParseSource("", b)
 	if err != nil {
 		return err
 	}
-	return sc.f.LoadSource(source, args)
+	return sc.f.LoadSource(source, args, configPath)
 }
-func (sc serviceController) Ready() bool { return sc.f.Ready() }
+func (sc ServiceController) Ready() bool { return sc.f.Ready() }
+
+func (sc ServiceController) GetHost() service.Host { return sc.f }

@@ -50,7 +50,7 @@ declare "pods_and_nodes" {
   }
 
   export "kubernetes_resources" {
-    value = concat(
+    value = array.concat(
       discovery.kubernetes.pods.targets,
       discovery.kubernetes.nodes.targets,
     )
@@ -58,5 +58,5 @@ declare "pods_and_nodes" {
 }
 ```
 
-[custom component]: ../../../concepts/custom_components/
+[custom component]: ../../../get-started/custom_components/
 [declare]: ../declare/

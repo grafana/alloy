@@ -136,11 +136,11 @@ information.
 
 ## Debug metrics
 
-* `processor_batch_batch_send_size_bytes` (histogram): Number of bytes in batch that was sent.
-* `processor_batch_batch_send_size_ratio` (histogram): Number of units in the batch.
-* `processor_batch_metadata_cardinality_ratio` (gauge): Number of distinct metadata value combinations being processed.
-* `processor_batch_timeout_trigger_send_ratio_total` (counter): Number of times the batch was sent due to a timeout trigger.
-* `processor_batch_batch_size_trigger_send_ratio_total` (counter): Number of times the batch was sent due to a size trigger.
+* `otelcol_processor_batch_batch_send_size_bytes` (histogram): Number of bytes in batch that was sent.
+* `otelcol_processor_batch_batch_send_size` (histogram): Number of units in the batch.
+* `otelcol_processor_batch_metadata_cardinality` (gauge): Number of distinct metadata value combinations being processed.
+* `otelcol_processor_batch_timeout_trigger_send_total` (counter): Number of times the batch was sent due to a timeout trigger.
+* `otelcol_processor_batch_batch_size_trigger_send_total` (counter): Number of times the batch was sent due to a size trigger.
 
 ## Examples
 
@@ -160,7 +160,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
@@ -184,7 +184,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
@@ -223,7 +223,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```

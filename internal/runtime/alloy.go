@@ -51,15 +51,19 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/atomic"
+
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
+	"github.com/grafana/alloy/internal/runtime/internal/importsource"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
-	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/atomic"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // Options holds static options for an Alloy controller.
@@ -180,7 +184,7 @@ func newController(o controllerOptions) *Runtime {
 		opts:   o,
 
 		updateQueue: controller.NewQueue(),
-		sched:       controller.NewScheduler(),
+		sched:       controller.NewScheduler(log),
 
 		modules: o.ModuleRegistry,
 
@@ -295,22 +299,37 @@ func (f *Runtime) Run(ctx context.Context) {
 // The controller will only start running components after Load is called once
 // without any configuration errors.
 // LoadSource uses default loader configuration.
-func (f *Runtime) LoadSource(source *Source, args map[string]any) error {
-	return f.loadSource(source, args, nil)
+func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath string) error {
+	modulePath, err := util.ExtractDirPath(configPath)
+	if err != nil {
+		level.Warn(f.log).Log("msg", "failed to extract directory path from configPath", "configPath", configPath, "err", err)
+	}
+	return f.applyLoaderConfig(controller.ApplyOptions{
+		Args:            args,
+		ComponentBlocks: source.components,
+		ConfigBlocks:    source.configBlocks,
+		DeclareBlocks:   source.declareBlocks,
+		ArgScope: vm.NewScope(map[string]interface{}{
+			importsource.ModulePath: modulePath,
+		}),
+	})
 }
 
 // Same as above but with a customComponentRegistry that provides custom component definitions.
 func (f *Runtime) loadSource(source *Source, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
-	f.loadMut.Lock()
-	defer f.loadMut.Unlock()
-
-	applyOptions := controller.ApplyOptions{
+	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:                    args,
 		ComponentBlocks:         source.components,
 		ConfigBlocks:            source.configBlocks,
 		DeclareBlocks:           source.declareBlocks,
 		CustomComponentRegistry: customComponentRegistry,
-	}
+		ArgScope:                customComponentRegistry.Scope(),
+	})
+}
+
+func (f *Runtime) applyLoaderConfig(applyOptions controller.ApplyOptions) error {
+	f.loadMut.Lock()
+	defer f.loadMut.Unlock()
 
 	diags := f.loader.Apply(applyOptions)
 	if !f.loadedOnce.Load() && diags.HasErrors() {

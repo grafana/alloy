@@ -36,6 +36,9 @@ type Arguments struct {
 	Queue otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
 	Retry otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
 
+	// Add BatcherConfig once https://github.com/open-telemetry/opentelemetry-collector/issues/8122 is resolved
+	// BatcherConfig exporterbatcher.Config `mapstructure:"batcher"`
+
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
@@ -78,7 +81,7 @@ func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.I
 	return nil
 }
 
-// DebugMetricsConfig implements receiver.Arguments.
+// DebugMetricsConfig implements exporter.Arguments.
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -43,8 +44,11 @@ func TestOnDiskCache(t *testing.T) {
 	client := &collectorClient{}
 	env.svc.asClient = client
 
+	var registerCalled atomic.Bool
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+
 	// Mock client to return an unparseable response.
-	client.getConfigFunc = buildGetConfigHandler("unparseable config")
+	client.getConfigFunc = buildGetConfigHandler("unparseable config", "", false)
 
 	// Write the cache contents, and run the service.
 	err := os.WriteFile(env.svc.dataPath, []byte(cacheContents), 0644)
@@ -62,7 +66,7 @@ func TestOnDiskCache(t *testing.T) {
 }
 
 func TestAPIResponse(t *testing.T) {
-	ctx := componenttest.TestContext(t)
+	ctx, cancel := context.WithCancel(context.Background())
 	url := "https://example.com/"
 	cfg1 := `loki.process "default" { forward_to = [] }`
 	cfg2 := `loki.process "updated" { forward_to = [] }`
@@ -78,14 +82,18 @@ func TestAPIResponse(t *testing.T) {
 	env.svc.asClient = client
 
 	// Mock client to return a valid response.
+	var registerCalled atomic.Bool
 	client.mut.Lock()
-	client.getConfigFunc = buildGetConfigHandler(cfg1)
+	client.getConfigFunc = buildGetConfigHandler(cfg1, "", false)
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
 	client.mut.Unlock()
 
 	// Run the service.
 	go func() {
 		require.NoError(t, env.Run(ctx))
 	}()
+
+	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
 
 	// As the API response was successful, verify that the service has loaded
 	// the valid response.
@@ -95,23 +103,84 @@ func TestAPIResponse(t *testing.T) {
 
 	// Update the response returned by the API.
 	client.mut.Lock()
-	client.getConfigFunc = buildGetConfigHandler(cfg2)
+	client.getConfigFunc = buildGetConfigHandler(cfg2, "", false)
 	client.mut.Unlock()
 
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfg2)), env.svc.getCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
+
+	cancel()
 }
 
-func buildGetConfigHandler(in string) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+func TestAPIResponseNotModified(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	url := "https://example.com/"
+	cfg1 := `loki.process "default" { forward_to = [] }`
+
+	// Create a new service.
+	env := newTestEnvironment(t)
+	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
+		url            = "%s"
+		poll_frequency = "10s"
+	`, url)))
+
+	client := &collectorClient{}
+	env.svc.asClient = client
+
+	// Mock client to return a valid response.
+	var registerCalled atomic.Bool
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandler(cfg1, "12345", false)
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.mut.Unlock()
+
+	// Run the service.
+	go func() {
+		require.NoError(t, env.Run(ctx))
+	}()
+
+	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
+
+	// As the API response was successful, verify that the service has loaded
+	// the valid response.
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getCfgHash())
+	}, time.Second, 10*time.Millisecond)
+
+	// Update the response returned by the API.
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandler("", "12345", true)
+	client.mut.Unlock()
+
+	// Verify that the service has loaded the updated response.
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getCfgHash())
+	}, 1*time.Second, 10*time.Millisecond)
+
+	cancel()
+}
+
+func buildGetConfigHandler(in string, hash string, notModified bool) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
 	return func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
 		rsp := &connect.Response[collectorv1.GetConfigResponse]{
 			Msg: &collectorv1.GetConfigResponse{
-				Content: in,
+				Content:     in,
+				NotModified: notModified,
+				Hash:        hash,
 			},
 		}
 		return rsp, nil
+	}
+}
+
+func buildRegisterCollectorFunc(called *atomic.Bool) func(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error) {
+	return func(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error) {
+		called.Store(true)
+		return &connect.Response[collectorv1.RegisterCollectorResponse]{
+			Msg: &collectorv1.RegisterCollectorResponse{},
+		}, nil
 	}
 }
 
@@ -185,8 +254,9 @@ func (f fakeHost) NewController(id string) service.Controller {
 }
 
 type collectorClient struct {
-	mut           sync.RWMutex
-	getConfigFunc func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error)
+	mut                   sync.RWMutex
+	getConfigFunc         func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error)
+	registerCollectorFunc func(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error)
 }
 
 func (ag *collectorClient) GetConfig(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
@@ -200,16 +270,31 @@ func (ag *collectorClient) GetConfig(ctx context.Context, req *connect.Request[c
 	panic("getConfigFunc not set")
 }
 
+func (ag *collectorClient) RegisterCollector(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error) {
+	ag.mut.RLock()
+	defer ag.mut.RUnlock()
+
+	if ag.registerCollectorFunc != nil {
+		return ag.registerCollectorFunc(ctx, req)
+	}
+
+	panic("registerCollectorFunc not set")
+}
+
+func (ag *collectorClient) UnregisterCollector(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
+	panic("unregisterCollector isn't wired yet")
+}
+
 type serviceController struct {
 	f *alloy_runtime.Runtime
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
-func (sc serviceController) LoadSource(b []byte, args map[string]any) error {
+func (sc serviceController) LoadSource(b []byte, args map[string]any, configPath string) error {
 	source, err := alloy_runtime.ParseSource("", b)
 	if err != nil {
 		return err
 	}
-	return sc.f.LoadSource(source, args)
+	return sc.f.LoadSource(source, args, configPath)
 }
 func (sc serviceController) Ready() bool { return sc.f.Ready() }

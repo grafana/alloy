@@ -26,7 +26,7 @@ exporters:
     endpoint: database:4317
     auth:
       authenticator: headers_setter
-    balancer_name: pick_first
+    balancer_name: round_robin
 
 service:
   extensions: [ headers_setter ]

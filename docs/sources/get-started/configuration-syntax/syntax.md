@@ -88,7 +88,7 @@ The block's body sets `filename` to the content of the `TOKEN_FILE_PATH` environ
 
 ```alloy
 local.file "token" {
-  filename  = env("TOKEN_FILE_PATH") // Use an expression to read from an env var.
+  filename  = sys.env("TOKEN_FILE_PATH") // Use an expression to read from an env var.
   is_secret = true
 }
 ```
@@ -103,4 +103,4 @@ A newline is treated as a terminator when it follows any expression, `]`, `)`, o
 [identifier]: #identifiers
 [identifier]: #identifiers
 [expression]: ../expressions/
-[type]: ../expressions/types_and_values
+[type]: ../expressions/types_and_values/

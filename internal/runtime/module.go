@@ -160,7 +160,7 @@ func (c *module) LoadConfig(config []byte, args map[string]any) error {
 	if err != nil {
 		return err
 	}
-	return c.f.LoadSource(ff, args)
+	return c.f.LoadSource(ff, args, "")
 }
 
 // LoadBody loads a pre-parsed Alloy config.

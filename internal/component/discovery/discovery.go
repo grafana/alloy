@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -34,6 +35,17 @@ func (t Target) NonMetaLabels() labels.Labels {
 	var lset labels.Labels
 	for k, v := range t {
 		if !strings.HasPrefix(k, model.MetaLabelPrefix) {
+			lset = append(lset, labels.Label{Name: k, Value: v})
+		}
+	}
+	sort.Sort(lset)
+	return lset
+}
+
+func (t Target) SpecificLabels(lbls []string) labels.Labels {
+	var lset labels.Labels
+	for k, v := range t {
+		if slices.Contains(lbls, k) {
 			lset = append(lset, labels.Label{Name: k, Value: v})
 		}
 	}
@@ -216,8 +228,9 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 	}
 
 	ticker := time.NewTicker(MaxUpdateFrequency)
-	// true if we have received new targets and need to send.
-	haveUpdates := false
+	// true if we have received new targets and need to send. Initially set it to true to send empty targets in case
+	// the discoverer never sends any targets.
+	haveUpdates := true
 	for {
 		select {
 		case <-ticker.C:

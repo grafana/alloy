@@ -150,7 +150,7 @@ loki.write "grafana_cloud_logs" {
 
 		basic_auth {
 			username = 5252
-			password = env("GRAFANA_CLOUD_API_KEY")
+			password = sys.env("GRAFANA_CLOUD_API_KEY")
 		}
 	}
 }
@@ -182,7 +182,7 @@ otelcol.exporter.otlp "grafana_cloud_traces" {
 
 otelcol.auth.basic "grafana_cloud_traces" {
 	username = 4094
-	password = env("GRAFANA_CLOUD_API_KEY")
+	password = sys.env("GRAFANA_CLOUD_API_KEY")
 }
 ```
 
@@ -218,7 +218,7 @@ prometheus.remote_write "grafana_cloud_metrics" {
 
         basic_auth {
             username = 12690
-            password = env("GRAFANA_CLOUD_API_KEY")
+            password = sys.env("GRAFANA_CLOUD_API_KEY")
         }
     }
 }
@@ -263,7 +263,7 @@ otelcol.exporter.otlp "grafana_cloud_traces" {
 
 otelcol.auth.basic "grafana_cloud_traces" {
 	username = 4094
-	password = env("GRAFANA_CLOUD_API_KEY")
+	password = sys.env("GRAFANA_CLOUD_API_KEY")
 }
 
 otelcol.exporter.prometheus "grafana_cloud_metrics" {
@@ -276,7 +276,7 @@ prometheus.remote_write "grafana_cloud_metrics" {
 
         basic_auth {
             username = 12690
-            password = env("GRAFANA_CLOUD_API_KEY")
+            password = sys.env("GRAFANA_CLOUD_API_KEY")
         }
     }
 }
@@ -291,7 +291,7 @@ loki.write "grafana_cloud_logs" {
 
 		basic_auth {
 			username = 5252
-			password = env("GRAFANA_CLOUD_API_KEY")
+			password = sys.env("GRAFANA_CLOUD_API_KEY")
 		}
 	}
 }
@@ -329,7 +329,7 @@ ts=2023-05-09T09:37:15.304109Z component=otelcol.receiver.otlp.default level=inf
 ts=2023-05-09T09:37:15.304234Z component=otelcol.receiver.otlp.default level=info msg="Starting HTTP server" endpoint=0.0.0.0:4318
 ```
 
-You can check the pipeline graphically by visiting [http://localhost:12345/graph][]
+You can check the pipeline graphically by visiting <http://localhost:12345/graph>
 
 {{< figure src="/media/docs/alloy/otlp-lgtm-graph.png" alt="Graphical representation of a healthy pipeline" >}}
 
@@ -341,12 +341,11 @@ You can check the pipeline graphically by visiting [http://localhost:12345/graph
 [Grafana Mimir]: https://grafana.com/oss/mimir/
 [Collect open telemetry data]: ../opentelemetry-data/
 [Components]: ../../get-started/components/
-[loki.write]: ../../reference/components/loki.write/
-[otelcol.auth.basic]: ../../reference/components/otelcol.auth.basic/
-[otelcol.exporter.loki]: ../../reference/components/otelcol.exporter.loki/
-[otelcol.exporter.otlp]: ../../reference/components/otelcol.exporter.otlp/
-[otelcol.exporter.prometheus]: ../../reference/components/otelcol.exporter.prometheus/
-[otelcol.processor.batch]: ../../reference/components/otelcol.processor.batch/
-[otelcol.receiver.otlp]: ../../reference/components/otelcol.receiver.otlp/
-[prometheus.remote_write]: ../../reference/components/prometheus.remote_write/
-[http://localhost:12345/graph]: http://localhost:12345/graph
+[loki.write]: ../../reference/components/loki/loki.write/
+[otelcol.auth.basic]: ../../reference/components/otelcol/otelcol.auth.basic/
+[otelcol.exporter.loki]: ../../reference/components/otelcol/otelcol.exporter.loki/
+[otelcol.exporter.otlp]: ../../reference/components/otelcol/otelcol.exporter.otlp/
+[otelcol.exporter.prometheus]: ../../reference/components/otelcol/otelcol.exporter.prometheus/
+[otelcol.processor.batch]: ../../reference/components/otelcol/otelcol.processor.batch/
+[otelcol.receiver.otlp]: ../../reference/components/otelcol/otelcol.receiver.otlp/
+[prometheus.remote_write]: ../../reference/components/prometheus/prometheus.remote_write/

@@ -20,6 +20,7 @@ import (
 	cluster_service "github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
@@ -194,6 +195,13 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 	})
 	require.NoError(t, err)
 
+	remotecfgService, err := remotecfg_service.New(remotecfg_service.Options{
+		Logger:      logger,
+		StoragePath: t.TempDir(),
+		Metrics:     prometheus.DefaultRegisterer,
+	})
+	require.NoError(t, err)
+
 	f := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       logger,
 		DataPath:     t.TempDir(),
@@ -205,9 +213,11 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 			http_service.New(http_service.Options{}),
 			clusterService,
 			labelstore.New(nil, prometheus.DefaultRegisterer),
+			remotecfgService,
 		},
+		EnableCommunityComps: true,
 	})
-	err = f.LoadSource(cfg, nil)
+	err = f.LoadSource(cfg, nil, "")
 
 	// Many components will fail to build as e.g. the cert files are missing, so we ignore these errors.
 	// This is not ideal, but we still validate for other potential issues.

@@ -130,17 +130,17 @@ This example reads a JSON array of objects from an endpoint and uses them as a s
 
 ```alloy
 remote.http "targets" {
-  url = env("MY_TARGETS_URL")
+  url = sys.env("MY_TARGETS_URL")
 }
 
 prometheus.scrape "default" {
-  targets    = json_decode(remote.http.targets.content)
+  targets    = encoding.from_json(remote.http.targets.content)
   forward_to = [prometheus.remote_write.default.receiver]
 }
 
 prometheus.remote_write "default" {
   client {
-    url = env("PROMETHEUS_URL")
+    url = sys.env("PROMETHEUS_URL")
   }
 }
 ```

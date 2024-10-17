@@ -38,7 +38,7 @@ func TestServices(t *testing.T) {
 	opts.Services = append(opts.Services, svc)
 
 	ctrl := New(opts)
-	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil))
+	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil, ""))
 
 	// Start the controller. This should cause our service to run.
 	go ctrl.Run(ctx)
@@ -90,7 +90,7 @@ func TestServices_Configurable(t *testing.T) {
 
 	ctrl := New(opts)
 
-	require.NoError(t, ctrl.LoadSource(f, nil))
+	require.NoError(t, ctrl.LoadSource(f, nil, ""))
 
 	// Start the controller. This should cause our service to run.
 	go ctrl.Run(ctx)
@@ -137,7 +137,7 @@ func TestServices_Configurable_Optional(t *testing.T) {
 
 	ctrl := New(opts)
 
-	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil))
+	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil, ""))
 
 	// Start the controller. This should cause our service to run.
 	go ctrl.Run(ctx)
@@ -171,7 +171,7 @@ func TestAlloy_GetServiceConsumers(t *testing.T) {
 
 	ctrl := New(opts)
 	defer cleanUpController(ctrl)
-	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil))
+	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil, ""))
 
 	expectConsumers := []service.Consumer{{
 		Type:  service.ConsumerTypeService,
@@ -253,7 +253,7 @@ func TestComponents_Using_Services(t *testing.T) {
 		ComponentRegistry: registry,
 		ModuleRegistry:    newModuleRegistry(),
 	})
-	require.NoError(t, ctrl.LoadSource(f, nil))
+	require.NoError(t, ctrl.LoadSource(f, nil, ""))
 	go ctrl.Run(ctx)
 
 	require.NoError(t, componentBuilt.Wait(5*time.Second), "Component should have been built")
@@ -332,10 +332,45 @@ func TestComponents_Using_Services_In_Modules(t *testing.T) {
 		ComponentRegistry: registry,
 		ModuleRegistry:    newModuleRegistry(),
 	})
-	require.NoError(t, ctrl.LoadSource(f, nil))
+	require.NoError(t, ctrl.LoadSource(f, nil, ""))
 	go ctrl.Run(ctx)
 
 	require.NoError(t, componentBuilt.Wait(5*time.Second), "Component should have been built")
+}
+
+func TestNewControllerNoLeak(t *testing.T) {
+	defer verifyNoGoroutineLeaks(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var (
+		startedSvc = util.NewWaitTrigger()
+
+		svc = &testservices.Fake{
+			RunFunc: func(ctx context.Context, _ service.Host) error {
+				startedSvc.Trigger()
+
+				<-ctx.Done()
+				return nil
+			},
+		}
+	)
+
+	opts := testOptions(t)
+	opts.Services = append(opts.Services, svc)
+
+	ctrl := New(opts)
+	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil, ""))
+
+	// Start the controller. This should cause our service to run.
+	go ctrl.Run(ctx)
+	require.NoError(t, startedSvc.Wait(5*time.Second), "Service did not start")
+
+	// Create a new isolated controller from ctrl and run it.
+	// Returning from the test should shut down this new controller as well
+	// and avoid leaking any goroutines.
+	nctrl := ctrl.NewController("id")
+	go nctrl.Run(ctx)
 }
 
 func makeEmptyFile(t *testing.T) *Source {

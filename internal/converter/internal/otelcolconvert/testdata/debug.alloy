@@ -1,0 +1,26 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint = "localhost:4318"
+	}
+
+	output {
+		metrics = [otelcol.exporter.debug.default.input, otelcol.exporter.debug.default_default.input]
+		logs    = [otelcol.exporter.debug.default.input, otelcol.exporter.debug.default_default.input]
+		traces  = [otelcol.exporter.debug.default.input, otelcol.exporter.debug.default_default.input]
+	}
+}
+
+otelcol.exporter.debug "default" {
+	verbosity           = "Detailed"
+	sampling_initial    = 5
+	sampling_thereafter = 200
+	use_internal_logger = false
+}
+
+otelcol.exporter.debug "default_default" {
+	verbosity = "Basic"
+}

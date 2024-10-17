@@ -8,7 +8,7 @@ title: prometheus.operator.probes
 
 # prometheus.operator.probes
 
-`prometheus.operator.probes` discovers [Probe](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.Probe) resources in your Kubernetes cluster and scrapes the targets they reference.
+`prometheus.operator.probes` discovers [Probe](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.Probe) resources in your Kubernetes cluster and scrapes the targets they reference.
  This component performs three main functions:
 
 1. Discover Probe resources from your Kubernetes cluster.
@@ -252,7 +252,7 @@ prometheus.operator.probes "probes" {
     forward_to = [prometheus.remote_write.staging.receiver]
     rule {
       action = "keep"
-      regex = env("HOSTNAME")
+      regex = sys.env("HOSTNAME")
       source_labels = ["__meta_kubernetes_pod_node_name"]
     }
 }

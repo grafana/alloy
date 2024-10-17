@@ -150,15 +150,13 @@ func (r *Receiver) Update(args component.Arguments) error {
 		return err
 	}
 
-	settings := otelreceiver.CreateSettings{
+	settings := otelreceiver.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(r.opts.Logger),
 
 			TracerProvider: r.opts.Tracer,
 			MeterProvider:  metric.NewMeterProvider(metricOpts...),
 			MetricsLevel:   metricsLevel,
-
-			ReportStatus: func(*otelcomponent.StatusEvent) {},
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{

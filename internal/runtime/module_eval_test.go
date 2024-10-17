@@ -20,6 +20,7 @@ import (
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	otel_service "github.com/grafana/alloy/internal/service/otel"
+	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -61,7 +62,7 @@ func TestUpdates_EmptyModule(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil)
+	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -122,7 +123,7 @@ func TestUpdates_ThroughModule(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil)
+	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -184,7 +185,7 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil)
+	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -251,7 +252,7 @@ func TestUpdates_ReloadConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil)
+	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -306,7 +307,7 @@ func TestUpdates_ReloadConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil)
+	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {
@@ -331,6 +332,13 @@ func testOptions(t *testing.T) runtime.Options {
 	otelService := otel_service.New(s)
 	require.NotNil(t, otelService)
 
+	remotecfgService, err := remotecfg_service.New(remotecfg_service.Options{
+		Logger:      s,
+		StoragePath: t.TempDir(),
+		Metrics:     prometheus.DefaultRegisterer,
+	})
+	require.NoError(t, err)
+
 	return runtime.Options{
 		Logger:               s,
 		DataPath:             t.TempDir(),
@@ -342,6 +350,7 @@ func testOptions(t *testing.T) runtime.Options {
 			clusterService,
 			otelService,
 			labelstore.New(nil, prometheus.DefaultRegisterer),
+			remotecfgService,
 		},
 	}
 }

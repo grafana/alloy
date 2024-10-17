@@ -66,17 +66,17 @@ The `client` block configures the gRPC client used by the component.
 
 The following arguments are supported:
 
-Name                | Type                       | Description                                                                      | Default      | Required
---------------------|----------------------------|----------------------------------------------------------------------------------|--------------|---------
-`endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |              | yes
-`compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`     | no
-`read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |              | no
-`write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"`   | no
-`wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`      | no
-`headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`         | no
-`balancer_name`     | `string`                   | Which gRPC client-side load balancer to use for requests.                        | `pick_first` | no
-`authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |              | no
-`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |              | no
+Name                | Type                       | Description                                                                      | Default       | Required
+--------------------|----------------------------|----------------------------------------------------------------------------------|---------------|---------
+`endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |               | yes
+`compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`      | no
+`read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |               | no
+`write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"`    | no
+`wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`       | no
+`headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`          | no
+`balancer_name`     | `string`                   | Which gRPC client-side load balancer to use for requests.                        | `round_robin` | no
+`authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |               | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -172,10 +172,10 @@ information.
 
 ## Debug metrics
 
-* `exporter_sent_spans_ratio_total` (counter): Number of spans successfully sent to destination.
-* `exporter_send_failed_spans_ratio_total` (counter): Number of spans in failed attempts to send to destination.
-* `exporter_queue_capacity_ratio` (gauge): Fixed capacity of the retry queue (in batches)
-* `exporter_queue_size_ratio` (gauge): Current size of the retry queue (in batches)
+* `otelcol_exporter_sent_spans_total` (counter): Number of spans successfully sent to destination.
+* `otelcol_exporter_send_failed_spans_total` (counter): Number of spans in failed attempts to send to destination.
+* `otelcol_exporter_queue_capacity` (gauge): Fixed capacity of the retry queue (in batches)
+* `otelcol_exporter_queue_size` (gauge): Current size of the retry queue (in batches)
 * `rpc_client_duration_milliseconds` (histogram): Measures the duration of inbound RPC.
 * `rpc_client_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
 * `rpc_client_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
@@ -214,8 +214,8 @@ otelcol.exporter.otlp "grafana_cloud_traces" {
     }
 }
 otelcol.auth.basic "grafana_cloud_traces" {
-    username = env("TEMPO_USERNAME")
-    password = env("GRAFANA_CLOUD_API_KEY")
+    username = sys.env("TEMPO_USERNAME")
+    password = sys.env("GRAFANA_CLOUD_API_KEY")
 }
 ```
 <!-- START GENERATED COMPATIBLE COMPONENTS -->

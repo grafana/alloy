@@ -27,7 +27,7 @@ prometheus.exporter.snmp "LABEL" {
 }
 ```
 
-or 
+or
 
 ```alloy
 prometheus.exporter.snmp "LABEL" {
@@ -65,6 +65,8 @@ The following labels can be set to a target:
 * `auth`: The SNMP authentication profile to use.
 * `walk_params`: The config to use for this target.
 
+Any other labels defined are added to the scraped metrics.
+
 ## Blocks
 
 The following blocks are supported inside the definition of
@@ -83,13 +85,15 @@ The following blocks are supported inside the definition of
 The `target` block defines an individual SNMP target.
 The `target` block may be specified multiple times to define multiple targets. The label of the block is required and will be used in the target's `job` label.
 
-| Name           | Type     | Description                                                           | Default | Required |
-| -------------- | -------- | --------------------------------------------------------------------- | ------- | -------- |
-| `address`      | `string` | The address of SNMP device.                                           |         | yes      |
-| `module`       | `string` | SNMP module to use for polling.                                       | `""`    | no       |
-| `auth`         | `string` | SNMP authentication profile to use.                                   | `""`    | no       |
-| `walk_params`  | `string` | Config to use for this target.                                        | `""`    | no       |
-| `snmp_context` | `string` | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
+| Name           | Type          | Description                                                           | Default | Required |
+|----------------|---------------|-----------------------------------------------------------------------| ------- | -------- |
+| `address`      | `string`      | The address of SNMP device.                                           |         | yes      |
+| `module`       | `string`      | SNMP module to use for polling.                                       | `""`    | no       |
+| `auth`         | `string`      | SNMP authentication profile to use.                                   | `""`    | no       |
+| `walk_params`  | `string`      | Config to use for this target.                                        | `""`    | no       |
+| `snmp_context` | `string`      | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
+| `labels`       | `map(string)` | Map of labels to apply to all metrics captured from the target.       | `""`    | no       |
+
 
 ### walk_param block
 
@@ -136,6 +140,9 @@ prometheus.exporter.snmp "example" {
         address     = "192.168.1.2"
         module      = "if_mib"
         walk_params = "public"
+        labels = {
+            "env" = "dev",
+        }
     }
 
     target "network_router_2" {
@@ -160,11 +167,11 @@ prometheus.scrape "demo" {
 }
 ```
 
-This example is the same above with using an embedded configuration (with secrets):
+This example uses an embedded configuration (with secrets):
 
 ```alloy
 local.file "snmp_config" {
-    path      = "snmp_modules.yml"
+    filename  = "snmp_modules.yml"
     is_secret = true
 }
 
@@ -227,6 +234,7 @@ prometheus.exporter.snmp "example" {
             "address"     = "192.168.1.2",
             "module"      = "if_mib",
             "walk_params" = "public",
+            "env"         = "dev",
         },
         {
             "name"        = "network_router_2",
@@ -262,7 +270,7 @@ local.file "targets" {
 prometheus.exporter.snmp "example" {
     config_file = "snmp_modules.yml"
 
-    targets = yaml_decode(local.file.targets.content)
+    targets = encoding.from_yaml(local.file.targets.content)
 
     walk_param "private" {
         retries = "2"

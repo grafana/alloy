@@ -80,7 +80,7 @@ prometheus.remote_write "primary" {
     endpoint {
         url = "https://<PROMETHEUS_URL>/api/v1/push"
         basic_auth {
-            username = nonsensitive(remote.kubernetes.secret.credentials.data["username"])
+            username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["username"])
             password = remote.kubernetes.secret.credentials.data["password"]
         }
     }
@@ -163,7 +163,7 @@ discovery.kubernetes "pods" {
   // limit to pods on this node to reduce the amount you need to filter
   selectors {
     role  = "pod"
-    field = "spec.nodeName=" + env("<HOSTNAME>")
+    field = "spec.nodeName=" + sys.env("<HOSTNAME>")
   }
 }
 
@@ -253,7 +253,7 @@ loki.write "loki" {
   endpoint {
     url = "https://<LOKI_URL>/loki/api/v1/push"
     basic_auth {
-      username = nonsensitive(remote.kubernetes.secret.credentials.data["username"])
+      username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["username"])
       password = remote.kubernetes.secret.credentials.data["password"]
     }
 }
@@ -278,13 +278,13 @@ The [reference documentation][component documentation] should help convert those
 [deployment guide]: ../../../set-up/deploy/
 [operator guide]: https://grafana.com/docs/agent/latest/operator/deploy-agent-operator-resources/#deploy-a-metricsinstance-resource
 [Helm chart]: ../../../set-up/install/kubernetes/
-[remote.kubernetes.secret]: ../../../reference/components/remote.kubernetes.secret/
-[prometheus.remote_write]: ../../../reference/components/prometheus.remote_write/
-[prometheus.operator.podmonitors]: ../../../reference/components/prometheus.operator.podmonitors/
-[prometheus.operator.servicemonitors]: ../../../reference/components/prometheus.operator.servicemonitors/
-[prometheus.operator.probes]: ../../../reference/components/prometheus.operator.probes/
-[prometheus.scrape]: ../../../reference/components/prometheus.scrape/
-[loki.source.kubernetes]: ../../../reference/components/loki.source.kubernetes/
-[loki.source.podlogs]: ../../../reference/components/loki.source.podlogs/
+[remote.kubernetes.secret]: ../../../reference/components/remote/remote.kubernetes.secret/
+[prometheus.remote_write]: ../../../reference/components/prometheus/prometheus.remote_write/
+[prometheus.operator.podmonitors]: ../../../reference/components/prometheus/prometheus.operator.podmonitors/
+[prometheus.operator.servicemonitors]: ../../../reference/components/prometheus/prometheus.operator.servicemonitors/
+[prometheus.operator.probes]: ../../../reference/components/prometheus/prometheus.operator.probes/
+[prometheus.scrape]: ../../../reference/components/prometheus/prometheus.scrape/
+[loki.source.kubernetes]: ../../../reference/components/loki/loki.source.kubernetes/
+[loki.source.podlogs]: ../../../reference/components/loki/loki.source.podlogs/
 [component documentation]: ../../../reference/components/
 [prometheus.exporter]: ../../../reference/components/

@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -25,7 +26,7 @@ func (probabilisticSamplerProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.probabilistic_sampler"
 }
 
-func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,7 +43,7 @@ func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *State, id 
 	return diags
 }
 
-func toProbabilisticSamplerProcessor(state *State, id component.InstanceID, cfg *probabilisticsamplerprocessor.Config) *probabilistic_sampler.Arguments {
+func toProbabilisticSamplerProcessor(state *State, id componentstatus.InstanceID, cfg *probabilisticsamplerprocessor.Config) *probabilistic_sampler.Arguments {
 	var (
 		nextTraces = state.Next(id, component.DataTypeTraces)
 		nextLogs   = state.Next(id, component.DataTypeLogs)
@@ -51,7 +52,9 @@ func toProbabilisticSamplerProcessor(state *State, id component.InstanceID, cfg 
 	return &probabilistic_sampler.Arguments{
 		SamplingPercentage: cfg.SamplingPercentage,
 		HashSeed:           cfg.HashSeed,
+		Mode:               string(cfg.Mode),
 		FailClosed:         cfg.FailClosed,
+		SamplingPrecision:  cfg.SamplingPrecision,
 		AttributeSource:    string(cfg.AttributeSource),
 		FromAttribute:      cfg.FromAttribute,
 		SamplingPriority:   cfg.SamplingPriority,

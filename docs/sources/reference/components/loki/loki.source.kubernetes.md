@@ -145,6 +145,20 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 `loki.source.kubernetes` collects logs from every target it receives in its
 arguments.
 
+Clustering only looks at the following labels for determining the shard key:
+* `__pod_namespace__`
+* `__pod_name__`
+* `__pod_container_name__`
+* `__pod_uid__`
+* `__meta_kubernetes_namespace`
+* `__meta_kubernetes_pod_name`
+* `__meta_kubernetes_pod_container_name`
+* `__meta_kubernetes_pod_uid`
+* `container`
+* `pod`
+* `job`
+* `namespace`
+
 [using clustering]: ../../../../get-started/clustering/
 
 ## Exported fields
@@ -187,7 +201,7 @@ loki.source.kubernetes "pods" {
 
 loki.write "local" {
   endpoint {
-    url = env("LOKI_URL")
+    url = sys.env("LOKI_URL")
   }
 }
 ```

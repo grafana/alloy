@@ -51,6 +51,11 @@ The following flags are supported:
 * `--cluster.advertise-interfaces`: List of interfaces used to infer an address to advertise. Set to `all` to use all available network interfaces on the system. (default `"eth0,en0"`).
 * `--cluster.max-join-peers`: Number of peers to join from the discovered set (default `5`).
 * `--cluster.name`: Name to prevent nodes without this identifier from joining the cluster (default `""`).
+* `--cluster.enable-tls`: Specifies whether TLS should be used for communication between peers (default `false`). 
+* `--cluster.tls-ca-path`: Path to the CA certificate file used for peer communication over TLS. 
+* `--cluster.tls-cert-path`: Path to the certificate file used for peer communication over TLS.
+* `--cluster.tls-key-path`: Path to the key file used for peer communication over TLS.
+* `--cluster.tls-server-name`: Server name used for peer communication over TLS.
 * `--config.format`: The format of the source file. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, `static` (default `"alloy"`).
 * `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
@@ -107,9 +112,12 @@ If `--cluster.advertise-interfaces` isn't explicitly set, {{< param "PRODUCT_NAM
 {{< param "PRODUCT_NAME" >}} will fail to start if it can't determine the advertised address.
 Since Windows doesn't use the interface names `eth0` or `en0`, Windows users must explicitly pass at least one valid network interface for `--cluster.advertise-interfaces` or a value for `--cluster.advertise-address`.
 
-The comma-separated list of addresses provided in `--cluster.join-addresses` can either be IP addresses with an optional port, or DNS SRV records to lookup.
-The ports on the list of addresses default to the port used for the HTTP listener if not explicitly provided.
-We recommend that you align the port numbers on as many nodes as possible to simplify the deployment process.
+The comma-separated list of addresses provided in `--cluster.join-addresses` can either be IP addresses or DNS names to lookup (supports SRV and A/AAAA records). 
+In both cases, the port number can be specified with a `:<port>` suffix. If ports are not provided, default of the port used for the HTTP listener is used.
+If you do not provide the port number explicitly, you must ensure that all instances use the same port for the HTTP listener.
+
+The `--cluster.enable-tls` flag can be set to enable TLS for peer-to-peer communications.
+Additional arguments are required to configure the TLS client, including the CA certificate, the TLS certificate, the key, and the server name.
 
 The `--cluster.discover-peers` command-line flag expects a list of tuples in the form of `provider=XXX key=val key=val ...`.
 Clustering uses the [go-discover] package to discover peers and fetch their IP addresses, based on the chosen provider and the filtering key-values it supports.
@@ -166,10 +174,10 @@ Include `--config.extra-args` to pass additional command line flags from the ori
 Refer to [alloy convert][] for more details on how `extra-args` work.
 
 [alloy convert]: ../convert/
-[clustering]:  ../../../concepts/clustering/
+[clustering]:  ../../../get-started/clustering/
 [go-discover]: https://github.com/hashicorp/go-discover
-[in-memory HTTP traffic]: ../../../concepts/component_controller/#in-memory-traffic
+[in-memory HTTP traffic]: ../../../get-started/component_controller/#in-memory-traffic
 [data collection]: ../../../data-collection/
-[components]: ../../concepts/components/
-[component controller]: ../../../concepts/component_controller/
-[UI]: ../../../tasks/debug/#clustering-page
+[components]: ../../get-started/components/
+[component controller]: ../../../get-started/component_controller/
+[UI]: ../../../troubleshoot/debug/#clustering-page

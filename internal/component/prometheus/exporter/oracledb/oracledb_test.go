@@ -17,7 +17,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 	max_idle_conns     = 0
 	max_open_conns     = 10
 	query_timeout      = 5
-	`
+	custom_metrics     = ` + "`metrics:\n- context: \"slow_queries\"\n  metricsdesc:\n    p95_time_usecs: \"Gauge metric with percentile 95 of elapsed time.\"\n    p99_time_usecs: \"Gauge metric with percentile 99 of elapsed time.\"\n  request: \"select  percentile_disc(0.95)  within group (order by elapsed_time) as p95_time_usecs,\n    percentile_disc(0.99)  within group (order by elapsed_time) as p99_time_usecs\n    from v$sql where last_active_time >= sysdate - 5/(24*60)\"`"
 
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyConfig), &args)
@@ -28,6 +28,16 @@ func TestAlloyUnmarshal(t *testing.T) {
 		MaxIdleConns:     0,
 		MaxOpenConns:     10,
 		QueryTimeout:     5,
+		CustomMetrics: alloytypes.OptionalSecret{
+			Value: `metrics:
+- context: "slow_queries"
+  metricsdesc:
+    p95_time_usecs: "Gauge metric with percentile 95 of elapsed time."
+    p99_time_usecs: "Gauge metric with percentile 99 of elapsed time."
+  request: "select  percentile_disc(0.95)  within group (order by elapsed_time) as p95_time_usecs,
+    percentile_disc(0.99)  within group (order by elapsed_time) as p99_time_usecs
+    from v$sql where last_active_time >= sysdate - 5/(24*60)"`,
+		},
 	}
 
 	require.Equal(t, expected, args)
@@ -73,11 +83,25 @@ func TestArgumentsValidate(t *testing.T) {
 			err:     errNoHostname,
 		},
 		{
-			name: "valid",
+			name: "valid OracleDB",
 			args: Arguments{
 				ConnectionString: alloytypes.Secret("oracle://user:password@localhost:1521/orcl.localnet"),
+				MaxIdleConns:     1,
+				MaxOpenConns:     1,
+				QueryTimeout:     5,
+				CustomMetrics: alloytypes.OptionalSecret{
+					Value: `metrics:
+- context: "slow_queries"
+  metricsdesc:
+    p95_time_usecs: "Gauge metric with percentile 95 of elapsed time."
+    p99_time_usecs: "Gauge metric with percentile 99 of elapsed time."
+  request: "select percentile_disc(0.95) within group (order by elapsed_time) as p95_time_usecs,
+           percentile_disc(0.99) within group (order by elapsed_time) as p99_time_usecs
+           from v$sql where last_active_time >= sysdate - 5/(24*60)"`,
+				},
 			},
 			wantErr: false,
+			err:     errors.New("invalid custom_metrics"),
 		},
 	}
 
@@ -93,8 +117,37 @@ func TestArgumentsValidate(t *testing.T) {
 		})
 	}
 }
+func TestConvertCustom(t *testing.T) {
+	strCustomMetrics := `metrics:
+- context: "slow_queries"
+  metricsdesc:
+    p95_time_usecs: "Gauge metric with percentile 95 of elapsed time."
+    p99_time_usecs: "Gauge metric with percentile 99 of elapsed time."
+  request: "select  percentile_disc(0.95)  within group (order by elapsed_time) as p95_time_usecs,
+    percentile_disc(0.99)  within group (order by elapsed_time) as p99_time_usecs
+    from v$sql where last_active_time >= sysdate - 5/(24*60)"`
 
-func TestConvert(t *testing.T) {
+	alloyConfig := `
+	connection_string  = "oracle://user:password@localhost:1521/orcl.localnet"
+	custom_metrics     = ` + "`metrics:\n- context: \"slow_queries\"\n  metricsdesc:\n    p95_time_usecs: \"Gauge metric with percentile 95 of elapsed time.\"\n    p99_time_usecs: \"Gauge metric with percentile 99 of elapsed time.\"\n  request: \"select  percentile_disc(0.95)  within group (order by elapsed_time) as p95_time_usecs,\n    percentile_disc(0.99)  within group (order by elapsed_time) as p99_time_usecs\n    from v$sql where last_active_time >= sysdate - 5/(24*60)\"`"
+
+	var args Arguments
+
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
+	require.NoError(t, err)
+
+	res := args.Convert()
+
+	expected := oracledb_exporter.Config{
+		ConnectionString: config_util.Secret("oracle://user:password@localhost:1521/orcl.localnet"),
+		MaxIdleConns:     DefaultArguments.MaxIdleConns,
+		MaxOpenConns:     DefaultArguments.MaxOpenConns,
+		QueryTimeout:     DefaultArguments.QueryTimeout,
+		CustomMetrics:    strCustomMetrics,
+	}
+	require.Equal(t, expected, *res)
+}
+func TestConvertNoCustom(t *testing.T) {
 	alloyConfig := `
 	connection_string  = "oracle://user:password@localhost:1521/orcl.localnet"
 	`
@@ -109,6 +162,7 @@ func TestConvert(t *testing.T) {
 		MaxIdleConns:     DefaultArguments.MaxIdleConns,
 		MaxOpenConns:     DefaultArguments.MaxOpenConns,
 		QueryTimeout:     DefaultArguments.QueryTimeout,
+		CustomMetrics:    "",
 	}
 	require.Equal(t, expected, *res)
 }
