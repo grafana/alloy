@@ -34,7 +34,7 @@ otelcol.exporter.splunkhec "LABEL" {
 
 ## Arguments
 
-The ``otelcol.exporter.splunkhec`` component does not support any arguments, and is configured
+The `otelcol.exporter.splunkhec` component does not support any arguments, and is configured
 fully through child blocks.
 
 ## Blocks
@@ -112,7 +112,7 @@ Name                       | Type     | Description                             
 Name                       | Type                  | Description                                                     | Default                       | Required
 ---------------------------|-----------------------|-----------------------------------------------------------------|-------------------------------|---------
 `enabled`                  | `bool`                | Enable telemetry inside the exporter.                            |   `false`                     | no
-`override_metrics_names`   | `map[string]string`   | Override metrics for internal metrics in the exporter.           |   `map[string]{}`             | no
+`override_metrics_names`   | `map(string)`   | Override metrics for internal metrics in the exporter.           |                | no
 
 ### client block
 
@@ -131,7 +131,7 @@ Name                      | Type       | Description                            
 `max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. |         | no
 `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `"45s"` | no
 `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |         | no
-`insecure_skip_verify`    | `boolean`  | Ignores insecure server TLS certificates.                                   |         | no
+`insecure_skip_verify`    | `bool`  | Ignores insecure server TLS certificates.                                   |         | no
 
 ### retry_on_failure block
 
