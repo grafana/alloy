@@ -126,6 +126,7 @@ v1.4.0
 - Added Datadog Exporter community component, enabling exporting of otel-formatted Metrics and traces to Datadog. (@polyrain)
 - (_Experimental_) Add an `otelcol.processor.interval` component to aggregate metrics and periodically
   forward the latest values to the next component in the pipeline.
+- Added Splunx HEC Exporter community componment, enabling exporting of logs to Splunk HEC
 
 
 ### Enhancements
