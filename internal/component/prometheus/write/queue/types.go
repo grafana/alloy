@@ -13,7 +13,7 @@ import (
 func defaultArgs() Arguments {
 	return Arguments{
 		TTL: 2 * time.Hour,
-		Serialization: Serialization{
+		Persistence: Persistence{
 			MaxSignalsToBatch: 10_000,
 			BatchInterval:     5 * time.Second,
 		},
@@ -22,12 +22,12 @@ func defaultArgs() Arguments {
 
 type Arguments struct {
 	// TTL is how old a series can be.
-	TTL           time.Duration    `alloy:"ttl,attr,optional"`
-	Serialization Serialization    `alloy:"serialization,block,optional"`
-	Endpoints     []EndpointConfig `alloy:"endpoint,block"`
+	TTL         time.Duration    `alloy:"ttl,attr,optional"`
+	Persistence Persistence      `alloy:"persistence,block,optional"`
+	Endpoints   []EndpointConfig `alloy:"endpoint,block"`
 }
 
-type Serialization struct {
+type Persistence struct {
 	// The batch size to persist to the file queue.
 	MaxSignalsToBatch int `alloy:"max_signals_to_batch,attr,optional"`
 	// How often to flush to the file queue if BatchSize isn't met.

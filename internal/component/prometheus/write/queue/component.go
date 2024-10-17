@@ -137,8 +137,8 @@ func (s *Queue) createEndpoints() error {
 			return err
 		}
 		serial, err := serialization.NewSerializer(types.SerializerConfig{
-			MaxSignalsInBatch: uint32(s.args.Serialization.MaxSignalsToBatch),
-			FlushFrequency:    s.args.Serialization.BatchInterval,
+			MaxSignalsInBatch: uint32(s.args.Persistence.MaxSignalsToBatch),
+			FlushFrequency:    s.args.Persistence.BatchInterval,
 		}, fq, stats.UpdateSerializer, s.opts.Logger)
 		if err != nil {
 			return err

@@ -355,7 +355,7 @@ func newComponent(t *testing.T, l *logging.Logger, url string, exp chan Exports,
 		Tracer:     nil,
 	}, Arguments{
 		TTL: 2 * time.Hour,
-		Serialization: Serialization{
+		Persistence: Persistence{
 			MaxSignalsToBatch: 10_000,
 			BatchInterval:     1 * time.Second,
 		},
