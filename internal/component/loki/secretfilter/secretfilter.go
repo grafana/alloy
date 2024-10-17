@@ -53,7 +53,7 @@ type Arguments struct {
 	GitleaksConfig string              `alloy:"gitleaks_config,attr,optional"` // Path to the custom gitleaks.toml file. If empty, the embedded one is used
 	Types          []string            `alloy:"types,attr,optional"`           // Types of secret to look for (e.g. "aws", "gcp", ...). If empty, all types are included
 	RedactWith     string              `alloy:"redact_with,attr,optional"`     // Redact the secret with this string. Use $SECRET_NAME and $SECRET_HASH to include the secret name and hash
-	ExcludeGeneric bool                `alloy:"exclude_generic,attr,optional"` // Exclude the generic API key rule (default: false)
+	IncludeGeneric bool                `alloy:"include_generic,attr,optional"` // Include the generic API key rule (default: false)
 	AllowList      []string            `alloy:"allowlist,attr,optional"`       // List of regexes to allowlist (on top of what's in the Gitleaks config)
 	PartialMask    uint                `alloy:"partial_mask,attr,optional"`    // Show the first N characters of the secret (default: 0)
 }
@@ -270,7 +270,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// Compile regexes
 	for _, rule := range gitleaksCfg.Rules {
 		// If specific secret types are provided, only include rules that match the types
-		if c.args.Types != nil && len(c.args.Types) > 0 {
+		if len(c.args.Types) > 0 {
 			var found bool
 			for _, t := range c.args.Types {
 				if strings.HasPrefix(strings.ToLower(rule.ID), strings.ToLower(t)) {
@@ -338,7 +338,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	// Add the generic API key rule last if needed
-	if ruleGenericApiKey != nil && !c.args.ExcludeGeneric {
+	if ruleGenericApiKey != nil && c.args.IncludeGeneric {
 		c.Rules = append(c.Rules, *ruleGenericApiKey)
 	}
 

@@ -11,6 +11,7 @@ import (
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/prometheus/prometheus/model/rulefmt"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
@@ -147,10 +148,10 @@ func TestEventLoop(t *testing.T) {
 	eventHandler.OnAdd(rule, false)
 
 	// Wait for the rule to be added to mimir
-	require.Eventually(t, func() bool {
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		rules, err := processor.mimirClient.ListRules(ctx, "")
-		require.NoError(t, err)
-		return len(rules) == 1
+		assert.NoError(c, err)
+		assert.Len(c, rules, 1)
 	}, time.Second, 10*time.Millisecond)
 
 	// Update the rule in kubernetes
@@ -162,11 +163,11 @@ func TestEventLoop(t *testing.T) {
 	eventHandler.OnUpdate(rule, rule)
 
 	// Wait for the rule to be updated in mimir
-	require.Eventually(t, func() bool {
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		allRules, err := processor.mimirClient.ListRules(ctx, "")
-		require.NoError(t, err)
+		assert.NoError(c, err)
 		rules := allRules[mimirNamespaceForRuleCRD("alloy", rule)][0].Rules
-		return len(rules) == 2
+		assert.Len(c, rules, 2)
 	}, time.Second, 10*time.Millisecond)
 
 	// Remove the rule from kubernetes
@@ -174,10 +175,10 @@ func TestEventLoop(t *testing.T) {
 	eventHandler.OnDelete(rule)
 
 	// Wait for the rule to be removed from mimir
-	require.Eventually(t, func() bool {
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		rules, err := processor.mimirClient.ListRules(ctx, "")
-		require.NoError(t, err)
-		return len(rules) == 0
+		assert.NoError(c, err)
+		assert.Empty(c, rules)
 	}, time.Second, 10*time.Millisecond)
 }
 
@@ -252,12 +253,11 @@ func TestAdditionalLabels(t *testing.T) {
 
 	// Wait for the rule to be added to mimir
 	rules := map[string][]rulefmt.RuleGroup{}
-	require.Eventually(t, func() bool {
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		var err error
 		rules, err = processor.mimirClient.ListRules(ctx, "")
-		require.NoError(t, err)
-		require.Equal(t, 1, len(rules))
-		return len(rules) == 1
+		assert.NoError(c, err)
+		assert.Len(c, rules, 1)
 	}, 3*time.Second, 10*time.Millisecond)
 
 	// The map of rules has only one element.
@@ -360,13 +360,12 @@ func TestExtraQueryMatchers(t *testing.T) {
 
 	// Wait for the rule to be added to mimir
 	rules := map[string][]rulefmt.RuleGroup{}
-	require.Eventually(t, func() bool {
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		var err error
 		rules, err = processor.mimirClient.ListRules(ctx, "")
-		require.NoError(t, err)
-		require.Equal(t, 1, len(rules))
-		return len(rules) == 1
-	}, 3*time.Second, 10*time.Millisecond)
+		assert.NoError(c, err)
+		assert.Len(c, rules, 1)
+	}, 10*time.Second, 10*time.Millisecond)
 
 	// The map of rules has only one element.
 	for ruleName, rule := range rules {

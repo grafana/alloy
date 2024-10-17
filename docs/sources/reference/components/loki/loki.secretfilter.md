@@ -40,7 +40,7 @@ Name                     | Type                 | Description                   
 `gitleaks_config`        | `string`             | Path to the custom `gitleaks.toml` file.        | Embedded Gitleaks file           | no
 `types`                  | `map(string)`        | Types of secret to look for.                    | All types                        | no
 `redact_with`            | `string`             | String to use to redact secrets.                | `<REDACTED-SECRET:$SECRET_NAME>` | no
-`exclude_generic`        | `bool`               | Exclude the generic API key rule.               | `false`                          | no
+`include_generic`        | `bool`               | Include the generic API key rule.               | `false`                          | no
 `allowlist`              | `map(string)`        | List of regexes to allowlist matching secrets.  | `{}`                             | no
 `partial_mask`           | `number`             | Show the first N characters of the secret.      | `0`                              | no
 
@@ -51,7 +51,7 @@ The `types` argument is a map of secret types to look for. The values are used a
 
 The `redact_with` argument is a string that can use variables such as `$SECRET_NAME` (replaced with the matching secret type) and `$SECRET_HASH`(replaced with the sha1 hash of the secret).
 
-The `exclude_generic` argument is a boolean that excludes the generic API key rule in the Gitleaks configuration file if set to `true`.
+The `include_generic` argument is a boolean that includes the generic API key rule in the Gitleaks configuration file if set to `true`. It's disabled by default because it can generate false positives.
 
 The `allowlist` argument is a map of regular expressions to allow matching secrets.
 A secret will not be redacted if it matches any of the regular expressions. The allowlist in the Gitleaks configuration file is also applied.

@@ -318,7 +318,7 @@ func toYACEDiscoveryJob(rj DiscoveryJob) *yaceConf.Job {
 		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
 		// metrics, with the smallest period in the retrieved batch.
 		RoundingPeriod: nil,
-		Metrics: toYACEMetrics(rj.Metrics, nilToZero),
+		Metrics:        toYACEMetrics(rj.Metrics, nilToZero),
 	}
 	return job
 }
@@ -339,7 +339,7 @@ func toYACECustomNamespaceJob(cn CustomNamespaceJob) *yaceConf.CustomNamespace {
 		// metrics, with the smallest period in the retrieved batch.
 		RoundingPeriod:     nil,
 		RecentlyActiveOnly: cn.RecentlyActiveOnly,
-		Metrics: toYACEMetrics(cn.Metrics, nilToZero),
+		Metrics:            toYACEMetrics(cn.Metrics, nilToZero),
 	}
 }
 

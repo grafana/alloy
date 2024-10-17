@@ -53,7 +53,7 @@ require (
 	github.com/google/renameio/v2 v2.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/grafana/alloy-remote-config v0.0.8
+	github.com/grafana/alloy-remote-config v0.0.9
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/beyla v1.8.2
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
@@ -149,7 +149,7 @@ require (
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0
 	github.com/prometheus-community/postgres_exporter v0.11.1
 	github.com/prometheus-community/stackdriver_exporter v0.15.1
-	github.com/prometheus-community/windows_exporter v0.27.3
+	github.com/prometheus-community/windows_exporter v0.27.4-0.20241010144849-a0f6d3bcf9a4
 	github.com/prometheus-operator/prometheus-operator v0.66.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.66.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.66.0
@@ -809,13 +809,12 @@ require (
 	k8s.io/kube-openapi v0.0.0-20240620174524-b456828f718b // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
-
-)
-
-require (
+	github.com/gammazero/deque v0.2.1 // indirect
+	github.com/vladopajic/go-actor v0.9.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/iam v1.33.1 // indirect
 	github.com/checkpoint-restore/go-criu/v6 v6.3.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
+	github.com/jaswdr/faker/v2 v2.3.2
 )
 
 // NOTE: replace directives below must always be *temporary*.

@@ -307,7 +307,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								AddCloudwatchTimestamp: addCloudwatchTimestamp,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{"name"},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -335,7 +335,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								AddCloudwatchTimestamp: addCloudwatchTimestamp,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -368,7 +368,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								AddCloudwatchTimestamp: addCloudwatchTimestamp,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -517,7 +517,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								AddCloudwatchTimestamp: addCloudwatchTimestamp,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{"name"},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{

@@ -18,9 +18,15 @@ Main (unreleased)
 ### Features
 
 - Add the function `path_join` to the stdlib. (@wildum)
+
 - Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
+
 - Add support to `loki.source.api` to be able to extract the tenant from the HTTP `X-Scope-OrgID` header (@QuentinBisson)
+
 - (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
+
+- (_Experimental_) Add a `prometheus.write.queue` component to add an alternative to `prometheus.remote_write`
+  which allowing the writing of metrics  to a prometheus endpoint. (@mattdurham)
 
 ### Enhancements
 
@@ -33,11 +39,20 @@ Main (unreleased)
 
 - Added the `DisplayVersion` value to the Windows NSIS installer to simplify patch management for enterprise environments. (@charlygott)
 
+- SNMP exporter now supports labels in both `target` and `targets` parameters. (@mattdurham)
+
+- Add support for relative paths to `import.file`. This new functionality allows users to use `import.file` blocks in modules
+  imported via `import.git` and other `import.file`. (@wildum)
+
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
 
 - `pyroscope.scrape` no longer tries to scrape endpoints which are not active targets anymore. (@wildum @mattdurham @dehaansa @ptodev)
+
+- Fixed a bug with `loki.source.podlogs` not starting in large clusters due to short informer sync timeout. (@elburnetto-intapp) 
+
+- `prometheus.exporter.windows`: Fixed bug with `exclude` regular expression config arguments which caused missing metrics. (@ptodev)
 
 ### Other changes
 
@@ -46,6 +61,10 @@ Main (unreleased)
 - Changed OTEL alerts in Alloy mixin to use success rate for tracing. (@thampiotr)
 
 - Support TLS client settings for clustering (@tiagorossig)
+
+- Add support for `not_modified` response in `remotecfg`. (@spartan0x117)
+
+- Fix dead link for RelabelConfig in the PodLog documentation page (@TheoBrigitte)
 
 v1.4.2
 -----------------
