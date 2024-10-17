@@ -1,6 +1,7 @@
 package splunkhec_config
 
 import (
+	"errors"
 	"time"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -37,7 +38,7 @@ type SplunkHecClientArguments struct {
 }
 type SplunkConf struct {
 	// until https://github.com/open-telemetry/opentelemetry-collector/issues/8122 is resolved.
-	BatcherConfig exporterbatcher.Config `mapstructure:"batcher"`
+	BatcherConfig BatcherConfig `alloy:"batcher,block,optional"`
 
 	// Experimental: This configuration is at the early stage of development and may change without backward compatibility
 	// until https://github.com/open-telemetry/opentelemetry-collector/issues/8122 is resolved.
@@ -88,6 +89,34 @@ type SplunkConf struct {
 	Telemetry SplunkHecTelemetry `alloy:"telemetry,block,optional"`
 }
 
+type BatcherConfig struct {
+	// Enabled indicates whether to not enqueue batches before sending to the consumerSender.
+	Enabled bool `alloy:"enabled,attr,optional"`
+
+	// FlushTimeout sets the time after which a batch will be sent regardless of its size.
+	FlushTimeout time.Duration `alloy:"flush_timeout,attr,optional"`
+	// MinSizeItems is the number of items (spans, data points or log records for OTLP) at which the batch should be
+	// sent regardless of the timeout. There is no guarantee that the batch size always greater than this value.
+	// This option requires the Request to implement RequestItemsCounter interface. Otherwise, it will be ignored.
+	MinSizeItems int `alloy:"min_size_items,attr,optional"`
+	// MaxSizeItems is the maximum number of the batch items, i.e. spans, data points or log records for OTLP.
+	// If the batch size exceeds this value, it will be broken up into smaller batches if possible.
+	// Setting this value to zero disables the maximum size limit.
+	MaxSizeItems int `alloy:"max_size_items,attr,optional"`
+}
+
+func (args *BatcherConfig) Convert() *exporterbatcher.Config {
+	if args == nil {
+		return nil
+	}
+	return &exporterbatcher.Config{
+		Enabled:       args.Enabled,
+		FlushTimeout:  args.FlushTimeout,
+		MinSizeConfig: exporterbatcher.MinSizeConfig{MinSizeItems: args.MinSizeItems},
+		MaxSizeConfig: exporterbatcher.MaxSizeConfig{MaxSizeItems: args.MaxSizeItems},
+	}
+}
+
 type HecFields struct {
 	// SeverityText informs the exporter to map the severity text field to a specific HEC field.
 	SeverityText string `alloy:"severity_text,attr,optional"`
@@ -111,7 +140,7 @@ type SplunkHecHeartbeat struct {
 	// heartbeat is not enabled.
 	// A heartbeat is an event sent to _internal index with metadata for the current collector/host.
 	// In seconds
-	Interval int `alloy:"interval,attr,optional"`
+	Interval time.Duration `alloy:"interval,attr,optional"`
 
 	// Startup is used to send heartbeat events on exporter's startup.
 	Startup bool `alloy:"startup,attr,optional"`
@@ -122,7 +151,7 @@ func (args *SplunkHecHeartbeat) Convert() *splunkhecexporter.HecHeartbeat {
 		return nil
 	}
 	return &splunkhecexporter.HecHeartbeat{
-		Interval: time.Duration(args.Interval) * time.Second,
+		Interval: args.Interval,
 		Startup:  args.Startup,
 	}
 }
@@ -180,7 +209,20 @@ func (args *SplunkHecClientArguments) SetToDefault() {
 	args.Timeout = 15 * time.Second
 }
 
+func (args *SplunkHecClientArguments) Validate() error {
+	if args.Endpoint == "" {
+		return errors.New("missing Splunk hec endpoint")
+	}
+	return nil
+}
+
 func (args *SplunkConf) SetToDefault() {
+	args.BatcherConfig = BatcherConfig{
+		Enabled:      false,
+		FlushTimeout: 200 * time.Millisecond,
+		MinSizeItems: 8192,
+		MaxSizeItems: 0,
+	}
 	args.LogDataEnabled = true
 	args.ProfilingDataEnabled = true
 	args.Source = ""
@@ -201,6 +243,26 @@ func (args *SplunkConf) SetToDefault() {
 	args.Telemetry = SplunkHecTelemetry{}
 }
 
+func (args *SplunkConf) Validate() error {
+	if args.Token == "" {
+		return errors.New("missing splunk token")
+	}
+	if !(args.LogDataEnabled || args.ProfilingDataEnabled) {
+		return errors.New("at least one of log_data_enabled or profiling_data_enabled must be enabled")
+	}
+	if args.MaxContentLengthLogs > 838860800 {
+		return errors.New("max_content_length_logs must be less than 838860800")
+	}
+	if args.MaxContentLengthMetrics > 838860800 {
+		return errors.New("max_content_length_metrics must be less than 838860800")
+	}
+	if args.MaxContentLengthTraces > 838860800 {
+		return errors.New("max_content_length_traces must be less than 838860800")
+	}
+
+	return nil
+}
+
 // Convert converts args into the upstream type
 func (args *SplunkHecArguments) Convert() *splunkhecexporter.Config {
 	if args == nil {
@@ -210,7 +272,7 @@ func (args *SplunkHecArguments) Convert() *splunkhecexporter.Config {
 		ClientConfig:            *args.SplunkHecClientArguments.Convert(),
 		QueueSettings:           args.QueueSettings,
 		BackOffConfig:           args.RetrySettings,
-		BatcherConfig:           args.Splunk.BatcherConfig,
+		BatcherConfig:           *args.Splunk.BatcherConfig.Convert(),
 		LogDataEnabled:          args.Splunk.LogDataEnabled,
 		ProfilingDataEnabled:    args.Splunk.ProfilingDataEnabled,
 		Token:                   configopaque.String(args.Splunk.Token),
@@ -232,4 +294,11 @@ func (args *SplunkHecArguments) Convert() *splunkhecexporter.Config {
 		Heartbeat:               *args.Splunk.Heartbeat.Convert(),
 		Telemetry:               *args.Splunk.Telemetry.Convert(),
 	}
+}
+
+func (args *SplunkHecArguments) SetToDefault() {
+	args.SplunkHecClientArguments.SetToDefault()
+	args.QueueSettings = exporterhelper.NewDefaultQueueSettings()
+	args.RetrySettings = configretry.NewDefaultBackOffConfig()
+	args.Splunk.SetToDefault()
 }

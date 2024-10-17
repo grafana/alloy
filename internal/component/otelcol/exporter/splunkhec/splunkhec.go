@@ -3,8 +3,6 @@
 package splunkhec
 
 import (
-	"errors"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -62,12 +60,16 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 func (args *Arguments) Validate() error {
-	if args.Client.Endpoint == "" {
-		return errors.New("missing hec endpoint")
+	if err := args.Client.Validate(); err != nil {
+		return err
 	}
-	if args.Splunk.Token == "" {
-		return errors.New("missing token")
+	if err := args.Splunk.Validate(); err != nil {
+		return err
 	}
+	if err := args.Queue.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {

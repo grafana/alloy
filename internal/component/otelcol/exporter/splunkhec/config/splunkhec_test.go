@@ -164,7 +164,7 @@ func TestUnmarshalSplunkHecArguments(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name: "invalidvalid splunkhec arguments, no endpoint",
+			name: "invalid splunkhec arguments, no endpoint",
 			cfg: `
 			splunk {
 				log_data_enabled = true
@@ -179,6 +179,28 @@ func TestUnmarshalSplunkHecArguments(t *testing.T) {
 		}
 		`,
 			expectErr: true,
+		},
+		{
+			name: "valid splunkhec arguments, with hearthbeat config",
+			cfg: `
+			splunk {
+				log_data_enabled = true
+				profiling_data_enabled = true
+				source = "def"
+				token = "abc"
+				heartbeat {
+				   interval = "10s"
+				   startup = true
+	         	}
+	     	}
+	     	client  {
+			    endpoint = "http://localhost:8088"
+	     		timeout = "10s"
+	     		insecure_skip_verify = true
+	     		max_idle_conns = 10
+		}
+		`,
+			expectErr: false,
 		},
 	} {
 		tt := tt
