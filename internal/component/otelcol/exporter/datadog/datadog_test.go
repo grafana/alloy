@@ -1,6 +1,5 @@
 //go:build !freebsd
 
-
 package datadog_test
 
 import (
@@ -47,8 +46,8 @@ func TestConfigConversion(t *testing.T) {
 		defaultClient = confighttp.ClientConfig{
 			Timeout: defaultTimeout,
 		}
-		connsPerHost     = 10
-		connsPerHostPtr  = &connsPerHost
+		connsPerHost    = 10
+		connsPerHostPtr = &connsPerHost
 	)
 
 	tests := []struct {
