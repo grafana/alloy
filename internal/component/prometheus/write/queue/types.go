@@ -73,10 +73,11 @@ func (r *Arguments) Validate() error {
 
 // EndpointConfig is the alloy specific version of ConnectionConfig.
 type EndpointConfig struct {
-	Name      string        `alloy:",label"`
-	URL       string        `alloy:"url,attr"`
-	BasicAuth *BasicAuth    `alloy:"basic_auth,block,optional"`
-	Timeout   time.Duration `alloy:"write_timeout,attr,optional"`
+	Name        string            `alloy:",label"`
+	URL         string            `alloy:"url,attr"`
+	BasicAuth   *BasicAuth        `alloy:"basic_auth,block,optional"`
+	BearerToken alloytypes.Secret `alloy:"bearer_token,attr,optional"`
+	Timeout     time.Duration     `alloy:"write_timeout,attr,optional"`
 	// How long to wait between retries.
 	RetryBackoff time.Duration `alloy:"retry_backoff,attr,optional"`
 	// Maximum number of retries.
@@ -95,6 +96,7 @@ var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
 func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 	tcc := types.ConnectionConfig{
 		URL:              cc.URL,
+		BearerToken:      cc.BearerToken,
 		UserAgent:        UserAgent,
 		Timeout:          cc.Timeout,
 		RetryBackoff:     cc.RetryBackoff,

@@ -197,6 +197,8 @@ func (l *loop) send(ctx context.Context, retryCount int) sendResult {
 	httpReq.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
 	if l.cfg.BasicAuth != nil {
 		httpReq.SetBasicAuth(l.cfg.BasicAuth.Username, l.cfg.BasicAuth.Password)
+	} else if l.cfg.BearerToken != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+string(l.cfg.BearerToken))
 	}
 
 	if retryCount > 0 {
