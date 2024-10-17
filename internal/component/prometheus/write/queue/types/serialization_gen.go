@@ -3069,6 +3069,12 @@ func (z *TimeSeriesBinary) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Histograms")
 				return
 			}
+		case "IsExemplar":
+			z.IsExemplar, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "IsExemplar")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -3082,9 +3088,9 @@ func (z *TimeSeriesBinary) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *TimeSeriesBinary) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 6
+	// map header, size 7
 	// write "LabelsNames"
-	err = en.Append(0x86, 0xab, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x73, 0x4e, 0x61, 0x6d, 0x65, 0x73)
+	err = en.Append(0x87, 0xab, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x73, 0x4e, 0x61, 0x6d, 0x65, 0x73)
 	if err != nil {
 		return
 	}
@@ -3157,15 +3163,25 @@ func (z *TimeSeriesBinary) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Histograms")
 		return
 	}
+	// write "IsExemplar"
+	err = en.Append(0xaa, 0x49, 0x73, 0x45, 0x78, 0x65, 0x6d, 0x70, 0x6c, 0x61, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteBool(z.IsExemplar)
+	if err != nil {
+		err = msgp.WrapError(err, "IsExemplar")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *TimeSeriesBinary) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 6
+	// map header, size 7
 	// string "LabelsNames"
-	o = append(o, 0x86, 0xab, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x73, 0x4e, 0x61, 0x6d, 0x65, 0x73)
+	o = append(o, 0x87, 0xab, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x73, 0x4e, 0x61, 0x6d, 0x65, 0x73)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.LabelsNames)))
 	for za0001 := range z.LabelsNames {
 		o = msgp.AppendUint32(o, z.LabelsNames[za0001])
@@ -3192,6 +3208,9 @@ func (z *TimeSeriesBinary) MarshalMsg(b []byte) (o []byte, err error) {
 		err = msgp.WrapError(err, "Histograms")
 		return
 	}
+	// string "IsExemplar"
+	o = append(o, 0xaa, 0x49, 0x73, 0x45, 0x78, 0x65, 0x6d, 0x70, 0x6c, 0x61, 0x72)
+	o = msgp.AppendBool(o, z.IsExemplar)
 	return
 }
 
@@ -3275,6 +3294,12 @@ func (z *TimeSeriesBinary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Histograms")
 				return
 			}
+		case "IsExemplar":
+			z.IsExemplar, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "IsExemplar")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -3289,6 +3314,6 @@ func (z *TimeSeriesBinary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *TimeSeriesBinary) Msgsize() (s int) {
-	s = 1 + 12 + msgp.ArrayHeaderSize + (len(z.LabelsNames) * (msgp.Uint32Size)) + 13 + msgp.ArrayHeaderSize + (len(z.LabelsValues) * (msgp.Uint32Size)) + 3 + msgp.Int64Size + 6 + msgp.Float64Size + 5 + msgp.Uint64Size + 11 + z.Histograms.Msgsize()
+	s = 1 + 12 + msgp.ArrayHeaderSize + (len(z.LabelsNames) * (msgp.Uint32Size)) + 13 + msgp.ArrayHeaderSize + (len(z.LabelsValues) * (msgp.Uint32Size)) + 3 + msgp.Int64Size + 6 + msgp.Float64Size + 5 + msgp.Uint64Size + 11 + z.Histograms.Msgsize() + 11 + msgp.BoolSize
 	return
 }

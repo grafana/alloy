@@ -10,15 +10,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	client_prometheus "github.com/prometheus/client_golang/prometheus"
-	config_util "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/config"
-	"github.com/prometheus/prometheus/discovery/targetgroup"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/scrape"
-	"github.com/prometheus/prometheus/storage"
-
 	"github.com/grafana/alloy/internal/component"
 	component_config "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -30,6 +21,13 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util"
+	client_prometheus "github.com/prometheus/client_golang/prometheus"
+	config_util "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
+	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/scrape"
 )
 
 func init() {
@@ -54,8 +52,8 @@ var (
 // Arguments holds values which are used to configure the prometheus.scrape
 // component.
 type Arguments struct {
-	Targets   []discovery.Target   `alloy:"targets,attr"`
-	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
+	Targets   []discovery.Target    `alloy:"targets,attr"`
+	ForwardTo []prometheus.Appender `alloy:"forward_to,attr"`
 
 	// The job name to override the job label with.
 	JobName string `alloy:"job_name,attr,optional"`
@@ -175,6 +173,7 @@ func convertScrapeProtocols(promProtocols []config.ScrapeProtocol) []string {
 type Component struct {
 	opts    component.Options
 	cluster cluster.Cluster
+	ls      labelstore.LabelStore
 
 	reloadTargets       chan struct{}
 	targetsGauge        client_prometheus.Gauge
@@ -184,7 +183,7 @@ type Component struct {
 	mut        sync.RWMutex
 	args       Arguments
 	scraper    *scrape.Manager
-	appendable *prometheus.Fanout
+	appendable *batchAppendable
 
 	dtMutex            sync.Mutex
 	distributedTargets *discovery.DistributedTargets
@@ -215,6 +214,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	ls := service.(labelstore.LabelStore)
 
 	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
+	batcher := &batchAppendable{child: alloyAppendable}
 	scrapeOptions := &scrape.Options{
 		ExtraMetrics: args.ExtraMetrics,
 		HTTPClientOptions: []config_util.HTTPClientOption{
@@ -249,7 +249,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		cluster:             clusterData,
 		reloadTargets:       make(chan struct{}, 1),
 		scraper:             scraper,
-		appendable:          alloyAppendable,
+		appendable:          batcher,
 		targetsGauge:        targetsGauge,
 		movedTargetsCounter: movedTargetsCounter,
 		unregisterer:        unregisterer,

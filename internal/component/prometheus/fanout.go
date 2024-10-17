@@ -17,13 +17,13 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
-var _ storage.Appendable = (*Fanout)(nil)
+var _ Appender = (*Fanout)(nil)
 
 // Fanout supports the default Alloy style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
 type Fanout struct {
 	mut sync.RWMutex
 	// children is where to fan out.
-	children []storage.Appendable
+	children []Appender
 	// ComponentID is what component this belongs to.
 	componentID    string
 	writeLatency   prometheus.Histogram
@@ -31,8 +31,41 @@ type Fanout struct {
 	ls             labelstore.LabelStore
 }
 
+func (f *Fanout) AppendSamples(samples []*Sample) error {
+	var multiErr error
+	for _, child := range f.children {
+		err := child.AppendSamples(samples)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
+}
+
+func (f *Fanout) AppendHistograms(histograms []*Histogram) error {
+	var multiErr error
+	for _, child := range f.children {
+		err := child.AppendHistograms(histograms)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
+}
+
+func (f *Fanout) AppendMetadata(i []metadata.Metadata) error {
+	var multiErr error
+	for _, child := range f.children {
+		err := child.AppendMetadata(i)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
+}
+
 // NewFanout creates a fanout appendable.
-func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
+func NewFanout(children []Appender, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "prometheus_fanout_latency",
 		Help:    "Write latency for sending to direct and indirect components",
@@ -56,7 +89,7 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 }
 
 // UpdateChildren allows changing of the children of the fanout.
-func (f *Fanout) UpdateChildren(children []storage.Appendable) {
+func (f *Fanout) UpdateChildren(children []Appender) {
 	f.mut.Lock()
 	defer f.mut.Unlock()
 	f.children = children

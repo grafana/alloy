@@ -75,6 +75,7 @@ func (a *appender) AppendExemplar(ref storage.SeriesRef, _ labels.Labels, e exem
 	ts.TS = e.Ts
 	ts.Labels = e.Labels
 	ts.Hash = e.Labels.Hash()
+	ts.IsExemplar = true
 	err := a.s.SendSeries(a.ctx, ts)
 	return ref, err
 }

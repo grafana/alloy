@@ -45,7 +45,7 @@ type loop struct {
 }
 
 func newLoop(cc types.ConnectionConfig, isMetaData bool, l log.Logger, stats func(s types.NetworkStats)) *loop {
-	// TODO @mattdurham add TLS support afer the initial push.
+	// TODO @mattdurham add TLS support after the initial push.
 	return &loop{
 		isMeta: isMetaData,
 		// In general we want a healthy queue of items, in this case we want to have 2x our maximum send sized ready.

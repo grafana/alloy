@@ -36,6 +36,7 @@ type TimeSeriesBinary struct {
 	Value        float64
 	Hash         uint64
 	Histograms   Histograms
+	IsExemplar   bool
 }
 
 type Histograms struct {
