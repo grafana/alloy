@@ -93,7 +93,7 @@ func newComponentBenchmark(t *testing.B, l log.Logger, url string, exp chan Expo
 		Tracer:     nil,
 	}, Arguments{
 		TTL: 2 * time.Hour,
-		Serialization: Serialization{
+		Persistence: Persistence{
 			MaxSignalsToBatch: 100_000,
 			BatchInterval:     1 * time.Second,
 		},
