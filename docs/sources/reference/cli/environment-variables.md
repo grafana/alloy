@@ -25,11 +25,11 @@ Refer to the [Go runtime][runtime] documentation for more information about Go r
 
 You can use the `GODEBUG` environment variable to control the debugging variables within the Go runtime.  The following arguments are supported.
 
-Argument                        | Description                                                                                          | Default
---------------------------------|------------------------------------------------------------------------------------------------------|--------
-`x509usefallbackroots`          | Enforce a fallback on the X.509 trusted root certificates. Set to `1` to enable.                     | `0`
-`netdns`                        | Force a resolver. Set to `go` for a pure Go resolver. Set to `cgo` or `win32` for a native resolver. |
-`netdns`                        | Show resolver debugging information. Set to `1` for basic information. Set to `2` for verbose.       |
+ Argument               | Description                                                                                          | Default 
+------------------------|------------------------------------------------------------------------------------------------------|---------
+ `x509usefallbackroots` | Enforce a fallback on the X.509 trusted root certificates. Set to `1` to enable.                     | `0`     
+ `netdns`               | Force a resolver. Set to `go` for a pure Go resolver. Set to `cgo` or `win32` for a native resolver. |
+ `netdns`               | Show resolver debugging information. Set to `1` for basic information. Set to `2` for verbose.       |
 
 ## HTTP_PROXY
 
@@ -57,7 +57,7 @@ The supported unit suffixes are `B`, `KiB`, `MiB`, `GiB`, and `TiB`.
 Don't treat the `GOMEMLIMIT` environment variable as a hard memory limit.
 {{< param "PRODUCT_NAME" >}}  processes can use more memory if that memory is required.
 A rough number is to set `GOMEMLIMIT` to is 90% of the maximum memory required.
-For example, if you want to keep memory usage below `10GiB`, use `GOMEMLIMIT=8GiB`.
+For example, if you want to keep memory usage below `10GiB`, use `GOMEMLIMIT=9GiB`.
 
 #### Automatically set GOMEMLIMIT
 
