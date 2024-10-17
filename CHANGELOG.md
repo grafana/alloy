@@ -42,6 +42,9 @@ Main (unreleased)
 - Add support for relative paths to `import.file`. This new functionality allows users to use `import.file` blocks in modules
   imported via `import.git` and other `import.file`. (@wildum)
 
+- `prometheus.exporter.cloudwatch`: The `discovery` block now has a `recently_active_only` configuration attribute 
+  to return only metrics which have been active in the last 3 hours.
+
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
