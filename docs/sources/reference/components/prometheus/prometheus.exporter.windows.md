@@ -104,7 +104,7 @@ Name           | Type     | Description                                      | D
 `site_exclude` | `string` | Regular expression of sites to ignore.           | `"^$"`    | no
 `site_include` | `string` | Regular expression of sites to report on.        | `"^.+$"`  | no
 
-User-supplied `app_exclude`, `app_include`, `site_exclude` and `site_include` strings will be [wrapped][wrap-regex] in a regex.
+User-supplied `app_exclude`, `app_include`, `site_exclude` and `site_include` strings will be [wrapped][wrap-regex] in a regular expression.
 
 ### logical_disk block
 
@@ -141,7 +141,7 @@ Name      | Type     | Description                             | Default   | Req
 
 NIC names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
-User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regular expression.
 
 ### physical_disk block
 
@@ -150,7 +150,7 @@ Name      | Type     | Description                                     | Default
 `exclude` | `string` | Regular expression of physical disk to exclude. | `"^$"`    | no
 `include` | `string` | Regular expression of physical disk to include. | `"^.+$"`  | no
 
-User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regular expression.
 
 ### printer block
 
@@ -161,7 +161,7 @@ Name      | Type     | Description                               | Default   | R
 
 Printer must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
-User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regular expression.
 
 ### process block
 
@@ -172,18 +172,18 @@ Name      | Type     | Description                                 | Default   |
 
 Processes must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
-User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regular expression.
 
 ### scheduled_task block
 
-Name      | Type     | Description                 | Default   | Required
-----------|----------|-----------------------------|-----------|---------
-`exclude` | `string` | Regexp of tasks to exclude. | `"^$"`    | no
-`include` | `string` | Regexp of tasks to include. | `"^.+$"`  | no
+Name      | Type     | Description                             | Default   | Required
+----------|----------|-----------------------------------------|-----------|---------
+`exclude` | `string` | Regular expression of tasks to exclude. | `"^$"`    | no
+`include` | `string` | Regular expression of tasks to include. | `"^.+$"`  | no
 
 For a server name to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
 
-User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regular expression.
 
 ### service block
 
@@ -225,14 +225,14 @@ For example, `enabled_list` may be set to `"ClientShares"`.
 
 ### smtp block
 
-Name      | Type     | Description                           | Default   | Required
-----------|----------|---------------------------------------|-----------|---------
-`exclude` | `string` | Regexp of virtual servers to ignore.  | `"^$"`    | no
-`include` | `string` | Regexp of virtual servers to include. | `"^.+$"`  | no
+Name      | Type     | Description                                       | Default   | Required
+----------|----------|---------------------------------------------------|-----------|---------
+`exclude` | `string` | Regular expression of virtual servers to ignore.  | `"^$"`    | no
+`include` | `string` | Regular expression of virtual servers to include. | `"^.+$"`  | no
 
 For a server name to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
 
-User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regex.
+User-supplied `exclude` and `include` strings will be [wrapped][wrap-regex] in a regular expression.
 
 ### text_file block
 
@@ -269,7 +269,7 @@ debug information.
 debug metrics.
 
 [wrap-regex]: #wrapping-of-regex-strings
-## Wrapping of regex strings
+## Wrapping of regular expression strings
 
 Some collector blocks such as [scheduled_task][] accept a regular expression as a string argument.
 `prometheus.exporter.windows` will prefix some regular expression string arguments with `^(?:` and will suffix them with `)$`.
