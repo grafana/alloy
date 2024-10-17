@@ -409,16 +409,16 @@ prometheus.remote_write "default" {
 ### Out of order errors
 
 You may sometimes see an "out of order" error in the {{< param "PRODUCT_NAME" >}} log files.
-This means that {{< param "PRODUCT_NAME" >}} sent a metric sample which has an older timestamp than a sample which the database already ingested.
+This means that {{< param "PRODUCT_NAME" >}} sent a metric sample that has an older timestamp than a sample that the database already ingested.
 If your database is Mimir, the exact name of the [Mimir error][mimir-ooo-err] is `err-mimir-sample-out-of-order`.
 
 The most common cause for this error is that there is more than one {{< param "PRODUCT_NAME" >}} instance scraping the same target.
 To troubleshoot, take the following steps in order:
 1. If you use clustering, check if the number of {{< param "PRODUCT_NAME" >}} instances changed at the time the error was logged.
-   This is the only situation in which it is normal to experience an our of order error.
+   This is the only situation in which it is normal to experience an out of order error.
    The error would only happen for a short period, until the cluster stabilizes and all {{< param "PRODUCT_NAME" >}} instances have a new list of targets.
    Since the time duration for the cluster to stabilize is expected to be much shorter than the scrape interval, this isn't a real problem.
-   If the out of order error you are seeing is not related to scaling of clustered collectors, it must be investigated.
+   If the out of order error you see is not related to scaling of clustered collectors, it must be investigated.
 1. Check if there are active {{< param "PRODUCT_NAME" >}} instances which should not be running.
    There may be an older {{< param "PRODUCT_NAME" >}} instance that wasn't shut down before a new one was started.
 1. Inspect the configuration to see if there could be multiple {{< param "PRODUCT_NAME" >}} instances which scrape the same target.
