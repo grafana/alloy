@@ -1,0 +1,58 @@
+Import nested folder with relative path.
+
+-- main.alloy --
+testcomponents.count "inc" {
+  frequency = "10ms"
+  max = 10
+}
+
+import.file "testImport" {
+  filename = "tmpTest"
+}
+
+testImport.a "cc" {
+  input = testcomponents.count.inc.count
+}
+
+testcomponents.summation "sum" {
+  input = testImport.a.cc.output
+}
+
+-- module1.alloy --
+import.file "testImport" {
+  filename = file.path_join(module_path, "utils")
+}
+declare "a" {
+  argument "input" {}
+
+  testImport.b "cc" {
+    input = argument.input.value
+  }
+
+  export "output" {
+    value = testImport.b.cc.output
+  }
+}
+
+-- utils/module2.alloy --
+declare "b" {
+  argument "input" {}
+
+  testcomponents.passthrough "pt" {
+    input = argument.input.value
+    lag = "1ms"
+  }
+
+  export "output" {
+    value = testcomponents.passthrough.pt.output
+  }
+}
+
+-- utils/update_module2.alloy --
+declare "b" {
+  argument "input" {}
+
+  export "output" {
+    value = -argument.input.value
+  }
+}

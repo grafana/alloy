@@ -119,12 +119,10 @@ func TestStdlibJsonPath(t *testing.T) {
 }
 
 func TestStdlib_Nonsensitive(t *testing.T) {
-	scope := &vm.Scope{
-		Variables: map[string]any{
-			"secret":         alloytypes.Secret("foo"),
-			"optionalSecret": alloytypes.OptionalSecret{Value: "bar"},
-		},
-	}
+	scope := vm.NewScope(map[string]any{
+		"secret":         alloytypes.Secret("foo"),
+		"optionalSecret": alloytypes.OptionalSecret{Value: "bar"},
+	})
 
 	tt := []struct {
 		name   string
@@ -152,9 +150,7 @@ func TestStdlib_Nonsensitive(t *testing.T) {
 	}
 }
 func TestStdlib_StringFunc(t *testing.T) {
-	scope := &vm.Scope{
-		Variables: map[string]any{},
-	}
+	scope := vm.NewScope(make(map[string]interface{}))
 
 	tt := []struct {
 		name   string
@@ -276,11 +272,9 @@ func BenchmarkConcat(b *testing.B) {
 			Attrs: data,
 		})
 	}
-	scope := &vm.Scope{
-		Variables: map[string]interface{}{
-			"values_ref": valuesRef,
-		},
-	}
+	scope := vm.NewScope(map[string]interface{}{
+		"values_ref": valuesRef,
+	})
 
 	// Reset timer before running the actual test
 	b.ResetTimer()

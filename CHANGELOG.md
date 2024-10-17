@@ -39,6 +39,8 @@ Main (unreleased)
 
 - SNMP exporter now supports labels in both `target` and `targets` parameters. (@mattdurham)
 
+- Add support for relative paths to `import.file`. This new functionality allows users to use `import.file` blocks in modules
+  imported via `import.git` and other `import.file`. (@wildum)
 
 ### Bugfixes
 
