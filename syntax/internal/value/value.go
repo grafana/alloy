@@ -221,9 +221,11 @@ func (v Value) Text() string {
 	}
 }
 
-// Len returns the length of v. Panics if v is not an array or object.
+// Len returns the length of v. Panics if v is not an array, an object, or nil.
 func (v Value) Len() int {
 	switch v.ty {
+	case TypeNull:
+		return 0
 	case TypeArray:
 		return v.rv.Len()
 	case TypeObject:
@@ -396,7 +398,7 @@ func (v Value) Key(key string) (index Value, ok bool) {
 //
 // An ArgError will be returned if one of the arguments is invalid. An Error
 // will be returned if the function call returns an error or if the number of
-// arguments doesn't match.
+// arguments doesn't match
 func (v Value) Call(args ...Value) (Value, error) {
 	if v.ty != TypeFunction {
 		panic("syntax/value: Call called on non-function type")
@@ -552,4 +554,16 @@ func convertGoNumber(nval Number, target reflect.Type) reflect.Value {
 	}
 
 	panic("unsupported number conversion")
+}
+
+func (v Value) Equal(rhs Value) bool {
+	if v.Type() != rhs.Type() {
+		return false
+	}
+
+	if !v.rv.Equal(rhs.rv) {
+		return false
+	}
+
+	return true
 }

@@ -39,6 +39,51 @@ func TestVM_Stdlib(t *testing.T) {
 		{"encoding.from_yaml nil field", "encoding.from_yaml(`foo: null`)", map[string]interface{}{"foo": nil}},
 		{"encoding.from_yaml nil array element", `encoding.from_yaml("[0, null]")`, []interface{}{0, nil}},
 		{"encoding.from_base64", `encoding.from_base64("Zm9vYmFyMTIzIT8kKiYoKSctPUB+")`, string(`foobar123!?$*&()'-=@~`)},
+
+		// Map tests
+		{
+			// Basic case. No conflicting key/val pairs.
+			"targets.merge",
+			`targets.merge([{"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}},
+		},
+		{
+			// The first array has 2 maps, each with the same key/val pairs.
+			"targets.merge",
+			`targets.merge([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}, {"a": "a1", "b": "b1", "c": "c1"}},
+		},
+		{
+			// Basic case. Integer and string values.
+			"targets.merge",
+			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = 1, "c" = "c1"}], ["a"])`,
+			[]map[string]interface{}{{"a": 1, "b": 2.2, "c": "c1"}},
+		},
+		{
+			// The second map will override a value from the first.
+			"targets.merge",
+			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = 1, "b" = "3.3"}], ["a"])`,
+			[]map[string]interface{}{{"a": 1, "b": "3.3"}},
+		},
+		{
+			// Not enough matches for a join.
+			"targets.merge",
+			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = 2, "b" = "3.3"}], ["a"])`,
+			[]map[string]interface{}{},
+		},
+		{
+			// Not enough matches for a join.
+			// The "a" value has differing types.
+			"targets.merge",
+			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = "1", "b" = "3.3"}], ["a"])`,
+			[]map[string]interface{}{},
+		},
+		{
+			// Basic case. Some values are arrays and maps.
+			"targets.merge",
+			`targets.merge([{"a" = 1, "b" = [1,2,3]}], [{"a" = 1, "c" = {"d" = {"e" = 10}}}], ["a"])`,
+			[]map[string]interface{}{{"a": 1, "b": []interface{}{1, 2, 3}, "c": map[string]interface{}{"d": map[string]interface{}{"e": 10}}}},
+		},
 	}
 
 	for _, tc := range tt {
