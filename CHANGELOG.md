@@ -92,8 +92,6 @@ v1.4.2
 
 - Fix issue where `loki.source.kubernetes` took into account all labels, instead of specific logs labels. Resulting in duplication. (@mattdurham)
 
-- Fix an issue where some `faro.receiver` would drop multiple fields defined in `payload.meta.browser`, as fields were defined in the struct 
-
 v1.4.1
 -----------------
 
