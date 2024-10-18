@@ -35,8 +35,6 @@ Main (unreleased)
 
 - The `cluster.use-discovery-v1` flag is now deprecated since there were no issues found with the v2 cluster discovery mechanism. (@thampiotr)
 
-- Fix an issue where some `faro.receiver` would drop multiple fields defined in `payload.meta.browser`, as fields were defined in the struct.
-
 - SNMP exporter now supports labels in both `target` and `targets` parameters. (@mattdurham)
 
 - Add support for relative paths to `import.file`. This new functionality allows users to use `import.file` blocks in modules
@@ -51,12 +49,6 @@ Main (unreleased)
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
 
-- `pyroscope.scrape` no longer tries to scrape endpoints which are not active targets anymore. (@wildum @mattdurham @dehaansa @ptodev)
-
-- Fixed a bug with `loki.source.podlogs` not starting in large clusters due to short informer sync timeout. (@elburnetto-intapp) 
-
-- `prometheus.exporter.windows`: Fixed bug with `exclude` regular expression config arguments which caused missing metrics. (@ptodev)
-
 ### Other changes
 
 - Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
@@ -68,6 +60,19 @@ Main (unreleased)
 - Add support for `not_modified` response in `remotecfg`. (@spartan0x117)
 
 - Fix dead link for RelabelConfig in the PodLog documentation page (@TheoBrigitte)
+
+v1.4.3
+-----------------
+
+### Bugfixes
+
+- Fix an issue where some `faro.receiver` would drop multiple fields defined in `payload.meta.browser`, as fields were defined in the struct.
+
+- `pyroscope.scrape` no longer tries to scrape endpoints which are not active targets anymore. (@wildum @mattdurham @dehaansa @ptodev)
+
+- Fixed a bug with `loki.source.podlogs` not starting in large clusters due to short informer sync timeout. (@elburnetto-intapp) 
+
+- `prometheus.exporter.windows`: Fixed bug with `exclude` regular expression config arguments which caused missing metrics. (@ptodev)
 
 v1.4.2
 -----------------
