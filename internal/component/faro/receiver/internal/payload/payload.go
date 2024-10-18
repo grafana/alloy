@@ -396,10 +396,16 @@ func (a App) KeyVal() *KeyVal {
 
 // Browser holds metadata about a client's browser
 type Browser struct {
-	Name    string `json:"name,omitempty"`
-	Version string `json:"version,omitempty"`
-	OS      string `json:"os,omitempty"`
-	Mobile  bool   `json:"mobile,omitempty"`
+	Name           string `json:"name,omitempty"`
+	Version        string `json:"version,omitempty"`
+	OS             string `json:"os,omitempty"`
+	Mobile         bool   `json:"mobile,omitempty"`
+	UserAgent      string `json:"userAgent,omitempty"`
+	Language       string `json:"language,omitempty"`
+	// TODO: properly serialize brands
+	// Brands json.RawMessage `json:"brands,omitempty"` 
+	ViewportWidth  string `json:"viewportWidth,omitempty"`
+	ViewportHeight string `json:"viewportHeight,omitempty"`
 }
 
 // KeyVal produces key->value representation of the Browser metadata
@@ -409,6 +415,10 @@ func (b Browser) KeyVal() *KeyVal {
 	KeyValAdd(kv, "version", b.Version)
 	KeyValAdd(kv, "os", b.OS)
 	KeyValAdd(kv, "mobile", fmt.Sprintf("%v", b.Mobile))
+	KeyValAdd(kv, "userAgent", b.UserAgent)
+	KeyValAdd(kv, "language", b.Language)
+	KeyValAdd(kv, "viewportWidth", b.ViewportWidth)
+	KeyValAdd(kv, "viewportHeight", b.ViewportHeight)
 	return kv
 }
 

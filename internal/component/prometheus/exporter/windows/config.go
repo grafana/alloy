@@ -1,10 +1,25 @@
 package windows
 
 import (
+	"fmt"
 	"strings"
 
 	windows_integration "github.com/grafana/alloy/internal/static/integrations/windows_exporter"
 )
+
+// Wrap some regex strings to prevent issues with user-supplied empty strings.
+// Prior to v0.27, the upstream exporter used to wrap regexes like this.
+// Alloy is now doing this instead, to maintain backwards compatibility.
+//
+// This is mostly to prevent issues with `exclude` arguments.
+// If `exclude` is set to `""` and there is no wrapping, the regex will match everything.
+// Therefore, all collectors will be excluded.
+//
+// See https://github.com/grafana/alloy/issues/1845
+// TODO: Remove this in Alloy v2.
+func wrapRegex(regex string) string {
+	return fmt.Sprintf("^(?:%s)$", regex)
+}
 
 // Arguments is used for controlling for this exporter.
 type Arguments struct {
@@ -92,14 +107,14 @@ type IISConfig struct {
 // Convert converts the component's IISConfig to the integration's IISConfig.
 func (t IISConfig) Convert() windows_integration.IISConfig {
 	return windows_integration.IISConfig{
-		AppBlackList:  t.AppBlackList,
-		AppWhiteList:  t.AppWhiteList,
-		SiteBlackList: t.SiteBlackList,
-		SiteWhiteList: t.SiteWhiteList,
-		AppExclude:    t.AppExclude,
-		AppInclude:    t.AppInclude,
-		SiteExclude:   t.SiteExclude,
-		SiteInclude:   t.SiteInclude,
+		AppBlackList:  wrapRegex(t.AppBlackList),
+		AppWhiteList:  wrapRegex(t.AppWhiteList),
+		SiteBlackList: wrapRegex(t.SiteBlackList),
+		SiteWhiteList: wrapRegex(t.SiteWhiteList),
+		AppExclude:    wrapRegex(t.AppExclude),
+		AppInclude:    wrapRegex(t.AppInclude),
+		SiteExclude:   wrapRegex(t.SiteExclude),
+		SiteInclude:   wrapRegex(t.SiteInclude),
 	}
 }
 
@@ -126,10 +141,10 @@ type SMTPConfig struct {
 // Convert converts the component's SMTPConfig to the integration's SMTPConfig.
 func (t SMTPConfig) Convert() windows_integration.SMTPConfig {
 	return windows_integration.SMTPConfig{
-		BlackList: t.BlackList,
-		WhiteList: t.WhiteList,
-		Exclude:   t.Exclude,
-		Include:   t.Include,
+		BlackList: wrapRegex(t.BlackList),
+		WhiteList: wrapRegex(t.WhiteList),
+		Exclude:   wrapRegex(t.Exclude),
+		Include:   wrapRegex(t.Include),
 	}
 }
 
@@ -160,10 +175,10 @@ type ProcessConfig struct {
 // Convert converts the component's ProcessConfig to the integration's ProcessConfig.
 func (t ProcessConfig) Convert() windows_integration.ProcessConfig {
 	return windows_integration.ProcessConfig{
-		BlackList: t.BlackList,
-		WhiteList: t.WhiteList,
-		Exclude:   t.Exclude,
-		Include:   t.Include,
+		BlackList: wrapRegex(t.BlackList),
+		WhiteList: wrapRegex(t.WhiteList),
+		Exclude:   wrapRegex(t.Exclude),
+		Include:   wrapRegex(t.Include),
 	}
 }
 
@@ -176,8 +191,8 @@ type ScheduledTaskConfig struct {
 // Convert converts the component's ScheduledTaskConfig to the integration's ScheduledTaskConfig.
 func (t ScheduledTaskConfig) Convert() windows_integration.ScheduledTaskConfig {
 	return windows_integration.ScheduledTaskConfig{
-		Exclude: t.Exclude,
-		Include: t.Include,
+		Exclude: wrapRegex(t.Exclude),
+		Include: wrapRegex(t.Include),
 	}
 }
 
@@ -192,10 +207,10 @@ type NetworkConfig struct {
 // Convert converts the component's NetworkConfig to the integration's NetworkConfig.
 func (t NetworkConfig) Convert() windows_integration.NetworkConfig {
 	return windows_integration.NetworkConfig{
-		BlackList: t.BlackList,
-		WhiteList: t.WhiteList,
-		Exclude:   t.Exclude,
-		Include:   t.Include,
+		BlackList: wrapRegex(t.BlackList),
+		WhiteList: wrapRegex(t.WhiteList),
+		Exclude:   wrapRegex(t.Exclude),
+		Include:   wrapRegex(t.Include),
 	}
 }
 
@@ -234,10 +249,10 @@ type LogicalDiskConfig struct {
 // Convert converts the component's LogicalDiskConfig to the integration's LogicalDiskConfig.
 func (t LogicalDiskConfig) Convert() windows_integration.LogicalDiskConfig {
 	return windows_integration.LogicalDiskConfig{
-		BlackList: t.BlackList,
-		WhiteList: t.WhiteList,
-		Include:   t.Include,
-		Exclude:   t.Exclude,
+		BlackList: wrapRegex(t.BlackList),
+		WhiteList: wrapRegex(t.WhiteList),
+		Include:   wrapRegex(t.Include),
+		Exclude:   wrapRegex(t.Exclude),
 	}
 }
 
@@ -250,8 +265,8 @@ type PhysicalDiskConfig struct {
 // Convert converts the component's PhysicalDiskConfig to the integration's PhysicalDiskConfig.
 func (t PhysicalDiskConfig) Convert() windows_integration.PhysicalDiskConfig {
 	return windows_integration.PhysicalDiskConfig{
-		Include: t.Include,
-		Exclude: t.Exclude,
+		Include: wrapRegex(t.Include),
+		Exclude: wrapRegex(t.Exclude),
 	}
 }
 
@@ -264,8 +279,8 @@ type PrinterConfig struct {
 // Convert converts the component's ProcessConfig to the integration's ProcessConfig.
 func (t PrinterConfig) Convert() windows_integration.PrinterConfig {
 	return windows_integration.PrinterConfig{
-		Exclude: t.Exclude,
-		Include: t.Include,
+		Exclude: wrapRegex(t.Exclude),
+		Include: wrapRegex(t.Include),
 	}
 }
 
