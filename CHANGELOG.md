@@ -37,6 +37,8 @@ Main (unreleased)
 
 - Fix an issue where some `faro.receiver` would drop multiple fields defined in `payload.meta.browser`, as fields were defined in the struct.
 
+- Added the `DisplayVersion` value to the Windows NSIS installer to simplify patch management for enterprise environments. (@charlygott)
+
 - SNMP exporter now supports labels in both `target` and `targets` parameters. (@mattdurham)
 
 - Add support for relative paths to `import.file`. This new functionality allows users to use `import.file` blocks in modules

@@ -82,6 +82,7 @@ Section "install"
   # the current installed version.
   !define UNINSTALLKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
   WriteRegStr   HKLM "${UNINSTALLKEY}" "DisplayName"          '${APPNAME} ${VERSION}'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "DisplayVersion"       '${VERSION}'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "UninstallString"      '"$INSTDIR\uninstall.exe"'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "InstallLocation"      '"$INSTDIR"'
