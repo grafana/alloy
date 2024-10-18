@@ -42,7 +42,7 @@ func init() {
 // component.
 type Arguments struct {
 	// Where the relabelled metrics should be forwarded to.
-	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
+	ForwardTo []prometheus.Appender `alloy:"forward_to,attr"`
 
 	// The relabelling rules to apply to each metric before it's forwarded.
 	MetricRelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`

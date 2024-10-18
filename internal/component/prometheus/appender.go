@@ -1,6 +1,8 @@
 package prometheus
 
 import (
+	"context"
+
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
@@ -25,6 +27,10 @@ type Histogram struct {
 	Histogram      *histogram.Histogram
 	FloatHistogram *histogram.FloatHistogram
 	Exemplar       exemplar.Exemplar
+}
+
+type Appendable interface {
+	Appender(ctx context.Context) Appender
 }
 
 type Appender interface {

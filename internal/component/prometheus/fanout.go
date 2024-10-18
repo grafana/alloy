@@ -17,7 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
-var _ Appender = (*Fanout)(nil)
+var _ Appendable = (*Fanout)(nil)
 
 // Fanout supports the default Alloy style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
 type Fanout struct {
@@ -31,10 +31,10 @@ type Fanout struct {
 	ls             labelstore.LabelStore
 }
 
-func (f *Fanout) AppendSamples(samples []*Sample) error {
+func (f *appender) AppendSamples(samples []*Sample, ctx context.Context) error {
 	var multiErr error
 	for _, child := range f.children {
-		err := child.AppendSamples(samples)
+		err := child.AppendSamples(samples, ctx)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}
@@ -42,10 +42,10 @@ func (f *Fanout) AppendSamples(samples []*Sample) error {
 	return multiErr
 }
 
-func (f *Fanout) AppendHistograms(histograms []*Histogram) error {
+func (f *appender) AppendHistograms(histograms []*Histogram, ctx context.Context) error {
 	var multiErr error
 	for _, child := range f.children {
-		err := child.AppendHistograms(histograms)
+		err := child.AppendHistograms(histograms, ctx)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}
@@ -53,10 +53,11 @@ func (f *Fanout) AppendHistograms(histograms []*Histogram) error {
 	return multiErr
 }
 
-func (f *Fanout) AppendMetadata(i []metadata.Metadata) error {
+func (f *appender) AppendMetadata(i []metadata.Metadata, ctx context.Context) error {
+
 	var multiErr error
 	for _, child := range f.children {
-		err := child.AppendMetadata(i)
+		err := child.AppendMetadata(i, ctx)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}
@@ -109,7 +110,7 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 	ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
 
 	app := &appender{
-		children:          make([]storage.Appender, 0),
+		children:          make([]Appender, 0),
 		componentID:       f.componentID,
 		writeLatency:      f.writeLatency,
 		samplesCounter:    f.samplesCounter,
@@ -121,13 +122,13 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 		if x == nil {
 			continue
 		}
-		app.children = append(app.children, x.Appender(ctx))
+		app.children = append(app.children, x)
 	}
 	return app
 }
 
 type appender struct {
-	children          []storage.Appender
+	children          []Appender
 	componentID       string
 	writeLatency      prometheus.Histogram
 	samplesCounter    prometheus.Counter
@@ -140,9 +141,6 @@ var _ storage.Appender = (*appender)(nil)
 
 // Append satisfies the Appender interface.
 func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
-	if a.start.IsZero() {
-		a.start = time.Now()
-	}
 	if ref == 0 {
 		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
 	}
