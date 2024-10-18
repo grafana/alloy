@@ -17,7 +17,7 @@ otelcol.receiver.otlp "default" {
 
 otelcol.exporter.splunkhec "default" {
 	client {
-		endpoint                = ""
+		endpoint                = "https://splunk:8088/services/collector"
 		timeout                 = "10s"
 		max_idle_conns          = 200
 		max_idle_conns_per_host = 200
