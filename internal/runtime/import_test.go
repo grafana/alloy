@@ -75,6 +75,33 @@ func buildTestImportFile(t *testing.T, filename string) testImportFile {
 	return tc
 }
 
+func TestForeach(t *testing.T) {
+	directory := "./testdata/foreach"
+	for _, file := range getTestFiles(directory, t) {
+		tc := buildTestImportFile(t, filepath.Join(directory, file.Name()))
+		t.Run(tc.description, func(t *testing.T) {
+			defer os.Remove("module.alloy")
+			require.NoError(t, os.WriteFile("module.alloy", []byte(tc.module), 0664))
+			if tc.nestedModule != "" {
+				defer os.Remove("nested_module.alloy")
+				require.NoError(t, os.WriteFile("nested_module.alloy", []byte(tc.nestedModule), 0664))
+			}
+			if tc.otherNestedModule != "" {
+				defer os.Remove("other_nested_module.alloy")
+				require.NoError(t, os.WriteFile("other_nested_module.alloy", []byte(tc.otherNestedModule), 0664))
+			}
+
+			if tc.update != nil {
+				testConfig(t, tc.main, tc.reloadConfig, func() {
+					require.NoError(t, os.WriteFile(tc.update.name, []byte(tc.update.updateConfig), 0664))
+				})
+			} else {
+				testConfig(t, tc.main, tc.reloadConfig, nil)
+			}
+		})
+	}
+}
+
 func TestImportFile(t *testing.T) {
 	directory := "./testdata/import_file"
 	for _, file := range getTestFiles(directory, t) {

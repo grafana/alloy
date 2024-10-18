@@ -75,7 +75,7 @@ func sourceFromBody(body ast.Body) (*Source, error) {
 			switch fullName {
 			case "declare":
 				declares = append(declares, stmt)
-			case "logging", "tracing", "argument", "export", "import.file", "import.string", "import.http", "import.git":
+			case "logging", "tracing", "argument", "export", "import.file", "import.string", "import.http", "import.git", "foreach":
 				configs = append(configs, stmt)
 			default:
 				components = append(components, stmt)

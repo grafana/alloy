@@ -1,0 +1,9 @@
+-- main.alloy --
+foreach "testForeach" {
+  collection = [1, 2, 3, 4]
+  var = "num"
+
+  testcomponents.summation "sum" {
+    input = num
+  }
+}

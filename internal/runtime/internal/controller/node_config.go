@@ -29,6 +29,8 @@ func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals) (BlockNode, d
 		return NewTracingConfigNode(block, globals), nil
 	case importsource.BlockImportFile, importsource.BlockImportString, importsource.BlockImportHTTP, importsource.BlockImportGit:
 		return NewImportConfigNode(block, globals, importsource.GetSourceType(block.GetBlockName())), nil
+	case importsource.BlockForeach:
+		return NewForeachConfigNode(block, globals), nil
 	default:
 		var diags diag.Diagnostics
 		diags.Add(diag.Diagnostic{
@@ -50,6 +52,7 @@ type ConfigNodeMap struct {
 	argumentMap map[string]*ArgumentConfigNode
 	exportMap   map[string]*ExportConfigNode
 	importMap   map[string]*ImportConfigNode
+	foreachMap  map[string]*ForeachConfigNode
 }
 
 // NewConfigNodeMap will create an initial ConfigNodeMap. Append must be called
@@ -61,6 +64,7 @@ func NewConfigNodeMap() *ConfigNodeMap {
 		argumentMap: map[string]*ArgumentConfigNode{},
 		exportMap:   map[string]*ExportConfigNode{},
 		importMap:   map[string]*ImportConfigNode{},
+		foreachMap:  map[string]*ForeachConfigNode{},
 	}
 }
 
@@ -80,6 +84,8 @@ func (nodeMap *ConfigNodeMap) Append(configNode BlockNode) diag.Diagnostics {
 		nodeMap.tracing = n
 	case *ImportConfigNode:
 		nodeMap.importMap[n.Label()] = n
+	case *ForeachConfigNode:
+		nodeMap.foreachMap[n.Label()] = n
 	default:
 		diags.Add(diag.Diagnostic{
 			Severity: diag.SeverityLevelError,
