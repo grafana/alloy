@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/user"
 	"path"
-	"runtime"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -24,6 +23,7 @@ const (
 	labelProcessCommandline = "__meta_process_commandline"
 	labelProcessUsername    = "__meta_process_username"
 	labelProcessUID         = "__meta_process_uid"
+	labelProcessCgroupPath  = "__meta_process_cgroup_path"
 	labelProcessContainerID = "__container_id__"
 )
 
@@ -33,12 +33,13 @@ type process struct {
 	cwd         string
 	commandline string
 	containerID string
+	cgroupPath  string
 	username    string
 	uid         string
 }
 
 func (p process) String() string {
-	return fmt.Sprintf("pid=%s exe=%s cwd=%s commandline=%s containerID=%s", p.pid, p.exe, p.cwd, p.commandline, p.containerID)
+	return fmt.Sprintf("pid=%s exe=%s cwd=%s commandline=%s cgrouppath=%s containerID=%s", p.pid, p.exe, p.cwd, p.commandline, p.cgroupPath, p.containerID)
 }
 
 func convertProcesses(ps []process) []discovery.Target {
@@ -51,7 +52,7 @@ func convertProcesses(ps []process) []discovery.Target {
 }
 
 func convertProcess(p process) discovery.Target {
-	t := make(discovery.Target, 5)
+	t := make(discovery.Target, 8)
 	t[labelProcessID] = p.pid
 	if p.exe != "" {
 		t[labelProcessExe] = p.exe
@@ -70,6 +71,9 @@ func convertProcess(p process) discovery.Target {
 	}
 	if p.uid != "" {
 		t[labelProcessUID] = p.uid
+	}
+	if p.cgroupPath != "" {
+		t[labelProcessCgroupPath] = p.cgroupPath
 	}
 	return t
 }
@@ -92,7 +96,7 @@ func discover(l log.Logger, cfg *DiscoverConfig) ([]process, error) {
 	for _, p := range processes {
 		spid := fmt.Sprintf("%d", p.Pid)
 		var (
-			exe, cwd, commandline, containerID, username, uid string
+			exe, cwd, commandline, containerID, cgroupPath, username, uid string
 		)
 		if cfg.Exe {
 			exe, err = p.Exe()
@@ -131,9 +135,15 @@ func discover(l log.Logger, cfg *DiscoverConfig) ([]process, error) {
 				uid = fmt.Sprintf("%d", uids[0])
 			}
 		}
-
 		if cfg.ContainerID {
 			containerID, err = getLinuxProcessContainerID(spid)
+			if err != nil {
+				loge(int(p.Pid), err)
+				continue
+			}
+		}
+		if cfg.CgroupPath {
+			cgroupPath, err = getLinuxProcessCgroupPath(spid)
 			if err != nil {
 				loge(int(p.Pid), err)
 				continue
@@ -145,6 +155,7 @@ func discover(l log.Logger, cfg *DiscoverConfig) ([]process, error) {
 			cwd:         cwd,
 			commandline: commandline,
 			containerID: containerID,
+			cgroupPath:  cgroupPath,
 			username:    username,
 			uid:         uid,
 		})
@@ -154,16 +165,28 @@ func discover(l log.Logger, cfg *DiscoverConfig) ([]process, error) {
 }
 
 func getLinuxProcessContainerID(pid string) (string, error) {
-	if runtime.GOOS == "linux" {
-		cgroup, err := os.Open(path.Join("/proc", pid, "cgroup"))
-		if err != nil {
-			return "", err
-		}
-		defer cgroup.Close()
-		cid := getContainerIDFromCGroup(cgroup)
-		if cid != "" {
-			return cid, nil
-		}
+	cgroup, err := os.Open(path.Join("/proc", pid, "cgroup"))
+	if err != nil {
+		return "", err
 	}
+	defer cgroup.Close()
+	cid := getContainerIDFromCGroup(cgroup)
+	if cid != "" {
+		return cid, nil
+	}
+
+	return "", nil
+}
+
+func getLinuxProcessCgroupPath(pid string) (string, error) {
+	cgroup, err := os.Open(path.Join("/proc", pid, "cgroup"))
+	if err != nil {
+		return "", err
+	}
+	defer cgroup.Close()
+	if cgroupPath := getPathFromCGroup(cgroup); cgroupPath != "" {
+		return cgroupPath, nil
+	}
+
 	return "", nil
 }
