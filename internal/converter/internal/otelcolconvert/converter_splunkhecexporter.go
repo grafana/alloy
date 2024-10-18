@@ -11,7 +11,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
-	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/exporter/exporterbatcher"
 )
 
@@ -46,7 +45,7 @@ func (splunkhecExporterConverter) ConvertAndAppend(state *State, id componentsta
 
 func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec.Arguments {
 	return &splunkhec.Arguments{
-		Client:       toSplunkHecHTTPClientArguments(cfg.ClientConfig),
+		Client:       toSplunkHecHTTPClientArguments(cfg),
 		Retry:        toRetryArguments(cfg.BackOffConfig),
 		Queue:        toQueueArguments(cfg.QueueSettings),
 		Splunk:       toSplunkConfig(cfg),
@@ -54,8 +53,9 @@ func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec.Arguments {
 	}
 }
 
-func toSplunkHecHTTPClientArguments(cfg confighttp.ClientConfig) splunkhec_config.SplunkHecClientArguments {
+func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_config.SplunkHecClientArguments {
 	return splunkhec_config.SplunkHecClientArguments{
+		Endpoint:            cfg.Endpoint,
 		Timeout:             cfg.Timeout,
 		ReadBufferSize:      int(cfg.ReadBufferSize),
 		WriteBufferSize:     int(cfg.WriteBufferSize),
