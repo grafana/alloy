@@ -679,6 +679,27 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.108.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/splunk v0.108.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchperresourceattr v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.108.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/exp/metrics v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/k8sconfig v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/kafka v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/metadataproviders v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/pdatautil v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/sharedcomponent v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/splunk v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchperresourceattr v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchpersignal v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/azure v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/jaeger v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/opencensus v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.108.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/intervalprocessor v0.108.0
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/opencontainers/runc v1.2.0 // indirect
