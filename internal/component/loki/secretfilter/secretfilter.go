@@ -145,6 +145,7 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case entry := <-c.receiver.Chan():
+			c.mut.RLock()
 			// Start processing the log entry to redact secrets
 			newEntry := c.processEntry(entry)
 			if c.debugDataPublisher.IsActive(componentID) {
@@ -154,10 +155,12 @@ func (c *Component) Run(ctx context.Context) error {
 			for _, f := range c.fanout {
 				select {
 				case <-ctx.Done():
+					c.mut.RUnlock()
 					return nil
 				case f.Chan() <- newEntry:
 				}
 			}
+			c.mut.RUnlock()
 		}
 	}
 }
