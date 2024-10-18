@@ -164,7 +164,7 @@ require (
 	github.com/prometheus/node_exporter v1.6.0
 	github.com/prometheus/procfs v0.15.1
 	github.com/prometheus/prometheus v0.54.1 // a.k.a. v2.51.2
-	github.com/prometheus/snmp_exporter v0.26.0
+	github.com/prometheus/snmp_exporter v0.26.0 // if you update the snmp_exporter version, make sure to update the links in prometheus.exporter.snmp
 	github.com/prometheus/statsd_exporter v0.22.8
 	github.com/richardartoul/molecule v1.0.1-0.20221107223329-32cfee06a052
 	github.com/rogpeppe/go-internal v1.12.0

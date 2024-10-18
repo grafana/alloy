@@ -48,7 +48,7 @@ Omitted fields take their default values.
 | `targets`     | `list(map(string))`  | SNMP targets.                                    |         | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
-Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter#generating-configuration) for details on how to generate a configuration file.
+Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter/tree/v0.26.0?tab=readme-ov-file#configuration) for details on how to generate a configuration file.
 
 The `config` argument must be a YAML document as string defining which SNMP modules and auths to use.
 `config` is typically loaded by using the exports of another component. For example,
