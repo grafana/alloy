@@ -49,6 +49,15 @@ The Gitleaks configuration file embedded in the component is used if you don't p
 
 The `types` argument is a map of secret types to look for. The values are used as prefixes for the secret types in the Gitleaks configuration. If you don't provide this argument, all types are used.
 
+{{< admonition type="note" >}}
+It is strongly recommended to configure this argument with the secret types you want to look for. If you don't, the component will look for all known types, which is resource-intensive.
+{{< /admonition >}}
+
+{{< admonition type="caution" >}}
+Some secret types in the Gitleaks configuration file rely on regex patterns that don't detect the secret itself but rather the context around it. For example, the `aws-access-token` type detects AWS key IDs, not the keys themselves. The reason for this is that the keys don't have a unique pattern that can easily be detected with a regex. As a result, with this secret type enabled, the component will redact key IDs but not actual secret keys. This behavior is consistent with Gitleaks' redaction feature but may not be what you expect.
+Currently, the secret types that are known to have this behavior are: `aws-access-token`.
+{{< /admonition >}}
+
 The `redact_with` argument is a string that can use variables such as `$SECRET_NAME` (replaced with the matching secret type) and `$SECRET_HASH`(replaced with the sha1 hash of the secret).
 
 The `include_generic` argument is a boolean that includes the generic API key rule in the Gitleaks configuration file if set to `true`. It's disabled by default because it can generate false positives.
