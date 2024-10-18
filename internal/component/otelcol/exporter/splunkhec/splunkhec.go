@@ -15,7 +15,7 @@ import (
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "otelco.exporter.splunkhec",
+		Name:      "otelcol.exporter.splunkhec",
 		Community: true,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
