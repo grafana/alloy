@@ -37,9 +37,9 @@ func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStat
 		loops:  make([]*loop, 0, cc.Connections),
 		logger: logger,
 		// This provides blocking to only handle one at a time, so that if a queue blocks
-		// it will stop the filequeue from feeding more.
-		inbox:       actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
-		metaInbox:   actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
+		// it will stop the filequeue from feeding more. Without as chan the minimum capacity is actually a 64 item buffer.
+		inbox:       actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1), actor.OptAsChan()),
+		metaInbox:   actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1), actor.OptAsChan()),
 		configInbox: actor.NewMailbox[configCallback](),
 		stats:       seriesStats,
 		metaStats:   metadataStats,
@@ -126,8 +126,8 @@ func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
 			level.Error(s.logger).Log("msg", "failed to send to metadata loop", "err", err)
 		}
 		return actor.WorkerContinue
-		// We need to also check the config here, else its possible this will deadlock.
 	case cfg, ok := <-s.configInbox.ReceiveC():
+		// We need to also check the config here, else its possible this will deadlock.
 		if !ok {
 			level.Debug(s.logger).Log("msg", "config inbox closed")
 			return actor.WorkerEnd
