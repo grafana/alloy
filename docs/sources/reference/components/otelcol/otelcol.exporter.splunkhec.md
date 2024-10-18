@@ -120,7 +120,7 @@ Name                       | Type                  | Description                
 `enabled`                  | `bool`                | Whether to not enqueue batches before sending to the consumerSender.                            |   `false`                     | no
 `flush_timeout`             | `time.Duration`       | The time after which a batch will be sent regardless of its size    | `200ms`  | no
 `min_size_items`   | `uint`   |  The number of items at which the batch is sent regardless of the timeout           |  `8192`              | no
-`max_size_items`   | `uint`   | Maximum number of batch items, if the batch exeeds this value, it will be broken up into smaller batches. Must be greater than or equal to min_size_items. Setting this value to zero disables the maximum size limit.          |  `0`           |  no
+`max_size_items`   | `uint`   | Maximum number of batch items, if the batch exceeds this value, it will be broken up into smaller batches. Must be greater than or equal to min_size_items. Setting this value to zero disables the maximum size limit.          |  `0`           |  no
 
 ### client block
 
