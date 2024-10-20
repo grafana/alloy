@@ -13,12 +13,11 @@ func BenchmarkMailbox(b *testing.B) {
 	mbx.Start()
 	defer mbx.Stop()
 	go func() {
-		for {
-			<-mbx.ReceiveC()
+		for range mbx.ReceiveC() {
 		}
 	}()
 	ctx := context.Background()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		mbx.Send(ctx, struct{}{})
 	}
 }
