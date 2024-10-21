@@ -8,6 +8,7 @@ import (
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	splunkhec_config "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
+
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -50,13 +51,12 @@ func (args *Arguments) SetToDefault() {
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 
-	res := splunkhec_config.SplunkHecArguments{
+	return (&splunkhec_config.SplunkHecArguments{
 		Splunk:                   args.Splunk,
 		QueueSettings:            *args.Queue.Convert(),
 		RetrySettings:            *args.Retry.Convert(),
-		SplunkHecClientArguments: args.Client}
-	return res.Convert(), nil
-
+		SplunkHecClientArguments: args.Client,
+	}).Convert(), nil
 }
 
 func (args *Arguments) Validate() error {
