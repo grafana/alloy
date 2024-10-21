@@ -47,7 +47,7 @@ splunk                     | [splunk][]                    | Configures the Splu
 splunk->otel_to_hec_fields | [otel_to_hec_fields][]        | Configures mapping of Open Telemetry to HEC Fields.                        | no
 splunk->telemetry          | [telemetry][]                 | Configures the exporters telemetry.                                         | no
 splunk->heartbeat          | [heartbeat][]                 | Configures the exporters heartbeat settings.                                | no
-splunk->batcher            | [batcher][]                   | Configures batching requests based on a timeout and a minimum number of items.
+splunk->batcher            | [batcher][]                   | Configures batching requests based on a timeout and a minimum number of items. | no
 client                     | [client][]                    | Configures the HTTP client used to send data to Splunk HEC.                | yes
 retry_on_failure          | [retry_on_failure][] | Configures retry mechanism for failed requests.                                      | no
 queue                     | [queue][]            | Configures batching of data before sending.                                          | no
