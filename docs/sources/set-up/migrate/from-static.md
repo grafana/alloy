@@ -389,4 +389,4 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [otelcol.receiver.otlp]: ../../../reference/components/otelcol/otelcol.receiver.otlp/
 [otelcol.processor.batch]: ../../../reference/components/otelcol/otelcol.processor.batch/
 [otelcol.exporter.otlp]:../../../reference/components/otelcol/otelcol.exporter.otlp/
-[Stop]:https://grafana.com/docs/agent/latest/static/set-up/start-agent
+[Stop]: https://grafana.com/docs/agent/latest/static/set-up/start-agent
