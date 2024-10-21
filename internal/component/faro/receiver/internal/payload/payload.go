@@ -396,14 +396,14 @@ func (a App) KeyVal() *KeyVal {
 
 // Browser holds metadata about a client's browser
 type Browser struct {
-	Name           string `json:"name,omitempty"`
-	Version        string `json:"version,omitempty"`
-	OS             string `json:"os,omitempty"`
-	Mobile         bool   `json:"mobile,omitempty"`
-	UserAgent      string `json:"userAgent,omitempty"`
-	Language       string `json:"language,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Version   string `json:"version,omitempty"`
+	OS        string `json:"os,omitempty"`
+	Mobile    bool   `json:"mobile,omitempty"`
+	UserAgent string `json:"userAgent,omitempty"`
+	Language  string `json:"language,omitempty"`
 	// TODO: properly serialize brands
-	// Brands json.RawMessage `json:"brands,omitempty"` 
+	// Brands json.RawMessage `json:"brands,omitempty"`
 	ViewportWidth  string `json:"viewportWidth,omitempty"`
 	ViewportHeight string `json:"viewportHeight,omitempty"`
 }

@@ -6,6 +6,8 @@ weight: 350
 cascade:
   ALLOY_RELEASE: v1.5.0
   OTEL_VERSION: v0.105.0
+  PROM_WIN_EXP_VERSION: v0.27.3
+  SNMP_VERSION: v0.26.0
   FULL_PRODUCT_NAME: Grafana Alloy
   PRODUCT_NAME: Alloy
 hero:

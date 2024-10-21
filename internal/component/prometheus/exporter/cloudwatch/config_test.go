@@ -99,6 +99,7 @@ discovery {
 		role_arn = "arn:aws:iam::878167871295:role/yace_testing"
 	}
 	dimension_name_requirements = ["BucketName"]
+	recently_active_only = true
 	metric {
 		name = "BucketSizeBytes"
 		statistics = ["Sum"]
@@ -307,7 +308,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								AddCloudwatchTimestamp: addCloudwatchTimestamp,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{"name"},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -335,7 +336,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								AddCloudwatchTimestamp: addCloudwatchTimestamp,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -368,8 +369,9 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								AddCloudwatchTimestamp: addCloudwatchTimestamp,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{},
+						RecentlyActiveOnly:    true,
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
 								Regexp:          regexp.MustCompile("(?P<BucketName>[^:]+)$"),
@@ -517,7 +519,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								AddCloudwatchTimestamp: addCloudwatchTimestamp,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{"name"},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{

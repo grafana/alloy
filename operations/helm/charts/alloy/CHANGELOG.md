@@ -12,6 +12,13 @@ Unreleased
 ### Enhancements
 - Add support for adding hostAliases to the Helm chart. (@duncan485)
 
+0.9.2 (2024-10-18)
+------------------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.4.3. (@ptodev)
+
 0.9.1 (2024-10-04)
 ------------------
 

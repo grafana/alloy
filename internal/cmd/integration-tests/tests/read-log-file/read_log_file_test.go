@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const query = "http://localhost:3100/loki/api/v1/query?query={test_name=%22read_log_file%22}"
+const query = "http://localhost:3100/loki/api/v1/query_range?query={test_name=%22read_log_file%22}"
 
 func TestReadLogFile(t *testing.T) {
 	var logResponse common.LogResponse
