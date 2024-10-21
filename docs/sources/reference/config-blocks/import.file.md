@@ -4,11 +4,7 @@ description: Learn about the import.file configuration block
 title: import.file
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # import.file
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `import.file` block imports custom components from a file or a directory and exposes them to the importer.
 `import.file` blocks must be given a label that determines the namespace where custom components are exposed.
