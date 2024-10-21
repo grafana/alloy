@@ -76,7 +76,7 @@ Name                       | Type     | Description                             
 `log_data_enabled`           | `bool`   | Enable sending logs from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`.                         | `true`                        | no
 `profiling_data_enabled`     | `bool`   | Enable sending profiling data from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`.             | `true`                        | no
 `source`                     | `string` | [Splunk source](https://docs.splunk.com/Splexicon:Source).      | `""`                          | no
-`source_type`                | `string` | [Splunk source sype}(https://docs.splunk.com/Splexicon:Sourcetype). | `""`                          | no
+`source_type`                | `string` | [Splunk source sype](https://docs.splunk.com/Splexicon:Sourcetype). | `""`                          | no
 `index`                      | `string` | Splunk index name.                                               | `""`                          | no
 `disable_compression`        | `bool`   | Disable GZip compression.                                        | `false`                       | no
 `max_content_length_logs`    | `uint`   | Maximum log payload size in bytes. Must be less than 838860800 (~800MB).                               | `2097152`                     | no
