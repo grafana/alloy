@@ -100,7 +100,7 @@ func TestUnmarshalSplunkConf(t *testing.T) {
 				max_content_length_traces = 300
 				max_event_size = 400
 				heartbeat {
-				   interval = 10
+				   interval = "10s"
 				   startup = true
 				}
 				telemetry {
