@@ -177,6 +177,69 @@ Name    | Type               | Description
 
 ## Example
 
+### Open Telemetry Receiver 
+
+This example forwards metrics, logs and traces send to the `otelcol.receiver.otlp.default` receiver to the Splunk HEC exporter.
+
+```
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint               = "localhost:4318"
+		compression_algorithms = ["zlib"]
+	}
+
+	output {
+		metrics = [otelcol.exporter.splunkhec.default.input]
+		logs    = [otelcol.exporter.splunkhec.default.input]
+		traces  = [otelcol.exporter.splunkhec.default.input]
+	}
+}
+
+otelcol.exporter.splunkhec "default" {
+	client {
+		endpoint                = "https://splunkhec.domain.com:8088/services/collector"
+		timeout                 = "10s"
+		max_idle_conns          = 200
+		max_idle_conns_per_host = 200
+		idle_conn_timeout       = "10s"
+	}
+
+	splunk {
+		token              = "SPLUNK_TOKEN"
+		source             = "otel"
+		sourcetype         = "otel"
+		index              = "metrics"
+		splunk_app_name    = "OpenTelemetry-Collector Splunk Exporter"
+		splunk_app_version = "v0.0.1"
+
+		otel_to_hec_fields {
+			severity_text   = "otel.log.severity.text"
+			severity_number = "otel.log.severity.number"
+		}
+
+		heartbeat {
+			interval = "30s"
+		}
+
+		telemetry {
+			enabled                = true
+			override_metrics_names = {
+				otelcol_exporter_splunkhec_heartbeats_failed = "app_heartbeats_failed_total",
+				otelcol_exporter_splunkhec_heartbeats_sent   = "app_heartbeats_success_total",
+			}
+			extra_attributes = {
+				custom_key   = "custom_value",
+				dataset_name = "SplunkCloudBeaverStack",
+			}
+		}
+	}
+}
+```
+
 ### Forward Prometheus Metrics
 This example forwards Prometheus metrics from {{< param "PRODUCT_NAME" >}} through a receiver for conversion to Open Telemetry format before finally sending them to splunkhec.
 
