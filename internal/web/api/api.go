@@ -82,12 +82,16 @@ func getComponentHandler(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		requestedComponent := component.ParseID(vars["id"])
+		requestedHealth := component.ParseBool(vars["health"])
+                requestedArguments := component.ParseBool(vars["arguments"])
+                requestedExports := component.ParseBool(vars["exports"])
+                requestedDebugInfo := component.ParseBool(vars["debugInfo"])
 
 		component, err := host.GetComponent(requestedComponent, component.InfoOptions{
-			GetHealth:    true,
-			GetArguments: true,
-			GetExports:   true,
-			GetDebugInfo: true,
+			GetHealth:    requestedHealth,
+			GetArguments: requestedArguments,
+			GetExports:   requestedExports,
+			GetDebugInfo: requestedDebugInfo,
 		})
 		if err != nil {
 			http.NotFound(w, r)
