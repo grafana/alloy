@@ -73,16 +73,16 @@ The following arguments are supported:
 Name                       | Type     | Description                                                     | Default                       | Required
 ---------------------------|----------|-----------------------------------------------------------------|-------------------------------|---------
 `token`                      | `secret` | Splunk HEC Token.                                              |                               | yes
-`log_data_enabled`           | `bool`   | Enable sending logs from the exporter. One of log_data_enabled or profiling_data_enabled must be true                         | `true`                        | no
-`profiling_data_enabled`     | `bool`   | Enable sending profiling data from the exporter. One of log_data_enabled or profiling_data_enabled must be true             | `true`                        | no
-`source`                     | `string` | [Splunk Source](https://docs.splunk.com/Splexicon:Source).      | `""`                          | no
-`source_type`                | `string` | [Splunk Source Type}(https://docs.splunk.com/Splexicon:Sourcetype). | `""`                          | no
-`index`                      | `string` | Splunk Index Name.                                               | `""`                          | no
+`log_data_enabled`           | `bool`   | Enable sending logs from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`.                         | `true`                        | no
+`profiling_data_enabled`     | `bool`   | Enable sending profiling data from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`.             | `true`                        | no
+`source`                     | `string` | [Splunk source](https://docs.splunk.com/Splexicon:Source).      | `""`                          | no
+`source_type`                | `string` | [Splunk source sype}(https://docs.splunk.com/Splexicon:Sourcetype). | `""`                          | no
+`index`                      | `string` | Splunk index name.                                               | `""`                          | no
 `disable_compression`        | `bool`   | Disable GZip compression.                                        | `false`                       | no
-`max_content_length_logs`    | `uint`   | Maximum log payload size in bytes. Must be less than 838860800 (~800MB)                               | `2097152`                     | no
-`max_content_length_metrics` | `uint`   | Maximum metric payload size in bytes. Must be less than 838860800 (~800MB)                           | `2097152`                     | no
-`max_content_length_traces`  | `uint`   | Maximum trace payload size in bytes. Must be less than 838860800 (~800MB)                           | `2097152`                     | no
-`max_event_size`             | `uint`   | Maximum event payload size in bytes. Must be less than 838860800 (~800MB)                            | `5242880`                     | no
+`max_content_length_logs`    | `uint`   | Maximum log payload size in bytes. Must be less than 838860800 (~800MB).                               | `2097152`                     | no
+`max_content_length_metrics` | `uint`   | Maximum metric payload size in bytes. Must be less than 838860800 (~800MB).                           | `2097152`                     | no
+`max_content_length_traces`  | `uint`   | Maximum trace payload size in bytes. Must be less than 838860800 (~800MB).                           | `2097152`                     | no
+`max_event_size`             | `uint`   | Maximum event payload size in bytes. Must be less than 838860800 (~800MB).                            | `5242880`                     | no
 `splunk_app_name`            | `string` | Used to track telemetry for Splunk Apps by name.                | `Alloy`                       | no
 `splunk_app_version`         | `string` | Used to track telemetry by App version.                          | `""`                          | no
 `health_path`                | `string` | Path for the health API.                                         | `/services/collector/health'` | no
@@ -118,8 +118,8 @@ Name                       | Type                  | Description                
 Name                       | Type                  | Description                                                     | Default                       | Required
 ---------------------------|-----------------------|-----------------------------------------------------------------|-------------------------------|---------
 `enabled`                  | `bool`                | Whether to not enqueue batches before sending to the consumerSender.                            |   `false`                     | no
-`flush_timeout`             | `time.Duration`       | The time after which a batch will be sent regardless of its size    | `200ms`  | no
-`min_size_items`   | `uint`   |  The number of items at which the batch is sent regardless of the timeout           |  `8192`              | no
+`flush_timeout`             | `time.Duration`       | The time after which a batch will be sent regardless of its size.    | `200ms`  | no
+`min_size_items`   | `uint`   |  The number of items at which the batch is sent regardless of the timeout.          |  `8192`              | no
 `max_size_items`   | `uint`   | Maximum number of batch items, if the batch exceeds this value, it will be broken up into smaller batches. Must be greater than or equal to min_size_items. Setting this value to zero disables the maximum size limit.          |  `0`           |  no
 
 ### client block
