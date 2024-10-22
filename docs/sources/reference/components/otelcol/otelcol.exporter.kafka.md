@@ -111,19 +111,19 @@ For example, `authentication > tls` refers to a `tls` block defined inside an `a
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-authentication.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### plaintext block
+#### plaintext block
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-authentication-plaintext.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### sasl block
+#### sasl block
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-authentication-sasl.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### aws_msk block
+#### aws_msk block
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-authentication-sasl-aws_msk.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### tls block
+#### tls block
 
 The `tls` block configures TLS settings used for connecting to the Kafka
 brokers. If the `tls` block isn't provided, TLS won't be used for
@@ -131,7 +131,7 @@ communication.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### kerberos block
+#### kerberos block
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-authentication-kerberos.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -139,7 +139,7 @@ communication.
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-metadata.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### retry block
+#### retry block
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-metadata-retry.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
