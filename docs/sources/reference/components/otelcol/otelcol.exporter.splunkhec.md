@@ -131,14 +131,14 @@ The following arguments are supported:
 Name                      | Type       | Description                                                                 | Default | Required
 --------------------------|------------|-----------------------------------------------------------------------------|---------|---------
 `endpoint`                | `string`   | The Splunk HEC endpoint to use.                                             |         | yes
-`read_buffer_size`        | `int`      | Size of the read buffer the HTTP client uses for reading server responses.  |         | no
-`write_buffer_size`       | `int`      | Size of the write buffer the HTTP client uses for writing requests.         |         | no
+`read_buffer_size`        | `int`      | Size of the read buffer the HTTP client uses for reading server responses.  |   `0`      | no
+`write_buffer_size`       | `int`      | Size of the write buffer the HTTP client uses for writing requests.         |   `0`     | no
 `timeout`                 | `duration` | Time to wait before marking a request as failed.                            | `"15s"` | no
-`max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        |         | no
-`max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          |         | no
-`max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. |         | no
+`max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        |   `nil`      | no
+`max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          |   `nil`      | no
+`max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. |    `nil`     | no
 `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `"45s"` | no
-`disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |         | no
+`disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |   `false`      | no
 `insecure_skip_verify`    | `bool`     | Ignores insecure server TLS certificates.                                   | `false` | no
 
 ### retry_on_failure block
