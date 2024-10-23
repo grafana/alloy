@@ -111,6 +111,7 @@ The following arguments are supported:
 | `commandline`  | `bool` | A flag to enable discovering `__meta_process_commandline` label. | true    | no       |
 | `uid`          | `bool` | A flag to enable discovering `__meta_process_uid`: label.        | true    | no       |
 | `username`     | `bool` | A flag to enable discovering `__meta_process_username`: label.   | true    | no       |
+| `cgroup_path`  | `bool` | A flag to enable discovering `__meta_cgroup_path__` label.       | true    | no       |
 | `container_id` | `bool` | A flag to enable discovering `__container_id__` label.           | true    | no       |
 
 ## Exported fields
@@ -129,6 +130,7 @@ Each target includes the following labels:
 * `__meta_process_commandline`: The process command line. Taken from `/proc/<pid>/cmdline`.
 * `__meta_process_uid`: The process UID. Taken from `/proc/<pid>/status`.
 * `__meta_process_username`: The process username. Taken from `__meta_process_uid` and `os/user/LookupID`.
+* `__meta_cgroup_path`: The cgroup path under which the process is running. In the case of cgroups v1, this label includes all the controllers paths delimited by `|`.
 * `__container_id__`: The container ID. Taken from `/proc/<pid>/cgroup`. If the process is not running in a container, this label is not set.
 
 ## Component health
@@ -157,6 +159,7 @@ discovery.process "all" {
     commandline = true
     username = true
     uid = true
+    cgroup_path = true
     container_id = true
   }
 }
