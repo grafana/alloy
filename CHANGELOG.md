@@ -18,6 +18,7 @@ Main (unreleased)
 ### Features
 
 - Add the function `path_join` to the stdlib. (@wildum)
+- Add `pyroscope.receive_http` component to receive and forward Pyroscope profiles (@marcsanmi)
 
 - Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
 
