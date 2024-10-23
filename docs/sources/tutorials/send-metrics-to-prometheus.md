@@ -222,19 +222,19 @@ Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and l
 ```
 {{< /docs/ignore >}}
 
-  <!-- INTERACTIVE ignore START -->
-    {{< code >}}
+<!-- INTERACTIVE ignore START -->
+{{< code >}}
 
-    ```macos
-    brew services restart alloy
-    ```
+```macos
+brew services restart alloy
+```
 
-    ```linux
-    sudo systemctl reload alloy
-    ```
+```linux
+sudo systemctl reload alloy
+```
 
-    {{< /code >}}
-  <!-- INTERACTIVE ignore END -->
+{{< /code >}}
+<!-- INTERACTIVE ignore END -->
 
 <!-- INTERACTIVE page step2.md END -->
 
@@ -287,4 +287,3 @@ You have configured {{< param "PRODUCT_NAME" >}} to collect and process metrics 
 [prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/
 [prometheus.relabel]: ../../reference/components/prometheus/prometheus.relabel/
 [prometheus.remote_write]: ../../reference/components/prometheus/prometheus.remote_write/
-
