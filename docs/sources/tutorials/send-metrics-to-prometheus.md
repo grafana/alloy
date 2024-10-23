@@ -223,17 +223,17 @@ Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and l
 {{< /docs/ignore >}}
 
   <!-- INTERACTIVE ignore START -->
-    {{< code >}}
+{{< code >}}
 
-    ```macos
-    brew services restart alloy
-    ```
+  ```macos
+  brew services restart alloy
+  ```
 
-    ```linux
-    sudo systemctl reload alloy
-    ```
+  ```linux
+  sudo systemctl reload alloy
+  ```
 
-    {{< /code >}}
+{{< /code >}}
   <!-- INTERACTIVE ignore END -->
 
 <!-- INTERACTIVE page step2.md END -->
