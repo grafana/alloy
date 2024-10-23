@@ -19,10 +19,15 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
+const (
+	// defaultMaxConnLimit defines the maximum number of simultaneous HTTP connections
+	defaultMaxConnLimit = 100
+)
+
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.receive_http",
-		Stability: featuregate.StabilityGenerallyAvailable,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			return New(opts, args.(Arguments))
@@ -37,8 +42,12 @@ type Arguments struct {
 
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
+	serverConfig := fnet.DefaultServerConfig()
+	if serverConfig.HTTP.ConnLimit > defaultMaxConnLimit {
+		serverConfig.HTTP.ConnLimit = defaultMaxConnLimit
+	}
 	*a = Arguments{
-		Server: fnet.DefaultServerConfig(),
+		Server: serverConfig,
 	}
 }
 
@@ -82,9 +91,11 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.appendables = newArgs.ForwardTo
 
+	// if no server config provided, we'll use defaults
 	if newArgs.Server == nil {
-		newArgs.Server = fnet.DefaultServerConfig()
+		newArgs.Server = &fnet.ServerConfig{}
 	}
+
 	if newArgs.Server.HTTP == nil {
 		newArgs.Server.HTTP = &fnet.HTTPConfig{
 			ListenPort:    0,
