@@ -12,13 +12,21 @@ func BenchmarkMailbox(b *testing.B) {
 	mbx := actor.NewMailbox[struct{}]()
 	mbx.Start()
 	defer mbx.Stop()
+
+	doneC := make(chan any)
+
 	go func() {
-		for {
+		for range b.N {
 			<-mbx.ReceiveC()
 		}
+
+		close(doneC)
 	}()
+
 	ctx := context.Background()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		mbx.Send(ctx, struct{}{})
 	}
+
+	<-doneC
 }
