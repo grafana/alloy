@@ -9,6 +9,8 @@ internal API changes are not present.
 
 Unreleased
 ----------
+### Enhancements
+- Add support for adding hostAliases to the Helm chart. (@duncan485)
 
 0.9.2 (2024-10-18)
 ------------------

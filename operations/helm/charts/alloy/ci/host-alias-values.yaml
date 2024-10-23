@@ -1,0 +1,5 @@
+alloy:
+  hostAliases:
+    - ip: "20.21.22.23"
+      hostnames:
+        - "grafana.company.net"
