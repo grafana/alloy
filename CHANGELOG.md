@@ -45,6 +45,8 @@ Main (unreleased)
 
 - Add Prometheus bearer authentication to a `prometheus.write.queue` component (@freak12techno)
 
+- Enhance getComponentHandler for selective data retrieval exposing options (@daxroc)
+
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)

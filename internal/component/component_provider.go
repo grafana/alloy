@@ -57,6 +57,11 @@ func ParseID(input string) ID {
 	}
 }
 
+// ParseBool parses a string value into a boolean. If the value is "false",
+func ParseBool(value string) bool {
+	return value != "false"
+}
+
 // InfoOptions is used by to determine how much information to return with
 // [Info].
 type InfoOptions struct {
