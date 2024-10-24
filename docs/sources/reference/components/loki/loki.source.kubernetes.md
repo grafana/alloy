@@ -9,7 +9,12 @@ title: loki.source.kubernetes
 # loki.source.kubernetes
 
 `loki.source.kubernetes` tails logs from Kubernetes containers using the Kubernetes API.
-It has the following benefits over `loki.source.file`:
+
+{{< admonition type="note" >}}
+This component collects logs from Kubernetes Pods. You can't use this component to collect logs from Kubernetes Nodes.
+{{< /admonition >}}
+
+This component has the following benefits over `loki.source.file`:
 
 * It works without a privileged container.
 * It works without a root user.
@@ -174,7 +179,7 @@ Clustering only looks at the following labels for determining the shard key:
 
 ## Example
 
-This example collects logs from all Kubernetes pods and forwards them to a `loki.write` component so they are written to Loki.
+This example collects logs from all Kubernetes Pods and forwards them to a `loki.write` component so they are written to Loki.
 
 ```alloy
 discovery.kubernetes "pods" {
