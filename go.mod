@@ -147,7 +147,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0
-	github.com/prometheus-community/postgres_exporter v0.11.1
+	github.com/prometheus-community/postgres_exporter v0.15.0
 	github.com/prometheus-community/stackdriver_exporter v0.15.1
 	github.com/prometheus-community/windows_exporter v0.27.4-0.20241010144849-a0f6d3bcf9a4 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
 	github.com/prometheus-operator/prometheus-operator v0.66.0
@@ -405,6 +405,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.39.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.39.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.165.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/iam v1.33.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.3.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.18 // indirect
@@ -432,6 +433,7 @@ require (
 	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/channelmeter/iso8601duration v0.0.0-20150204201828-8da3af7a2a61 // indirect
+	github.com/checkpoint-restore/go-criu/v6 v6.3.0 // indirect
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 // indirect
 	github.com/cilium/ebpf v0.16.0 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
@@ -443,6 +445,7 @@ require (
 	github.com/containerd/continuity v0.4.2 // indirect
 	github.com/containerd/errdefs v0.1.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
+	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/containerd/ttrpc v1.2.4 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.1 // indirect
@@ -463,7 +466,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
-	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
+	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/efficientgo/core v1.0.0-rc.2 // indirect
@@ -485,6 +488,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.5+incompatible // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
+	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/gavv/monotime v0.0.0-20190418164738-30dba4353424 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
@@ -583,6 +587,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/pgtype v1.14.0 // indirect
 	github.com/jackc/pgx/v4 v4.18.2 // indirect
+	github.com/jaswdr/faker/v2 v2.3.2
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
@@ -734,7 +739,7 @@ require (
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go v1.0.162 // indirect
 	github.com/tg123/go-htpasswd v1.2.2 // indirect
-	github.com/tinylib/msgp v1.1.9 // indirect
+	github.com/tinylib/msgp v1.1.9
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
 	github.com/tklauser/numcpus v0.7.0 // indirect
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
@@ -742,6 +747,7 @@ require (
 	github.com/vertica/vertica-sql-go v1.3.3 // indirect
 	github.com/vishvananda/netlink v1.2.1-beta.2 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
+	github.com/vladopajic/go-actor v0.9.0
 	github.com/vmware/govmomi v0.42.0 // indirect
 	github.com/vultr/govultr/v2 v2.17.2 // indirect
 	github.com/willf/bitset v1.1.11 // indirect
@@ -809,12 +815,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20240620174524-b456828f718b // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
-	github.com/gammazero/deque v0.2.1 // indirect
-	github.com/vladopajic/go-actor v0.9.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/iam v1.33.1 // indirect
-	github.com/checkpoint-restore/go-criu/v6 v6.3.0 // indirect
-	github.com/containerd/platforms v0.2.1 // indirect
-	github.com/jaswdr/faker/v2 v2.3.2
 )
 
 // NOTE: replace directives below must always be *temporary*.
