@@ -49,6 +49,8 @@ Main (unreleased)
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
 
+- Fix goroutine leak by updating `prometheus.exporter.postgres` to latest release (@dehaansa)
+
 ### Other changes
 
 - Small fix in UI stylesheet to fit more content into visible table area. (@defanator)

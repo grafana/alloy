@@ -1192,8 +1192,6 @@ github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/ad
 github.com/gosnmp/gosnmp v1.37.0 h1:/Tf8D3b9wrnNuf/SfbvO+44mPrjVphBhRtcGg22V07Y=
 github.com/gosnmp/gosnmp v1.37.0/go.mod h1:GDH9vNqpsD7f2HvZhKs5dlqSEcAS6s6Qp099oZRCR+M=
 github.com/gotestyourself/gotestyourself v2.2.0+incompatible/go.mod h1:zZKM6oeNM8k+FRljX1mnzVYeS8wiGgQyvST1/GafPbY=
-github.com/grafana/alloy-remote-config v0.0.8 h1:bQTk7rkR1Hykss+bfMv7CucpF/fRsi2lixJHfIcOMnc=
-github.com/grafana/alloy-remote-config v0.0.8/go.mod h1:kHE1usYo2WAVCikQkIXuoG1Clz8BSdiz3kF+DZSCQ4k=
 github.com/grafana/alloy-remote-config v0.0.9 h1:gy34SxZ8Iq/HrDTIFZi80+8BlT+FnJhKiP9mryHNEUE=
 github.com/grafana/alloy-remote-config v0.0.9/go.mod h1:kHE1usYo2WAVCikQkIXuoG1Clz8BSdiz3kF+DZSCQ4k=
 github.com/grafana/beyla v1.8.2 h1:AkHpUFnfX2SaRsLZkMtC8BPRtfEZRfP7A7ewRr3ruS0=
@@ -2128,8 +2126,6 @@ github.com/prometheus-community/prom-label-proxy v0.6.0 h1:vRY29tUex8qI2MEimovTz
 github.com/prometheus-community/prom-label-proxy v0.6.0/go.mod h1:XyAyskjjhqEx0qnbGUVeAkYSz3Wm9gStT7/wXFxD8n0=
 github.com/prometheus-community/stackdriver_exporter v0.15.1 h1:+k26zeBy8BlG+eDKPtYA7IKXrQCI7ISLfktjIUu7wBQ=
 github.com/prometheus-community/stackdriver_exporter v0.15.1/go.mod h1:UmmIgnrVQqDAeM8pSeYntBcUxPhp8oqb8W3nvRYzsSg=
-github.com/prometheus-community/windows_exporter v0.27.3 h1:L5Dc4gqc3477Y6jaVHhkm25jysqbxg1ajMyPbmnqScw=
-github.com/prometheus-community/windows_exporter v0.27.3/go.mod h1:8+T6hfv71nvgVIzguouXkIGoa15ni+uXHHULBOA2bZo=
 github.com/prometheus-community/windows_exporter v0.27.4-0.20241010144849-a0f6d3bcf9a4 h1:e6RmefQvH1jXwo7JnN5UvcyZz8uyABMFScnkrrWNrf0=
 github.com/prometheus-community/windows_exporter v0.27.4-0.20241010144849-a0f6d3bcf9a4/go.mod h1:8+T6hfv71nvgVIzguouXkIGoa15ni+uXHHULBOA2bZo=
 github.com/prometheus-operator/prometheus-operator v0.66.0 h1:Jj4mbGAkfBbTih6ait03f2vUjEHB7Kb4gnlAmWu7AJ0=
