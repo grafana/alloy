@@ -8,20 +8,19 @@ title: loki.source.kubernetes
 
 # loki.source.kubernetes
 
-`loki.source.kubernetes` tails logs from Kubernetes containers using the
-Kubernetes API. It has the following benefits over `loki.source.file`:
+`loki.source.kubernetes` tails logs from Kubernetes containers using the Kubernetes API.
+It has the following benefits over `loki.source.file`:
 
 * It works without a privileged container.
 * It works without a root user.
 * It works without needing access to the filesystem of the Kubernetes node.
-* It doesn't require a DaemonSet to collect logs, so one {{< param "PRODUCT_NAME" >}} could collect
-  logs for the whole cluster.
+* It doesn't require a DaemonSet to collect logs, so one {{< param "PRODUCT_NAME" >}} could collect logs for the whole cluster.
 
 {{< admonition type="note" >}}
 Because `loki.source.kubernetes` uses the Kubernetes API to tail logs, it uses more network traffic and CPU consumption of Kubelets than `loki.source.file`.
 {{< /admonition >}}
 
-Multiple `loki.source.kubernetes` components can be specified by giving them different labels.
+You can specify multiple `loki.source.kubernetes` components by giving them different labels.
 
 ## Usage
 
@@ -34,8 +33,7 @@ loki.source.kubernetes "LABEL" {
 
 ## Arguments
 
-The component starts a new reader for each of the given `targets` and fans out
-log entries to the list of receivers passed in `forward_to`.
+The component starts a new reader for each of the given `targets` and fans out log entries to the list of receivers passed in `forward_to`.
 
 `loki.source.kubernetes` supports the following arguments:
 
@@ -51,31 +49,27 @@ Each target in `targets` must have the following labels:
 * `__meta_kubernetes_pod_container_name` or `__pod_container_name__` to specify the container within the pod to tail.
 * `__meta_kubernetes_pod_uid` or `__pod_uid__` to specify the UID of the pod to tail.
 
-By default, all of these labels are present when the output
-`discovery.kubernetes` is used.
+By default, all of these labels are present when the output `discovery.kubernetes` is used.
 
-A log tailer is started for each unique target in `targets`. Log tailers will
-reconnect with exponential backoff to Kubernetes if the log stream returns
-before the container has permanently terminated.
+A log tailer is started for each unique target in `targets`.
+Log tailers will reconnect with exponential backoff to Kubernetes if the log stream returns before the container has permanently terminated.
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`loki.source.kubernetes`:
+The following blocks are supported inside the definition of `loki.source.kubernetes`:
 
 Hierarchy                    | Block             | Description                                                                                 | Required
 -----------------------------|-------------------|---------------------------------------------------------------------------------------------|---------
 client                       | [client][]        | Configures Kubernetes client used to tail logs.                                             | no
-client > basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint.                                    | no
+client > basic_auth          | [basic_auth][]    | Configure `basic_auth` for authenticating to the endpoint.                                  | no
 client > authorization       | [authorization][] | Configure generic authorization to the endpoint.                                            | no
 client > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.                                        | no
 client > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.                                      | no
 client > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.                                      | no
 clustering                   | [clustering][]    | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no
 
-The `>` symbol indicates deeper levels of nesting. For example, `client >
-basic_auth` refers to a `basic_auth` block defined
-inside a `client` block.
+The `>` symbol indicates deeper levels of nesting.
+For example, `client > basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
 [client]: #client-block
 [basic_auth]: #basic_auth-block
@@ -86,10 +80,8 @@ inside a `client` block.
 
 ### client block
 
-The `client` block configures the Kubernetes client used to tail logs from
-containers. If the `client` block isn't provided, the default in-cluster
-configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is
-used.
+The `client` block configures the Kubernetes client used to tail logs from containers.
+If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
 
 The following arguments are supported:
 
@@ -107,6 +99,7 @@ Name                     | Type                | Description                    
 `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no
 
  At most, one of the following can be provided:
+
  - [`bearer_token` argument][client].
  - [`bearer_token_file` argument][client].
  - [`basic_auth` block][basic_auth].
@@ -137,15 +130,12 @@ Name      | Type   | Description                                         | Defau
 ----------|--------|-----------------------------------------------------|---------|---------
 `enabled` | `bool` | Distribute log collection with other cluster nodes. |         | yes
 
-When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this
-`loki.source.kubernetes` component instance opts-in to participating in the
-cluster to distribute the load of log collection between all cluster nodes.
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this `loki.source.kubernetes` component instance opts-in to participating in the cluster to distribute the load of log collection between all cluster nodes.
 
-If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and
-`loki.source.kubernetes` collects logs from every target it receives in its
-arguments.
+If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and `loki.source.kubernetes` collects logs from every target it receives in its arguments.
 
 Clustering only looks at the following labels for determining the shard key:
+
 * `__pod_namespace__`
 * `__pod_name__`
 * `__pod_container_name__`
@@ -163,17 +153,15 @@ Clustering only looks at the following labels for determining the shard key:
 
 ## Exported fields
 
-`loki.source.kubernetes` does not export any fields.
+`loki.source.kubernetes` doesn't export any fields.
 
 ## Component health
 
-`loki.source.kubernetes` is only reported as unhealthy if given an invalid
-configuration.
+`loki.source.kubernetes` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`loki.source.kubernetes` exposes some target-level debug information per
-target:
+`loki.source.kubernetes` exposes some target-level debug information per target:
 
 * The labels associated with the target.
 * The full set of labels which were found during service discovery.
@@ -186,8 +174,7 @@ target:
 
 ## Example
 
-This example collects logs from all Kubernetes pods and forwards them to a
-`loki.write` component so they are written to Loki.
+This example collects logs from all Kubernetes pods and forwards them to a `loki.write` component so they are written to Loki.
 
 ```alloy
 discovery.kubernetes "pods" {
