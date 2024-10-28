@@ -2,18 +2,14 @@ package queue
 
 import (
 	"context"
-	"path/filepath"
 	"reflect"
 	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/filequeue"
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/network"
 	"github.com/grafana/alloy/internal/component/prometheus/write/queue/serialization"
 	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/storage"
 )
 
@@ -98,52 +94,52 @@ func (s *Queue) Update(args component.Arguments) error {
 		return nil
 	}
 	s.args = newArgs
-	// TODO @mattdurham need to cycle through the endpoints figuring out what changed instead of this global stop and start.
-	// This will cause data in the endpoints and their children to be lost.
-	if len(s.endpoints) > 0 {
-		for _, ep := range s.endpoints {
-			ep.Stop()
+	// Figure out which endpoint is new, which is updated, and which needs to be gone.
+	deletableEndpoints := make(map[string]struct{})
+	for k := range s.endpoints {
+		deletableEndpoints[k] = struct{}{}
+	}
+
+	for _, epCfg := range s.args.Endpoints {
+		delete(deletableEndpoints, epCfg.Name)
+		ep, ok := s.endpoints[epCfg.Name]
+		if ok {
+			// Update
+			err := ep.Network().UpdateConfig(context.Background(), epCfg.ToNativeType())
+			if err != nil {
+				return err
+			}
+			err = ep.Serializer().UpdateConfig(context.Background(), types.SerializerConfig{
+				MaxSignalsInBatch: uint32(s.args.Persistence.MaxSignalsToBatch),
+				FlushFrequency:    s.args.Persistence.BatchInterval,
+			})
+			if err != nil {
+				return err
+			}
+		} else {
+			// Create
+			end, err := createEndpoint(epCfg, s.args.TTL, uint(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.opts.DataPath, s.opts.Registerer, s.opts.Logger)
+			if err != nil {
+				return err
+			}
+			end.Start()
+			s.endpoints[epCfg.Name] = end
 		}
-		s.endpoints = map[string]*endpoint{}
 	}
-	err := s.createEndpoints()
-	if err != nil {
-		return err
-	}
-	for _, ep := range s.endpoints {
-		ep.Start()
+	// Now we need to figure out the endpoints that were not touched and able to be deleted.
+	for name := range deletableEndpoints {
+		s.endpoints[name].Stop()
+		delete(s.endpoints, name)
 	}
 	return nil
 }
 
 func (s *Queue) createEndpoints() error {
-	// @mattdurham not in love with this code.
 	for _, ep := range s.args.Endpoints {
-		reg := prometheus.WrapRegistererWith(prometheus.Labels{"endpoint": ep.Name}, s.opts.Registerer)
-		stats := types.NewStats("alloy", "queue_series", reg)
-		stats.SeriesBackwardsCompatibility(reg)
-		meta := types.NewStats("alloy", "queue_metadata", reg)
-		meta.MetaBackwardsCompatibility(reg)
-		cfg := ep.ToNativeType()
-		client, err := network.New(cfg, s.log, stats.UpdateNetwork, meta.UpdateNetwork)
+		end, err := createEndpoint(ep, s.args.TTL, uint(s.args.Persistence.MaxSignalsToBatch), s.args.TTL, s.opts.DataPath, s.opts.Registerer, s.opts.Logger)
 		if err != nil {
 			return err
 		}
-		end := NewEndpoint(client, nil, s.args.TTL, s.opts.Logger)
-		fq, err := filequeue.NewQueue(filepath.Join(s.opts.DataPath, ep.Name, "wal"), func(ctx context.Context, dh types.DataHandle) {
-			_ = end.incoming.Send(ctx, dh)
-		}, s.opts.Logger)
-		if err != nil {
-			return err
-		}
-		serial, err := serialization.NewSerializer(types.SerializerConfig{
-			MaxSignalsInBatch: uint32(s.args.Persistence.MaxSignalsToBatch),
-			FlushFrequency:    s.args.Persistence.BatchInterval,
-		}, fq, stats.UpdateSerializer, s.opts.Logger)
-		if err != nil {
-			return err
-		}
-		end.serializer = serial
 		s.endpoints[ep.Name] = end
 	}
 	return nil

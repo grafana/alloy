@@ -2,13 +2,18 @@ package queue
 
 import (
 	"context"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	snappy "github.com/eapache/go-xerial-snappy"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/alloy/internal/component/prometheus/write/queue/filequeue"
+	"github.com/grafana/alloy/internal/component/prometheus/write/queue/network"
+	"github.com/grafana/alloy/internal/component/prometheus/write/queue/serialization"
 	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/vladopajic/go-actor/actor"
 )
 
@@ -25,15 +30,40 @@ type endpoint struct {
 	self       actor.Actor
 }
 
-func NewEndpoint(client types.NetworkClient, serializer types.Serializer, ttl time.Duration, logger log.Logger) *endpoint {
-	return &endpoint{
-		network:    client,
-		serializer: serializer,
-		log:        logger,
-		ttl:        ttl,
-		incoming:   actor.NewMailbox[types.DataHandle](actor.OptCapacity(1)),
-		buf:        make([]byte, 0, 1024),
+func createEndpoint(ep EndpointConfig, ttl time.Duration, maxSignalsTokbatch uint, batchInterval time.Duration, dataPath string, register prometheus.Registerer, l log.Logger) (*endpoint, error) {
+	reg := prometheus.WrapRegistererWith(prometheus.Labels{"endpoint": ep.Name}, register)
+	stats := types.NewStats("alloy", "queue_series", reg)
+	stats.SeriesBackwardsCompatibility(reg)
+	meta := types.NewStats("alloy", "queue_metadata", reg)
+	meta.MetaBackwardsCompatibility(reg)
+	cfg := ep.ToNativeType()
+	client, err := network.New(cfg, l, stats.UpdateNetwork, meta.UpdateNetwork)
+	if err != nil {
+		return nil, err
 	}
+	end := &endpoint{
+		network:  client,
+		log:      l,
+		ttl:      ttl,
+		incoming: actor.NewMailbox[types.DataHandle](actor.OptCapacity(1)),
+		buf:      make([]byte, 0, 1024),
+	}
+
+	fq, err := filequeue.NewQueue(filepath.Join(dataPath, ep.Name, "wal"), func(ctx context.Context, dh types.DataHandle) {
+		_ = end.incoming.Send(ctx, dh)
+	}, l)
+	if err != nil {
+		return nil, err
+	}
+	serial, err := serialization.NewSerializer(types.SerializerConfig{
+		MaxSignalsInBatch: uint32(maxSignalsTokbatch),
+		FlushFrequency:    batchInterval,
+	}, fq, stats.UpdateSerializer, l)
+	if err != nil {
+		return nil, err
+	}
+	end.serializer = serial
+	return end, nil
 }
 
 func (ep *endpoint) Start() {
@@ -48,6 +78,14 @@ func (ep *endpoint) Stop() {
 	ep.serializer.Stop()
 	ep.network.Stop()
 	ep.self.Stop()
+}
+
+func (ep *endpoint) Network() types.NetworkClient {
+	return ep.network
+}
+
+func (ep *endpoint) Serializer() types.Serializer {
+	return ep.serializer
 }
 
 func (ep *endpoint) DoWork(ctx actor.Context) actor.WorkerStatus {

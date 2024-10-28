@@ -19,7 +19,7 @@ import (
 type serializer struct {
 	inbox               actor.Mailbox[*types.TimeSeriesBinary]
 	metaInbox           actor.Mailbox[*types.TimeSeriesBinary]
-	cfgInbox            actor.Mailbox[types.SerializerConfig]
+	cfgInbox            *types.SyncMailbox[types.SerializerConfig]
 	maxItemsBeforeFlush int
 	flushFrequency      time.Duration
 	queue               types.FileStorage
@@ -44,7 +44,7 @@ func NewSerializer(cfg types.SerializerConfig, q types.FileStorage, stats func(s
 		logger:              l,
 		inbox:               actor.NewMailbox[*types.TimeSeriesBinary](),
 		metaInbox:           actor.NewMailbox[*types.TimeSeriesBinary](),
-		cfgInbox:            actor.NewMailbox[types.SerializerConfig](),
+		cfgInbox:            types.NewSyncMailbox[types.SerializerConfig](),
 		flushTestTimer:      time.NewTicker(1 * time.Second),
 		msgpBuffer:          make([]byte, 0),
 		lastFlush:           time.Now(),
@@ -95,12 +95,13 @@ func (s *serializer) DoWork(ctx actor.Context) actor.WorkerStatus {
 	select {
 	case <-ctx.Done():
 		return actor.WorkerEnd
-	case cfg, ok := <-s.cfgInbox.ReceiveC():
+	case cfg, ok := <-s.cfgInbox.Receive():
 		if !ok {
 			return actor.WorkerEnd
 		}
-		s.maxItemsBeforeFlush = int(cfg.MaxSignalsInBatch)
-		s.flushFrequency = cfg.FlushFrequency
+		defer cfg.Notify()
+		s.maxItemsBeforeFlush = int(cfg.Value.MaxSignalsInBatch)
+		s.flushFrequency = cfg.Value.FlushFrequency
 		return actor.WorkerContinue
 	default:
 	}

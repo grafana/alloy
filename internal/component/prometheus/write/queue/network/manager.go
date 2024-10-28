@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -15,17 +16,11 @@ type manager struct {
 	logger      log.Logger
 	inbox       actor.Mailbox[*types.TimeSeriesBinary]
 	metaInbox   actor.Mailbox[*types.TimeSeriesBinary]
-	configInbox actor.Mailbox[configCallback]
+	configInbox *types.SyncMailbox[types.ConnectionConfig]
 	self        actor.Actor
 	cfg         types.ConnectionConfig
 	stats       func(types.NetworkStats)
 	metaStats   func(types.NetworkStats)
-}
-
-// configCallback allows actors to notify via `done` channel when they're done processing the config `cc`. Useful when synchronous processing is required.
-type configCallback struct {
-	cc   types.ConnectionConfig
-	done chan struct{}
 }
 
 var _ types.NetworkClient = (*manager)(nil)
@@ -40,7 +35,7 @@ func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStat
 		// it will stop the filequeue from feeding more.
 		inbox:       actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
 		metaInbox:   actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
-		configInbox: actor.NewMailbox[configCallback](),
+		configInbox: types.NewSyncMailbox[types.ConnectionConfig](),
 		stats:       seriesStats,
 		metaStats:   metadataStats,
 		cfg:         cc,
@@ -76,30 +71,19 @@ func (s *manager) SendMetadata(ctx context.Context, data *types.TimeSeriesBinary
 }
 
 func (s *manager) UpdateConfig(ctx context.Context, cc types.ConnectionConfig) error {
-	done := make(chan struct{})
-	defer close(done)
-	err := s.configInbox.Send(ctx, configCallback{
-		cc:   cc,
-		done: done,
-	})
-	if err != nil {
-		return err
-	}
-	<-done
-	return nil
+	return s.configInbox.Send(ctx, cc)
 }
 
 func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
 	// This acts as a priority queue, always check for configuration changes first.
 	select {
-	case cfg, ok := <-s.configInbox.ReceiveC():
+	case cfg, ok := <-s.configInbox.Receive():
+		defer cfg.Notify()
 		if !ok {
 			level.Debug(s.logger).Log("msg", "config inbox closed")
 			return actor.WorkerEnd
 		}
-		s.updateConfig(cfg.cc)
-		// Notify the caller we have applied the config.
-		cfg.done <- struct{}{}
+		s.updateConfig(cfg.Value)
 		return actor.WorkerContinue
 	default:
 	}
@@ -127,14 +111,13 @@ func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
 		}
 		return actor.WorkerContinue
 		// We need to also check the config here, else its possible this will deadlock.
-	case cfg, ok := <-s.configInbox.ReceiveC():
+	case cfg, ok := <-s.configInbox.Receive():
 		if !ok {
 			level.Debug(s.logger).Log("msg", "config inbox closed")
 			return actor.WorkerEnd
 		}
-		s.updateConfig(cfg.cc)
-		// Notify the caller we have applied the config.
-		cfg.done <- struct{}{}
+		defer cfg.Notify()
+		s.updateConfig(cfg.Value)
 		return actor.WorkerContinue
 	}
 }
