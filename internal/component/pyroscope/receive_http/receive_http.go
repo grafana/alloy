@@ -43,7 +43,7 @@ type Arguments struct {
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	serverConfig := fnet.DefaultServerConfig()
-	if serverConfig.HTTP.ConnLimit > defaultMaxConnLimit {
+	if serverConfig.HTTP.ConnLimit == 0 {
 		serverConfig.HTTP.ConnLimit = defaultMaxConnLimit
 	}
 	*a = Arguments{
@@ -93,7 +93,12 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// if no server config provided, we'll use defaults
 	if newArgs.Server == nil {
-		newArgs.Server = &fnet.ServerConfig{}
+		newArgs.Server = fnet.DefaultServerConfig()
+	}
+
+	// Only apply default max connections limit if using default config
+	if newArgs.Server.HTTP.ConnLimit == 0 {
+		newArgs.Server.HTTP.ConnLimit = defaultMaxConnLimit
 	}
 
 	if newArgs.Server.HTTP == nil {
