@@ -99,8 +99,6 @@ var (
 	_ component.LiveDebugging = (*Component)(nil)
 )
 
-// cpu_total{env=dev} 200 # {traceid="12345asdf"}
-
 // New creates a new prometheus.relabel component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	cache, err := lru.New[uint64, *labelAndID](args.CacheSize)
