@@ -274,7 +274,8 @@ func Test_Write_AppendIngest(t *testing.T) {
 			appendCount.Inc()
 			require.Equal(t, expectedPath, r.URL.Path, "Unexpected path")
 			require.Equal(t, expectedQuery, r.URL.RawQuery, "Unexpected query")
-			require.Equal(t, "test-value", r.Header.Get("X-Test-Header"), "Unexpected header value")
+			require.Equal(t, "endpoint-value", r.Header.Get("X-Test-Header"))
+			require.Equal(t, []string{"profile-value1", "profile-value2"}, r.Header["X-Profile-Header"])
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err, "Failed to read request body")
 			require.Equal(t, testData, body, "Unexpected body content")
@@ -288,7 +289,7 @@ func Test_Write_AppendIngest(t *testing.T) {
 			URL:           servers[i].URL,
 			RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
 			Headers: map[string]string{
-				"X-Test-Header": "test-value",
+				"X-Test-Header": "endpoint-value",
 			},
 		})
 	}
@@ -321,9 +322,12 @@ func Test_Write_AppendIngest(t *testing.T) {
 	require.NotNil(t, export.Receiver, "Receiver is nil")
 
 	incomingProfile := &pyroscope.IncomingProfile{
-		Body:    io.NopCloser(bytes.NewReader(testData)),
-		Headers: http.Header{"Content-Type": []string{"application/octet-stream"}},
-		URL:     &url.URL{Path: "/ingest", RawQuery: "key=value"},
+		Body: io.NopCloser(bytes.NewReader(testData)),
+		Headers: http.Header{
+			"X-Test-Header":    []string{"profile-value"},                    // This should be overridden by endpoint
+			"X-Profile-Header": []string{"profile-value1", "profile-value2"}, // This should be preserved
+		},
+		URL: &url.URL{Path: "/ingest", RawQuery: "key=value"},
 	}
 
 	err = export.Receiver.Appender().AppendIngest(context.Background(), incomingProfile)

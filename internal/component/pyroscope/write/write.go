@@ -380,12 +380,14 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 				return fmt.Errorf("create request: %w", err)
 			}
 
-			// Headers are still set the same way
-			for k, v := range endpoint.Headers {
-				req.Header.Set(k, v)
-			}
+			// First set profile headers as defaults
 			for k, v := range profile.Headers {
 				req.Header[k] = v
+			}
+
+			// Override any profile duplicated header
+			for k, v := range endpoint.Headers {
+				req.Header.Set(k, v)
 			}
 
 			resp, err := f.httpClient.Do(req)
