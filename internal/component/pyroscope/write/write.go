@@ -1,7 +1,6 @@
 package write
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -13,19 +12,20 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/alloy/internal/alloyseed"
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/useragent"
 	"github.com/oklog/run"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.uber.org/multierr"
+	"golang.org/x/sync/errgroup"
 
+	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -340,48 +340,68 @@ func (e *PyroscopeWriteError) Error() string {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
-	var buf bytes.Buffer
-	tee := io.TeeReader(profile.Body, &buf)
-
-	for i, endpoint := range f.config.Endpoints {
-		u, err := url.Parse(endpoint.URL)
-		if err != nil {
-			return fmt.Errorf("parse endpoint URL: %w", err)
-		}
-
-		u.Path = path.Join(u.Path, profile.URL.Path)
-		u.RawQuery = profile.URL.RawQuery
-
-		var bodyReader io.Reader
-		if i == 0 {
-			bodyReader = tee
-		} else {
-			bodyReader = bytes.NewReader(buf.Bytes())
-		}
-
-		req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bodyReader)
-		if err != nil {
-			return fmt.Errorf("create request: %w", err)
-		}
-
-		for k, v := range endpoint.Headers {
-			req.Header.Set(k, v)
-		}
-		for k, v := range profile.Headers {
-			req.Header[k] = v
-		}
-
-		resp, err := f.httpClient.Do(req)
-		if err != nil {
-			return fmt.Errorf("do request: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return &PyroscopeWriteError{StatusCode: resp.StatusCode}
-		}
+	pipeWriters := make([]io.Writer, len(f.config.Endpoints))
+	pipeReaders := make([]io.Reader, len(f.config.Endpoints))
+	for i := range f.config.Endpoints {
+		pr, pw := io.Pipe()
+		pipeReaders[i] = pr
+		pipeWriters[i] = pw
 	}
-	return nil
+	mw := io.MultiWriter(pipeWriters...)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	// Start copying the profile body to all pipes
+	g.Go(func() error {
+		defer func() {
+			for _, pw := range pipeWriters {
+				pw.(io.WriteCloser).Close()
+			}
+		}()
+		_, err := io.Copy(mw, profile.Body)
+		return err
+	})
+
+	// Send to each endpoint concurrently
+	for i, endpoint := range f.config.Endpoints {
+		g.Go(func() error {
+			defer pipeReaders[i].(io.ReadCloser).Close()
+
+			u, err := url.Parse(endpoint.URL)
+			if err != nil {
+				return fmt.Errorf("parse endpoint URL: %w", err)
+			}
+
+			u.Path = path.Join(u.Path, profile.URL.Path)
+			u.RawQuery = profile.URL.RawQuery
+
+			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), pipeReaders[i])
+			if err != nil {
+				return fmt.Errorf("create request: %w", err)
+			}
+
+			// Headers are still set the same way
+			for k, v := range endpoint.Headers {
+				req.Header.Set(k, v)
+			}
+			for k, v := range profile.Headers {
+				req.Header[k] = v
+			}
+
+			resp, err := f.httpClient.Do(req)
+			if err != nil {
+				return fmt.Errorf("do request: %w", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				return &PyroscopeWriteError{StatusCode: resp.StatusCode}
+			}
+			return nil
+		})
+	}
+
+	return g.Wait()
 }
 
 // WithUserAgent returns a `connect.ClientOption` that sets the User-Agent header on.

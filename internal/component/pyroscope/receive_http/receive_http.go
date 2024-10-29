@@ -4,17 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/component/pyroscope/write"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"net/http"
 	"reflect"
 	"sync"
 
+	"github.com/gorilla/mux"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
