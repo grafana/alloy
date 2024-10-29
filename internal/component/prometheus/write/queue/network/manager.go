@@ -37,7 +37,7 @@ func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStat
 		loops:  make([]*loop, 0, cc.Connections),
 		logger: logger,
 		// This provides blocking to only handle one at a time, so that if a queue blocks
-		// it will stop the filequeue from feeding more. Without as chan the minimum capacity is actually a 64 item buffer.
+		// it will stop the filequeue from feeding more. Without OptAsChan the minimum capacity is actually a 64-item buffer.
 		inbox:       actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1), actor.OptAsChan()),
 		metaInbox:   actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1), actor.OptAsChan()),
 		configInbox: actor.NewMailbox[configCallback](),
