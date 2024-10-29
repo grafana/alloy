@@ -52,6 +52,8 @@ Main (unreleased)
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
 
+- Do not log error on clean shutdown of `loki.source.journal`. (@thampiotr) 
+
 ### Other changes
 
 - Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
