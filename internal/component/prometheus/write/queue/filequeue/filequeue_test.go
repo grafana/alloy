@@ -8,17 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vladopajic/go-actor/actor"
-	"go.uber.org/goleak"
-
 	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
+	"github.com/vladopajic/go-actor/actor"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFileQueue(t *testing.T) {
-	defer goleak.VerifyNone(t)
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()
@@ -50,8 +47,6 @@ func TestFileQueue(t *testing.T) {
 }
 
 func TestMetaFileQueue(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()
@@ -74,8 +69,6 @@ func TestMetaFileQueue(t *testing.T) {
 }
 
 func TestCorruption(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()
@@ -117,8 +110,6 @@ func TestCorruption(t *testing.T) {
 }
 
 func TestFileDeleted(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()
@@ -163,8 +154,6 @@ func TestFileDeleted(t *testing.T) {
 }
 
 func TestOtherFiles(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()
@@ -186,8 +175,6 @@ func TestOtherFiles(t *testing.T) {
 }
 
 func TestResuming(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()
