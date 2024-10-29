@@ -110,8 +110,8 @@ func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
 			level.Error(s.logger).Log("msg", "failed to send to metadata loop", "err", err)
 		}
 		return actor.WorkerContinue
-		// We need to also check the config here, else its possible this will deadlock.
 	case cfg, ok := <-s.configInbox.ReceiveC():
+		// We need to also check the config here, else its possible this will deadlock.
 		if !ok {
 			level.Debug(s.logger).Log("msg", "config inbox closed")
 			return actor.WorkerEnd
