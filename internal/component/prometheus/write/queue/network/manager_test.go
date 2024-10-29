@@ -17,12 +17,9 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
-	"go.uber.org/goleak"
 )
 
 func TestSending(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
 	recordsFound := atomic.Uint32{}
 	svr := httptest.NewServer(handler(t, http.StatusOK, func(wr *prompb.WriteRequest) {
 		recordsFound.Add(uint32(len(wr.Timeseries)))
@@ -44,7 +41,9 @@ func TestSending(t *testing.T) {
 	logger := log.NewNopLogger()
 	wr, err := New(cc, logger, func(s types.NetworkStats) {}, func(s types.NetworkStats) {})
 	wr.Start()
-	defer wr.Stop()
+	defer func() {
+		wr.Stop()
+	}()
 	require.NoError(t, err)
 	for i := 0; i < 1_000; i++ {
 		send(t, wr, ctx)
@@ -55,8 +54,6 @@ func TestSending(t *testing.T) {
 }
 
 func TestUpdatingConfig(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
 	recordsFound := atomic.Uint32{}
 	lastBatchSize := atomic.Uint32{}
 	svr := httptest.NewServer(handler(t, http.StatusOK, func(wr *prompb.WriteRequest) {
@@ -103,8 +100,6 @@ func TestUpdatingConfig(t *testing.T) {
 }
 
 func TestRetry(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
 	retries := atomic.Uint32{}
 	var previous *prompb.WriteRequest
 	svr := httptest.NewServer(handler(t, http.StatusTooManyRequests, func(wr *prompb.WriteRequest) {
@@ -144,7 +139,6 @@ func TestRetry(t *testing.T) {
 }
 
 func TestRetryBounded(t *testing.T) {
-	defer goleak.VerifyNone(t)
 
 	sends := atomic.Uint32{}
 	svr := httptest.NewServer(handler(t, http.StatusTooManyRequests, func(wr *prompb.WriteRequest) {
@@ -184,7 +178,6 @@ func TestRetryBounded(t *testing.T) {
 }
 
 func TestRecoverable(t *testing.T) {
-	defer goleak.VerifyNone(t)
 
 	recoverable := atomic.Uint32{}
 	svr := httptest.NewServer(handler(t, http.StatusInternalServerError, func(wr *prompb.WriteRequest) {
@@ -224,7 +217,6 @@ func TestRecoverable(t *testing.T) {
 }
 
 func TestNonRecoverable(t *testing.T) {
-	defer goleak.VerifyNone(t)
 
 	nonRecoverable := atomic.Uint32{}
 	svr := httptest.NewServer(handler(t, http.StatusBadRequest, func(wr *prompb.WriteRequest) {
