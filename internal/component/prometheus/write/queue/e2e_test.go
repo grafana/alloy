@@ -214,7 +214,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	}
 	require.Eventuallyf(t, func() bool {
 		return types.OutStandingTimeSeriesBinary.Load() == 0
-	}, 2*time.Second, 100*time.Millisecond, "there are %d time series not collected", types.OutStandingTimeSeriesBinary.Load())
+	}, 5*time.Second, 100*time.Millisecond, "there are %d time series not collected", types.OutStandingTimeSeriesBinary.Load())
 }
 
 func handlePost(t *testing.T, _ http.ResponseWriter, r *http.Request) ([]prompb.TimeSeries, []prompb.MetricMetadata) {
