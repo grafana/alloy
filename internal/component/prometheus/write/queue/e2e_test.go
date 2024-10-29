@@ -155,6 +155,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	require.NoError(t, err)
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
+
 	go func() {
 		runErr := c.Run(ctx)
 		require.NoError(t, runErr)
@@ -168,16 +169,15 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	}
 
 	for i := 0; i < iterations; i++ {
-		go func() {
-			app := exp.Receiver.Appender(ctx)
-			for j := 0; j < items; j++ {
-				val := index.Add(1)
-				v, lbl := add(int(val), app)
-				results.Add(v, lbl)
-			}
-			require.NoError(t, app.Commit())
-		}()
+		app := exp.Receiver.Appender(ctx)
+		for j := 0; j < items; j++ {
+			val := index.Add(1)
+			v, lbl := add(int(val), app)
+			results.Add(v, lbl)
+		}
+		require.NoError(t, app.Commit())
 	}
+
 	// This is a weird use case to handle eventually.
 	// With race turned on this can take a long time.
 	tm := time.NewTimer(20 * time.Second)
@@ -186,6 +186,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	case <-tm.C:
 		require.Truef(t, false, "failed to collect signals in the appropriate time")
 	}
+
 	cancel()
 
 	for i := 0; i < samples.Len(); i++ {
