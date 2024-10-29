@@ -17,8 +17,8 @@ import (
 // serializer collects data from multiple appenders in-memory and will periodically flush the data to file.Storage.
 // serializer will flush based on configured time duration OR if it hits a certain number of items.
 type serializer struct {
-	inbox               actor.Mailbox[*types.TimeSeriesBinary]
-	metaInbox           actor.Mailbox[*types.TimeSeriesBinary]
+	inbox               *types.Mailbox[*types.TimeSeriesBinary]
+	metaInbox           *types.Mailbox[*types.TimeSeriesBinary]
 	cfgInbox            *types.SyncMailbox[types.SerializerConfig]
 	maxItemsBeforeFlush int
 	flushFrequency      time.Duration
@@ -42,8 +42,8 @@ func NewSerializer(cfg types.SerializerConfig, q types.FileStorage, stats func(s
 		queue:               q,
 		series:              make([]*types.TimeSeriesBinary, 0),
 		logger:              l,
-		inbox:               actor.NewMailbox[*types.TimeSeriesBinary](),
-		metaInbox:           actor.NewMailbox[*types.TimeSeriesBinary](),
+		inbox:               types.NewMailbox[*types.TimeSeriesBinary](0, false),
+		metaInbox:           types.NewMailbox[*types.TimeSeriesBinary](0, false),
 		cfgInbox:            types.NewSyncMailbox[types.SerializerConfig](),
 		flushTestTimer:      time.NewTicker(1 * time.Second),
 		msgpBuffer:          make([]byte, 0),
@@ -95,7 +95,7 @@ func (s *serializer) DoWork(ctx actor.Context) actor.WorkerStatus {
 	select {
 	case <-ctx.Done():
 		return actor.WorkerEnd
-	case cfg, ok := <-s.cfgInbox.Receive():
+	case cfg, ok := <-s.cfgInbox.ReceiveC():
 		if !ok {
 			return actor.WorkerEnd
 		}

@@ -14,8 +14,8 @@ type manager struct {
 	loops       []*loop
 	metadata    *loop
 	logger      log.Logger
-	inbox       actor.Mailbox[*types.TimeSeriesBinary]
-	metaInbox   actor.Mailbox[*types.TimeSeriesBinary]
+	inbox       *types.Mailbox[*types.TimeSeriesBinary]
+	metaInbox   *types.Mailbox[*types.TimeSeriesBinary]
 	configInbox *types.SyncMailbox[types.ConnectionConfig]
 	self        actor.Actor
 	cfg         types.ConnectionConfig
@@ -32,9 +32,9 @@ func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStat
 		loops:  make([]*loop, 0, cc.Connections),
 		logger: logger,
 		// This provides blocking to only handle one at a time, so that if a queue blocks
-		// it will stop the filequeue from feeding more.
-		inbox:       actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
-		metaInbox:   actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1)),
+		// it will stop the filequeue from feeding more. Without passing true the minimum is actually 64 instead of 1.
+		inbox:       types.NewMailbox[*types.TimeSeriesBinary](1, true),
+		metaInbox:   types.NewMailbox[*types.TimeSeriesBinary](1, true),
 		configInbox: types.NewSyncMailbox[types.ConnectionConfig](),
 		stats:       seriesStats,
 		metaStats:   metadataStats,
@@ -77,7 +77,7 @@ func (s *manager) UpdateConfig(ctx context.Context, cc types.ConnectionConfig) e
 func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
 	// This acts as a priority queue, always check for configuration changes first.
 	select {
-	case cfg, ok := <-s.configInbox.Receive():
+	case cfg, ok := <-s.configInbox.ReceiveC():
 		defer cfg.Notify()
 		if !ok {
 			level.Debug(s.logger).Log("msg", "config inbox closed")
@@ -111,7 +111,7 @@ func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
 		}
 		return actor.WorkerContinue
 		// We need to also check the config here, else its possible this will deadlock.
-	case cfg, ok := <-s.configInbox.Receive():
+	case cfg, ok := <-s.configInbox.ReceiveC():
 		if !ok {
 			level.Debug(s.logger).Log("msg", "config inbox closed")
 			return actor.WorkerEnd

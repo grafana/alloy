@@ -25,7 +25,7 @@ type queue struct {
 	directory string
 	maxID     int
 	logger    log.Logger
-	dataQueue actor.Mailbox[types.Data]
+	dataQueue *types.Mailbox[types.Data]
 	// Out is where to send data when pulled from queue, it is assumed that it will
 	// block until ready for another record.
 	out func(ctx context.Context, dh types.DataHandle)
@@ -65,7 +65,7 @@ func NewQueue(directory string, out func(ctx context.Context, dh types.DataHandl
 		maxID:         currentMaxID,
 		logger:        logger,
 		out:           out,
-		dataQueue:     actor.NewMailbox[types.Data](),
+		dataQueue:     types.NewMailbox[types.Data](0, false),
 		existingFiles: make([]string, 0),
 	}
 

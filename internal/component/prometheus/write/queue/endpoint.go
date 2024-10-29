@@ -25,7 +25,7 @@ type endpoint struct {
 	serializer types.Serializer
 	log        log.Logger
 	ttl        time.Duration
-	incoming   actor.Mailbox[types.DataHandle]
+	incoming   *types.Mailbox[types.DataHandle]
 	buf        []byte
 	self       actor.Actor
 }
@@ -45,7 +45,7 @@ func createEndpoint(ep EndpointConfig, ttl time.Duration, maxSignalsTokbatch uin
 		network:  client,
 		log:      l,
 		ttl:      ttl,
-		incoming: actor.NewMailbox[types.DataHandle](actor.OptCapacity(1)),
+		incoming: types.NewMailbox[types.DataHandle](0, false),
 		buf:      make([]byte, 0, 1024),
 	}
 

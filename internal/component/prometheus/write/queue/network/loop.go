@@ -28,7 +28,7 @@ var _ actor.Worker = (*loop)(nil)
 // loop config cannot be updated, it is easier to recreate. This does mean we lose any signals in the queue.
 type loop struct {
 	isMeta         bool
-	seriesMbx      actor.Mailbox[*types.TimeSeriesBinary]
+	seriesMbx      *types.Mailbox[*types.TimeSeriesBinary]
 	client         *http.Client
 	cfg            types.ConnectionConfig
 	log            log.Logger
@@ -49,7 +49,7 @@ func newLoop(cc types.ConnectionConfig, isMetaData bool, l log.Logger, stats fun
 	return &loop{
 		isMeta: isMetaData,
 		// In general we want a healthy queue of items, in this case we want to have 2x our maximum send sized ready.
-		seriesMbx:      actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(2 * cc.BatchCount)),
+		seriesMbx:      types.NewMailbox[*types.TimeSeriesBinary](2*cc.BatchCount, true),
 		client:         &http.Client{},
 		cfg:            cc,
 		log:            log.With(l, "name", "loop", "url", cc.URL),

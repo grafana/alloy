@@ -8,6 +8,7 @@ import (
 	"go.uber.org/atomic"
 )
 
+// Mailbox wraps a standard mailbox with an atomic bool to prevent reads while closed.
 type Mailbox[T any] struct {
 	mbx     actor.Mailbox[T]
 	stopped atomic.Bool
