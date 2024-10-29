@@ -41,9 +41,8 @@ func TestSending(t *testing.T) {
 	logger := log.NewNopLogger()
 	wr, err := New(cc, logger, func(s types.NetworkStats) {}, func(s types.NetworkStats) {})
 	wr.Start()
-	defer func() {
-		wr.Stop()
-	}()
+	defer wr.Stop()
+
 	require.NoError(t, err)
 	for i := 0; i < 1_000; i++ {
 		send(t, wr, ctx)

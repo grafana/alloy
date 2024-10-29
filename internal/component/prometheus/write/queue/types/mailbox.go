@@ -6,9 +6,11 @@ import (
 	"go.uber.org/atomic"
 )
 
-// Mailbox wraps a standard mailbox with an atomic bool to prevent reads while closed.
+// Mailbox wraps a standard mailbox.
 type Mailbox[T any] struct {
-	mbx     actor.Mailbox[T]
+	mbx actor.Mailbox[T]
+	// This doesnt actually prevent access but is used to limit work flowing downstream.
+	// Its best effort.
 	stopped atomic.Bool
 }
 
@@ -68,6 +70,10 @@ func (sm *SyncMailbox[T]) Start() {
 
 func (sm *SyncMailbox[T]) Stop() {
 	sm.stopped.Store(true)
+	// Note we are explicitly NOT calling stop here.
+	// Closing the channel can cause panics.
+	// Since multiple goroutines can write its really hard to know when you can safely close.
+	// Either way it will be garbage collected normally.
 	//sm.mbx.Stop()
 }
 

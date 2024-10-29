@@ -214,6 +214,7 @@ func (s *PrometheusStats) Unregister() {
 		s.SerializerErrors,
 		s.SerializerNewestInTimeStampSeconds,
 	}
+
 	for _, g := range unregistered {
 		s.register.Unregister(g)
 	}
