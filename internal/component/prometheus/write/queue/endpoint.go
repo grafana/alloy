@@ -31,7 +31,7 @@ func NewEndpoint(client types.NetworkClient, serializer types.Serializer, ttl ti
 		serializer: serializer,
 		log:        logger,
 		ttl:        ttl,
-		incoming:   actor.NewMailbox[types.DataHandle](actor.OptCapacity(1)),
+		incoming:   actor.NewMailbox[types.DataHandle](),
 		buf:        make([]byte, 0, 1024),
 	}
 }
