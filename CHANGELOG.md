@@ -48,7 +48,7 @@ Main (unreleased)
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
-- Fixed a bug in `azure_event_hubs` parser for messages without `time` field. (@andriikushch)
+- Support logs that have a `timestamp` field instead of a `time` field for the `loki.source.azure_event_hubs` component. (@andriikushch)
 
 ### Other changes
 
