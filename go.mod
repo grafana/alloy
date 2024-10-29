@@ -405,6 +405,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.39.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.39.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.165.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/iam v1.33.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.3.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.18 // indirect
@@ -432,6 +433,7 @@ require (
 	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/channelmeter/iso8601duration v0.0.0-20150204201828-8da3af7a2a61 // indirect
+	github.com/checkpoint-restore/go-criu/v6 v6.3.0 // indirect
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 // indirect
 	github.com/cilium/ebpf v0.16.0 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
@@ -443,10 +445,11 @@ require (
 	github.com/containerd/continuity v0.4.2 // indirect
 	github.com/containerd/errdefs v0.1.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
+	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/containerd/ttrpc v1.2.4 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.1 // indirect
-	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
+	github.com/cyphar/filepath-securejoin v0.3.4 // indirect
 	github.com/danieljoos/wincred v1.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dennwc/btrfs v0.0.0-20230312211831-a1f570bd01a1 // indirect
@@ -463,7 +466,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
-	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
+	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/efficientgo/core v1.0.0-rc.2 // indirect
@@ -485,6 +488,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.5+incompatible // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
+	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/gavv/monotime v0.0.0-20190418164738-30dba4353424 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
@@ -583,6 +587,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/pgtype v1.14.0 // indirect
 	github.com/jackc/pgx/v4 v4.18.2 // indirect
+	github.com/jaswdr/faker/v2 v2.3.2
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
@@ -637,7 +642,7 @@ require (
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.1 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
-	github.com/moby/sys/user v0.1.0 // indirect
+	github.com/moby/sys/user v0.3.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -672,7 +677,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/intervalprocessor v0.108.0
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
-	github.com/opencontainers/runc v1.1.14 // indirect
+	github.com/opencontainers/runc v1.2.0 // indirect
 	github.com/opencontainers/runtime-spec v1.2.0 // indirect
 	github.com/opencontainers/selinux v1.11.0 // indirect
 	github.com/openshift/api v3.9.0+incompatible // indirect
@@ -734,7 +739,7 @@ require (
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go v1.0.162 // indirect
 	github.com/tg123/go-htpasswd v1.2.2 // indirect
-	github.com/tinylib/msgp v1.1.9 // indirect
+	github.com/tinylib/msgp v1.1.9
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
 	github.com/tklauser/numcpus v0.7.0 // indirect
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
@@ -742,6 +747,7 @@ require (
 	github.com/vertica/vertica-sql-go v1.3.3 // indirect
 	github.com/vishvananda/netlink v1.2.1-beta.2 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
+	github.com/vladopajic/go-actor v0.9.0
 	github.com/vmware/govmomi v0.42.0 // indirect
 	github.com/vultr/govultr/v2 v2.17.2 // indirect
 	github.com/willf/bitset v1.1.11 // indirect
@@ -789,7 +795,7 @@ require (
 	go4.org/netipx v0.0.0-20230125063823-8449b0a6169f // indirect
 	golang.org/x/arch v0.7.0 // indirect
 	golang.org/x/mod v0.21.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sync v0.8.0
 	golang.org/x/term v0.24.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
@@ -809,13 +815,9 @@ require (
 	k8s.io/kube-openapi v0.0.0-20240620174524-b456828f718b // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
-	github.com/gammazero/deque v0.2.1 // indirect
-	github.com/vladopajic/go-actor v0.9.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/iam v1.33.1 // indirect
-	github.com/checkpoint-restore/go-criu/v6 v6.3.0 // indirect
-	github.com/containerd/platforms v0.2.1 // indirect
-	github.com/jaswdr/faker/v2 v2.3.2
 )
+
+require github.com/moby/sys/userns v0.1.0 // indirect
 
 // NOTE: replace directives below must always be *temporary*.
 //
@@ -911,8 +913,3 @@ exclude (
 )
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
-
-// This is a temporary replace because runk is still on this version.
-// It's important to remove it asap because in version v0.13.1 there is a fix for Beyla.
-// PR to track it: https://github.com/opencontainers/runc/pull/4397
-replace github.com/opencontainers/runc => github.com/rafaelroquetto/runc v1.1.14-1
