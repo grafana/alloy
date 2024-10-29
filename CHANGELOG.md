@@ -45,6 +45,8 @@ Main (unreleased)
 
 - Add Prometheus bearer authentication to a `prometheus.write.queue` component (@freak12techno)
 
+- Add `proxy_url` to `otelcol.exporter.otlphttp`. (@wildum)
+
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
