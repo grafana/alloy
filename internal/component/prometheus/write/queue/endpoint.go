@@ -28,20 +28,25 @@ type endpoint struct {
 	incoming   *types.Mailbox[types.DataHandle]
 	buf        []byte
 	self       actor.Actor
+	stats      *types.PrometheusStats
+	meta       *types.PrometheusStats
 }
 
-func createEndpoint(ep EndpointConfig, ttl time.Duration, maxSignalsTokbatch uint, batchInterval time.Duration, dataPath string, register prometheus.Registerer, l log.Logger) (*endpoint, error) {
+func newEndpoint(ep EndpointConfig, ttl time.Duration, maxSignalsToBatch uint, batchInterval time.Duration, dataPath string, register prometheus.Registerer, l log.Logger) (*endpoint, error) {
 	reg := prometheus.WrapRegistererWith(prometheus.Labels{"endpoint": ep.Name}, register)
 	stats := types.NewStats("alloy", "queue_series", reg)
 	stats.SeriesBackwardsCompatibility(reg)
 	meta := types.NewStats("alloy", "queue_metadata", reg)
 	meta.MetaBackwardsCompatibility(reg)
+
 	cfg := ep.ToNativeType()
 	client, err := network.New(cfg, l, stats.UpdateNetwork, meta.UpdateNetwork)
 	if err != nil {
 		return nil, err
 	}
 	end := &endpoint{
+		stats:    stats,
+		meta:     meta,
 		network:  client,
 		log:      l,
 		ttl:      ttl,
@@ -56,7 +61,7 @@ func createEndpoint(ep EndpointConfig, ttl time.Duration, maxSignalsTokbatch uin
 		return nil, err
 	}
 	serial, err := serialization.NewSerializer(types.SerializerConfig{
-		MaxSignalsInBatch: uint32(maxSignalsTokbatch),
+		MaxSignalsInBatch: uint32(maxSignalsToBatch),
 		FlushFrequency:    batchInterval,
 	}, fq, stats.UpdateSerializer, l)
 	if err != nil {
@@ -71,6 +76,7 @@ func (ep *endpoint) Start() {
 	ep.self.Start()
 	ep.serializer.Start()
 	ep.network.Start()
+
 }
 
 func (ep *endpoint) Stop() {
@@ -78,6 +84,9 @@ func (ep *endpoint) Stop() {
 	ep.serializer.Stop()
 	ep.network.Stop()
 	ep.self.Stop()
+
+	ep.stats.Unregister()
+	ep.meta.Unregister()
 }
 
 func (ep *endpoint) Network() types.NetworkClient {

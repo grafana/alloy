@@ -2,7 +2,6 @@ package serialization
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/vladopajic/go-actor/actor"
-	"go.uber.org/atomic"
 )
 
 // serializer collects data from multiple appenders in-memory and will periodically flush the data to file.Storage.
@@ -32,7 +30,6 @@ type serializer struct {
 	meta           []*types.TimeSeriesBinary
 	msgpBuffer     []byte
 	stats          func(stats types.SerializerStats)
-	stopped        *atomic.Bool
 }
 
 func NewSerializer(cfg types.SerializerConfig, q types.FileStorage, stats func(stats types.SerializerStats), l log.Logger) (types.Serializer, error) {
@@ -49,7 +46,6 @@ func NewSerializer(cfg types.SerializerConfig, q types.FileStorage, stats func(s
 		msgpBuffer:          make([]byte, 0),
 		lastFlush:           time.Now(),
 		stats:               stats,
-		stopped:             atomic.NewBool(false),
 	}
 
 	return s, nil
@@ -62,29 +58,19 @@ func (s *serializer) Start() {
 }
 
 func (s *serializer) Stop() {
-	s.stopped.Store(true)
 	s.queue.Stop()
 	s.self.Stop()
 }
 
 func (s *serializer) SendSeries(ctx context.Context, data *types.TimeSeriesBinary) error {
-	if s.stopped.Load() {
-		return fmt.Errorf("serializer is stopped")
-	}
 	return s.inbox.Send(ctx, data)
 }
 
 func (s *serializer) SendMetadata(ctx context.Context, data *types.TimeSeriesBinary) error {
-	if s.stopped.Load() {
-		return fmt.Errorf("serializer is stopped")
-	}
 	return s.metaInbox.Send(ctx, data)
 }
 
 func (s *serializer) UpdateConfig(ctx context.Context, cfg types.SerializerConfig) error {
-	if s.stopped.Load() {
-		return fmt.Errorf("serializer is stopped")
-	}
 	return s.cfgInbox.Send(ctx, cfg)
 }
 

@@ -91,7 +91,6 @@ func (s *manager) DoWork(ctx actor.Context) actor.WorkerStatus {
 	// main work queue.
 	select {
 	case <-ctx.Done():
-		s.Stop()
 		return actor.WorkerEnd
 	case ts, ok := <-s.inbox.ReceiveC():
 		if !ok {

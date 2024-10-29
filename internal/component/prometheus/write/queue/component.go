@@ -8,7 +8,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/write/queue/serialization"
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/prometheus/storage"
 )
@@ -86,9 +85,6 @@ func (s *Queue) Update(args component.Arguments) error {
 	defer s.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	sync.OnceFunc(func() {
-		s.opts.OnStateChange(Exports{Receiver: s})
-	})
 	// If they are the same do nothing.
 	if reflect.DeepEqual(newArgs, s.args) {
 		return nil
@@ -103,28 +99,20 @@ func (s *Queue) Update(args component.Arguments) error {
 	for _, epCfg := range s.args.Endpoints {
 		delete(deletableEndpoints, epCfg.Name)
 		ep, ok := s.endpoints[epCfg.Name]
+		// If found stop and recreate.
 		if ok {
-			// Update
-			err := ep.Network().UpdateConfig(context.Background(), epCfg.ToNativeType())
-			if err != nil {
-				return err
-			}
-			err = ep.Serializer().UpdateConfig(context.Background(), types.SerializerConfig{
-				MaxSignalsInBatch: uint32(s.args.Persistence.MaxSignalsToBatch),
-				FlushFrequency:    s.args.Persistence.BatchInterval,
-			})
-			if err != nil {
-				return err
-			}
-		} else {
-			// Create
-			end, err := createEndpoint(epCfg, s.args.TTL, uint(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.opts.DataPath, s.opts.Registerer, s.opts.Logger)
-			if err != nil {
-				return err
-			}
-			end.Start()
-			s.endpoints[epCfg.Name] = end
+			// Stop and loose all the signals in the queue.
+			// TODO drain the signals and re-add them
+			ep.Stop()
 		}
+		// Create
+		end, err := newEndpoint(epCfg, s.args.TTL, uint(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.opts.DataPath, s.opts.Registerer, s.opts.Logger)
+		if err != nil {
+			return err
+		}
+		end.Start()
+		s.endpoints[epCfg.Name] = end
+
 	}
 	// Now we need to figure out the endpoints that were not touched and able to be deleted.
 	for name := range deletableEndpoints {
@@ -136,7 +124,7 @@ func (s *Queue) Update(args component.Arguments) error {
 
 func (s *Queue) createEndpoints() error {
 	for _, ep := range s.args.Endpoints {
-		end, err := createEndpoint(ep, s.args.TTL, uint(s.args.Persistence.MaxSignalsToBatch), s.args.TTL, s.opts.DataPath, s.opts.Registerer, s.opts.Logger)
+		end, err := newEndpoint(ep, s.args.TTL, uint(s.args.Persistence.MaxSignalsToBatch), s.args.TTL, s.opts.DataPath, s.opts.Registerer, s.opts.Logger)
 		if err != nil {
 			return err
 		}

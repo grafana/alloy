@@ -318,7 +318,6 @@ func createWriteRequestMetadata(l log.Logger, wr *prompb.WriteRequest, series []
 	wr.Metadata = make([]prompb.MetricMetadata, 0)
 	for _, ts := range series {
 		mt, valid := toMetadata(ts)
-		// TODO @mattdurham somewhere there is a bug where metadata with no labels are being passed through.
 		if !valid {
 			level.Error(l).Log("msg", "invalid metadata was found", "labels", ts.Labels.String())
 			continue

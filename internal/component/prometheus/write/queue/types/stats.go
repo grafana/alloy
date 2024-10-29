@@ -16,6 +16,7 @@ type SerializerStats struct {
 }
 
 type PrometheusStats struct {
+	register prometheus.Registerer
 	// Network Stats
 	NetworkSeriesSent                prometheus.Counter
 	NetworkFailures                  prometheus.Counter
@@ -57,6 +58,7 @@ type PrometheusStats struct {
 
 func NewStats(namespace, subsystem string, registry prometheus.Registerer) *PrometheusStats {
 	s := &PrometheusStats{
+		register: registry,
 		SerializerInSeries: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -182,6 +184,40 @@ func NewStats(namespace, subsystem string, registry prometheus.Registerer) *Prom
 		s.SerializerNewestInTimeStampSeconds,
 	)
 	return s
+}
+
+func (s *PrometheusStats) Unregister() {
+	unregistered := []prometheus.Collector{
+		s.RemoteStorageDuration,
+		s.RemoteStorageInTimestamp,
+		s.RemoteStorageOutTimestamp,
+		s.SamplesTotal,
+		s.HistogramsTotal,
+		s.FailedSamplesTotal,
+		s.FailedHistogramsTotal,
+		s.RetriedSamplesTotal,
+		s.RetriedHistogramsTotal,
+		s.SentBytesTotal,
+		s.MetadataTotal,
+		s.FailedMetadataTotal,
+		s.RetriedMetadataTotal,
+		s.MetadataBytesTotal,
+		s.NetworkSentDuration,
+		s.NetworkRetries5XX,
+		s.NetworkRetries429,
+		s.NetworkRetries,
+		s.NetworkFailures,
+		s.NetworkSeriesSent,
+		s.NetworkErrors,
+		s.NetworkNewestOutTimeStampSeconds,
+		s.SerializerInSeries,
+		s.SerializerErrors,
+		s.SerializerNewestInTimeStampSeconds,
+	}
+	for _, g := range unregistered {
+		s.register.Unregister(g)
+	}
+
 }
 
 func (s *PrometheusStats) SeriesBackwardsCompatibility(registry prometheus.Registerer) {
