@@ -48,6 +48,7 @@ Main (unreleased)
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
+- Fixed a bug in `azure_event_hubs` parser for messages without `time` field. (@andriikushch)
 
 ### Other changes
 
