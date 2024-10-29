@@ -45,10 +45,11 @@ Main (unreleased)
 
 - Add Prometheus bearer authentication to a `prometheus.write.queue` component (@freak12techno)
 
+- Support logs that have a `timestamp` field instead of a `time` field for the `loki.source.azure_event_hubs` component. (@andriikushch)
+
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
-- Support logs that have a `timestamp` field instead of a `time` field for the `loki.source.azure_event_hubs` component. (@andriikushch)
 
 ### Other changes
 
