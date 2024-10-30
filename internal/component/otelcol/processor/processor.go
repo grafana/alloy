@@ -198,7 +198,7 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var tracesProcessor otelprocessor.Traces
 	if len(next.Traces) > 0 {
-		tracesProcessor, err = p.factory.CreateTracesProcessor(p.ctx, settings, processorConfig, nextTraces)
+		tracesProcessor, err = p.factory.CreateTraces(p.ctx, settings, processorConfig, nextTraces)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if tracesProcessor != nil {
@@ -208,7 +208,7 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var metricsProcessor otelprocessor.Metrics
 	if len(next.Metrics) > 0 {
-		metricsProcessor, err = p.factory.CreateMetricsProcessor(p.ctx, settings, processorConfig, nextMetrics)
+		metricsProcessor, err = p.factory.CreateMetrics(p.ctx, settings, processorConfig, nextMetrics)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if metricsProcessor != nil {
@@ -218,7 +218,7 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var logsProcessor otelprocessor.Logs
 	if len(next.Logs) > 0 {
-		logsProcessor, err = p.factory.CreateLogsProcessor(p.ctx, settings, processorConfig, nextLogs)
+		logsProcessor, err = p.factory.CreateLogs(p.ctx, settings, processorConfig, nextLogs)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if logsProcessor != nil {

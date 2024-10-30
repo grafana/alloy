@@ -186,7 +186,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 			traces = append(traces, r.liveDebuggingConsumer)
 		}
 		nextTraces := fanoutconsumer.Traces(traces)
-		tracesReceiver, err := r.factory.CreateTracesReceiver(r.ctx, settings, receiverConfig, nextTraces)
+		tracesReceiver, err := r.factory.CreateTraces(r.ctx, settings, receiverConfig, nextTraces)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if tracesReceiver != nil {
@@ -200,7 +200,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 			metrics = append(metrics, r.liveDebuggingConsumer)
 		}
 		nextMetrics := fanoutconsumer.Metrics(metrics)
-		metricsReceiver, err := r.factory.CreateMetricsReceiver(r.ctx, settings, receiverConfig, nextMetrics)
+		metricsReceiver, err := r.factory.CreateMetrics(r.ctx, settings, receiverConfig, nextMetrics)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if metricsReceiver != nil {
@@ -214,7 +214,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 			logs = append(logs, r.liveDebuggingConsumer)
 		}
 		nextLogs := fanoutconsumer.Logs(logs)
-		logsReceiver, err := r.factory.CreateLogsReceiver(r.ctx, settings, receiverConfig, nextLogs)
+		logsReceiver, err := r.factory.CreateLogs(r.ctx, settings, receiverConfig, nextLogs)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if logsReceiver != nil {
