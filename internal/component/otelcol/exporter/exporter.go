@@ -20,6 +20,7 @@ import (
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelexporter "go.opentelemetry.io/collector/exporter"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
@@ -39,7 +40,7 @@ type Arguments interface {
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
-	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 
 	// DebugMetricsConfig returns the configuration for debug metrics
 	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
@@ -203,7 +204,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	var tracesExporter otelexporter.Traces
 	if e.supportedSignals.SupportsTraces() {
 		tracesExporter, err = e.factory.CreateTracesExporter(e.ctx, settings, exporterConfig)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if tracesExporter != nil {
 			components = append(components, tracesExporter)
@@ -213,7 +214,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	var metricsExporter otelexporter.Metrics
 	if e.supportedSignals.SupportsMetrics() {
 		metricsExporter, err = e.factory.CreateMetricsExporter(e.ctx, settings, exporterConfig)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if metricsExporter != nil {
 			components = append(components, metricsExporter)
@@ -223,7 +224,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	var logsExporter otelexporter.Logs
 	if e.supportedSignals.SupportsLogs() {
 		logsExporter, err = e.factory.CreateLogsExporter(e.ctx, settings, exporterConfig)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if logsExporter != nil {
 			components = append(components, logsExporter)

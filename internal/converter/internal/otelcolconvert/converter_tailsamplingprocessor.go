@@ -10,6 +10,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -45,7 +46,7 @@ func (tailSamplingProcessorConverter) ConvertAndAppend(state *State, id componen
 
 func toTailSamplingProcessor(state *State, id componentstatus.InstanceID, cfg *tailsamplingprocessor.Config) *tail_sampling.Arguments {
 	var (
-		nextTraces = state.Next(id, component.DataTypeTraces)
+		nextTraces = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &tail_sampling.Arguments{

@@ -20,6 +20,7 @@ import (
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconnector "go.opentelemetry.io/collector/connector"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
@@ -51,7 +52,7 @@ type Arguments interface {
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
-	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 
 	// NextConsumers returns the set of consumers to send data to.
 	NextConsumers() *otelcol.ConsumerArguments
@@ -192,7 +193,7 @@ func (p *Connector) Update(args component.Arguments) error {
 		if len(next.Metrics) > 0 {
 			nextMetrics := fanoutconsumer.Metrics(next.Metrics)
 			tracesConnector, err = p.factory.CreateTracesToMetrics(p.ctx, settings, connectorConfig, nextMetrics)
-			if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 				return err
 			} else if tracesConnector != nil {
 				components = append(components, tracesConnector)

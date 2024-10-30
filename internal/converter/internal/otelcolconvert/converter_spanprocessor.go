@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -42,7 +43,7 @@ func (spanProcessorConverter) ConvertAndAppend(state *State, id componentstatus.
 
 func toSpanProcessor(state *State, id componentstatus.InstanceID, cfg *spanprocessor.Config) *span.Arguments {
 	var (
-		nextTraces = state.Next(id, component.DataTypeTraces)
+		nextTraces = state.Next(id, pipeline.SignalTraces)
 	)
 
 	var setStatus *span.Status

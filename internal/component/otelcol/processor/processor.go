@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 	otelprocessor "go.opentelemetry.io/collector/processor"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -41,7 +42,7 @@ type Arguments interface {
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
-	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 
 	// NextConsumers returns the set of consumers to send data to.
 	NextConsumers() *otelcol.ConsumerArguments
@@ -198,7 +199,7 @@ func (p *Processor) Update(args component.Arguments) error {
 	var tracesProcessor otelprocessor.Traces
 	if len(next.Traces) > 0 {
 		tracesProcessor, err = p.factory.CreateTracesProcessor(p.ctx, settings, processorConfig, nextTraces)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if tracesProcessor != nil {
 			components = append(components, tracesProcessor)
@@ -208,7 +209,7 @@ func (p *Processor) Update(args component.Arguments) error {
 	var metricsProcessor otelprocessor.Metrics
 	if len(next.Metrics) > 0 {
 		metricsProcessor, err = p.factory.CreateMetricsProcessor(p.ctx, settings, processorConfig, nextMetrics)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if metricsProcessor != nil {
 			components = append(components, metricsProcessor)
@@ -218,7 +219,7 @@ func (p *Processor) Update(args component.Arguments) error {
 	var logsProcessor otelprocessor.Logs
 	if len(next.Logs) > 0 {
 		logsProcessor, err = p.factory.CreateLogsProcessor(p.ctx, settings, processorConfig, nextLogs)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if logsProcessor != nil {
 			components = append(components, logsProcessor)

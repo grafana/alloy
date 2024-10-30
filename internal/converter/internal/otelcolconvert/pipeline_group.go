@@ -6,6 +6,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/service/pipelines"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -61,17 +62,17 @@ func createPipelineGroups(cfg pipelines.Config) ([]pipelineGroup, error) {
 		group.Name = name
 
 		switch key.Type() {
-		case component.DataTypeMetrics:
+		case pipeline.SignalMetrics:
 			if group.Metrics != nil {
 				return nil, fmt.Errorf("duplicate metrics pipeline for pipeline named %q", name)
 			}
 			group.Metrics = config
-		case component.DataTypeLogs:
+		case pipeline.SignalLogs:
 			if group.Logs != nil {
 				return nil, fmt.Errorf("duplicate logs pipeline for pipeline named %q", name)
 			}
 			group.Logs = config
-		case component.DataTypeTraces:
+		case pipeline.SignalTraces:
 			if group.Traces != nil {
 				return nil, fmt.Errorf("duplicate traces pipeline for pipeline named %q", name)
 			}
