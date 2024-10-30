@@ -63,7 +63,8 @@ For example, if `topic` is set to `"my_telemetry"`, then the `"my_telemetry"` to
 If it contains only metrics, then `otelcol.receiver.kafka` should be configured to output only metrics.
 
 The `encoding` argument determines how to decode messages read from Kafka.
-`encoding` must be one of the following strings:
+`encoding` supports encoding extensions. It tries to load an encoding extension and falls back to internal encodings if no extension was loaded.
+Available internal encodings:
 
 * `"otlp_proto"`: Decode messages as OTLP protobuf.
 * `"jaeger_proto"`: Decode messages as a single Jaeger protobuf span.
