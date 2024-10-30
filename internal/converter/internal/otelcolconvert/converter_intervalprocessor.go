@@ -53,6 +53,10 @@ func toIntervalProcessor(state *State, id componentstatus.InstanceID, cfg *inter
 
 	return &interval.Arguments{
 		Interval: cfg.Interval,
+		PassThrough: interval.PassThrough{
+			Gauge:   cfg.PassThrough.Gauge,
+			Summary: cfg.PassThrough.Summary,
+		},
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
 			Logs:    ToTokenizedConsumers(nextLogs),

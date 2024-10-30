@@ -32,11 +32,27 @@ type Arguments struct {
 	// The interval in which the processor should export the aggregated metrics. Default: 60s.
 	Interval time.Duration `alloy:"interval,attr,optional"`
 
+	PassThrough PassThrough `alloy:"passthrough,block,optional"`
+
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+}
+
+type PassThrough struct {
+	// Determines whether gauge metrics should be passed through as they are or aggregated.
+	Gauge bool `alloy:"gauge,attr,optional"`
+	// Determines whether summary metrics should be passed through as they are or aggregated.
+	Summary bool `alloy:"summary,attr,optional"`
+}
+
+func (args PassThrough) Convert() intervalprocessor.PassThrough {
+	return intervalprocessor.PassThrough{
+		Gauge:   args.Gauge,
+		Summary: args.Summary,
+	}
 }
 
 var (
@@ -64,7 +80,8 @@ func (args *Arguments) Validate() error {
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &intervalprocessor.Config{
-		Interval: args.Interval,
+		Interval:    args.Interval,
+		PassThrough: args.PassThrough.Convert(),
 	}, nil
 }
 
