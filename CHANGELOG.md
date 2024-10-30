@@ -46,6 +46,8 @@ Main (unreleased)
 
 - Add Prometheus bearer authentication to a `prometheus.write.queue` component (@freak12techno)
 
+- Support logs that have a `timestamp` field instead of a `time` field for the `loki.source.azure_event_hubs` component. (@andriikushch)
+
 - Add `proxy_url` to `otelcol.exporter.otlphttp`. (@wildum)
 
 ### Bugfixes
