@@ -44,9 +44,7 @@
       name: http-metrics
     {{- range $portMap := $values.extraPorts }}
     - containerPort: {{ $portMap.targetPort }}
-      {{- if $portMap.port }}
       port: {{ $portMap.port }}
-      {{- end}}
       name: {{ $portMap.name }}
       protocol: {{ coalesce $portMap.protocol "TCP" }}
     {{- end }}
