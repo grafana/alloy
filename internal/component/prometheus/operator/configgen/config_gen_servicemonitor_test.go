@@ -427,7 +427,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 					{TargetLabel: "__meta_foo", Replacement: "bar"},
 				},
 			}
-			cfg, err := cg.GenerateServiceMonitorConfig(tc.m, tc.ep, 1)
+			cfg, err := cg.GenerateServiceMonitorConfig(tc.m, tc.ep, 1, promk8s.RoleEndpoint)
 			require.NoError(t, err)
 			// check relabel configs separately
 			rlcs := cfg.RelabelConfigs
