@@ -183,7 +183,7 @@ Port numbers specified must be 0 < x < 65535.
 | ChartPort | KubePort | Description |
 |-----------|----------|-------------|
 | targetPort | containerPort | Number of port to expose on the pod's IP address. |
-| hostPort | hostPort | (Optional) Number of port to expose on the host. Daemonsets taking traffic might find this useful. |
+| port | port | (Optional) Number of port to expose on the host. Daemonsets taking traffic might find this useful. |
 | name | name | If specified, this must be an `IANA_SVC_NAME` and unique within the pod. Each named port in a pod must have a unique name. Name for the port that can be referred to by services.
 | protocol | protocol | Must be UDP, TCP, or SCTP. Defaults to "TCP". |
 | appProtocol | appProtocol | Hint on application protocol. This is used to expose Alloy externally on OpenShift clusters using "h2c". Optional. No default value. |
