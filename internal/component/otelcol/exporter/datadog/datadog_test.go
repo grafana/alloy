@@ -23,7 +23,7 @@ func TestConfigConversion(t *testing.T) {
 	var (
 		defaultRetrySettings = configretry.NewDefaultBackOffConfig()
 		defaultTimeout       = 15 * time.Second
-		defaultQueueSettings = exporterhelper.NewDefaultQueueSettings()
+		defaultQueueConfig   = exporterhelper.NewDefaultQueueConfig()
 
 		// Until logs get added, our default config is not equal to the default factory config
 		// from the official exporter; as such as need to init it all here
@@ -93,7 +93,7 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: datadogexporter.Config{
 				ClientConfig:  confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: "", MaxConnsPerHost: connsPerHostPtr},
-				QueueSettings: defaultQueueSettings,
+				QueueSettings: defaultQueueConfig,
 				BackOffConfig: defaultRetrySettings,
 				TagsConfig:    datadogexporter.TagsConfig{Hostname: "customhostname"},
 				OnlyMetadata:  false,
@@ -147,7 +147,7 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: datadogexporter.Config{
 				ClientConfig:  defaultClient,
-				QueueSettings: defaultQueueSettings,
+				QueueSettings: defaultQueueConfig,
 				BackOffConfig: defaultRetrySettings,
 				TagsConfig:    datadogexporter.TagsConfig{},
 				OnlyMetadata:  false,
@@ -188,7 +188,7 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: datadogexporter.Config{
 				ClientConfig:  defaultClient,
-				QueueSettings: defaultQueueSettings,
+				QueueSettings: defaultQueueConfig,
 				BackOffConfig: defaultRetrySettings,
 				TagsConfig:    datadogexporter.TagsConfig{},
 				OnlyMetadata:  false,

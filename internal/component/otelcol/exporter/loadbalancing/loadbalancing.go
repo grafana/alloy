@@ -129,7 +129,7 @@ func (oc *OtlpConfig) SetToDefault() {
 
 func (oc OtlpConfig) Convert() otlpexporter.Config {
 	return otlpexporter.Config{
-		TimeoutSettings: exporterhelper.TimeoutSettings{
+		TimeoutConfig: exporterhelper.TimeoutConfig{
 			Timeout: oc.Timeout,
 		},
 		QueueConfig:  *oc.Queue.Convert(),

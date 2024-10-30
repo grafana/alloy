@@ -63,7 +63,7 @@ func (args *Arguments) SetToDefault() {
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &otlpexporter.Config{
-		TimeoutSettings: otelpexporterhelper.TimeoutSettings{
+		TimeoutConfig: otelpexporterhelper.TimeoutConfig{
 			Timeout: args.Timeout,
 		},
 		QueueConfig:  *args.Queue.Convert(),

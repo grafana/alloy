@@ -152,7 +152,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.Encoding = args.Encoding
 	result.PartitionTracesByID = args.PartitionTracesByID
 	result.PartitionMetricsByResourceAttributes = args.PartitionMetricsByResourceAttributes
-	result.TimeoutSettings = exporterhelper.TimeoutSettings{
+	result.TimeoutSettings = exporterhelper.TimeoutConfig{
 		Timeout: args.Timeout,
 	}
 	result.Metadata = args.Metadata.Convert()
