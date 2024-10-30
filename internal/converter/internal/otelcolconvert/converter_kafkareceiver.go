@@ -70,6 +70,10 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		MessageMarking:   toKafkaMessageMarking(cfg.MessageMarking),
 		HeaderExtraction: toKafkaHeaderExtraction(cfg.HeaderExtraction),
 
+		MinFetchSize:     cfg.MinFetchSize,
+		DefaultFetchSize: cfg.DefaultFetchSize,
+		MaxFetchSize:     cfg.MaxFetchSize,
+
 		DebugMetrics: common.DefaultValue[kafka.Arguments]().DebugMetrics,
 
 		Output: &otelcol.ConsumerArguments{

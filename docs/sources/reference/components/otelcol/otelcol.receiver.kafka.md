@@ -50,7 +50,11 @@ Name | Type | Description | Default | Required
 `resolve_canonical_bootstrap_servers_only` | `bool` | Whether to resolve then reverse-lookup broker IPs during startup. | `"false"` | no
 `session_timeout` | `duration` | The request timeout for detecting client failures when using Kafka group management. | `"10s"` | no
 `heartbeat_interval` | `duration` | The expected time between heartbeats to the consumer coordinator when using Kafka group management. | `"3s"` | no
+`min_fetch_size` | `int` | The minimum number of message bytes to fetch in a request. | `1` | no
+`default_fetch_size` | `int` | The default number of message bytes to fetch in a request. | `1048576` | no
+`max_fetch_size` | `int` | The maximum number of message bytes to fetch in a request. | `0` | no
 
+For `max_fetch_size`, the value `0` means no limit.
 
 If `topic` is not set, different topics will be used for different telemetry signals:
 

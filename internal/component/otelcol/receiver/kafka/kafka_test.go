@@ -51,6 +51,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					ExtractHeaders: false,
 					Headers:        []string{},
 				},
+				MinFetchSize:     1,
+				DefaultFetchSize: 1048576,
+				MaxFetchSize:     0,
 			},
 		},
 		{
@@ -84,6 +87,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					extract_headers = true
 					headers = ["foo", "bar"]
 				}
+				min_fetch_size = 2
+				default_fetch_size = 10000
+				max_fetch_size = 20
 				output {}
 			`,
 			expected: kafkareceiver.Config{
@@ -115,6 +121,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					ExtractHeaders: true,
 					Headers:        []string{"foo", "bar"},
 				},
+				MinFetchSize:     2,
+				DefaultFetchSize: 10000,
+				MaxFetchSize:     20,
 			},
 		},
 	}
