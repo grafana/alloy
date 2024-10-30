@@ -61,7 +61,7 @@ func createPipelineGroups(cfg pipelines.Config) ([]pipelineGroup, error) {
 		group := groups[name]
 		group.Name = name
 
-		switch key.Type() {
+		switch key.Signal() {
 		case pipeline.SignalMetrics:
 			if group.Metrics != nil {
 				return nil, fmt.Errorf("duplicate metrics pipeline for pipeline named %q", name)
@@ -78,7 +78,7 @@ func createPipelineGroups(cfg pipelines.Config) ([]pipelineGroup, error) {
 			}
 			group.Traces = config
 		default:
-			return nil, fmt.Errorf("unknown pipeline type %q", key.Type())
+			return nil, fmt.Errorf("unknown pipeline type %q", key.Signal())
 		}
 
 		groups[name] = group
