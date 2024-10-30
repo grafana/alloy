@@ -5,7 +5,9 @@ import (
 	"github.com/vladopajic/go-actor/actor"
 )
 
-// Mailbox wraps a standard mailbox.
+// Mailbox wraps a standard mailbox. The reason we want to wrap is to not close the mailbox implicitly.
+// A mailbox is a channel and will get garbage collected underneath so no worries about leaks, but since it can have multiple
+// writers closing the channel can lead to panics and/or leaks of the TimeSeries not being added to the pool.
 type Mailbox[T any] struct {
 	mbx actor.Mailbox[T]
 }
