@@ -49,7 +49,7 @@ func newLoop(cc types.ConnectionConfig, isMetaData bool, l log.Logger, stats fun
 	return &loop{
 		isMeta: isMetaData,
 		// In general we want a healthy queue of items, in this case we want to have 2x our maximum send sized ready.
-		seriesMbx:      types.NewMailbox[*types.TimeSeriesBinary](2*cc.BatchCount, true),
+		seriesMbx:      types.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(2*cc.BatchCount), actor.OptAsChan()),
 		client:         &http.Client{},
 		cfg:            cc,
 		log:            log.With(l, "name", "loop", "url", cc.URL),

@@ -33,8 +33,8 @@ func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStat
 		logger: logger,
 		// This provides blocking to only handle one at a time, so that if a queue blocks
 		// it will stop the filequeue from feeding more. Without passing true the minimum is actually 64 instead of 1.
-		inbox:       types.NewMailbox[*types.TimeSeriesBinary](1, true),
-		metaInbox:   types.NewMailbox[*types.TimeSeriesBinary](1, true),
+		inbox:       types.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1), actor.OptAsChan()),
+		metaInbox:   types.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1), actor.OptAsChan()),
 		configInbox: types.NewSyncMailbox[types.ConnectionConfig](),
 		stats:       seriesStats,
 		metaStats:   metadataStats,

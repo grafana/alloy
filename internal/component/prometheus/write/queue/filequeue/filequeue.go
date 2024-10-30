@@ -65,7 +65,7 @@ func NewQueue(directory string, out func(ctx context.Context, dh types.DataHandl
 		maxID:         currentMaxID,
 		logger:        logger,
 		out:           out,
-		dataQueue:     types.NewMailbox[types.Data](0, false),
+		dataQueue:     types.NewMailbox[types.Data](),
 		existingFiles: make([]string, 0),
 	}
 

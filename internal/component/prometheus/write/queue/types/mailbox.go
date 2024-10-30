@@ -12,14 +12,7 @@ type Mailbox[T any] struct {
 	mbx actor.Mailbox[T]
 }
 
-func NewMailbox[T any](capacity int, asChan bool) *Mailbox[T] {
-	options := make([]actor.MailboxOption, 0)
-	if capacity > 0 {
-		options = append(options, actor.OptCapacity(capacity))
-	}
-	if asChan {
-		options = append(options, actor.OptAsChan())
-	}
+func NewMailbox[T any](options ...actor.MailboxOption) *Mailbox[T] {
 	mbx := actor.NewMailbox[T](options...)
 	return &Mailbox[T]{mbx: mbx}
 }

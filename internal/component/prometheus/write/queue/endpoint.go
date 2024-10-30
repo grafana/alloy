@@ -50,7 +50,7 @@ func newEndpoint(ep EndpointConfig, ttl time.Duration, maxSignalsToBatch uint, b
 		network:  client,
 		log:      l,
 		ttl:      ttl,
-		incoming: types.NewMailbox[types.DataHandle](0, false),
+		incoming: types.NewMailbox[types.DataHandle](),
 		buf:      make([]byte, 0, 1024),
 	}
 

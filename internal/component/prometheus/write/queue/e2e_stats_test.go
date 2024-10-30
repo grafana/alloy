@@ -626,7 +626,7 @@ func runE2eStats(t *testing.T, test statsTest) {
 				found++
 			}
 		}
-		// Make sure we have a few metrics.;
+		// Make sure we have a few metrics.
 		return found > 1
 	}, 10*time.Second, 1*time.Second)
 
