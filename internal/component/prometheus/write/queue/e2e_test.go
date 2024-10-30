@@ -127,7 +127,7 @@ func TestE2E(t *testing.T) {
 
 const (
 	iterations = 10
-	items      = 10
+	items      = 100
 )
 
 func runTest(t *testing.T, add func(index int, appendable storage.Appender) (float64, labels.Labels), test func(samples *safeSlice[prompb.TimeSeries]), metaTest func(meta *safeSlice[prompb.MetricMetadata])) {
@@ -169,13 +169,15 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	}
 
 	for i := 0; i < iterations; i++ {
-		app := exp.Receiver.Appender(ctx)
-		for j := 0; j < items; j++ {
-			val := index.Add(1)
-			v, lbl := add(int(val), app)
-			results.Add(v, lbl)
-		}
-		require.NoError(t, app.Commit())
+		go func() {
+			app := exp.Receiver.Appender(ctx)
+			for j := 0; j < items; j++ {
+				val := index.Add(1)
+				v, lbl := add(int(val), app)
+				results.Add(v, lbl)
+			}
+			require.NoError(t, app.Commit())
+		}()
 	}
 
 	// This is a weird use case to handle eventually.
@@ -214,7 +216,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	}
 	require.Eventuallyf(t, func() bool {
 		return types.OutStandingTimeSeriesBinary.Load() == 0
-	}, 5*time.Second, 100*time.Millisecond, "there are %d time series not collected", types.OutStandingTimeSeriesBinary.Load())
+	}, 20*time.Second, 1*time.Second, "there are %d time series not collected", types.OutStandingTimeSeriesBinary.Load())
 }
 
 func handlePost(t *testing.T, _ http.ResponseWriter, r *http.Request) ([]prompb.TimeSeries, []prompb.MetricMetadata) {

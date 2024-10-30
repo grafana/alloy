@@ -3,15 +3,11 @@ package types
 import (
 	"context"
 	"github.com/vladopajic/go-actor/actor"
-	"go.uber.org/atomic"
 )
 
 // Mailbox wraps a standard mailbox.
 type Mailbox[T any] struct {
 	mbx actor.Mailbox[T]
-	// This doesnt actually prevent access but is used to limit work flowing downstream.
-	// Its best effort.
-	stopped atomic.Bool
 }
 
 func NewMailbox[T any](capacity int, asChan bool) *Mailbox[T] {
@@ -31,7 +27,6 @@ func (m *Mailbox[T]) Start() {
 }
 
 func (m *Mailbox[T]) Stop() {
-	m.stopped.Store(true)
 	// Note we are explicitly NOT calling stop here.
 	// Closing the channel can cause panics.
 	// Since multiple goroutines can write its really hard to know when you can safely close.
@@ -44,32 +39,25 @@ func (m *Mailbox[T]) ReceiveC() <-chan T {
 }
 
 func (m *Mailbox[T]) Send(ctx context.Context, value T) error {
-	if m.stopped.Load() {
-		return nil
-	}
 	return m.mbx.Send(ctx, value)
 }
 
 // SyncMailbox is used to synchronously send data, and wait for it to process before returning.
 type SyncMailbox[T any] struct {
-	mbx     actor.Mailbox[Callback[T]]
-	stopped *atomic.Bool
+	mbx actor.Mailbox[Callback[T]]
 }
 
 func NewSyncMailbox[T any]() *SyncMailbox[T] {
 	return &SyncMailbox[T]{
-		mbx:     actor.NewMailbox[Callback[T]](),
-		stopped: atomic.NewBool(true),
+		mbx: actor.NewMailbox[Callback[T]](),
 	}
 }
 
 func (sm *SyncMailbox[T]) Start() {
 	sm.mbx.Start()
-	sm.stopped.Store(false)
 }
 
 func (sm *SyncMailbox[T]) Stop() {
-	sm.stopped.Store(true)
 	// Note we are explicitly NOT calling stop here.
 	// Closing the channel can cause panics.
 	// Since multiple goroutines can write its really hard to know when you can safely close.
@@ -82,9 +70,6 @@ func (sm *SyncMailbox[T]) ReceiveC() <-chan Callback[T] {
 }
 
 func (sm *SyncMailbox[T]) Send(ctx context.Context, value T) error {
-	if sm.stopped.Load() {
-		return nil
-	}
 	done := make(chan struct{})
 	defer close(done)
 	err := sm.mbx.Send(ctx, Callback[T]{
