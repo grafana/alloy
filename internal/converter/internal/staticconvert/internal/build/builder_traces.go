@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/static/traces"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	otel_component "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/exporter/loggingexporter"
+	"go.opentelemetry.io/collector/exporter/debugexporter"
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/service/pipelines"
 )
@@ -62,14 +62,14 @@ func (b *ConfigBuilder) translateAutomaticLogging(otelCfg *otelcol.Config, cfg t
 
 	if cfg.AutomaticLogging.Backend == "stdout" {
 		b.diags.Add(diag.SeverityLevelWarn, "automatic_logging for traces has no direct Alloy equivalent. "+
-			"A best effort translation has been made to otelcol.exporter.logging but the behavior will differ.")
+			"A best effort translation has been made to otelcol.exporter.debug but the behavior will differ.")
 	} else {
 		b.diags.Add(diag.SeverityLevelError, "automatic_logging for traces has no direct Alloy equivalent. "+
 			"A best effort translation can be made which only outputs to stdout and not directly to loki by bypassing errors.")
 	}
 
 	// Add the logging exporter to the otel config with default values
-	otelCfg.Exporters[otel_component.NewID(otel_component.MustNewType("logging"))] = loggingexporter.NewFactory().CreateDefaultConfig()
+	otelCfg.Exporters[otel_component.NewID(otel_component.MustNewType("logging"))] = debugexporter.NewFactory().CreateDefaultConfig()
 
 	// Add the logging exporter to all pipelines
 	for _, pipeline := range otelCfg.Service.Pipelines {

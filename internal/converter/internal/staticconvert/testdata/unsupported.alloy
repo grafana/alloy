@@ -62,7 +62,7 @@ otelcol.receiver.otlp "default" {
 	}
 
 	output {
-		traces = [otelcol.exporter.otlp.default_0.input, otelcol.exporter.logging.default.input]
+		traces = [otelcol.exporter.otlp.default_0.input, otelcol.exporter.debug.default.input]
 	}
 }
 
@@ -76,4 +76,4 @@ otelcol.exporter.otlp "default_0" {
 	}
 }
 
-otelcol.exporter.logging "default" { }
+otelcol.exporter.debug "default" { }
