@@ -26,7 +26,7 @@ This topic describes how to:
   Traces can be written to Grafana Tempo, Grafana Cloud, or Grafana Enterprise Traces.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
-## Configure {{< param "PRODUCT_NAME" >}} to send traces and metrics
+## Configure {{% param "PRODUCT_NAME" %}} to send traces and metrics
 
 Before components can collect Datadog telemetry signals, you must have a component responsible for writing this telemetry somewhere.
 
@@ -61,7 +61,7 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
     - _`<USERNAME>`_: The basic authentication username.
     - _`<PASSWORD>`_: The basic authentication password or API key.
 
-## Configure the {{< param "PRODUCT_NAME" >}} Datadog Receiver
+## Configure the {{% param "PRODUCT_NAME" %}} Datadog Receiver
 
 1. Add the following `otelcol.processor.batch` component to your configuration file.
 
@@ -122,7 +122,7 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
     - _`<USERNAME>`_: The basic authentication username.
     - _`<PASSWORD>`_: The basic authentication password or API key.
 
-## Configure Datadog Agent to forward telemetry to the {{< param "PRODUCT_NAME" >}} Datadog Receiver
+## Configure Datadog Agent to forward telemetry to the {{% param "PRODUCT_NAME" %}} Datadog Receiver
 
 You can set up your Datadog Agent to forward Datadog metrics and traces simultaneously to {{< param "PRODUCT_NAME" >}} and Datadog.
 
@@ -159,8 +159,8 @@ Or by setting an environment variable:
 
 ## Run {{% param "PRODUCT_NAME" %}}
 
-The `otelcol.receiver.datadog` component is experimental. In order to run it, 
-you need to start {{< param "PRODUCT_NAME" >}} with additional command line flags:
+The `otelcol.receiver.datadog` component is experimental.
+To use this component, you need to start {{< param "PRODUCT_NAME" >}} with additional command line flags:
 
    ```bash
    alloy run config.alloy --stability.level=experimental
