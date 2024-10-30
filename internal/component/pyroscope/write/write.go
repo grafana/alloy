@@ -374,14 +374,17 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			u.Path = path.Join(u.Path, profile.URL.Path)
 
-			// Handle query param and external labels
+			// Handle labels
 			query := profile.URL.Query()
 			if nameParam := query.Get("name"); nameParam != "" {
-				newName, err := processNameLabels(nameParam, f.config.ExternalLabels)
+				key, err := ParseKey(nameParam)
 				if err != nil {
 					return err
 				}
-				query.Set("name", newName)
+				for k, v := range f.config.ExternalLabels {
+					key.labels[k] = v
+				}
+				query.Set("name", key.Normalized())
 			}
 			u.RawQuery = query.Encode()
 
@@ -442,64 +445,4 @@ func (i *agentInterceptor) WrapStreamingClient(next connect.StreamingClientFunc)
 
 func (i *agentInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return next
-}
-
-// parseLabels extracts labels from "name{label=value,label2=value2}" format
-func parseLabels(nameParam string) (string, map[string]string, error) {
-	idx := strings.IndexByte(nameParam, '{')
-	if idx == -1 {
-		return nameParam, nil, nil
-	}
-
-	if !strings.HasSuffix(nameParam, "}") {
-		return "", nil, fmt.Errorf("invalid label format in name parameter: %s", nameParam)
-	}
-
-	baseName := nameParam[:idx]
-	labelsStr := nameParam[idx+1 : len(nameParam)-1]
-
-	labels := make(map[string]string)
-	for _, label := range strings.Split(labelsStr, ",") {
-		kv := strings.SplitN(label, "=", 2)
-		if len(kv) != 2 {
-			return "", nil, fmt.Errorf("invalid label format: %s", label)
-		}
-		labels[kv[0]] = kv[1]
-	}
-
-	return baseName, labels, nil
-}
-
-// processNameLabels processes the name parameter from query, merging any labels with external labels.
-// External labels take precedence over profile labels.
-func processNameLabels(nameParam string, externalLabels map[string]string) (string, error) {
-	baseName, labels, err := parseLabels(nameParam)
-	if err != nil {
-		return "", err
-	}
-
-	// Handle case with no labels
-	if labels == nil {
-		if len(externalLabels) == 0 {
-			return baseName, nil
-		}
-		labels = make(map[string]string)
-	}
-
-	// External labels override profile ones
-	for k, v := range externalLabels {
-		labels[k] = v
-	}
-
-	// If no labels after merging, return just the base name
-	if len(labels) == 0 {
-		return baseName, nil
-	}
-
-	// Build name with labels
-	var labelParts []string
-	for k, v := range labels {
-		labelParts = append(labelParts, fmt.Sprintf("%s=%s", k, v))
-	}
-	return fmt.Sprintf("%s{%s}", baseName, strings.Join(labelParts, ",")), nil
 }
