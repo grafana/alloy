@@ -1,6 +1,7 @@
 # Changelog
 
-> _Contributors should read our [contributors guide][] for instructions on how
+> _Contributors should read our [contributors guide](../../../../docs/developer/contributing.md#updating-the-changelog
+) for instructions on how
 > to update the changelog._
 
 This document contains a historical list of changes between releases. Only
@@ -9,8 +10,18 @@ internal API changes are not present.
 
 Unreleased
 ----------
+
+0.9.3 (2024-10-29)
+------------------
+
 ### Enhancements
+
 - Add support for adding hostAliases to the Helm chart. (@duncan485)
+
+### Bugfixes
+
+- Fix alloy container template and documentation for `alloy.extraPorts` to contain `port` 
+  instead of unsupported `hostPort` (@jkruke)
 
 0.9.2 (2024-10-18)
 ------------------
