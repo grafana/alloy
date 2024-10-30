@@ -10,7 +10,9 @@ import (
 type NetworkClient interface {
 	Start()
 	Stop()
+	// SendSeries will block if the network caches are full.
 	SendSeries(ctx context.Context, d *TimeSeriesBinary) error
+	// SendMetadata will block if the network caches are full.
 	SendMetadata(ctx context.Context, d *TimeSeriesBinary) error
 	// UpdateConfig is a synchronous call and will only return once the config
 	// is applied or an error occurs.

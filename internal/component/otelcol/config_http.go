@@ -87,6 +87,8 @@ func (args *CORSArguments) Convert() *otelconfighttp.CORSConfig {
 type HTTPClientArguments struct {
 	Endpoint string `alloy:"endpoint,attr"`
 
+	ProxyUrl string `alloy:"proxy_url,attr,optional"`
+
 	Compression CompressionType `alloy:"compression,attr,optional"`
 
 	TLS TLSClientArguments `alloy:"tls,block,optional"`
@@ -129,6 +131,8 @@ func (args *HTTPClientArguments) Convert() *otelconfighttp.ClientConfig {
 
 	return &otelconfighttp.ClientConfig{
 		Endpoint: args.Endpoint,
+
+		ProxyURL: args.ProxyUrl,
 
 		Compression: args.Compression.Convert(),
 

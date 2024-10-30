@@ -135,10 +135,8 @@ func TestRetry(t *testing.T) {
 	require.NoError(t, err)
 	wr.Start()
 	defer wr.Stop()
+	send(t, wr, ctx)
 
-	for i := 0; i < 10; i++ {
-		send(t, wr, ctx)
-	}
 	require.Eventually(t, func() bool {
 		done := retries.Load() > 5
 		return done

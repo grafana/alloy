@@ -18,6 +18,7 @@ Main (unreleased)
 ### Features
 
 - Add the function `path_join` to the stdlib. (@wildum)
+- Add `pyroscope.receive_http` component to receive and forward Pyroscope profiles (@marcsanmi)
 
 - Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
 
@@ -47,9 +48,13 @@ Main (unreleased)
 
 - Support logs that have a `timestamp` field instead of a `time` field for the `loki.source.azure_event_hubs` component. (@andriikushch)
 
+- Add `proxy_url` to `otelcol.exporter.otlphttp`. (@wildum)
+
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
+
+- Do not log error on clean shutdown of `loki.source.journal`. (@thampiotr) 
 
 ### Other changes
 

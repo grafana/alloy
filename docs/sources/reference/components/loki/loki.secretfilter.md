@@ -17,7 +17,7 @@ The detection is based on regular expression patterns, defined in the [Gitleaks 
 `loki.secretfilter` can also use a custom configuration file based on the Gitleaks configuration file structure.
 
 {{< admonition type="caution" >}}
-Personally Identifiable Information (PII) or undefined secret types could remain undetected.
+Personally Identifiable Information (PII) isn't currently in scope and some secrets could remain undetected.
 This component may generate false positives.
 Don't rely solely on this component to redact sensitive information.
 {{< /admonition >}}
