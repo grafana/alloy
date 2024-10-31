@@ -174,6 +174,8 @@ func TestArguments_Auth(t *testing.T) {
 				"group_id":           "otel-collector",
 				"client_id":          "otel-collector",
 				"initial_offset":     "latest",
+				"min_fetch_size":     1,
+				"default_fetch_size": 1048576,
 				"metadata": kafkaexporter.Metadata{
 					Full: true,
 					Retry: kafkaexporter.MetadataRetry{
@@ -227,6 +229,8 @@ func TestArguments_Auth(t *testing.T) {
 				"group_id":           "otel-collector",
 				"client_id":          "otel-collector",
 				"initial_offset":     "latest",
+				"min_fetch_size":     1,
+				"default_fetch_size": 1048576,
 				"metadata": kafkaexporter.Metadata{
 					Full: true,
 					Retry: kafkaexporter.MetadataRetry{
@@ -286,6 +290,8 @@ func TestArguments_Auth(t *testing.T) {
 				"group_id":           "otel-collector",
 				"client_id":          "otel-collector",
 				"initial_offset":     "latest",
+				"min_fetch_size":     1,
+				"default_fetch_size": 1048576,
 				"metadata": kafkaexporter.Metadata{
 					Full: true,
 					Retry: kafkaexporter.MetadataRetry{
@@ -345,6 +351,8 @@ func TestArguments_Auth(t *testing.T) {
 				"group_id":           "otel-collector",
 				"client_id":          "otel-collector",
 				"initial_offset":     "latest",
+				"min_fetch_size":     1,
+				"default_fetch_size": 1048576,
 				"metadata": kafkaexporter.Metadata{
 					Full: true,
 					Retry: kafkaexporter.MetadataRetry{
