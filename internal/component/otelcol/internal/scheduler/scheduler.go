@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.uber.org/multierr"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Scheduler implements manages a set of OpenTelemetry Collector components.
@@ -39,6 +40,11 @@ type Scheduler struct {
 
 	// newComponentsCh is written to when schedComponents gets updated.
 	newComponentsCh chan struct{}
+
+	// onPause is called when scheduler is making changes to running components.
+	onPause func()
+	// onResume is called when scheduler is done making changes to running components.
+	onResume func()
 }
 
 // New creates a new unstarted Scheduler. Call Run to start it, and call
@@ -47,6 +53,20 @@ func New(l log.Logger) *Scheduler {
 	return &Scheduler{
 		log:             l,
 		newComponentsCh: make(chan struct{}, 1),
+		onPause:         func() {},
+		onResume:        func() {},
+	}
+}
+
+// NewWithPauseCallbacks is like New, but allows to specify onPause and onResume callbacks. The scheduler is assumed to
+// start paused and only when its components are scheduled, it will call onResume. From then on, each update to running
+// components via Schedule method will trigger a call to onPause and then onResume.
+func NewWithPauseCallbacks(l log.Logger, onPause func(), onResume func()) *Scheduler {
+	return &Scheduler{
+		log:             l,
+		newComponentsCh: make(chan struct{}, 1),
+		onPause:         onPause,
+		onResume:        onResume,
 	}
 }
 
@@ -75,11 +95,16 @@ func (cs *Scheduler) Schedule(h otelcomponent.Host, cc ...otelcomponent.Componen
 // Run starts the Scheduler. Run will watch for schedule components to appear
 // and run them, terminating previously running components if they exist.
 func (cs *Scheduler) Run(ctx context.Context) error {
+	firstRun := true
 	var components []otelcomponent.Component
 
 	// Make sure we terminate all of our running components on shutdown.
 	defer func() {
+		if !firstRun { // always handle the callbacks correctly
+			cs.onPause()
+		}
 		cs.stopComponents(context.Background(), components...)
+		// We don't resume, as the scheduler is exiting.
 	}()
 
 	// Wait for a write to cs.newComponentsCh. The initial list of components is
@@ -90,6 +115,10 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-cs.newComponentsCh:
+			if !firstRun { // do not pause on first run
+				cs.onPause()
+				firstRun = false
+			}
 			// Stop the old components before running new scheduled ones.
 			cs.stopComponents(ctx, components...)
 
@@ -100,6 +129,7 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 
 			level.Debug(cs.log).Log("msg", "scheduling components", "count", len(components))
 			components = cs.startComponents(ctx, host, components...)
+			cs.onResume()
 		}
 	}
 }

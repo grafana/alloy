@@ -17,6 +17,10 @@ import (
 type Consumer struct {
 	ctx context.Context
 
+	// pauseMut is used to implement Pause & Resume semantics. When a write lock is held - this consumer is paused.
+	// See Pause method for more info.
+	pauseMut sync.RWMutex
+
 	mut             sync.RWMutex
 	metricsConsumer otelconsumer.Metrics
 	logsConsumer    otelconsumer.Logs
@@ -36,6 +40,13 @@ func New(ctx context.Context) *Consumer {
 	return &Consumer{ctx: ctx}
 }
 
+// NewPaused is like New, but returns a Consumer that is paused by calling Pause method.
+func NewPaused(ctx context.Context) *Consumer {
+	c := New(ctx)
+	c.Pause()
+	return c
+}
+
 // Capabilities implements otelconsumer.baseConsumer.
 func (c *Consumer) Capabilities() otelconsumer.Capabilities {
 	return otelconsumer.Capabilities{
@@ -51,6 +62,9 @@ func (c *Consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	if c.ctx.Err() != nil {
 		return c.ctx.Err()
 	}
+
+	c.pauseMut.RLock() // wait until resumed
+	defer c.pauseMut.RUnlock()
 
 	c.mut.RLock()
 	defer c.mut.RUnlock()
@@ -73,6 +87,9 @@ func (c *Consumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error
 		return c.ctx.Err()
 	}
 
+	c.pauseMut.RLock() // wait until resumed
+	defer c.pauseMut.RUnlock()
+
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
@@ -93,6 +110,9 @@ func (c *Consumer) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	if c.ctx.Err() != nil {
 		return c.ctx.Err()
 	}
+
+	c.pauseMut.RLock() // wait until resumed
+	defer c.pauseMut.RUnlock()
 
 	c.mut.RLock()
 	defer c.mut.RUnlock()
@@ -118,4 +138,16 @@ func (c *Consumer) SetConsumers(t otelconsumer.Traces, m otelconsumer.Metrics, l
 	c.metricsConsumer = m
 	c.logsConsumer = l
 	c.tracesConsumer = t
+}
+
+// Pause will stop the consumer until Resume is called. While paused, the calls to Consume* methods will block.
+// After calling Pause once, it must not be called again until Resume is called.
+func (c *Consumer) Pause() {
+	c.pauseMut.Lock()
+}
+
+// Resume will revert the Pause call and the consumer will continue to work. Resume must not be called if Pause wasn't
+// called before. See Pause for more details.
+func (c *Consumer) Resume() {
+	c.pauseMut.Unlock()
 }

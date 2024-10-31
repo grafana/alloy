@@ -7,15 +7,6 @@ import (
 	"errors"
 	"os"
 
-	"github.com/grafana/alloy/internal/build"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/otelcol"
-	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
-	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
@@ -26,6 +17,16 @@ import (
 	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/metric"
+
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	"github.com/grafana/alloy/internal/util/zapadapter"
 )
 
 const (
@@ -94,7 +95,7 @@ var (
 func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Connector, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.New(ctx)
+	consumer := lazyconsumer.NewPaused(ctx)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -116,7 +117,7 @@ func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Conn
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
 		collector: collector,
 	}
 	if err := p.Update(args); err != nil {
