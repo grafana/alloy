@@ -1752,9 +1752,15 @@ load_balancing:
 			for componentID := range tc.expectedProcessors {
 				if len(tc.expectedProcessors[componentID]) > 0 {
 					assert.NotNil(t, tc.expectedProcessors)
-					assert.NotNil(t, actualConfig.Service.Pipelines[pipeline.MustNewID(componentID.Type().String())])
+					var p pipeline.ID
+					if componentID.Name() != "" {
+						p = pipeline.MustNewIDWithName(componentID.Type().String(), componentID.Name())
+					} else {
+						p = pipeline.MustNewID(componentID.Type().String())
+					}
 
-					assert.Equal(t, tc.expectedProcessors[componentID], actualConfig.Service.Pipelines[pipeline.MustNewID(componentID.Type().String())].Processors)
+					assert.NotNil(t, actualConfig.Service.Pipelines[p])
+					assert.Equal(t, tc.expectedProcessors[componentID], actualConfig.Service.Pipelines[p].Processors)
 				}
 			}
 		})
