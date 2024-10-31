@@ -54,6 +54,12 @@ func TestVM_Stdlib(t *testing.T) {
 			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}, {"a": "a1", "b": "b1", "c": "c1"}},
 		},
 		{
+			// Non-unique merge criteria.
+			"targets.merge",
+			`targets.merge([{"pod" = "a", "lbl" = "q"}, {"pod" = "b", "lbl" = "q"}], [{"pod" = "c", "lbl" = "q"}, {"pod" = "d", "lbl" = "q"}], ["lbl"])`,
+			[]map[string]interface{}{{"lbl": "q", "pod": "c"}, {"lbl": "q", "pod": "d"}, {"lbl": "q", "pod": "c"}, {"lbl": "q", "pod": "d"}},
+		},
+		{
 			// Basic case. Integer and string values.
 			"targets.merge",
 			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = 1, "c" = "c1"}], ["a"])`,

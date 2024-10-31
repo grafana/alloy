@@ -23,9 +23,6 @@ It takes three inputs:
 * The first two inputs are a of type `list(map(string))`. The keys of the map are strings. 
   The value for each key could have any Alloy type such as a string, integer, map, or a capsule.
 * The third input is an array containing strings. The strings are the keys whose value has to match for maps to be joined.
-  
-  
-If the set of keys don't identify a map uniquely, the resulting output may contain more maps than the total sum of maps from both input arrays.
 
 ### Examples
 
