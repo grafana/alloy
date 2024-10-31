@@ -100,6 +100,41 @@ func TestVM_Stdlib(t *testing.T) {
 	}
 }
 
+func TestVM_Stdlib_Errors(t *testing.T) {
+	tt := []struct {
+		name        string
+		input       string
+		expectedErr string
+	}{
+		// Map tests
+		{
+			// Error: invalid RHS type - string.
+			"targets.merge",
+			`targets.merge([{"a" = "a1", "b" = "b1"}], "a", ["a"])`,
+			`"a" should be array, got string`,
+		},
+		{
+			// Error: invalid RHS type - an array with strings.
+			"targets.merge",
+			`targets.merge([{"a" = "a1", "b" = "b1"}], ["a"], ["a"])`,
+			`"a" should be object, got string`,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			expr, err := parser.ParseExpression(tc.input)
+			require.NoError(t, err)
+
+			eval := vm.New(expr)
+
+			rv := reflect.New(reflect.TypeOf([]map[string]interface{}{}))
+			err = eval.Evaluate(nil, rv.Interface())
+			require.ErrorContains(t, err, tc.expectedErr)
+		})
+	}
+}
+
 func TestStdlibCoalesce(t *testing.T) {
 	t.Setenv("TEST_VAR2", "Hello!")
 
