@@ -4,6 +4,7 @@ package deltatocumulative
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -55,7 +56,7 @@ var DefaultArguments = Arguments{
 	// identify a good non-zero default:
 	//
 	// https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31603
-	MaxStreams: 0,
+	MaxStreams: math.MaxInt,
 }
 
 // SetToDefault implements syntax.Defaulter.
