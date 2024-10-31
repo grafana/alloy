@@ -81,6 +81,18 @@ func buildTestImportFile(t *testing.T, filename string) testImportFile {
 	return tc
 }
 
+// This is a copy of TestImportFile.
+// It may need to be modified further to make it work with a foreach.
+func TestForeach(t *testing.T) {
+	directory := "./testdata/foreach"
+	for _, file := range getTestFiles(directory, t) {
+		tc := buildTestImportFile(t, filepath.Join(directory, file.Name()))
+		t.Run(tc.description, func(t *testing.T) {
+			testConfig2(t, tc.main, tc.reloadConfig, nil)
+		})
+	}
+}
+
 func TestImportFile(t *testing.T) {
 	directory := "./testdata/import_file"
 	for _, file := range getTestFiles(directory, t) {
@@ -347,6 +359,63 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 			return export.LastAdded <= -10
 		}, 3*time.Second, 10*time.Millisecond)
 	}
+}
+
+// This function is a copy of testConfig above.
+func testConfig2(t *testing.T, config string, reloadConfig string, update func()) {
+	defer verifyNoGoroutineLeaks(t)
+	ctrl, f := setup(t, config)
+
+	err := ctrl.LoadSource(f, nil, "")
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	defer func() {
+		cancel()
+		wg.Wait()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ctrl.Run(ctx)
+	}()
+
+	// Check for initial condition
+	require.Eventually(t, func() bool {
+		export := getExport[testcomponents.SummationExports_2](t, ctrl, "", "testcomponents.summation2.final")
+		// If each iteration of the for loop adds a 1,
+		// and there are 3 iterations, we expect 3 to be the end result.
+		//TODO: Make this configurable?
+		return export.Sum == 3
+	}, 3*time.Second, 10*time.Millisecond)
+
+	// if update != nil {
+	// 	update()
+
+	// 	// Export should be -10 after update
+	// 	require.Eventually(t, func() bool {
+	// 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
+	// 		return export.LastAdded <= -10
+	// 	}, 3*time.Second, 10*time.Millisecond)
+	// }
+
+	// if reloadConfig != "" {
+	// 	f, err = alloy_runtime.ParseSource(t.Name(), []byte(reloadConfig))
+	// 	require.NoError(t, err)
+	// 	require.NotNil(t, f)
+
+	// 	// Reload the controller with the new config.
+	// 	err = ctrl.LoadSource(f, nil)
+	// 	require.NoError(t, err)
+
+	// 	// Export should be -10 after update
+	// 	require.Eventually(t, func() bool {
+	// 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
+	// 		return export.LastAdded <= -10
+	// 	}, 3*time.Second, 10*time.Millisecond)
+	// }
 }
 
 func testConfigError(t *testing.T, config string, expectedError string) {

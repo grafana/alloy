@@ -15,6 +15,7 @@ const (
 	String
 	Git
 	HTTP
+	Foreach
 )
 
 const (
@@ -22,6 +23,7 @@ const (
 	BlockImportString = "import.string"
 	BlockImportHTTP   = "import.http"
 	BlockImportGit    = "import.git"
+	BlockForeach      = "foreach"
 )
 
 const ModulePath = "module_path"
@@ -67,6 +69,8 @@ func GetSourceType(fullName string) SourceType {
 		return HTTP
 	case BlockImportGit:
 		return Git
+	case BlockForeach:
+		return Foreach
 	}
 	panic(fmt.Errorf("name does not map to a known source type: %v", fullName))
 }
