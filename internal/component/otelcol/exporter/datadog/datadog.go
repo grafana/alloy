@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	datadog_config "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog/config"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
+	datadogOtelconfig "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog/config"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
@@ -81,11 +82,11 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	defaultTraceEndpoint := fmt.Sprintf(DATADOG_TRACE_ENDPOINT, args.APISettings.Site)
 	defaultMetricsEndpoint := fmt.Sprintf(DATADOG_METRICS_ENDPOINT, args.APISettings.Site)
 
-	return &datadogexporter.Config{
+	return &datadogOtelconfig.Config{
 		ClientConfig:  *args.Client.Convert(),
 		QueueSettings: *args.Queue.Convert(),
 		BackOffConfig: *args.Retry.Convert(),
-		TagsConfig: datadogexporter.TagsConfig{
+		TagsConfig: datadogOtelconfig.TagsConfig{
 			Hostname: args.Hostname,
 		},
 		API:          *args.APISettings.Convert(),
@@ -119,6 +120,6 @@ func (args *Arguments) Validate() error {
 	if err != nil {
 		return err
 	}
-	datadogCfg := otelCfg.(*datadogexporter.Config)
+	datadogCfg := otelCfg.(*datadogOtelconfig.Config)
 	return datadogCfg.Validate()
 }
