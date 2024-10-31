@@ -142,7 +142,9 @@ otelcol.exporter.loadbalancing "_0_default" {
 	}
 }
 
-otelcol.exporter.debug "_0_default" { }
+otelcol.exporter.debug "_0_default" {
+	verbosity = "Basic"
+}
 
 otelcol.connector.spanmetrics "_0_default" {
 	histogram {
@@ -220,7 +222,9 @@ otelcol.exporter.otlp "_1_0" {
 	}
 }
 
-otelcol.exporter.debug "_1_default" { }
+otelcol.exporter.debug "_1_default" {
+	verbosity = "Basic"
+}
 
 otelcol.connector.spanmetrics "_1_default" {
 	histogram {

@@ -76,4 +76,6 @@ otelcol.exporter.otlp "default_0" {
 	}
 }
 
-otelcol.exporter.debug "default" { }
+otelcol.exporter.debug "default" {
+	verbosity = "Basic"
+}

@@ -69,12 +69,12 @@ func (b *ConfigBuilder) translateAutomaticLogging(otelCfg *otelcol.Config, cfg t
 			"A best effort translation can be made which only outputs to stdout and not directly to loki by bypassing errors.")
 	}
 
-	// Add the logging exporter to the otel config with default values
-	otelCfg.Exporters[otel_component.NewID(otel_component.MustNewType("logging"))] = debugexporter.NewFactory().CreateDefaultConfig()
+	// Add the debug exporter to the otel config with default values
+	otelCfg.Exporters[otel_component.NewID(otel_component.MustNewType("debug"))] = debugexporter.NewFactory().CreateDefaultConfig()
 
-	// Add the logging exporter to all pipelines
+	// Add the debug exporter to all pipelines
 	for _, pipeline := range otelCfg.Service.Pipelines {
-		pipeline.Exporters = append(pipeline.Exporters, otel_component.NewID(otel_component.MustNewType("logging")))
+		pipeline.Exporters = append(pipeline.Exporters, otel_component.NewID(otel_component.MustNewType("debug")))
 	}
 
 	// Remove the custom automatic_logging processor
