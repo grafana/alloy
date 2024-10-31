@@ -15,6 +15,14 @@ Main (unreleased)
 - `import.git`: The default value for `revision` has changed from `HEAD` to `main`. (@ptodev)
   It is no longer allowed to set `revision` to `"HEAD"`, `"FETCH_HEAD"`, `"ORIG_HEAD"`, `"MERGE_HEAD"`, or `"CHERRY_PICK_HEAD"`.
 
+- The Otel update to v0.112.0 has a few breaking changes:
+  - [`otelcol.processor.deltatocumulative`] Change `max_streams` default value to `9223372036854775807` (max int).
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/35048
+  - [`otelcol.connector.spanmetrics`] Change `namespace` default value to `traces.span.metrics`.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/34485
+  - [`otelcol.exporter.logging`] Removed in favor of the `otelcol.exporter.debug`.
+    https://github.com/open-telemetry/opentelemetry-collector/issues/11337
+
 ### Features
 
 - Add the function `path_join` to the stdlib. (@wildum)
@@ -67,6 +75,21 @@ Main (unreleased)
 - Add support for `not_modified` response in `remotecfg`. (@spartan0x117)
 
 - Fix dead link for RelabelConfig in the PodLog documentation page (@TheoBrigitte)
+
+- Most notable changes coming with the OTel update from v0.108.0 vo v0.112.0 besides the breaking changes: (@wildum)
+  - [`http config`] Add support for lz4 compression.
+    https://github.com/open-telemetry/opentelemetry-collector/issues/9128
+  - [`otelcol.processor.interval`] Add support for gauges and summaries.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/34803
+  - [`otelcol.receiver.kafka`] Add possibility to tune the fetch sizes.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/34431
+  - [`otelcol.processor.tailsampling`] Add `invert_match` to boolean attribute.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/34730
+  - [`otelcol.receiver.kafka`] Add support to decode to `otlp_json`.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33627
+  - [`otelcol.processor.transform`] Add functions `convert_exponential_histogram_to_histogram` and `aggregate_on_attribute_value`.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33824
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33423
 
 v1.4.3
 -----------------
