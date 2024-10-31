@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/exp/maps"
 
@@ -64,6 +65,7 @@ func runCommand() *cobra.Command {
 		clusterAdvInterfaces:  advertise.DefaultInterfaces,
 		clusterMaxJoinPeers:   5,
 		clusterRejoinInterval: 60 * time.Second,
+		disableSupportBundle:  false,
 	}
 
 	cmd := &cobra.Command{
@@ -100,7 +102,7 @@ depending on the nature of the reload error.
 		SilenceUsage: true,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return r.Run(args[0])
+			return r.Run(cmd, args[0])
 		},
 	}
 
@@ -111,6 +113,8 @@ depending on the nature of the reload error.
 	cmd.Flags().StringVar(&r.uiPrefix, "server.http.ui-path-prefix", r.uiPrefix, "Prefix to serve the HTTP UI at")
 	cmd.Flags().
 		BoolVar(&r.enablePprof, "server.http.enable-pprof", r.enablePprof, "Enable /debug/pprof profiling endpoints.")
+	cmd.Flags().
+		BoolVar(&r.disableSupportBundle, "server.http.disable-support-bundle", r.disableSupportBundle, "Disable /-/support support bundle retrieval.")
 
 	// Cluster flags
 	cmd.Flags().
@@ -184,9 +188,10 @@ type alloyRun struct {
 	configBypassConversionErrors bool
 	configExtraArgs              string
 	enableCommunityComps         bool
+	disableSupportBundle         bool
 }
 
-func (fr *alloyRun) Run(configPath string) error {
+func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -275,6 +280,15 @@ func (fr *alloyRun) Run(configPath string) error {
 		return err
 	}
 
+	var runtimeConfig []byte
+	if !fr.disableSupportBundle {
+		b := strings.Builder{}
+		cmd.Flags().VisitAll(func(f *pflag.Flag) {
+			b.WriteString(fmt.Sprintf("%s=%s\n", f.Name, f.Value.String()))
+		})
+		runtimeConfig = []byte(b.String())
+	}
+
 	httpService := httpservice.New(httpservice.Options{
 		Logger:   log.With(l, "service", "http"),
 		Tracer:   t,
@@ -283,9 +297,11 @@ func (fr *alloyRun) Run(configPath string) error {
 		ReadyFunc:  func() bool { return ready() },
 		ReloadFunc: func() (*alloy_runtime.Source, error) { return reload() },
 
-		HTTPListenAddr:   fr.httpListenAddr,
-		MemoryListenAddr: fr.inMemoryAddr,
-		EnablePProf:      fr.enablePprof,
+		HTTPListenAddr:       fr.httpListenAddr,
+		MemoryListenAddr:     fr.inMemoryAddr,
+		EnablePProf:          fr.enablePprof,
+		DisableSupportBundle: fr.disableSupportBundle,
+		RuntimeConfig:        runtimeConfig,
 	})
 
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{

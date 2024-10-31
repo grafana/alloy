@@ -2,6 +2,7 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -11,8 +12,10 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
@@ -47,9 +50,11 @@ type Options struct {
 	ReadyFunc  func() bool
 	ReloadFunc func() (*alloy_runtime.Source, error)
 
-	HTTPListenAddr   string // Address to listen for HTTP traffic on.
-	MemoryListenAddr string // Address to accept in-memory traffic on.
-	EnablePProf      bool   // Whether pprof endpoints should be exposed.
+	HTTPListenAddr       string // Address to listen for HTTP traffic on.
+	MemoryListenAddr     string // Address to accept in-memory traffic on.
+	EnablePProf          bool   // Whether pprof endpoints should be exposed.
+	DisableSupportBundle bool   // Whether support bundle endpoint should be disabled.
+	RuntimeConfig        []byte // Alloy runtime config to send with support bundle
 }
 
 // Arguments holds runtime settings for the HTTP service.
@@ -65,6 +70,8 @@ type Service struct {
 
 	winMut sync.Mutex
 	win    *server.WinCertStoreHandler
+
+	host service.Host
 
 	// publicLis and tcpLis are used to lazily enable TLS, since TLS is
 	// optionally configurable at runtime.
@@ -140,6 +147,8 @@ func (s *Service) Definition() service.Definition {
 // Run starts the HTTP service. It will run until the provided context is
 // canceled or there is a fatal error.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
+	s.host = host
+
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -211,6 +220,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		}).Methods(http.MethodGet, http.MethodPost)
 	}
 
+	// Wire in support bundle generator
+	r.HandleFunc("/-/support", s.supportHandler).Methods("GET")
+
 	// Wire custom service handlers for services which depend on the http
 	// service.
 	//
@@ -241,6 +253,76 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	<-ctx.Done()
 	return nil
+}
+
+func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
+	s.winMut.Lock()
+	cfg := s.opts
+	s.winMut.Unlock()
+
+	runtime, ok := s.host.(*alloy_runtime.Runtime)
+	if !ok {
+		level.Error(s.log).Log("msg", "failed to get runtime for support bundle", "err", "host is not a runtime")
+	}
+
+	if cfg.DisableSupportBundle {
+		rw.WriteHeader(http.StatusForbidden)
+		_, _ = rw.Write([]byte("403 - support bundle generation is disabled; it can be re-enabled by removing the -disable-support-bundle flag"))
+		return
+	}
+
+	duration := getServerWriteTimeout(r)
+	if r.URL.Query().Has("duration") {
+		d, err := strconv.Atoi(r.URL.Query().Get("duration"))
+		if err != nil {
+			http.Error(rw, fmt.Sprintf("duration value (in seconds) should be a positive integer: %s", err), http.StatusBadRequest)
+			return
+		}
+		if d < 1 {
+			http.Error(rw, "duration value (in seconds) should be larger than 1", http.StatusBadRequest)
+			return
+		}
+		if float64(d) > duration.Seconds() {
+			http.Error(rw, "duration value exceeds the server's write timeout", http.StatusBadRequest)
+			return
+		}
+		duration = time.Duration(d) * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), duration)
+	defer cancel()
+
+	s.winMut.Lock()
+	var (
+		httpSrvAddress = cfg.HTTPListenAddr
+	)
+	s.winMut.Unlock()
+
+	var logsBuffer bytes.Buffer
+	if runtime != nil {
+		syncBuff := log.NewSyncWriter(&logsBuffer)
+		runtime.AddTemporaryLogger(syncBuff)
+		defer func() {
+			runtime.RemoveTemporaryLogger()
+		}()
+	}
+
+	bundle, err := ExportSupportBundle(ctx, cfg.RuntimeConfig, httpSrvAddress, s.Data().(Data).DialFunc)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := ServeSupportBundle(rw, bundle, &logsBuffer); err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func getServerWriteTimeout(r *http.Request) time.Duration {
+	srv, ok := r.Context().Value(http.ServerContextKey).(*http.Server)
+	if ok && srv.WriteTimeout != 0 {
+		return srv.WriteTimeout
+	}
+	return 30 * time.Second
 }
 
 // getServiceRoutes returns a sorted list of service routes for services which

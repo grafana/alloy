@@ -819,6 +819,8 @@ require (
 
 require github.com/moby/sys/userns v0.1.0 // indirect
 
+require github.com/mackerelio/go-osstat v0.2.5
+
 // NOTE: replace directives below must always be *temporary*.
 //
 // Adding a replace directive to change a module to a fork of a module will
