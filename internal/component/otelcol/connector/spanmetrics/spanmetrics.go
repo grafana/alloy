@@ -109,6 +109,7 @@ var DefaultArguments = Arguments{
 	MetricsExpiration:        0,
 	ResourceMetricsCacheSize: 1000,
 	TimestampCacheSize:       1000,
+	Namespace:                "traces.span.metrics",
 }
 
 // SetToDefault implements syntax.Defaulter.
