@@ -217,8 +217,9 @@ func toSpanCountConfig(cfg tailsamplingprocessor.SpanCountCfg) tail_sampling.Spa
 
 func toBooleanAttributeConfig(cfg tailsamplingprocessor.BooleanAttributeCfg) tail_sampling.BooleanAttributeConfig {
 	return tail_sampling.BooleanAttributeConfig{
-		Key:   cfg.Key,
-		Value: cfg.Value,
+		Key:         cfg.Key,
+		Value:       cfg.Value,
+		InvertMatch: cfg.InvertMatch,
 	}
 }
 
