@@ -71,6 +71,7 @@ The `encoding` argument determines how to decode messages read from Kafka.
 Available internal encodings:
 
 * `"otlp_proto"`: Decode messages as OTLP protobuf.
+* `"otlp_json"` : Decode messages as OTLP JSON.
 * `"jaeger_proto"`: Decode messages as a single Jaeger protobuf span.
 * `"jaeger_json"`: Decode messages as a single Jaeger JSON span.
 * `"zipkin_proto"`: Decode messages as a list of Zipkin protobuf spans.
