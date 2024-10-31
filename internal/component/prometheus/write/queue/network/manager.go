@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -76,8 +77,7 @@ func (s *manager) SendMetadata(ctx context.Context, data *types.TimeSeriesBinary
 }
 
 func (s *manager) UpdateConfig(ctx context.Context, cc types.ConnectionConfig) error {
-	done := make(chan struct{})
-	defer close(done)
+	done := make(chan struct{}, 1)
 	err := s.configInbox.Send(ctx, configCallback{
 		cc:   cc,
 		done: done,
