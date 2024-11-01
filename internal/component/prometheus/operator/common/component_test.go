@@ -105,6 +105,8 @@ func TestRunExit(t *testing.T) {
 		require.NoError(t, err)
 		cmpRunExited.Store(true)
 	}()
+	// Wait until the component.Run goroutine starts
+	// The test can be flaky without this.
 	wg.Wait()
 
 	// Stop the component.
