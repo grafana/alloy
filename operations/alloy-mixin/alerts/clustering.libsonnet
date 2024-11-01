@@ -11,7 +11,7 @@ local alert = import './utils/alert.jsonnet';
           if enableK8sCluster then 
             'stddev by (cluster, namespace, job, cluster_name) (sum without (state) (cluster_node_peers)) != 0' 
           else 
-            'stddev by (job) (sum without (state) (cluster_node_peers)) != 0',
+            'stddev by (job, cluster_name) (sum without (state) (cluster_node_peers)) != 0',
           'Cluster is not converging.',
           'Cluster is not converging: nodes report different number of peers in the cluster. Job is {{ $labels.job }}',
           '10m',
@@ -29,8 +29,8 @@ local alert = import './utils/alert.jsonnet';
             count by (cluster, namespace, job, cluster_name) (cluster_node_info)
           ||| else |||
             sum without (state) (cluster_node_peers) !=
-            on (job) group_left
-            count by (job) (cluster_node_info)
+            on (job, cluster_name) group_left
+            count by (job, cluster_name) (cluster_node_info)
           |||
           ,
           'Nodes report different number of peers vs. the count of observed Alloy metrics.',
@@ -55,7 +55,7 @@ local alert = import './utils/alert.jsonnet';
           if enableK8sCluster then 
             'sum by (cluster, namespace, job, cluster_name) (rate(cluster_node_gossip_received_events_total{event="node_conflict"}[2m])) > 0'
           else
-            'sum by (job) (rate(cluster_node_gossip_received_events_total{event="node_conflict"}[2m])) > 0'
+            'sum by (job, cluster_name) (rate(cluster_node_gossip_received_events_total{event="node_conflict"}[2m])) > 0'
           ,
           'Cluster Node Name Conflict.',
           'A node tried to join the cluster with a name conflicting with an existing peer. Job is {{ $labels.job }}',          
@@ -68,7 +68,7 @@ local alert = import './utils/alert.jsonnet';
           if enableK8sCluster then
             'sum by (cluster, namespace, job, instance, cluster_name) (cluster_node_peers{state="terminating"}) > 0'
           else
-            'sum by (job, instance) (cluster_node_peers{state="terminating"}) > 0'
+            'sum by (job, instance, cluster_name) (cluster_node_peers{state="terminating"}) > 0'
           ,
           'Cluster node stuck in Terminating state.',
           'There is a node within the cluster that is stuck in Terminating state. Job is {{ $labels.job }}',
@@ -84,7 +84,7 @@ local alert = import './utils/alert.jsonnet';
             ) > 1
           ||| else |||
             count without (sha256) (
-                max by (sha256, job) (alloy_config_hash and on(job) cluster_node_info)
+                max by (sha256, job, cluster_name) (alloy_config_hash and on(job) cluster_node_info)
             ) > 1
           |||
           ,

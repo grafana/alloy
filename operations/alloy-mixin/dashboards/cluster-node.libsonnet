@@ -7,7 +7,8 @@ local filename = 'alloy-cluster-node.json';
   local templateVariables = 
     templates.newTemplateVariablesList(
       filterSelector=$._config.filterSelector, 
-      enableK8sCluster=$._config.enableK8sCluster, 
+      enableK8sCluster=$._config.enableK8sCluster,
+      enableAlloyCluster=$._config.enableAlloyCluster,
       includeInstance=true,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
