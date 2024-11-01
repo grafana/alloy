@@ -77,8 +77,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 	c.reportHealth(nil)
 	errChan := make(chan error, 1)
-	runWg := sync.WaitGroup{}
-	defer runWg.Wait()
+	wg := sync.WaitGroup{}
+	defer wg.Wait()
 	for {
 		select {
 		case <-ctx.Done():
@@ -99,16 +99,16 @@ func (c *Component) Run(ctx context.Context) error {
 			if cancel != nil {
 				cancel()
 			}
-			runWg.Wait()
+			wg.Wait()
 
 			innerCtx, cancel = context.WithCancel(ctx)
-			runWg.Add(1)
+			wg.Add(1)
 			go func() {
 				if err := manager.Run(innerCtx); err != nil {
 					level.Error(c.opts.Logger).Log("msg", "error running crd manager", "err", err)
 					errChan <- err
 				}
-				runWg.Done()
+				wg.Done()
 			}()
 			c.mut.Unlock()
 		}
