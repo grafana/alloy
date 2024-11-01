@@ -32,6 +32,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 		name                   string
 		m                      *promopv1.ServiceMonitor
 		ep                     promopv1.Endpoint
+		role                   promk8s.Role
 		expectedRelabels       string
 		expectedMetricRelabels string
 		expected               *config.ScrapeConfig
@@ -44,7 +45,8 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 					Name:      "svcmonitor",
 				},
 			},
-			ep: promopv1.Endpoint{},
+			ep:   promopv1.Endpoint{},
+			role: promk8s.RoleEndpoint,
 			expectedRelabels: util.Untab(`
 				- target_label: __meta_foo
 				  replacement: bar
@@ -110,6 +112,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 			ep: promopv1.Endpoint{
 				TargetPort: &intstr.IntOrString{StrVal: "http_metrics", Type: intstr.String},
 			},
+			role: promk8s.RoleEndpoint,
 			expectedRelabels: util.Untab(`
 				- target_label: __meta_foo
 				  replacement: bar
@@ -180,6 +183,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 			ep: promopv1.Endpoint{
 				TargetPort: &intstr.IntOrString{IntVal: 4242, Type: intstr.Int},
 			},
+			role: promk8s.RoleEndpoint,
 			expectedRelabels: util.Untab(`
 				- target_label: __meta_foo
 				  replacement: bar
@@ -230,6 +234,77 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				ServiceDiscoveryConfigs: discovery.Configs{
 					&promk8s.SDConfig{
 						Role: "endpoints",
+
+						NamespaceDiscovery: promk8s.NamespaceDiscovery{
+							IncludeOwnNamespace: false,
+							Names:               []string{"operator"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "role_endpointslice",
+			m: &promopv1.ServiceMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "operator",
+					Name:      "svcmonitor",
+				},
+			},
+			ep: promopv1.Endpoint{
+				TargetPort: &intstr.IntOrString{IntVal: 4242, Type: intstr.Int},
+			},
+			role: promk8s.RoleEndpointSlice,
+			expectedRelabels: util.Untab(`
+				- target_label: __meta_foo
+				  replacement: bar
+				- source_labels: [job]
+				  target_label: __tmp_prometheus_job_name
+				- source_labels: ["__meta_kubernetes_pod_container_port_number"]
+				  regex: "4242"
+				  action: "keep"
+				- source_labels: [__meta_kubernetes_endpointslice_address_target_kind, __meta_kubernetes_endpointslice_address_target_name]
+				  regex: Node;(.*)
+				  target_label: node
+				  replacement: ${1}
+				- source_labels: [__meta_kubernetes_endpointslice_address_target_kind, __meta_kubernetes_endpointslice_address_target_name]
+				  regex: Pod;(.*)
+				  target_label: pod
+				  action: replace
+				  replacement: ${1}
+				- source_labels: [__meta_kubernetes_namespace]
+				  target_label: namespace
+				- source_labels: [__meta_kubernetes_service_name]
+				  target_label: service
+				- source_labels: [__meta_kubernetes_pod_container_name]
+				  target_label: container
+				- source_labels: [__meta_kubernetes_pod_name]
+				  target_label: pod
+				- source_labels: [__meta_kubernetes_pod_phase]
+				  regex: (Failed|Succeeded)
+				  action: drop
+				- source_labels: [__meta_kubernetes_service_name]
+				  target_label: job
+				  replacement: ${1}
+				- target_label: endpoint
+				  replacement: "4242"
+			`),
+			expected: &config.ScrapeConfig{
+				JobName:           "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:   true,
+				ScrapeInterval:    model.Duration(time.Minute),
+				ScrapeTimeout:     model.Duration(10 * time.Second),
+				ScrapeProtocols:   config.DefaultScrapeProtocols,
+				EnableCompression: true,
+				MetricsPath:       "/metrics",
+				Scheme:            "http",
+				HTTPClientConfig: commonConfig.HTTPClientConfig{
+					FollowRedirects: true,
+					EnableHTTP2:     true,
+				},
+				ServiceDiscoveryConfigs: discovery.Configs{
+					&promk8s.SDConfig{
+						Role: "endpointslice",
 
 						NamespaceDiscovery: promk8s.NamespaceDiscovery{
 							IncludeOwnNamespace: false,
@@ -308,6 +383,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 					},
 				},
 			},
+			role: promk8s.RoleEndpoint,
 			expectedRelabels: util.Untab(`
 				- target_label: __meta_foo
 				  replacement: bar
@@ -427,7 +503,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 					{TargetLabel: "__meta_foo", Replacement: "bar"},
 				},
 			}
-			cfg, err := cg.GenerateServiceMonitorConfig(tc.m, tc.ep, 1, promk8s.RoleEndpoint)
+			cfg, err := cg.GenerateServiceMonitorConfig(tc.m, tc.ep, 1, tc.role)
 			require.NoError(t, err)
 			// check relabel configs separately
 			rlcs := cfg.RelabelConfigs
