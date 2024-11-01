@@ -52,6 +52,8 @@ Main (unreleased)
 
 ### Bugfixes
 
+- Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
+
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
 
 - Do not log error on clean shutdown of `loki.source.journal`. (@thampiotr) 
