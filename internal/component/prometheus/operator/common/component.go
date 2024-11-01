@@ -19,13 +19,15 @@ import (
 type Component struct {
 	mut     sync.RWMutex
 	config  *operator.Arguments
-	manager *crdManager
+	manager crdManagerInterface
 	ls      labelstore.LabelStore
 
 	onUpdate  chan struct{}
 	opts      component.Options
 	healthMut sync.RWMutex
 	health    component.Health
+
+	crdManagerFactory crdManagerFactory
 
 	kind    string
 	cluster cluster.Cluster
@@ -44,11 +46,12 @@ func New(o component.Options, args component.Arguments, kind string) (*Component
 	}
 	ls := service.(labelstore.LabelStore)
 	c := &Component{
-		opts:     o,
-		onUpdate: make(chan struct{}, 1),
-		kind:     kind,
-		cluster:  clusterData,
-		ls:       ls,
+		opts:              o,
+		onUpdate:          make(chan struct{}, 1),
+		kind:              kind,
+		cluster:           clusterData,
+		ls:                ls,
+		crdManagerFactory: realCrdManagerFactory{},
 	}
 	return c, c.Update(args)
 }
@@ -74,6 +77,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 	c.reportHealth(nil)
 	errChan := make(chan error, 1)
+	wg := sync.WaitGroup{}
+	defer wg.Wait()
 	for {
 		select {
 		case <-ctx.Done():
@@ -85,17 +90,25 @@ func (c *Component) Run(ctx context.Context) error {
 			c.reportHealth(err)
 		case <-c.onUpdate:
 			c.mut.Lock()
-			manager := newCrdManager(c.opts, c.cluster, c.opts.Logger, c.config, c.kind, c.ls)
+			manager := c.crdManagerFactory.New(c.opts, c.cluster, c.opts.Logger, c.config, c.kind, c.ls)
 			c.manager = manager
+
+			// Wait for the old manager to stop.
+			// If we start the new manager before stopping the old one,
+			// the new manager might not be able to register its debug metrics due to a duplicate registration error.
 			if cancel != nil {
 				cancel()
 			}
+			wg.Wait()
+
 			innerCtx, cancel = context.WithCancel(ctx)
+			wg.Add(1)
 			go func() {
 				if err := manager.Run(innerCtx); err != nil {
 					level.Error(c.opts.Logger).Log("msg", "error running crd manager", "err", err)
 					errChan <- err
 				}
+				wg.Done()
 			}()
 			c.mut.Unlock()
 		}
@@ -170,7 +183,7 @@ func (c *Component) Handler() http.Handler {
 		}
 		ns := parts[1]
 		name := parts[2]
-		scs := man.getScrapeConfig(ns, name)
+		scs := man.GetScrapeConfig(ns, name)
 		if len(scs) == 0 {
 			w.WriteHeader(404)
 			return

@@ -56,6 +56,9 @@ Main (unreleased)
 
 - Do not log error on clean shutdown of `loki.source.journal`. (@thampiotr) 
 
+- `prometheus.operator.*` components: Fixed a bug which would sometimes cause a 
+  "failed to create service discovery refresh metrics" error after a config reload. (@ptodev)
+
 ### Other changes
 
 - Small fix in UI stylesheet to fit more content into visible table area. (@defanator)
