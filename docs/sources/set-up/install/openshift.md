@@ -8,37 +8,33 @@ weight: 250
 
 # Deploy {{% param "FULL_PRODUCT_NAME" %}} on OpenShift
 
-You can deploy {{< param "PRODUCT_NAME" >}} on OpenShift.
-It's important to ensure that Alloy conforms to OpenShift [security][] requirements.
-This includes correctly configuring permissions and security policies to avoid vulnerabilities.
-You can adapt the suggested policies and configuration to meet your specific needs and security policies.
+You can deploy {{< param "PRODUCT_NAME" >}} on the Red Hat OpenShift Container Platform (OCP).
 
 ## Before you begin
 
-* These steps assume you have access to OpenShift in your environment.
+* These steps assume you have a working OCP environment.
+* You can adapt the suggested policies and configuration to meet your specific needs and [security][] policies.
 
 ## Configure Role-Based Access Control
 
-You must configure RBAC to allow access to Kubernetes and OpenShift resources without compromising security.
+You must configure RBAC to allow secure access to Kubernetes and OCP resources.
 
-1. Download the [rbac.yaml][] configuration file. This configuration file defines the OpenShift verbs and permissions for {{< param "PRODUCT_NAME" >}}.
-1. Refer to [Managing Role-based Access Control (RBAC)][rbac] topic in the OpenShift documentation for more information about updating and managing your RBAC configurations.
+1. Download the [rbac.yaml][] configuration file. This configuration file defines the OCP verbs and permissions for {{< param "PRODUCT_NAME" >}}.
+1. Review the `rbac.yaml` file and adapt as needed for your local environment. Refer to [Managing Role-based Access Control (RBAC)][rbac] topic in the OCP documentation for more information about updating and managing your RBAC configurations.
 
-## Run {{% param "FULL_PRODUCT_NAME" %}} as a non-root user
+## Run {{% param "PRODUCT_NAME" %}} as a non-root user
 
-You must configure {{< param "PRODUCT_NAME" >}} to run as a non-root user.
-This ensures that {{< param "PRODUCT_NAME" >}} complies with OpenShift security policies.
-
-1. Configure {{< param "PRODUCT_NAME" >}} to [run as a non-root user][nonroot].
+You must configure {{< param "PRODUCT_NAME" >}} to [run as a non-root user][nonroot].
+This ensures that {{< param "PRODUCT_NAME" >}} complies with your OCP security policies.
 
 ## Apply Security Context Constraints
 
-OpenShift uses Security Context Constraints (SCC) to control pod permissions.
+OCP uses Security Context Constraints (SCC) to control pod permissions.
 Refer to [Managing security context constraints][scc] for more information about how you can define and enforce these permissions.
-This ensures that the pods running {{< param "PRODUCT_NAME" >}} comply with OpenShift security policies.
+This ensures that the pods running {{< param "PRODUCT_NAME" >}} comply with OCP security policies.
 
 {{< admonition type="note" >}}
-The security context is configured only at the container level, not at the container and deployment level.
+The security context is only configured at the container level, not at the container and deployment level.
 {{< /admonition >}}
 
 You can apply the following SCCs when you deploy {{< param "PRODUCT_NAME" >}}.
@@ -48,14 +44,48 @@ Not all of these SCCs are required for each use case.
 You can adapt the SCCs to meet your local requirements and needs.
 {{< /admonition >}}
 
-* `RunAsUser`: Specifies the user ID under which Alloy will run.
-   It must be configured to allow the use of a non-root user ID.
+* `RunAsUser`: Specifies the user ID under which {{< param "PRODUCT_NAME" >}} runs.
+  You must configure this constraint to allow a non-root user ID.
 * `SELinuxContext`: Configures the SELinux context for containers.
-   The appropriate SELinux context must be allowed for {{< param "PRODUCT_NAME" >}}, ensuring that SELinux policies allow the necessary operations.
-   This SCC is generally not required to deploy {{< param "PRODUCT_NAME" >}} as a non-root user.
-* `FSGroup`: Allows you to specify the group of file IDs for file system access.
-   It must be configured to allow the {{< param "PRODUCT_NAME" >}} group to have proper access to the files it needs.
-* `Volumes`: Allow the type of volumes required for {{< param "PRODUCT_NAME" >}}.
+  If you run {{< param "PRODUCT_NAME" >}} as root, you must configure this constraint to make sure that SELinux policies don't block {{< param "PRODUCT_NAME" >}}.
+  This SCC is generally not required to deploy {{< param "PRODUCT_NAME" >}} as a non-root user.
+* `FSGroup`: Specifies the fsGroup IDs for file system access.
+  You must configure this constraint to give {{< param "PRODUCT_NAME" >}} group access to the files it needs.
+* `Volumes`: Specifies the persistent volumes used for storage.
+  You must configure this constraint to give {{< param "PRODUCT_NAME" >}} access to the volumes it needs.
+
+The following example shows a SCC configuration that deploys {{< param "PRODUCT_NAME" >}} as a non-root user:
+
+```yaml
+piVerison: aapps/v1
+kind: DaemonSet
+metadata:
+  name: alloy-logs
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alloy-logs
+   template:
+     metadata:
+       lables:
+         app: alloy-logs
+      spec:
+        containers:
+        - name: alloy-logs
+          image: grafana/alloy:latest
+          ports:
+          - containerPort: 12345
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 473
+            runAsGroup: 473
+            # fsGroup: 1000
+         volumes:
+         - name: log-volume
+           emptyDir: {}
+```
 
 ## Next steps
 
