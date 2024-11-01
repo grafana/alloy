@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Add support to `loki.source.api` to be able to extract the tenant from the HTTP `X-Scope-OrgID` header (@QuentinBisson)
 
+- Add support to `prometheus.operator.servicemonitors` to allow `endpointslice` role. (@yoyosir)
+
 - (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
 
 - (_Experimental_) Add a `prometheus.write.queue` component to add an alternative to `prometheus.remote_write`
