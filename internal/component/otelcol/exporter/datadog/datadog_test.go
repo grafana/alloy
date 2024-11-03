@@ -8,7 +8,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"
 	datadog_config "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog/config"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
 	datadogOtelconfig "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog/config"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
@@ -76,6 +75,10 @@ func TestConfigConversion(t *testing.T) {
 						"instrumentation:express.server" = "express",
 					}
 				}
+				logs {
+					use_compression = true
+					compression_level = 9
+				}
 				metrics {
 					delta_ttl = 1200
 					exporter {
@@ -102,6 +105,15 @@ func TestConfigConversion(t *testing.T) {
 					Key:              configopaque.String("abc"),
 					Site:             "datadoghq.com",
 					FailOnInvalidKey: true,
+				},
+				Logs: datadogOtelconfig.LogsConfig{
+					TCPAddrConfig: confignet.TCPAddrConfig{
+						Endpoint: "https://http-intake.logs.datadoghq.com",
+					},
+
+					UseCompression:   true,
+					CompressionLevel: 9,
+					BatchWait:        5,
 				},
 				Metrics: datadogOtelconfig.MetricsConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
@@ -155,6 +167,14 @@ func TestConfigConversion(t *testing.T) {
 				TagsConfig:    datadogOtelconfig.TagsConfig{},
 				OnlyMetadata:  false,
 				API:           datadogOtelconfig.APIConfig{Key: configopaque.String("abc"), Site: "datadoghq.com"},
+				Logs: datadogOtelconfig.LogsConfig{
+					TCPAddrConfig: confignet.TCPAddrConfig{
+						Endpoint: "https://http-intake.logs.datadoghq.com",
+					},
+					UseCompression:   true,
+					CompressionLevel: 6,
+					BatchWait:        5,
+				},
 				Metrics: datadogOtelconfig.MetricsConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
 						Endpoint: "https://api.datadoghq.com",
@@ -198,6 +218,14 @@ func TestConfigConversion(t *testing.T) {
 				TagsConfig:    datadogOtelconfig.TagsConfig{},
 				OnlyMetadata:  false,
 				API:           datadogOtelconfig.APIConfig{Key: configopaque.String("abc"), Site: "ap1.datadoghq.com"},
+				Logs: datadogOtelconfig.LogsConfig{
+					TCPAddrConfig: confignet.TCPAddrConfig{
+						Endpoint: "https://http-intake.logs.ap1.datadoghq.com",
+					},
+					UseCompression:   true,
+					CompressionLevel: 6,
+					BatchWait:        5,
+				},
 				Metrics: datadogOtelconfig.MetricsConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
 						Endpoint: "https://api.ap1.datadoghq.com",
@@ -230,7 +258,7 @@ func TestConfigConversion(t *testing.T) {
 			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
 			actual, err := args.Convert()
 			require.NoError(t, err)
-			require.Equal(t, &tc.expected, actual.(*datadogexporter.Config))
+			require.Equal(t, &tc.expected, actual.(*datadogOtelconfig.Config))
 		})
 	}
 }
