@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 	"sort"
 	"strings"
 	"sync"
@@ -469,7 +470,11 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 	mapKeys := []string{}
 	for i, ep := range sm.Spec.Endpoints {
 		var scrapeConfig *config.ScrapeConfig
-		scrapeConfig, err = gen.GenerateServiceMonitorConfig(sm, ep, i)
+		role := promk8s.Role(c.args.KubernetesRole)
+		if role == "" {
+			role = promk8s.RoleEndpoint
+		}
+		scrapeConfig, err = gen.GenerateServiceMonitorConfig(sm, ep, i, role)
 		if err != nil {
 			// TODO(jcreixell): Generate Kubernetes event to inform of this error when running `kubectl get <servicemonitor>`.
 			level.Error(c.logger).Log("name", sm.Name, "err", err, "msg", "error generating scrapeconfig from serviceMonitor")

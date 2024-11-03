@@ -32,10 +32,11 @@ prometheus.operator.servicemonitors "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`forward_to` | `list(MetricsReceiver)` | List of receivers to send scraped metrics to. | | yes
-`namespaces` | `list(string)` | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces will be searched. || no
+Name | Type | Description                                                                                                                | Default | Required
+---- | ---- |----------------------------------------------------------------------------------------------------------------------------| ------- | --------
+`forward_to` | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                                              | | yes
+`namespaces` | `list(string)` | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces will be searched.              || no
+`kubernetes_role` | `string` | The kubernetes role used for discovery. Supports `endpoints` or `endpointslice` If not specified, `endpoints` role will be used. || no
 
 ## Blocks
 

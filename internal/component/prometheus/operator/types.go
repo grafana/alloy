@@ -24,6 +24,8 @@ type Arguments struct {
 	// Namespaces to search for monitor resources. Empty implies All namespaces
 	Namespaces []string `alloy:"namespaces,attr,optional"`
 
+	KubernetesRole string `alloy:"kubernetes_role,attr,optional"`
+
 	// LabelSelector allows filtering discovered monitor resources by labels
 	LabelSelector *config.LabelSelector `alloy:"selector,block,optional"`
 
