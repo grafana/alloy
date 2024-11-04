@@ -21,8 +21,8 @@ configured HTTP server write timeout, and if not provided, defaults to it.
 The endpoint is only exposed to the {{< param "PRODUCT_NAME" >}} HTTP server listen address, which
 defaults to `localhost:12345`.
 
-The support bundle contains all information in plain text, so that it can be
-inspected before sharing, to verify that no sensitive information has leaked.
+The support bundle contains all information in plain text, so you can
+inspect it before sharing to verify that no sensitive information has leaked.
 
 In addition, you can inspect the [supportbundle implementation](https://github.com/grafana/alloy/tree/internal/service/http/supportbundle.go)
 to verify the code used to generate these bundles.
