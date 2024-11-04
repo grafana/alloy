@@ -90,7 +90,11 @@ type Component struct {
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
+// This struct is used to parse the gitleaks.toml file
 // Non-exhaustive representation. See https://github.com/gitleaks/gitleaks/blob/master/config/config.go
+//
+// This comes from the Gitleaks project by Zachary Rice, which is licensed under the MIT license.
+// See the gitleaks.toml file for copyright and license details.
 type GitLeaksConfig struct {
 	AllowList struct {
 		Description string
