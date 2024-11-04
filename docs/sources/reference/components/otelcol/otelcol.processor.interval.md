@@ -25,7 +25,12 @@ The following metric types will _not_ be aggregated and will instead be passed, 
 - Non-monotonically increasing sums
 
 {{< admonition type="note" >}}
-Aggregating data over an interval is an inherently "lossy" process. For monotonically increasing, cumulative sums, histograms, and exponential histograms, you "lose" precision, but you don't lose overall data. But for non-monotonically increasing sums, gauges, and summaries, aggregation represents actual data loss. IE you could "lose" that a value increased and then decreased back to the original value. In most cases, this data "loss" is ok. However, if you would rather these values be passed through, and _not_ aggregated, you can set that in the configuration.
+Aggregating data over an interval is an inherently lossy process.
+You lose precision for monotonically increasing cumulative sums, histograms, and exponential histograms, but you don't lose overall data.
+You can lose data when you aggregate non-monotonically increasing sums, gauges, and summaries.
+For example, a value can increase and decrease to the original value, and you can lose this change in the aggregation.
+In most cases, this type of data loss is OK.
+However, you can change the configuration so that these changed values pass through and are _not_ aggregated.
 {{< /admonition >}}
 
 {{< admonition type="warning" >}}
