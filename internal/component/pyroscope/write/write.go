@@ -373,7 +373,20 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			}
 
 			u.Path = path.Join(u.Path, profile.URL.Path)
-			u.RawQuery = profile.URL.RawQuery
+
+			// Handle labels
+			query := profile.URL.Query()
+			if nameParam := query.Get("name"); nameParam != "" {
+				key, err := ParseKey(nameParam)
+				if err != nil {
+					return err
+				}
+				for k, v := range f.config.ExternalLabels {
+					key.labels[k] = v
+				}
+				query.Set("name", key.Normalized())
+			}
+			u.RawQuery = query.Encode()
 
 			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), pipeReaders[i])
 			if err != nil {

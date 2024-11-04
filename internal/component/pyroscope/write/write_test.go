@@ -268,14 +268,26 @@ func Test_Write_AppendIngest(t *testing.T) {
 	)
 
 	testData := []byte("test-profile-data")
+	argument.ExternalLabels = map[string]string{
+		"env":     "prod",      // Should override env=staging
+		"cluster": "cluster-1", // Should be added
+	}
 
-	handlerFn := func(expectedPath, expectedQuery string) http.HandlerFunc {
+	handlerFn := func(expectedPath string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			appendCount.Inc()
 			require.Equal(t, expectedPath, r.URL.Path, "Unexpected path")
-			require.Equal(t, expectedQuery, r.URL.RawQuery, "Unexpected query")
 			require.Equal(t, "endpoint-value", r.Header.Get("X-Test-Header"))
 			require.Equal(t, []string{"profile-value1", "profile-value2"}, r.Header["X-Profile-Header"])
+
+			query := r.URL.Query()
+			name := query.Get("name")
+			require.Contains(t, name, "my.awesome.app.cpu", "Base name should be preserved")
+			require.Contains(t, name, "env=prod", "External label should override profile label")
+			require.Contains(t, name, "cluster=cluster-1", "External label should be added")
+			require.Contains(t, name, "region=us-west-1", "Profile-only label should be preserved")
+			require.Equal(t, "value", query.Get("key"), "Original query parameter should be preserved")
+
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err, "Failed to read request body")
 			require.Equal(t, testData, body, "Unexpected body content")
@@ -284,7 +296,7 @@ func Test_Write_AppendIngest(t *testing.T) {
 	}
 
 	for i := int32(0); i < serverCount; i++ {
-		servers[i] = httptest.NewServer(handlerFn("/ingest", "key=value"))
+		servers[i] = httptest.NewServer(handlerFn("/ingest"))
 		endpoints = append(endpoints, &EndpointOptions{
 			URL:           servers[i].URL,
 			RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
@@ -327,7 +339,10 @@ func Test_Write_AppendIngest(t *testing.T) {
 			"X-Test-Header":    []string{"profile-value"},                    // This should be overridden by endpoint
 			"X-Profile-Header": []string{"profile-value1", "profile-value2"}, // This should be preserved
 		},
-		URL: &url.URL{Path: "/ingest", RawQuery: "key=value"},
+		URL: &url.URL{
+			Path:     "/ingest",
+			RawQuery: "name=my.awesome.app.cpu{env=staging,region=us-west-1}&key=value",
+		},
 	}
 
 	err = export.Receiver.Appender().AppendIngest(context.Background(), incomingProfile)
