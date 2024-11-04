@@ -4,10 +4,8 @@ title: Grafana Alloy
 description: Grafana Alloy is a a vendor-neutral distribution of the OTel Collector
 weight: 350
 cascade:
-  ALLOY_RELEASE: v1.5.0
-  OTEL_VERSION: v0.105.0
-  PROM_WIN_EXP_VERSION: v0.27.3
-  SNMP_VERSION: v0.26.0
+  ALLOY_RELEASE: v1.3.0
+  OTEL_VERSION: v0.87.0
   FULL_PRODUCT_NAME: Grafana Alloy
   PRODUCT_NAME: Alloy
 hero:
@@ -17,30 +15,30 @@ hero:
   width: 110
   height: 110
   description: >-
-    Grafana Alloy is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector. Alloy uniquely combines the very best OSS observability signals in the community.
+    Grafana Alloy is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector. With Alloy, you can instrument your app or infrastrastructure to collect, process, and forward telemetry data to the data source of your choice. 
 cards:
   title_class: pt-0 lh-1
   items:
     - title: Install Alloy
-      href: ./set-up/install/
+      href: ./get-started/install/
       description: Learn how to install and uninstall Alloy on Docker, Kubernetes, Linux, macOS, or Windows.
     - title: Run Alloy
-      href: ./set-up/run/
+      href: ./get-started/run/
       description: Learn how to start, restart, and stop Alloy after you have installed it.
     - title: Configure Alloy
-      href: ./configure/
+      href: ./tasks/configure/
       description: Learn how to configure Alloy on Kubernetes, Linux, macOS, or Windows.
     - title: Migrate to Alloy
-      href: ./set-up/migrate/
+      href: ./tasks/migrate/
       description: Learn how to migrate to Alloy from Grafana Agent Operator, Prometheus, Promtail, Grafana Agent Static, or Grafana Agent Flow.
     - title: Collect OpenTelemetry data
-      href: ./collect/opentelemetry-data/
+      href: ./tasks/collect-opentelemetry-data/
       description: You can configure Alloy to collect OpenTelemetry-compatible data and forward it to any OpenTelemetry-compatible endpoint. Learn how to configure OpenTelemetry data delivery, configure batching, and receive OpenTelemetry data over OTLP.
     - title: Collect and forward Prometheus metrics
-      href: ./collect/prometheus-metrics/
+      href: ./tasks/collect-prometheus-metrics/
       description: You can configure Alloy to collect Prometheus metrics and forward them to any Prometheus-compatible database. Learn how to configure metrics delivery and collect metrics from Kubernetes Pods.
     - title: Concepts
-      href: ./get-started/
+      href: ./concepts/
       description: Learn about components, modules, clustering, and the Alloy configuration syntax.
     - title: Reference
       href: ./reference/
@@ -53,21 +51,31 @@ cards:
 
 # Overview
 
-{{< param "PRODUCT_NAME" >}} offers native pipelines for [OTel][], [Prometheus][], [Pyroscope][], [Loki][], and many other metrics, logs, traces, and profile tools.
-In addition, you can use {{< param "PRODUCT_NAME" >}} pipelines to do different tasks, such as configure alert rules in Loki and [Mimir][].
-{{< param "PRODUCT_NAME" >}} is fully compatible with the OTel Collector, Prometheus Agent, and [Promtail][].
-You can use {{< param "PRODUCT_NAME" >}} as an alternative to either of these solutions or combine it into a hybrid system of multiple collectors and agents.
-You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructure and pair it with your Grafana LGTM stack, a telemetry backend from Grafana Cloud, or any other compatible backend from any other vendor.
+Getting the relevant telemetry data (i.e. metrics, logs, and traces) for analysis is an indispensable part of understanding the health of your system. 
+
+Think of {{< param "PRODUCT_NAME" >}} as a Swiss army knife for collecting, processing, and forwarding telemetry data to the data source of your choosing. 
+
+{{< param "PRODUCT_NAME" >}} has the following features to help you customize, scale, secure, and troubleshoot your data pipeline.
+1. Custom components
+1. GitOps compatibility
+1. Clustering support
+1. Security
+1. Debugging utilities
+
+Check out the {{< param "PRODUCT_NAME" >}} [Introduction] page for more information on these and other key features.
+
 {{< param "PRODUCT_NAME" >}} is flexible, and you can easily configure it to fit your needs in on-prem, cloud-only, or a mix of both.
 
-{{< admonition type="tip" >}}
-{{< param "PRODUCT_NAME" >}} uses the same components, code, and concepts that were first introduced in Grafana Agent Flow.
-{{< /admonition >}}
+Getting started with Alloy consists of 3 major steps:
+1. Install {{< param "PRODUCT_NAME" >}} 
+1. Configure {{< param "PRODUCT_NAME" >}} 
+1. Collect and forward telemetry data to the data source of choice
 
-## What can {{% param "PRODUCT_NAME" %}} do?
+In addition, you can use Grafana dashboard to visualize the data collected from app or infrastructure.
 
-{{< param "PRODUCT_NAME" >}} is more than just observability signals like metrics, logs, and traces. It provides many features that help you quickly find and process your data in complex environments.
-Some of these features include custom components, GitOps compatibility, clustering support, security, and debugging utilities. Refer to the {{< param "PRODUCT_NAME" >}} [Introduction] for more information on these and other key features.
+For a quick overview of this process, check out the following tutorials.
+* [Use Grafana Alloy to send logs to Loki](https://grafana.com/docs/alloy/latest/tutorials/send-logs-to-loki/)
+* [Use Grafana Alloy to send metrics to Prometheus](https://grafana.com/docs/alloy/latest/tutorials/send-metrics-to-prometheus/)
 
 ## Explore
 
