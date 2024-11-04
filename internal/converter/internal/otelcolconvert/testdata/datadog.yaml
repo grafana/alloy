@@ -22,6 +22,9 @@ exporters:
       ignore_resources: ["(GET|POST) /healthcheck"]
       span_name_remappings:
         instrumentation:express.server: "express"
+    logs:
+      use_compression: true
+      compression_level: 7
 
 service:
   pipelines:

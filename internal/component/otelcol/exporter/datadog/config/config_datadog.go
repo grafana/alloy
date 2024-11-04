@@ -303,3 +303,36 @@ func (args *DatadogSummaryArguments) SetToDefault() {
 		Mode: string(datadogOtelconfig.SummaryModeGauges),
 	}
 }
+
+// DatadogLogsArguments holds Summary specific configuration settings
+type DatadogLogsArguments struct {
+	Endpoint         string `alloy:"endpoint,attr,optional"`
+	UseCompression   bool   `alloy:"use_compression,attr,optional"`
+	CompressionLevel int    `alloy:"compression_level,attr,optional"`
+	BatchWait        int    `alloy:"batch_wait,attr,optional"`
+}
+
+// Convert converts args into the upstream type.
+func (args *DatadogLogsArguments) Convert(endpoint string) *datadogOtelconfig.LogsConfig {
+	if args == nil {
+		return nil
+	}
+	if args.Endpoint != "" {
+		endpoint = args.Endpoint
+	}
+	return &datadogOtelconfig.LogsConfig{
+		TCPAddrConfig: confignet.TCPAddrConfig{Endpoint: endpoint},
+		UseCompression: args.UseCompression,
+		CompressionLevel: args.CompressionLevel,
+		BatchWait: args.BatchWait,
+	}
+}
+
+// SetToDefault sets the default values for the DatadogLogsArguments
+func (args *DatadogLogsArguments) SetToDefault() {
+	*args = DatadogLogsArguments{
+		UseCompression:   true,
+		CompressionLevel: 6,
+		BatchWait:        5,
+	}
+}

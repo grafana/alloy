@@ -53,4 +53,9 @@ otelcol.exporter.datadog "default" {
 			mode = "noquantiles"
 		}
 	}
+
+	logs {
+		endpoint          = "https://http-intake.logs.datadoghq.com"
+		compression_level = 7
+	}
 }
