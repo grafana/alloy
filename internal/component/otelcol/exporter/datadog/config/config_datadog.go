@@ -15,7 +15,7 @@ import (
 
 // DatadogClientArguments holds the configuration settings for the Datadog client.
 // Datadog Exporter only supports InsecureSkipVerify for TLS configuration.
-// https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.105.0/exporter/datadogOtelconfig/examples/collector.yaml#L219
+// https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.105.0/exporter/datadogexporter/examples/collector.yaml#L219
 type DatadogClientArguments struct {
 	ReadBufferSize      int            `alloy:"read_buffer_size,attr,optional"`
 	WriteBufferSize     int            `alloy:"write_buffer_size,attr,optional"`
@@ -54,7 +54,7 @@ func (args *DatadogClientArguments) SetToDefault() {
 	// Additional defaults are set on the OTel side if values aren't provided.
 	// These are the defaults listed in the Alloy docs.
 	// We leave this to OTel as the types for MaxIdleConns etc are ptrs, which is difficult for Alloy to default.
-	// https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.105.0/exporter/datadogOtelconfig/internal/clientutil/http.go#L49
+	// https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.105.0/exporter/datadogexporter/internal/clientutil/http.go#L49
 	*args = DatadogClientArguments{
 		Timeout: 15 * time.Second,
 	}
@@ -88,7 +88,7 @@ func (args *DatadogAPIArguments) SetToDefault() {
 
 // HostMetadataConfig holds information used for populating the infrastructure list,
 // the host map and providing host tags functionality within the Datadog app.
-// see https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.102.0/exporter/datadogOtelconfig/config.go#L391
+// see https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.102.0/exporter/datadogexporter/config.go#L391
 // for more
 type DatadogHostMetadataArguments struct {
 	Enabled        bool     `alloy:"enabled,attr,optional"`
@@ -117,7 +117,7 @@ func (args *DatadogHostMetadataArguments) SetToDefault() {
 }
 
 // TracesConfig holds the configuration settings for the Datadog trace exporter
-// See https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogOtelconfig#TracesConfig for more
+// See https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter#TracesConfig for more
 type DatadogTracesArguments struct {
 	Endpoint                  string            `alloy:"endpoint,attr,optional"`
 	IgnoreResources           []string          `alloy:"ignore_resources,attr,optional"`
@@ -321,10 +321,10 @@ func (args *DatadogLogsArguments) Convert(endpoint string) *datadogOtelconfig.Lo
 		endpoint = args.Endpoint
 	}
 	return &datadogOtelconfig.LogsConfig{
-		TCPAddrConfig: confignet.TCPAddrConfig{Endpoint: endpoint},
-		UseCompression: args.UseCompression,
+		TCPAddrConfig:    confignet.TCPAddrConfig{Endpoint: endpoint},
+		UseCompression:   args.UseCompression,
 		CompressionLevel: args.CompressionLevel,
-		BatchWait: args.BatchWait,
+		BatchWait:        args.BatchWait,
 	}
 }
 

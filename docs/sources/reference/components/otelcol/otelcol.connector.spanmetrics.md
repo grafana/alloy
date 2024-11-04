@@ -38,9 +38,10 @@ aggregates Request, Error and Duration (R.E.D) OpenTelemetry metrics from the sp
   duration { service.name="shipping", span.name="get_shipping/{shippingId}", span.kind="SERVER", status.code="Ok" }
   ```
 
-> **NOTE**: `otelcol.connector.spanmetrics` is a wrapper over the upstream
-> OpenTelemetry Collector `spanmetrics` connector. Bug reports or feature requests
-> will be redirected to the upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.connector.spanmetrics` is a wrapper over the upstream OpenTelemetry Collector `spanmetrics` connector.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
 
 Multiple `otelcol.connector.spanmetrics` components can be specified by giving them
 different labels.

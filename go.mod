@@ -117,6 +117,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.112.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.112.0
@@ -205,6 +206,7 @@ require (
 	go.opentelemetry.io/collector/confmap/converter/expandconverter v0.112.0
 	go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.18.0
 	go.opentelemetry.io/collector/connector v0.112.0
+	go.opentelemetry.io/collector/connector/connectortest v0.112.0
 	go.opentelemetry.io/collector/consumer v0.112.0
 	go.opentelemetry.io/collector/consumer/consumerprofiles v0.112.0 // indirect
 	go.opentelemetry.io/collector/consumer/consumertest v0.112.0
@@ -219,6 +221,7 @@ require (
 	go.opentelemetry.io/collector/pdata v1.18.0
 	go.opentelemetry.io/collector/pdata/pprofile v0.112.0 // indirect
 	go.opentelemetry.io/collector/pdata/testdata v0.112.0 // indirect
+	go.opentelemetry.io/collector/pipeline v0.112.0
 	go.opentelemetry.io/collector/processor v0.112.0
 	go.opentelemetry.io/collector/processor/batchprocessor v0.112.0
 	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.112.0
@@ -812,12 +815,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20240620174524-b456828f718b // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
-)
-
-require (
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog v0.112.0
-	go.opentelemetry.io/collector/connector/connectortest v0.112.0
-	go.opentelemetry.io/collector/pipeline v0.112.0
 )
 
 require (
