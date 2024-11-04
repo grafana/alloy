@@ -52,6 +52,7 @@ Hierarchy            | Block                | Description                       
 ---------------------|----------------------|----------------------------------------------------------------------------|---------
 api                  | [api][]              | Configures authentication with Datadog                                     | yes
 traces               | [traces][]           | Trace exporter specific configuration.                                     | no
+logs               | [logs][]           | Logs exporter specific configuration.                                     | no
 metrics              | [metrics][]          | Metric exporter specific configuration.                                    | no
 metrics > exporter   | [exporter][]         | Metric Exporter specific configuation.                                     | no
 metrics > histograms | [histograms][]       | Histograms specific configuration.                                         | no
@@ -67,6 +68,7 @@ The `>` symbol indicates deeper levels of nesting. For example, `metrics > summa
 
 [api]: #api-block
 [traces]: #traces-block
+[logs]: #logs-block
 [metrics]: #metrics-block
 [exporter]: #exporter-block
 [histograms]: #histograms-block
@@ -117,6 +119,27 @@ If you are sending OTel traces and do not want stats computed by span kind, you 
 If `endpoint` is unset, the value is obtained through the `site` parameter in the [api][] section.
 
 [api]: #api-block
+
+### logs block
+
+The `logs` block configures the logs exporter settings.
+
+The following arguments are supported:
+
+Name                             | Type           | Description                                                                                        | Default                               | Required
+---------------------------------|----------------|----------------------------------------------------------------------------------------------------|---------------------------------------|---------
+`endpoint`                       | `string`       | The host of the Datadog intake server to send logs to.                                           | `"https://http-intake.logs.datadoghq.com"` | no                                         `false`                                    | no   |
+`use_compression`                | `bool`         | Available when sending logs via HTTPS. Compresses logs if enabled. |                               `true`	                                  | no
+`compression_level`              | `int`          | The compression_level parameter accepts values from 0 (no compression) to 9 (maximum compression but higher resource usage). Only used if `use_compression` is set to `true`.                                                         | `6`                                        | no
+`batch_wait`                     | `int`         | The maximum time in seconds the logs agent waits to fill each batch of logs before sending.                                                                                                               | `5`                                | no
+
+
+If `use_compression` is disabled, `compression_level` has no effect.
+
+If `endpoint` is unset, the value is obtained through the `site` parameter in the [api][] section.
+
+[api]: #api-block
+
 
 ### metrics block
 
