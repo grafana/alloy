@@ -1248,10 +1248,12 @@ github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v
 github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20240326165551-1ae1b9218b1b/go.mod h1:XVaL+FyxEWEfHkDI/X6FJgFYDA0080A1/qoOHQ43dxM=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/opentelemetry-collector/otelcol v0.0.0-20241031145945-c42963f80331 h1:WEjmn0m9FJHFSSSZmoyiB+KQbrz/i9i8dRevrC+bqRU=
-github.com/grafana/opentelemetry-collector/otelcol v0.0.0-20241031145945-c42963f80331/go.mod h1:H/HurP0qCcwcWdDRgvTJ/FRrVLnt++agxzHvgLQn/Ew=
-github.com/grafana/opentelemetry-collector/service v0.0.0-20241031145945-c42963f80331 h1:rhBcky50+/Xz4RUwqSPvNpBTGsuWaRGFvosHJazo6eU=
-github.com/grafana/opentelemetry-collector/service v0.0.0-20241031145945-c42963f80331/go.mod h1:VTLnax+DjHal3q7WKQO0ITjWdfPTq2txaoNRcVXYzgE=
+github.com/grafana/opentelemetry-collector/otelcol v0.0.0-20241104164848-8ea9d0a3e17a h1:6TnkhPwEjuleHfhKSw+IyC/I2cQORuEsImZZMhoodIE=
+github.com/grafana/opentelemetry-collector/otelcol v0.0.0-20241104164848-8ea9d0a3e17a/go.mod h1:H/HurP0qCcwcWdDRgvTJ/FRrVLnt++agxzHvgLQn/Ew=
+github.com/grafana/opentelemetry-collector/processor/batchprocessor v0.0.0-20241104164848-8ea9d0a3e17a h1:WrDY3pU4EkHsCIepUAYWt7lIfsMEPdugmYB8k6RYjMo=
+github.com/grafana/opentelemetry-collector/processor/batchprocessor v0.0.0-20241104164848-8ea9d0a3e17a/go.mod h1:QLQ31rGjPuMc/nGw4rL4HzQI9F0jVAPEmC342chxoqA=
+github.com/grafana/opentelemetry-collector/service v0.0.0-20241104164848-8ea9d0a3e17a h1:ZycgUSrrwtB2x1fMdLD88J2k8886/HvX1tYHlaOH/hg=
+github.com/grafana/opentelemetry-collector/service v0.0.0-20241104164848-8ea9d0a3e17a/go.mod h1:VTLnax+DjHal3q7WKQO0ITjWdfPTq2txaoNRcVXYzgE=
 github.com/grafana/postgres_exporter v0.15.1-0.20240417113938-9358270470dd h1:vNHdecaOmYgSHMEQRgyzWacV++N38Jp8qLZg0RCsfFo=
 github.com/grafana/postgres_exporter v0.15.1-0.20240417113938-9358270470dd/go.mod h1:kR16GJ0ZwWVQ2osW3pgtDJU1a/GXpufrwio0kLG14cg=
 github.com/grafana/prometheus v1.8.2-0.20240514135907-13889ba362e6 h1:kih3d3M3dxAmrpFLvnIxFzWx8KMQyKxQwKgWP67C/Fg=
@@ -2684,8 +2686,6 @@ go.opentelemetry.io/collector/pipeline/pipelineprofiles v0.112.0 h1:opXGNrlJAjYR
 go.opentelemetry.io/collector/pipeline/pipelineprofiles v0.112.0/go.mod h1:c9yn4x+vY3G10eLCRuUu/oH7Y8YdE/BsgmLWmfHkaNY=
 go.opentelemetry.io/collector/processor v0.112.0 h1:nMv9DOBYR9MB78ddUgY3A3ytwAwk3t4HQMNIu+w8o0g=
 go.opentelemetry.io/collector/processor v0.112.0/go.mod h1:AJ8EHq8Z/ev90f4gU6G5ULUncdpWmBRATYk8ioR3pvw=
-go.opentelemetry.io/collector/processor/batchprocessor v0.112.0 h1:Dq/RpdClawI8HrnSi177LziPjfHo733BWOCgRTbWrfY=
-go.opentelemetry.io/collector/processor/batchprocessor v0.112.0/go.mod h1:QLQ31rGjPuMc/nGw4rL4HzQI9F0jVAPEmC342chxoqA=
 go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.112.0 h1:+V+4OUcg1s3CrZpttT4dA+Uuv7VWpOIPQpOkcsrMBIo=
 go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.112.0/go.mod h1:f/eEZ3JMbRNLsRzNwATtTjuulDrLvhYMvXinLrmHtTU=
 go.opentelemetry.io/collector/processor/processorprofiles v0.112.0 h1:Aef68SAbmBbhbsZZPuZb0ECwkV05vIcHIizGOGbWsbM=
