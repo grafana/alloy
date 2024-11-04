@@ -134,9 +134,9 @@ Name                      | Type       | Description                            
 `read_buffer_size`        | `int`      | Size of the read buffer the HTTP client uses for reading server responses.  |   `0`      | no
 `write_buffer_size`       | `int`      | Size of the write buffer the HTTP client uses for writing requests.         |   `0`     | no
 `timeout`                 | `duration` | Time to wait before marking a request as failed.                            | `"15s"` | no
-`max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        |   `nil`      | no
-`max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          |   `nil`      | no
-`max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. |    `nil`     | no
+`max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        |   `100`      | no
+`max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          |   `2`      | no
+`max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. Zero means no limit |    `0`     | no
 `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `"45s"` | no
 `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |   `false`      | no
 `insecure_skip_verify`    | `bool`     | Ignores insecure server TLS certificates.                                   | `false` | no
@@ -215,7 +215,7 @@ otelcol.exporter.splunkhec "default" {
 		index              = "metrics"
 		splunk_app_name    = "OpenTelemetry-Collector Splunk Exporter"
 		splunk_app_version = "v0.0.1"
-
+z
 		otel_to_hec_fields {
 			severity_text   = "otel.log.severity.text"
 			severity_number = "otel.log.severity.number"

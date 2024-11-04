@@ -247,7 +247,7 @@ func (args *SplunkConf) Validate() error {
 	if args.Token == "" {
 		return errors.New("missing splunk token")
 	}
-	if !(args.LogDataEnabled || args.ProfilingDataEnabled) {
+	if !args.LogDataEnabled && !args.ProfilingDataEnabled {
 		return errors.New("at least one of log_data_enabled or profiling_data_enabled must be enabled")
 	}
 	if args.MaxContentLengthLogs > 838860800 {
