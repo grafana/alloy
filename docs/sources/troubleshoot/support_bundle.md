@@ -13,7 +13,7 @@ about a running {{< param "PRODUCT_NAME" >}} instance, and can be used as a base
 to debug an issue.
 
 {{< admonition type="note" >}}
-By default this endpoint is enabled, but may be disabled using the `--disable-support-bundle` runtime flag.
+This endpoint is enabled by default, but may be disabled using the `--disable-support-bundle` runtime flag.
 {{< /admonition >}}
 
 The duration parameter is optional, must be less than or equal to the
