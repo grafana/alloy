@@ -18,7 +18,7 @@ By default this endpoint is enabled, but may be disabled using the `--disable-su
 
 The duration parameter is optional, must be less than or equal to the
 configured HTTP server write timeout, and if not provided, defaults to it.
-The endpoint is only exposed to {{< param "PRODUCT_NAME" >}}'s HTTP server listen address, which
+The endpoint is only exposed to the {{< param "PRODUCT_NAME" >}} HTTP server listen address, which
 defaults to `localhost:12345`.
 
 The support bundle contains all information in plain text, so that it can be
