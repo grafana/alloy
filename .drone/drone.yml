@@ -162,15 +162,14 @@ platform:
   version: "1809"
 steps:
 - commands:
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "=== Workaround for failing clone
-    step ==="'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "===DRONEDIAGNOSTICS==="'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "DRONE_TAG=${DRONE_TAG}"'''
   - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "DRONE_COMMIT=${DRONE_COMMIT}"'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''rm -rf .git/'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''git clone https://github.com/grafana/alloy.git'''
-  - cd alloy
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''git checkout ${DRONE_COMMIT}'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "=== DONE Workaround for failing
-    clone step ==="'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "DRONE_REMOTE_URL=${DRONE_REMOTE_URL}"'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "DRONE_COMMIT_BRANCH=${DRONE_COMMIT_BRANCH}"'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "DRONE_COMMIT_SHA=${DRONE_COMMIT_SHA}"'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "DRONE_COMMIT_REF=${DRONE_COMMIT_REF}"'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "===ENDDRONEDIAGNOSTICS==="'''
   - '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork"
     ./...'''
   image: grafana/alloy-build-image:v0.1.6-windows
@@ -845,6 +844,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: be0bbe7dccb2a8e622280b702110258862eb576205f561162e62929c1d4825a1
+hmac: 444ae6203cb3421ab397ef663bd95dc3eeba0dbe7eb9e6813af84294a6e59f14
 
 ...
