@@ -15,10 +15,6 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
-// Since we are gathering metrics from CloudWatch and writing them in prometheus during each scrape, the timestamp
-// used should be the scrape one
-var addCloudwatchTimestamp = false
-
 // Avoid producing absence of values in metrics
 var defaultNilToZero = true
 
@@ -113,11 +109,12 @@ type Role struct {
 type Dimensions map[string]string
 
 type Metric struct {
-	Name       string        `alloy:"name,attr"`
-	Statistics []string      `alloy:"statistics,attr"`
-	Period     time.Duration `alloy:"period,attr"`
-	Length     time.Duration `alloy:"length,attr,optional"`
-	NilToZero  *bool         `alloy:"nil_to_zero,attr,optional"`
+	Name                   string        `alloy:"name,attr"`
+	Statistics             []string      `alloy:"statistics,attr"`
+	Period                 time.Duration `alloy:"period,attr"`
+	Length                 time.Duration `alloy:"length,attr,optional"`
+	NilToZero              *bool         `alloy:"nil_to_zero,attr,optional"`
+	AddCloudwatchTimestamp *bool         `alloy:"add_cloudwatch_timestamp,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -274,7 +271,7 @@ func toYACEMetrics(ms []Metric, jobNilToZero *bool) []*yaceConf.Metric {
 			Delay: 0,
 
 			NilToZero:              nilToZero,
-			AddCloudwatchTimestamp: &addCloudwatchTimestamp,
+			AddCloudwatchTimestamp: m.AddCloudwatchTimestamp,
 		})
 	}
 	return yaceMetrics
@@ -318,7 +315,7 @@ func toYACEDiscoveryJob(rj DiscoveryJob) *yaceConf.Job {
 		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
 		// metrics, with the smallest period in the retrieved batch.
 		RoundingPeriod: nil,
-		Metrics: toYACEMetrics(rj.Metrics, nilToZero),
+		Metrics:        toYACEMetrics(rj.Metrics, nilToZero),
 	}
 	return job
 }
@@ -339,7 +336,7 @@ func toYACECustomNamespaceJob(cn CustomNamespaceJob) *yaceConf.CustomNamespace {
 		// metrics, with the smallest period in the retrieved batch.
 		RoundingPeriod:     nil,
 		RecentlyActiveOnly: cn.RecentlyActiveOnly,
-		Metrics: toYACEMetrics(cn.Metrics, nilToZero),
+		Metrics:            toYACEMetrics(cn.Metrics, nilToZero),
 	}
 }
 
