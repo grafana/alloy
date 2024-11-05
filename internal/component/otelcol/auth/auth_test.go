@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func TestAuth(t *testing.T) {
@@ -92,7 +93,7 @@ func (fa fakeAuthArgs) Extensions() map[otelcomponent.ID]otelextension.Extension
 	return nil
 }
 
-func (fa fakeAuthArgs) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (fa fakeAuthArgs) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

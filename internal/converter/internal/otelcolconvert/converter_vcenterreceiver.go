@@ -11,6 +11,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -42,8 +43,8 @@ func (vcenterReceiverConverter) ConvertAndAppend(state *State, id componentstatu
 
 func toVcenterReceiver(state *State, id componentstatus.InstanceID, cfg *vcenterreceiver.Config) *vcenter.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &vcenter.Arguments{

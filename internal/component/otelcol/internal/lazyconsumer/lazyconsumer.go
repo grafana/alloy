@@ -6,11 +6,11 @@ import (
 	"context"
 	"sync"
 
-	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 // Consumer is a lazily-loaded consumer.
@@ -56,7 +56,7 @@ func (c *Consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	defer c.mut.RUnlock()
 
 	if c.tracesConsumer == nil {
-		return otelcomponent.ErrDataTypeIsNotSupported
+		return pipeline.ErrSignalNotSupported
 	}
 
 	if c.tracesConsumer.Capabilities().MutatesData {
@@ -77,7 +77,7 @@ func (c *Consumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error
 	defer c.mut.RUnlock()
 
 	if c.metricsConsumer == nil {
-		return otelcomponent.ErrDataTypeIsNotSupported
+		return pipeline.ErrSignalNotSupported
 	}
 
 	if c.metricsConsumer.Capabilities().MutatesData {
@@ -98,7 +98,7 @@ func (c *Consumer) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	defer c.mut.RUnlock()
 
 	if c.logsConsumer == nil {
-		return otelcomponent.ErrDataTypeIsNotSupported
+		return pipeline.ErrSignalNotSupported
 	}
 
 	if c.logsConsumer.Capabilities().MutatesData {

@@ -20,9 +20,13 @@ import (
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 	otelprocessor "go.opentelemetry.io/collector/processor"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
+	otelmetric "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
@@ -41,7 +45,7 @@ type Arguments interface {
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
-	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 
 	// NextConsumers returns the set of consumers to send data to.
 	NextConsumers() *otelcol.ConsumerArguments
@@ -155,13 +159,20 @@ func (p *Processor) Update(args component.Arguments) error {
 		return err
 	}
 
+	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelprocessor.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(p.opts.Logger),
 
 			TracerProvider: p.opts.Tracer,
-			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
-			MetricsLevel:   metricsLevel,
+			MeterProvider:  mp,
+			LeveledMeterProvider: func(level configtelemetry.Level) otelmetric.MeterProvider {
+				if level <= metricsLevel {
+					return mp
+				}
+				return noop.MeterProvider{}
+			},
+			MetricsLevel: metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -197,8 +208,8 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var tracesProcessor otelprocessor.Traces
 	if len(next.Traces) > 0 {
-		tracesProcessor, err = p.factory.CreateTracesProcessor(p.ctx, settings, processorConfig, nextTraces)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		tracesProcessor, err = p.factory.CreateTraces(p.ctx, settings, processorConfig, nextTraces)
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if tracesProcessor != nil {
 			components = append(components, tracesProcessor)
@@ -207,8 +218,8 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var metricsProcessor otelprocessor.Metrics
 	if len(next.Metrics) > 0 {
-		metricsProcessor, err = p.factory.CreateMetricsProcessor(p.ctx, settings, processorConfig, nextMetrics)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		metricsProcessor, err = p.factory.CreateMetrics(p.ctx, settings, processorConfig, nextMetrics)
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if metricsProcessor != nil {
 			components = append(components, metricsProcessor)
@@ -217,8 +228,8 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var logsProcessor otelprocessor.Logs
 	if len(next.Logs) > 0 {
-		logsProcessor, err = p.factory.CreateLogsProcessor(p.ctx, settings, processorConfig, nextLogs)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		logsProcessor, err = p.factory.CreateLogs(p.ctx, settings, processorConfig, nextLogs)
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if logsProcessor != nil {
 			components = append(components, logsProcessor)

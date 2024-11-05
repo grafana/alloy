@@ -603,11 +603,11 @@ data:
         endpoint = "0.0.0.0:9411"
       }
       output {
-        traces = [otelcol.exporter.loadbalancing.default.input,otelcol.exporter.logging.default.input]
+        traces = [otelcol.exporter.loadbalancing.default.input,otelcol.exporter.debug.default.input]
       }
     }
 
-    otelcol.exporter.logging "default" {
+    otelcol.exporter.debug "default" {
       verbosity = "detailed"
     }
 
@@ -635,11 +635,11 @@ data:
         endpoint = "0.0.0.0:34621"
       }
       output {
-        traces = [otelcol.exporter.otlp.default.input,otelcol.exporter.logging.default.input]
+        traces = [otelcol.exporter.otlp.default.input,otelcol.exporter.debug.default.input]
       }
     }
 
-    otelcol.exporter.logging "default" {
+    otelcol.exporter.debug "default" {
       verbosity = "detailed"
     }
 
@@ -896,11 +896,11 @@ data:
         endpoint = "0.0.0.0:9411"
       }
       output {
-        traces = [otelcol.exporter.loadbalancing.default.input,otelcol.exporter.logging.default.input]
+        traces = [otelcol.exporter.loadbalancing.default.input,otelcol.exporter.debug.default.input]
       }
     }
 
-    otelcol.exporter.logging "default" {
+    otelcol.exporter.debug "default" {
       verbosity = "detailed"
     }
 
@@ -928,11 +928,11 @@ data:
         endpoint = "0.0.0.0:34621"
       }
       output {
-        traces = [otelcol.exporter.otlp.default.input,otelcol.exporter.logging.default.input]
+        traces = [otelcol.exporter.otlp.default.input,otelcol.exporter.debug.default.input]
       }
     }
 
-    otelcol.exporter.logging "default" {
+    otelcol.exporter.debug "default" {
       verbosity = "detailed"
     }
 
