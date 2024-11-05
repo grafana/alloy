@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.5.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - `import.git`: The default value for `revision` has changed from `HEAD` to `main`. (@ptodev)
