@@ -162,12 +162,13 @@ platform:
   version: "1809"
 steps:
 - commands:
-  - go test -tags="nodocker,nonetwork" ./...
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork"
+    ./...'''
   image: grafana/alloy-build-image:v0.1.6-windows
   name: Run Go tests
 trigger:
-  ref:
-  - refs/heads/main
+  event:
+  - pull_request
 type: docker
 ---
 kind: pipeline
@@ -835,6 +836,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 353fac6e335a14f055d7e7a43b4d40517a1b5e28b3b3ad4d4e68df82b7f013b9
+hmac: 24309a749c8af75e75e62c45578b98592777e3e8b66e8bcf59d47306aa4965ea
 
 ...
