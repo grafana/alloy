@@ -126,8 +126,8 @@ func TestE2E(t *testing.T) {
 }
 
 const (
-	iterations = 1
-	items      = 1000
+	iterations = 10
+	items      = 100
 )
 
 func runTest(t *testing.T, add func(index int, appendable storage.Appender) (float64, labels.Labels), test func(samples *safeSlice[prompb.TimeSeries]), metaTest func(meta *safeSlice[prompb.MetricMetadata])) {
