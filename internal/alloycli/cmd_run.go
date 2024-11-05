@@ -280,17 +280,17 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return err
 	}
 
-	var runtimeConfig []byte
+	var runtimeFlags []byte
 	if !fr.disableSupportBundle {
 		b := strings.Builder{}
 		cmd.Flags().VisitAll(func(f *pflag.Flag) {
 			b.WriteString(fmt.Sprintf("%s=%s\n", f.Name, f.Value.String()))
 		})
-		runtimeConfig = []byte(b.String())
+		runtimeFlags = []byte(b.String())
 	}
 
 	httpService := httpservice.New(httpservice.Options{
-		Logger:   log.With(l, "service", "http"),
+		Logger:   l,
 		Tracer:   t,
 		Gatherer: prometheus.DefaultGatherer,
 
@@ -301,7 +301,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		MemoryListenAddr:     fr.inMemoryAddr,
 		EnablePProf:          fr.enablePprof,
 		DisableSupportBundle: fr.disableSupportBundle,
-		RuntimeConfig:        runtimeConfig,
+		RuntimeFlags:         runtimeFlags,
 	})
 
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{

@@ -55,6 +55,12 @@ func New(w io.Writer, o Options) (*Logger, error) {
 	return l, nil
 }
 
+// New creates a New nop logger
+func NewNop() *Logger {
+	l, _ := NewDeferred(io.Discard)
+	return l
+}
+
 // NewDeferred creates a new logger with the default log level and format.
 // The logger is not updated during initialization.
 func NewDeferred(w io.Writer) (*Logger, error) {

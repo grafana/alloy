@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/remotecfg"
@@ -43,7 +44,7 @@ const ServiceName = "http"
 // Options are used to configure the HTTP service. Options are constant for the
 // lifetime of the HTTP service.
 type Options struct {
-	Logger   log.Logger           // Where to send logs.
+	Logger   *logging.Logger      // Where to send logs.
 	Tracer   trace.TracerProvider // Where to send traces.
 	Gatherer prometheus.Gatherer  // Where to collect metrics from.
 
@@ -63,7 +64,7 @@ type Arguments struct {
 }
 
 type Service struct {
-	log      log.Logger
+	log      *logging.Logger
 	tracer   trace.TracerProvider
 	gatherer prometheus.Gatherer
 	opts     Options
@@ -102,7 +103,7 @@ func New(opts Options) *Service {
 	)
 
 	if l == nil {
-		l = log.NewNopLogger()
+		l = logging.NewNop()
 	}
 	if t == nil {
 		t = noop.NewTracerProvider()
@@ -165,7 +166,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	netLis, err := net.Listen("tcp", s.opts.HTTPListenAddr)
 	if err != nil {
 		// There is no recovering from failing to listen on the port.
-		level.Error(s.log).Log("msg", fmt.Sprintf("failed to listen on %s", s.opts.HTTPListenAddr), "err", err)
+		internalLog(level.Error(s.log), "msg", fmt.Sprintf("failed to listen on %s", s.opts.HTTPListenAddr), "err", err)
 		os.Exit(1)
 	}
 	if err := s.tcpLis.SetInner(netLis); err != nil {
@@ -206,16 +207,16 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	if s.opts.ReloadFunc != nil {
 		r.HandleFunc("/-/reload", func(w http.ResponseWriter, _ *http.Request) {
-			level.Info(s.log).Log("msg", "reload requested via /-/reload endpoint")
+			internalLog(level.Info(s.log), "msg", "reload requested via /-/reload endpoint")
 
 			_, err := s.opts.ReloadFunc()
 			if err != nil {
-				level.Error(s.log).Log("msg", "failed to reload config", "err", err.Error())
+				internalLog(level.Error(s.log), "msg", "failed to reload config", "err", err.Error())
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 
-			level.Info(s.log).Log("msg", "config reloaded")
+			internalLog(level.Info(s.log), "msg", "config reloaded")
 			_, _ = fmt.Fprintln(w, "config reloaded")
 		}).Methods(http.MethodGet, http.MethodPost)
 	}
@@ -234,7 +235,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	srv := &http.Server{Handler: h2c.NewHandler(r, &http2.Server{})}
 
-	level.Info(s.log).Log("msg", "now listening for http traffic", "addr", s.opts.HTTPListenAddr)
+	internalLog(level.Info(s.log), "msg", "now listening for http traffic", "addr", s.opts.HTTPListenAddr)
 
 	listeners := []net.Listener{s.publicLis, s.memLis}
 	for _, lis := range listeners {
@@ -244,7 +245,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			defer cancel()
 
 			if err := srv.Serve(lis); err != nil {
-				level.Info(s.log).Log("msg", "http server closed", "addr", lis.Addr(), "err", err)
+				internalLog(level.Info(s.log), "msg", "http server closed", "addr", lis.Addr(), "err", err)
 			}
 		}(lis)
 	}
@@ -259,11 +260,6 @@ func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
 	s.winMut.Lock()
 	cfg := s.opts
 	s.winMut.Unlock()
-
-	runtime, ok := s.host.(*alloy_runtime.Runtime)
-	if !ok {
-		level.Error(s.log).Log("msg", "failed to get runtime for support bundle", "err", "host is not a runtime")
-	}
 
 	if cfg.DisableSupportBundle {
 		rw.WriteHeader(http.StatusForbidden)
@@ -292,13 +288,11 @@ func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	var logsBuffer bytes.Buffer
-	if runtime != nil {
-		syncBuff := log.NewSyncWriter(&logsBuffer)
-		runtime.AddTemporaryLogger(syncBuff)
-		defer func() {
-			runtime.RemoveTemporaryLogger()
-		}()
-	}
+	syncBuff := log.NewSyncWriter(&logsBuffer)
+	s.log.SetTemporaryWriter(syncBuff)
+	defer func() {
+		s.log.RemoveTemporaryWriter()
+	}()
 
 	bundle, err := ExportSupportBundle(ctx, cfg.RuntimeFlags, cfg.HTTPListenAddr, s.Data().(Data).DialFunc)
 	if err != nil {
@@ -411,14 +405,14 @@ func (s *Service) Update(newConfig any) error {
 		}
 
 		newTLSListener := tls.NewListener(s.tcpLis, tlsConfig)
-		level.Info(s.log).Log("msg", "applying TLS config to HTTP server")
+		internalLog(level.Info(s.log), "msg", "applying TLS config to HTTP server")
 		if err := s.publicLis.SetInner(newTLSListener); err != nil {
 			return err
 		}
 	} else {
 		// Ensure that the outer lazy listener is sending requests directly to the
 		// network, instead of any previous instance of a TLS listener.
-		level.Info(s.log).Log("msg", "applying non-TLS config to HTTP server")
+		internalLog(level.Info(s.log), "msg", "applying non-TLS config to HTTP server")
 		if err := s.publicLis.SetInner(s.tcpLis); err != nil {
 			return err
 		}
@@ -446,6 +440,14 @@ func (s *Service) Data() any {
 			}
 		},
 	}
+}
+
+// The http service uses an internal logger function instead of log.With
+// as it needs to maintain a reference to the internal logging library
+// for appending a temporary logger for support bundle generation
+func internalLog(l log.Logger, keyVals ...interface{}) error {
+	newKv := append(keyVals, "service", "http")
+	return l.Log(newKv)
 }
 
 // Data includes information associated with the HTTP service.

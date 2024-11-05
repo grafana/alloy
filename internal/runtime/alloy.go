@@ -48,7 +48,6 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"io"
 	"sync"
 	"time"
 
@@ -314,18 +313,6 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 			importsource.ModulePath: modulePath,
 		}),
 	})
-}
-
-// AddTemporaryLogger provides the ability to add a temp logger to the controller.
-// This is used for the support bundle to capture logs from the controller.
-func (f *Runtime) AddTemporaryLogger(w io.Writer) {
-	f.log.SetTemporaryWriter(w)
-}
-
-// RemoveTemporaryLogger provides the ability to remove a temp logger added to the controller.
-// This is used for the support bundle after capturing logs from the controller.
-func (f *Runtime) RemoveTemporaryLogger() {
-	f.log.RemoveTemporaryWriter()
 }
 
 // Same as above but with a customComponentRegistry that provides custom component definitions.
