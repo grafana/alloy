@@ -17,7 +17,7 @@ hero:
   width: 110
   height: 110
   description: >-
-    Grafana Alloy is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector. With Alloy, you can instrument your app or infrastrastructure to collect, process, and forward telemetry data to the data source of your choice. 
+    Grafana Alloy is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector. With Alloy, you can instrument your application or infrastructure to collect, process, and forward telemetry data to the data source of your choice. 
   title_class: pt-0 lh-1
   items:
     - title: Install Alloy
