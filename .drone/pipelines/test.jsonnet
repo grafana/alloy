@@ -59,7 +59,7 @@ local pipelines = import '../util/pipelines.jsonnet';
 
   pipelines.windows('Test (Windows)') {
     trigger: {
-      ref: ['refs/heads/main'],
+      event: ['pull_request'],
     },
     steps: [{
       name: 'Run Go tests',
