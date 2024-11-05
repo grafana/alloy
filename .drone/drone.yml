@@ -164,10 +164,10 @@ steps:
 - commands:
   - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "=== Workaround for failing clone
     step ==="'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "DRONE_TAG=${DRONE_TAG}"'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "DRONE_COMMIT=${DRONE_COMMIT}"'''
   - '& "C:/Program Files/git/bin/bash.exe" -c ''rm -rf .git/'''
   - '& "C:/Program Files/git/bin/bash.exe" -c ''git clone https://github.com/grafana/alloy.git'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''cd alloy'''
+  - cd alloy
   - '& "C:/Program Files/git/bin/bash.exe" -c ''git checkout ${DRONE_COMMIT}'''
   - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "=== DONE Workaround for failing
     clone step ==="'''
@@ -845,6 +845,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: c2cbdb258086c4124f5c1b6efdf96cefb0af3aced09a08f893887973ead2b12b
+hmac: be0bbe7dccb2a8e622280b702110258862eb576205f561162e62929c1d4825a1
 
 ...
