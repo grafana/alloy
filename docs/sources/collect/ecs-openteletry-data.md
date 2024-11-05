@@ -73,7 +73,7 @@ To create an ECS Task Definition for AWS Fargate with an ADOT collector, complet
      The AWS Collector comes with two configurations. Select one of them based on your environment:
      * Use `--config=/etc/ecs/ecs-default-config.yaml` to consume StatsD metrics, OTLP metrics and traces, and X-Ray SDK traces.
      * Use `--config=/etc/ecs/container-insights/otel-task-metrics-config.yaml` to Use StatsD, OTLP, Xray, and Container Resource utilization metrics.
-1. Follow the ECS Fargate setup instructions to create a task definition using the template.
+1. Follow the ECS Fargate setup instructions to [create a task definition][task] using the template.
 
 ## Run {{% param "PRODUCT_NAME" %}} directly in your instance, or as a Kubernetes sidecar
 
@@ -91,3 +91,5 @@ After connecting to your instance, follow the {{< param "PRODUCT_NAME" >}} [inst
 [steps]: https://medium.com/ci-t/9-steps-to-ssh-into-an-aws-fargate-managed-container-46c1d5f834e2
 [install]: https://grafana.com/docs/alloy/latest/set-up/install/linux/
 [deploy]: https://grafana.com/docs/alloy/latest/set-up/deploy/
+[task]: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definitions.html
+
