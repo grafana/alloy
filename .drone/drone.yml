@@ -162,13 +162,22 @@ platform:
   version: "1809"
 steps:
 - commands:
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "=== Workaround for failing clone
+    step ==="'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "DRONE_TAG=${DRONE_TAG}"'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''rm -rf .git/'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''git clone https://github.com/grafana/alloy.git'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''cd alloy'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''git checkout ${DRONE_COMMIT}'''
+  - '& "C:/Program Files/git/bin/bash.exe" -c ''echo "=== DONE Workaround for failing
+    clone step ==="'''
   - '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork"
     ./...'''
   image: grafana/alloy-build-image:v0.1.6-windows
   name: Run Go tests
 trigger:
-  ref:
-  - refs/heads/main
+  event:
+  - pull_request
 type: docker
 ---
 kind: pipeline
@@ -836,6 +845,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: fd0699c2276e04bf3f9957b8eca427f3812c0aaf17bb969760f66574dcaf250c
+hmac: c2cbdb258086c4124f5c1b6efdf96cefb0af3aced09a08f893887973ead2b12b
 
 ...

@@ -59,12 +59,19 @@ local pipelines = import '../util/pipelines.jsonnet';
 
   pipelines.windows('Test (Windows)') {
     trigger: {
-      ref: ['refs/heads/main'],
+      event: ['pull_request'],
     },
     steps: [{
       name: 'Run Go tests',
       image: build_image.windows,
       commands: [
+        pipelines.windows_command('echo "=== Workaround for failing clone step ==="'),
+        pipelines.windows_command('echo "DRONE_TAG=${DRONE_TAG}"'),
+        pipelines.windows_command('rm -rf .git/'),
+        pipelines.windows_command('git clone https://github.com/grafana/alloy.git'),
+        pipelines.windows_command('cd alloy'),
+        pipelines.windows_command('git checkout ${DRONE_COMMIT}'),
+        pipelines.windows_command('echo "=== DONE Workaround for failing clone step ==="'),
         pipelines.windows_command('go test -tags="nodocker,nonetwork" ./...'),
       ],
     }],
