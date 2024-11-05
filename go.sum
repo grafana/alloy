@@ -1240,8 +1240,8 @@ github.com/grafana/opentelemetry-collector/otelcol v0.0.0-20240902152944-c85a4e7
 github.com/grafana/opentelemetry-collector/otelcol v0.0.0-20240902152944-c85a4e7c646c/go.mod h1:8QIMB1AsnRJiHBOcLN+jD20rBP8J0dY/7dCAZVP979c=
 github.com/grafana/opentelemetry-collector/service v0.0.0-20240902152944-c85a4e7c646c h1:vD6vNxpSGRnuEwbHCMu+JV5PVLtVJMbZX3qWdVu1DHs=
 github.com/grafana/opentelemetry-collector/service v0.0.0-20240902152944-c85a4e7c646c/go.mod h1:mbZXlO5gT99nXNGbDOG6peqPd6og5Tm49P4FP0oi56U=
-github.com/grafana/postgres_exporter v0.15.1-0.20241101143231-bcc02ceae1ca h1:EhGxQttjoOkPFYjxACfZHf7sp4P3qoLrIaAMqo5L4Zo=
-github.com/grafana/postgres_exporter v0.15.1-0.20241101143231-bcc02ceae1ca/go.mod h1:dMrETGkSetWByp2XGsm8g6pRVh/ibnrDxKsN4BqnGNg=
+github.com/grafana/postgres_exporter v0.15.1-0.20241105053755-e0a51174f168 h1:I7FyVTtge/3G5YHVOMDG0l4If6W+kXbFDqtzj5gCSGs=
+github.com/grafana/postgres_exporter v0.15.1-0.20241105053755-e0a51174f168/go.mod h1:dMrETGkSetWByp2XGsm8g6pRVh/ibnrDxKsN4BqnGNg=
 github.com/grafana/prometheus v1.8.2-0.20240514135907-13889ba362e6 h1:kih3d3M3dxAmrpFLvnIxFzWx8KMQyKxQwKgWP67C/Fg=
 github.com/grafana/prometheus v1.8.2-0.20240514135907-13889ba362e6/go.mod h1:yv4MwOn3yHMQ6MZGHPg/U7Fcyqf+rxqiZfSur6myVtc=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKtUuKQbJqgAIjlnicKg=
