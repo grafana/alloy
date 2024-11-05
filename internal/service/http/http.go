@@ -72,8 +72,6 @@ type Service struct {
 	winMut sync.Mutex
 	win    *server.WinCertStoreHandler
 
-	host service.Host
-
 	// publicLis and tcpLis are used to lazily enable TLS, since TLS is
 	// optionally configurable at runtime.
 	//
@@ -148,8 +146,6 @@ func (s *Service) Definition() service.Definition {
 // Run starts the HTTP service. It will run until the provided context is
 // canceled or there is a fatal error.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
-	s.host = host
-
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
