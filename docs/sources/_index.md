@@ -63,7 +63,7 @@ Think of {{< param "PRODUCT_NAME" >}} as a Swiss army knife for collecting, proc
 1. Security
 1. Debugging utilities
 
-Check out the {{< param "PRODUCT_NAME" >}} [Introduction] page for more information on these and other key features.
+Refer to the {{< param "PRODUCT_NAME" >}} [Introduction] for more information on these and other key features.
 
 {{< param "PRODUCT_NAME" >}} is flexible, and you can easily configure it to fit your needs in on-prem, cloud-only, or a mix of both.
 
