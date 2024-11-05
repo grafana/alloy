@@ -74,7 +74,8 @@ Getting started with Alloy consists of 3 major steps:
 
 In addition, you can use Grafana dashboard to visualize the data collected from app or infrastructure.
 
-For a quick overview of this process, check out the following tutorials.
+The following tutorials give you a quick overview of this process.
+
 * [Use Grafana Alloy to send logs to Loki](https://grafana.com/docs/alloy/latest/tutorials/send-logs-to-loki/)
 * [Use Grafana Alloy to send metrics to Prometheus](https://grafana.com/docs/alloy/latest/tutorials/send-metrics-to-prometheus/)
 
