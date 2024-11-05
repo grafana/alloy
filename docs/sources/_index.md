@@ -72,7 +72,7 @@ Getting started with Alloy consists of 3 major steps:
 1. Configure {{< param "PRODUCT_NAME" >}} 
 1. Collect and forward telemetry data to the data source of choice
 
-In addition, you can use Grafana dashboard to visualize the data collected from app or infrastructure.
+In addition, you can use Grafana dashboards to visualize the data collected from your application or infrastructure.
 
 The following tutorials give you a quick overview of this process.
 
