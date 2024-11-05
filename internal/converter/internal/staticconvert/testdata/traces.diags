@@ -1,2 +1,2 @@
-(Warning) automatic_logging for traces has no direct Alloy equivalent. A best effort translation has been made to otelcol.exporter.logging but the behavior will differ.
+(Warning) automatic_logging for traces has no direct Alloy equivalent. A best effort translation has been made to otelcol.exporter.debug but the behavior will differ.
 (Warning) Please review your agent command line flags and ensure they are set in your Alloy config file where necessary.

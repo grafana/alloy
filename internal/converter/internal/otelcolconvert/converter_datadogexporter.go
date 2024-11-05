@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
+	datadogOtelconfig "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog/config"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -33,7 +34,7 @@ func (datadogExporterConverter) ConvertAndAppend(state *State, id componentstatu
 
 	label := state.AlloyComponentLabel()
 
-	args := toDatadogExporter(cfg.(*datadogexporter.Config))
+	args := toDatadogExporter(cfg.(*datadogOtelconfig.Config))
 	block := common.NewBlockWithOverride([]string{"otelcol", "exporter", "datadog"}, label, args)
 
 	diags.Add(
@@ -45,7 +46,7 @@ func (datadogExporterConverter) ConvertAndAppend(state *State, id componentstatu
 	return diags
 }
 
-func toDatadogExporter(cfg *datadogexporter.Config) *datadog.Arguments {
+func toDatadogExporter(cfg *datadogOtelconfig.Config) *datadog.Arguments {
 	return &datadog.Arguments{
 		Client:       toDatadogHTTPClientArguments(cfg.ClientConfig),
 		Retry:        toRetryArguments(cfg.BackOffConfig),
@@ -53,6 +54,7 @@ func toDatadogExporter(cfg *datadogexporter.Config) *datadog.Arguments {
 		APISettings:  toDatadogAPIArguments(cfg.API),
 		Traces:       toDatadogTracesArguments(cfg.Traces),
 		Metrics:      toDatadogMetricsArguments(cfg.Metrics),
+		Logs:         toDatadogLogsArguments(cfg.Logs),
 		HostMetadata: toDatadogHostMetadataArguments(cfg.HostMetadata),
 		OnlyMetadata: cfg.OnlyMetadata,
 		Hostname:     cfg.Hostname,
@@ -74,7 +76,16 @@ func toDatadogHTTPClientArguments(cfg confighttp.ClientConfig) datadog_config.Da
 	}
 }
 
-func toDatadogAPIArguments(cfg datadogexporter.APIConfig) datadog_config.DatadogAPIArguments {
+func toDatadogLogsArguments(cfg datadogOtelconfig.LogsConfig) datadog_config.DatadogLogsArguments {
+	return datadog_config.DatadogLogsArguments{
+		Endpoint:         cfg.TCPAddrConfig.Endpoint,
+		UseCompression:   cfg.UseCompression,
+		CompressionLevel: cfg.CompressionLevel,
+		BatchWait:        cfg.BatchWait,
+	}
+}
+
+func toDatadogAPIArguments(cfg datadogOtelconfig.APIConfig) datadog_config.DatadogAPIArguments {
 	return datadog_config.DatadogAPIArguments{
 		Key:              alloytypes.Secret(cfg.Key),
 		Site:             cfg.Site,
@@ -82,7 +93,7 @@ func toDatadogAPIArguments(cfg datadogexporter.APIConfig) datadog_config.Datadog
 	}
 }
 
-func toDatadogTracesArguments(cfg datadogexporter.TracesConfig) datadog_config.DatadogTracesArguments {
+func toDatadogTracesArguments(cfg datadogOtelconfig.TracesExporterConfig) datadog_config.DatadogTracesArguments {
 	return datadog_config.DatadogTracesArguments{
 		Endpoint:                  cfg.TCPAddrConfig.Endpoint,
 		IgnoreResources:           cfg.IgnoreResources,
@@ -96,7 +107,7 @@ func toDatadogTracesArguments(cfg datadogexporter.TracesConfig) datadog_config.D
 	}
 }
 
-func toDatadogMetricsArguments(cfg datadogexporter.MetricsConfig) datadog_config.DatadogMetricsArguments {
+func toDatadogMetricsArguments(cfg datadogOtelconfig.MetricsConfig) datadog_config.DatadogMetricsArguments {
 	return datadog_config.DatadogMetricsArguments{
 		Endpoint:       cfg.TCPAddrConfig.Endpoint,
 		DeltaTTL:       cfg.DeltaTTL,
@@ -107,34 +118,34 @@ func toDatadogMetricsArguments(cfg datadogexporter.MetricsConfig) datadog_config
 	}
 }
 
-func toDatadogExporterConfigArguments(cfg datadogexporter.MetricsExporterConfig) datadog_config.DatadogMetricsExporterArguments {
+func toDatadogExporterConfigArguments(cfg datadogOtelconfig.MetricsExporterConfig) datadog_config.DatadogMetricsExporterArguments {
 	return datadog_config.DatadogMetricsExporterArguments{
 		ResourceAttributesAsTags:           cfg.ResourceAttributesAsTags,
 		InstrumentationScopeMetadataAsTags: cfg.InstrumentationScopeMetadataAsTags,
 	}
 }
 
-func toDatadogHistogramArguments(cfg datadogexporter.HistogramConfig) datadog_config.DatadogHistogramArguments {
+func toDatadogHistogramArguments(cfg datadogOtelconfig.HistogramConfig) datadog_config.DatadogHistogramArguments {
 	return datadog_config.DatadogHistogramArguments{
 		SendAggregations: cfg.SendAggregations,
 		Mode:             string(cfg.Mode),
 	}
 }
 
-func toDatadogSumArguments(cfg datadogexporter.SumConfig) datadog_config.DatadogSumArguments {
+func toDatadogSumArguments(cfg datadogOtelconfig.SumConfig) datadog_config.DatadogSumArguments {
 	return datadog_config.DatadogSumArguments{
 		CumulativeMonotonicMode:        string(cfg.CumulativeMonotonicMode),
 		InitialCumulativeMonotonicMode: string(cfg.InitialCumulativeMonotonicMode),
 	}
 }
 
-func toDatadogSummaryArguments(cfg datadogexporter.SummaryConfig) datadog_config.DatadogSummaryArguments {
+func toDatadogSummaryArguments(cfg datadogOtelconfig.SummaryConfig) datadog_config.DatadogSummaryArguments {
 	return datadog_config.DatadogSummaryArguments{
 		Mode: string(cfg.Mode),
 	}
 }
 
-func toDatadogHostMetadataArguments(cfg datadogexporter.HostMetadataConfig) datadog_config.DatadogHostMetadataArguments {
+func toDatadogHostMetadataArguments(cfg datadogOtelconfig.HostMetadataConfig) datadog_config.DatadogHostMetadataArguments {
 	return datadog_config.DatadogHostMetadataArguments{
 		Enabled:        cfg.Enabled,
 		HostnameSource: string(cfg.HostnameSource),

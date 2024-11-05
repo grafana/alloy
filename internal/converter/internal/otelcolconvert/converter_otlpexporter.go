@@ -70,7 +70,7 @@ func toOtelcolExporterOTLP(cfg *otlpexporter.Config) *otlp.Arguments {
 	}
 }
 
-func toQueueArguments(cfg exporterhelper.QueueSettings) otelcol.QueueArguments {
+func toQueueArguments(cfg exporterhelper.QueueConfig) otelcol.QueueArguments {
 	return otelcol.QueueArguments{
 		Enabled:      cfg.Enabled,
 		NumConsumers: cfg.NumConsumers,

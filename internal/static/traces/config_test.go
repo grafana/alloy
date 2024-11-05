@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/otelcol"
+	"go.opentelemetry.io/collector/pipeline"
 	"gopkg.in/yaml.v2"
 )
 
@@ -1751,9 +1752,15 @@ load_balancing:
 			for componentID := range tc.expectedProcessors {
 				if len(tc.expectedProcessors[componentID]) > 0 {
 					assert.NotNil(t, tc.expectedProcessors)
-					assert.NotNil(t, actualConfig.Service.Pipelines[componentID])
+					var p pipeline.ID
+					if componentID.Name() != "" {
+						p = pipeline.MustNewIDWithName(componentID.Type().String(), componentID.Name())
+					} else {
+						p = pipeline.MustNewID(componentID.Type().String())
+					}
 
-					assert.Equal(t, tc.expectedProcessors[componentID], actualConfig.Service.Pipelines[componentID].Processors)
+					assert.NotNil(t, actualConfig.Service.Pipelines[p])
+					assert.Equal(t, tc.expectedProcessors[componentID], actualConfig.Service.Pipelines[p].Processors)
 				}
 			}
 		})
@@ -1905,7 +1912,7 @@ remote_write:
 	assert.Nil(t, err)
 	otel, err := cfg.OtelConfig()
 	assert.Nil(t, err)
-	assert.Contains(t, otel.Service.Pipelines[component.NewID(component.MustNewType("traces"))].Receivers, component.NewID(component.MustNewType(pushreceiver.TypeStr)))
+	assert.Contains(t, otel.Service.Pipelines[pipeline.NewID(pipeline.SignalTraces)].Receivers, component.NewID(component.MustNewType(pushreceiver.TypeStr)))
 }
 
 func TestUnmarshalYAMLEmptyOTLP(t *testing.T) {

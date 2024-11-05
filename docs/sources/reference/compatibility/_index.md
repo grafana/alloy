@@ -294,7 +294,6 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
 - [otelcol.exporter.loadbalancing](../components/otelcol/otelcol.exporter.loadbalancing)
-- [otelcol.exporter.logging](../components/otelcol/otelcol.exporter.logging)
 - [otelcol.exporter.loki](../components/otelcol/otelcol.exporter.loki)
 - [otelcol.exporter.otlp](../components/otelcol/otelcol.exporter.otlp)
 - [otelcol.exporter.otlphttp](../components/otelcol/otelcol.exporter.otlphttp)

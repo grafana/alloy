@@ -14,6 +14,25 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
 
+## v1.5
+
+### Breaking change: Change default value of `max_streams` in `otelcol.processor.deltatocumulative`
+
+The default value was changed from `0` to `9223372036854775807` (max int).
+
+### Breaking change: Change default value of `namespace` in `otelcol.connector.spanmetrics`
+
+The default value was changed from `""` to `"traces.span.metrics"`.
+
+### Breaking change: The component `otelcol.exporter.logging` has been removed in favor of `otelcol.exporter.debug`
+
+Both components are very similar. More information can be found in the [announcement issue](https://github.com/open-telemetry/opentelemetry-collector/issues/11337).
+
+### Breaking change: Change default value of `revision` in `import.git`
+
+The default value was changed from `"HEAD"` to `"main"`.
+Setting the `revision` to `"HEAD"`, `"FETCH_HEAD"`, `"ORIG_HEAD"`, `"MERGE_HEAD"` or `"CHERRY_PICK_HEAD"` is not longer allowed.
+
 ## v1.4
 
 ### Breaking change: Some debug metrics for `otelcol` components have changed

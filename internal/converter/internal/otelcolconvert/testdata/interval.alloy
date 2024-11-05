@@ -13,6 +13,11 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.processor.interval "default" {
+	passthrough {
+		gauge   = true
+		summary = true
+	}
+
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]
 	}

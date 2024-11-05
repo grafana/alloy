@@ -51,7 +51,7 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 		Encoding:                             cfg.Encoding,
 		PartitionTracesByID:                  cfg.PartitionTracesByID,
 		PartitionMetricsByResourceAttributes: cfg.PartitionMetricsByResourceAttributes,
-		Timeout:                              cfg.Timeout,
+		Timeout:                              cfg.TimeoutSettings.Timeout,
 
 		Authentication: toKafkaAuthentication(encodeMapstruct(cfg.Authentication)),
 		Metadata:       toKafkaMetadata(cfg.Metadata),
