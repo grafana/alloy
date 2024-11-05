@@ -34,7 +34,7 @@ type HTTPServerArguments struct {
 	CompressionAlgorithms []string         `alloy:"compression_algorithms,attr,optional"`
 }
 
-var DefaultCompressionAlgorithms = []string{"", "gzip", "zstd", "zlib", "snappy", "deflate"}
+var DefaultCompressionAlgorithms = []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"}
 
 func copyStringSlice(s []string) []string {
 	if s == nil {

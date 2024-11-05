@@ -10,6 +10,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -45,8 +46,8 @@ func (probabilisticSamplerProcessorConverter) ConvertAndAppend(state *State, id 
 
 func toProbabilisticSamplerProcessor(state *State, id componentstatus.InstanceID, cfg *probabilisticsamplerprocessor.Config) *probabilistic_sampler.Arguments {
 	var (
-		nextTraces = state.Next(id, component.DataTypeTraces)
-		nextLogs   = state.Next(id, component.DataTypeLogs)
+		nextTraces = state.Next(id, pipeline.SignalTraces)
+		nextLogs   = state.Next(id, pipeline.SignalLogs)
 	)
 
 	return &probabilistic_sampler.Arguments{

@@ -4,6 +4,7 @@ package deltatocumulative
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -14,6 +15,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -54,7 +56,7 @@ var DefaultArguments = Arguments{
 	// identify a good non-zero default:
 	//
 	// https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/31603
-	MaxStreams: 0,
+	MaxStreams: math.MaxInt,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -88,7 +90,7 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 }
 
 // Exporters implements processor.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

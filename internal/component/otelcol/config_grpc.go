@@ -55,7 +55,7 @@ func (args *GRPCServerArguments) Convert() *otelconfiggrpc.ServerConfig {
 
 		TLSSetting: args.TLS.Convert(),
 
-		MaxRecvMsgSizeMiB:    uint64(args.MaxRecvMsgSize / units.Mebibyte),
+		MaxRecvMsgSizeMiB:    int(args.MaxRecvMsgSize / units.Mebibyte),
 		MaxConcurrentStreams: args.MaxConcurrentStreams,
 		ReadBufferSize:       int(args.ReadBufferSize),
 		WriteBufferSize:      int(args.WriteBufferSize),

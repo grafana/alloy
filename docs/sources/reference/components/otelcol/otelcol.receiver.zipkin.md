@@ -38,7 +38,7 @@ Name | Type | Description | Default | Required
 `endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:9411"` | no
 `max_request_body_size` | `string`   | Maximum request body size the server will allow.                   | `20MiB`          | no
 `include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
-`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate"]` | no
+`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
 
 If `parse_string_tags` is `true`, string tags and binary annotations are
 converted to `int`, `bool`, and `float` if possible. String tags and binary
