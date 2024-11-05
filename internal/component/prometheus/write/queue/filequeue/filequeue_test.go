@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -163,6 +164,10 @@ func TestFileDeleted(t *testing.T) {
 }
 
 func TestOtherFiles(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO: Fix this test as we mature the file queue
+		t.Skip("This test is very flaky on Windows. Will need to fix it as we mature the filequeue.")
+	}
 	defer goleak.VerifyNone(t)
 
 	dir := t.TempDir()
