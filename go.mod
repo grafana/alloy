@@ -877,6 +877,8 @@ replace (
 	// datadogreceiver component is contributed upstream.
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver => ./internal/etc/datadogreceiver
 
+	// TODO(dehaansa): integrate the changes from the exporter-package-v0.15.0 branch into at least the 
+	// grafana fork of the exporter, or completely into upstream
 	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20241105053755-e0a51174f168
 
 	// TODO(marctc): remove once this PR is merged upstream: https://github.com/prometheus/mysqld_exporter/pull/774
