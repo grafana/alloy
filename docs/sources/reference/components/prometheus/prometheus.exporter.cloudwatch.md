@@ -316,6 +316,7 @@ on how to explore metrics, to easily pick the ones you need.
 | `period`      | `duration`     | Refer to the [period][] section below.                                    |                                                                                                                    | yes      |
 | `length`      | `duration`     | Refer to the [period][] section below.                                    | Calculated based on `period`. Refer to [period][] for details.                                                     | no       |
 | `nil_to_zero` | `bool`         | When `true`, `NaN` metric values are converted to 0.                      | The value of `nil_to_zero` in the parent [static][] or [discovery][] block. `true` if not set in the parent block. | no       |
+| `add_cloudwatch_timestamp` | `bool` | When `true`, use the timestamp from cloudwatch instead of the scrape time. | `false` | no
 
 [period]: #period-and-length
 
