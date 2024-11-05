@@ -22,16 +22,16 @@ import (
 
 // Bundle collects all the data that is exposed as a support bundle.
 type Bundle struct {
-	meta          []byte
-	alloyMetrics  []byte
-	components    []byte
-	peers         []byte
-	runtimeConfig []byte
-	heapBuf       *bytes.Buffer
-	goroutineBuf  *bytes.Buffer
-	blockBuf      *bytes.Buffer
-	mutexBuf      *bytes.Buffer
-	cpuBuf        *bytes.Buffer
+	meta         []byte
+	alloyMetrics []byte
+	components   []byte
+	peers        []byte
+	runtimeFlags []byte
+	heapBuf      *bytes.Buffer
+	goroutineBuf *bytes.Buffer
+	blockBuf     *bytes.Buffer
+	mutexBuf     *bytes.Buffer
+	cpuBuf       *bytes.Buffer
 }
 
 // Metadata contains general runtime information about the current Alloy environment.
@@ -46,7 +46,7 @@ type Metadata struct {
 var mut sync.Mutex
 
 // ExportSupportBundle gathers the information required for the support bundle.
-func ExportSupportBundle(ctx context.Context, runtimeConfig []byte, srvAddress string, dialContext server.DialContextFunc) (*Bundle, error) {
+func ExportSupportBundle(ctx context.Context, runtimeFlags []byte, srvAddress string, dialContext server.DialContextFunc) (*Bundle, error) {
 	mut.Lock()
 	defer mut.Unlock()
 	// The block profiler is disabled by default. Temporarily enable recording
@@ -131,16 +131,16 @@ func ExportSupportBundle(ctx context.Context, runtimeConfig []byte, srvAddress s
 	// Finally, bundle everything up to be served, either as a zip from
 	// memory, or exported to a directory.
 	bundle := &Bundle{
-		meta:          meta,
-		alloyMetrics:  alloyMetrics,
-		components:    components,
-		peers:         peers,
-		runtimeConfig: runtimeConfig,
-		heapBuf:       &heapBuf,
-		goroutineBuf:  &goroutineBuf,
-		blockBuf:      &blockBuf,
-		mutexBuf:      &mutexBuf,
-		cpuBuf:        &cpuBuf,
+		meta:         meta,
+		alloyMetrics: alloyMetrics,
+		components:   components,
+		peers:        peers,
+		runtimeFlags: runtimeFlags,
+		heapBuf:      &heapBuf,
+		goroutineBuf: &goroutineBuf,
+		blockBuf:     &blockBuf,
+		mutexBuf:     &mutexBuf,
+		cpuBuf:       &cpuBuf,
 	}
 
 	return bundle, nil
@@ -168,17 +168,17 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf *bytes.Buffer
 	rw.Header().Set("Content-Disposition", "attachment; filename=\"alloy-support-bundle.zip\"")
 
 	zipStructure := map[string][]byte{
-		"alloy-metadata.yaml":      b.meta,
-		"alloy-components.json":    b.components,
-		"alloy-peers.json":         b.peers,
-		"alloy-metrics.txt":        b.alloyMetrics,
-		"alloy-runtime-config.txt": b.runtimeConfig,
-		"alloy-logs.txt":           logsBuf.Bytes(),
-		"pprof/cpu.pprof":          b.cpuBuf.Bytes(),
-		"pprof/heap.pprof":         b.heapBuf.Bytes(),
-		"pprof/goroutine.pprof":    b.goroutineBuf.Bytes(),
-		"pprof/mutex.pprof":        b.mutexBuf.Bytes(),
-		"pprof/block.pprof":        b.blockBuf.Bytes(),
+		"alloy-metadata.yaml":     b.meta,
+		"alloy-components.json":   b.components,
+		"alloy-peers.json":        b.peers,
+		"alloy-metrics.txt":       b.alloyMetrics,
+		"alloy-runtime-flags.txt": b.runtimeFlags,
+		"alloy-logs.txt":          logsBuf.Bytes(),
+		"pprof/cpu.pprof":         b.cpuBuf.Bytes(),
+		"pprof/heap.pprof":        b.heapBuf.Bytes(),
+		"pprof/goroutine.pprof":   b.goroutineBuf.Bytes(),
+		"pprof/mutex.pprof":       b.mutexBuf.Bytes(),
+		"pprof/block.pprof":       b.blockBuf.Bytes(),
 	}
 
 	for fn, b := range zipStructure {

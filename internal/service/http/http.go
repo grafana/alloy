@@ -54,7 +54,7 @@ type Options struct {
 	MemoryListenAddr     string // Address to accept in-memory traffic on.
 	EnablePProf          bool   // Whether pprof endpoints should be exposed.
 	DisableSupportBundle bool   // Whether support bundle endpoint should be disabled.
-	RuntimeConfig        []byte // Alloy runtime config to send with support bundle
+	RuntimeFlags         []byte // Alloy runtime flags to send with support bundle
 }
 
 // Arguments holds runtime settings for the HTTP service.
@@ -291,12 +291,6 @@ func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	defer cancel()
 
-	s.winMut.Lock()
-	var (
-		httpSrvAddress = cfg.HTTPListenAddr
-	)
-	s.winMut.Unlock()
-
 	var logsBuffer bytes.Buffer
 	if runtime != nil {
 		syncBuff := log.NewSyncWriter(&logsBuffer)
@@ -306,7 +300,7 @@ func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
 		}()
 	}
 
-	bundle, err := ExportSupportBundle(ctx, cfg.RuntimeConfig, httpSrvAddress, s.Data().(Data).DialFunc)
+	bundle, err := ExportSupportBundle(ctx, cfg.RuntimeFlags, cfg.HTTPListenAddr, s.Data().(Data).DialFunc)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
