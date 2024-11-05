@@ -106,9 +106,9 @@ func TestController_LoadSource_WithModulePathWithoutFileExtension_Evaluation(t *
 	require.NoError(t, err)
 	require.NotNil(t, f)
 
-	filePath := "tmp_modulePath_test/test/main"
+	filePath := filepath.Join("tmp_modulePath_test", "test", "main.alloy")
 	require.NoError(t, os.Mkdir("tmp_modulePath_test", 0700))
-	require.NoError(t, os.Mkdir("tmp_modulePath_test/test", 0700))
+	require.NoError(t, os.Mkdir(filepath.Join("tmp_modulePath_test", "test"), 0700))
 	defer os.RemoveAll("tmp_modulePath_test")
 	require.NoError(t, os.WriteFile(filePath, []byte(""), 0664))
 
@@ -119,8 +119,8 @@ func TestController_LoadSource_WithModulePathWithoutFileExtension_Evaluation(t *
 	// Check the inputs and outputs of things that should be immediately resolved
 	// without having to run the components.
 	in, out := getFields(t, ctrl.loader.Graph(), "testcomponents.passthrough.static")
-	require.Equal(t, "tmp_modulePath_test/test", in.(testcomponents.PassthroughConfig).Input)
-	require.Equal(t, "tmp_modulePath_test/test", out.(testcomponents.PassthroughExports).Output)
+	require.Equal(t, filepath.Join("tmp_modulePath_test", "test"), in.(testcomponents.PassthroughConfig).Input)
+	require.Equal(t, filepath.Join("tmp_modulePath_test", "test"), out.(testcomponents.PassthroughExports).Output)
 }
 
 func getFields(t *testing.T, g *dag.Graph, nodeID string) (component.Arguments, component.Exports) {

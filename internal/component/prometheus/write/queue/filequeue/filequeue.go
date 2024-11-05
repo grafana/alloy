@@ -10,9 +10,10 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
+	"github.com/vladopajic/go-actor/actor"
+
 	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/vladopajic/go-actor/actor"
 )
 
 var _ actor.Worker = (*queue)(nil)
