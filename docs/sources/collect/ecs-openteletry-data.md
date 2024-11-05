@@ -33,16 +33,20 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
 
 ### Update the task definition
 
- 1. Select the task definition.
+ 1.Select the task definition.
+
     1. Open the AWS Systems Manager console.
     1. Select Elastic Container Service.
     1. In the navigation pane, choose *Task definition*.
     1. Choose *Create new revision*.
+
 1. Add an environment variable.
+
    1. Select the AWS Distro for OpenTelemetry Collector container and navigate to the Environment variables section.
    1. Add an environment variable named `AOT_CONFIG_CONTENT`.
    1. Select `ValueFrom` to tell ECS to get the value from the SSM Parameter, and set the value to `otel-collector-config`.
-1. Finish updating the task definition and creating a new revision.
+
+1. Finish updating the task definition and create your revision.
 
 ### Create the SSM parameter
 
@@ -50,6 +54,7 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
 1. In the navigation pane, choose *Parameter Store*.
 1. Choose *Create parameter*.
 1. Create a parameter with the following values:
+
    * `Name`: otel-collector-config
    * `Tier`: Standard
    * `Type`: String
@@ -59,6 +64,8 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
 ### Run your task
 
 When you run a task with this Task Definition, it uses your custom OpenTelemetry configuration file from the SSM Parameter store.
+
+Refer to [Running an application as an Amazon ECS task][run] for more information about running your application as a task.
 
 ## Create an ECS Task definition
 
@@ -92,4 +99,4 @@ After connecting to your instance, follow the {{< param "PRODUCT_NAME" >}} [inst
 [install]: https://grafana.com/docs/alloy/latest/set-up/install/linux/
 [deploy]: https://grafana.com/docs/alloy/latest/set-up/deploy/
 [task]: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definitions.html
-
+[run]: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/standalone-task-create.html
