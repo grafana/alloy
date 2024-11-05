@@ -67,7 +67,7 @@ Refer to the {{< param "PRODUCT_NAME" >}} [Introduction] for more information on
 
 {{< param "PRODUCT_NAME" >}} is flexible, and you can easily configure it to fit your needs in on-prem, cloud-only, or a mix of both.
 
-Getting started with Alloy consists of 3 major steps:
+You can get started with {{< param "PRODUCT_NAME" >}} in just 3 steps:
 1. Install {{< param "PRODUCT_NAME" >}} 
 1. Configure {{< param "PRODUCT_NAME" >}} 
 1. Collect and forward telemetry data to the data source of choice
