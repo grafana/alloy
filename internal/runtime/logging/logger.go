@@ -55,7 +55,7 @@ func New(w io.Writer, o Options) (*Logger, error) {
 	return l, nil
 }
 
-// New creates a New nop logger
+// NewNop returns a logger that does nothing
 func NewNop() *Logger {
 	l, _ := NewDeferred(io.Discard)
 	return l
