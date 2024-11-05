@@ -167,8 +167,8 @@ steps:
   image: grafana/alloy-build-image:v0.1.6-windows
   name: Run Go tests
 trigger:
-  event:
-  - pull_request
+  ref:
+  - refs/heads/main
 type: docker
 ---
 kind: pipeline
@@ -836,6 +836,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 24309a749c8af75e75e62c45578b98592777e3e8b66e8bcf59d47306aa4965ea
+hmac: fd0699c2276e04bf3f9957b8eca427f3812c0aaf17bb969760f66574dcaf250c
 
 ...
