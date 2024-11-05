@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: {{ include "alloy.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
   {{- with .Values.controller.extraAnnotations }}

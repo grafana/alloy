@@ -17,6 +17,10 @@ Unreleased
 - Add support for adding hostAliases to the Helm chart. (@duncan485)
 - Update to Grafana Alloy v1.5.0. (@thampiotr)
 
+### Bug Fixes
+
+- Set resource namespace correctly (@shinebayar-g)
+
 0.9.2 (2024-10-18)
 ------------------
 
@@ -72,7 +76,6 @@ Unreleased
 
 - Update helm chart to use v1.3.1.
 
-
 0.6.0 (2024-08-05)
 ------------------
 
@@ -123,7 +126,6 @@ Unreleased
 ### Enhancements
 
 - Update to Grafana Alloy v1.1.0. (@rfratto)
-
 
 0.2.0 (2024-05-08)
 ------------------
