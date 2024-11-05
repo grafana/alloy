@@ -14,6 +14,8 @@ Main (unreleased)
 
 - Add the function `path_join` to the stdlib. (@wildum)
 
+- Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)
+
 ### Bugfixes
 
 - Update yet-another-cloudwatch-exporter from v0.60.0 vo v0.61.0: (@morremeyer)
