@@ -10,16 +10,17 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Bug Fixes
+
+- Set resource namespace correctly (@shinebayar-g)
+
 0.10.0 (2024-11-13)
 ----------
+
 ### Enhancements
 
 - Add support for adding hostAliases to the Helm chart. (@duncan485)
 - Update to Grafana Alloy v1.5.0. (@thampiotr)
-
-### Bug Fixes
-
-- Set resource namespace correctly (@shinebayar-g)
 
 0.9.2 (2024-10-18)
 ------------------
