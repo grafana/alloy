@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)
+
 v1.5.0-rc.0
 -----------------
 
@@ -60,8 +64,6 @@ v1.5.0-rc.0
 - Support logs that have a `timestamp` field instead of a `time` field for the `loki.source.azure_event_hubs` component. (@andriikushch)
 
 - Add `proxy_url` to `otelcol.exporter.otlphttp`. (@wildum)
-
-- Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)
 
 ### Bugfixes
 
