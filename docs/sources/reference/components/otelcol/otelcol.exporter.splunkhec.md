@@ -90,6 +90,7 @@ Name                       | Type     | Description                             
 `export_raw`                 | `bool`   | Send only the logs body when targeting HEC raw endpoint.         | `false`                       | no
 `use_multi_metrics_format`    | `bool`   | Use multi-metrics format to save space during ingestion.        | `false`                       | no
 
+
 #### otel_to_hec_fields block
 
 Name                       | Type     | Description                                                     | Default                       | Required
@@ -269,5 +270,91 @@ otelcol.exporter.splunkhec "default" {
 }
 ```
 
+### Forward Loki logs
 
+This example watches for files ending with `.log` in the path `/var/log`, tails these logs with Loki and forwards the logs to the configured Splunk HEC endpoint. The Splunk HEC exporter component is setup to send an heartbeat every 5 seconds.
+
+```alloy
+local.file_match "local_files" {
+	path_targets = [{"__path__" = "/var/log/*.log"}]
+	sync_period  = "5s"
+}
+
+otelcol.receiver.loki "default" {
+	output {
+		logs = [otelcol.processor.attributes.default.input]
+	}
+}
+
+otelcol.processor.attributes "default" {
+	action {
+		key    = "host"
+		action = "upsert"
+		value  = "myhost"
+	}
+
+	action {
+		key    = "host.name"
+		action = "upsert"
+		value  = "myhost"
+	}
+
+	output {
+		logs = [otelcol.exporter.splunkhec.default.input]
+	}
+}
+
+loki.source.file "log_scrape" {
+	targets       = local.file_match.local_files.targets
+	forward_to    = [otelcol.receiver.loki.default.receiver]
+	tail_from_end = false
+}
+
+otelcol.exporter.splunkhec "default" {
+	retry_on_failure {
+		enabled = false
+	}
+
+	client {
+		endpoint                = "http://splunkhec.domain.com:8088"
+		timeout                 = "5s"
+		max_idle_conns          = 200
+		max_idle_conns_per_host = 200
+		idle_conn_timeout       = "10s"
+		write_buffer_size       = 8000
+	}
+
+	sending_queue {
+		enabled = false
+	}
+
+	splunk {
+		token            = "SPLUNK_TOKEN"
+		source           = "otel"
+		sourcetype       = "otel"
+		index            = "devnull"
+		log_data_enabled = true
+
+		heartbeat {
+			interval = "5s"
+		}
+
+		batcher {
+			flush_timeout = "200ms"
+		}
+
+		telemetry {
+			enabled                = true
+			override_metrics_names = {
+				otelcol_exporter_splunkhec_heartbeats_failed = "app_heartbeats_failed_total",
+				otelcol_exporter_splunkhec_heartbeats_sent   = "app_heartbeats_success_total",
+			}
+			extra_attributes = {
+				host   = "myhost",
+				dataset_name = "SplunkCloudBeaverStack",
+			}
+		}
+	}
+}
+```
 
