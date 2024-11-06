@@ -4,7 +4,11 @@ description: Learn about pyroscope.receive_http
 title: pyroscope.receive_http
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # pyroscope.receive_http
+
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.receive_http` receives profiles over HTTP and forwards them to `pyroscope.*` components capable of receiving profiles.
 
