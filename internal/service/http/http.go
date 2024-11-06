@@ -64,10 +64,13 @@ type Arguments struct {
 }
 
 type Service struct {
-	log      *logging.Logger
-	tracer   trace.TracerProvider
-	gatherer prometheus.Gatherer
-	opts     Options
+	log *logging.Logger
+	// internalLog allows us to leverage log.With for logging and leverage the
+	// logging struct for setting a temporary logger for support bundle usage
+	internalLog log.Logger
+	tracer      trace.TracerProvider
+	gatherer    prometheus.Gatherer
+	opts        Options
 
 	winMut sync.Mutex
 	win    *server.WinCertStoreHandler
@@ -119,10 +122,11 @@ func New(opts Options) *Service {
 	_ = publicLis.SetInner(tcpLis)
 
 	return &Service{
-		log:      l,
-		tracer:   t,
-		gatherer: r,
-		opts:     opts,
+		log:         l,
+		internalLog: log.With(l, "service", "http"),
+		tracer:      t,
+		gatherer:    r,
+		opts:        opts,
 
 		publicLis: publicLis,
 		tcpLis:    tcpLis,
@@ -162,7 +166,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	netLis, err := net.Listen("tcp", s.opts.HTTPListenAddr)
 	if err != nil {
 		// There is no recovering from failing to listen on the port.
-		internalLog(level.Error(s.log), "msg", fmt.Sprintf("failed to listen on %s", s.opts.HTTPListenAddr), "err", err)
+		level.Error(s.internalLog).Log("msg", fmt.Sprintf("failed to listen on %s", s.opts.HTTPListenAddr), "err", err)
 		os.Exit(1)
 	}
 	if err := s.tcpLis.SetInner(netLis); err != nil {
@@ -203,16 +207,16 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	if s.opts.ReloadFunc != nil {
 		r.HandleFunc("/-/reload", func(w http.ResponseWriter, _ *http.Request) {
-			internalLog(level.Info(s.log), "msg", "reload requested via /-/reload endpoint")
+			level.Info(s.internalLog).Log("msg", "reload requested via /-/reload endpoint")
 
 			_, err := s.opts.ReloadFunc()
 			if err != nil {
-				internalLog(level.Error(s.log), "msg", "failed to reload config", "err", err.Error())
+				level.Error(s.internalLog).Log("msg", "failed to reload config", "err", err.Error())
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 
-			internalLog(level.Info(s.log), "msg", "config reloaded")
+			level.Info(s.internalLog).Log("msg", "config reloaded")
 			_, _ = fmt.Fprintln(w, "config reloaded")
 		}).Methods(http.MethodGet, http.MethodPost)
 	}
@@ -231,7 +235,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	srv := &http.Server{Handler: h2c.NewHandler(r, &http2.Server{})}
 
-	internalLog(level.Info(s.log), "msg", "now listening for http traffic", "addr", s.opts.HTTPListenAddr)
+	level.Info(s.internalLog).Log("msg", "now listening for http traffic", "addr", s.opts.HTTPListenAddr)
 
 	listeners := []net.Listener{s.publicLis, s.memLis}
 	for _, lis := range listeners {
@@ -241,7 +245,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			defer cancel()
 
 			if err := srv.Serve(lis); err != nil {
-				internalLog(level.Info(s.log), "msg", "http server closed", "addr", lis.Addr(), "err", err)
+				level.Info(s.internalLog).Log("msg", "http server closed", "addr", lis.Addr(), "err", err)
 			}
 		}(lis)
 	}
@@ -401,14 +405,14 @@ func (s *Service) Update(newConfig any) error {
 		}
 
 		newTLSListener := tls.NewListener(s.tcpLis, tlsConfig)
-		internalLog(level.Info(s.log), "msg", "applying TLS config to HTTP server")
+		level.Info(s.internalLog).Log("msg", "applying TLS config to HTTP server")
 		if err := s.publicLis.SetInner(newTLSListener); err != nil {
 			return err
 		}
 	} else {
 		// Ensure that the outer lazy listener is sending requests directly to the
 		// network, instead of any previous instance of a TLS listener.
-		internalLog(level.Info(s.log), "msg", "applying non-TLS config to HTTP server")
+		level.Info(s.internalLog).Log("msg", "applying non-TLS config to HTTP server")
 		if err := s.publicLis.SetInner(s.tcpLis); err != nil {
 			return err
 		}
@@ -436,14 +440,6 @@ func (s *Service) Data() any {
 			}
 		},
 	}
-}
-
-// The http service uses an internal logger function instead of log.With
-// as it needs to maintain a reference to the internal logging library
-// for appending a temporary logger for support bundle generation
-func internalLog(l log.Logger, keyVals ...interface{}) error {
-	newKv := append(keyVals, "service", "http")
-	return l.Log(newKv)
 }
 
 // Data includes information associated with the HTTP service.
