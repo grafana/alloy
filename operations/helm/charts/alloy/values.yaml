@@ -1,6 +1,9 @@
 # -- Overrides the chart's name. Used to change the infix in the resource names.
 nameOverride: null
 
+# -- Overrides the chart's namespace.
+namespaceOverride: null
+
 # -- Overrides the chart's computed fullname. Used to change the full prefix of
 # resource names.
 fullnameOverride: null
@@ -10,7 +13,7 @@ fullnameOverride: null
 global:
   image:
     # -- Global image registry to use if it needs to be overriden for some specific use cases (e.g local registries, custom images, ...)
-    registry: ""
+    registry: ''
 
     # -- Optional set of global image pull secrets.
     pullSecrets: []
@@ -42,14 +45,14 @@ alloy:
     enabled: false
 
     # -- Name for the Alloy cluster. Used for differentiating between clusters.
-    name: ""
+    name: ''
 
     # -- Name for the port used for clustering, useful if running inside an Istio Mesh
     portName: http
 
   # -- Minimum stability level of components and behavior to enable. Must be
   # one of "experimental", "public-preview", or "generally-available".
-  stabilityLevel: "generally-available"
+  stabilityLevel: 'generally-available'
 
   # -- Path to where Grafana Alloy stores data (for example, the Write-Ahead Log).
   # By default, data is lost between reboots.
@@ -113,7 +116,8 @@ alloy:
   resources: {}
 
   # -- Set lifecycle hooks for the Grafana Alloy container.
-  lifecycle: {}
+  lifecycle:
+    {}
     # preStop:
     #   exec:
     #     command:
@@ -122,7 +126,7 @@ alloy:
 
 image:
   # -- Grafana Alloy image registry (defaults to docker.io)
-  registry: "docker.io"
+  registry: 'docker.io'
   # -- Grafana Alloy image repository.
   repository: grafana/alloy
   # -- (string) Grafana Alloy image tag. When empty, the Chart's appVersion is
@@ -156,20 +160,20 @@ configReloader:
   enabled: true
   image:
     # -- Config reloader image registry (defaults to docker.io)
-    registry: "ghcr.io"
+    registry: 'ghcr.io'
     # -- Repository to get config reloader image from.
     repository: jimmidyson/configmap-reload
     # -- Tag of image to use for config reloading.
     tag: v0.12.0
     # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
-    digest: ""
+    digest: ''
   # -- Override the args passed to the container.
   customArgs: []
   # -- Resource requests and limits to apply to the config reloader container.
   resources:
     requests:
-      cpu: "1m"
-      memory: "5Mi"
+      cpu: '1m'
+      memory: '5Mi'
   # -- Security context to apply to the Grafana configReloader container.
   securityContext: {}
 
@@ -250,7 +254,8 @@ controller:
 
     scaleDown:
       # -- List of policies to determine the scale-down behavior.
-      policies: []
+      policies:
+        []
         # - type: Pods
         #   value: 4
         #   periodSeconds: 60
@@ -261,7 +266,8 @@ controller:
 
     scaleUp:
       # -- List of policies to determine the scale-up behavior.
-      policies: []
+      policies:
+        []
         # - type: Pods
         #   value: 4
         #   periodSeconds: 60
@@ -299,7 +305,8 @@ service:
   clusterIP: ''
   # -- Value for internal traffic policy. 'Cluster' or 'Local'
   internalTrafficPolicy: Cluster
-  annotations: {}
+  annotations:
+    {}
     # cloud.google.com/load-balancer-type: Internal
 
 serviceMonitor:
@@ -307,7 +314,7 @@ serviceMonitor:
   # -- Additional labels for the service monitor.
   additionalLabels: {}
   # -- Scrape interval. If not set, the Prometheus default scrape interval is used.
-  interval: ""
+  interval: ''
   # -- MetricRelabelConfigs to apply to samples after scraping, but before ingestion.
   # ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#relabelconfig
   metricRelabelings: []

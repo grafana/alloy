@@ -11,7 +11,7 @@ apiVersion: {{ include "alloy.ingress.apiVersion" . }}
 kind: Ingress
 metadata:
   name: {{ $fullName }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "alloy.namespace" . }}
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
     app.kubernetes.io/component: networking
