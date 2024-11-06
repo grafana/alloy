@@ -51,6 +51,8 @@ This conversion allows you to take full advantage of the many additional feature
 
     * _`<INPUT_CONFIG_PATH>`_: The full path to the configuration file for Grafana Agent Static.
     * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+  
+1. [Stop][] Grafana Agent static.
 
 1. [Run][run alloy] {{< param "PRODUCT_NAME" >}} using the new {{< param "PRODUCT_NAME" >}} configuration from _`<OUTPUT_CONFIG_PATH>`_:
 
@@ -387,3 +389,4 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [otelcol.receiver.otlp]: ../../../reference/components/otelcol/otelcol.receiver.otlp/
 [otelcol.processor.batch]: ../../../reference/components/otelcol/otelcol.processor.batch/
 [otelcol.exporter.otlp]:../../../reference/components/otelcol/otelcol.exporter.otlp/
+[Stop]: https://grafana.com/docs/agent/latest/static/set-up/start-agent

@@ -105,7 +105,7 @@ In addition to the meta labels, the following labels are exposed to tell
 * `__pod_uid__`: The UID of the Pod.
 
 [LabelSelector]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#labelselector-v1-meta
-[RelabelConfig]: https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.RelabelConfig
+[RelabelConfig]: https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.RelabelConfig
 
 ## Blocks
 

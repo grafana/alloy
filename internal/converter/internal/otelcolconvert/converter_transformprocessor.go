@@ -10,6 +10,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -45,9 +46,9 @@ func (transformProcessorConverter) ConvertAndAppend(state *State, id componentst
 
 func toTransformProcessor(state *State, id componentstatus.InstanceID, cfg *transformprocessor.Config) *transform.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextLogs    = state.Next(id, component.DataTypeLogs)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &transform.Arguments{

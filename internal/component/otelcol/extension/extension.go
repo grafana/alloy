@@ -17,8 +17,12 @@ import (
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
+	otelmetric "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
@@ -37,7 +41,7 @@ type Arguments interface {
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
-	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 
 	// DebugMetricsConfig returns the configuration for debug metrics
 	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
@@ -119,13 +123,20 @@ func (e *Extension) Update(args component.Arguments) error {
 		return err
 	}
 
+	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelextension.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 
 			TracerProvider: e.opts.Tracer,
-			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
-			MetricsLevel:   metricsLevel,
+			MeterProvider:  mp,
+			LeveledMeterProvider: func(level configtelemetry.Level) otelmetric.MeterProvider {
+				if level <= metricsLevel {
+					return mp
+				}
+				return noop.MeterProvider{}
+			},
+			MetricsLevel: metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{

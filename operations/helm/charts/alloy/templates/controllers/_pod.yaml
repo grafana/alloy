@@ -51,6 +51,9 @@ spec:
   affinity:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- if .Values.controller.terminationGracePeriodSeconds }}
+  terminationGracePeriodSeconds: {{ .Values.controller.terminationGracePeriodSeconds | int }}
+  {{- end }}
   {{- with .Values.controller.nodeSelector }}
   nodeSelector:
     {{- toYaml . | nindent 4 }}
@@ -80,4 +83,8 @@ spec:
     {{- if .Values.controller.volumes.extra }}
     {{- toYaml .Values.controller.volumes.extra | nindent 4 }}
     {{- end }}
+  {{- if $values.hostAliases }}
+  hostAliases:
+    {{- toYaml $values.hostAliases | nindent 4 }}
+  {{- end }}
 {{- end }}

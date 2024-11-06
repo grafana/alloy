@@ -18,9 +18,13 @@ import (
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelconnector "go.opentelemetry.io/collector/connector"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
+	otelmetric "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
@@ -51,7 +55,7 @@ type Arguments interface {
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
-	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 
 	// NextConsumers returns the set of consumers to send data to.
 	NextConsumers() *otelcol.ConsumerArguments
@@ -152,13 +156,20 @@ func (p *Connector) Update(args component.Arguments) error {
 		return err
 	}
 
+	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelconnector.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(p.opts.Logger),
 
 			TracerProvider: p.opts.Tracer,
-			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
-			MetricsLevel:   metricsLevel,
+			MeterProvider:  mp,
+			LeveledMeterProvider: func(level configtelemetry.Level) otelmetric.MeterProvider {
+				if level <= metricsLevel {
+					return mp
+				}
+				return noop.MeterProvider{}
+			},
+			MetricsLevel: metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -192,7 +203,7 @@ func (p *Connector) Update(args component.Arguments) error {
 		if len(next.Metrics) > 0 {
 			nextMetrics := fanoutconsumer.Metrics(next.Metrics)
 			tracesConnector, err = p.factory.CreateTracesToMetrics(p.ctx, settings, connectorConfig, nextMetrics)
-			if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 				return err
 			} else if tracesConnector != nil {
 				components = append(components, tracesConnector)

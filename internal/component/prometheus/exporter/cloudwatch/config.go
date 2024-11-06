@@ -52,13 +52,13 @@ type DecoupledScrapeConfig struct {
 type TagsPerNamespace = cloudwatch_exporter.TagsPerNamespace
 
 // DiscoveryJob configures a discovery job for a given service.
-// TODO: Add a recently_active_only attribute.
 type DiscoveryJob struct {
 	Auth                      RegionAndRoles `alloy:",squash"`
 	CustomTags                Tags           `alloy:"custom_tags,attr,optional"`
 	SearchTags                Tags           `alloy:"search_tags,attr,optional"`
 	Type                      string         `alloy:"type,attr"`
 	DimensionNameRequirements []string       `alloy:"dimension_name_requirements,attr,optional"`
+	RecentlyActiveOnly        bool           `alloy:"recently_active_only,attr,optional"`
 	Metrics                   []Metric       `alloy:"metric,block"`
 	//TODO: Remove NilToZero, because it is deprecated upstream.
 	NilToZero *bool `alloy:"nil_to_zero,attr,optional"`
@@ -314,8 +314,9 @@ func toYACEDiscoveryJob(rj DiscoveryJob) *yaceConf.Job {
 		DimensionNameRequirements: rj.DimensionNameRequirements,
 		// By setting RoundingPeriod to nil, the exporter will align the start and end times for retrieving CloudWatch
 		// metrics, with the smallest period in the retrieved batch.
-		RoundingPeriod: nil,
-		Metrics:        toYACEMetrics(rj.Metrics, nilToZero),
+		RoundingPeriod:     nil,
+		RecentlyActiveOnly: rj.RecentlyActiveOnly,
+		Metrics:            toYACEMetrics(rj.Metrics, nilToZero),
 	}
 	return job
 }

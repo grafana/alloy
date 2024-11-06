@@ -10,6 +10,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -41,8 +42,8 @@ func (datadogReceiverConverter) ConvertAndAppend(state *State, id componentstatu
 
 func toDatadogReceiver(state *State, id componentstatus.InstanceID, cfg *datadogreceiver.Config) *datadog.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &datadog.Arguments{

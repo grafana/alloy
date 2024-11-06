@@ -25,6 +25,8 @@ there is also a set of metrics-only functions:
 * [copy_metric][]
 * [scale_metric][]
 * [aggregate_on_attributes][]
+* [convert_exponential_histogram_to_histogram][]
+* [aggregate_on_attribute_value][]
 
 [OTTL][] statements can also contain constructs such as:
 * [Booleans][OTTL booleans]:
@@ -584,6 +586,8 @@ each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< pa
 [copy_metric]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#copy_metric
 [scale_metric]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#scale_metric
 [aggregate_on_attributes]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#aggregate_on_attributes
+[convert_exponential_histogram_to_histogram]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#convert_exponential_histogram_to_histogram
+[aggregate_on_attribute_value]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#aggregate_on_attribute_value
 [OTTL booleans]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/pkg/ottl#booleans
 [OTTL math expressions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/pkg/ottl#math-expressions
 [OTTL boolean expressions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/pkg/ottl#boolean-expressions

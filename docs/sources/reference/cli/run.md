@@ -51,7 +51,11 @@ The following flags are supported:
 * `--cluster.advertise-interfaces`: List of interfaces used to infer an address to advertise. Set to `all` to use all available network interfaces on the system. (default `"eth0,en0"`).
 * `--cluster.max-join-peers`: Number of peers to join from the discovered set (default `5`).
 * `--cluster.name`: Name to prevent nodes without this identifier from joining the cluster (default `""`).
-* `--cluster.use-discovery-v1`: Use the older, v1 version of cluster peer discovery mechanism (default `false`). Note that this flag will be deprecated in the future and eventually removed.
+* `--cluster.enable-tls`: Specifies whether TLS should be used for communication between peers (default `false`). 
+* `--cluster.tls-ca-path`: Path to the CA certificate file used for peer communication over TLS. 
+* `--cluster.tls-cert-path`: Path to the certificate file used for peer communication over TLS.
+* `--cluster.tls-key-path`: Path to the key file used for peer communication over TLS.
+* `--cluster.tls-server-name`: Server name used for peer communication over TLS.
 * `--config.format`: The format of the source file. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, `static` (default `"alloy"`).
 * `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
@@ -112,6 +116,9 @@ The comma-separated list of addresses provided in `--cluster.join-addresses` can
 In both cases, the port number can be specified with a `:<port>` suffix. If ports are not provided, default of the port used for the HTTP listener is used.
 If you do not provide the port number explicitly, you must ensure that all instances use the same port for the HTTP listener.
 
+The `--cluster.enable-tls` flag can be set to enable TLS for peer-to-peer communications.
+Additional arguments are required to configure the TLS client, including the CA certificate, the TLS certificate, the key, and the server name.
+
 The `--cluster.discover-peers` command-line flag expects a list of tuples in the form of `provider=XXX key=val key=val ...`.
 Clustering uses the [go-discover] package to discover peers and fetch their IP addresses, based on the chosen provider and the filtering key-values it supports.
 Clustering supports the default set of providers available in go-discover and registers the `k8s` provider on top.
@@ -137,9 +144,6 @@ The `--cluster.name` flag can be used to prevent clusters from accidentally merg
 When `--cluster.name` is provided, nodes will only join peers who share the same cluster name value.
 By default, the cluster name is empty, and any node that doesn't set the flag can join.
 Attempting to join a cluster with a wrong `--cluster.name` will result in a "failed to join memberlist" error.
-
-The `--cluster.use-discovery-v1` flag can be used to switch back to the older, v1 version of the cluster peer discovery mechanism
-in case of any issues with the newer version. This flag will be deprecated in the future and eventually removed.
 
 ### Clustering states
 
@@ -168,7 +172,6 @@ original configuration.
 
 Include `--config.extra-args` to pass additional command line flags from the original format to the converter.
 Refer to [alloy convert][] for more details on how `extra-args` work.
-
 
 [alloy convert]: ../convert/
 [clustering]:  ../../../get-started/clustering/

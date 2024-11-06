@@ -175,6 +175,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 {{< collapse title="prometheus" >}}
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
 - [prometheus.remote_write](../components/prometheus/prometheus.remote_write)
+- [prometheus.write.queue](../components/prometheus/prometheus.write.queue)
 {{< /collapse >}}
 
 <!-- END GENERATED SECTION: EXPORTERS OF Prometheus `MetricsReceiver` -->
@@ -218,6 +219,7 @@ The following components, grouped by namespace, _export_ Loki `LogsReceiver`.
 - [loki.echo](../components/loki/loki.echo)
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
+- [loki.secretfilter](../components/loki/loki.secretfilter)
 - [loki.write](../components/loki/loki.write)
 {{< /collapse >}}
 
@@ -241,6 +243,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 {{< collapse title="loki" >}}
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
+- [loki.secretfilter](../components/loki/loki.secretfilter)
 - [loki.source.api](../components/loki/loki.source.api)
 - [loki.source.awsfirehose](../components/loki/loki.source.awsfirehose)
 - [loki.source.azure_event_hubs](../components/loki/loki.source.azure_event_hubs)
@@ -291,7 +294,6 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
 - [otelcol.exporter.loadbalancing](../components/otelcol/otelcol.exporter.loadbalancing)
-- [otelcol.exporter.logging](../components/otelcol/otelcol.exporter.logging)
 - [otelcol.exporter.loki](../components/otelcol/otelcol.exporter.loki)
 - [otelcol.exporter.otlp](../components/otelcol/otelcol.exporter.otlp)
 - [otelcol.exporter.otlphttp](../components/otelcol/otelcol.exporter.otlphttp)
@@ -392,6 +394,7 @@ The following components, grouped by namespace, _consume_ Pyroscope `ProfilesRec
 {{< collapse title="pyroscope" >}}
 - [pyroscope.ebpf](../components/pyroscope/pyroscope.ebpf)
 - [pyroscope.java](../components/pyroscope/pyroscope.java)
+- [pyroscope.receive_http](../components/pyroscope/pyroscope.receive_http)
 - [pyroscope.scrape](../components/pyroscope/pyroscope.scrape)
 {{< /collapse >}}
 

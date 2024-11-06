@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -44,7 +45,7 @@ func (jaegerReceiverConverter) ConvertAndAppend(state *State, id componentstatus
 
 func toJaegerReceiver(state *State, id componentstatus.InstanceID, cfg *jaegerreceiver.Config) *jaeger.Arguments {
 	var (
-		nextTraces = state.Next(id, component.DataTypeTraces)
+		nextTraces = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &jaeger.Arguments{

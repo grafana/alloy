@@ -9,10 +9,10 @@ title: prometheus.exporter.snmp
 # prometheus.exporter.snmp
 
 The `prometheus.exporter.snmp` component embeds
-[`snmp_exporter`](https://github.com/prometheus/snmp_exporter). `snmp_exporter` lets you collect SNMP data and expose them as Prometheus metrics.
+[`snmp_exporter`](https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}). `snmp_exporter` lets you collect SNMP data and expose them as Prometheus metrics.
 
 {{< admonition type="note" >}}
-`prometheus.exporter.snmp` uses the latest configuration introduced in version 0.26 of the Prometheus `snmp_exporter`.
+`prometheus.exporter.snmp` uses the latest configuration introduced in version {{< param "SNMP_VERSION" >}} of the Prometheus `snmp_exporter`.
 {{< /admonition >}}
 
 ## Usage
@@ -48,7 +48,7 @@ Omitted fields take their default values.
 | `targets`     | `list(map(string))`  | SNMP targets.                                    |         | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
-Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter#generating-configuration) for details on how to generate a configuration file.
+Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=readme-ov-file#configuration) for details on how to generate a configuration file.
 
 The `config` argument must be a YAML document as string defining which SNMP modules and auths to use.
 `config` is typically loaded by using the exports of another component. For example,
@@ -64,6 +64,8 @@ The following labels can be set to a target:
 * `module`: The SNMP module to use for polling.
 * `auth`: The SNMP authentication profile to use.
 * `walk_params`: The config to use for this target.
+
+Any other labels defined are added to the scraped metrics.
 
 ## Blocks
 
@@ -83,13 +85,15 @@ The following blocks are supported inside the definition of
 The `target` block defines an individual SNMP target.
 The `target` block may be specified multiple times to define multiple targets. The label of the block is required and will be used in the target's `job` label.
 
-| Name           | Type     | Description                                                           | Default | Required |
-| -------------- | -------- | --------------------------------------------------------------------- | ------- | -------- |
-| `address`      | `string` | The address of SNMP device.                                           |         | yes      |
-| `module`       | `string` | SNMP module to use for polling.                                       | `""`    | no       |
-| `auth`         | `string` | SNMP authentication profile to use.                                   | `""`    | no       |
-| `walk_params`  | `string` | Config to use for this target.                                        | `""`    | no       |
-| `snmp_context` | `string` | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
+| Name           | Type          | Description                                                           | Default | Required |
+|----------------|---------------|-----------------------------------------------------------------------| ------- | -------- |
+| `address`      | `string`      | The address of SNMP device.                                           |         | yes      |
+| `module`       | `string`      | SNMP module to use for polling.                                       | `""`    | no       |
+| `auth`         | `string`      | SNMP authentication profile to use.                                   | `""`    | no       |
+| `walk_params`  | `string`      | Config to use for this target.                                        | `""`    | no       |
+| `snmp_context` | `string`      | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
+| `labels`       | `map(string)` | Map of labels to apply to all metrics captured from the target.       | `""`    | no       |
+
 
 ### walk_param block
 
@@ -136,6 +140,9 @@ prometheus.exporter.snmp "example" {
         address     = "192.168.1.2"
         module      = "if_mib"
         walk_params = "public"
+        labels = {
+            "env" = "dev",
+        }
     }
 
     target "network_router_2" {
@@ -227,6 +234,7 @@ prometheus.exporter.snmp "example" {
             "address"     = "192.168.1.2",
             "module"      = "if_mib",
             "walk_params" = "public",
+            "env"         = "dev",
         },
         {
             "name"        = "network_router_2",

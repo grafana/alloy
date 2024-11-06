@@ -40,6 +40,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/loki/process"                             // Import loki.process
 	_ "github.com/grafana/alloy/internal/component/loki/relabel"                             // Import loki.relabel
 	_ "github.com/grafana/alloy/internal/component/loki/rules/kubernetes"                    // Import loki.rules.kubernetes
+	_ "github.com/grafana/alloy/internal/component/loki/secretfilter"                        // Import loki.secretfilter
 	_ "github.com/grafana/alloy/internal/component/loki/source/api"                          // Import loki.source.api
 	_ "github.com/grafana/alloy/internal/component/loki/source/aws_firehose"                 // Import loki.source.awsfirehose
 	_ "github.com/grafana/alloy/internal/component/loki/source/azure_event_hubs"             // Import loki.source.azure_event_hubs
@@ -72,7 +73,6 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/debug"                   // Import otelcol.exporter.debug
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"                   // Import otelcol.exporter.kafka
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"           // Import otelcol.exporter.loadbalancing
-	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/logging"                 // Import otelcol.exporter.logging
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/loki"                    // Import otelcol.exporter.loki
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"                    // Import otelcol.exporter.otlp
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"                // Import otelcol.exporter.otlphttp
@@ -81,10 +81,10 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/attributes"             // Import otelcol.processor.attributes
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/batch"                  // Import otelcol.processor.batch
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/deltatocumulative"      // Import otelcol.processor.deltatocumulative
-	_ "github.com/grafana/alloy/internal/component/otelcol/processor/interval"               // Import otelcol.processor.interval
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/discovery"              // Import otelcol.processor.discovery
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/filter"                 // Import otelcol.processor.filter
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/groupbyattrs"           // Import otelcol.processor.groupbyattrs
+	_ "github.com/grafana/alloy/internal/component/otelcol/processor/interval"               // Import otelcol.processor.interval
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/k8sattributes"          // Import otelcol.processor.k8sattributes
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/memorylimiter"          // Import otelcol.processor.memory_limiter
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/probabilistic_sampler"  // Import otelcol.processor.probabilistic_sampler
@@ -136,8 +136,10 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/relabel"                       // Import prometheus.relabel
 	_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite"                   // Import prometheus.remote_write
 	_ "github.com/grafana/alloy/internal/component/prometheus/scrape"                        // Import prometheus.scrape
+	_ "github.com/grafana/alloy/internal/component/prometheus/write/queue"                   // Import prometheus.write.queue
 	_ "github.com/grafana/alloy/internal/component/pyroscope/ebpf"                           // Import pyroscope.ebpf
 	_ "github.com/grafana/alloy/internal/component/pyroscope/java"                           // Import pyroscope.java
+	_ "github.com/grafana/alloy/internal/component/pyroscope/receive_http"                   // Import pyroscope.receive_http
 	_ "github.com/grafana/alloy/internal/component/pyroscope/scrape"                         // Import pyroscope.scrape
 	_ "github.com/grafana/alloy/internal/component/pyroscope/write"                          // Import pyroscope.write
 	_ "github.com/grafana/alloy/internal/component/remote/http"                              // Import remote.http

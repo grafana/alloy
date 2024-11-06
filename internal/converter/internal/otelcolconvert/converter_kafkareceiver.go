@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/configtls"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -45,9 +46,9 @@ func (kafkaReceiverConverter) ConvertAndAppend(state *State, id componentstatus.
 
 func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkareceiver.Config) *kafka.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextLogs    = state.Next(id, component.DataTypeLogs)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &kafka.Arguments{
@@ -68,6 +69,10 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		AutoCommit:       toKafkaAutoCommit(cfg.AutoCommit),
 		MessageMarking:   toKafkaMessageMarking(cfg.MessageMarking),
 		HeaderExtraction: toKafkaHeaderExtraction(cfg.HeaderExtraction),
+
+		MinFetchSize:     cfg.MinFetchSize,
+		DefaultFetchSize: cfg.DefaultFetchSize,
+		MaxFetchSize:     cfg.MaxFetchSize,
 
 		DebugMetrics: common.DefaultValue[kafka.Arguments]().DebugMetrics,
 

@@ -16,7 +16,10 @@ otelcol.receiver.otlp "default" {
 
 otelcol.exporter.otlphttp "default" {
 	client {
-		endpoint           = "database:4318"
-		http2_ping_timeout = "0s"
+		endpoint                = "database:4318"
+		proxy_url               = "http://proxy.example.com:8080"
+		max_idle_conns_per_host = 0
+		max_conns_per_host      = 0
+		http2_ping_timeout      = "0s"
 	}
 }

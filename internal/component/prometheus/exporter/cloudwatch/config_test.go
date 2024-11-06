@@ -99,6 +99,7 @@ discovery {
 		role_arn = "arn:aws:iam::878167871295:role/yace_testing"
 	}
 	dimension_name_requirements = ["BucketName"]
+	recently_active_only = true
 	metric {
 		name = "BucketSizeBytes"
 		statistics = ["Sum"]
@@ -367,6 +368,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 						},
 						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{},
+						RecentlyActiveOnly:    true,
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
 								Regexp:          regexp.MustCompile("(?P<BucketName>[^:]+)$"),

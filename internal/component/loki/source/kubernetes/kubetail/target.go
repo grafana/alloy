@@ -25,6 +25,21 @@ const (
 	kubePodUID           = "__meta_kubernetes_pod_uid"
 )
 
+var ClusteringLabels = []string{
+	LabelPodNamespace,
+	LabelPodName,
+	LabelPodContainerName,
+	LabelPodUID,
+	kubePodNamespace,
+	kubePodName,
+	kubePodContainerName,
+	kubePodUID,
+	"container",
+	"pod",
+	"job",
+	"namespace",
+}
+
 // Target represents an individual container being tailed for logs.
 type Target struct {
 	origLabels   labels.Labels // Original discovery labels

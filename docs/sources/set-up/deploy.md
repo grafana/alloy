@@ -122,7 +122,7 @@ The Pod’s controller, network configuration, enabled capabilities, and availab
 
 [clustering]: ../../configure/clustering/
 
-## Process different types of telemetry in different {{< param "PRODUCT_NAME" >}} instances
+## Process different types of telemetry in different {{% param "PRODUCT_NAME" %}} instances
 
 If the load on {{< param "PRODUCT_NAME" >}} is small, you can process all necessary telemetry signals in the same {{< param "PRODUCT_NAME" >}} process.
 For example, a single {{< param "PRODUCT_NAME" >}} deployment can process all of the incoming metrics, logs, traces, and profiles.

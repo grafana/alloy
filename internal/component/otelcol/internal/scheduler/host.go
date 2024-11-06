@@ -5,6 +5,7 @@ import (
 
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 // Host implements otelcomponent.Host for Grafana Alloy.
@@ -12,7 +13,7 @@ type Host struct {
 	log log.Logger
 
 	extensions map[otelcomponent.ID]otelextension.Extension
-	exporters  map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	exporters  map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 }
 
 // NewHost creates a new Host.
@@ -35,7 +36,7 @@ func WithHostExtensions(extensions map[otelcomponent.ID]otelextension.Extension)
 }
 
 // WithHostExporters provides a custom set of exporters to the Host.
-func WithHostExporters(exporters map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component) HostOption {
+func WithHostExporters(exporters map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component) HostOption {
 	return func(h *Host) {
 		h.exporters = exporters
 	}

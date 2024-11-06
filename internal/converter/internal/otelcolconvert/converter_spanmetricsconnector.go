@@ -11,6 +11,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -49,7 +50,7 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 		return nil
 	}
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
 	)
 
 	var exponential *spanmetrics.ExponentialHistogramConfig

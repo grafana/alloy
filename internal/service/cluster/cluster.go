@@ -5,6 +5,7 @@ package cluster
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"math/rand"
 	"net"
@@ -30,7 +31,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster/discovery"
-	http_service "github.com/grafana/alloy/internal/service/http"
+	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -58,7 +59,6 @@ const (
 
 	// stateUpdateMinInterval is the minimum time interval between propagating peer changes to Alloy components.
 	// This allows to rate limit the number of updates when the cluster is frequently changing (e.g. during rollout).
-	// This is only used when Options.EnableStateUpdatesLimiter is set to true.
 	stateUpdateMinInterval = time.Second
 )
 
@@ -70,16 +70,20 @@ type Options struct {
 	Tracer  trace.TracerProvider  // Where to send traces.
 
 	// EnableClustering toggles clustering as a whole. When EnableClustering is
-	// false, the instance of Alloy acts as a single-node cluster and it is not
+	// false, the instance of Alloy acts as a single-node cluster, and it is not
 	// possible for other nodes to join the cluster.
 	EnableClustering bool
 
-	NodeName                  string        // Name to use for this node in the cluster.
-	AdvertiseAddress          string        // Address to advertise to other nodes in the cluster.
-	RejoinInterval            time.Duration // How frequently to rejoin the cluster to address split brain issues.
-	ClusterMaxJoinPeers       int           // Number of initial peers to join from the discovered set.
-	ClusterName               string        // Name to prevent nodes without this identifier from joining the cluster.
-	EnableStateUpdatesLimiter bool          // Enables rate limiting of state updates to components.
+	NodeName            string        // Name to use for this node in the cluster.
+	AdvertiseAddress    string        // Address to advertise to other nodes in the cluster.
+	EnableTLS           bool          // Specifies whether TLS should be used for communication between peers.
+	TLSCAPath           string        // Path to the CA file.
+	TLSCertPath         string        // Path to the certificate file.
+	TLSKeyPath          string        // Path to the key file.
+	TLSServerName       string        // Server name to use for TLS communication.
+	RejoinInterval      time.Duration // How frequently to rejoin the cluster to address split brain issues.
+	ClusterMaxJoinPeers int           // Number of initial peers to join from the discovered set.
+	ClusterName         string        // Name to prevent nodes without this identifier from joining the cluster.
 
 	// Function to discover peers to join. If this function is nil or returns an
 	// empty slice, no peers will be joined.
@@ -98,8 +102,8 @@ type Service struct {
 }
 
 var (
-	_ service.Service             = (*Service)(nil)
-	_ http_service.ServiceHandler = (*Service)(nil)
+	_ service.Service            = (*Service)(nil)
+	_ httpservice.ServiceHandler = (*Service)(nil)
 )
 
 // New returns a new, unstarted instance of the cluster service.
@@ -121,25 +125,35 @@ func New(opts Options) (*Service, error) {
 		Log:           l,
 		Sharder:       shard.Ring(tokensPerNode),
 		Label:         opts.ClusterName,
+		EnableTLS:     opts.EnableTLS,
 	}
 
-	httpClient := &http.Client{
-		Transport: &http2.Transport{
-			AllowHTTP: true,
-			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
-				// Set a maximum timeout for establishing the connection. If our
-				// context has a deadline earlier than our timeout, we shrink the
-				// timeout to it.
-				//
-				// TODO(rfratto): consider making the max timeout configurable.
-				timeout := 30 * time.Second
-				if dur, ok := deadlineDuration(ctx); ok && dur < timeout {
-					timeout = dur
-				}
-
-				return net.DialTimeout(network, addr, timeout)
-			},
+	httpTransport := &http2.Transport{
+		AllowHTTP: true,
+		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+			return net.DialTimeout(network, addr, calcTimeout(ctx))
 		},
+	}
+	if opts.EnableTLS {
+		httpTransport.AllowHTTP = false
+		tlsConfig, err := loadTLSConfigFromFile(opts.TLSCAPath, opts.TLSCertPath, opts.TLSKeyPath, opts.TLSServerName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load TLS config from file: %w", err)
+		}
+		level.Debug(l).Log(
+			"msg", "loaded TLS config for cluster http transport",
+			"TLSCAPath", opts.TLSCAPath,
+			"TLSCertPath", opts.TLSCertPath,
+			"TLSKeyPath", opts.TLSKeyPath,
+			"TLSServerName", opts.TLSServerName,
+		)
+		httpTransport.TLSClientConfig = tlsConfig
+		httpTransport.DialTLSContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return tls.DialWithDialer(&net.Dialer{Timeout: calcTimeout(ctx)}, network, addr, cfg)
+		}
+	}
+	httpClient := &http.Client{
+		Transport: httpTransport,
 	}
 
 	node, err := ckit.NewNode(httpClient, ckitConfig)
@@ -163,6 +177,41 @@ func New(opts Options) (*Service, error) {
 	}, nil
 }
 
+func loadTLSConfigFromFile(TLSCAPath string, TLSCertPath string, TLSKeyPath string, serverName string) (*tls.Config, error) {
+	pem, err := os.ReadFile(TLSCAPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read TLS CA file: %w", err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(pem)
+	if !caCertPool.AppendCertsFromPEM(pem) {
+		return nil, fmt.Errorf("failed to append CA from PEM with path %s", TLSCAPath)
+	}
+
+	cert, err := tls.LoadX509KeyPair(TLSCertPath, TLSKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load X509 key pair: %w", err)
+	}
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      caCertPool,
+		ServerName:   serverName,
+	}, nil
+}
+
+// TODO(rfratto): consider making the max timeout configurable.
+// Set a maximum timeout for establishing the connection. If our
+// context has a deadline earlier than our timeout, we shrink the
+// timeout to it.
+func calcTimeout(ctx context.Context) time.Duration {
+	timeout := 30 * time.Second
+	if dur, ok := deadlineDuration(ctx); ok && dur < timeout {
+		timeout = dur
+	}
+	return timeout
+}
+
 func deadlineDuration(ctx context.Context) (d time.Duration, ok bool) {
 	if t, ok := ctx.Deadline(); ok {
 		return time.Until(t), true
@@ -177,7 +226,7 @@ func (s *Service) Definition() service.Definition {
 		ConfigType: nil, // cluster does not accept configuration.
 		DependsOn: []string{
 			// Cluster depends on the HTTP service to work properly.
-			http_service.ServiceName,
+			httpservice.ServiceName,
 		},
 		Stability: featuregate.StabilityGenerallyAvailable,
 	}
@@ -185,7 +234,7 @@ func (s *Service) Definition() service.Definition {
 
 // ServiceHandler returns the service handler for the clustering service. The
 // resulting handler always returns 404 when clustering is disabled.
-func (s *Service) ServiceHandler(host service.Host) (base string, handler http.Handler) {
+func (s *Service) ServiceHandler(_ service.Host) (base string, handler http.Handler) {
 	base, handler = s.node.Handler()
 
 	if !s.opts.EnableClustering {
@@ -225,20 +274,19 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		spanCtx, span := tracer.Start(ctx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
 		defer span.End()
 
-		if s.opts.EnableStateUpdatesLimiter {
-			// Limit how often we notify components about peer changes. At start up we may receive N updates in a period
-			// of less than one second. This leads to a lot of unnecessary processing.
-			_, span := tracer.Start(spanCtx, "RateLimitWait", trace.WithSpanKind(trace.SpanKindInternal))
-			if err := limiter.Wait(ctx); err != nil {
-				// This should never happen, but it should be safe to just ignore it and continue.
-				level.Warn(s.log).Log("msg", "failed to wait for rate limiter on peers update", "err", err)
-				span.RecordError(err)
-			}
-			span.End()
-			// NOTE: after waiting for the limiter, the `peers` may be slightly outdated, but that's fine as the
-			// most up-to-date peers will be dispatched to the Observer by ckit eventually. The intermediate updates
-			// will be skipped, which is exactly what we want here.
+		// Limit how often we notify components about peer changes. At start up we may receive N updates in a period
+		// of less than one second. This leads to a lot of unnecessary processing.
+		_, spanWait := tracer.Start(spanCtx, "RateLimitWait", trace.WithSpanKind(trace.SpanKindInternal))
+		if err := limiter.Wait(ctx); err != nil {
+			// This should never happen, but it should be safe to just ignore it and continue.
+			level.Warn(s.log).Log("msg", "failed to wait for rate limiter on peers update", "err", err)
+			spanWait.RecordError(err)
 		}
+		spanWait.End()
+
+		// NOTE: after waiting for the limiter, the `peers` may be slightly outdated, but that's fine as the
+		// most up-to-date peers will be dispatched to the Observer by ckit eventually. The intermediate updates
+		// will be skipped, which is exactly what we want here.
 
 		if ctx.Err() != nil {
 			// Unregister our observer if we exited.
@@ -250,20 +298,20 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 		// Notify all components about the clustering change.
 		components := component.GetAllComponents(host, component.InfoOptions{})
-		for _, component := range components {
+		for _, comp := range components {
 			if ctx.Err() != nil {
 				// Stop early if we exited, so we don't do unnecessary work notifying
 				// consumers that do not need to be notified.
 				break
 			}
 
-			clusterComponent, ok := component.Component.(Component)
+			clusterComponent, ok := comp.Component.(Component)
 			if !ok {
 				continue
 			}
 
 			_, span := tracer.Start(spanCtx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
-			span.SetAttributes(attribute.String("component_id", component.ID.String()))
+			span.SetAttributes(attribute.String("component_id", comp.ID.String()))
 
 			clusterComponent.NotifyClusterChange()
 
@@ -385,7 +433,7 @@ func (s *Service) stop() {
 
 // Update implements [service.Service]. It returns an error since the cluster
 // service does not support runtime configuration.
-func (s *Service) Update(newConfig any) error {
+func (s *Service) Update(_ any) error {
 	return fmt.Errorf("cluster service does not support configuration")
 }
 
