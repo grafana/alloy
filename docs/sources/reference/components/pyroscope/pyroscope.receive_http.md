@@ -4,16 +4,16 @@ description: Learn about pyroscope.receive_http
 title: pyroscope.receive_http
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # pyroscope.receive_http
+
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.receive_http` receives profiles over HTTP and forwards them to `pyroscope.*` components capable of receiving profiles.
 
 The HTTP API exposed is compatible with the Pyroscope [HTTP ingest API](https://grafana.com/docs/pyroscope/latest/configure-server/about-server-api/).
 This allows `pyroscope.receive_http` to act as a proxy for Pyroscope profiles, enabling flexible routing and distribution of profile data.
-
-{{< admonition type="note" >}}
-The `pyroscope.receive_http` component is currently in public preview. To use this component, you must run Alloy with the `--stability.level` flag set to `public-preview`. For more information about Alloy's run usage, refer to the [run command](https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/cli/run/#the-run-command) documentation.
-{{< /admonition >}}
 
 ## Usage
 
