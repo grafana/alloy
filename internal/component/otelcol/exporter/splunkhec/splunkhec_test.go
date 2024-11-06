@@ -54,7 +54,7 @@ func TestConfigConversion(t *testing.T) {
 			HTTP2PingTimeout:     0,
 			Cookies:              (*confighttp.CookiesConfig)(nil),
 		},
-		QueueSettings: exporterhelper.QueueSettings{
+		QueueSettings: exporterhelper.QueueConfig{
 			Enabled:      true,
 			NumConsumers: 10,
 			QueueSize:    1000,
@@ -134,7 +134,7 @@ func TestConfigConversion(t *testing.T) {
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			Cookies:              (*confighttp.CookiesConfig)(nil)},
-		QueueSettings: exporterhelper.QueueSettings{
+		QueueSettings: exporterhelper.QueueConfig{
 			Enabled:      true,
 			NumConsumers: 10,
 			QueueSize:    1000,

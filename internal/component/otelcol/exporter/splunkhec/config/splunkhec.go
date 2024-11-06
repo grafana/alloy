@@ -179,10 +179,10 @@ func (args *SplunkHecTelemetry) Convert() *splunkhecexporter.HecTelemetry {
 
 // SplunkHecClientArguments defines the configuration for the Splunk HEC exporter.
 type SplunkHecArguments struct {
-	SplunkHecClientArguments SplunkHecClientArguments     `alloy:"client,block"`
-	QueueSettings            exporterhelper.QueueSettings `alloy:"queue,block,optional"`
-	RetrySettings            configretry.BackOffConfig    `alloy:"retry_on_failure,block,optional"`
-	Splunk                   SplunkConf                   `alloy:"splunk,block"`
+	SplunkHecClientArguments SplunkHecClientArguments   `alloy:"client,block"`
+	QueueSettings            exporterhelper.QueueConfig `alloy:"queue,block,optional"`
+	RetrySettings            configretry.BackOffConfig  `alloy:"retry_on_failure,block,optional"`
+	Splunk                   SplunkConf                 `alloy:"splunk,block"`
 }
 
 func (args *SplunkHecClientArguments) Convert() *confighttp.ClientConfig {
@@ -298,7 +298,7 @@ func (args *SplunkHecArguments) Convert() *splunkhecexporter.Config {
 
 func (args *SplunkHecArguments) SetToDefault() {
 	args.SplunkHecClientArguments.SetToDefault()
-	args.QueueSettings = exporterhelper.NewDefaultQueueSettings()
+	args.QueueSettings = exporterhelper.NewDefaultQueueConfig()
 	args.RetrySettings = configretry.NewDefaultBackOffConfig()
 	args.Splunk.SetToDefault()
 }
