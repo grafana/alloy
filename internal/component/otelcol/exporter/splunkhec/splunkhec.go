@@ -1,5 +1,7 @@
 // package splunkhec provides an otel.exporter splunkhec component
-
+// Maintainers for the Grafana Alloy wrapper:
+// - @adlotsof
+// - @PatMis16
 package splunkhec
 
 import (
