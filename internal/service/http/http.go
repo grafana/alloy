@@ -51,11 +51,10 @@ type Options struct {
 	ReadyFunc  func() bool
 	ReloadFunc func() (*alloy_runtime.Source, error)
 
-	HTTPListenAddr       string // Address to listen for HTTP traffic on.
-	MemoryListenAddr     string // Address to accept in-memory traffic on.
-	EnablePProf          bool   // Whether pprof endpoints should be exposed.
-	DisableSupportBundle bool   // Whether support bundle endpoint should be disabled.
-	RuntimeFlags         []byte // Alloy runtime flags to send with support bundle
+	HTTPListenAddr   string               // Address to listen for HTTP traffic on.
+	MemoryListenAddr string               // Address to accept in-memory traffic on.
+	EnablePProf      bool                 // Whether pprof endpoints should be exposed.
+	BundleContext    SupportBundleContext // Context for delivering a support bundle
 }
 
 // Arguments holds runtime settings for the HTTP service.
@@ -64,16 +63,19 @@ type Arguments struct {
 }
 
 type Service struct {
-	log *logging.Logger
-	// internalLog allows us to leverage log.With for logging and leverage the
-	// logging struct for setting a temporary logger for support bundle usage
-	internalLog log.Logger
-	tracer      trace.TracerProvider
-	gatherer    prometheus.Gatherer
-	opts        Options
+	// globalLogger allows us to leverage the logging struct for setting a temporary
+	// logger for support bundle usage and still leverage log.With for logging in the service
+	globalLogger *logging.Logger
+	log          log.Logger
+	tracer       trace.TracerProvider
+	gatherer     prometheus.Gatherer
+	opts         Options
 
 	winMut sync.Mutex
 	win    *server.WinCertStoreHandler
+
+	// Used to enforce single-flight requests to supportHandler
+	supportBundleMut sync.Mutex
 
 	// publicLis and tcpLis are used to lazily enable TLS, since TLS is
 	// optionally configurable at runtime.
@@ -122,11 +124,11 @@ func New(opts Options) *Service {
 	_ = publicLis.SetInner(tcpLis)
 
 	return &Service{
-		log:         l,
-		internalLog: log.With(l, "service", "http"),
-		tracer:      t,
-		gatherer:    r,
-		opts:        opts,
+		globalLogger: l,
+		log:          log.With(l, "service", "http"),
+		tracer:       t,
+		gatherer:     r,
+		opts:         opts,
 
 		publicLis: publicLis,
 		tcpLis:    tcpLis,
@@ -166,7 +168,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	netLis, err := net.Listen("tcp", s.opts.HTTPListenAddr)
 	if err != nil {
 		// There is no recovering from failing to listen on the port.
-		level.Error(s.internalLog).Log("msg", fmt.Sprintf("failed to listen on %s", s.opts.HTTPListenAddr), "err", err)
+		level.Error(s.log).Log("msg", fmt.Sprintf("failed to listen on %s", s.opts.HTTPListenAddr), "err", err)
 		os.Exit(1)
 	}
 	if err := s.tcpLis.SetInner(netLis); err != nil {
@@ -207,16 +209,16 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	if s.opts.ReloadFunc != nil {
 		r.HandleFunc("/-/reload", func(w http.ResponseWriter, _ *http.Request) {
-			level.Info(s.internalLog).Log("msg", "reload requested via /-/reload endpoint")
+			level.Info(s.log).Log("msg", "reload requested via /-/reload endpoint")
 
 			_, err := s.opts.ReloadFunc()
 			if err != nil {
-				level.Error(s.internalLog).Log("msg", "failed to reload config", "err", err.Error())
+				level.Error(s.log).Log("msg", "failed to reload config", "err", err.Error())
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 
-			level.Info(s.internalLog).Log("msg", "config reloaded")
+			level.Info(s.log).Log("msg", "config reloaded")
 			_, _ = fmt.Fprintln(w, "config reloaded")
 		}).Methods(http.MethodGet, http.MethodPost)
 	}
@@ -235,7 +237,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	srv := &http.Server{Handler: h2c.NewHandler(r, &http2.Server{})}
 
-	level.Info(s.internalLog).Log("msg", "now listening for http traffic", "addr", s.opts.HTTPListenAddr)
+	level.Info(s.log).Log("msg", "now listening for http traffic", "addr", s.opts.HTTPListenAddr)
 
 	listeners := []net.Listener{s.publicLis, s.memLis}
 	for _, lis := range listeners {
@@ -245,7 +247,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			defer cancel()
 
 			if err := srv.Serve(lis); err != nil {
-				level.Info(s.internalLog).Log("msg", "http server closed", "addr", lis.Addr(), "err", err)
+				level.Info(s.log).Log("msg", "http server closed", "addr", lis.Addr(), "err", err)
 			}
 		}(lis)
 	}
@@ -257,11 +259,11 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 }
 
 func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
-	s.winMut.Lock()
+	s.supportBundleMut.Lock()
+	defer s.supportBundleMut.Unlock()
 	cfg := s.opts
-	s.winMut.Unlock()
 
-	if cfg.DisableSupportBundle {
+	if cfg.BundleContext.DisableSupportBundle {
 		rw.WriteHeader(http.StatusForbidden)
 		_, _ = rw.Write([]byte("support bundle generation is disabled; it can be re-enabled by removing the --disable-support-bundle flag"))
 		return
@@ -289,12 +291,12 @@ func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
 
 	var logsBuffer bytes.Buffer
 	syncBuff := log.NewSyncWriter(&logsBuffer)
-	s.log.SetTemporaryWriter(syncBuff)
+	s.globalLogger.SetTemporaryWriter(syncBuff)
 	defer func() {
-		s.log.RemoveTemporaryWriter()
+		s.globalLogger.RemoveTemporaryWriter()
 	}()
 
-	bundle, err := ExportSupportBundle(ctx, cfg.RuntimeFlags, cfg.HTTPListenAddr, s.Data().(Data).DialFunc)
+	bundle, err := ExportSupportBundle(ctx, cfg.BundleContext.RuntimeFlags, cfg.HTTPListenAddr, s.Data().(Data).DialFunc)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
@@ -405,14 +407,14 @@ func (s *Service) Update(newConfig any) error {
 		}
 
 		newTLSListener := tls.NewListener(s.tcpLis, tlsConfig)
-		level.Info(s.internalLog).Log("msg", "applying TLS config to HTTP server")
+		level.Info(s.log).Log("msg", "applying TLS config to HTTP server")
 		if err := s.publicLis.SetInner(newTLSListener); err != nil {
 			return err
 		}
 	} else {
 		// Ensure that the outer lazy listener is sending requests directly to the
 		// network, instead of any previous instance of a TLS listener.
-		level.Info(s.internalLog).Log("msg", "applying non-TLS config to HTTP server")
+		level.Info(s.log).Log("msg", "applying non-TLS config to HTTP server")
 		if err := s.publicLis.SetInner(s.tcpLis); err != nil {
 			return err
 		}

@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/grafana/alloy/internal/build"
@@ -19,6 +18,13 @@ import (
 	"github.com/mackerelio/go-osstat/uptime"
 	"gopkg.in/yaml.v3"
 )
+
+// SupportBundleContext groups the relevant context that is used in the HTTP
+// service config for the support bundle
+type SupportBundleContext struct {
+	DisableSupportBundle bool     // Whether support bundle endpoint should be disabled.
+	RuntimeFlags         []string // Alloy runtime flags to send with support bundle
+}
 
 // Bundle collects all the data that is exposed as a support bundle.
 type Bundle struct {
@@ -42,13 +48,8 @@ type Metadata struct {
 	Uptime       float64 `yaml:"uptime"`
 }
 
-// Used to enforce single-flight requests to Export
-var mut sync.Mutex
-
 // ExportSupportBundle gathers the information required for the support bundle.
-func ExportSupportBundle(ctx context.Context, runtimeFlags []byte, srvAddress string, dialContext server.DialContextFunc) (*Bundle, error) {
-	mut.Lock()
-	defer mut.Unlock()
+func ExportSupportBundle(ctx context.Context, runtimeFlags []string, srvAddress string, dialContext server.DialContextFunc) (*Bundle, error) {
 	// The block profiler is disabled by default. Temporarily enable recording
 	// of all blocking events. Also, temporarily record all mutex contentions,
 	// and defer restoring of earlier mutex profiling fraction.
@@ -135,7 +136,7 @@ func ExportSupportBundle(ctx context.Context, runtimeFlags []byte, srvAddress st
 		alloyMetrics: alloyMetrics,
 		components:   components,
 		peers:        peers,
-		runtimeFlags: runtimeFlags,
+		runtimeFlags: []byte(strings.Join(runtimeFlags, "\n")),
 		heapBuf:      &heapBuf,
 		goroutineBuf: &goroutineBuf,
 		blockBuf:     &blockBuf,

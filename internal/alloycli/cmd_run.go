@@ -280,13 +280,11 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return err
 	}
 
-	var runtimeFlags []byte
+	runtimeFlags := []string{}
 	if !fr.disableSupportBundle {
-		b := strings.Builder{}
 		cmd.Flags().VisitAll(func(f *pflag.Flag) {
-			b.WriteString(fmt.Sprintf("%s=%s\n", f.Name, f.Value.String()))
+			runtimeFlags = append(runtimeFlags, fmt.Sprintf("%s=%s", f.Name, f.Value.String()))
 		})
-		runtimeFlags = []byte(b.String())
 	}
 
 	httpService := httpservice.New(httpservice.Options{
@@ -297,11 +295,13 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		ReadyFunc:  func() bool { return ready() },
 		ReloadFunc: func() (*alloy_runtime.Source, error) { return reload() },
 
-		HTTPListenAddr:       fr.httpListenAddr,
-		MemoryListenAddr:     fr.inMemoryAddr,
-		EnablePProf:          fr.enablePprof,
-		DisableSupportBundle: fr.disableSupportBundle,
-		RuntimeFlags:         runtimeFlags,
+		HTTPListenAddr:   fr.httpListenAddr,
+		MemoryListenAddr: fr.inMemoryAddr,
+		EnablePProf:      fr.enablePprof,
+		BundleContext: httpservice.SupportBundleContext{
+			RuntimeFlags:         runtimeFlags,
+			DisableSupportBundle: fr.disableSupportBundle,
+		},
 	})
 
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
