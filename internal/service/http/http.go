@@ -51,10 +51,11 @@ type Options struct {
 	ReadyFunc  func() bool
 	ReloadFunc func() (*alloy_runtime.Source, error)
 
-	HTTPListenAddr   string               // Address to listen for HTTP traffic on.
-	MemoryListenAddr string               // Address to accept in-memory traffic on.
-	EnablePProf      bool                 // Whether pprof endpoints should be exposed.
-	BundleContext    SupportBundleContext // Context for delivering a support bundle
+	HTTPListenAddr   string                // Address to listen for HTTP traffic on.
+	MemoryListenAddr string                // Address to accept in-memory traffic on.
+	EnablePProf      bool                  // Whether pprof endpoints should be exposed.
+	MinStability     featuregate.Stability // Minimum stability level to utilize for feature gates
+	BundleContext    SupportBundleContext  // Context for delivering a support bundle
 }
 
 // Arguments holds runtime settings for the HTTP service.
@@ -261,9 +262,16 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
 	s.supportBundleMut.Lock()
 	defer s.supportBundleMut.Unlock()
-	cfg := s.opts
 
-	if cfg.BundleContext.DisableSupportBundle {
+	// TODO(dehaansa) remove this check once the support bundle is generally available
+	if !s.opts.MinStability.Permits(featuregate.StabilityPublicPreview) {
+		rw.WriteHeader(http.StatusForbidden)
+		_, _ = rw.Write([]byte("support bundle generation is only available in public preview. Use" +
+			" --stability.level command-line flag to enable public-preview features"))
+		return
+	}
+
+	if s.opts.BundleContext.DisableSupportBundle {
 		rw.WriteHeader(http.StatusForbidden)
 		_, _ = rw.Write([]byte("support bundle generation is disabled; it can be re-enabled by removing the --disable-support-bundle flag"))
 		return
@@ -296,7 +304,7 @@ func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
 		s.globalLogger.RemoveTemporaryWriter()
 	}()
 
-	bundle, err := ExportSupportBundle(ctx, cfg.BundleContext.RuntimeFlags, cfg.HTTPListenAddr, s.Data().(Data).DialFunc)
+	bundle, err := ExportSupportBundle(ctx, s.opts.BundleContext.RuntimeFlags, s.opts.HTTPListenAddr, s.Data().(Data).DialFunc)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return

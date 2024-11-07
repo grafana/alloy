@@ -298,6 +298,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		HTTPListenAddr:   fr.httpListenAddr,
 		MemoryListenAddr: fr.inMemoryAddr,
 		EnablePProf:      fr.enablePprof,
+		MinStability:     fr.minStability,
 		BundleContext: httpservice.SupportBundleContext{
 			RuntimeFlags:         runtimeFlags,
 			DisableSupportBundle: fr.disableSupportBundle,
