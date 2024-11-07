@@ -12,7 +12,7 @@ weight: 300
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `/-/support?duration=N` endpoint returns a 'support bundle', a zip file that contains information
+The `/-/support?duration=N` endpoint returns a support bundle, a zip file that contains information
 about a running {{< param "PRODUCT_NAME" >}} instance, and can be used as a baseline of information when trying
 to debug an issue.
 
