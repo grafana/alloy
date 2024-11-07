@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/troubleshoot/support_bundle/
 description: Learn how to generate a support bundle
 title: Generate a Support Bundle
-menuTitle: Generate Support Bundle
+menuTitle: Generate a support bundle
 weight: 300
 ---
 
