@@ -40,6 +40,7 @@ v1.5.0-rc.0
 - Add support to `loki.source.api` to be able to extract the tenant from the HTTP `X-Scope-OrgID` header (@QuentinBisson)
 
 - (_Experimental_) Add a `loki.secretfilter` component to redact secrets from collected logs.
+- Add `otelcol.exporter.splunkhec` allowing to export otel data to Splunk HEC (@adlotsof)
 
 - (_Experimental_) Add a `prometheus.write.queue` component to add an alternative to `prometheus.remote_write`
   which allowing the writing of metrics  to a prometheus endpoint. (@mattdurham)
