@@ -34,7 +34,7 @@ This topic describes how to:
 
 Before components can collect Prometheus metrics, you must have a component responsible for writing those metrics somewhere.
 
-The [prometheus.remote_write][] component is responsible for delivering Prometheus metrics to one or Prometheus-compatible endpoints.
+The [prometheus.remote_write][] component is responsible for delivering Prometheus metrics to one of Prometheus-compatible endpoints.
 After a `prometheus.remote_write` component is defined, you can use other {{< param "PRODUCT_NAME" >}} components to forward metrics to it.
 
 To configure a `prometheus.remote_write` component for metrics delivery, complete the following steps:
