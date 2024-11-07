@@ -31,7 +31,7 @@ Both components are very similar. More information can be found in the [announce
 ### Breaking change: Change default value of `revision` in `import.git`
 
 The default value was changed from `"HEAD"` to `"main"`.
-Setting the `revision` to `"HEAD"`, `"FETCH_HEAD"`, `"ORIG_HEAD"`, `"MERGE_HEAD"` or `"CHERRY_PICK_HEAD"` is not longer allowed.
+Setting the `revision` to `"HEAD"`, `"FETCH_HEAD"`, `"ORIG_HEAD"`, `"MERGE_HEAD"` or `"CHERRY_PICK_HEAD"` is no longer allowed.
 
 ## v1.4
 
