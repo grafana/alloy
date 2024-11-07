@@ -10,7 +10,7 @@ weight: 300
 
 # Generate a support bundle
 
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/public-preview product="Generate support bundle" >}}
 
 The `/-/support?duration=N` endpoint returns a support bundle, a zip file that contains information
 about a running {{< param "PRODUCT_NAME" >}} instance, and can be used as a baseline of information when trying
