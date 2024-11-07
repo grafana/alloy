@@ -4,6 +4,9 @@ A single release branch is created for every major or minor release. That releas
 branch is then used for all Release Candidates, the Stable Release, and all
 Patch Releases for that version of Alloy.
 
+> **NOTE**: There's an experimental script in `scripts/release-process/create-release-branch.sh` that can
+> facilitate this process.
+
 ## Before you begin
 
 1. Determine the [VERSION_PREFIX](concepts/version.md).

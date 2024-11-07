@@ -14,7 +14,6 @@ function print_help_message() {
   set -x
 }
 
-check_env_var_exists "VERSION"
 check_env_var_exists "VERSION_PREFIX"
 check_env_var_exists "COMMIT_SHA"
 
@@ -38,6 +37,9 @@ pushd "$(git rev-parse --show-toplevel)"
 
   echo "Branch ${RELEASE_BRANCH_NAME} doesn't exist in the upstream yet. Creating..."
   git checkout -b "${RELEASE_BRANCH_NAME}"
+
+  confirm_with_user "Successfully created branch for ${RELEASE_BRANCH_NAME} at ${COMMIT_SHA}. Push to origin?"
+
   git push origin "${RELEASE_BRANCH_NAME}"
   echo "DONE"
 
