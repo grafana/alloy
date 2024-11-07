@@ -32,3 +32,26 @@ Elements within the list can be any type.
 > array.concat([[1, 2], [3, 4]], [[5, 6]])
 [[1, 2], [3, 4], [5, 6]]
 ```
+
+## array.combine_maps
+
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+The `array.combine_maps` function allows you to join two arrays containing maps if certain keys have matching values in both maps.
+It takes three inputs:
+
+* The first two inputs are a of type `list(map(string))`. The keys of the map are strings. 
+  The value for each key could have any Alloy type such as a string, integer, map, or a capsule.
+* The third input is an array containing strings. The strings are the keys whose value has to match for maps to be joined.
+
+The maps that don't contain all the keys provided in the third input will be discarded.
+
+### Examples
+
+```alloy
+array.combine_maps(discovery.kubernetes.k8s_pods.targets, prometheus.exporter.postgres, ["instance"])
+```
+
+```alloy
+array.combine_maps(prometheus.exporter.redis.default.targets, [{"instance"="1.1.1.1", "testLabelKey" = "testLabelVal"}], ["instance"])
+```

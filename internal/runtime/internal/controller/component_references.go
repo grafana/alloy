@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
@@ -29,7 +30,7 @@ type Reference struct {
 
 // ComponentReferences returns the list of references a component is making to
 // other components.
-func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger, scope *vm.Scope) ([]Reference, diag.Diagnostics) {
+func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger, scope *vm.Scope, minStability featuregate.Stability) ([]Reference, diag.Diagnostics) {
 	var (
 		traversals []Traversal
 
@@ -63,6 +64,24 @@ func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger, scope *vm.Scop
 			refs = append(refs, ref)
 		} else if scope.IsStdlibDeprecated(t[0].Name) {
 			level.Warn(l).Log("msg", "this stdlib function is deprecated; please refer to the documentation for updated usage and alternatives", "function", t[0].Name)
+		} else {
+			var tokenNames []string
+			for _, token := range t {
+				tokenNames = append(tokenNames, token.Name)
+			}
+
+			funcName := strings.Join(tokenNames, ".")
+			if scope.IsStdlibExperimental(funcName) {
+				if err := featuregate.CheckAllowed(featuregate.StabilityExperimental, minStability, funcName); err != nil {
+					diags = append(diags, diag.Diagnostic{
+						Severity: diag.SeverityLevelError,
+						Message:  err.Error(),
+						StartPos: ast.StartPos(t[0]).Position(),
+						EndPos:   ast.StartPos(t[len(t)-1]).Position(),
+					})
+					continue
+				}
+			}
 		}
 	}
 

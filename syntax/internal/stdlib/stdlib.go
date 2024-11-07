@@ -17,7 +17,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// There identifiers are deprecated in favour of the namespaced ones.
+// TODO: refactor the stdlib to have consistent naming between namespaces and identifiers.
+
+// ExperimentalIdentifiers contains the full name (namespace + identifier's name) of stdlib
+// identifiers that are considered "experimental".
+var ExperimentalIdentifiers = map[string]bool{
+	"array.combine_maps": true,
+}
+
+// These identifiers are deprecated in favour of the namespaced ones.
 var DeprecatedIdentifiers = map[string]interface{}{
 	"env":           os.Getenv,
 	"nonsensitive":  nonSensitive,
@@ -52,7 +60,6 @@ var Identifiers = map[string]interface{}{
 	"sys":      sys,
 	"convert":  convert,
 	"array":    array,
-	"targets":  targets,
 	"encoding": encoding,
 	"string":   str,
 	"file":     file,
@@ -87,11 +94,8 @@ var str = map[string]interface{}{
 }
 
 var array = map[string]interface{}{
-	"concat": concat,
-}
-
-var targets = map[string]interface{}{
-	"merge": targetsMerge,
+	"concat":       concat,
+	"combine_maps": mapCombine,
 }
 
 var convert = map[string]interface{}{
@@ -152,19 +156,18 @@ var concat = value.RawFunction(func(funcValue value.Value, args ...value.Value) 
 })
 
 // This function assumes that the types of the value.Value objects are correct.
-func shouldJoin(left, right value.Value, conditions value.Value) (bool, error) {
+func shouldJoin(left value.Value, right value.Value, conditions value.Value) (bool, error) {
 	for i := 0; i < conditions.Len(); i++ {
-		c := conditions.Index(i)
-		condition := c.Text()
+		condition := conditions.Index(i).Text()
 
 		leftVal, ok := left.Key(condition)
 		if !ok {
-			return false, fmt.Errorf("concatMaps: key %s not found in left map", condition)
+			return false, nil
 		}
 
 		rightVal, ok := right.Key(condition)
 		if !ok {
-			return false, fmt.Errorf("concatMaps: key %s not found in right map", condition)
+			return false, nil
 		}
 
 		if !leftVal.Equal(rightVal) {
@@ -182,7 +185,7 @@ func concatMaps(left, right value.Value) (value.Value, error) {
 	for _, key := range left.Keys() {
 		val, ok := left.Key(key)
 		if !ok {
-			return value.Null, fmt.Errorf("concatMaps: key %s not found in left map", key)
+			return value.Null, fmt.Errorf("concatMaps: key %s not found in left map while iterating - this should never happen", key)
 		}
 		res[key] = val
 	}
@@ -190,7 +193,7 @@ func concatMaps(left, right value.Value) (value.Value, error) {
 	for _, key := range right.Keys() {
 		val, ok := right.Key(key)
 		if !ok {
-			return value.Null, fmt.Errorf("concatMaps: key %s not found in right map", key)
+			return value.Null, fmt.Errorf("concatMaps: key %s not found in right map while iterating - this should never happen", key)
 		}
 		res[key] = val
 	}
@@ -202,7 +205,7 @@ func concatMaps(left, right value.Value) (value.Value, error) {
 // args[0]: []map[string]string: lhs array
 // args[1]: []map[string]string: rhs array
 // args[2]: []string:             merge conditions
-var targetsMerge = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
+var mapCombine = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
 	if len(args) != 3 {
 		return value.Value{}, fmt.Errorf("inner_join: expected 3 arguments, got %d", len(args))
 	}

@@ -43,52 +43,84 @@ func TestVM_Stdlib(t *testing.T) {
 		// Map tests
 		{
 			// Basic case. No conflicting key/val pairs.
-			"targets.merge",
-			`targets.merge([{"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			"array.combine_maps",
+			`array.combine_maps([{"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
 			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}},
 		},
 		{
 			// The first array has 2 maps, each with the same key/val pairs.
-			"targets.merge",
-			`targets.merge([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			"array.combine_maps",
+			`array.combine_maps([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
 			[]map[string]interface{}{{"a": "a1", "b": "b1", "c": "c1"}, {"a": "a1", "b": "b1", "c": "c1"}},
 		},
 		{
 			// Non-unique merge criteria.
-			"targets.merge",
-			`targets.merge([{"pod" = "a", "lbl" = "q"}, {"pod" = "b", "lbl" = "q"}], [{"pod" = "c", "lbl" = "q"}, {"pod" = "d", "lbl" = "q"}], ["lbl"])`,
+			"array.combine_maps",
+			`array.combine_maps([{"pod" = "a", "lbl" = "q"}, {"pod" = "b", "lbl" = "q"}], [{"pod" = "c", "lbl" = "q"}, {"pod" = "d", "lbl" = "q"}], ["lbl"])`,
 			[]map[string]interface{}{{"lbl": "q", "pod": "c"}, {"lbl": "q", "pod": "d"}, {"lbl": "q", "pod": "c"}, {"lbl": "q", "pod": "d"}},
 		},
 		{
 			// Basic case. Integer and string values.
-			"targets.merge",
-			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = 1, "c" = "c1"}], ["a"])`,
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "b" = 2.2}], [{"a" = 1, "c" = "c1"}], ["a"])`,
 			[]map[string]interface{}{{"a": 1, "b": 2.2, "c": "c1"}},
 		},
 		{
 			// The second map will override a value from the first.
-			"targets.merge",
-			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = 1, "b" = "3.3"}], ["a"])`,
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "b" = 2.2}], [{"a" = 1, "b" = "3.3"}], ["a"])`,
 			[]map[string]interface{}{{"a": 1, "b": "3.3"}},
 		},
 		{
 			// Not enough matches for a join.
-			"targets.merge",
-			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = 2, "b" = "3.3"}], ["a"])`,
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "b" = 2.2}], [{"a" = 2, "b" = "3.3"}], ["a"])`,
 			[]map[string]interface{}{},
 		},
 		{
 			// Not enough matches for a join.
 			// The "a" value has differing types.
-			"targets.merge",
-			`targets.merge([{"a" = 1, "b" = 2.2}], [{"a" = "1", "b" = "3.3"}], ["a"])`,
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "b" = 2.2}], [{"a" = "1", "b" = "3.3"}], ["a"])`,
 			[]map[string]interface{}{},
 		},
 		{
 			// Basic case. Some values are arrays and maps.
-			"targets.merge",
-			`targets.merge([{"a" = 1, "b" = [1,2,3]}], [{"a" = 1, "c" = {"d" = {"e" = 10}}}], ["a"])`,
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "b" = [1,2,3]}], [{"a" = 1, "c" = {"d" = {"e" = 10}}}], ["a"])`,
 			[]map[string]interface{}{{"a": 1, "b": []interface{}{1, 2, 3}, "c": map[string]interface{}{"d": map[string]interface{}{"e": 10}}}},
+		},
+		{
+			// Join key not present in ARG2
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "n" = 1.1}], [{"a" = 1, "n" = 2.1}, {"n" = 2.2}], ["a"])`,
+			[]map[string]interface{}{{"a": 1, "n": 2.1}},
+		},
+		{
+			// Join key not present in ARG1
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "n" = 1.1}, {"n" = 1.2}], [{"a" = 1, "n" = 2.1}], ["a"])`,
+			[]map[string]interface{}{{"a": 1, "n": 2.1}},
+		},
+		{
+			// Join with multiple keys
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "b" = 3, "n" = 1.1}], [{"a" = 1, "b" = 3, "n" = 2.1}], ["a", "b"])`,
+			[]map[string]interface{}{{"a": 1, "b": 3, "n": 2.1}},
+		},
+		{
+			// Join with multiple keys
+			// Some maps don't match all keys
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "n" = 1.1}, {"a" = 1, "b" = 3, "n" = 1.1}, {"b" = 3, "n" = 1.1}], [{"a" = 1, "n" = 2.3}, {"b" = 1, "n" = 2.3}, {"a" = 1, "b" = 3, "n" = 2.1}], ["a", "b"])`,
+			[]map[string]interface{}{{"a": 1, "b": 3, "n": 2.1}},
+		},
+		{
+			// Join with multiple keys
+			// No match because one key is missing
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "n" = 1.1}, {"a" = 1, "b" = 3, "n" = 1.1}, {"b" = 3, "n" = 1.1}], [{"a" = 1, "n" = 2.3}, {"b" = 1, "n" = 2.3}, {"a" = 1, "b" = 3, "n" = 2.1}], ["a", "b", "c"])`,
+			[]map[string]interface{}{},
 		},
 	}
 
@@ -115,14 +147,14 @@ func TestVM_Stdlib_Errors(t *testing.T) {
 		// Map tests
 		{
 			// Error: invalid RHS type - string.
-			"targets.merge",
-			`targets.merge([{"a" = "a1", "b" = "b1"}], "a", ["a"])`,
+			"array.combine_maps",
+			`array.combine_maps([{"a" = "a1", "b" = "b1"}], "a", ["a"])`,
 			`"a" should be array, got string`,
 		},
 		{
 			// Error: invalid RHS type - an array with strings.
-			"targets.merge",
-			`targets.merge([{"a" = "a1", "b" = "b1"}], ["a"], ["a"])`,
+			"array.combine_maps",
+			`array.combine_maps([{"a" = "a1", "b" = "b1"}], ["a"], ["a"])`,
 			`"a" should be object, got string`,
 		},
 	}
