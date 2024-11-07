@@ -1933,6 +1933,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancing
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.112.0/go.mod h1:B7HK7eq+M4PEOaKGOAJeZmNqnabtXXEtnpxK40j1T9o=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.112.0 h1:wZQdqnXCERudSXjSE4V5NNS9rCb82oYCgjH+c+wPt+k=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.112.0/go.mod h1:QwYTlmQDuLeaxS0HkIG9K9x45vQhHzL0SvI8inxzMeU=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.112.0 h1:bIoCW8VYBEGnvpNYlamlvkPyeoQHCtfGgEuuELJYWYE=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.112.0/go.mod h1:7usJQKG52/DDvzJ7Vm5+QEBE1eAYrVhEYbzYFzfkn2Q=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.112.0 h1:RY0/7LTffj76403QxSlEjb0gnF788Qyfpxc+y32Rd6c=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.112.0/go.mod h1:1Z84oB3hwUH1B3IsL46csEtu7WA1qQJ/p6USTulGJf4=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.112.0 h1:GLh1rnXcY4P2hkMwuMLYCZMjZxze1KnciJXJTOFXOJ8=
@@ -1969,6 +1971,10 @@ github.com/open-telemetry/opentelemetry-collector-contrib/internal/pdatautil v0.
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/pdatautil v0.112.0/go.mod h1:BE54/UEIN+Q5EBlJq/TSc4lf7PtCjxgyBRH7XB/zTYE=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/sharedcomponent v0.112.0 h1:g7lqlvAqhkbZ1cPcbDNRxawb0MOzlvm9AevE+0MlknQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/sharedcomponent v0.112.0/go.mod h1:oep6LZlvIzNGKT4wx5duQuxELChvmOX1YzM/nmBU8BI=
+github.com/open-telemetry/opentelemetry-collector-contrib/internal/splunk v0.112.0 h1:Zy0tTlUqipMWRhR7qFvJB+26py6kjAmLrrodQKxXKLc=
+github.com/open-telemetry/opentelemetry-collector-contrib/internal/splunk v0.112.0/go.mod h1:WkiKDn5BVT3Cq1y2E0Xf/0D+QhbokmST9+LnlsGqtQ4=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchperresourceattr v0.112.0 h1:1ec6s2PCc7mB8oiAJH/HY75Hhgn5GNgyWU/lEvlFrB0=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchperresourceattr v0.112.0/go.mod h1:DEO0PViQHIA8rWsV+AfdPv2IZGgCXk3/xJsZZqehNe8=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchpersignal v0.112.0 h1:wG/lE9KIZfo/R06AJHuOH5Gm1C8zI9FOOE/hI0p3Rfw=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchpersignal v0.112.0/go.mod h1:9fbK85xo0GAcvXbaHbnmMrt3dIBWs6FMObh2oaLxI6s=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog v0.112.0 h1:SPKphhxWV0jfv/872sFmC5G3j/qUKGgr5KdGERHYoPQ=
