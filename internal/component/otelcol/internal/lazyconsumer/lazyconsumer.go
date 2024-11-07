@@ -17,9 +17,9 @@ import (
 type Consumer struct {
 	ctx context.Context
 
-	// pauseMut is used to implement Pause & Resume semantics. When a write lock is held - this consumer is paused.
-	// See Pause method for more info.
+	// pauseMut is used to implement Pause & Resume semantics. See Pause method for more info.
 	pauseMut sync.RWMutex
+	pausedWg *sync.WaitGroup
 
 	mut             sync.RWMutex
 	metricsConsumer otelconsumer.Metrics
@@ -65,6 +65,9 @@ func (c *Consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 
 	c.pauseMut.RLock() // wait until resumed
 	defer c.pauseMut.RUnlock()
+	if c.pausedWg != nil {
+		c.pausedWg.Wait()
+	}
 
 	c.mut.RLock()
 	defer c.mut.RUnlock()
@@ -89,6 +92,9 @@ func (c *Consumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error
 
 	c.pauseMut.RLock() // wait until resumed
 	defer c.pauseMut.RUnlock()
+	if c.pausedWg != nil {
+		c.pausedWg.Wait()
+	}
 
 	c.mut.RLock()
 	defer c.mut.RUnlock()
@@ -113,6 +119,9 @@ func (c *Consumer) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 
 	c.pauseMut.RLock() // wait until resumed
 	defer c.pauseMut.RUnlock()
+	if c.pausedWg != nil {
+		c.pausedWg.Wait()
+	}
 
 	c.mut.RLock()
 	defer c.mut.RUnlock()
@@ -141,13 +150,35 @@ func (c *Consumer) SetConsumers(t otelconsumer.Traces, m otelconsumer.Metrics, l
 }
 
 // Pause will stop the consumer until Resume is called. While paused, the calls to Consume* methods will block.
-// After calling Pause once, it must not be called again until Resume is called.
+// Pause can be called multiple times, but a single call to Resume will un-pause this consumer. Thread-safe.
 func (c *Consumer) Pause() {
 	c.pauseMut.Lock()
+	defer c.pauseMut.Unlock()
+
+	if c.pausedWg != nil {
+		return // already paused
+	}
+
+	c.pausedWg = &sync.WaitGroup{}
+	c.pausedWg.Add(1)
 }
 
-// Resume will revert the Pause call and the consumer will continue to work. Resume must not be called if Pause wasn't
-// called before. See Pause for more details.
+// Resume will revert the Pause call and the consumer will continue to work. See Pause for more details.
 func (c *Consumer) Resume() {
-	c.pauseMut.Unlock()
+	c.pauseMut.Lock()
+	defer c.pauseMut.Unlock()
+
+	if c.pausedWg == nil {
+		return // not paused
+	}
+
+	c.pausedWg.Done()
+	c.pausedWg = nil
+}
+
+// IsPaused returns whether the consumer is currently paused. See Pause for details.
+func (c *Consumer) IsPaused() bool {
+	c.pauseMut.RLock()
+	defer c.pauseMut.RUnlock()
+	return c.pausedWg != nil
 }

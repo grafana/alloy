@@ -115,8 +115,9 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-cs.newComponentsCh:
-			if !firstRun { // do not pause on first run
-				cs.onPause()
+			if !firstRun {
+				cs.onPause() // do not pause on first run
+			} else {
 				firstRun = false
 			}
 			// Stop the old components before running new scheduled ones.
