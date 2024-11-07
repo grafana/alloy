@@ -263,7 +263,7 @@ func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
 
 	if cfg.DisableSupportBundle {
 		rw.WriteHeader(http.StatusForbidden)
-		_, _ = rw.Write([]byte("403 - support bundle generation is disabled; it can be re-enabled by removing the -disable-support-bundle flag"))
+		_, _ = rw.Write([]byte("support bundle generation is disabled; it can be re-enabled by removing the --disable-support-bundle flag"))
 		return
 	}
 
