@@ -1,6 +1,7 @@
 package operator
 
 import (
+	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/common/config"
@@ -56,6 +57,7 @@ var DefaultArguments = Arguments{
 	Client: kubernetes.ClientArguments{
 		HTTPClientConfig: config.DefaultHTTPClientConfig,
 	},
+	KubernetesRole: string(promk8s.RoleEndpoint),
 }
 
 // SetToDefault implements syntax.Defaulter.
