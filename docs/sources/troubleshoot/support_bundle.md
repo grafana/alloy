@@ -8,7 +8,7 @@ weight: 300
 
 <span class="badge docs-labels__stage docs-labels__item">Public preview</span>
 
-# Generate Support Bundle
+# Generate a support bundle
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
