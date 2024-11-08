@@ -57,9 +57,9 @@ services:
     ports:
       - "3100:3100"
 
-  otel-metrics-gen:
+  otel-gen:
     build:
-      dockerfile: ./internal/cmd/integration-tests/configs/otel-metrics-gen/Dockerfile
+      dockerfile: ./internal/cmd/integration-tests/configs/otel-gen/Dockerfile
       context: ../../..
     environment:
       - OTEL_EXPORTER_ENDPOINT=${OTEL_EXPORTER_ENDPOINT:-host.docker.internal:4318}

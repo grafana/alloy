@@ -9,7 +9,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	"go.opentelemetry.io/otel/sdk/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -45,7 +44,7 @@ func main() {
 
 	resource, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String("otel-metrics-gen"),
+			semconv.ServiceNameKey.String("otel-gen"),
 		),
 	)
 	if err != nil {
@@ -63,12 +62,12 @@ func main() {
 		}
 	}()
 
-	exponentialHistogramView := metric.NewView(
-		metric.Instrument{
+	exponentialHistogramView := sdkmetric.NewView(
+		sdkmetric.Instrument{
 			Name: "example_exponential_*",
 		},
-		metric.Stream{
-			Aggregation: metric.AggregationBase2ExponentialHistogram{
+		sdkmetric.Stream{
+			Aggregation: sdkmetric.AggregationBase2ExponentialHistogram{
 				MaxSize:  160,
 				MaxScale: 20,
 			},
@@ -78,7 +77,7 @@ func main() {
 	provider := sdkmetric.NewMeterProvider(
 		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter, sdkmetric.WithInterval(1*time.Second))),
 		sdkmetric.WithResource(resource),
-		metric.WithView(exponentialHistogramView),
+		sdkmetric.WithView(exponentialHistogramView),
 	)
 	otel.SetMeterProvider(provider)
 	defer func() {
