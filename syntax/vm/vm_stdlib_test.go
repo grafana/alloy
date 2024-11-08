@@ -122,6 +122,16 @@ func TestVM_Stdlib(t *testing.T) {
 			`array.combine_maps([{"a" = 1, "n" = 1.1}, {"a" = 1, "b" = 3, "n" = 1.1}, {"b" = 3, "n" = 1.1}], [{"a" = 1, "n" = 2.3}, {"b" = 1, "n" = 2.3}, {"a" = 1, "b" = 3, "n" = 2.1}], ["a", "b", "c"])`,
 			[]map[string]interface{}{},
 		},
+		{
+			// Multi match ends up with len(ARG1) * len(ARG2) maps
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "n" = 1.1}, {"a" = 1, "n" = 1.2}, {"a" = 1, "n" = 1.3}], [{"a" = 1, "n" = 2.1}, {"a" = 1, "n" = 2.2}, {"a" = 1, "n" = 2.3}], ["a"])`,
+			[]map[string]interface{}{
+				{"a": 1, "n": 2.1}, {"a": 1, "n": 2.2}, {"a": 1, "n": 2.3},
+				{"a": 1, "n": 2.1}, {"a": 1, "n": 2.2}, {"a": 1, "n": 2.3},
+				{"a": 1, "n": 2.1}, {"a": 1, "n": 2.2}, {"a": 1, "n": 2.3},
+			},
+		},
 	}
 
 	for _, tc := range tt {
