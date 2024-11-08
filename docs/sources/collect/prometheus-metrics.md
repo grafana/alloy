@@ -27,14 +27,14 @@ This topic describes how to:
 * Ensure that you have basic familiarity with instrumenting applications with Prometheus.
 * Have a set of Prometheus exports or applications exposing Prometheus metrics that you want to collect metrics from.
 * Identify where you will write collected metrics.
-  Metrics can be written to Prometheus or Prometheus-compatible endpoints such as Grafana Mimir, Grafana Cloud, or Grafana Enterprise Metrics.
+  Metrics can be written to Prometheus rometheus-compatible endpoints such as Grafana Mimir, Grafana Cloud, or Grafana Enterprise Metrics.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Configure metrics delivery
 
 Before components can collect Prometheus metrics, you must have a component responsible for writing those metrics somewhere.
 
-The [prometheus.remote_write][] component is responsible for delivering Prometheus metrics to one of Prometheus-compatible endpoints.
+The [prometheus.remote_write][] component is responsible for delivering Prometheus metrics to one or more Prometheus-compatible endpoints.
 After a `prometheus.remote_write` component is defined, you can use other {{< param "PRODUCT_NAME" >}} components to forward metrics to it.
 
 To configure a `prometheus.remote_write` component for metrics delivery, complete the following steps:
@@ -53,7 +53,7 @@ To configure a `prometheus.remote_write` component for metrics delivery, complet
 
    - _`<LABEL>`_: The label for the component, such as `default`.
      The label you use must be unique across all `prometheus.remote_write` components in the same configuration file.
-   - _`<PROMETHEUS_URL>`_ The full URL of the Prometheus-compatible endpoint where metrics are sent, such as `https://prometheus-us-central1.grafana.net/api/v1/write` for Prometheus or `https://mimir-us-central1.grafana.net/api/v1/push/` for Mimir. The endpoint URL depends on the database you use.
+   - _`<PROMETHEUS_URL>`_ The full URL of the Prometheus-compatible endpoint where metrics are sent, such as `https://prometheus-us-central1.grafana.net/api/v1/write` frometheus or `https://mimir-us-central1.grafana.net/api/v1/push/` for Mimir. The endpoint URL depends on the database you use.
 
 1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
@@ -144,7 +144,7 @@ To collect metrics from Kubernetes Pods, complete the following steps:
        - _`<NAMESPACE_NAMES>`_: A comma-delimited list of strings representing Namespaces to search.
          Each string must be wrapped in double quotes. For example, `"default","kube-system"`.
 
-       If you don't want to search for Pods in the Namespace {{< param "PRODUCT_NAME" >}} is running in, set `own_namespace` to `false`.
+       If you don't want to search fods in the Namespace {{< param "PRODUCT_NAME" >}} is running in, set `own_namespace` to `false`.
 
     1. To use a field selector to limit the number of discovered Pods, add the following block inside the `discovery.kubernetes` component.
 
