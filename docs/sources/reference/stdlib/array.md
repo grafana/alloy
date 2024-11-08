@@ -46,12 +46,36 @@ It takes three arguments:
 
 The maps that don't contain all the keys provided in the third argument will be discarded. When maps are combined and both contain the same keys, the last value from the second argument will be used.
 
+Pseudo function code:
+```
+for every map in arg1:
+  for every map in arg2:
+    if the condition key matches in both:
+       merge maps and add to result
+```
+
 ### Examples
 
 ```alloy
-array.combine_maps(discovery.kubernetes.k8s_pods.targets, prometheus.exporter.postgres, ["instance"])
+> array.combine_maps([{"instance"="1.1.1.1", "team"="A"}], [{"instance"="1.1.1.1", "cluster"="prod"}], ["instance"])
+[{"instance"="1.1.1.1", "team"="A", "cluster"="prod"}]
+
+// Second map overrides the team in the first map
+> array.combine_maps([{"instance"="1.1.1.1", "team"="A"}], [{"instance"="1.1.1.1", "team"="B"}], ["instance"])
+[{"instance"="1.1.1.1", "team"="B"}]
+
+// If multiple maps from the first argument match with multiple maps from the second argument, different combinations will be created.
+> array.combine_maps([{"instance"="1.1.1.1", "team"="A"}, {"instance"="1.1.1.1", "team"="B"}], [{"instance"="1.1.1.1", "cluster"="prod"}, {"instance"="1.1.1.1", "cluster"="ops"}], ["instance"])
+[{"instance"="1.1.1.1", "team"="A", "cluster"="prod"}, {"instance"="1.1.1.1", "team"="A", "cluster"="ops"}, {"instance"="1.1.1.1", "team"="B", "cluster"="prod"}, {"instance"="1.1.1.1", "team"="B", "cluster"="ops"}]
 ```
 
+Examples using discovery and exporter components:
 ```alloy
-array.combine_maps(prometheus.exporter.redis.default.targets, [{"instance"="1.1.1.1", "testLabelKey" = "testLabelVal"}], ["instance"])
+> array.combine_maps(discovery.kubernetes.k8s_pods.targets, prometheus.exporter.postgres, ["instance"])
+
+> array.combine_maps(prometheus.exporter.redis.default.targets, [{"instance"="1.1.1.1", "testLabelKey" = "testLabelVal"}], ["instance"])
 ```
+
+You can find more examples in the [tests][].
+
+[tests]: https://github.com/grafana/alloy/blob/main/syntax/vm/vm_stdlib_test.go
