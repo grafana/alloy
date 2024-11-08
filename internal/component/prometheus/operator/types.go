@@ -1,6 +1,7 @@
 package operator
 
 import (
+	"fmt"
 	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 	"time"
 
@@ -69,6 +70,9 @@ func (args *Arguments) SetToDefault() {
 func (args *Arguments) Validate() error {
 	if len(args.Namespaces) == 0 {
 		args.Namespaces = []string{apiv1.NamespaceAll}
+	}
+	if args.KubernetesRole != string(promk8s.RoleEndpointSlice) && args.KubernetesRole != string(promk8s.RoleEndpoint) {
+		return fmt.Errorf("only endpoints and endpointslice are supported")
 	}
 	return nil
 }
