@@ -55,6 +55,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/loki/source/kubernetes"                   // Import loki.source.kubernetes
 	_ "github.com/grafana/alloy/internal/component/loki/source/kubernetes_events"            // Import loki.source.kubernetes_events
 	_ "github.com/grafana/alloy/internal/component/loki/source/podlogs"                      // Import loki.source.podlogs
+	_ "github.com/grafana/alloy/internal/component/loki/source/self"                         // Import loki.source.self
 	_ "github.com/grafana/alloy/internal/component/loki/source/syslog"                       // Import loki.source.syslog
 	_ "github.com/grafana/alloy/internal/component/loki/source/windowsevent"                 // Import loki.source.windowsevent
 	_ "github.com/grafana/alloy/internal/component/loki/write"                               // Import loki.write

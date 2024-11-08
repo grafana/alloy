@@ -105,8 +105,9 @@ func (l *Logger) Update(o Options) error {
 	l.format.Set(o.Format)
 
 	newWriter := l.inner
+	newWriter = io.MultiWriter(newWriter, selfLokiWriter)
 	if len(o.WriteTo) > 0 {
-		newWriter = io.MultiWriter(l.inner, &lokiWriter{o.WriteTo})
+		newWriter = io.MultiWriter(newWriter, &lokiWriter{o.WriteTo})
 	}
 	l.writer.Set(newWriter)
 
@@ -239,4 +240,57 @@ type bufferedItem struct {
 	kvps    []interface{}
 	handler *deferredSlogHandler
 	record  slog.Record
+}
+
+// writer to support loki.source.self
+// if no components register receivers, this will be a no-op writer
+type selfWriter struct {
+	lokiWriter         *lokiWriter
+	writersByComponent map[string][]loki.LogsReceiver
+	mut                sync.Mutex
+}
+
+func (sw *selfWriter) Write(p []byte) (int, error) {
+	sw.mut.Lock()
+	lw := sw.lokiWriter
+	sw.mut.Unlock()
+	if lw != nil {
+		return lw.Write(p)
+	}
+	return len(p), nil
+}
+func (sw *selfWriter) register(id string, f []loki.LogsReceiver) {
+	sw.mut.Lock()
+	defer sw.mut.Unlock()
+	sw.writersByComponent[id] = f
+	sw.rebuild()
+}
+func (sw *selfWriter) unregister(id string) {
+	sw.mut.Lock()
+	defer sw.mut.Unlock()
+	delete(sw.writersByComponent, id)
+	sw.rebuild()
+}
+
+func (sw *selfWriter) rebuild() {
+	f := []loki.LogsReceiver{}
+	for _, rs := range sw.writersByComponent {
+		f = append(f, rs...)
+	}
+	sw.lokiWriter = &lokiWriter{f: f}
+}
+
+var selfLokiWriter = &selfWriter{
+	writersByComponent: map[string][]loki.LogsReceiver{},
+}
+
+// RegisterSelfReceivers is used to add or update global log receivers from a component.
+func RegisterSelfReceivers(componentID string, f []loki.LogsReceiver) {
+	selfLokiWriter.register(componentID, f)
+}
+
+// UnRegisterSelfReceivers is used to remove global log receivers when a component
+// shuts down
+func UnRegisterSelfReceivers(componentID string) {
+	selfLokiWriter.unregister(componentID)
 }
