@@ -898,7 +898,9 @@ replace (
 	// https://github.com/grafana/cadvisor/tree/grafana-v0.47-noglobals
 	github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
 
-	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20240417113938-9358270470dd
+	// TODO(dehaansa): integrate the changes from the exporter-package-v0.15.0 branch into at least the
+	// grafana fork of the exporter, or completely into upstream
+	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20241105053755-e0a51174f168
 
 	// TODO(marctc): remove once this PR is merged upstream: https://github.com/prometheus/mysqld_exporter/pull/774
 	github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.12.2-0.20231005125903-364b9c41e595
