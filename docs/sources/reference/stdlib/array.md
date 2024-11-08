@@ -38,7 +38,7 @@ Elements within the list can be any type.
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `array.combine_maps` function allows you to join two arrays of maps if certain keys have matching values in both maps. It's particularly useful when combining labels of targets coming from different `prometheus.discovery.*` or `prometheus.exporter.*` components.
-It takes three inputs:
+It takes three arguments:
 
 * The first two inputs are a of type `list(map(string))`. The keys of the map are strings. 
   The value for each key could have any Alloy type such as a string, integer, map, or a capsule.
