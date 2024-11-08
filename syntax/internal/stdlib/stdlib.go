@@ -255,7 +255,7 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 			Function: funcValue,
 			Argument: args[2],
 			Index:    2,
-			Inner:    fmt.Errorf("inner_join: merge conditions must not be empty"),
+			Inner:    fmt.Errorf("combine_maps: merge conditions must not be empty"),
 		}
 	}
 
