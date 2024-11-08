@@ -100,7 +100,7 @@ for an example on how to update Alloy.
 You can find the community contributor GitHub handles at the top of the community component files (the components that have "Community" set to true).
 Once the PR is created, you can ping them in the PR and message them on Slack. Each contributor should create a PR in your branch with the updated component.
 Notify the contributors a few days before the release so they have enough time to do the update.
-It should not be a blocker for the release. If they can't do the update, you can fix the code to resolve the breaking changes or disable the component if that's too complicated.
+It should not be a blocker for the release. If the contributors can't do the update, you can fix the code to resolve the breaking changes or disable the component if that's too complicated.
 
 ### Check for metric updates
 
