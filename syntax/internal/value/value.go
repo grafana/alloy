@@ -556,6 +556,7 @@ func convertGoNumber(nval Number, target reflect.Type) reflect.Value {
 	panic("unsupported number conversion")
 }
 
+// Equal will result in panic if the values are funcs, maps or slices
 func (v Value) Equal(rhs Value) bool {
 	if v.Type() != rhs.Type() {
 		return false
