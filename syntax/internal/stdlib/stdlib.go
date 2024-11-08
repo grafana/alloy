@@ -207,7 +207,7 @@ func concatMaps(left, right value.Value) (value.Value, error) {
 // args[2]: []string:            merge conditions
 var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
 	if len(args) != 3 {
-		return value.Value{}, fmt.Errorf("inner_join: expected 3 arguments, got %d", len(args))
+		return value.Value{}, fmt.Errorf("combine_maps: expected 3 arguments, got %d", len(args))
 	}
 
 	// Validate args[0] and args[1]
