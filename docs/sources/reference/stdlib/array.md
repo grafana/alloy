@@ -35,7 +35,10 @@ Elements within the list can be any type.
 
 ## array.combine_maps
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+> **EXPERIMENTAL**: This is an [experimental][] feature. Experimental
+> features are subject to frequent breaking changes, and may be removed with
+> no equivalent replacement. The `stability.level` flag must be set to `experimental`
+> to use the feature.
 
 The `array.combine_maps` function allows you to join two arrays of maps if certain keys have matching values in both maps. It's particularly useful when combining labels of targets coming from different `prometheus.discovery.*` or `prometheus.exporter.*` components.
 It takes three arguments:
@@ -79,3 +82,4 @@ Examples using discovery and exporter components:
 You can find more examples in the [tests][].
 
 [tests]: https://github.com/grafana/alloy/blob/main/syntax/vm/vm_stdlib_test.go
+[experimental]: https://grafana.com/docs/release-life-cycle/
