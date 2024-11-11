@@ -396,7 +396,7 @@ func (v Value) Key(key string) (index Value, ok bool) {
 //
 // An ArgError will be returned if one of the arguments is invalid. An Error
 // will be returned if the function call returns an error or if the number of
-// arguments doesn't match.
+// arguments doesn't match
 func (v Value) Call(args ...Value) (Value, error) {
 	if v.ty != TypeFunction {
 		panic("syntax/value: Call called on non-function type")
@@ -552,4 +552,17 @@ func convertGoNumber(nval Number, target reflect.Type) reflect.Value {
 	}
 
 	panic("unsupported number conversion")
+}
+
+// Equal will result in panic if the values are funcs, maps or slices
+func (v Value) Equal(rhs Value) bool {
+	if v.Type() != rhs.Type() {
+		return false
+	}
+
+	if !v.rv.Equal(rhs.rv) {
+		return false
+	}
+
+	return true
 }
