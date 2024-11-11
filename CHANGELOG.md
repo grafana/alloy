@@ -26,6 +26,7 @@ v1.5.0-rc.1
 ### Features
 
 - Add the function `path_join` to the stdlib. (@wildum)
+
 - Add `pyroscope.receive_http` component to receive and forward Pyroscope profiles (@marcsanmi)
 
 - Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
@@ -36,6 +37,8 @@ v1.5.0-rc.1
 
 - (_Experimental_) Add a `prometheus.write.queue` component to add an alternative to `prometheus.remote_write`
   which allowing the writing of metrics  to a prometheus endpoint. (@mattdurham)
+
+- (_Experimental_) Add the `arrary.combine_maps` function to the stdlib. (@ptodev, @wildum)
 
 ### Enhancements
 
