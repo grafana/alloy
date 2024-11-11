@@ -109,9 +109,9 @@ func (l *Logger) Update(o Options) error {
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
 
-	l.writer.innerWriter = l.inner
+	l.writer.SetInnerWriter(l.inner)
 	if len(o.WriteTo) > 0 {
-		l.writer.lokiWriter = &lokiWriter{o.WriteTo}
+		l.writer.SetLokiWriter(&lokiWriter{o.WriteTo})
 	}
 
 	// Build all our deferred handlers
@@ -243,6 +243,18 @@ func (w *writerVar) RemoveTemporaryWriter() {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 	w.tmpWriter = nil
+}
+
+func (w *writerVar) SetInnerWriter(writer io.Writer) {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+	w.innerWriter = writer
+}
+
+func (w *writerVar) SetLokiWriter(writer *lokiWriter) {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+	w.lokiWriter = writer
 }
 
 func (w *writerVar) Write(p []byte) (int, error) {
