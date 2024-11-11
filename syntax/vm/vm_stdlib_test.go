@@ -167,6 +167,11 @@ func TestVM_Stdlib_Errors(t *testing.T) {
 			`array.combine_maps([{"a" = "a1", "b" = "b1"}], ["a"], ["a"])`,
 			`"a" should be object, got string`,
 		},
+		{
+			"array.combine_maps",
+			`array.combine_maps([{"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "b1"}], [])`,
+			`combine_maps: merge conditions must not be empty`,
+		},
 	}
 
 	for _, tc := range tt {
