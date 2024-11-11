@@ -221,11 +221,9 @@ func (v Value) Text() string {
 	}
 }
 
-// Len returns the length of v. Panics if v is not an array, an object, or nil.
+// Len returns the length of v. Panics if v is not an array or object.
 func (v Value) Len() int {
 	switch v.ty {
-	case TypeNull:
-		return 0
 	case TypeArray:
 		return v.rv.Len()
 	case TypeObject:
