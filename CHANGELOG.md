@@ -32,6 +32,8 @@ v1.5.0-rc.0
 
 ### Features
 
+- Add support bundle generation via the API endpoint /-/support (@dehaansa)
+
 - Add the function `path_join` to the stdlib. (@wildum)
 
 - Add `pyroscope.receive_http` component to receive and forward Pyroscope profiles (@marcsanmi)

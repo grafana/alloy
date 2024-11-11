@@ -845,6 +845,8 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.7.0 // indirect
 )
 
+require github.com/mackerelio/go-osstat v0.2.5
+
 // NOTE: replace directives below must always be *temporary*.
 //
 // Adding a replace directive to change a module to a fork of a module will

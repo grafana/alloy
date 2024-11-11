@@ -169,7 +169,7 @@ func newTestEnvironment(t *testing.T) (*testEnvironment, error) {
 	}
 
 	svc := New(Options{
-		Logger:   util.TestLogger(t),
+		Logger:   util.TestAlloyLogger(t),
 		Tracer:   noop.NewTracerProvider(),
 		Gatherer: prometheus.NewRegistry(),
 
