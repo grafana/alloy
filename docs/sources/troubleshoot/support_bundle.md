@@ -16,6 +16,8 @@ The `/-/support?duration=N` endpoint returns a support bundle, a zip file that c
 about a running {{< param "PRODUCT_NAME" >}} instance, and can be used as a baseline of information when trying
 to debug an issue.
 
+This feature is not covered by our [backward-compatibility][backward-compatibility] guarantees.
+
 {{< admonition type="note" >}}
 This endpoint is enabled by default, but may be disabled using the `--disable-support-bundle` runtime flag.
 {{< /admonition >}}
@@ -46,3 +48,4 @@ Refer to the [profile][profile] documentation for more details on how to use thi
 [profile]: ../profile
 [components]: ../../get-started/components/
 [alloy-repo]: https://github.com/grafana/alloy/issues
+[backward-compatibility]: ../../introduction/backward-compatibility
