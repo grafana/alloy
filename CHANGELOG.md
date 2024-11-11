@@ -40,7 +40,7 @@ v1.5.0-rc.1
 - (_Experimental_) Add a `prometheus.write.queue` component to add an alternative to `prometheus.remote_write`
   which allowing the writing of metrics  to a prometheus endpoint. (@mattdurham)
 
-- (_Experimental_) Add the `arrary.combine_maps` function to the stdlib. (@ptodev, @wildum)
+- (_Experimental_) Add the `array.combine_maps` function to the stdlib. (@ptodev, @wildum)
 
 ### Enhancements
 
