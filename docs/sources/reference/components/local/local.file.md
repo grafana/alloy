@@ -46,7 +46,9 @@ Name      | Type                 | Description
 ----------|----------------------|---------------------------------------------------
 `content` | `string` or `secret` | The contents of the file from the most recent read
 
-The `content` field will have the `secret` type only if the `is_secret` argument was true.
+The `content` field will have the `secret` type only if the `is_secret` argument was true. 
+
+To access the contents later in the config, for example, the above "LABEL" file, use `local.file.LABEL.content` to access the contents of the file.
 
 ## Component health
 
@@ -70,5 +72,11 @@ The read error will be exposed as a log message and in the debug information for
 local.file "secret_key" {
   filename  = "/var/secrets/password.txt"
   is_secret = true
+}
+
+# Then later:
+grafana_cloud.stack "receivers" {
+  stack_name = "mystack"
+  token = local.file.secret_key.content # <-- The file's contents are here
 }
 ```
