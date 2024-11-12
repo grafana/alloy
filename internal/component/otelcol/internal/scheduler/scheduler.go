@@ -60,7 +60,8 @@ func New(l log.Logger) *Scheduler {
 
 // NewWithPauseCallbacks is like New, but allows to specify onPause and onResume callbacks. The scheduler is assumed to
 // start paused and only when its components are scheduled, it will call onResume. From then on, each update to running
-// components via Schedule method will trigger a call to onPause and then onResume.
+// components via Schedule method will trigger a call to onPause and then onResume. When scheduler is shutting down, it
+// will call onResume as a last step.
 func NewWithPauseCallbacks(l log.Logger, onPause func(), onResume func()) *Scheduler {
 	return &Scheduler{
 		log:             l,
@@ -104,7 +105,7 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 			cs.onPause()
 		}
 		cs.stopComponents(context.Background(), components...)
-		// We don't resume, as the scheduler is exiting.
+		cs.onResume()
 	}()
 
 	// Wait for a write to cs.newComponentsCh. The initial list of components is

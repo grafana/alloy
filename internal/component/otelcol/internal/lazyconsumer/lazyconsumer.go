@@ -17,7 +17,7 @@ import (
 type Consumer struct {
 	ctx context.Context
 
-	// pauseMut is used to implement Pause & Resume semantics. See Pause method for more info.
+	// pauseMut and pausedWg are used to implement Pause & Resume semantics. See Pause method for more info.
 	pauseMut sync.RWMutex
 	pausedWg *sync.WaitGroup
 
@@ -63,11 +63,7 @@ func (c *Consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 		return c.ctx.Err()
 	}
 
-	c.pauseMut.RLock() // wait until resumed
-	defer c.pauseMut.RUnlock()
-	if c.pausedWg != nil {
-		c.pausedWg.Wait()
-	}
+	c.waitUntilResumed()
 
 	c.mut.RLock()
 	defer c.mut.RUnlock()
@@ -90,11 +86,7 @@ func (c *Consumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error
 		return c.ctx.Err()
 	}
 
-	c.pauseMut.RLock() // wait until resumed
-	defer c.pauseMut.RUnlock()
-	if c.pausedWg != nil {
-		c.pausedWg.Wait()
-	}
+	c.waitUntilResumed()
 
 	c.mut.RLock()
 	defer c.mut.RUnlock()
@@ -117,11 +109,7 @@ func (c *Consumer) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 		return c.ctx.Err()
 	}
 
-	c.pauseMut.RLock() // wait until resumed
-	defer c.pauseMut.RUnlock()
-	if c.pausedWg != nil {
-		c.pausedWg.Wait()
-	}
+	c.waitUntilResumed()
 
 	c.mut.RLock()
 	defer c.mut.RUnlock()
@@ -136,6 +124,15 @@ func (c *Consumer) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 		ld = newLogs
 	}
 	return c.logsConsumer.ConsumeLogs(ctx, ld)
+}
+
+func (c *Consumer) waitUntilResumed() {
+	c.pauseMut.RLock()
+	pausedWg := c.pausedWg
+	c.pauseMut.RUnlock()
+	if pausedWg != nil {
+		pausedWg.Wait()
+	}
 }
 
 // SetConsumers updates the internal consumers that Consumer will forward data
@@ -169,10 +166,10 @@ func (c *Consumer) Resume() {
 	defer c.pauseMut.Unlock()
 
 	if c.pausedWg == nil {
-		return // not paused
+		return // already resumed
 	}
 
-	c.pausedWg.Done()
+	c.pausedWg.Done() // release all waiting
 	c.pausedWg = nil
 }
 
