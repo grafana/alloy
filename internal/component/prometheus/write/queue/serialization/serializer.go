@@ -15,9 +15,9 @@ import (
 // serializer collects data from multiple appenders in-memory and will periodically flush the data to file.Storage.
 // serializer will flush based on configured time duration OR if it hits a certain number of items.
 type serializer struct {
-	inbox               *types.Mailbox[*types.TimeSeriesBinary]
-	metaInbox           *types.Mailbox[*types.TimeSeriesBinary]
-	cfgInbox            *types.SyncMailbox[types.SerializerConfig]
+	inbox               actor.Mailbox[*types.TimeSeriesBinary]
+	metaInbox           actor.Mailbox[*types.TimeSeriesBinary]
+	cfgInbox            *actor.SyncMailbox[types.SerializerConfig]
 	maxItemsBeforeFlush int
 	flushFrequency      time.Duration
 	queue               types.FileStorage
@@ -39,9 +39,9 @@ func NewSerializer(cfg types.SerializerConfig, q types.FileStorage, stats func(s
 		queue:               q,
 		series:              make([]*types.TimeSeriesBinary, 0),
 		logger:              l,
-		inbox:               types.NewMailbox[*types.TimeSeriesBinary](),
-		metaInbox:           types.NewMailbox[*types.TimeSeriesBinary](),
-		cfgInbox:            types.NewSyncMailbox[types.SerializerConfig](),
+		inbox:               actor.NewMailbox[*types.TimeSeriesBinary](),
+		metaInbox:           actor.NewMailbox[*types.TimeSeriesBinary](),
+		cfgInbox:            actor.NewSyncMailbox[types.SerializerConfig](),
 		flushTestTimer:      time.NewTicker(1 * time.Second),
 		msgpBuffer:          make([]byte, 0),
 		lastFlush:           time.Now(),

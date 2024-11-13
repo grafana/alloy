@@ -14,9 +14,9 @@ type manager struct {
 	loops       []*loop
 	metadata    *loop
 	logger      log.Logger
-	inbox       *types.Mailbox[*types.TimeSeriesBinary]
-	metaInbox   *types.Mailbox[*types.TimeSeriesBinary]
-	configInbox *types.SyncMailbox[types.ConnectionConfig]
+	inbox       actor.Mailbox[*types.TimeSeriesBinary]
+	metaInbox   actor.Mailbox[*types.TimeSeriesBinary]
+	configInbox *actor.SyncMailbox[types.ConnectionConfig]
 	self        actor.Actor
 	cfg         types.ConnectionConfig
 	stats       func(types.NetworkStats)
@@ -33,9 +33,9 @@ func New(cc types.ConnectionConfig, logger log.Logger, seriesStats, metadataStat
 		logger: logger,
 		// This provides blocking to only handle one at a time, so that if a queue blocks
 		// it will stop the filequeue from feeding more. Without passing true the minimum is actually 64 instead of 1.
-		inbox:       types.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1), actor.OptAsChan()),
-		metaInbox:   types.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1), actor.OptAsChan()),
-		configInbox: types.NewSyncMailbox[types.ConnectionConfig](),
+		inbox:       actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1), actor.OptAsChan()),
+		metaInbox:   actor.NewMailbox[*types.TimeSeriesBinary](actor.OptCapacity(1), actor.OptAsChan()),
+		configInbox: actor.NewSyncMailbox[types.ConnectionConfig](),
 		stats:       seriesStats,
 		metaStats:   metadataStats,
 		cfg:         cc,

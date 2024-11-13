@@ -2,6 +2,7 @@ package filequeue
 
 import (
 	"context"
+	"go.uber.org/goleak"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -16,6 +17,8 @@ import (
 )
 
 func TestFileQueue(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()
@@ -47,6 +50,8 @@ func TestFileQueue(t *testing.T) {
 }
 
 func TestMetaFileQueue(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()
@@ -69,6 +74,8 @@ func TestMetaFileQueue(t *testing.T) {
 }
 
 func TestCorruption(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()
@@ -110,6 +117,8 @@ func TestCorruption(t *testing.T) {
 }
 
 func TestFileDeleted(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()
@@ -154,6 +163,8 @@ func TestFileDeleted(t *testing.T) {
 }
 
 func TestOtherFiles(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()
@@ -175,6 +186,8 @@ func TestOtherFiles(t *testing.T) {
 }
 
 func TestResuming(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	dir := t.TempDir()
 	log := log.NewNopLogger()
 	mbx := actor.NewMailbox[types.DataHandle]()

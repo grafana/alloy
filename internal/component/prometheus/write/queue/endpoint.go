@@ -25,7 +25,7 @@ type endpoint struct {
 	serializer types.Serializer
 	log        log.Logger
 	ttl        time.Duration
-	incoming   *types.Mailbox[types.DataHandle]
+	incoming   actor.Mailbox[types.DataHandle]
 	buf        []byte
 	self       actor.Actor
 	stats      *types.PrometheusStats
@@ -50,7 +50,7 @@ func newEndpoint(ep EndpointConfig, ttl time.Duration, maxSignalsToBatch uint, b
 		network:  client,
 		log:      l,
 		ttl:      ttl,
-		incoming: types.NewMailbox[types.DataHandle](),
+		incoming: actor.NewMailbox[types.DataHandle](),
 		buf:      make([]byte, 0, 1024),
 	}
 
