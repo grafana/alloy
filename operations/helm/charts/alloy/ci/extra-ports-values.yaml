@@ -2,6 +2,6 @@
 alloy:
   extraPorts:
     - name: jaeger-thrift
-      port: 14268
+      hostPort: 14268
       targetPort: 14268
       protocol: TCP

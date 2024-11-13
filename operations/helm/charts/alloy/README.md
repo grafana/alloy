@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.9.2](https://img.shields.io/badge/Version-0.9.2-informational?style=flat-square) ![AppVersion: v1.4.3](https://img.shields.io/badge/AppVersion-v1.4.3-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.9.3](https://img.shields.io/badge/Version-0.9.3-informational?style=flat-square) ![AppVersion: v1.4.3](https://img.shields.io/badge/AppVersion-v1.4.3-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -44,7 +44,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.envFrom | list | `[]` | Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core |
 | alloy.extraArgs | list | `[]` | Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/ |
 | alloy.extraEnv | list | `[]` | Extra environment variables to pass to the Alloy container. |
-| alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. |
+| alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. See [alloy.extraPorts][#alloy.extraPorts] |
 | alloy.hostAliases | list | `[]` | Host aliases to add to the Alloy container. |
 | alloy.lifecycle | object | `{}` | Set lifecycle hooks for the Grafana Alloy container. |
 | alloy.listenAddr | string | `"0.0.0.0"` | Address to listen for traffic on. 0.0.0.0 exposes the UI to other containers. |
@@ -176,14 +176,16 @@ container. The list of available arguments is documented on [alloy run][].
 
 `alloy.extraPorts` allows for configuring specific open ports.
 
-The detained specification of ports can be found at the [Kubernetes Pod documents](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#ports).
+The detained specification of ports for pods and services can be found at the
+[Kubernetes Pod documents](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#ports) and
+[Kubernetes Service documents](https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/#ServiceSpec)
 
 Port numbers specified must be 0 < x < 65535.
 
 | ChartPort | KubePort | Description |
 |-----------|----------|-------------|
 | targetPort | containerPort | Number of port to expose on the pod's IP address. |
-| hostPort | hostPort | (Optional) Number of port to expose on the host. Daemonsets taking traffic might find this useful. |
+| hostPort | hostPort | Number of port to expose on the host and by the service. This is optional if not using a service. Daemonsets taking traffic might find this useful. |
 | name | name | If specified, this must be an `IANA_SVC_NAME` and unique within the pod. Each named port in a pod must have a unique name. Name for the port that can be referred to by services.
 | protocol | protocol | Must be UDP, TCP, or SCTP. Defaults to "TCP". |
 | appProtocol | appProtocol | Hint on application protocol. This is used to expose Alloy externally on OpenShift clusters using "h2c". Optional. No default value. |
