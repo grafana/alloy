@@ -8,16 +8,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/dbo11y/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
@@ -36,9 +37,25 @@ func init() {
 }
 
 type Arguments struct {
-	DataSourceName alloytypes.Secret   `alloy:"data_source_name,attr,optional"`
-	SomeArg        string              `alloy:"somearg,attr,optional"`
+	DataSourceName alloytypes.Secret   `alloy:"data_source_name,attr"`
+	ScrapeInterval time.Duration       `alloy:"scrape_interval,attr,optional"`
 	ForwardTo      []loki.LogsReceiver `alloy:"forward_to,attr"`
+}
+
+var DefaultArguments = Arguments{
+	ScrapeInterval: 10 * time.Second,
+}
+
+func (a *Arguments) SetToDefault() {
+	*a = DefaultArguments
+}
+
+func (a *Arguments) Validate() error {
+	_, err := mysql.ParseDSN(string(a.DataSourceName))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type Exports struct {
@@ -47,12 +64,12 @@ type Exports struct {
 
 type Component struct {
 	opts       component.Options
-	log        log.Logger
 	mut        sync.RWMutex
 	receivers  []loki.LogsReceiver
 	handler    loki.LogsReceiver
 	registry   *prometheus.Registry
 	baseTarget discovery.Target
+	collectors []collector.Collector
 }
 
 var testCounter = prometheus.NewCounter(prometheus.CounterOpts{
@@ -69,13 +86,13 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	}
 
 	c.registry.MustRegister(testCounter)
+
 	baseTarget, err := c.getBaseTarget()
 	if err != nil {
 		return nil, err
 	}
 	c.baseTarget = baseTarget
 
-	// Call to Update() to start readers and set receivers once at the start.
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
@@ -122,19 +139,49 @@ func (c *Component) Update(args component.Arguments) error {
 		Targets: []discovery.Target{c.baseTarget},
 	})
 
+	for _, collector := range c.collectors {
+		collector.Stop()
+	}
+	c.collectors = nil
+
+	newArgs := args.(Arguments)
+	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
+
+	qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
+		DSN:            string(newArgs.DataSourceName),
+		ScrapeInterval: newArgs.ScrapeInterval * time.Second,
+		EntryHandler:   entryHandler,
+		Logger:         c.opts.Logger,
+	})
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
+		return err
+	}
+	if err := qsCollector.Run(context.Background()); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to run QuerySample collector", "err", err)
+		return err
+	}
+	c.collectors = append(c.collectors, qsCollector)
+
+	stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
+		DSN:            string(newArgs.DataSourceName),
+		ScrapeInterval: newArgs.ScrapeInterval * time.Second,
+		EntryHandler:   entryHandler,
+		Logger:         c.opts.Logger,
+	})
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)
+		return err
+	}
+	if err := stCollector.Run(context.Background()); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to run SchemaTable collector", "err", err)
+		return err
+	}
+	c.collectors = append(c.collectors, stCollector)
+
 	go func() {
 		for {
 			testCounter.Add(1)
-
-			entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-			entryHandler.Chan() <- loki.Entry{
-				Labels: model.LabelSet{"lbl": "val"},
-				Entry: logproto.Entry{
-					Timestamp: time.Unix(0, time.Now().UnixNano()),
-					Line:      args.(Arguments).SomeArg,
-				},
-			}
-
 			time.Sleep(10 * time.Second)
 		}
 	}()
