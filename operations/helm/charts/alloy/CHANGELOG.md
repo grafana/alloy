@@ -84,6 +84,10 @@ Unreleased
 
 - Update helm chart to use v1.2.1.
 
+### Features
+
+- Allow granular configuration `clusterRole`'s permissions. (@hainenber)
+
 0.5.0 (2024-07-08)
 ------------------
 
