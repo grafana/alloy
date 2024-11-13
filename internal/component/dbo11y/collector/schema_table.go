@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 
@@ -50,6 +49,7 @@ func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	return &SchemaTable{
 		dbConnection:   dbConnection,
 		scrapeInterval: args.ScrapeInterval,
+		entryHandler:   args.EntryHandler,
 		logger:         args.Logger,
 	}, nil
 }
@@ -65,7 +65,7 @@ func (c *SchemaTable) Run(ctx context.Context) error {
 		ticker := time.NewTicker(c.scrapeInterval)
 
 		for {
-			if err := c.extractSchema(c.ctx); err != nil {
+			if err := c.extractSchema(); err != nil {
 				break
 			}
 
@@ -86,7 +86,7 @@ func (c *SchemaTable) Stop() {
 	c.dbConnection.Close()
 }
 
-func (c *SchemaTable) extractSchema(ctx context.Context) error {
+func (c *SchemaTable) extractSchema() error {
 	c.entryHandler.Chan() <- loki.Entry{
 		Labels: model.LabelSet{"lbl": "val"},
 		Entry: logproto.Entry{

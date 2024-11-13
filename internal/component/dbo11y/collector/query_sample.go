@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 
@@ -67,7 +66,7 @@ func (c *QuerySample) Run(ctx context.Context) error {
 		ticker := time.NewTicker(c.scrapeInterval)
 
 		for {
-			if err := c.fetchQuerySamples(c.ctx); err != nil {
+			if err := c.fetchQuerySamples(); err != nil {
 				break
 			}
 
@@ -88,7 +87,7 @@ func (c *QuerySample) Stop() {
 	c.dbConnection.Close()
 }
 
-func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
+func (c *QuerySample) fetchQuerySamples() error {
 	c.entryHandler.Chan() <- loki.Entry{
 		Labels: model.LabelSet{"lbl": "val"},
 		Entry: logproto.Entry{

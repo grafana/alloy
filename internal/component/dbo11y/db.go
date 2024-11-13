@@ -101,6 +101,15 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 }
 
 func (c *Component) Run(ctx context.Context) error {
+	defer func() {
+		level.Info(c.opts.Logger).Log("msg", "grafanacloud.dbo11y component shutting down, stopping collectors")
+		c.mut.RLock()
+		for _, collector := range c.collectors {
+			collector.Stop()
+		}
+		c.mut.RUnlock()
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -149,7 +158,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 		DSN:            string(newArgs.DataSourceName),
-		ScrapeInterval: newArgs.ScrapeInterval * time.Second,
+		ScrapeInterval: newArgs.ScrapeInterval,
 		EntryHandler:   entryHandler,
 		Logger:         c.opts.Logger,
 	})
@@ -165,7 +174,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 		DSN:            string(newArgs.DataSourceName),
-		ScrapeInterval: newArgs.ScrapeInterval * time.Second,
+		ScrapeInterval: newArgs.ScrapeInterval,
 		EntryHandler:   entryHandler,
 		Logger:         c.opts.Logger,
 	})
