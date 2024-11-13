@@ -41,7 +41,6 @@ responsible for ownership of the following workflows:
 5. [Update Helm Charts](./8-update-helm-charts.md)
 6. [Update Homebrew](./9-update-homebrew.md)
 7. [Announce Release](./10-announce-release.md)
-8. [Update OTEL Contrib](./11-update-otel.md)
 
 ## Patch Release Publish - latest version (`1.15.1`, `1.15.2`...)
 1. [Update the "main" and "release/" branches](./3-update-version-in-code.md)
