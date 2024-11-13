@@ -5,7 +5,11 @@
   imagePullPolicy: {{ .Values.image.pullPolicy }}
   args:
     - run
+    {{- if .Values.alloy.loadFolder }}
+    - /etc/alloy/
+    {{- else }}
     - /etc/alloy/{{ include "alloy.config-map.key" . }}
+    {{- end }}
     - --storage.path={{ $values.storagePath }}
     - --server.http.listen-addr={{ $values.listenAddr }}:{{ $values.listenPort }}
     - --server.http.ui-path-prefix={{ $values.uiPathPrefix }}
