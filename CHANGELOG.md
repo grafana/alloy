@@ -22,7 +22,7 @@ Main (unreleased)
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
 
-v1.5.0-rc.1
+v1.5.0
 -----------------
 
 ### Breaking changes
