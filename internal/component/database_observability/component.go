@@ -77,6 +77,7 @@ var (
 
 type Component struct {
 	opts       component.Options
+	args       Arguments
 	mut        sync.RWMutex
 	receivers  []loki.LogsReceiver
 	handler    loki.LogsReceiver
@@ -88,6 +89,7 @@ type Component struct {
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:      opts,
+		args:      args,
 		receivers: args.ForwardTo,
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
@@ -141,7 +143,7 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 		model.AddressLabel:     httpData.MemoryListenAddr,
 		model.SchemeLabel:      "http",
 		model.MetricsPathLabel: path.Join(httpData.HTTPPathForComponent(c.opts.ID), "metrics"),
-		"instance":             "todo",
+		"instance":             c.instanceKey(),
 		"job":                  "integrations/db-o11y",
 	}, nil
 }
@@ -160,6 +162,8 @@ func (c *Component) Update(args component.Arguments) error {
 	c.collectors = nil
 
 	newArgs := args.(Arguments)
+	c.args = newArgs
+
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
 	qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
@@ -213,4 +217,19 @@ func (c *Component) Update(args component.Arguments) error {
 
 func (c *Component) Handler() http.Handler {
 	return promhttp.HandlerFor(c.registry, promhttp.HandlerOpts{})
+}
+
+// instanceKey returns network(hostname:port)/dbname of the MySQL server.
+// This is the same key as used by the mysqld_exporter integration.
+func (c *Component) instanceKey() string {
+	m, _ := mysql.ParseDSN(string(c.args.DataSourceName))
+
+	if m.Addr == "" {
+		m.Addr = "localhost:3306"
+	}
+	if m.Net == "" {
+		m.Net = "tcp"
+	}
+
+	return fmt.Sprintf("%s(%s)/%s", m.Net, m.Addr, m.DBName)
 }
