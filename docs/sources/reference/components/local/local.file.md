@@ -48,7 +48,7 @@ Name      | Type                 | Description
 
 The `content` field will have the `secret` type only if the `is_secret` argument was true. 
 
-To access the contents later in the config, for example, the above "LABEL" file, use `local.file.LABEL.content` to access the contents of the file.
+You can use `local.file.LABEL.content` to access the contents of the file.
 
 ## Component health
 
