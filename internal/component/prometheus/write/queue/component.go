@@ -92,6 +92,7 @@ func (s *Queue) Update(args component.Arguments) error {
 	}
 	s.args = newArgs
 	// Figure out which endpoint is new, which is updated, and which needs to be gone.
+	// So add all the endpoints and then if they are in the new config then remove them from deletable.
 	deletableEndpoints := make(map[string]struct{})
 	for k := range s.endpoints {
 		deletableEndpoints[k] = struct{}{}
@@ -99,9 +100,9 @@ func (s *Queue) Update(args component.Arguments) error {
 
 	for _, epCfg := range s.args.Endpoints {
 		delete(deletableEndpoints, epCfg.Name)
-		ep, ok := s.endpoints[epCfg.Name]
+		ep, found := s.endpoints[epCfg.Name]
 		// If found stop and recreate.
-		if ok {
+		if found {
 			// Stop and loose all the signals in the queue.
 			// TODO drain the signals and re-add them
 			ep.Stop()
