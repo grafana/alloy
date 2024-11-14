@@ -14,9 +14,9 @@ import (
 
 	"github.com/golang/snappy"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/walqueue/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"

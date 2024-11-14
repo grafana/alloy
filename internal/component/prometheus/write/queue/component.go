@@ -2,13 +2,14 @@ package queue
 
 import (
 	"context"
+	"path/filepath"
 	"reflect"
 	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/serialization"
 	"github.com/grafana/alloy/internal/featuregate"
+	promqueue "github.com/grafana/walqueue/implementations/prometheus"
 	"github.com/prometheus/prometheus/storage"
 )
 
@@ -29,7 +30,7 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 		opts:      opts,
 		args:      args,
 		log:       opts.Logger,
-		endpoints: map[string]*endpoint{},
+		endpoints: map[string]promqueue.Queue{},
 	}
 
 	err := s.createEndpoints()
@@ -53,7 +54,7 @@ type Queue struct {
 	args      Arguments
 	opts      component.Options
 	log       log.Logger
-	endpoints map[string]*endpoint
+	endpoints map[string]promqueue.Queue
 }
 
 // Run starts the component, blocking until ctx is canceled or the component
@@ -105,8 +106,9 @@ func (s *Queue) Update(args component.Arguments) error {
 			// TODO drain the signals and re-add them
 			ep.Stop()
 		}
+		nativeCfg := epCfg.ToNativeType()
 		// Create
-		end, err := newEndpoint(epCfg, s.args.TTL, uint(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.opts.DataPath, s.opts.Registerer, s.opts.Logger)
+		end, err := promqueue.NewQueue(epCfg.Name, nativeCfg, filepath.Join(s.opts.DataPath, epCfg.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", s.opts.Logger)
 		if err != nil {
 			return err
 		}
@@ -124,7 +126,8 @@ func (s *Queue) Update(args component.Arguments) error {
 
 func (s *Queue) createEndpoints() error {
 	for _, ep := range s.args.Endpoints {
-		end, err := newEndpoint(ep, s.args.TTL, uint(s.args.Persistence.MaxSignalsToBatch), s.args.TTL, s.opts.DataPath, s.opts.Registerer, s.opts.Logger)
+		nativeCfg := ep.ToNativeType()
+		end, err := promqueue.NewQueue(ep.Name, nativeCfg, filepath.Join(s.opts.DataPath, ep.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", s.opts.Logger)
 		if err != nil {
 			return err
 		}
@@ -142,7 +145,7 @@ func (c *Queue) Appender(ctx context.Context) storage.Appender {
 
 	children := make([]storage.Appender, 0)
 	for _, ep := range c.endpoints {
-		children = append(children, serialization.NewAppender(ctx, c.args.TTL, ep.serializer, c.opts.Logger))
+		children = append(children, ep.Appender(ctx))
 	}
 	return &fanout{children: children}
 }
