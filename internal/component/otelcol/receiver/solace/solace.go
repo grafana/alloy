@@ -104,7 +104,17 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	if args.Auth.PlainText == nil && args.Auth.External == nil && args.Auth.XAuth2 == nil {
+	authMethod := 0
+	if args.Auth.PlainText != nil {
+		authMethod++
+	}
+	if args.Auth.External != nil {
+		authMethod++
+	}
+	if args.Auth.XAuth2 != nil {
+		authMethod++
+	}
+	if authMethod != 1 {
 		return fmt.Errorf("the auth block must contain either a sasl_plain block, a sasl_xauth2 block or a sasl_external block")
 	}
 	if len(strings.TrimSpace(args.Queue)) == 0 {

@@ -166,6 +166,24 @@ func TestArguments_Validate(t *testing.T) {
 			expectedError: "the auth block must contain either a sasl_plain block, a sasl_xauth2 block or a sasl_external block",
 		},
 		{
+			testName: "Multiple Auth",
+			cfg: `
+				queue = "queue://#telemetry_testprofile"
+				auth {
+					sasl_plain {
+						username = "alloy"
+						password = "password"
+					}
+					sasl_xauth2 {
+						username = "alloy"
+						bearer = "bearer"
+					}
+				}
+				output {}
+			`,
+			expectedError: "the auth block must contain either a sasl_plain block, a sasl_xauth2 block or a sasl_external block",
+		},
+		{
 			testName: "Empty Queue",
 			cfg: `
 				queue = ""
