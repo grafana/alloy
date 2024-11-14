@@ -22,6 +22,9 @@ Main (unreleased)
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
 
+- Moved the wal queue implementation to a separate repository to share with other projects. Also fixed issue with reloading
+  configuration and prometheus duplication of metrics. (@mattdurham)
+
 v1.5.0
 -----------------
 
