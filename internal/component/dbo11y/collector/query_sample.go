@@ -88,6 +88,7 @@ func (c *QuerySample) Stop() {
 }
 
 func (c *QuerySample) fetchQuerySamples() error {
+	// TODO real implementation
 	c.entryHandler.Chan() <- loki.Entry{
 		Labels: model.LabelSet{"lbl": "val"},
 		Entry: logproto.Entry{

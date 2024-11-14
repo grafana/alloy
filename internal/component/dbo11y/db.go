@@ -20,12 +20,15 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
+const name = "grafanacloud.dbo11y"
+
 func init() {
 	component.Register(component.Registration{
-		Name:      "grafanacloud.dbo11y",
+		Name:      name,
 		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Exports:   Exports{},
@@ -35,6 +38,11 @@ func init() {
 		},
 	})
 }
+
+var (
+	_ syntax.Defaulter = (*Arguments)(nil)
+	_ syntax.Validator = (*Arguments)(nil)
+)
 
 type Arguments struct {
 	DataSourceName alloytypes.Secret   `alloy:"data_source_name,attr"`
@@ -62,6 +70,11 @@ type Exports struct {
 	Targets []discovery.Target `alloy:"targets,attr"`
 }
 
+var (
+	_ component.Component    = (*Component)(nil)
+	_ http_service.Component = (*Component)(nil)
+)
+
 type Component struct {
 	opts       component.Options
 	mut        sync.RWMutex
@@ -72,11 +85,6 @@ type Component struct {
 	collectors []collector.Collector
 }
 
-var testCounter = prometheus.NewCounter(prometheus.CounterOpts{
-	Name: "test_counter",
-	Help: "This is a test counter",
-})
-
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:      opts,
@@ -84,8 +92,6 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
 	}
-
-	c.registry.MustRegister(testCounter)
 
 	baseTarget, err := c.getBaseTarget()
 	if err != nil {
@@ -102,7 +108,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		level.Info(c.opts.Logger).Log("msg", "grafanacloud.dbo11y component shutting down, stopping collectors")
+		level.Info(c.opts.Logger).Log("msg", name+" component shutting down, stopping collectors")
 		c.mut.RLock()
 		for _, collector := range c.collectors {
 			collector.Stop()
@@ -188,12 +194,19 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = append(c.collectors, stCollector)
 
-	go func() {
-		for {
-			testCounter.Add(1)
-			time.Sleep(10 * time.Second)
-		}
-	}()
+	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
+		DSN:      string(newArgs.DataSourceName),
+		Registry: c.registry,
+	})
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
+		return err
+	}
+	if err := ciCollector.Run(context.Background()); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to run ConnectionInfo collector", "err", err)
+		return err
+	}
+	c.collectors = append(c.collectors, ciCollector)
 
 	return nil
 }

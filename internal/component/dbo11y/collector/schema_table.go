@@ -87,6 +87,7 @@ func (c *SchemaTable) Stop() {
 }
 
 func (c *SchemaTable) extractSchema() error {
+	// TODO real implementation
 	c.entryHandler.Chan() <- loki.Entry{
 		Labels: model.LabelSet{"lbl": "val"},
 		Entry: logproto.Entry{
