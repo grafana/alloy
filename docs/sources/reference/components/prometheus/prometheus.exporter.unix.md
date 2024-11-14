@@ -103,12 +103,12 @@ The following blocks are supported inside the definition of `prometheus.exporter
 
 ### cpu block
 
-| Name            | Type      | Description                                         | Default | Required |
-| --------------- | --------- | --------------------------------------------------- | ------- | -------- |
-| `guest`         | `boolean` | Enable the `node_cpu_guest_seconds_total` metric.   | true    | no       |
-| `info`          | `boolean` | Enable the `cpu_info metric` for the cpu collector. | true    | no       |
-| `bugs_include`  | `string`  | Regexp of `bugs` field in cpu info to filter.       |         | no       |
-| `flags_include` | `string`  | Regexp of `flags` field in cpu info to filter.      |         | no       |
+| Name            | Type      | Description                                        | Default | Required |
+| --------------- | --------- | -------------------------------------------------- |---------| -------- |
+| `guest`         | `boolean` | Enable the `node_cpu_guest_seconds_total` metric.  | false   | no       |
+| `info`          | `boolean` | Enable the `cpu_info` metric for the cpu collector.| false   | no       |
+| `bugs_include`  | `string`  | Regexp of `bugs` field in cpu info to filter.      |         | no       |
+| `flags_include` | `string`  | Regexp of `flags` field in cpu info to filter.     |         | no       |
 
 ### disk block
 
