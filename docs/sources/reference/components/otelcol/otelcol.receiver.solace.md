@@ -51,9 +51,9 @@ The following blocks are supported inside the definition of
 | Hierarchy                      | Block              | Description                                                                                                                      | Required |
 | ------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | authentication                 | [authentication][] | Configures authentication for connecting to the Solace broker.                                                                   | yes      |
-| authentication > sasl_plain    | [sasl_plain][]     | Authenticates against Solace broker with SASL PLAIN.                                                                             | no       |
-| authentication > sasl_xauth2   | [sasl_xauth2][]    | Authenticates against Solace broker with SASL XOauth2.                                                                           | no       |
-| authentication > sasl_external | [sasl_external][]  | Authenticates against Solace broker with SASL External.                                                                          | no       |
+| authentication > sasl_plain    | [sasl_plain][]     | Authenticates against the Solace broker with SASL PLAIN.                                                                         | no       |
+| authentication > sasl_xauth2   | [sasl_xauth2][]    | Authenticates against the Solace broker with SASL XOauth2.                                                                       | no       |
+| authentication > sasl_external | [sasl_external][]  | Authenticates against the Solace broker with SASL External.                                                                      | no       |
 | flow                           | [flow][]           | Configures the behaviour to use when temporary errors are encountered from the next component.                                   | no       |
 | flow > delayed_retry           | [delayed_retry][]  | Sets the flow control strategy to `delayed retry` which will wait before trying to push the message to the next component again. | no       |
 | tls                            | [tls][]            | Configures TLS for connecting to the Solace broker.                                                                              | no       |
