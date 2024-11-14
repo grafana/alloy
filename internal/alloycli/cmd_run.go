@@ -356,6 +356,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		if err != nil {
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
+		httpService.SetSources(alloySource.RawConfigs())
 		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
 			return alloySource, fmt.Errorf("error during the initial load: %w", err)
 		}

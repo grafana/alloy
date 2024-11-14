@@ -78,6 +78,9 @@ type Service struct {
 	// Used to enforce single-flight requests to supportHandler
 	supportBundleMut sync.Mutex
 
+	// Track the raw config for use with the support bundle
+	sources map[string][]byte
+
 	// publicLis and tcpLis are used to lazily enable TLS, since TLS is
 	// optionally configurable at runtime.
 	//
@@ -225,7 +228,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	}
 
 	// Wire in support bundle generator
-	r.HandleFunc("/-/support", s.supportHandler).Methods("GET")
+	r.HandleFunc("/-/support", s.generateSupportBundleHandler(host)).Methods("GET")
 
 	// Wire custom service handlers for services which depend on the http
 	// service.
@@ -259,60 +262,75 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	return nil
 }
 
-func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
+func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		s.supportBundleMut.Lock()
+		defer s.supportBundleMut.Unlock()
+
+		// TODO(dehaansa) remove this check once the support bundle is generally available
+		if !s.opts.MinStability.Permits(featuregate.StabilityPublicPreview) {
+			rw.WriteHeader(http.StatusForbidden)
+			_, _ = rw.Write([]byte("support bundle generation is only available in public preview. Use" +
+				" --stability.level command-line flag to enable public-preview features"))
+			return
+		}
+
+		if s.opts.BundleContext.DisableSupportBundle {
+			rw.WriteHeader(http.StatusForbidden)
+			_, _ = rw.Write([]byte("support bundle generation is disabled; it can be re-enabled by removing the --disable-support-bundle flag"))
+			return
+		}
+
+		duration := getServerWriteTimeout(r)
+		if r.URL.Query().Has("duration") {
+			d, err := strconv.Atoi(r.URL.Query().Get("duration"))
+			if err != nil {
+				http.Error(rw, fmt.Sprintf("duration value (in seconds) should be a positive integer: %s", err), http.StatusBadRequest)
+				return
+			}
+			if d < 1 {
+				http.Error(rw, "duration value (in seconds) should be larger than 1", http.StatusBadRequest)
+				return
+			}
+			if float64(d) > duration.Seconds() {
+				http.Error(rw, "duration value exceeds the server's write timeout", http.StatusBadRequest)
+				return
+			}
+			duration = time.Duration(d) * time.Second
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), duration)
+		defer cancel()
+
+		var logsBuffer bytes.Buffer
+		syncBuff := log.NewSyncWriter(&logsBuffer)
+		s.globalLogger.SetTemporaryWriter(syncBuff)
+		defer func() {
+			s.globalLogger.RemoveTemporaryWriter()
+		}()
+
+		cachedConfig, err := remoteCfgCachedConfig(host)
+		if err != nil {
+			level.Debug(s.log).Log("msg", "failed to get cached remote config", "err", err)
+		}
+
+		bundle, err := ExportSupportBundle(ctx, s.opts.BundleContext.RuntimeFlags, s.opts.HTTPListenAddr, s.sources, cachedConfig, s.Data().(Data).DialFunc)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := ServeSupportBundle(rw, bundle, &logsBuffer); err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+// SetSources sets the sources on reload to be delivered
+// with the support bundle.
+func (s *Service) SetSources(sources map[string][]byte) {
 	s.supportBundleMut.Lock()
 	defer s.supportBundleMut.Unlock()
-
-	// TODO(dehaansa) remove this check once the support bundle is generally available
-	if !s.opts.MinStability.Permits(featuregate.StabilityPublicPreview) {
-		rw.WriteHeader(http.StatusForbidden)
-		_, _ = rw.Write([]byte("support bundle generation is only available in public preview. Use" +
-			" --stability.level command-line flag to enable public-preview features"))
-		return
-	}
-
-	if s.opts.BundleContext.DisableSupportBundle {
-		rw.WriteHeader(http.StatusForbidden)
-		_, _ = rw.Write([]byte("support bundle generation is disabled; it can be re-enabled by removing the --disable-support-bundle flag"))
-		return
-	}
-
-	duration := getServerWriteTimeout(r)
-	if r.URL.Query().Has("duration") {
-		d, err := strconv.Atoi(r.URL.Query().Get("duration"))
-		if err != nil {
-			http.Error(rw, fmt.Sprintf("duration value (in seconds) should be a positive integer: %s", err), http.StatusBadRequest)
-			return
-		}
-		if d < 1 {
-			http.Error(rw, "duration value (in seconds) should be larger than 1", http.StatusBadRequest)
-			return
-		}
-		if float64(d) > duration.Seconds() {
-			http.Error(rw, "duration value exceeds the server's write timeout", http.StatusBadRequest)
-			return
-		}
-		duration = time.Duration(d) * time.Second
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), duration)
-	defer cancel()
-
-	var logsBuffer bytes.Buffer
-	syncBuff := log.NewSyncWriter(&logsBuffer)
-	s.globalLogger.SetTemporaryWriter(syncBuff)
-	defer func() {
-		s.globalLogger.RemoveTemporaryWriter()
-	}()
-
-	bundle, err := ExportSupportBundle(ctx, s.opts.BundleContext.RuntimeFlags, s.opts.HTTPListenAddr, s.Data().(Data).DialFunc)
-	if err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := ServeSupportBundle(rw, bundle, &logsBuffer); err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	s.sources = sources
 }
 
 func getServerWriteTimeout(r *http.Request) time.Duration {
@@ -580,6 +598,14 @@ func (lis *lazyListener) Addr() net.Addr {
 	}
 
 	return lis.inner.Addr()
+}
+
+func remoteCfgCachedConfig(host service.Host) ([]byte, error) {
+	svc, ok := host.GetService(remotecfg.ServiceName)
+	if !ok {
+		return nil, fmt.Errorf("failed to get the remotecfg service")
+	}
+	return svc.(*remotecfg.Service).GetCachedConfig()
 }
 
 func remoteCfgHostProvider(host service.Host) func() (service.Host, error) {

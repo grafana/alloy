@@ -33,6 +33,8 @@ type Bundle struct {
 	components   []byte
 	peers        []byte
 	runtimeFlags []byte
+	sources      map[string][]byte
+	remoteCfg    []byte
 	heapBuf      *bytes.Buffer
 	goroutineBuf *bytes.Buffer
 	blockBuf     *bytes.Buffer
@@ -49,7 +51,7 @@ type Metadata struct {
 }
 
 // ExportSupportBundle gathers the information required for the support bundle.
-func ExportSupportBundle(ctx context.Context, runtimeFlags []string, srvAddress string, dialContext server.DialContextFunc) (*Bundle, error) {
+func ExportSupportBundle(ctx context.Context, runtimeFlags []string, srvAddress string, sources map[string][]byte, remoteCfg []byte, dialContext server.DialContextFunc) (*Bundle, error) {
 	// The block profiler is disabled by default. Temporarily enable recording
 	// of all blocking events. Also, temporarily record all mutex contentions,
 	// and defer restoring of earlier mutex profiling fraction.
@@ -136,6 +138,8 @@ func ExportSupportBundle(ctx context.Context, runtimeFlags []string, srvAddress 
 		alloyMetrics: alloyMetrics,
 		components:   components,
 		peers:        peers,
+		sources:      sources,
+		remoteCfg:    remoteCfg,
 		runtimeFlags: []byte(strings.Join(runtimeFlags, "\n")),
 		heapBuf:      &heapBuf,
 		goroutineBuf: &goroutineBuf,
@@ -169,17 +173,22 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf *bytes.Buffer
 	rw.Header().Set("Content-Disposition", "attachment; filename=\"alloy-support-bundle.zip\"")
 
 	zipStructure := map[string][]byte{
-		"alloy-metadata.yaml":     b.meta,
-		"alloy-components.json":   b.components,
-		"alloy-peers.json":        b.peers,
-		"alloy-metrics.txt":       b.alloyMetrics,
-		"alloy-runtime-flags.txt": b.runtimeFlags,
-		"alloy-logs.txt":          logsBuf.Bytes(),
-		"pprof/cpu.pprof":         b.cpuBuf.Bytes(),
-		"pprof/heap.pprof":        b.heapBuf.Bytes(),
-		"pprof/goroutine.pprof":   b.goroutineBuf.Bytes(),
-		"pprof/mutex.pprof":       b.mutexBuf.Bytes(),
-		"pprof/block.pprof":       b.blockBuf.Bytes(),
+		"alloy-metadata.yaml":                b.meta,
+		"alloy-components.json":              b.components,
+		"alloy-peers.json":                   b.peers,
+		"alloy-metrics.txt":                  b.alloyMetrics,
+		"alloy-runtime-flags.txt":            b.runtimeFlags,
+		"alloy-logs.txt":                     logsBuf.Bytes(),
+		"sources/remote-config/remote.alloy": b.remoteCfg,
+		"pprof/cpu.pprof":                    b.cpuBuf.Bytes(),
+		"pprof/heap.pprof":                   b.heapBuf.Bytes(),
+		"pprof/goroutine.pprof":              b.goroutineBuf.Bytes(),
+		"pprof/mutex.pprof":                  b.mutexBuf.Bytes(),
+		"pprof/block.pprof":                  b.blockBuf.Bytes(),
+	}
+
+	for p, s := range b.sources {
+		zipStructure[filepath.Join("sources", filepath.Base(p))] = s
 	}
 
 	for fn, b := range zipStructure {

@@ -401,7 +401,7 @@ func (s *Service) fetchRemote() error {
 }
 
 func (s *Service) fetchLocal() {
-	b, err := s.getCachedConfig()
+	b, err := s.GetCachedConfig()
 	if err != nil {
 		level.Error(s.opts.Logger).Log("msg", "failed to read from cache", "err", err)
 		return
@@ -440,7 +440,7 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 	return []byte(gcr.Msg.GetContent()), nil
 }
 
-func (s *Service) getCachedConfig() ([]byte, error) {
+func (s *Service) GetCachedConfig() ([]byte, error) {
 	s.mut.RLock()
 	p := s.dataPath
 	s.mut.RUnlock()

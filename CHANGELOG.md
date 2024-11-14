@@ -18,6 +18,10 @@ Main (unreleased)
 
 - Add `otelcol.exporter.splunkhec` allowing to export otel data to Splunk HEC (@adlotsof)
 
+### Enhancements
+
+- Add all raw configuration files & a copy of the latest remote config to the support bundle (@dehaansa)
+
 ### Bugfixes
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
