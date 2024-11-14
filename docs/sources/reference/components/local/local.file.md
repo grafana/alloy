@@ -68,6 +68,8 @@ The read error will be exposed as a log message and in the debug information for
 
 ## Example
 
+The following example shows a simple `local.file` configuration that watches a passwords text file and uses the exported content field.
+
 ```alloy
 local.file "secret_key" {
   filename  = "/var/secrets/password.txt"
