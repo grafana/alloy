@@ -941,10 +941,5 @@ exclude (
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 
-// This is a temporary replace because runk is still on this version.
-// It's important to remove it asap because in version v0.13.1 there is a fix for Beyla.
-// PR to track it: https://github.com/opencontainers/runc/pull/4397
-replace github.com/opencontainers/runc => github.com/rafaelroquetto/runc v1.1.14-1
-
 // This is to handle issues witn synchronous mailbox and closing channels.
 replace github.com/vladopajic/go-actor => github.com/grafana/go-actor v0.0.0-20241113133736-e18c4a5c12f4
