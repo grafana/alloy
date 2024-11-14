@@ -77,6 +77,10 @@ The following components, grouped by namespace, _export_ Targets.
 - [discovery.uyuni](../components/discovery/discovery.uyuni)
 {{< /collapse >}}
 
+{{< collapse title="grafanacloud" >}}
+- [grafanacloud.dbo11y](../components/grafanacloud/grafanacloud.dbo11y)
+{{< /collapse >}}
+
 {{< collapse title="local" >}}
 - [local.file_match](../components/local/local.file_match)
 {{< /collapse >}}
@@ -238,6 +242,10 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 
 {{< collapse title="faro" >}}
 - [faro.receiver](../components/faro/faro.receiver)
+{{< /collapse >}}
+
+{{< collapse title="grafanacloud" >}}
+- [grafanacloud.dbo11y](../components/grafanacloud/grafanacloud.dbo11y)
 {{< /collapse >}}
 
 {{< collapse title="loki" >}}
