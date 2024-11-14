@@ -73,10 +73,8 @@ local.file "secret_key" {
   filename  = "/var/secrets/password.txt"
   is_secret = true
 }
-
-# Then later:
 grafana_cloud.stack "receivers" {
   stack_name = "mystack"
-  token = local.file.secret_key.content # <-- The file's contents are here
+  token = local.file.secret_key.content
 }
 ```
