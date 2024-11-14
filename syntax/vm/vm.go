@@ -509,3 +509,9 @@ func (s *Scope) IsStdlibDeprecated(name string) bool {
 	_, exist := stdlib.DeprecatedIdentifiers[name]
 	return exist
 }
+
+// IsStdlibExperimental returns true if the scoped identifier is experimental.
+func (s *Scope) IsStdlibExperimental(fullName string) bool {
+	_, exist := stdlib.ExperimentalIdentifiers[fullName]
+	return exist
+}

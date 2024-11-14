@@ -44,6 +44,9 @@ func makeDiagnostic(err error, assoc map[value.Value]ast.Node) error {
 		case value.FieldError:
 			fmt.Fprintf(&expr, ".%s", ne.Field)
 			val = ne.Value
+		case value.ArgError:
+			message = ne.Inner.Error()
+			val = ne.Argument
 		}
 
 		cause = val

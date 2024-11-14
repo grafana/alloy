@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonitor, ep promopv1.Endpoint, i int) (cfg *config.ScrapeConfig, err error) {
+func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonitor, ep promopv1.Endpoint, i int, role promk8s.Role) (cfg *config.ScrapeConfig, err error) {
 	cfg = cg.generateDefaultScrapeConfig()
 
 	cfg.JobName = fmt.Sprintf("serviceMonitor/%s/%s/%d", m.Namespace, m.Name, i)
@@ -24,7 +24,7 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	if ep.HonorTimestamps != nil {
 		cfg.HonorTimestamps = *ep.HonorTimestamps
 	}
-	dConfig := cg.generateK8SSDConfig(m.Spec.NamespaceSelector, m.Namespace, promk8s.RoleEndpoint, m.Spec.AttachMetadata)
+	dConfig := cg.generateK8SSDConfig(m.Spec.NamespaceSelector, m.Namespace, role, m.Spec.AttachMetadata)
 	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, dConfig)
 
 	if ep.Interval != "" {
@@ -153,6 +153,10 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 		}
 	}
 
+	labelPortName := "__meta_kubernetes_endpoint_port_name"
+	if role == promk8s.RoleEndpointSlice {
+		labelPortName = "__meta_kubernetes_endpointslice_port_name"
+	}
 	// Filter targets based on correct port for the endpoint.
 	if ep.Port != "" {
 		regex, err := relabel.NewRegexp(ep.Port)
@@ -160,7 +164,7 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 			return nil, fmt.Errorf("parsing Port as regex: %w", err)
 		}
 		relabels.add(&relabel.Config{
-			SourceLabels: model.LabelNames{"__meta_kubernetes_endpoint_port_name"},
+			SourceLabels: model.LabelNames{model.LabelName(labelPortName)},
 			Action:       "keep",
 			Regex:        regex,
 		})
@@ -191,6 +195,9 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	}
 
 	sourceLabels := model.LabelNames{"__meta_kubernetes_endpoint_address_target_kind", "__meta_kubernetes_endpoint_address_target_name"}
+	if role == promk8s.RoleEndpointSlice {
+		sourceLabels = model.LabelNames{"__meta_kubernetes_endpointslice_address_target_kind", "__meta_kubernetes_endpointslice_address_target_name"}
+	}
 	// Relabel namespace and pod and service labels into proper labels.
 	// Relabel node labels with meta labels available with Prometheus >= v2.3.
 	relabels.add(&relabel.Config{

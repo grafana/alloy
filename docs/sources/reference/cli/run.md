@@ -42,6 +42,7 @@ The following flags are supported:
 * `--server.http.ui-path-prefix`: Base path where the UI is exposed (default `/`).
 * `--storage.path`: Base directory where components can store data (default `data-alloy/`).
 * `--disable-reporting`: Disable [data collection][] (default `false`).
+* `--disable-support-bundle`: Disable [support bundle][] endpoint (default `false`).
 * `--cluster.enabled`: Start {{< param "PRODUCT_NAME" >}} in clustered mode (default `false`).
 * `--cluster.node-name`: The name to use for this node (defaults to the environment's hostname).
 * `--cluster.join-addresses`: Comma-separated list of addresses to join the cluster at (default `""`). Mutually exclusive with `--cluster.discover-peers`.
@@ -173,12 +174,12 @@ original configuration.
 Include `--config.extra-args` to pass additional command line flags from the original format to the converter.
 Refer to [alloy convert][] for more details on how `extra-args` work.
 
-
 [alloy convert]: ../convert/
 [clustering]:  ../../../get-started/clustering/
 [go-discover]: https://github.com/hashicorp/go-discover
 [in-memory HTTP traffic]: ../../../get-started/component_controller/#in-memory-traffic
 [data collection]: ../../../data-collection/
+[support bundle]: ../../../troubleshoot/support_bundle
 [components]: ../../get-started/components/
 [component controller]: ../../../get-started/component_controller/
 [UI]: ../../../troubleshoot/debug/#clustering-page

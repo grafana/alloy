@@ -24,10 +24,10 @@ func getPtrToUint(v uint16) *uint16 {
 
 func TestConfigConversion(t *testing.T) {
 	var (
-		defaultRetrySettings   = configretry.NewDefaultBackOffConfig()
-		defaultTimeoutSettings = exporterhelper.NewDefaultTimeoutSettings()
+		defaultRetrySettings = configretry.NewDefaultBackOffConfig()
+		defaultTimeoutConfig = exporterhelper.NewDefaultTimeoutConfig()
 
-		defaultQueueSettings = exporterhelper.QueueSettings{
+		defaultQueueSettings = exporterhelper.QueueConfig{
 			Enabled:      true,
 			NumConsumers: 10,
 			QueueSize:    1000,
@@ -42,9 +42,9 @@ func TestConfigConversion(t *testing.T) {
 					Headers:         map[string]configopaque.String{},
 					BalancerName:    otelcol.DefaultBalancerName,
 				},
-				RetryConfig:     defaultRetrySettings,
-				TimeoutSettings: defaultTimeoutSettings,
-				QueueConfig:     defaultQueueSettings,
+				RetryConfig:   defaultRetrySettings,
+				TimeoutConfig: defaultTimeoutConfig,
+				QueueConfig:   defaultQueueSettings,
 			},
 		}
 	)
@@ -124,7 +124,7 @@ func TestConfigConversion(t *testing.T) {
 			expected: loadbalancingexporter.Config{
 				Protocol: loadbalancingexporter.Protocol{
 					OTLP: otlpexporter.Config{
-						TimeoutSettings: exporterhelper.TimeoutSettings{
+						TimeoutConfig: exporterhelper.TimeoutConfig{
 							Timeout: 1 * time.Second,
 						},
 						RetryConfig: defaultRetrySettings,

@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configtls"
+	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
 )
 
@@ -46,9 +47,9 @@ func (otlpReceiverConverter) ConvertAndAppend(state *State, id componentstatus.I
 
 func toOtelcolReceiverOTLP(state *State, id componentstatus.InstanceID, cfg *otlpreceiver.Config) *otlp.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextLogs    = state.Next(id, component.DataTypeLogs)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &otlp.Arguments{

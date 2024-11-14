@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/debug"
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/logging"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
@@ -49,6 +48,6 @@ func toDebugExporter(cfg *debugexporter.Config) *debug.Arguments {
 		SamplingInitial:    cfg.SamplingInitial,
 		SamplingThereafter: cfg.SamplingThereafter,
 		UseInternalLogger:  cfg.UseInternalLogger,
-		DebugMetrics:       common.DefaultValue[logging.Arguments]().DebugMetrics,
+		DebugMetrics:       common.DefaultValue[debug.Arguments]().DebugMetrics,
 	}
 }

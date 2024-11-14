@@ -15,6 +15,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -50,6 +51,10 @@ type Arguments struct {
 	MessageMarking   MessageMarkingArguments              `alloy:"message_marking,block,optional"`
 	HeaderExtraction HeaderExtraction                     `alloy:"header_extraction,block,optional"`
 
+	MinFetchSize     int32 `alloy:"min_fetch_size,attr,optional"`
+	DefaultFetchSize int32 `alloy:"default_fetch_size,attr,optional"`
+	MaxFetchSize     int32 `alloy:"max_fetch_size,attr,optional"`
+
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
@@ -73,6 +78,9 @@ func (args *Arguments) SetToDefault() {
 		InitialOffset:     "latest",
 		SessionTimeout:    10 * time.Second,
 		HeartbeatInterval: 3 * time.Second,
+		MinFetchSize:      1,
+		DefaultFetchSize:  1048576,
+		MaxFetchSize:      0,
 	}
 	args.Metadata.SetToDefault()
 	args.AutoCommit.SetToDefault()
@@ -127,6 +135,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.AutoCommit = args.AutoCommit.Convert()
 	result.MessageMarking = args.MessageMarking.Convert()
 	result.HeaderExtraction = args.HeaderExtraction.Convert()
+	result.MinFetchSize = args.MinFetchSize
+	result.DefaultFetchSize = args.DefaultFetchSize
+	result.MaxFetchSize = args.MaxFetchSize
 
 	return &result, nil
 }
@@ -137,7 +148,7 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 }
 
 // Exporters implements receiver.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

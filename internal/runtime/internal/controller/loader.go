@@ -615,7 +615,7 @@ func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 
 		// Finally, wire component references.
 		l.cache.mut.RLock()
-		refs, nodeDiags := ComponentReferences(n, g, l.log, l.cache.scope)
+		refs, nodeDiags := ComponentReferences(n, g, l.log, l.cache.scope, l.globals.MinStability)
 		l.cache.mut.RUnlock()
 		for _, ref := range refs {
 			g.AddEdge(dag.Edge{From: n, To: ref.Target})

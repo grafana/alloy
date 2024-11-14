@@ -85,10 +85,10 @@ func TestArgumentsValidate(t *testing.T) {
 		{
 			name: "valid OracleDB",
 			args: Arguments{
-				ConnectionString:   alloytypes.Secret("oracle://user:password@localhost:1521/orcl.localnet"),
-				MaxIdleConns: 1,
-				MaxOpenConns: 1,
-				QueryTimeout: 5,
+				ConnectionString: alloytypes.Secret("oracle://user:password@localhost:1521/orcl.localnet"),
+				MaxIdleConns:     1,
+				MaxOpenConns:     1,
+				QueryTimeout:     5,
 				CustomMetrics: alloytypes.OptionalSecret{
 					Value: `metrics:
 - context: "slow_queries"
@@ -162,7 +162,7 @@ func TestConvertNoCustom(t *testing.T) {
 		MaxIdleConns:     DefaultArguments.MaxIdleConns,
 		MaxOpenConns:     DefaultArguments.MaxOpenConns,
 		QueryTimeout:     DefaultArguments.QueryTimeout,
-		CustomMetrics:   "",
+		CustomMetrics:    "",
 	}
 	require.Equal(t, expected, *res)
 }

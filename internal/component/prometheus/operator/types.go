@@ -1,6 +1,8 @@
 package operator
 
 import (
+	"fmt"
+	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/common/config"
@@ -23,6 +25,8 @@ type Arguments struct {
 
 	// Namespaces to search for monitor resources. Empty implies All namespaces
 	Namespaces []string `alloy:"namespaces,attr,optional"`
+
+	KubernetesRole string `alloy:"kubernetes_role,attr,optional"`
 
 	// LabelSelector allows filtering discovered monitor resources by labels
 	LabelSelector *config.LabelSelector `alloy:"selector,block,optional"`
@@ -54,6 +58,7 @@ var DefaultArguments = Arguments{
 	Client: kubernetes.ClientArguments{
 		HTTPClientConfig: config.DefaultHTTPClientConfig,
 	},
+	KubernetesRole: string(promk8s.RoleEndpoint),
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -65,6 +70,9 @@ func (args *Arguments) SetToDefault() {
 func (args *Arguments) Validate() error {
 	if len(args.Namespaces) == 0 {
 		args.Namespaces = []string{apiv1.NamespaceAll}
+	}
+	if args.KubernetesRole != string(promk8s.RoleEndpointSlice) && args.KubernetesRole != string(promk8s.RoleEndpoint) {
+		return fmt.Errorf("only endpoints and endpointslice are supported")
 	}
 	return nil
 }

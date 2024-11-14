@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -128,7 +129,7 @@ func (oc *OtlpConfig) SetToDefault() {
 
 func (oc OtlpConfig) Convert() otlpexporter.Config {
 	return otlpexporter.Config{
-		TimeoutSettings: exporterhelper.TimeoutSettings{
+		TimeoutConfig: exporterhelper.TimeoutConfig{
 			Timeout: oc.Timeout,
 		},
 		QueueConfig:  *oc.Queue.Convert(),
@@ -306,7 +307,7 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 }
 
 // Exporters implements exporter.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

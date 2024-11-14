@@ -10,14 +10,41 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)
+
+- Add support to `prometheus.operator.servicemonitors` to allow `endpointslice` role. (@yoyosir)
+
+- Add `otelcol.exporter.splunkhec` allowing to export otel data to Splunk HEC (@adlotsof)
+
+### Bugfixes
+
+- Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
+
+v1.5.0
+-----------------
+
 ### Breaking changes
 
 - `import.git`: The default value for `revision` has changed from `HEAD` to `main`. (@ptodev)
   It is no longer allowed to set `revision` to `"HEAD"`, `"FETCH_HEAD"`, `"ORIG_HEAD"`, `"MERGE_HEAD"`, or `"CHERRY_PICK_HEAD"`.
 
+- The Otel update to v0.112.0 has a few breaking changes:
+  - [`otelcol.processor.deltatocumulative`] Change `max_streams` default value to `9223372036854775807` (max int).
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/35048
+  - [`otelcol.connector.spanmetrics`] Change `namespace` default value to `traces.span.metrics`.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/34485
+  - [`otelcol.exporter.logging`] Removed in favor of the `otelcol.exporter.debug`.
+    https://github.com/open-telemetry/opentelemetry-collector/issues/11337
+
 ### Features
 
+- Add support bundle generation via the API endpoint /-/support (@dehaansa)
+
 - Add the function `path_join` to the stdlib. (@wildum)
+
+- Add `pyroscope.receive_http` component to receive and forward Pyroscope profiles (@marcsanmi)
 
 - Add support to `loki.source.syslog` for the RFC3164 format ("BSD syslog"). (@sushain97)
 
@@ -27,6 +54,8 @@ Main (unreleased)
 
 - (_Experimental_) Add a `prometheus.write.queue` component to add an alternative to `prometheus.remote_write`
   which allowing the writing of metrics  to a prometheus endpoint. (@mattdurham)
+
+- (_Experimental_) Add the `array.combine_maps` function to the stdlib. (@ptodev, @wildum)
 
 ### Enhancements
 
@@ -45,9 +74,18 @@ Main (unreleased)
 
 - Add Prometheus bearer authentication to a `prometheus.write.queue` component (@freak12techno)
 
+- Support logs that have a `timestamp` field instead of a `time` field for the `loki.source.azure_event_hubs` component. (@andriikushch)
+
+- Add `proxy_url` to `otelcol.exporter.otlphttp`. (@wildum)
+
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
+
+- Do not log error on clean shutdown of `loki.source.journal`. (@thampiotr) 
+
+- `prometheus.operator.*` components: Fixed a bug which would sometimes cause a 
+  "failed to create service discovery refresh metrics" error after a config reload. (@ptodev)
 
 ### Other changes
 
@@ -60,6 +98,21 @@ Main (unreleased)
 - Add support for `not_modified` response in `remotecfg`. (@spartan0x117)
 
 - Fix dead link for RelabelConfig in the PodLog documentation page (@TheoBrigitte)
+
+- Most notable changes coming with the OTel update from v0.108.0 vo v0.112.0 besides the breaking changes: (@wildum)
+  - [`http config`] Add support for lz4 compression.
+    https://github.com/open-telemetry/opentelemetry-collector/issues/9128
+  - [`otelcol.processor.interval`] Add support for gauges and summaries.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/34803
+  - [`otelcol.receiver.kafka`] Add possibility to tune the fetch sizes.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/34431
+  - [`otelcol.processor.tailsampling`] Add `invert_match` to boolean attribute.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/34730
+  - [`otelcol.receiver.kafka`] Add support to decode to `otlp_json`.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33627
+  - [`otelcol.processor.transform`] Add functions `convert_exponential_histogram_to_histogram` and `aggregate_on_attribute_value`.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33824
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33423
 
 v1.4.3
 -----------------

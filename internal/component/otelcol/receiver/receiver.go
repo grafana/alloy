@@ -20,9 +20,13 @@ import (
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
+	otelmetric "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
@@ -41,7 +45,7 @@ type Arguments interface {
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
-	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 
 	// NextConsumers returns the set of consumers to send data to.
 	NextConsumers() *otelcol.ConsumerArguments
@@ -150,13 +154,20 @@ func (r *Receiver) Update(args component.Arguments) error {
 		return err
 	}
 
+	mp := metric.NewMeterProvider(metricOpts...)
 	settings := otelreceiver.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(r.opts.Logger),
 
 			TracerProvider: r.opts.Tracer,
-			MeterProvider:  metric.NewMeterProvider(metricOpts...),
-			MetricsLevel:   metricsLevel,
+			MeterProvider:  mp,
+			LeveledMeterProvider: func(level configtelemetry.Level) otelmetric.MeterProvider {
+				if level <= metricsLevel {
+					return mp
+				}
+				return noop.MeterProvider{}
+			},
+			MetricsLevel: metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -185,8 +196,8 @@ func (r *Receiver) Update(args component.Arguments) error {
 			traces = append(traces, r.liveDebuggingConsumer)
 		}
 		nextTraces := fanoutconsumer.Traces(traces)
-		tracesReceiver, err := r.factory.CreateTracesReceiver(r.ctx, settings, receiverConfig, nextTraces)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		tracesReceiver, err := r.factory.CreateTraces(r.ctx, settings, receiverConfig, nextTraces)
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if tracesReceiver != nil {
 			components = append(components, tracesReceiver)
@@ -199,8 +210,8 @@ func (r *Receiver) Update(args component.Arguments) error {
 			metrics = append(metrics, r.liveDebuggingConsumer)
 		}
 		nextMetrics := fanoutconsumer.Metrics(metrics)
-		metricsReceiver, err := r.factory.CreateMetricsReceiver(r.ctx, settings, receiverConfig, nextMetrics)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		metricsReceiver, err := r.factory.CreateMetrics(r.ctx, settings, receiverConfig, nextMetrics)
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if metricsReceiver != nil {
 			components = append(components, metricsReceiver)
@@ -213,8 +224,8 @@ func (r *Receiver) Update(args component.Arguments) error {
 			logs = append(logs, r.liveDebuggingConsumer)
 		}
 		nextLogs := fanoutconsumer.Logs(logs)
-		logsReceiver, err := r.factory.CreateLogsReceiver(r.ctx, settings, receiverConfig, nextLogs)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		logsReceiver, err := r.factory.CreateLogs(r.ctx, settings, receiverConfig, nextLogs)
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if logsReceiver != nil {
 			components = append(components, logsReceiver)
