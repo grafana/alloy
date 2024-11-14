@@ -1,17 +1,17 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/grafanacloud.dbo11y/
-description: Learn about grafanacloud.dbo11y
-title: grafanacloud.dbo11y
+canonical: https://grafana.com/docs/alloy/latest/reference/components/grafanacloud.database_observability/
+description: Learn about grafanacloud.database_observability
+title: grafanacloud.database_observability
 ---
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
 
-`grafanacloud.dbo11y` can accept arguments from the following components:
+`grafanacloud.database_observability` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
 
-`grafanacloud.dbo11y` has exports that can be consumed by the following components:
+`grafanacloud.database_observability` has exports that can be consumed by the following components:
 
 - Components that consume [Targets](../../../compatibility/#targets-consumers)
 

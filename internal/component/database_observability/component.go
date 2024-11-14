@@ -15,7 +15,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/dbo11y/collector"
+	"github.com/grafana/alloy/internal/component/database_observability/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -24,7 +24,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
-const name = "grafanacloud.dbo11y"
+const name = "grafanacloud.database_observability"
 
 func init() {
 	component.Register(component.Registration{
@@ -142,7 +142,7 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 		model.SchemeLabel:      "http",
 		model.MetricsPathLabel: path.Join(httpData.HTTPPathForComponent(c.opts.ID), "metrics"),
 		"instance":             "todo",
-		"job":                  "dbo11y",
+		"job":                  "integrations/db-o11y",
 	}, nil
 }
 
