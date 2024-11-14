@@ -9,10 +9,10 @@ title: otelcol.receiver.solace
 `otelcol.receiver.solace` accepts traces from a [Solace PubSub+ Event Broker](https://solace.com/products/event-broker/) and
 forwards it to other `otelcol.*` components.
 
-> **NOTE**: `otelcol.receiver.solace` is a wrapper over the upstream
-> OpenTelemetry Collector `solace` receiver from the `otelcol-contrib`
-> distribution. Bug reports or feature requests will be redirected to the
-> upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.receiver.solace` is a wrapper over the upstream OpenTelemetry Collector `solace` receiver from the `otelcol-contrib` distribution.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
 
 Multiple `otelcol.receiver.solace` components can be specified by giving them
 different labels.
