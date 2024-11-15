@@ -221,4 +221,3 @@ func TestUnmarshalDatadogLogsConfig(t *testing.T) {
 		})
 	}
 }
-
