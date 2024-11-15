@@ -33,12 +33,12 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
 
 ### Update the task definition
 
- 1.Select the task definition.
+1. Select the task definition.
 
-    1. Open the AWS Systems Manager console.
-    1. Select Elastic Container Service.
-    1. In the navigation pane, choose *Task definition*.
-    1. Choose *Create new revision*.
+   1. Open the AWS Systems Manager console.
+   1. Select Elastic Container Service.
+   1. In the navigation pane, choose *Task definition*.
+   1. Choose *Create new revision*.
 
 1. Add an environment variable.
 
