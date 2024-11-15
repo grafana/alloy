@@ -40,7 +40,7 @@ The following arguments are supported:
 | `broker`             | `string` | Name of the Solace broker using amqp over tls.                            | `localhost:5671` | no       |
 | `max_unacknowledged` | `int`    | Maximum number of unacknowledged messages the Solace broker can transmit. | 10               | no       |
 
-`queue` should have the format `queue://#telemetry-myTelemetryProfile`.
+`queue` must have the format `queue://#telemetry-myTelemetryProfile`.
 
 ## Blocks
 
