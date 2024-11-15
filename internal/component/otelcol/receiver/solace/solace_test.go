@@ -163,7 +163,7 @@ func TestArguments_Validate(t *testing.T) {
 				auth {}
 				output {}
 			`,
-			expectedError: "the auth block must contain either a sasl_plain block, a sasl_xauth2 block or a sasl_external block",
+			expectedError: "the auth block must contain exactly one of sasl_plain block, sasl_xauth2 block or sasl_external block",
 		},
 		{
 			testName: "Multiple Auth",
@@ -181,7 +181,7 @@ func TestArguments_Validate(t *testing.T) {
 				}
 				output {}
 			`,
-			expectedError: "the auth block must contain either a sasl_plain block, a sasl_xauth2 block or a sasl_external block",
+			expectedError: "the auth block must contain exactly one of sasl_plain block, sasl_xauth2 block or sasl_external block",
 		},
 		{
 			testName: "Empty Queue",
