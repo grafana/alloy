@@ -339,7 +339,7 @@ func writeSeries(app storage.Appender, series *memorySeries, dp otelcolDataPoint
 	series.SetTimestamp(ts)
 
 	if dp.Flags().NoRecordedValue() {
-		val = float64(value.StaleNaN)
+		val = math.Float64frombits(value.StaleNaN)
 	}
 	series.SetValue(val)
 
