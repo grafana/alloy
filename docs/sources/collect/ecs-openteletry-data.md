@@ -92,11 +92,11 @@ You can also use your own method to connect to the Amazon ECS or AWS Fargate-man
 
 After connecting to your instance, follow the {{< param "PRODUCT_NAME" >}} [installation][install], [configuration][configure] and [deployment][deploy] instructions.
 
-[Components]: ../../get-started/components
+[Components]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/get-started/components
 [template]: https://github.com/aws-observability/aws-otel-collector/blob/master/examples/ecs/aws-cloudwatch/ecs-fargate-sidecar.json
-[configure]: https://grafana.com/docs/alloy/latest/configure/
+[configure]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/
 [steps]: https://medium.com/ci-t/9-steps-to-ssh-into-an-aws-fargate-managed-container-46c1d5f834e2
-[install]: https://grafana.com/docs/alloy/latest/set-up/install/linux/
-[deploy]: https://grafana.com/docs/alloy/latest/set-up/deploy/
+[install]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/linux/
+[deploy]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/deploy/
 [task]: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definitions.html
 [run]: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/standalone-task-create.html
