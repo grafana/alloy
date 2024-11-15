@@ -21,7 +21,7 @@ Main (unreleased)
 ### Bugfixes
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
-- Fixed an issue in the `otlp.exporter.prometheus` component that would set series value incorrectly for stale metrics
+- Fixed an issue in the `otelcol.exporter.prometheus` component that would set series value incorrectly for stale metrics (@YusifAghalar)
 
 v1.5.0
 -----------------
