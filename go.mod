@@ -138,6 +138,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver v0.112.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.112.0
 	github.com/ory/dockertest/v3 v3.8.1
@@ -821,6 +822,7 @@ require (
 )
 
 require (
+	github.com/Azure/go-amqp v1.2.0 // indirect
 	github.com/DataDog/datadog-agent/comp/core/log/def v0.57.1 // indirect
 	github.com/antchfx/xmlquery v1.4.2 // indirect
 	github.com/antchfx/xpath v1.3.2 // indirect
