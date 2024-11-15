@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 	"sort"
 	"strings"
 	"sync"
@@ -39,6 +40,23 @@ import (
 
 // Generous timeout period for configuring all informers
 const informerSyncTimeout = 10 * time.Second
+
+type crdManagerInterface interface {
+	Run(ctx context.Context) error
+	ClusteringUpdated()
+	DebugInfo() interface{}
+	GetScrapeConfig(ns, name string) []*config.ScrapeConfig
+}
+
+type crdManagerFactory interface {
+	New(opts component.Options, cluster cluster.Cluster, logger log.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface
+}
+
+type realCrdManagerFactory struct{}
+
+func (realCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger log.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface {
+	return newCrdManager(opts, cluster, logger, args, kind, ls)
+}
 
 // crdManager is all of the fields required to run a crd based component.
 // on update, this entire thing should be recreated and restarted
@@ -237,7 +255,7 @@ func (c *crdManager) DebugInfo() interface{} {
 	return info
 }
 
-func (c *crdManager) getScrapeConfig(ns, name string) []*config.ScrapeConfig {
+func (c *crdManager) GetScrapeConfig(ns, name string) []*config.ScrapeConfig {
 	prefix := fmt.Sprintf("%s/%s/%s", c.kind, ns, name)
 	matches := []*config.ScrapeConfig{}
 	for k, v := range c.scrapeConfigs {
@@ -469,7 +487,7 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 	mapKeys := []string{}
 	for i, ep := range sm.Spec.Endpoints {
 		var scrapeConfig *config.ScrapeConfig
-		scrapeConfig, err = gen.GenerateServiceMonitorConfig(sm, ep, i)
+		scrapeConfig, err = gen.GenerateServiceMonitorConfig(sm, ep, i, promk8s.Role(c.args.KubernetesRole))
 		if err != nil {
 			// TODO(jcreixell): Generate Kubernetes event to inform of this error when running `kubectl get <servicemonitor>`.
 			level.Error(c.logger).Log("name", sm.Name, "err", err, "msg", "error generating scrapeconfig from serviceMonitor")

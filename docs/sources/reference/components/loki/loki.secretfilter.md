@@ -17,7 +17,9 @@ The detection is based on regular expression patterns, defined in the [Gitleaks 
 `loki.secretfilter` can also use a custom configuration file based on the Gitleaks configuration file structure.
 
 {{< admonition type="caution" >}}
-Personally Identifiable Information (PII) or undefined secret types could remain undetected.
+Personally Identifiable Information (PII) isn't currently in scope and some secrets could remain undetected.
+This component may generate false positives.
+Don't rely solely on this component to redact sensitive information.
 {{< /admonition >}}
 
 [gitleaks]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
@@ -40,7 +42,7 @@ Name                     | Type                 | Description                   
 `gitleaks_config`        | `string`             | Path to the custom `gitleaks.toml` file.        | Embedded Gitleaks file           | no
 `types`                  | `map(string)`        | Types of secret to look for.                    | All types                        | no
 `redact_with`            | `string`             | String to use to redact secrets.                | `<REDACTED-SECRET:$SECRET_NAME>` | no
-`exclude_generic`        | `bool`               | Exclude the generic API key rule.               | `false`                          | no
+`include_generic`        | `bool`               | Include the generic API key rule.               | `false`                          | no
 `allowlist`              | `map(string)`        | List of regexes to allowlist matching secrets.  | `{}`                             | no
 `partial_mask`           | `number`             | Show the first N characters of the secret.      | `0`                              | no
 
@@ -49,9 +51,23 @@ The Gitleaks configuration file embedded in the component is used if you don't p
 
 The `types` argument is a map of secret types to look for. The values are used as prefixes for the secret types in the Gitleaks configuration. If you don't provide this argument, all types are used.
 
+{{< admonition type="note" >}}
+Configuring this argument with the secret types you want to look for is strongly recommended.
+If you don't, the component will look for all known types, which is resource-intensive.
+{{< /admonition >}}
+
+{{< admonition type="caution" >}}
+Some secret types in the Gitleaks configuration file rely on regular expression patterns that don't detect the secret itself but rather the context around it.
+For example, the `aws-access-token` type detects AWS key IDs, not the keys themselves.
+This is because the keys don't have a unique pattern that can easily be detected with a regular expression.
+As a result, with this secret type enabled, the component will redact key IDs but not actual secret keys.
+This behavior is consistent with the Gitleaks redaction feature but may not be what you expect.
+Currently, the secret types known to have this behavior are: `aws-access-token`.
+{{< /admonition >}}
+
 The `redact_with` argument is a string that can use variables such as `$SECRET_NAME` (replaced with the matching secret type) and `$SECRET_HASH`(replaced with the sha1 hash of the secret).
 
-The `exclude_generic` argument is a boolean that excludes the generic API key rule in the Gitleaks configuration file if set to `true`.
+The `include_generic` argument is a boolean that includes the generic API key rule in the Gitleaks configuration file if set to `true`. It's disabled by default because it can generate false positives.
 
 The `allowlist` argument is a map of regular expressions to allow matching secrets.
 A secret will not be redacted if it matches any of the regular expressions. The allowlist in the Gitleaks configuration file is also applied.

@@ -13,7 +13,11 @@ otelcol.exporter.otlp "default" {
 
 otelcol.exporter.datadog "default" {
 	client {
-		timeout = "10s"
+		timeout                 = "10s"
+		max_idle_conns          = 100
+		max_idle_conns_per_host = 0
+		max_conns_per_host      = 0
+		idle_conn_timeout       = "1m30s"
 	}
 
 	api {
@@ -48,5 +52,10 @@ otelcol.exporter.datadog "default" {
 		summaries {
 			mode = "noquantiles"
 		}
+	}
+
+	logs {
+		endpoint          = "https://http-intake.logs.datadoghq.com"
+		compression_level = 7
 	}
 }

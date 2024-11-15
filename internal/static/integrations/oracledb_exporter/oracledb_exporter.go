@@ -40,6 +40,7 @@ type Config struct {
 	QueryTimeout     int                `yaml:"query_timeout"`
 	CustomMetrics    string             `yaml:"custom_metrics,omitempty"`
 }
+
 // ValidateConnString attempts to ensure the connection string supplied is valid
 // to connect to an OracleDB instance
 func validateConnString(connStr string) error {
@@ -102,9 +103,9 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	}
 
 	oeExporter, err := oe.NewExporter(logger, &oe.Config{
-		DSN:          string(c.ConnectionString),
-		MaxIdleConns: c.MaxIdleConns,
-		MaxOpenConns: c.MaxOpenConns,
+		DSN:           string(c.ConnectionString),
+		MaxIdleConns:  c.MaxIdleConns,
+		MaxOpenConns:  c.MaxOpenConns,
 		CustomMetrics: c.CustomMetrics,
 		QueryTimeout:  c.QueryTimeout,
 	})

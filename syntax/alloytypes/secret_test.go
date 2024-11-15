@@ -39,9 +39,7 @@ func decodeTo(t *testing.T, input interface{}, target interface{}) error {
 	require.NoError(t, err)
 
 	eval := vm.New(expr)
-	return eval.Evaluate(&vm.Scope{
-		Variables: map[string]interface{}{
-			"val": input,
-		},
-	}, target)
+	return eval.Evaluate(vm.NewScope(map[string]interface{}{
+		"val": input,
+	}), target)
 }

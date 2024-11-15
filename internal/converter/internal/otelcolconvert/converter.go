@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/otelcol"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 // ComponentConverter represents a converter which converts an OpenTelemetry
@@ -145,8 +146,8 @@ func (state *State) alloyLabelForComponent(c componentstatus.InstanceID) string 
 
 // Next returns the set of Alloy component IDs for a given data type that the
 // current component being converted should forward data to.
-func (state *State) Next(c componentstatus.InstanceID, dataType component.DataType) []componentID {
-	instances := state.nextInstances(c, dataType)
+func (state *State) Next(c componentstatus.InstanceID, signal pipeline.Signal) []componentID {
+	instances := state.nextInstances(c, signal)
 
 	var ids []componentID
 
@@ -181,17 +182,17 @@ func (state *State) Next(c componentstatus.InstanceID, dataType component.DataTy
 	return ids
 }
 
-func (state *State) nextInstances(c componentstatus.InstanceID, dataType component.DataType) []componentstatus.InstanceID {
-	switch dataType {
-	case component.DataTypeMetrics:
+func (state *State) nextInstances(c componentstatus.InstanceID, signal pipeline.Signal) []componentstatus.InstanceID {
+	switch signal {
+	case pipeline.SignalMetrics:
 		return state.group.NextMetrics(c)
-	case component.DataTypeLogs:
+	case pipeline.SignalLogs:
 		return state.group.NextLogs(c)
-	case component.DataTypeTraces:
+	case pipeline.SignalTraces:
 		return state.group.NextTraces(c)
 
 	default:
-		panic(fmt.Sprintf("otelcolconvert: unknown data type %q", dataType))
+		panic(fmt.Sprintf("otelcolconvert: unknown data type %q", signal))
 	}
 }
 

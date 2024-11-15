@@ -11,13 +11,11 @@ import (
 )
 
 func TestVM_OptionalSecret_Conversion(t *testing.T) {
-	scope := &vm.Scope{
-		Variables: map[string]any{
-			"string_val":     "hello",
-			"non_secret_val": alloytypes.OptionalSecret{IsSecret: false, Value: "world"},
-			"secret_val":     alloytypes.OptionalSecret{IsSecret: true, Value: "secret"},
-		},
-	}
+	scope := vm.NewScope(map[string]any{
+		"string_val":     "hello",
+		"non_secret_val": alloytypes.OptionalSecret{IsSecret: false, Value: "world"},
+		"secret_val":     alloytypes.OptionalSecret{IsSecret: true, Value: "secret"},
+	})
 
 	tt := []struct {
 		name        string

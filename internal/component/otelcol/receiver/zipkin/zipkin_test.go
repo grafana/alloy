@@ -57,7 +57,7 @@ func TestArguments_UnmarshalDefaults(t *testing.T) {
 	expected := zipkinreceiver.Config{
 		ServerConfig: confighttp.ServerConfig{
 			Endpoint:              "0.0.0.0:9411",
-			CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate"},
+			CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
 		},
 	}
 

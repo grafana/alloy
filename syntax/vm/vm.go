@@ -469,6 +469,19 @@ type Scope struct {
 	Variables map[string]interface{}
 }
 
+func NewScope(variables map[string]interface{}) *Scope {
+	return &Scope{
+		Variables: variables,
+	}
+}
+
+func NewScopeWithParent(parent *Scope, variables map[string]interface{}) *Scope {
+	return &Scope{
+		Parent:    parent,
+		Variables: variables,
+	}
+}
+
 // Lookup looks up a named identifier from the scope, all of the scope's
 // parents, and the stdlib.
 func (s *Scope) Lookup(name string) (interface{}, bool) {
@@ -485,8 +498,20 @@ func (s *Scope) Lookup(name string) (interface{}, bool) {
 	return nil, false
 }
 
-// IsDeprecated returns true if the identifier exists and is deprecated.
-func (s *Scope) IsDeprecated(name string) bool {
+// IsStdlibIdentifiers returns true if the identifier exists.
+func (s *Scope) IsStdlibIdentifiers(name string) bool {
+	_, exist := stdlib.Identifiers[name]
+	return exist
+}
+
+// IsStdlibDeprecated returns true if the identifier exists and is deprecated.
+func (s *Scope) IsStdlibDeprecated(name string) bool {
 	_, exist := stdlib.DeprecatedIdentifiers[name]
+	return exist
+}
+
+// IsStdlibExperimental returns true if the scoped identifier is experimental.
+func (s *Scope) IsStdlibExperimental(fullName string) bool {
+	_, exist := stdlib.ExperimentalIdentifiers[fullName]
 	return exist
 }

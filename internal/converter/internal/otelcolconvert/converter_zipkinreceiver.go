@@ -10,6 +10,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -41,7 +42,7 @@ func (zipkinReceiverConverter) ConvertAndAppend(state *State, id componentstatus
 
 func toZipkinReceiver(state *State, id componentstatus.InstanceID, cfg *zipkinreceiver.Config) *zipkin.Arguments {
 	var (
-		nextTraces = state.Next(id, component.DataTypeTraces)
+		nextTraces = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &zipkin.Arguments{

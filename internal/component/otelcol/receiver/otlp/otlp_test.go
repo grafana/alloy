@@ -153,7 +153,7 @@ func TestUnmarshalDefault(t *testing.T) {
 			HTTP: &otlpreceiver.HTTPConfig{
 				ServerConfig: &confighttp.ServerConfig{
 					Endpoint:              "0.0.0.0:4318",
-					CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate"},
+					CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
 				},
 				TracesURLPath:  "/v1/traces",
 				MetricsURLPath: "/v1/metrics",

@@ -89,6 +89,12 @@ alloy:
   #   protocol: "TCP"
   #   appProtocol: "h2c"
 
+  # -- Host aliases to add to the Alloy container.
+  hostAliases: []
+  # - ip: "20.21.22.23"
+  #   hostnames:
+  #     - "company.grafana.net"
+
   mounts:
     # -- Mount /var/log from the host into the container for log collection.
     varlog: false
@@ -105,6 +111,14 @@ alloy:
 
   # -- Resource requests and limits to apply to the Grafana Alloy container.
   resources: {}
+
+  # -- Set lifecycle hooks for the Grafana Alloy container.
+  lifecycle: {}
+    # preStop:
+    #   exec:
+    #     command:
+    #     - /bin/sleep
+    #     - "10"
 
 image:
   # -- Grafana Alloy image registry (defaults to docker.io)
@@ -182,6 +196,10 @@ controller:
 
   # -- Configures the DNS policy for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
   dnsPolicy: ClusterFirst
+
+  # -- Termination grace period in seconds for the Grafana Alloy pods.
+  # The default value used by Kubernetes if unspecifed is 30 seconds.
+  terminationGracePeriodSeconds: null
 
   # -- Update strategy for updating deployed Pods.
   updateStrategy: {}

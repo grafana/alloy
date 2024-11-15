@@ -175,6 +175,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 {{< collapse title="prometheus" >}}
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
 - [prometheus.remote_write](../components/prometheus/prometheus.remote_write)
+- [prometheus.write.queue](../components/prometheus/prometheus.write.queue)
 {{< /collapse >}}
 
 <!-- END GENERATED SECTION: EXPORTERS OF Prometheus `MetricsReceiver` -->
@@ -293,11 +294,11 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
 - [otelcol.exporter.loadbalancing](../components/otelcol/otelcol.exporter.loadbalancing)
-- [otelcol.exporter.logging](../components/otelcol/otelcol.exporter.logging)
 - [otelcol.exporter.loki](../components/otelcol/otelcol.exporter.loki)
 - [otelcol.exporter.otlp](../components/otelcol/otelcol.exporter.otlp)
 - [otelcol.exporter.otlphttp](../components/otelcol/otelcol.exporter.otlphttp)
 - [otelcol.exporter.prometheus](../components/otelcol/otelcol.exporter.prometheus)
+- [otelcol.exporter.splunkhec](../components/otelcol/otelcol.exporter.splunkhec)
 - [otelcol.processor.attributes](../components/otelcol/otelcol.processor.attributes)
 - [otelcol.processor.batch](../components/otelcol/otelcol.processor.batch)
 - [otelcol.processor.deltatocumulative](../components/otelcol/otelcol.processor.deltatocumulative)
@@ -395,6 +396,7 @@ The following components, grouped by namespace, _consume_ Pyroscope `ProfilesRec
 {{< collapse title="pyroscope" >}}
 - [pyroscope.ebpf](../components/pyroscope/pyroscope.ebpf)
 - [pyroscope.java](../components/pyroscope/pyroscope.java)
+- [pyroscope.receive_http](../components/pyroscope/pyroscope.receive_http)
 - [pyroscope.scrape](../components/pyroscope/pyroscope.scrape)
 {{< /collapse >}}
 

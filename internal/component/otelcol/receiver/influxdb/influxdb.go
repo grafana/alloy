@@ -12,12 +12,14 @@ import (
 	influxdbreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
+
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.receiver.influxdb",
-		Stability: featuregate.StabilityExperimental, // Adjust the stability level if needed
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -72,7 +74,7 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 }
 
 // Exporters implements receiver.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

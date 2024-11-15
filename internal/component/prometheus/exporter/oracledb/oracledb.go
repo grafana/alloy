@@ -43,11 +43,11 @@ var (
 
 // Arguments controls the oracledb exporter.
 type Arguments struct {
-	ConnectionString alloytypes.Secret `alloy:"connection_string,attr"`
-	MaxIdleConns     int               `alloy:"max_idle_conns,attr,optional"`
-	MaxOpenConns     int               `alloy:"max_open_conns,attr,optional"`
-	QueryTimeout     int               `alloy:"query_timeout,attr,optional"`
-	CustomMetrics      alloytypes.OptionalSecret `alloy:"custom_metrics,attr,optional"`
+	ConnectionString alloytypes.Secret         `alloy:"connection_string,attr"`
+	MaxIdleConns     int                       `alloy:"max_idle_conns,attr,optional"`
+	MaxOpenConns     int                       `alloy:"max_open_conns,attr,optional"`
+	QueryTimeout     int                       `alloy:"query_timeout,attr,optional"`
+	CustomMetrics    alloytypes.OptionalSecret `alloy:"custom_metrics,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.

@@ -99,6 +99,7 @@ discovery {
 		role_arn = "arn:aws:iam::878167871295:role/yace_testing"
 	}
 	dimension_name_requirements = ["BucketName"]
+	recently_active_only = true
 	metric {
 		name = "BucketSizeBytes"
 		statistics = ["Sum"]
@@ -207,6 +208,7 @@ custom_namespace "customEC2Metrics" {
         name       = "cpu_usage_idle"
         statistics = ["Average"]
         period     = "5m"
+		add_cloudwatch_timestamp = true
     }
 
     metric {
@@ -215,6 +217,7 @@ custom_namespace "customEC2Metrics" {
         period     = "5m"
 		// setting nil_to_zero on the metric level
 		nil_to_zero = true
+		add_cloudwatch_timestamp = false
     }
 }
 `
@@ -260,13 +263,12 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 							},
 						},
 						Metrics: []*yaceModel.MetricConfig{{
-							Name:                   "CPUUsage",
-							Statistics:             []string{"Sum", "Average"},
-							Period:                 60,
-							Length:                 60,
-							Delay:                  0,
-							NilToZero:              defaultNilToZero,
-							AddCloudwatchTimestamp: addCloudwatchTimestamp,
+							Name:       "CPUUsage",
+							Statistics: []string{"Sum", "Average"},
+							Period:     60,
+							Length:     60,
+							Delay:      0,
+							NilToZero:  defaultNilToZero,
 						}},
 					},
 				},
@@ -289,25 +291,23 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 						CustomTags: []yaceModel.Tag{},
 						Metrics: []*yaceModel.MetricConfig{
 							{
-								Name:                   "NumberOfMessagesSent",
-								Statistics:             []string{"Sum", "Average"},
-								Period:                 60,
-								Length:                 60,
-								Delay:                  0,
-								NilToZero:              defaultNilToZero,
-								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+								Name:       "NumberOfMessagesSent",
+								Statistics: []string{"Sum", "Average"},
+								Period:     60,
+								Length:     60,
+								Delay:      0,
+								NilToZero:  defaultNilToZero,
 							},
 							{
-								Name:                   "NumberOfMessagesReceived",
-								Statistics:             []string{"Sum", "Average"},
-								Period:                 60,
-								Length:                 60,
-								Delay:                  0,
-								NilToZero:              defaultNilToZero,
-								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+								Name:       "NumberOfMessagesReceived",
+								Statistics: []string{"Sum", "Average"},
+								Period:     60,
+								Length:     60,
+								Delay:      0,
+								NilToZero:  defaultNilToZero,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{"name"},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -326,16 +326,15 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 						CustomTags: []yaceModel.Tag{},
 						Metrics: []*yaceModel.MetricConfig{
 							{
-								Name:                   "CPUUtilization",
-								Statistics:             []string{"Sum", "Maximum"},
-								Period:                 60,
-								Length:                 60,
-								Delay:                  0,
-								NilToZero:              defaultNilToZero,
-								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+								Name:       "CPUUtilization",
+								Statistics: []string{"Sum", "Maximum"},
+								Period:     60,
+								Length:     60,
+								Delay:      0,
+								NilToZero:  defaultNilToZero,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -359,17 +358,17 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 						DimensionNameRequirements: []string{"BucketName"},
 						Metrics: []*yaceModel.MetricConfig{
 							{
-								Name:                   "BucketSizeBytes",
-								Statistics:             []string{"Sum"},
-								Period:                 60,
-								Length:                 3600,
-								Delay:                  0,
-								NilToZero:              defaultNilToZero,
-								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+								Name:       "BucketSizeBytes",
+								Statistics: []string{"Sum"},
+								Period:     60,
+								Length:     3600,
+								Delay:      0,
+								NilToZero:  defaultNilToZero,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{},
+						RecentlyActiveOnly:    true,
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
 								Regexp:          regexp.MustCompile("(?P<BucketName>[^:]+)$"),
@@ -395,22 +394,20 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 						Namespace:  "CustomEC2Metrics",
 						Metrics: []*yaceModel.MetricConfig{
 							{
-								Name:                   "cpu_usage_idle",
-								Statistics:             []string{"Average"},
-								Period:                 300,
-								Length:                 300,
-								Delay:                  0,
-								NilToZero:              defaultNilToZero,
-								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+								Name:       "cpu_usage_idle",
+								Statistics: []string{"Average"},
+								Period:     300,
+								Length:     300,
+								Delay:      0,
+								NilToZero:  defaultNilToZero,
 							},
 							{
-								Name:                   "disk_free",
-								Statistics:             []string{"Average"},
-								Period:                 300,
-								Length:                 300,
-								Delay:                  0,
-								NilToZero:              defaultNilToZero,
-								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+								Name:       "disk_free",
+								Statistics: []string{"Average"},
+								Period:     300,
+								Length:     300,
+								Delay:      0,
+								NilToZero:  defaultNilToZero,
 							},
 						},
 						RoundingPeriod: nil,
@@ -438,13 +435,12 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 							},
 						},
 						Metrics: []*yaceModel.MetricConfig{{
-							Name:                   "CPUUsage",
-							Statistics:             []string{"Sum", "Average"},
-							Period:                 60,
-							Length:                 60,
-							Delay:                  0,
-							NilToZero:              falsePtr,
-							AddCloudwatchTimestamp: addCloudwatchTimestamp,
+							Name:       "CPUUsage",
+							Statistics: []string{"Sum", "Average"},
+							Period:     60,
+							Length:     60,
+							Delay:      0,
+							NilToZero:  falsePtr,
 						}},
 					},
 				},
@@ -470,13 +466,12 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 							},
 						},
 						Metrics: []*yaceModel.MetricConfig{{
-							Name:                   "CPUUsage",
-							Statistics:             []string{"Sum", "Average"},
-							Period:                 60,
-							Length:                 60,
-							Delay:                  0,
-							NilToZero:              falsePtr,
-							AddCloudwatchTimestamp: addCloudwatchTimestamp,
+							Name:       "CPUUsage",
+							Statistics: []string{"Sum", "Average"},
+							Period:     60,
+							Length:     60,
+							Delay:      0,
+							NilToZero:  falsePtr,
 						}},
 					},
 				},
@@ -499,25 +494,23 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 						CustomTags: []yaceModel.Tag{},
 						Metrics: []*yaceModel.MetricConfig{
 							{
-								Name:                   "NumberOfMessagesSent",
-								Statistics:             []string{"Sum", "Average"},
-								Period:                 60,
-								Length:                 60,
-								Delay:                  0,
-								NilToZero:              falsePtr,
-								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+								Name:       "NumberOfMessagesSent",
+								Statistics: []string{"Sum", "Average"},
+								Period:     60,
+								Length:     60,
+								Delay:      0,
+								NilToZero:  falsePtr,
 							},
 							{
-								Name:                   "NumberOfMessagesReceived",
-								Statistics:             []string{"Sum", "Average"},
-								Period:                 60,
-								Length:                 60,
-								Delay:                  0,
-								NilToZero:              truePtr,
-								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+								Name:       "NumberOfMessagesReceived",
+								Statistics: []string{"Sum", "Average"},
+								Period:     60,
+								Length:     60,
+								Delay:      0,
+								NilToZero:  truePtr,
 							},
 						},
-						RoundingPeriod: nil,
+						RoundingPeriod:        nil,
 						ExportedTagsOnMetrics: []string{"name"},
 						DimensionsRegexps: []yaceModel.DimensionsRegexp{
 							{
@@ -550,7 +543,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								Length:                 300,
 								Delay:                  0,
 								NilToZero:              falsePtr,
-								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+								AddCloudwatchTimestamp: truePtr,
 							},
 							{
 								Name:                   "disk_free",
@@ -559,7 +552,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 								Length:                 300,
 								Delay:                  0,
 								NilToZero:              truePtr,
-								AddCloudwatchTimestamp: addCloudwatchTimestamp,
+								AddCloudwatchTimestamp: falsePtr,
 							},
 						},
 						RoundingPeriod: nil,

@@ -1,10 +1,13 @@
 package write
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync"
 	"testing"
 	"time"
@@ -252,4 +255,97 @@ func TestBadAlloyConfig(t *testing.T) {
 	var args Arguments
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
+}
+
+func Test_Write_AppendIngest(t *testing.T) {
+	var (
+		export      Exports
+		argument    = DefaultArguments()
+		appendCount = atomic.NewInt32(0)
+		serverCount = int32(3)
+		servers     = make([]*httptest.Server, serverCount)
+		endpoints   = make([]*EndpointOptions, 0, serverCount)
+	)
+
+	testData := []byte("test-profile-data")
+	argument.ExternalLabels = map[string]string{
+		"env":     "prod",      // Should override env=staging
+		"cluster": "cluster-1", // Should be added
+	}
+
+	handlerFn := func(expectedPath string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			appendCount.Inc()
+			require.Equal(t, expectedPath, r.URL.Path, "Unexpected path")
+			require.Equal(t, "endpoint-value", r.Header.Get("X-Test-Header"))
+			require.Equal(t, []string{"profile-value1", "profile-value2"}, r.Header["X-Profile-Header"])
+
+			query := r.URL.Query()
+			name := query.Get("name")
+			require.Contains(t, name, "my.awesome.app.cpu", "Base name should be preserved")
+			require.Contains(t, name, "env=prod", "External label should override profile label")
+			require.Contains(t, name, "cluster=cluster-1", "External label should be added")
+			require.Contains(t, name, "region=us-west-1", "Profile-only label should be preserved")
+			require.Equal(t, "value", query.Get("key"), "Original query parameter should be preserved")
+
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err, "Failed to read request body")
+			require.Equal(t, testData, body, "Unexpected body content")
+			w.WriteHeader(http.StatusOK)
+		}
+	}
+
+	for i := int32(0); i < serverCount; i++ {
+		servers[i] = httptest.NewServer(handlerFn("/ingest"))
+		endpoints = append(endpoints, &EndpointOptions{
+			URL:           servers[i].URL,
+			RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
+			Headers: map[string]string{
+				"X-Test-Header": "endpoint-value",
+			},
+		})
+	}
+	defer func() {
+		for _, s := range servers {
+			s.Close()
+		}
+	}()
+
+	argument.Endpoints = endpoints
+
+	// Create the receiver
+	var wg sync.WaitGroup
+	wg.Add(1)
+	c, err := New(component.Options{
+		ID:         "test-write",
+		Logger:     util.TestAlloyLogger(t),
+		Registerer: prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {
+			defer wg.Done()
+			export = e.(Exports)
+		},
+	}, argument)
+	require.NoError(t, err, "Failed to create component")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go c.Run(ctx)
+	wg.Wait() // wait for the state change to happen
+	require.NotNil(t, export.Receiver, "Receiver is nil")
+
+	incomingProfile := &pyroscope.IncomingProfile{
+		Body: io.NopCloser(bytes.NewReader(testData)),
+		Headers: http.Header{
+			"X-Test-Header":    []string{"profile-value"},                    // This should be overridden by endpoint
+			"X-Profile-Header": []string{"profile-value1", "profile-value2"}, // This should be preserved
+		},
+		URL: &url.URL{
+			Path:     "/ingest",
+			RawQuery: "name=my.awesome.app.cpu{env=staging,region=us-west-1}&key=value",
+		},
+	}
+
+	err = export.Receiver.Appender().AppendIngest(context.Background(), incomingProfile)
+	require.NoError(t, err)
+	require.Equal(t, serverCount, appendCount.Load())
 }

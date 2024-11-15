@@ -4,8 +4,6 @@ description: Learn about otelcol.receiver.influxdb
 title: otelcol.receiver.influxdb
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
-
 # otelcol.receiver.influxdb
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -21,7 +19,7 @@ otelcol.receiver.influxdb "influxdb_metrics" {
   endpoint = "localhost:8086"  // InfluxDB metrics ingestion endpoint
 
   output {
-    metrics = [otelcol.exporter.prometheus.influx_output.input]  // Forward metrics to Prometheus exporter
+    metrics = [...]
   }
 }
 ```
@@ -42,9 +40,49 @@ To expose the HTTP server to other machines on your network, configure `endpoint
 
 The following blocks are supported inside the definition of `otelcol.receiver.influxdb`:
 
-| Hierarchy     | Block             | Description                                                                | Required |
-| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
-| `output`      | `output`          | Configures where to send received metrics.                                  | yes      |
+Hierarchy | Block | Description | Required
+--------- | ----- | ----------- | --------
+tls | [tls][] | Configures TLS for the HTTP server. | no
+cors | [cors][] | Configures CORS for the HTTP server. | no
+debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+output | [output][] | Configures where to send received traces. | yes
+
+The `>` symbol indicates deeper levels of nesting. For example, `grpc > tls`
+refers to a `tls` block defined inside a `grpc` block.
+
+[tls]: #tls-block
+[cors]: #cors-block
+[debug_metrics]: #debug_metrics-block
+[output]: #output-block
+
+### tls block
+
+The `tls` block configures TLS settings used for a server. If the `tls` block
+isn't provided, TLS won't be used for connections to the server.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### cors block
+
+The `cors` block configures CORS settings for an HTTP server.
+
+The following arguments are supported:
+
+Name | Type | Description | Default | Required
+---- | ---- | ----------- | ------- | --------
+`allowed_origins` | `list(string)` | Allowed values for the `Origin` header. | | no
+`allowed_headers` | `list(string)` | Accepted headers from CORS requests. | `["X-Requested-With"]` | no
+`max_age` | `number` | Configures the `Access-Control-Max-Age` response header. | | no
+
+The `allowed_headers` argument specifies which headers are acceptable from a
+CORS request. The following headers are always implicitly allowed:
+
+* `Accept`
+* `Accept-Language`
+* `Content-Type`
+* `Content-Language`
+
+If `allowed_headers` includes `"*"`, all headers are permitted.
 
 ### debug_metrics block
 
@@ -91,6 +129,32 @@ prometheus.remote_write "mimir" {
       username = "xxxxx"
       password = "xxxx=="
     }
+  }
+}
+```
+
+This example forwards received telemetry through a batch processor before finally sending it to an OTLP-capable endpoint:
+
+
+```alloy
+otelcol.receiver.influxdb "influxdb_metrics" {
+  endpoint = "localhost:8086"  // InfluxDB metrics ingestion endpoint
+
+  output {
+    metrics = [ootelcol.processor.batch.default.input]
+  }
+}
+
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.otlp.default.input]
+  }
+}
+
+otelcol.exporter.otlp "default" {
+  client {
+    endpoint = sys.env("OTLP_ENDPOINT")
   }
 }
 ```

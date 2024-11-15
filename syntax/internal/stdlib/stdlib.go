@@ -17,7 +17,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// There identifiers are deprecated in favour of the namespaced ones.
+// TODO: refactor the stdlib to have consistent naming between namespaces and identifiers.
+
+// ExperimentalIdentifiers contains the full name (namespace + identifier's name) of stdlib
+// identifiers that are considered "experimental".
+var ExperimentalIdentifiers = map[string]bool{
+	"array.combine_maps": true,
+}
+
+// These identifiers are deprecated in favour of the namespaced ones.
 var DeprecatedIdentifiers = map[string]interface{}{
 	"env":           os.Getenv,
 	"nonsensitive":  nonSensitive,
@@ -86,7 +94,8 @@ var str = map[string]interface{}{
 }
 
 var array = map[string]interface{}{
-	"concat": concat,
+	"concat":       concat,
+	"combine_maps": combineMaps,
 }
 
 var convert = map[string]interface{}{
@@ -144,6 +153,138 @@ var concat = value.RawFunction(func(funcValue value.Value, args ...value.Value) 
 	}
 
 	return value.Array(raw...), nil
+})
+
+// This function assumes that the types of the value.Value objects are correct.
+func shouldJoin(left value.Value, right value.Value, conditions value.Value) (bool, error) {
+	for i := 0; i < conditions.Len(); i++ {
+		condition := conditions.Index(i).Text()
+
+		leftVal, ok := left.Key(condition)
+		if !ok {
+			return false, nil
+		}
+
+		rightVal, ok := right.Key(condition)
+		if !ok {
+			return false, nil
+		}
+
+		if !leftVal.Equal(rightVal) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// Merge two maps.
+// If a key exists in both maps, the value from the right map will be used.
+func concatMaps(left, right value.Value) (value.Value, error) {
+	res := make(map[string]value.Value)
+
+	for _, key := range left.Keys() {
+		val, ok := left.Key(key)
+		if !ok {
+			return value.Null, fmt.Errorf("concatMaps: key %s not found in left map while iterating - this should never happen", key)
+		}
+		res[key] = val
+	}
+
+	for _, key := range right.Keys() {
+		val, ok := right.Key(key)
+		if !ok {
+			return value.Null, fmt.Errorf("concatMaps: key %s not found in right map while iterating - this should never happen", key)
+		}
+		res[key] = val
+	}
+
+	return value.Object(res), nil
+}
+
+// Inputs:
+// args[0]: []map[string]string: lhs array
+// args[1]: []map[string]string: rhs array
+// args[2]: []string:            merge conditions
+var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
+	if len(args) != 3 {
+		return value.Value{}, fmt.Errorf("combine_maps: expected 3 arguments, got %d", len(args))
+	}
+
+	// Validate args[0] and args[1]
+	for i := range []int{0, 1} {
+		if args[i].Type() != value.TypeArray {
+			return value.Null, value.ArgError{
+				Function: funcValue,
+				Argument: args[i],
+				Index:    i,
+				Inner: value.TypeError{
+					Value:    args[i],
+					Expected: value.TypeArray,
+				},
+			}
+		}
+		for j := 0; j < args[i].Len(); j++ {
+			if args[i].Index(j).Type() != value.TypeObject {
+				return value.Null, value.ArgError{
+					Function: funcValue,
+					Argument: args[i].Index(j),
+					Index:    j,
+					Inner: value.TypeError{
+						Value:    args[i].Index(j),
+						Expected: value.TypeObject,
+					},
+				}
+			}
+		}
+	}
+
+	// Validate args[2]
+	if args[2].Type() != value.TypeArray {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[2],
+			Index:    2,
+			Inner: value.TypeError{
+				Value:    args[2],
+				Expected: value.TypeArray,
+			},
+		}
+	}
+	if args[2].Len() == 0 {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[2],
+			Index:    2,
+			Inner:    fmt.Errorf("combine_maps: merge conditions must not be empty"),
+		}
+	}
+
+	// We cannot preallocate the size of the result array, because we don't know
+	// how well the merge is going to go. If none of the merge conditions are met,
+	// the result array will be empty.
+	res := []value.Value{}
+
+	for i := 0; i < args[0].Len(); i++ {
+		for j := 0; j < args[1].Len(); j++ {
+			left := args[0].Index(i)
+			right := args[1].Index(j)
+
+			join, err := shouldJoin(left, right, args[2])
+			if err != nil {
+				return value.Null, err
+			}
+
+			if join {
+				val, err := concatMaps(left, right)
+				if err != nil {
+					return value.Null, err
+				}
+				res = append(res, val)
+			}
+		}
+	}
+
+	return value.Array(res...), nil
 })
 
 func jsonDecode(in string) (interface{}, error) {

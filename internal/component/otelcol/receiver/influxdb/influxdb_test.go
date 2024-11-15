@@ -26,7 +26,7 @@ func TestWriteLineProtocol_Alloy(t *testing.T) {
     }
     nextConsumer := new(mockConsumer)
 
-    receiver, outerErr := influxdbreceiver.NewFactory().CreateMetricsReceiver(context.Background(), receivertest.NewNopSettings(), config, nextConsumer)
+    receiver, outerErr := influxdbreceiver.NewFactory().CreateMetrics(context.Background(), receivertest.NewNopSettings(), config, nextConsumer)
     require.NoError(t, outerErr)
     require.NotNil(t, receiver)
 

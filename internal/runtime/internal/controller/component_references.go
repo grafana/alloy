@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
@@ -18,6 +19,17 @@ import (
 // will be (field_a, field_b, field_c).
 type Traversal []*ast.Ident
 
+// String returns a dot-separated string representation of the field names in the traversal.
+// For example, a traversal of fields [field_a, field_b, field_c] returns "field_a.field_b.field_c".
+// Returns an empty string if the traversal contains no fields.
+func (t Traversal) String() string {
+	var fieldNames []string
+	for _, field := range t {
+		fieldNames = append(fieldNames, field.Name)
+	}
+	return strings.Join(fieldNames, ".")
+}
+
 // Reference describes an Alloy expression reference to a BlockNode.
 type Reference struct {
 	Target BlockNode // BlockNode being referenced
@@ -29,7 +41,7 @@ type Reference struct {
 
 // ComponentReferences returns the list of references a component is making to
 // other components.
-func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger) ([]Reference, diag.Diagnostics) {
+func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger, scope *vm.Scope, minStability featuregate.Stability) ([]Reference, diag.Diagnostics) {
 	var (
 		traversals []Traversal
 
@@ -48,26 +60,31 @@ func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger) ([]Reference, 
 		ref, resolveDiags := resolveTraversal(t, g)
 		componentRefMatch := !resolveDiags.HasErrors()
 
-		// We use an empty scope to determine if a reference refers to something in
-		// the stdlib, since vm.Scope.Lookup will search the scope tree + the
-		// stdlib.
-		//
-		// Any call to an stdlib function is ignored.
-		var emptyScope vm.Scope
-		_, stdlibMatch := emptyScope.Lookup(t[0].Name)
+		// we look for a match in the provided scope and the stdlib
+		_, scopeMatch := scope.Lookup(t[0].Name)
 
-		if !componentRefMatch && !stdlibMatch {
+		if !componentRefMatch && !scopeMatch {
 			diags = append(diags, resolveDiags...)
 			continue
 		}
 
 		if componentRefMatch {
-			if stdlibMatch {
+			if scope.IsStdlibIdentifiers(t[0].Name) {
 				level.Warn(l).Log("msg", "a component is shadowing an existing stdlib name", "component", strings.Join(ref.Target.Block().Name, "."), "stdlib name", t[0].Name)
 			}
 			refs = append(refs, ref)
-		} else if stdlibMatch && emptyScope.IsDeprecated(t[0].Name) {
+		} else if scope.IsStdlibDeprecated(t[0].Name) {
 			level.Warn(l).Log("msg", "this stdlib function is deprecated; please refer to the documentation for updated usage and alternatives", "function", t[0].Name)
+		} else if funcName := t.String(); scope.IsStdlibExperimental(funcName) {
+			if err := featuregate.CheckAllowed(featuregate.StabilityExperimental, minStability, funcName); err != nil {
+				diags = append(diags, diag.Diagnostic{
+					Severity: diag.SeverityLevelError,
+					Message:  err.Error(),
+					StartPos: ast.StartPos(t[0]).Position(),
+					EndPos:   ast.StartPos(t[len(t)-1]).Position(),
+				})
+				continue
+			}
 		}
 	}
 

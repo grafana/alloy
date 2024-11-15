@@ -75,7 +75,7 @@ type Host interface {
 // Controller is implemented by alloy.Alloy.
 type Controller interface {
 	Run(ctx context.Context)
-	LoadSource(source []byte, args map[string]any) error
+	LoadSource(source []byte, args map[string]any, configPath string) error
 	Ready() bool
 }
 

@@ -126,6 +126,21 @@ func TestConvertConfig(t *testing.T) {
 	require.Equal(t, "network_switch_1", res.SnmpTargets[0].Name)
 }
 
+func TestConfigLabels(t *testing.T) {
+	lbls := map[string]string{"env": "dev"}
+	args := Arguments{
+		ConfigFile: "modules.yml",
+		Targets:    TargetBlock{{Name: "network_switch_1", Target: "192.168.1.2", Module: "if_mib", Labels: lbls}},
+		WalkParams: WalkParams{{Name: "public", Retries: 2}},
+	}
+
+	res := args.Convert()
+	require.Equal(t, "modules.yml", res.SnmpConfigFile)
+	require.Equal(t, 1, len(res.SnmpTargets))
+	require.Equal(t, "network_switch_1", res.SnmpTargets[0].Name)
+	require.Equal(t, res.SnmpTargets[0].Labels["env"], "dev")
+}
+
 func TestConvertConfigWithInlineConfig(t *testing.T) {
 	args := Arguments{
 		ConfigStruct: config.Config{Modules: map[string]*config.Module{"if_mib": {Walk: []string{"1.3.6.1.2.1.2"}}}},
@@ -175,6 +190,32 @@ func TestConvertTargetsList(t *testing.T) {
 	require.Equal(t, "if_mib", res[0].Module)
 	require.Equal(t, "public_v2", res[0].Auth)
 	require.Equal(t, "1.3.6.1.2.1.2", res[0].WalkParams)
+}
+
+func TestConvertTargetsListWithLabels(t *testing.T) {
+	targets := TargetsList{
+		{
+			"name":        "network_switch_1",
+			"address":     "192.168.1.2",
+			"module":      "if_mib",
+			"auth":        "public_v2",
+			"walk_params": "1.3.6.1.2.1.2",
+			"env":         "dev",
+			"app":         "falcon",
+		},
+	}
+
+	res := targets.Convert()
+	require.Equal(t, 1, len(res))
+	require.Equal(t, "network_switch_1", res[0].Name)
+	require.Equal(t, "192.168.1.2", res[0].Target)
+	require.Equal(t, "if_mib", res[0].Module)
+	require.Equal(t, "public_v2", res[0].Auth)
+	require.Equal(t, "1.3.6.1.2.1.2", res[0].WalkParams)
+	require.Len(t, res[0].Labels, 2)
+	require.Equal(t, "dev", res[0].Labels["env"])
+	require.Equal(t, "falcon", res[0].Labels["app"])
+
 }
 
 func TestConvertTargetsListAlternativeAddress(t *testing.T) {

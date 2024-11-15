@@ -93,7 +93,7 @@ To use all of the integration features, use the following AWS IAM Policy:
 ```alloy
 prometheus.exporter.cloudwatch "queues" {
     sts_region      = "us-east-2"
-    aws_sdk_version_v2 = "false"
+    aws_sdk_version_v2 = false
     discovery {
         type        = "AWS/SQS"
         regions     = ["us-east-2"]
@@ -198,6 +198,7 @@ different `search_tags`.
 | `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                                       |         | yes      |
 | `type`                        | `string`       | CloudWatch service alias (`"alb"`, `"ec2"`, etc) or namespace name (`"AWS/EC2"`, `"AWS/S3"`, etc). Refer to [supported-services][] for a complete list.                                                                                                    |         | yes      |
 | `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                               | `{}`    | no       |
+| `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                 | `false` | no       |
 | `search_tags`                 | `map(string)`  | List of key / value pairs to use for tag filtering (all must match). Value can be a regex.                                                                                                                                                                 | `{}`    | no       |
 | `dimension_name_requirements` | `list(string)` | List of metric dimensions to query. Before querying metric values, the total list of metrics will be filtered to only those that contain exactly this list of dimensions. An empty or undefined list results in all dimension combinations being included. | `{}`    | no       |
 | `nil_to_zero`                 | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [metric][] block.                                                                                                                                   | `true`  | no       |
@@ -316,6 +317,7 @@ on how to explore metrics, to easily pick the ones you need.
 | `period`      | `duration`     | Refer to the [period][] section below.                                    |                                                                                                                    | yes      |
 | `length`      | `duration`     | Refer to the [period][] section below.                                    | Calculated based on `period`. Refer to [period][] for details.                                                     | no       |
 | `nil_to_zero` | `bool`         | When `true`, `NaN` metric values are converted to 0.                      | The value of `nil_to_zero` in the parent [static][] or [discovery][] block. `true` if not set in the parent block. | no       |
+| `add_cloudwatch_timestamp` | `bool` | When `true`, use the timestamp from CloudWatch instead of the scrape time. | `false` | no
 
 [period]: #period-and-length
 
