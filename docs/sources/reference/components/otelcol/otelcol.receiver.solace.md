@@ -14,8 +14,7 @@ forwards it to other `otelcol.*` components.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
-Multiple `otelcol.receiver.solace` components can be specified by giving them
-different labels.
+You can specify multiple `otelcol.receiver.solace` components by giving them different labels.
 
 ## Usage
 
