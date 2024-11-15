@@ -18,12 +18,24 @@ Main (unreleased)
 
 - Add `otelcol.exporter.splunkhec` allowing to export otel data to Splunk HEC (@adlotsof)
 
+- Add `otelcol.receiver.solace` component to receive traces from a Solace broker. (@wildum)
+
 - Added InfluxDB receiver that converts influx metric into OTEL. (@EHSchmitt4395)
+### Enhancements
+
+- Add second metrics sample to the support bundle to provide delta information (@dehaansa)
+
 ### Bugfixes
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
 
-v1.5.0-rc.1
+- Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
+
+### Other changes
+
+- Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
+
+v1.5.0
 -----------------
 
 ### Breaking changes

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/walqueue/types"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/prometheus/storage"
 )
@@ -96,7 +96,7 @@ var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
 func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 	tcc := types.ConnectionConfig{
 		URL:              cc.URL,
-		BearerToken:      cc.BearerToken,
+		BearerToken:      string(cc.BearerToken),
 		UserAgent:        UserAgent,
 		Timeout:          cc.Timeout,
 		RetryBackoff:     cc.RetryBackoff,
