@@ -24,7 +24,7 @@ var PromDefaultHistogramMetric = []string{
 	"golang_native_histogram",
 }
 
-// Default metrics list according to what the otel-metrics-gen app is generating.
+// Default metrics list according to what the otel-gen app is generating.
 var OtelDefaultMetrics = []string{
 	"example_counter",
 	"example_float_counter",
@@ -34,7 +34,7 @@ var OtelDefaultMetrics = []string{
 	"example_float_histogram_bucket",
 }
 
-// Default histogram metrics list according to what the otel-metrics-gen app is generating.
+// Default histogram metrics list according to what the otel-gen app is generating.
 var OtelDefaultHistogramMetrics = []string{
 	"example_exponential_histogram",
 	"example_exponential_float_histogram",
