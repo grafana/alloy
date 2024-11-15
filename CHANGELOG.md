@@ -22,6 +22,10 @@ Main (unreleased)
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
 
+### Other changes
+
+- Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
+
 v1.5.0
 -----------------
 
