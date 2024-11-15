@@ -115,7 +115,7 @@ func (args *Arguments) Validate() error {
 		authMethod++
 	}
 	if authMethod != 1 {
-		return fmt.Errorf("the auth block must contain either a sasl_plain block, a sasl_xauth2 block or a sasl_external block")
+		return fmt.Errorf("the auth block must contain exactly one of sasl_plain block, sasl_xauth2 block or sasl_external block")
 	}
 	if len(strings.TrimSpace(args.Queue)) == 0 {
 		return fmt.Errorf("queue must not be empty, queue definition has format queue://<queuename>")
