@@ -823,12 +823,6 @@ require (
 )
 
 require (
-	github.com/influxdata/influxdb-client-go/v2 v2.14.0
-	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.112.0
-)
-
-require (
 	github.com/Azure/go-amqp v1.2.0 // indirect
 	github.com/DataDog/datadog-agent/comp/core/log/def v0.57.1 // indirect
 	github.com/antchfx/xmlquery v1.4.2 // indirect
@@ -836,13 +830,16 @@ require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/ebitengine/purego v0.8.0 // indirect
 	github.com/elastic/lunes v0.1.0 // indirect
+	github.com/influxdata/influxdb-client-go/v2 v2.14.0
 	github.com/influxdata/influxdb-observability/common v0.5.12 // indirect
 	github.com/influxdata/influxdb-observability/influx2otel v0.5.12 // indirect
+	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c
 	github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 // indirect
 	github.com/influxdata/line-protocol/v2 v2.2.1 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/oapi-codegen/runtime v1.0.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/topic v0.112.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.112.0
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	go.opentelemetry.io/collector/connector/connectorprofiles v0.112.0 // indirect
 	go.opentelemetry.io/collector/consumer/consumererror v0.112.0 // indirect

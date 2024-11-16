@@ -31,6 +31,8 @@ func init() {
 
 // Arguments configures the otelcol.receiver.influxdb component.
 type Arguments struct {
+	Endpoint string `alloy:"endpoint,attr"` // Explicitly define endpoint as a top-level field
+
 	HTTPServer otelcol.HTTPServerArguments `alloy:",squash"`
 
 	// DebugMetrics configures component internal metrics. Optional.
