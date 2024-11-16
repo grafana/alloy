@@ -39,7 +39,7 @@ func (*Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  []string{},
-		Stability:  featuregate.StabilityExperimental,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 

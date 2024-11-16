@@ -615,10 +615,7 @@ func runE2eStats(t *testing.T, test statsTest) {
 		}
 		require.NoError(t, app.Commit())
 	}()
-	tm := time.NewTimer(8 * time.Second)
-	<-tm.C
-	cancel()
-
+	time.Sleep(5 * time.Second)
 	require.Eventually(t, func() bool {
 		dtos, gatherErr := reg.Gather()
 		require.NoError(t, gatherErr)
@@ -632,9 +629,13 @@ func runE2eStats(t *testing.T, test statsTest) {
 		// Make sure we have a few metrics.
 		return found > 1
 	}, 10*time.Second, 1*time.Second)
+
 	metrics := make(map[string]float64)
 	dtos, err := reg.Gather()
 	require.NoError(t, err)
+	// Cancel needs to be here since it will unregister the metrics.
+	cancel()
+
 	// Get the value of metrics.
 	for _, d := range dtos {
 		metrics[*d.Name] = getValue(d)
