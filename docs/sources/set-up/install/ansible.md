@@ -33,7 +33,7 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
           ansible.builtin.include_role:
             name: grafana.grafana.alloy
           vars:
-            config: |
+            alloy_config: |
               prometheus.scrape "default" {
                 targets = [{"__address__" = "localhost:12345"}]
                 forward_to = [prometheus.remote_write.prom.receiver]
