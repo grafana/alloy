@@ -237,6 +237,12 @@ func (p *printer) Write(args ...interface{}) {
 			panic(fmt.Sprintf("printer: unsupported argument %v (%T)\n", arg, arg))
 		}
 
+		if v, ok := arg.(ast.Expr); ok {
+			if v.IsSecret() {
+				data = "(secret)"
+			}
+		}
+
 		next := p.pos
 
 		p.flush(next, p.lastTok)

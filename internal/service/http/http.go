@@ -6,11 +6,13 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // Register pprof handlers
 	"os"
 	"path"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,6 +29,8 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/static/server"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/printer"
 	"github.com/grafana/ckit/memconn"
 	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof" // Register godeltaprof handler
 	"github.com/prometheus/client_golang/prometheus"
@@ -79,7 +83,7 @@ type Service struct {
 	supportBundleMut sync.Mutex
 
 	// Track the raw config for use with the support bundle
-	sources map[string][]byte
+	sources map[string]*ast.File
 
 	// publicLis and tcpLis are used to lazily enable TLS, since TLS is
 	// optionally configurable at runtime.
@@ -308,12 +312,17 @@ func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.R
 			s.globalLogger.RemoveTemporaryWriter()
 		}()
 
-		cachedConfig, err := remoteCfgCachedConfig(host)
+		// Get and redact the cached remote config.
+		cachedConfig, err := remoteCfgRedactedCachedConfig(host)
 		if err != nil {
 			level.Debug(s.log).Log("msg", "failed to get cached remote config", "err", err)
 		}
 
-		bundle, err := ExportSupportBundle(ctx, s.opts.BundleContext.RuntimeFlags, s.opts.HTTPListenAddr, s.sources, cachedConfig, s.Data().(Data).DialFunc)
+		// Ensure the sources are written using the printer as it will handle
+		// secret redaction.
+		sources := redactedSources(s.sources)
+
+		bundle, err := ExportSupportBundle(ctx, s.opts.BundleContext.RuntimeFlags, s.opts.HTTPListenAddr, sources, cachedConfig, s.Data().(Data).DialFunc)
 		if err != nil {
 			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
@@ -327,7 +336,7 @@ func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.R
 
 // SetSources sets the sources on reload to be delivered
 // with the support bundle.
-func (s *Service) SetSources(sources map[string][]byte) {
+func (s *Service) SetSources(sources map[string]*ast.File) {
 	s.supportBundleMut.Lock()
 	defer s.supportBundleMut.Unlock()
 	s.sources = sources
@@ -600,12 +609,50 @@ func (lis *lazyListener) Addr() net.Addr {
 	return lis.inner.Addr()
 }
 
-func remoteCfgCachedConfig(host service.Host) ([]byte, error) {
+func redactedSources(sources map[string]*ast.File) map[string][]byte {
+	if sources == nil {
+		return nil
+	}
+	printedSources := make(map[string][]byte, len(sources))
+
+	var b bytes.Buffer
+	w := io.Writer(&b)
+	for k, v := range sources {
+		e := printer.Fprint(w, v)
+		if e != nil {
+			printedSources[k] = []byte(fmt.Errorf("failed to print source: %w", e).Error())
+		} else {
+			printedSources[k] = slices.Clone(b.Bytes())
+		}
+		b.Reset()
+	}
+	return printedSources
+}
+
+func remoteCfgRedactedCachedConfig(host service.Host) ([]byte, error) {
 	svc, ok := host.GetService(remotecfg.ServiceName)
 	if !ok {
 		return nil, fmt.Errorf("failed to get the remotecfg service")
 	}
-	return svc.(*remotecfg.Service).GetCachedConfig()
+	b, err := svc.(*remotecfg.Service).GetCachedConfig()
+
+	if err != nil {
+		return nil, err
+	}
+
+	// We parse the cached config to use the printer that will redact secrets.
+	source, err := alloy_runtime.ParseSource("remote.alloy", b)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	w := io.Writer(&buf)
+	e := printer.Fprint(w, source.SourceFiles()["remote.alloy"])
+	if e != nil {
+		return nil, e
+	}
+	return slices.Clone(buf.Bytes()), nil
 }
 
 func remoteCfgHostProvider(host service.Host) func() (service.Host, error) {
