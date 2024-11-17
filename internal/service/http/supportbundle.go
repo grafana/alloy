@@ -28,18 +28,19 @@ type SupportBundleContext struct {
 
 // Bundle collects all the data that is exposed as a support bundle.
 type Bundle struct {
-	meta         []byte
-	alloyMetrics []byte
-	components   []byte
-	peers        []byte
-	runtimeFlags []byte
-	sources      map[string][]byte
-	remoteCfg    []byte
-	heapBuf      *bytes.Buffer
-	goroutineBuf *bytes.Buffer
-	blockBuf     *bytes.Buffer
-	mutexBuf     *bytes.Buffer
-	cpuBuf       *bytes.Buffer
+	meta              []byte
+	alloyMetricsStart []byte
+	alloyMetricsEnd   []byte
+	components        []byte
+	peers             []byte
+	runtimeFlags      []byte
+	sources           map[string][]byte
+	remoteCfg         []byte
+	heapBuf           *bytes.Buffer
+	goroutineBuf      *bytes.Buffer
+	blockBuf          *bytes.Buffer
+	mutexBuf          *bytes.Buffer
+	cpuBuf            *bytes.Buffer
 }
 
 // Metadata contains general runtime information about the current Alloy environment.
@@ -52,6 +53,26 @@ type Metadata struct {
 
 // ExportSupportBundle gathers the information required for the support bundle.
 func ExportSupportBundle(ctx context.Context, runtimeFlags []string, srvAddress string, sources map[string][]byte, remoteCfg []byte, dialContext server.DialContextFunc) (*Bundle, error) {
+	var httpClient http.Client
+	httpClient.Transport = &http.Transport{DialContext: dialContext}
+
+	// Gather Alloy's own metrics.
+	alloyMetricsStart, err := retrieveAPIEndpoint(httpClient, srvAddress, "metrics")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get internal Alloy metrics: %s", err)
+	}
+
+	// Gather running component configuration
+	components, err := retrieveAPIEndpoint(httpClient, srvAddress, "api/v0/web/components")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get component details: %s", err)
+	}
+	// Gather cluster peers information
+	peers, err := retrieveAPIEndpoint(httpClient, srvAddress, "api/v0/web/peers")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get peer details: %s", err)
+	}
+
 	// The block profiler is disabled by default. Temporarily enable recording
 	// of all blocking events. Also, temporarily record all mutex contentions,
 	// and defer restoring of earlier mutex profiling fraction.
@@ -76,24 +97,6 @@ func ExportSupportBundle(ctx context.Context, runtimeFlags []string, srvAddress 
 	meta, err := yaml.Marshal(m)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal support bundle metadata: %s", err)
-	}
-
-	var httpClient http.Client
-	httpClient.Transport = &http.Transport{DialContext: dialContext}
-	// Gather Alloy's own metrics.
-	alloyMetrics, err := retrieveAPIEndpoint(httpClient, srvAddress, "metrics")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get internal Alloy metrics: %s", err)
-	}
-	// Gather running component configuration
-	components, err := retrieveAPIEndpoint(httpClient, srvAddress, "api/v0/web/components")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get component details: %s", err)
-	}
-	// Gather cluster peers information
-	peers, err := retrieveAPIEndpoint(httpClient, srvAddress, "api/v0/web/peers")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get peer details: %s", err)
 	}
 
 	// Export pprof data.
@@ -131,21 +134,28 @@ func ExportSupportBundle(ctx context.Context, runtimeFlags []string, srvAddress 
 		return nil, err
 	}
 
+	// Gather Alloy's own metrics after the profile completes
+	alloyMetricsEnd, err := retrieveAPIEndpoint(httpClient, srvAddress, "metrics")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get internal Alloy metrics: %s", err)
+	}
+
 	// Finally, bundle everything up to be served, either as a zip from
 	// memory, or exported to a directory.
 	bundle := &Bundle{
-		meta:         meta,
-		alloyMetrics: alloyMetrics,
-		components:   components,
-		peers:        peers,
-		sources:      sources,
-		remoteCfg:    remoteCfg,
-		runtimeFlags: []byte(strings.Join(runtimeFlags, "\n")),
-		heapBuf:      &heapBuf,
-		goroutineBuf: &goroutineBuf,
-		blockBuf:     &blockBuf,
-		mutexBuf:     &mutexBuf,
-		cpuBuf:       &cpuBuf,
+		meta:              meta,
+		alloyMetricsStart: alloyMetricsStart,
+		alloyMetricsEnd:   alloyMetricsEnd,
+		components:        components,
+		peers:             peers,
+		sources:           sources,
+		remoteCfg:         remoteCfg,
+		runtimeFlags:      []byte(strings.Join(runtimeFlags, "\n")),
+		heapBuf:           &heapBuf,
+		goroutineBuf:      &goroutineBuf,
+		blockBuf:          &blockBuf,
+		mutexBuf:          &mutexBuf,
+		cpuBuf:            &cpuBuf,
 	}
 
 	return bundle, nil
@@ -176,7 +186,8 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf *bytes.Buffer
 		"alloy-metadata.yaml":                b.meta,
 		"alloy-components.json":              b.components,
 		"alloy-peers.json":                   b.peers,
-		"alloy-metrics.txt":                  b.alloyMetrics,
+		"alloy-metrics-sample-start.txt":     b.alloyMetricsStart,
+		"alloy-metrics-sample-end.txt":       b.alloyMetricsEnd,
 		"alloy-runtime-flags.txt":            b.runtimeFlags,
 		"alloy-logs.txt":                     logsBuf.Bytes(),
 		"sources/remote-config/remote.alloy": b.remoteCfg,

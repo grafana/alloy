@@ -22,11 +22,15 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add second metrics sample to the support bundle to provide delta information (@dehaansa)
+
 - Add all raw configuration files & a copy of the latest remote config to the support bundle (@dehaansa)
 
 ### Bugfixes
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
+
+- Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
 
 ### Other changes
 
