@@ -239,7 +239,7 @@ func (p *printer) Write(args ...interface{}) {
 
 		if v, ok := arg.(ast.Expr); ok {
 			if v.IsSecret() {
-				data = "(secret)"
+				data = "\"(secret)\""
 			}
 		}
 
