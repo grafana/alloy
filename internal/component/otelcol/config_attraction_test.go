@@ -1,6 +1,7 @@
 package otelcol_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -57,4 +58,57 @@ func TestConvertAttrAction(t *testing.T) {
 
 	result := inputActions.Convert()
 	require.Equal(t, expectedActions, result)
+}
+
+func TestValidateAttrAction(t *testing.T) {
+	inputActions := otelcol.AttrActionKeyValueSlice{
+		{
+			// ok - only key
+			Action: "insert",
+			Value:  123,
+			Key:    "attribute1",
+		},
+		{
+			// not ok - missing key
+			Action:       "insert",
+			Value:        123,
+			RegexPattern: "pattern", // pattern is useless here
+		},
+		{
+			// ok - only key
+			Action: "delete",
+			Key:    "key",
+		},
+		{
+			// ok - only pattern
+			Action:       "delete",
+			RegexPattern: "pattern",
+		},
+		{
+			// ok - both
+			Action:       "delete",
+			Key:          "key",
+			RegexPattern: "pattern",
+		},
+		{
+			// not ok - missing key and pattern
+			Action: "delete",
+		},
+		{
+			// ok - only pattern
+			Action:       "hash",
+			RegexPattern: "pattern",
+		},
+		{
+			// ok - with uppercase
+			Action:       "HaSH",
+			RegexPattern: "pattern",
+		},
+	}
+
+	expectedErrors := []string{
+		"validation failed for action block number 2: the action insert requires the key argument to be set",
+		"validation failed for action block number 6: the action delete requires at least the key argument or the pattern argument to be set",
+	}
+	require.EqualError(t, inputActions.Validate(), strings.Join(expectedErrors, "\n"))
 }
