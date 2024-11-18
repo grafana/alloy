@@ -83,16 +83,16 @@ The `endpoint` block describes a single location to send metrics to. Multiple
 
 The following arguments are supported:
 
- Name                 | Type                                                 | Description                                                     | Default | Required 
-----------------------|------------------------------------------------------|-----------------------------------------------------------------|---------|----------
- `url`                | `string`                                             | Full URL to send metrics to.                                    |         | yes      
- `write_timeout`      | `duration`                                           | Timeout for requests made to the URL.                           | `"30s"` | no       
- `retry_backoff`      | `duration`                                           | How long to wait between retries.                               | `1s`    | no       
- `max_retry_attempts` | Maximum number of retries before dropping the batch. | `0`                                                             | no      
- `batch_count`        | `uint`                                               | How many series to queue in each queue.                         | `1000`  | no       
- `flush_interval`     | `duration`                                           | How long to wait until sending if `batch_count` is not trigger. | `1s`    | no       
- `parallelism`        | `uint`                                               | How many parallel batches to write.                             | 10      | no       
- `external_labels`    | `map(string)`                                        | Labels to add to metrics sent over the network.                 |         | no       
+ Name                 | Type           | Description                                                     | Default | Required 
+----------------------|----------------|-----------------------------------------------------------------|---------|----------
+ `url`                | `string`       | Full URL to send metrics to.                                    |         | yes      
+ `write_timeout`      | `duration`     | Timeout for requests made to the URL.                           | `"30s"` | no       
+ `retry_backoff`      | `duration`     | How long to wait between retries.                               | `1s`    | no       
+ `max_retry_attempts` | `uint`         | Maximum number of retries before dropping the batch.            | `0`     | no      
+ `batch_count`        | `uint`         | How many series to queue in each queue.                         | `1000`  | no       
+ `flush_interval`     | `duration`     | How long to wait until sending if `batch_count` is not trigger. | `1s`    | no       
+ `parallelism`        | `uint`         | How many parallel batches to write.                             | 10      | no       
+ `external_labels`    | `map(string)`  | Labels to add to metrics sent over the network.                 |         | no       
 
 ### basic_auth block
 
