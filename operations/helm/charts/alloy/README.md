@@ -123,6 +123,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | ingress.pathType | string | `"Prefix"` |  |
 | ingress.tls | list | `[]` |  |
 | nameOverride | string | `nil` | Overrides the chart's name. Used to change the infix in the resource names. |
+| namespaceOverride | string | `nil` | Overrides the chart's namespace. |
 | rbac.create | bool | `true` | Whether to create RBAC resources for Alloy. |
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |

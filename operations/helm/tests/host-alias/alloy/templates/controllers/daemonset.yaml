@@ -4,6 +4,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: alloy
+  namespace: default
   labels:
     helm.sh/chart: alloy
     app.kubernetes.io/name: alloy
