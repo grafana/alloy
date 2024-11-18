@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
-type QuerySampleArguments struct {
+type SchemaTableArguments struct {
 	DSN            string
 	ScrapeInterval time.Duration
 	EntryHandler   loki.EntryHandler
@@ -22,7 +22,7 @@ type QuerySampleArguments struct {
 	Logger log.Logger
 }
 
-type QuerySample struct {
+type SchemaTable struct {
 	dbConnection   *sql.DB
 	scrapeInterval time.Duration
 	entryHandler   loki.EntryHandler
@@ -33,12 +33,11 @@ type QuerySample struct {
 	cancel context.CancelFunc
 }
 
-func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
+func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	dbConnection, err := sql.Open("mysql", args.DSN)
 	if err != nil {
 		return nil, err
 	}
-
 	if dbConnection == nil {
 		return nil, errors.New("nil DB connection")
 	}
@@ -47,7 +46,7 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 		return nil, err
 	}
 
-	return &QuerySample{
+	return &SchemaTable{
 		dbConnection:   dbConnection,
 		scrapeInterval: args.ScrapeInterval,
 		entryHandler:   args.EntryHandler,
@@ -55,8 +54,8 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	}, nil
 }
 
-func (c *QuerySample) Run(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "QuerySample component running")
+func (c *SchemaTable) Run(ctx context.Context) error {
+	level.Debug(c.logger).Log("msg", "SchemaTable collector running")
 
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx
@@ -66,7 +65,7 @@ func (c *QuerySample) Run(ctx context.Context) error {
 		ticker := time.NewTicker(c.scrapeInterval)
 
 		for {
-			if err := c.fetchQuerySamples(); err != nil {
+			if err := c.extractSchema(); err != nil {
 				break
 			}
 
@@ -82,18 +81,18 @@ func (c *QuerySample) Run(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) Stop() {
+func (c *SchemaTable) Stop() {
 	c.cancel()
 	c.dbConnection.Close()
 }
 
-func (c *QuerySample) fetchQuerySamples() error {
+func (c *SchemaTable) extractSchema() error {
 	// TODO real implementation
 	c.entryHandler.Chan() <- loki.Entry{
 		Labels: model.LabelSet{"lbl": "val"},
 		Entry: logproto.Entry{
 			Timestamp: time.Unix(0, time.Now().UnixNano()),
-			Line:      "SELECT 1",
+			Line:      "TABLE orders (id INT, customer_id INT, amount DECIMAL(10,2))",
 		},
 	}
 	return nil

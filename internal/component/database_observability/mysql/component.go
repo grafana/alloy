@@ -1,4 +1,4 @@
-package dbo11y
+package mysql
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/database_observability/collector"
+	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -24,7 +24,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
-const name = "grafanacloud.database_observability"
+const name = "grafanacloud.database_observability.mysql"
 
 func init() {
 	component.Register(component.Registration{
@@ -75,6 +75,11 @@ var (
 	_ http_service.Component = (*Component)(nil)
 )
 
+type Collector interface {
+	Run(context.Context) error
+	Stop()
+}
+
 type Component struct {
 	opts       component.Options
 	args       Arguments
@@ -83,7 +88,7 @@ type Component struct {
 	handler    loki.LogsReceiver
 	registry   *prometheus.Registry
 	baseTarget discovery.Target
-	collectors []collector.Collector
+	collectors []Collector
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {

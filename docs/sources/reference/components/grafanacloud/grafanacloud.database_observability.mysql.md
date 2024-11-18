@@ -1,17 +1,17 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/grafanacloud.database_observability/
-description: Learn about grafanacloud.database_observability
-title: grafanacloud.database_observability
+canonical: https://grafana.com/docs/alloy/latest/reference/components/grafanacloud.database_observability.mysql/
+description: Learn about grafanacloud.database_observability.mysql
+title: grafanacloud.database_observability.mysql
 ---
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
 
-`grafanacloud.database_observability` can accept arguments from the following components:
+`grafanacloud.database_observability.mysql` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
 
-`grafanacloud.database_observability` has exports that can be consumed by the following components:
+`grafanacloud.database_observability.mysql` has exports that can be consumed by the following components:
 
 - Components that consume [Targets](../../../compatibility/#targets-consumers)
 

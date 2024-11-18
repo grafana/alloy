@@ -78,7 +78,7 @@ The following components, grouped by namespace, _export_ Targets.
 {{< /collapse >}}
 
 {{< collapse title="grafanacloud" >}}
-- [grafanacloud.database_observability](../components/grafanacloud/grafanacloud.database_observability)
+- [grafanacloud.database_observability.mysql](../components/grafanacloud/grafanacloud.database_observability.mysql)
 {{< /collapse >}}
 
 {{< collapse title="local" >}}
@@ -245,7 +245,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 {{< /collapse >}}
 
 {{< collapse title="grafanacloud" >}}
-- [grafanacloud.database_observability](../components/grafanacloud/grafanacloud.database_observability)
+- [grafanacloud.database_observability.mysql](../components/grafanacloud/grafanacloud.database_observability.mysql)
 {{< /collapse >}}
 
 {{< collapse title="loki" >}}

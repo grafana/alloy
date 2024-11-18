@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
-type SchemaTableArguments struct {
+type QuerySampleArguments struct {
 	DSN            string
 	ScrapeInterval time.Duration
 	EntryHandler   loki.EntryHandler
@@ -22,7 +22,7 @@ type SchemaTableArguments struct {
 	Logger log.Logger
 }
 
-type SchemaTable struct {
+type QuerySample struct {
 	dbConnection   *sql.DB
 	scrapeInterval time.Duration
 	entryHandler   loki.EntryHandler
@@ -33,11 +33,12 @@ type SchemaTable struct {
 	cancel context.CancelFunc
 }
 
-func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
+func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	dbConnection, err := sql.Open("mysql", args.DSN)
 	if err != nil {
 		return nil, err
 	}
+
 	if dbConnection == nil {
 		return nil, errors.New("nil DB connection")
 	}
@@ -46,7 +47,7 @@ func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 		return nil, err
 	}
 
-	return &SchemaTable{
+	return &QuerySample{
 		dbConnection:   dbConnection,
 		scrapeInterval: args.ScrapeInterval,
 		entryHandler:   args.EntryHandler,
@@ -54,8 +55,8 @@ func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	}, nil
 }
 
-func (c *SchemaTable) Run(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "SchemaTable component running")
+func (c *QuerySample) Run(ctx context.Context) error {
+	level.Debug(c.logger).Log("msg", "QuerySample collector running")
 
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx
@@ -65,7 +66,7 @@ func (c *SchemaTable) Run(ctx context.Context) error {
 		ticker := time.NewTicker(c.scrapeInterval)
 
 		for {
-			if err := c.extractSchema(); err != nil {
+			if err := c.fetchQuerySamples(); err != nil {
 				break
 			}
 
@@ -81,18 +82,18 @@ func (c *SchemaTable) Run(ctx context.Context) error {
 	return nil
 }
 
-func (c *SchemaTable) Stop() {
+func (c *QuerySample) Stop() {
 	c.cancel()
 	c.dbConnection.Close()
 }
 
-func (c *SchemaTable) extractSchema() error {
+func (c *QuerySample) fetchQuerySamples() error {
 	// TODO real implementation
 	c.entryHandler.Chan() <- loki.Entry{
 		Labels: model.LabelSet{"lbl": "val"},
 		Entry: logproto.Entry{
 			Timestamp: time.Unix(0, time.Now().UnixNano()),
-			Line:      "TABLE orders (id INT, customer_id INT, amount DECIMAL(10,2))",
+			Line:      "SELECT 1",
 		},
 	}
 	return nil
