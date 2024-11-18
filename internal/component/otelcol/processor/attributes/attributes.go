@@ -55,6 +55,10 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
+func (args *Arguments) Validate() error {
+	return args.Actions.Validate()
+}
+
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input := make(map[string]interface{})

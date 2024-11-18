@@ -33,6 +33,8 @@ v1.5.1
 
 - Fixed a crash when updating the configuration of `remote.http`. (@kinolaev)
 
+- Fixed an issue in the `otelcol.processor.attribute` component where the actions `delete` and `hash` could not be used with the `pattern` argument. (@wildum) 
+
 v1.5.0
 -----------------
 
