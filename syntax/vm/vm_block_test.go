@@ -1,13 +1,18 @@
 package vm_test
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"math"
+	"os"
 	"reflect"
 	"testing"
 
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/printer"
 	"github.com/grafana/alloy/syntax/vm"
 	"github.com/stretchr/testify/require"
 )
@@ -762,6 +767,48 @@ func TestVM_Block_UnmarshalToAny(t *testing.T) {
 		"field_b": "helloworld",
 	}
 	require.Equal(t, expect, actual.Settings)
+}
+
+func TestVM_AnnotatesSecrets(t *testing.T) {
+	type block struct {
+		OptionalPassword alloytypes.OptionalSecret `alloy:"optional_password,attr,optional"`
+		Password         alloytypes.Secret         `alloy:"password,attr"`
+	}
+
+	os.Setenv("SECRET", "my_password")
+	defer os.Setenv("SECRET", "")
+
+	input := `
+	password = "my_password"
+	optional_password = sys.env("SECRET")
+	`
+
+	expect := block{
+		Password: "my_password",
+		OptionalPassword: alloytypes.OptionalSecret{
+			Value: "my_password",
+		},
+	}
+
+	res, err := parser.ParseFile(t.Name(), []byte(input))
+	require.NoError(t, err)
+
+	eval := vm.New(res)
+
+	var actual block
+	require.NoError(t, eval.Evaluate(nil, &actual))
+	require.Equal(t, expect, actual)
+
+	// Ensure that the secrets are redacted.
+	c := printer.Config{
+		RedactSecrets: true,
+	}
+	var buf bytes.Buffer
+	w := io.Writer(&buf)
+	require.NoError(t, c.Fprint(w, res))
+
+	require.NotContains(t, buf.String(), "hunter2")
+	require.Contains(t, buf.String(), "(secret)")
 }
 
 type Setting struct {
