@@ -28,6 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util/jitter"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/ast"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	commonconfig "github.com/prometheus/common/config"
@@ -67,6 +68,10 @@ type Service struct {
 	// This is the hash received from the API. It is used to determine if
 	// the configuration has changed since the last fetch
 	remoteHash string
+
+	// This is the AST file parsed from the configuration. This is used
+	// for the support bundle
+	astFile *ast.File
 }
 
 type metrics struct {
@@ -331,6 +336,13 @@ func (s *Service) Update(newConfig any) error {
 	return nil
 }
 
+// GetCachedAstFile returns the AST file that was parsed from the configuration.
+func (s *Service) GetCachedAstFile() *ast.File {
+	s.mut.RLock()
+	defer s.mut.RUnlock()
+	return s.astFile
+}
+
 // fetch attempts to read configuration from the API and the local cache
 // and then parse/load their contents in order of preference.
 func (s *Service) fetch() {
@@ -401,7 +413,7 @@ func (s *Service) fetchRemote() error {
 }
 
 func (s *Service) fetchLocal() {
-	b, err := s.GetCachedConfig()
+	b, err := s.getCachedConfig()
 	if err != nil {
 		level.Error(s.opts.Logger).Log("msg", "failed to read from cache", "err", err)
 		return
@@ -440,7 +452,7 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 	return []byte(gcr.Msg.GetContent()), nil
 }
 
-func (s *Service) GetCachedConfig() ([]byte, error) {
+func (s *Service) getCachedConfig() ([]byte, error) {
 	s.mut.RLock()
 	p := s.dataPath
 	s.mut.RUnlock()
@@ -468,11 +480,12 @@ func (s *Service) parseAndLoad(b []byte) error {
 		return nil
 	}
 
-	err := ctrl.LoadSource(b, nil, s.opts.ConfigPath)
+	file, err := ctrl.LoadSource(b, nil, s.opts.ConfigPath)
 	if err != nil {
 		return err
 	}
 
+	s.setAstFile(file)
 	s.setCfgHash(getHash(b))
 	return nil
 }
@@ -482,6 +495,12 @@ func (s *Service) getCfgHash() string {
 	defer s.mut.RUnlock()
 
 	return s.currentConfigHash
+}
+
+func (s *Service) setAstFile(f *ast.File) {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	s.astFile = f
 }
 
 func (s *Service) setCfgHash(h string) {

@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/ast"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -290,11 +291,11 @@ type serviceController struct {
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
-func (sc serviceController) LoadSource(b []byte, args map[string]any, configPath string) error {
+func (sc serviceController) LoadSource(b []byte, args map[string]any, configPath string) (*ast.File, error) {
 	source, err := alloy_runtime.ParseSource("", b)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return sc.f.LoadSource(source, args, configPath)
+	return source.SourceFiles()[""], sc.f.LoadSource(source, args, configPath)
 }
 func (sc serviceController) Ready() bool { return sc.f.Ready() }

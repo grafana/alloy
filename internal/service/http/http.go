@@ -12,7 +12,6 @@ import (
 	_ "net/http/pprof" // Register pprof handlers
 	"os"
 	"path"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -615,16 +614,13 @@ func redactedSources(sources map[string]*ast.File) map[string][]byte {
 	}
 	printedSources := make(map[string][]byte, len(sources))
 
-	var b bytes.Buffer
-	w := io.Writer(&b)
 	for k, v := range sources {
-		e := printer.Fprint(w, v)
-		if e != nil {
-			printedSources[k] = []byte(fmt.Errorf("failed to print source: %w", e).Error())
-		} else {
-			printedSources[k] = slices.Clone(b.Bytes())
+		b, err := printFileRedacted(v)
+		if err != nil {
+			printedSources[k] = []byte(fmt.Errorf("failed to print source: %w", err).Error())
+			continue
 		}
-		b.Reset()
+		printedSources[k] = b
 	}
 	return printedSources
 }
@@ -634,25 +630,21 @@ func remoteCfgRedactedCachedConfig(host service.Host) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("failed to get the remotecfg service")
 	}
-	b, err := svc.(*remotecfg.Service).GetCachedConfig()
 
-	if err != nil {
-		return nil, err
-	}
+	return printFileRedacted(svc.(*remotecfg.Service).GetCachedAstFile())
+}
 
-	// We parse the cached config to use the printer that will redact secrets.
-	source, err := alloy_runtime.ParseSource("remote.alloy", b)
-	if err != nil {
-		return nil, err
+func printFileRedacted(f *ast.File) ([]byte, error) {
+	c := printer.Config{
+		RedactSecrets: true,
 	}
 
 	var buf bytes.Buffer
 	w := io.Writer(&buf)
-	e := printer.Fprint(w, source.SourceFiles()["remote.alloy"])
-	if e != nil {
-		return nil, e
+	if err := c.Fprint(w, f); err != nil {
+		return nil, err
 	}
-	return slices.Clone(buf.Bytes()), nil
+	return buf.Bytes(), nil
 }
 
 func remoteCfgHostProvider(host service.Host) func() (service.Host, error) {
