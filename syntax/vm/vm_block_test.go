@@ -807,7 +807,7 @@ func TestVM_AnnotatesSecrets(t *testing.T) {
 	w := io.Writer(&buf)
 	require.NoError(t, c.Fprint(w, res))
 
-	require.NotContains(t, buf.String(), "hunter2")
+	require.NotContains(t, buf.String(), "my_password")
 	require.Contains(t, buf.String(), "(secret)")
 }
 
