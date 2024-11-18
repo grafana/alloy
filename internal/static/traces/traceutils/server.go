@@ -12,10 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
-	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/exporter"
-	otelexporter "go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -147,12 +145,17 @@ func newServer(addr string, callback func(ptrace.Traces)) (*server, error) {
 	}
 
 	svc, err := service.New(context.Background(), service.Settings{
-		Receivers:      receiver.NewBuilder(otelCfg.Receivers, factories.Receivers),
-		Processors:     processor.NewBuilder(otelCfg.Processors, factories.Processors),
-		Exporters:      otelexporter.NewBuilder(otelCfg.Exporters, factories.Exporters),
-		Connectors:     connector.NewBuilder(otelCfg.Connectors, factories.Connectors),
-		Extensions:     extension.NewBuilder(otelCfg.Extensions, factories.Extensions),
-		TracerProvider: noop.NewTracerProvider(),
+		ReceiversConfigs:    otelCfg.Receivers,
+		ReceiversFactories:  factories.Receivers,
+		ProcessorsConfigs:   otelCfg.Processors,
+		ProcessorsFactories: factories.Processors,
+		ExportersConfigs:    otelCfg.Exporters,
+		ExportersFactories:  factories.Exporters,
+		ConnectorsConfigs:   otelCfg.Connectors,
+		ConnectorsFactories: factories.Connectors,
+		ExtensionsConfigs:   otelCfg.Extensions,
+		ExtensionsFactories: factories.Extensions,
+		TracerProvider:      noop.NewTracerProvider(),
 	}, otelCfg.Service)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Otel service: %w", err)

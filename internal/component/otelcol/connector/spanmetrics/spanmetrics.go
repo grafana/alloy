@@ -14,6 +14,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -108,6 +109,7 @@ var DefaultArguments = Arguments{
 	MetricsExpiration:        0,
 	ResourceMetricsCacheSize: 1000,
 	TimestampCacheSize:       1000,
+	Namespace:                "traces.span.metrics",
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -204,7 +206,7 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 }
 
 // Exporters implements connector.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

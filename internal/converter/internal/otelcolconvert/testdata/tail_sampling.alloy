@@ -126,8 +126,9 @@ otelcol.processor.tail_sampling "default" {
 		type = "boolean_attribute"
 
 		boolean_attribute {
-			key   = "key4"
-			value = true
+			key          = "key4"
+			value        = true
+			invert_match = true
 		}
 	}
 

@@ -16,13 +16,17 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	datadog_config "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog/config"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
+	datadogOtelconfig "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog/config"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/featuregate"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 const (
 	DATADOG_TRACE_ENDPOINT   = "https://trace.agent.%s"
 	DATADOG_METRICS_ENDPOINT = "https://api.%s"
+	DATADOG_LOGS_ENDPOINT    = "https://http-intake.logs.%s"
 )
 
 func init() {
@@ -34,6 +38,10 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := datadogexporter.NewFactory()
+			// The Exporter skips APM stat computation by default, suggesting to use the Connector to do this.
+			// Since we don't have that, we disable the feature gate to allow the exporter to compute APM stats.
+			// See https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/datadogexporter for more
+			featuregate.GlobalRegistry().Set("exporter.datadogexporter.DisableAPMStats", false)
 			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
 		},
 	})
@@ -49,6 +57,7 @@ type Arguments struct {
 	APISettings  datadog_config.DatadogAPIArguments          `alloy:"api,block"`
 	Traces       datadog_config.DatadogTracesArguments       `alloy:"traces,block,optional"`
 	Metrics      datadog_config.DatadogMetricsArguments      `alloy:"metrics,block,optional"`
+	Logs         datadog_config.DatadogLogsArguments         `alloy:"logs,block,optional"`
 	HostMetadata datadog_config.DatadogHostMetadataArguments `alloy:"host_metadata,block,optional"`
 	OnlyMetadata bool                                        `alloy:"only_metadata,attr,optional"`
 	Hostname     string                                      `alloy:"hostname,attr,optional"`
@@ -67,6 +76,7 @@ func (args *Arguments) SetToDefault() {
 	args.APISettings.SetToDefault()
 	args.Metrics.SetToDefault()
 	args.Traces.SetToDefault()
+	args.Logs.SetToDefault()
 	args.HostMetadata.SetToDefault()
 	args.Queue.SetToDefault()
 	args.Retry.SetToDefault()
@@ -79,17 +89,19 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	// These are used only if an endpoint for either isn't specified
 	defaultTraceEndpoint := fmt.Sprintf(DATADOG_TRACE_ENDPOINT, args.APISettings.Site)
 	defaultMetricsEndpoint := fmt.Sprintf(DATADOG_METRICS_ENDPOINT, args.APISettings.Site)
+	defaultLogsEndpoint := fmt.Sprintf(DATADOG_LOGS_ENDPOINT, args.APISettings.Site)
 
-	return &datadogexporter.Config{
+	return &datadogOtelconfig.Config{
 		ClientConfig:  *args.Client.Convert(),
 		QueueSettings: *args.Queue.Convert(),
 		BackOffConfig: *args.Retry.Convert(),
-		TagsConfig: datadogexporter.TagsConfig{
+		TagsConfig: datadogOtelconfig.TagsConfig{
 			Hostname: args.Hostname,
 		},
 		API:          *args.APISettings.Convert(),
 		Traces:       *args.Traces.Convert(defaultTraceEndpoint),
 		Metrics:      *args.Metrics.Convert(defaultMetricsEndpoint),
+		Logs:         *args.Logs.Convert(defaultLogsEndpoint),
 		HostMetadata: *args.HostMetadata.Convert(),
 		OnlyMetadata: args.OnlyMetadata,
 	}, nil
@@ -101,7 +113,7 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 }
 
 // Exporters implements exporter.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
@@ -118,6 +130,6 @@ func (args *Arguments) Validate() error {
 	if err != nil {
 		return err
 	}
-	datadogCfg := otelCfg.(*datadogexporter.Config)
+	datadogCfg := otelCfg.(*datadogOtelconfig.Config)
 	return datadogCfg.Validate()
 }

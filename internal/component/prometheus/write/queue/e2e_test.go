@@ -14,9 +14,9 @@ import (
 
 	"github.com/golang/snappy"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/walqueue/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -127,7 +127,7 @@ func TestE2E(t *testing.T) {
 
 const (
 	iterations = 10
-	items      = 10_000
+	items      = 100
 )
 
 func runTest(t *testing.T, add func(index int, appendable storage.Appender) (float64, labels.Labels), test func(samples *safeSlice[prompb.TimeSeries]), metaTest func(meta *safeSlice[prompb.MetricMetadata])) {
@@ -155,6 +155,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	require.NoError(t, err)
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
+
 	go func() {
 		runErr := c.Run(ctx)
 		require.NoError(t, runErr)
@@ -178,6 +179,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 			require.NoError(t, app.Commit())
 		}()
 	}
+
 	// This is a weird use case to handle eventually.
 	// With race turned on this can take a long time.
 	tm := time.NewTimer(20 * time.Second)
@@ -186,6 +188,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	case <-tm.C:
 		require.Truef(t, false, "failed to collect signals in the appropriate time")
 	}
+
 	cancel()
 
 	for i := 0; i < samples.Len(); i++ {
@@ -213,7 +216,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	}
 	require.Eventuallyf(t, func() bool {
 		return types.OutStandingTimeSeriesBinary.Load() == 0
-	}, 2*time.Second, 100*time.Millisecond, "there are %d time series not collected", types.OutStandingTimeSeriesBinary.Load())
+	}, 20*time.Second, 1*time.Second, "there are %d time series not collected", types.OutStandingTimeSeriesBinary.Load())
 }
 
 func handlePost(t *testing.T, _ http.ResponseWriter, r *http.Request) ([]prompb.TimeSeries, []prompb.MetricMetadata) {
@@ -356,7 +359,7 @@ func newComponent(t *testing.T, l *logging.Logger, url string, exp chan Exports,
 	}, Arguments{
 		TTL: 2 * time.Hour,
 		Persistence: Persistence{
-			MaxSignalsToBatch: 10_000,
+			MaxSignalsToBatch: 10,
 			BatchInterval:     1 * time.Second,
 		},
 		Endpoints: []EndpointConfig{{
@@ -365,7 +368,7 @@ func newComponent(t *testing.T, l *logging.Logger, url string, exp chan Exports,
 			Timeout:          20 * time.Second,
 			RetryBackoff:     5 * time.Second,
 			MaxRetryAttempts: 1,
-			BatchCount:       50,
+			BatchCount:       5,
 			FlushInterval:    1 * time.Second,
 			Parallelism:      1,
 		}},

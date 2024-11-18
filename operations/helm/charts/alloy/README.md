@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.9.1](https://img.shields.io/badge/Version-0.9.1-informational?style=flat-square) ![AppVersion: v1.4.2](https://img.shields.io/badge/AppVersion-v1.4.2-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.10.0](https://img.shields.io/badge/Version-0.10.0-informational?style=flat-square) ![AppVersion: v1.5.0](https://img.shields.io/badge/AppVersion-v1.5.0-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -45,6 +45,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.extraArgs | list | `[]` | Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/ |
 | alloy.extraEnv | list | `[]` | Extra environment variables to pass to the Alloy container. |
 | alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. |
+| alloy.hostAliases | list | `[]` | Host aliases to add to the Alloy container. |
 | alloy.lifecycle | object | `{}` | Set lifecycle hooks for the Grafana Alloy container. |
 | alloy.listenAddr | string | `"0.0.0.0"` | Address to listen for traffic on. 0.0.0.0 exposes the UI to other containers. |
 | alloy.listenPort | int | `12345` | Port to listen for traffic on. |

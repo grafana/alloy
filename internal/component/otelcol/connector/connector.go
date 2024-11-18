@@ -7,6 +7,17 @@ import (
 	"errors"
 	"os"
 
+	"github.com/prometheus/client_golang/prometheus"
+	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configtelemetry"
+	otelconnector "go.opentelemetry.io/collector/connector"
+	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
+	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
+	otelmetric "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/noop"
+	"go.opentelemetry.io/otel/sdk/metric"
+
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -16,12 +27,6 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/util/zapadapter"
-	"github.com/prometheus/client_golang/prometheus"
-	otelcomponent "go.opentelemetry.io/collector/component"
-	otelconnector "go.opentelemetry.io/collector/connector"
-	otelextension "go.opentelemetry.io/collector/extension"
-	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/sdk/metric"
 )
 
 const (
@@ -51,7 +56,7 @@ type Arguments interface {
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
-	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 
 	// NextConsumers returns the set of consumers to send data to.
 	NextConsumers() *otelcol.ConsumerArguments
@@ -90,7 +95,7 @@ var (
 func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Connector, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.New(ctx)
+	consumer := lazyconsumer.NewPaused(ctx)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -112,7 +117,7 @@ func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Conn
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
 		collector: collector,
 	}
 	if err := p.Update(args); err != nil {
@@ -152,13 +157,20 @@ func (p *Connector) Update(args component.Arguments) error {
 		return err
 	}
 
+	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelconnector.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(p.opts.Logger),
 
 			TracerProvider: p.opts.Tracer,
-			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
-			MetricsLevel:   metricsLevel,
+			MeterProvider:  mp,
+			LeveledMeterProvider: func(level configtelemetry.Level) otelmetric.MeterProvider {
+				if level <= metricsLevel {
+					return mp
+				}
+				return noop.MeterProvider{}
+			},
+			MetricsLevel: metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -192,7 +204,7 @@ func (p *Connector) Update(args component.Arguments) error {
 		if len(next.Metrics) > 0 {
 			nextMetrics := fanoutconsumer.Metrics(next.Metrics)
 			tracesConnector, err = p.factory.CreateTracesToMetrics(p.ctx, settings, connectorConfig, nextMetrics)
-			if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 				return err
 			} else if tracesConnector != nil {
 				components = append(components, tracesConnector)

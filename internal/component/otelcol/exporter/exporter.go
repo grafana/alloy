@@ -7,6 +7,17 @@ import (
 	"errors"
 	"os"
 
+	"github.com/prometheus/client_golang/prometheus"
+	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configtelemetry"
+	otelexporter "go.opentelemetry.io/collector/exporter"
+	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
+	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
+	otelmetric "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/noop"
+	"go.opentelemetry.io/otel/sdk/metric"
+
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -16,12 +27,6 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/views"
 	"github.com/grafana/alloy/internal/util/zapadapter"
-	"github.com/prometheus/client_golang/prometheus"
-	otelcomponent "go.opentelemetry.io/collector/component"
-	otelexporter "go.opentelemetry.io/collector/exporter"
-	otelextension "go.opentelemetry.io/collector/extension"
-	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/sdk/metric"
 )
 
 // Arguments is an extension of component.Arguments which contains necessary
@@ -39,7 +44,7 @@ type Arguments interface {
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
-	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 
 	// DebugMetricsConfig returns the configuration for debug metrics
 	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
@@ -104,7 +109,7 @@ var (
 func New(opts component.Options, f otelexporter.Factory, args Arguments, supportedSignals TypeSignal) (*Exporter, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.New(ctx)
+	consumer := lazyconsumer.NewPaused(ctx)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -126,7 +131,7 @@ func New(opts component.Options, f otelexporter.Factory, args Arguments, support
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
 		collector: collector,
 
 		supportedSignals: supportedSignals,
@@ -175,13 +180,20 @@ func (e *Exporter) Update(args component.Arguments) error {
 		return err
 	}
 
+	mp := metric.NewMeterProvider(metricOpts...)
 	settings := otelexporter.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 
 			TracerProvider: e.opts.Tracer,
-			MeterProvider:  metric.NewMeterProvider(metricOpts...),
-			MetricsLevel:   metricsLevel,
+			MeterProvider:  mp,
+			LeveledMeterProvider: func(level configtelemetry.Level) otelmetric.MeterProvider {
+				if level <= metricsLevel {
+					return mp
+				}
+				return noop.MeterProvider{}
+			},
+			MetricsLevel: metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -203,7 +215,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	var tracesExporter otelexporter.Traces
 	if e.supportedSignals.SupportsTraces() {
 		tracesExporter, err = e.factory.CreateTracesExporter(e.ctx, settings, exporterConfig)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if tracesExporter != nil {
 			components = append(components, tracesExporter)
@@ -213,7 +225,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	var metricsExporter otelexporter.Metrics
 	if e.supportedSignals.SupportsMetrics() {
 		metricsExporter, err = e.factory.CreateMetricsExporter(e.ctx, settings, exporterConfig)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if metricsExporter != nil {
 			components = append(components, metricsExporter)
@@ -223,7 +235,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	var logsExporter otelexporter.Logs
 	if e.supportedSignals.SupportsLogs() {
 		logsExporter, err = e.factory.CreateLogsExporter(e.ctx, settings, exporterConfig)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if logsExporter != nil {
 			components = append(components, logsExporter)

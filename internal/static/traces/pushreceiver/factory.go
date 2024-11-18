@@ -5,6 +5,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pipeline"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 )
 
@@ -67,12 +68,12 @@ func (f *Factory) CreateTracesReceiver(
 func (f *Factory) CreateMetricsReceiver(ctx context.Context, set otelreceiver.Settings,
 	cfg component.Config, nextConsumer consumer.Metrics) (otelreceiver.Metrics, error) {
 
-	return nil, component.ErrDataTypeIsNotSupported
+	return nil, pipeline.ErrSignalNotSupported
 }
 
 // CreateLogsReceiver returns an error because logs are not supported by push receiver.
 func (f *Factory) CreateLogsReceiver(ctx context.Context, set otelreceiver.Settings,
 	cfg component.Config, nextConsumer consumer.Logs) (otelreceiver.Logs, error) {
 
-	return nil, component.ErrDataTypeIsNotSupported
+	return nil, pipeline.ErrSignalNotSupported
 }

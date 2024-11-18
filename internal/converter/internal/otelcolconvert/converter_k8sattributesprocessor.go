@@ -10,6 +10,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -45,9 +46,9 @@ func (k8sAttributesProcessorConverter) ConvertAndAppend(state *State, id compone
 
 func toK8SAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *k8sattributesprocessor.Config) *k8sattributes.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextLogs    = state.Next(id, component.DataTypeLogs)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &k8sattributes.Arguments{
