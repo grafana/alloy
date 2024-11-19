@@ -408,3 +408,12 @@ func (o *OAuth2Config) Validate() error {
 
 	return o.ProxyConfig.Validate()
 }
+
+type SysLogFormat string
+
+const (
+	// A modern Syslog RFC
+	SyslogFormatRFC5424 SysLogFormat = "rfc5424"
+	// A legacy Syslog RFC also known as BSD-syslog
+	SyslogFormatRFC3164 SysLogFormat = "rfc3164"
+)
