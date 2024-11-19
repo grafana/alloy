@@ -16,6 +16,11 @@ jobs:
         run: |
             sudo rm -rf /usr/share/dotnet
             sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+            sudo rm -rf /usr/share/dotnet
+            sudo rm -rf /opt/ghc
+            sudo rm -rf "/usr/local/share/boost"
+            sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3
