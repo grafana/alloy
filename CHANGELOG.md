@@ -36,6 +36,9 @@ Main (unreleased)
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
 
+- Use Go 1.23.3 for builds. (@mattdurham)
+
+
 v1.5.0
 -----------------
 
