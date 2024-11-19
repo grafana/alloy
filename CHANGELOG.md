@@ -20,6 +20,8 @@ Main (unreleased)
 
 - Add `otelcol.receiver.solace` component to receive traces from a Solace broker. (@wildum)
 
+- Add `otelcol.exporter.syslog` component to export logs in syslog format (@dehaansa)
+
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
