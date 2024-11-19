@@ -286,7 +286,7 @@ Some values in the {{< param "PRODUCT_NAME" >}} syntax strings are [escaped][]:
 [escaped]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#strings
 
 
-[OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/README.md
+[OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/README.md
 [OTTL span context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottlspan/README.md
 [OTTL spanevent context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottlspanevent/README.md
 [OTTL metric context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottlmetric/README.md
