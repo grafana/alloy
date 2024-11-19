@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.syslog/
-aliases:
-  - ../otelcol.exporter.syslog/ # /docs/alloy/latest/reference/components/otelcol.exporter.syslog/
 description: Learn about otelcol.exporter.syslog
 title: otelcol.exporter.syslog
 ---
