@@ -3,6 +3,7 @@ package otelcolconvert
 import (
 	"fmt"
 
+	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/syslog"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
@@ -44,15 +45,15 @@ func (syslogExporterConverter) ConvertAndAppend(state *State, id componentstatus
 
 func toOtelcolExportersyslog(cfg *syslogexporter.Config) *syslog.Arguments {
 	return &syslog.Arguments{
-		Queue:               toQueueArguments(cfg.QueueConfig),
-		Retry:               toRetryArguments(cfg.RetryConfig),
+		Queue:               toQueueArguments(cfg.QueueSettings),
+		Retry:               toRetryArguments(cfg.BackOffConfig),
 		DebugMetrics:        common.DefaultValue[syslog.Arguments]().DebugMetrics,
 		TLS:                 toTLSClientArguments(cfg.TLSSetting),
 		Endpoint:            cfg.Endpoint,
 		Port:                cfg.Port,
 		Network:             cfg.Network,
-		Protocol:            cfg.Protocol,
-		Timeout:             cfg.Timeout,
+		Protocol:            config.SysLogFormat(cfg.Protocol),
+		Timeout:             cfg.TimeoutSettings.Timeout,
 		EnableOctetCounting: cfg.EnableOctetCounting,
 	}
 }
