@@ -14,6 +14,8 @@ v1.5.1
 
 - Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
 
+- Fixed a race condition that could lead to a deadlock when using `import` statements, which could lead to a memory leak on `/metrics` endpoint of an Alloy instance. (@thampiotr) 
+
 v1.5.0
 -----------------
 
