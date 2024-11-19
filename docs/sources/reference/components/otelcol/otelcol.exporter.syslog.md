@@ -228,7 +228,7 @@ The following fields are exported and can be referenced by other components:
 
 ### TCP endpoint without TLS
 
-This example creates an exporter to send data to a syslog server expecting rfc5424 compliant messages over TCP without TLS:
+This example creates an exporter to send data to a syslog server expecting RFC5424 compliant messages over TCP without TLS:
 
 ```alloy
 otelcol.exporter.syslog "default" {
