@@ -158,7 +158,7 @@ func (cn *ImportConfigNode) setContentHealth(t component.HealthType, msg string)
 //  4. Health reported from the source.
 //  5. Health reported from the nested imports.
 func (cn *ImportConfigNode) CurrentHealth() component.Health {
-	// NOTE: Since other code paths such asonContentUpdate -> setContentHealth will
+	// NOTE: Since other code paths such as onContentUpdate -> setContentHealth will
 	// also end up acquiring both of these mutexes, it's _essential_ to keep the
 	// order in which they're locked consistent to avoid deadlocks. We must always first
 	// lock the mut, then healthMut.
