@@ -287,11 +287,11 @@ Some values in the {{< param "PRODUCT_NAME" >}} syntax strings are [escaped][]:
 
 
 [OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/README.md
-[OTTL span context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottlspan/README.md
-[OTTL spanevent context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottlspanevent/README.md
-[OTTL metric context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottlmetric/README.md
-[OTTL datapoint context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottldatapoint/README.md
-[OTTL log context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottllog/README.md
+[OTTL span context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottlspan/README.md
+[OTTL spanevent context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottlspanevent/README.md
+[OTTL metric context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottlmetric/README.md
+[OTTL datapoint context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottldatapoint/README.md
+[OTTL log context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottllog/README.md
 [OTTL Converter functions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/pkg/ottl/ottlfuncs#converters
 [HasAttrKeyOnDataPoint]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/processor/filterprocessor/README.md#hasattrkeyondatapoint
 [HasAttrOnDataPoint]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/processor/filterprocessor/README.md#hasattrondatapoint
