@@ -8,7 +8,7 @@ title: otelcol.exporter.syslog
 
 # otelcol.exporter.syslog
 
-`otelcol.exporter.syslog` accepts telemetry data from other `otelcol` components and writes them over the network using the syslog protocol.
+`otelcol.exporter.syslog` accepts logs from other `otelcol` components and writes them over the network using the syslog protocol.
 
 {{< admonition type="note" >}}
 `otelcol.exporter.syslog` is a wrapper over the upstream OpenTelemetry Collector `syslog` exporter.
@@ -25,6 +25,38 @@ otelcol.exporter.syslog "LABEL" {
 }
 ```
 
+### RFC5424
+
+When configured with `protocol: rfc5424`, the exporter creates one syslog message for each log record,
+based on the following record-level attributes of the log.
+If an attribute is missing, the default value is used.
+The log's timestamp field is used for the syslog message's time.
+
+| Attribute name    | Type   | Default value  |
+|-------------------|--------|----------------|
+| `appname`         | string | `-`            |
+| `hostname`        | string | `-`            |
+| `message`         | string | empty string   |
+| `msg_id`          | string | `-`            |
+| `priority`        | int    | `165`          |
+| `proc_id`         | string | `-`            |
+| `structured_data` | map    | `-`            |
+| `version`         | int    | `1`            |
+
+### RFC3164
+
+When configured with `protocol: rfc3164`, the exporter creates one syslog message for each log record,
+based on the following record-level attributes of the log.
+If an attribute is missing, the default value is used.
+The log's timestamp field is used for the syslog message's time.
+
+| Attribute name    | Type   | Default value  |
+| ----------------- | ------ | -------------- |
+| `appname`         | string | empty string   |
+| `hostname`        | string | `-`            |
+| `message`         | string | empty string   |
+| `priority`        | int    | `165`          |
+
 ## Arguments
 
 `otelcol.exporter.syslog` supports the following arguments:
@@ -32,11 +64,17 @@ otelcol.exporter.syslog "LABEL" {
 | Name                   | Type      | Description                                                               | Default                           | Required |
 |------------------------|-----------|---------------------------------------------------------------------------|-----------------------------------|----------|
 | `endpoint`             | `string`  | The endpoint to send syslog formatted logs to.                            |                                   | yes      |
-| `network`              | `string`  | The type of network connection to use to send logs (tcp/udp).             | tcp                               | no       |
+| `network`              | `string`  | The type of network connection to use to send logs.                       | tcp                               | no       |
 | `port`                 | `int`     | The port where the syslog server accepts connections.                     | 514                               | no       |
-| `protocol`             | `string`  | The syslog protocol that the syslog server expects (rfc5424/rfc3164).     | rfc5424                           | no       |
-| `enable_octet_counting`| `bool`    | Whether or not to enable rfc6587 octet counting.                          | false                             | no       |
-| `timeout`              | `duration`| Time to wait for each message sent to a syslog server.                    | 5s                                | no       |
+| `protocol`             | `string`  | The syslog protocol that the syslog server supports.                      | rfc5424                           | no       |
+| `enable_octet_counting`| `bool`    | Whether to enable rfc6587 octet counting.                                 | false                             | no       |
+| `timeout`              | `duration`| Time to wait before marking a request as failed.                          | 5s                                | no       |
+
+The `network` argument specifies if the syslog endpoint is using the TCP or UDP protocol. 
+`network` must be one of `tcp`, `udp`
+
+The `protocol` argument specifies the syslog format supported by the endpoint.
+`protocol` must be one of `rfc5424`, `rfc3164`
 
 ## Blocks
 
@@ -44,7 +82,7 @@ The following blocks are supported inside the definition of `otelcol.exporter.sy
 
 | Hierarchy        | Block                | Description                                                                | Required |
 |------------------|----------------------|----------------------------------------------------------------------------|----------|
-| tls              | [tls][]              | Configured TLS client connection.                                          | no       |
+| tls              | [tls][]              | Configures TLS for a TCP connection.                                       | no       |
 | sending_queue    | [sending_queue][]    | Configures batching of data before sending.                                | no       |
 | retry_on_failure | [retry_on_failure][] | Configures retry mechanism for failed requests.                            | no       |
 | debug_metrics    | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state. | no       |
@@ -56,7 +94,7 @@ The following blocks are supported inside the definition of `otelcol.exporter.sy
 
 ### tls block
 
-The `tls` block configures TLS settings used for the connection to a TCP syslog server.
+The `tls` block configures TLS settings used for a connection to a TCP syslog server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -96,6 +134,8 @@ The following fields are exported and can be referenced by other components:
 
 ## Examples
 
+### TCP endpoint without TLS
+
 This example creates an exporter to send data to a syslog server expecting rfc5424 compliant messages over TCP without TLS:
 
 ```alloy
@@ -107,6 +147,49 @@ otelcol.exporter.syslog "default" {
   }
 }
 ```
+
+### Using the `otelcol.processor.transform` component to format logs from `loki.source.syslog`
+
+This example shows one of the methods for annotating your loki messages into the format expected 
+by the exporter using a `otelcol.receiver.loki` component in addition to the `otelcol.processor.transform` 
+component. This example assumes that the log messages being parsed have come from a `loki.source.syslog` 
+component. This is just an example of some of the techniques that can be applied, and not a fully functioning 
+example for a specific incoming log.
+
+```alloy
+otelcol.receiver.loki "default" {
+  output {
+    logs = [otelcol.processor.transform.syslog.input]
+  }
+}
+
+otelcol.processor.transform "syslog" {
+  error_mode = "ignore"
+
+  log_statements {
+    context = "log"
+
+    statements = [
+      `set(attributes["message"], attributes["__syslog_message"])`,
+      `set(attributes["appname"], attributes["__syslog_appname"])`,
+      `set(attributes["hostname"], attributes["__syslog_hostname"])`,
+
+      // To set structured data you can chain index ([]) operations.
+      `set(attributes["structured_data"]["auth@32473"]["user"], attributes["__syslog_message_sd_auth_32473_user"])`,
+      `set(attributes["structured_data"]["auth@32473"]["user_host"], attributes["__syslog_message_sd_auth_32473_user_host"])`,
+      `set(attributes["structured_data"]["auth@32473"]["valid"], attributes["__syslog_message_sd_auth_32473_authenticated"])`,
+    ]
+  }
+
+  output {
+    metrics = []
+    logs    = [otelcol.exporter.syslog.default.input]
+    traces  = []
+  }
+}
+```
+
+### Using the `otelcol.processor.transform` component to format otel logs
 
 This example shows one of the methods for annotating your messages in the OpenTelemetry log format into the format expected 
 by the exporter using an `otelcol.processor.transform` component. This example assumes that the log messages being 
@@ -152,78 +235,6 @@ otelcol.processor.transform "syslog" {
   }
 }
 ```
-
-This example shows one of the methods for annotating your loki messages into the format expected 
-by the exporter using a `otelcol.receiver.loki` component in addition to the `otelcol.processor.transform` 
-component. This example assumes that the log messages being parsed have come from a `loki.source.syslog` 
-component. This is just an example of some of the techniques that can be applied, and not a fully functioning 
-example for a specific incoming log.
-
-```alloy
-otelcol.receiver.loki "default" {
-  output {
-    logs = [otelcol.processor.transform.syslog.input]
-  }
-}
-
-otelcol.processor.transform "syslog" {
-  error_mode = "ignore"
-
-  log_statements {
-    context = "log"
-
-    statements = [
-      `set(attributes["message"], attributes["__syslog_message"])`,
-      `set(attributes["appname"], attributes["__syslog_appname"])`,
-      `set(attributes["hostname"], attributes["__syslog_hostname"])`,
-
-      // To set structured data you can chain index ([]) operations.
-      `set(attributes["structured_data"]["auth@32473"]["user"], attributes["__syslog_message_sd_auth_32473_user"])`,
-      `set(attributes["structured_data"]["auth@32473"]["user_host"], attributes["__syslog_message_sd_auth_32473_user_host"])`,
-      `set(attributes["structured_data"]["auth@32473"]["valid"], attributes["__syslog_message_sd_auth_32473_authenticated"])`,
-    ]
-  }
-
-  output {
-    metrics = []
-    logs    = [otelcol.exporter.syslog.default.input]
-    traces  = []
-  }
-}
-```
-
-### RFC5424
-
-When configured with `protocol: rfc5424`, the exporter creates one syslog message for each log record,
-based on the following record-level attributes of the log.
-If an attribute is missing, the default value is used.
-The log's timestamp field is used for the syslog message's time.
-
-| Attribute name    | Type   | Default value  |
-|-------------------|--------|----------------|
-| `appname`         | string | `-`            |
-| `hostname`        | string | `-`            |
-| `message`         | string | empty string   |
-| `msg_id`          | string | `-`            |
-| `priority`        | int    | `165`          |
-| `proc_id`         | string | `-`            |
-| `structured_data` | map    | `-`            |
-| `version`         | int    | `1`            |
-
-### RFC3164
-
-When configured with `protocol: rfc3164`, the exporter creates one syslog message for each log record,
-based on the following record-level attributes of the log.
-If an attribute is missing, the default value is used.
-The log's timestamp field is used for the syslog message's time.
-
-| Attribute name    | Type   | Default value  |
-| ----------------- | ------ | -------------- |
-| `appname`         | string | empty string   |
-| `hostname`        | string | `-`            |
-| `message`         | string | empty string   |
-| `priority`        | int    | `165`          |
-
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
