@@ -112,7 +112,7 @@ Encoding overrides the marshaler if it's present and sets it to use the encoding
 
 Refer to the Open Telemetry [encoding extensions][encoding] documentation for more information.
 
-[encoding]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/encoding
+[encoding]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/extension/encoding
 
 ### Compression
 
