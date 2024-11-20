@@ -77,7 +77,8 @@ For example, if you want to keep memory usage below `10GiB`, use `GOMEMLIMIT=9Gi
 
 #### Automatically set GOMEMLIMIT
 
-The `GOMEMLIMIT` environment variable is either automatically set to 90% of an available `cgroup` value using the [automemlimit] module, or you can explicitly set the  `GOMEMLIMIT` environment variable before you run  {{< param "PRODUCT_NAME" >}}. The 90% ratio can also be changed by setting the `AUTOMEMLIMIT` environment variable to a float value between `0` and `1.0`.
+The `GOMEMLIMIT` environment variable is either automatically set to 90% of an available `cgroup` value using the [automemlimit] module, or you can explicitly set the  `GOMEMLIMIT` environment variable before you run  {{< param "PRODUCT_NAME" >}}.
+You can also change the 90% ratio by setting the `AUTOMEMLIMIT` environment variable to a float value between `0` and `1.0`.
 No changes will occur if the limit cannot be determined and you did not explicitly define a  `GOMEMLIMIT` value.
 
 ## GOGC
