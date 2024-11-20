@@ -15,7 +15,7 @@ You can use Chef to install and manage {{< param "PRODUCT_NAME" >}}.
 ## Before you begin
 
 - These steps assume you already have a working [Chef][] setup.
-- You can add the following resources to any new or existing recipe.
+- You can add the following resources to any recipe.
 - These tasks install {{< param "PRODUCT_NAME" >}} from the package repositories.
   The tasks target Linux systems from the following families:
   - Debian (including Ubuntu)
