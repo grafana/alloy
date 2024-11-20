@@ -26,16 +26,6 @@ The following environment variables are supported:
 
 Refer to the [Go runtime][runtime] documentation for more information about Go runtime environment variables.
 
-# Windows Service Configuration
-
-To configure any of the available environment variables when running {{< param "PRODUCT_NAME" >}} as a Windows Service, open `regedit`, the Windows Registry Editor, and navigate to the registry key `HKEY_LOCAL_MACHINE\SOFTWARE\GrafanaLabs\Alloy`. Under this key will be an `Environment` multi-string value where any desired environment variables can be provided on separate lines.
-
-For example, if you wanted to configure `NO_PROXY` and `GOGC` you would enter the following as the `Environment` value. Refer to our [Windows] configuration documentation for more details.
-```
-NO_PROXY=1.2.3.4
-GOGC=150
-```
-
 ## GODEBUG
 
 You can use the `GODEBUG` environment variable to control the debugging variables within the Go runtime.  The following arguments are supported.
