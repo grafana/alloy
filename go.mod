@@ -214,6 +214,7 @@ require (
 	go.opentelemetry.io/collector/consumer/consumertest v0.112.0
 	go.opentelemetry.io/collector/exporter v0.112.0
 	go.opentelemetry.io/collector/exporter/debugexporter v0.112.0
+	go.opentelemetry.io/collector/exporter/exportertest v0.112.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.112.0
 	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.112.0
 	go.opentelemetry.io/collector/extension v0.112.0
@@ -227,6 +228,7 @@ require (
 	go.opentelemetry.io/collector/processor v0.112.0
 	go.opentelemetry.io/collector/processor/batchprocessor v0.112.0
 	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.112.0
+	go.opentelemetry.io/collector/processor/processortest v0.112.0
 	go.opentelemetry.io/collector/receiver v0.112.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.112.0
 	go.opentelemetry.io/collector/semconv v0.112.0
@@ -837,13 +839,11 @@ require (
 	go.opentelemetry.io/collector/consumer/consumererror/consumererrorprofiles v0.112.0 // indirect
 	go.opentelemetry.io/collector/exporter/exporterhelper/exporterhelperprofiles v0.112.0 // indirect
 	go.opentelemetry.io/collector/exporter/exporterprofiles v0.112.0 // indirect
-	go.opentelemetry.io/collector/exporter/exportertest v0.112.0 // indirect
 	go.opentelemetry.io/collector/extension/experimental/storage v0.112.0 // indirect
 	go.opentelemetry.io/collector/extension/extensioncapabilities v0.112.0 // indirect
 	go.opentelemetry.io/collector/internal/memorylimiter v0.112.0 // indirect
 	go.opentelemetry.io/collector/pipeline/pipelineprofiles v0.112.0 // indirect
 	go.opentelemetry.io/collector/processor/processorprofiles v0.112.0 // indirect
-	go.opentelemetry.io/collector/processor/processortest v0.112.0 // indirect
 	go.opentelemetry.io/collector/receiver/receiverprofiles v0.112.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.7.0 // indirect
 )
@@ -913,18 +913,6 @@ replace (
 
 	// TODO(marctc, mattdurham): Replace node_export with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
 	github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20231004161416-702318429731
-)
-
-// Replacing for an internal fork which allows us to observe metrics produced by the Collector.
-// This is a temporary solution while a new configuration design is discussed for the collector. Related issues:
-// https://github.com/open-telemetry/opentelemetry-collector/issues/7532
-// https://github.com/open-telemetry/opentelemetry-collector/pull/7644
-// https://github.com/open-telemetry/opentelemetry-collector/pull/7696
-// https://github.com/open-telemetry/opentelemetry-collector/issues/4970
-replace (
-	go.opentelemetry.io/collector/otelcol => github.com/grafana/opentelemetry-collector/otelcol v0.0.0-20241104164848-8ea9d0a3e17a
-	go.opentelemetry.io/collector/processor/batchprocessor => github.com/grafana/opentelemetry-collector/processor/batchprocessor v0.0.0-20241104164848-8ea9d0a3e17a
-	go.opentelemetry.io/collector/service => github.com/grafana/opentelemetry-collector/service v0.0.0-20241104164848-8ea9d0a3e17a
 )
 
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3

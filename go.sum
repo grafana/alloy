@@ -1252,12 +1252,6 @@ github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v
 github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20240326165551-1ae1b9218b1b/go.mod h1:XVaL+FyxEWEfHkDI/X6FJgFYDA0080A1/qoOHQ43dxM=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/opentelemetry-collector/otelcol v0.0.0-20241104164848-8ea9d0a3e17a h1:6TnkhPwEjuleHfhKSw+IyC/I2cQORuEsImZZMhoodIE=
-github.com/grafana/opentelemetry-collector/otelcol v0.0.0-20241104164848-8ea9d0a3e17a/go.mod h1:H/HurP0qCcwcWdDRgvTJ/FRrVLnt++agxzHvgLQn/Ew=
-github.com/grafana/opentelemetry-collector/processor/batchprocessor v0.0.0-20241104164848-8ea9d0a3e17a h1:WrDY3pU4EkHsCIepUAYWt7lIfsMEPdugmYB8k6RYjMo=
-github.com/grafana/opentelemetry-collector/processor/batchprocessor v0.0.0-20241104164848-8ea9d0a3e17a/go.mod h1:QLQ31rGjPuMc/nGw4rL4HzQI9F0jVAPEmC342chxoqA=
-github.com/grafana/opentelemetry-collector/service v0.0.0-20241104164848-8ea9d0a3e17a h1:ZycgUSrrwtB2x1fMdLD88J2k8886/HvX1tYHlaOH/hg=
-github.com/grafana/opentelemetry-collector/service v0.0.0-20241104164848-8ea9d0a3e17a/go.mod h1:VTLnax+DjHal3q7WKQO0ITjWdfPTq2txaoNRcVXYzgE=
 github.com/grafana/postgres_exporter v0.15.1-0.20241105053755-e0a51174f168 h1:I7FyVTtge/3G5YHVOMDG0l4If6W+kXbFDqtzj5gCSGs=
 github.com/grafana/postgres_exporter v0.15.1-0.20241105053755-e0a51174f168/go.mod h1:dMrETGkSetWByp2XGsm8g6pRVh/ibnrDxKsN4BqnGNg=
 github.com/grafana/prometheus v1.8.2-0.20240514135907-13889ba362e6 h1:kih3d3M3dxAmrpFLvnIxFzWx8KMQyKxQwKgWP67C/Fg=
@@ -2686,6 +2680,8 @@ go.opentelemetry.io/collector/filter v0.112.0 h1:xX0MIfXOkbcWzCcmNqvtpnBDnSZAJmN
 go.opentelemetry.io/collector/filter v0.112.0/go.mod h1:ZcPbD9CLxqcQJ5D2dV2Ma0Hm2IKMOYggTLW8dDdZQSQ=
 go.opentelemetry.io/collector/internal/memorylimiter v0.112.0 h1:u1hUa48x1qEONUSOtz8dx/c8oz74RpIHyWnGFJ7t0CE=
 go.opentelemetry.io/collector/internal/memorylimiter v0.112.0/go.mod h1:BtHruDt40QTW8klZVQCqsVfhVsOkh6hDg5w1cPvLpeU=
+go.opentelemetry.io/collector/otelcol v0.112.0 h1:xOq7z5WK5jS1Qg5w+l99H1EiQRq9rHHDv7EIiLryldw=
+go.opentelemetry.io/collector/otelcol v0.112.0/go.mod h1:H/HurP0qCcwcWdDRgvTJ/FRrVLnt++agxzHvgLQn/Ew=
 go.opentelemetry.io/collector/otelcol/otelcoltest v0.112.0 h1:AdjoVnYl7RxoOvhWZcJb0SWY1VvlRT1cdlCwHBpn9vs=
 go.opentelemetry.io/collector/otelcol/otelcoltest v0.112.0/go.mod h1:VSbEYgmiSM5K6p501XD35QuhxbDpkxrfS2Wf5OKnHPs=
 go.opentelemetry.io/collector/pdata v1.18.0 h1:/yg2rO2dxqDM2p6GutsMCxXN6sKlXwyIz/ZYyUPONBg=
@@ -2700,6 +2696,8 @@ go.opentelemetry.io/collector/pipeline/pipelineprofiles v0.112.0 h1:opXGNrlJAjYR
 go.opentelemetry.io/collector/pipeline/pipelineprofiles v0.112.0/go.mod h1:c9yn4x+vY3G10eLCRuUu/oH7Y8YdE/BsgmLWmfHkaNY=
 go.opentelemetry.io/collector/processor v0.112.0 h1:nMv9DOBYR9MB78ddUgY3A3ytwAwk3t4HQMNIu+w8o0g=
 go.opentelemetry.io/collector/processor v0.112.0/go.mod h1:AJ8EHq8Z/ev90f4gU6G5ULUncdpWmBRATYk8ioR3pvw=
+go.opentelemetry.io/collector/processor/batchprocessor v0.112.0 h1:Dq/RpdClawI8HrnSi177LziPjfHo733BWOCgRTbWrfY=
+go.opentelemetry.io/collector/processor/batchprocessor v0.112.0/go.mod h1:QLQ31rGjPuMc/nGw4rL4HzQI9F0jVAPEmC342chxoqA=
 go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.112.0 h1:+V+4OUcg1s3CrZpttT4dA+Uuv7VWpOIPQpOkcsrMBIo=
 go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.112.0/go.mod h1:f/eEZ3JMbRNLsRzNwATtTjuulDrLvhYMvXinLrmHtTU=
 go.opentelemetry.io/collector/processor/processorprofiles v0.112.0 h1:Aef68SAbmBbhbsZZPuZb0ECwkV05vIcHIizGOGbWsbM=
@@ -2714,6 +2712,8 @@ go.opentelemetry.io/collector/receiver/receiverprofiles v0.112.0 h1:SShkZsWRsFss
 go.opentelemetry.io/collector/receiver/receiverprofiles v0.112.0/go.mod h1:615smszDXiz4YWwXslxlAjX7FzOVDU7Bk6xARFk+zpk=
 go.opentelemetry.io/collector/semconv v0.112.0 h1:JPQyvZhlNLVSuVI+FScONaiFygB7h7NTZceUEKIQUEc=
 go.opentelemetry.io/collector/semconv v0.112.0/go.mod h1:zCJ5njhWpejR+A40kiEoeFm1xq1uzyZwMnRNX6/D82A=
+go.opentelemetry.io/collector/service v0.112.0 h1:SI5bwPrRHLRn/kR9AoSSDX/8vaKFe+NMYloAcXfWMSE=
+go.opentelemetry.io/collector/service v0.112.0/go.mod h1:VTLnax+DjHal3q7WKQO0ITjWdfPTq2txaoNRcVXYzgE=
 go.opentelemetry.io/contrib/config v0.10.0 h1:2JknAzMaYjxrHkTnZh3eOme/Y2P5eHE2SWfhfV6Xd6c=
 go.opentelemetry.io/contrib/config v0.10.0/go.mod h1:aND2M6/KfNkntI5cyvHriR/zvZgPf8j9yETdSmvpfmc=
 go.opentelemetry.io/contrib/detectors/aws/ec2 v1.28.0 h1:d+y/wygENfwEbVpo7c3A9GfnMhoTiepQcthQSh+Mc9g=
