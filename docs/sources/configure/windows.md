@@ -77,7 +77,7 @@ To change the environment variables used by {{< param "PRODUCT_NAME" >}}, perfor
 
 1. Double-click on the multi-string value called **Environment***.
 
-1. In the dialog box, enter the environment variable values to provide to the {{< param "PRODUCT_NAME" >}} binary.
+1. In the dialog box, enter the environment variable values to pass to the {{< param "PRODUCT_NAME" >}} binary.
    Make sure that each variable is on its own line.
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
