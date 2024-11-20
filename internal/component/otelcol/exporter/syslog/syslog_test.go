@@ -86,8 +86,12 @@ func Test(t *testing.T) {
 	case <-time.After(time.Second):
 		require.FailNow(t, "failed waiting for logs")
 	case log := <-ch:
-		expected := fmt.Sprintf("<165>1 %s test-host Application 12345 - [Auth Realm=\"ADMIN\" User=\"root\"] This is a test log\n", timestamp.UTC().Format("2006-01-02T15:04:05Z"))
-		require.Equal(t, expected, log)
+		// Order of the structured data is not guaranteed, so we need to check for both possible orders.
+		expected := []string{
+			fmt.Sprintf("<165>1 %s test-host Application 12345 - [Auth Realm=\"ADMIN\" User=\"root\"] This is a test log\n", timestamp.UTC().Format("2006-01-02T15:04:05Z")),
+			fmt.Sprintf("<165>1 %s test-host Application 12345 - [Auth User=\"root\" Realm=\"ADMIN\"] This is a test log\n", timestamp.UTC().Format("2006-01-02T15:04:05Z")),
+		}
+		require.Contains(t, expected, log)
 	}
 }
 
