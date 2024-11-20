@@ -109,8 +109,8 @@ Value            | Description                                                  
 -----------------|---------------------------------------------------------------------------------|------------------------------------------
  `none` or `0`   | Omit goroutine stack traces entirely from the panic output.                     | -
  `single`        | Print the stack trace for the current goroutine.                                | No
- `all` or `1`    | Print the stack traces for all user created goroutines.                         | No
- `system` or `2` | Print the stack traces for all user created and runtime created goroutines.     | Yes
+ `all` or `1`    | Print the stack traces for all user-created goroutines.                         | No
+ `system` or `2` | Print the stack traces for all user-created and runtime-created goroutines.     | Yes
  `crash`         | Similar to `system`, but also triggers OS specific additional behavior. For example, on Unix systems this raises a SIGABRT to trigger a code dump.   | Yes
  `wer`           | Similar to `crash`, but does not disable Windows Error Reporting.               | Yes
 
