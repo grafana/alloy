@@ -182,8 +182,13 @@ func retrieveEnvironmentVariables() []string {
 		"GOMAXPROCS",
 		"GOMEMLIMIT",
 		"HOSTNAME",
+		// the proxy variables can be provided either uppercased or lowercased
 		"HTTP_PROXY",
+		"http_proxy",
 		"HTTPS_PROXY",
+		"https_proxy",
+		"NO_PROXY",
+		"no_proxy",
 		"PPROF_BLOCK_PROFILING_RATE",
 		"PPROF_MUTEX_PROFILING_PERCENT",
 	}
