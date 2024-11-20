@@ -61,11 +61,11 @@ To change the set of command-line arguments passed to the {{< param "PRODUCT_NAM
 
    1. Click on **All Tasks > Restart**.
 
-## Change Environment Variable Values
+## Change environment variable values
 
-The Go runtime provides several ways to modify the execution of a binary using Environment Variables, see our [reference documentation][environment] for more specific details.
+The Go runtime provides several ways to modify the execution of a binary using [environment variables][environment].
 
-To change the values of Environment Variables provided to the {{< param "PRODUCT_NAME" >}} binary, perform the following steps:
+To change the environment variables used by {{< param "PRODUCT_NAME" >}}, perform the following steps.
 
 1. Open the Registry Editor:
 
@@ -77,7 +77,7 @@ To change the values of Environment Variables provided to the {{< param "PRODUCT
 
 1. Double-click on the multi-string value called **Environment***.
 
-1. In the dialog box, enter the environment variable values to provide to the {{< param "PRODUCT_NAME" >}} binary.
+1. In the dialog box, enter the environment variable values to pass to the {{< param "PRODUCT_NAME" >}} binary.
    Make sure that each variable is on its own line.
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
