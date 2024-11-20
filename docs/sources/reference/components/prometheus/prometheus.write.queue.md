@@ -39,20 +39,20 @@ prometheus.write.queue "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`ttl` | `time` | `duration` | How long the samples can be queued for before they are discarded. | `2h` | no
+ Name  | Type   | Description | Default                                                           | Required 
+-------|--------|-------------|-------------------------------------------------------------------|----------
+ `ttl` | `time` | `duration`  | How long the samples can be queued for before they are discarded. | `2h`     | no
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `prometheus.write.queue`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-persistence | [persistence][] | Configuration for persistence | no
-endpoint | [endpoint][] | Location to send metrics to. | no
-endpoint > basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the endpoint. | no
+ Hierarchy             | Block           | Description                                              | Required 
+-----------------------|-----------------|----------------------------------------------------------|----------
+ persistence           | [persistence][] | Configuration for persistence                            | no       
+ endpoint              | [endpoint][]    | Location to send metrics to.                             | no       
+ endpoint > basic_auth | [basic_auth][]  | Configure basic_auth for authenticating to the endpoint. | no       
 
 The `>` symbol indicates deeper levels of nesting. For example, `endpoint >
 basic_auth` refers to a `basic_auth` block defined inside an
@@ -69,10 +69,10 @@ are shared for each `endpoint`.
 
 The following arguments are supported:
 
-Name | Type | Description                                                                   | Default | Required
----- | ---- |-------------------------------------------------------------------------------|---------| --------
-`max_signals_to_batch` | `uint` | The maximum number of signals before they are batched to disk.                | `10000` | no
-`batch_interval` | `duration` | How often to batch signals to disk if `max_signals_to_batch` is not reached. | `5s`     | no
+ Name                   | Type       | Description                                                                  | Default | Required 
+------------------------|------------|------------------------------------------------------------------------------|---------|----------
+ `max_signals_to_batch` | `uint`     | The maximum number of signals before they are batched to disk.               | `10000` | no       
+ `batch_interval`       | `duration` | How often to batch signals to disk if `max_signals_to_batch` is not reached. | `5s`    | no       
 
 
 ### endpoint block
@@ -83,21 +83,24 @@ The `endpoint` block describes a single location to send metrics to. Multiple
 
 The following arguments are supported:
 
-Name | Type | Description                                                        | Default | Required
----- | ---- |--------------------------------------------------------------------| ------ | --------
-`url` | `string` | Full URL to send metrics to.                                       | | yes
-`bearer_token` | `secret` | Bearer token to authenticate with.                                 |  | no
-`write_timeout` | `duration` | Timeout for requests made to the URL.                              | `"30s"` | no
-`retry_backoff` | `duration` | How often to wait between retries.                                 | `1s` | no
-`max_retry_attempts` | Maximum number of retries before dropping the batch. | `0`                                                                | no
-`batch_count` | `uint` | How many series to queue in each queue.                            | `1000` | no
-`flush_interval` | `duration` | How often to wait until sending if `batch_count` is not triggered. | `1s` | no
-`parallelism` | `uint` | How many parallel batches to write.                                | 10 | no
-`external_labels` | `map(string)` | Labels to add to metrics sent over the network.                    | | no
+ Name                 | Type          | Description                                                     | Default | Required 
+----------------------|---------------|-----------------------------------------------------------------|---------|----------
+ `url`                | `string`      | Full URL to send metrics to.                                    |         | yes      
+`bearer_token`        | `secret`      | Bearer token to authenticate with.                              |         | no
+ `write_timeout`      | `duration`    | Timeout for requests made to the URL.                           | `"30s"` | no       
+ `retry_backoff`      | `duration`    | How long to wait between retries.                               | `1s`    | no       
+ `max_retry_attempts` | `uint`        | Maximum number of retries before dropping the batch.            | `0`     | no      
+ `batch_count`        | `uint`        | How many series to queue in each queue.                         | `1000`  | no       
+ `flush_interval`     | `duration`    | How long to wait until sending if `batch_count` is not trigger. | `1s`    | no       
+ `parallelism`        | `uint`        | How many parallel batches to write.                             | 10      | no       
+ `external_labels`    | `map(string)` | Labels to add to metrics sent over the network.                 |         | no       
 
 ### basic_auth block
 
-{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+Name            | Type     | Description                              | Default | Required
+----------------|----------|------------------------------------------|---------|---------
+`password`      | `secret` | Basic auth password.                     |         | no
+`username`      | `string` | Basic auth username.                     |         | no
 
 
 ## Exported fields
