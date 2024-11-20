@@ -31,125 +31,25 @@ otelcol.exporter.syslog "LABEL" {
 }
 ```
 
-<!-- 
-The next few paragraphs were copied from the OTel docs:
-https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/syslogexporter
--->
+### Supported Attributes
 
-### RFC5424
+The exporter creates one syslog message for each log record based on the following attributes of the log record.
+If an attribute is missing, the default value is used. The log's timestamp field is used for the syslog message's time.
+RFC3164 only supports a subset of the attributes supported by RFC5424, and the default values are not the same between
+the two protocols. See the [OpenTelemetry documentation][upstream_readme] for the exporter for more details.
 
-When configured with `protocol = rfc5424`, the exporter creates one syslog message for each log record,
-based on the following record-level attributes of the log.
-If an attribute is missing, the default value is used.
-The log's timestamp field is used for the syslog message's time.
+| Attribute name    | Type   | RFC5424 Default value  | RFC3164 supported | RFC3164 Default value
+| ----------------- | ------ | ---------------------- |------------------ | ----------------------
+| `appname`         | string | `-`                    | yes               | empty string
+| `hostname`        | string | `-`                    | yes               | `-`
+| `message`         | string | empty string           | yes               | empty string
+| `msg_id`          | string | `-`                    | no                | 
+| `priority`        | int    | `165`                  | yes               | `165` 
+| `proc_id`         | string | `-`                    | no                | 
+| `structured_data` | map    | `-`                    | no                | 
+| `version`         | int    | `1`                    | no                | 
 
-| Attribute name    | Type   | Default value  |
-| ----------------- | ------ | -------------- |
-| `appname`         | string | `-`            |
-| `hostname`        | string | `-`            |
-| `message`         | string | empty string   |
-| `msg_id`          | string | `-`            |
-| `priority`        | int    | `165`          |
-| `proc_id`         | string | `-`            |
-| `structured_data` | map    | `-`            |
-| `version`         | int    | `1`            |
-
-Here's a simplified representation of an input log record:
-
-```json
-{
-  "body": "",
-  "timeUnixNano": 1065903255003000000,
-  "attributes":
-  {
-    "appname": "su",
-    "hostname": "mymachine.example.com",
-    "message": "'su root' failed for lonvick on /dev/pts/8",
-    "priority": 34,
-  }
-}
-```
-
-And here's the output message based on the above log record:
-
-```console
-<34>1 2003-10-11T22:14:15.003Z mymachine.example.com su - - - 'su root' failed for lonvick on /dev/pts/8
-```
-
-Here'a another example, this includes the structured data and other attributes:
-
-```json
-{
-  "body": "",
-  "timeUnixNano": 1438811939693012000,
-  "attributes":
-  {
-    "appname": "SecureAuth0",
-    "hostname": "192.168.2.132",
-    "message": "Found the user for retrieving user's profile",
-    "msg_id": "ID52020",
-    "priority": 86,
-    "proc_id": "23108",
-    "structured_data":
-    {
-      "SecureAuth@27389":
-      {
-        "UserHostAddress":"192.168.2.132",
-        "Realm":"SecureAuth0",
-        "UserID":"Tester2",
-        "PEN":"27389"
-      }
-    },
-    "version": 1
-  }
-}
-```
-
-Output:
-
-```console
-<86>1 2015-08-05T21:58:59.693012Z 192.168.2.132 SecureAuth0 23108 ID52020 [SecureAuth@27389 UserHostAddress="192.168.2.132" Realm="SecureAuth0" UserID="Tester2" PEN="27389"] Found the user for retrieving user's profile
-```
-
-### RFC3164
-
-When configured with `protocol = rfc3164`, the exporter creates one syslog message for each log record,
-based on the following record-level attributes of the log.
-If an attribute is missing, the default value is used.
-The log's timestamp field is used for the syslog message's time.
-
-| Attribute name    | Type   | Default value  |
-| ----------------- | ------ | -------------- |
-| `appname`         | string | empty string   |
-| `hostname`        | string | `-`            |
-| `message`         | string | empty string   |
-| `priority`        | int    | `165`          |
-
-Here's a simplified representation of an input log record:
-
-```json
-{
-  "body": "",
-  "timeUnixNano": 1697062455000000000,
-  "attributes":
-  {
-    "appname": "su",
-    "hostname": "mymachine",
-    "message": "'su root' failed for lonvick on /dev/pts/8",
-    "priority": 34
-  }
-}
-```
-
-Output:
-
-```console
-<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8
-```
-
-<!--
-This ends the section copied from the OTel docs
--->
+[upstream_readme]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/exporter/syslogexporter
 
 ## Arguments
 
