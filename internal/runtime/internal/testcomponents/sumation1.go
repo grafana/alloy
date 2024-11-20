@@ -10,7 +10,7 @@ import (
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "testcomponents.summation_entry",
+		Name:      "testcomponents.summation1",
 		Stability: featuregate.StabilityPublicPreview,
 		Args:      SummationConfig_Entry{},
 		Exports:   SummationExports_Entry{},
