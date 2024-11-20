@@ -65,7 +65,7 @@ To change the set of command-line arguments passed to the {{< param "PRODUCT_NAM
 
 The Go runtime provides several ways to modify the execution of a binary using [environment variables][environment].
 
-To change the values of Environment Variables provided to the {{< param "PRODUCT_NAME" >}} binary, perform the following steps:
+To change the environment variables used by {{< param "PRODUCT_NAME" >}}, perform the following steps.
 
 1. Open the Registry Editor:
 
