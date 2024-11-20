@@ -86,7 +86,8 @@ No changes will occur if the limit cannot be determined and you did not explicit
 The `GOGC` environment variable controls the mechanism that triggers Go's garbage collection.
 It represents the garbage collection target percentage. A collection is triggered when the ratio 
 of freshly allocated data to live data remaining after the previous collection reaches this percentage.
-The default value if this variable is not provided is 100. Setting GOGC=off can also disable garbage collection entirely.
+If you don't provide this variable, GOGC defaults to `100`.
+You can set `GOGC=off` to disable garbage collection.
 
 Configuring this value in conjunction with `GOMEMLIMIT` can help in situations where {{< param "PRODUCT_NAME" >}} 
 is consuming too much memory. Go provides a [very in-depth guide][gc_guide] to understanding `GOGC` and `GOMEMLIMIT`.
