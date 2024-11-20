@@ -13,6 +13,7 @@ const (
 	exportBlockID   = "export"
 	loggingBlockID  = "logging"
 	tracingBlockID  = "tracing"
+	foreachID       = "foreach"
 )
 
 // NewConfigNode creates a new ConfigNode from an initial ast.BlockStmt.
@@ -29,7 +30,7 @@ func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals) (BlockNode, d
 		return NewTracingConfigNode(block, globals), nil
 	case importsource.BlockImportFile, importsource.BlockImportString, importsource.BlockImportHTTP, importsource.BlockImportGit:
 		return NewImportConfigNode(block, globals, importsource.GetSourceType(block.GetBlockName())), nil
-	case importsource.BlockForeach:
+	case foreachID:
 		return NewForeachConfigNode(block, globals), nil
 	default:
 		var diags diag.Diagnostics
