@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/set-up/install/openshift/
 description: Learn how to deploy Grafana Alloy on OpenShift
 menuTitle: OpenShift
 title: Deploy Grafana Alloy on OpenShift
-weight: 250
+weight: 530
 ---
 
 # Deploy {{% param "FULL_PRODUCT_NAME" %}} on OpenShift
@@ -15,9 +15,9 @@ You can deploy {{< param "PRODUCT_NAME" >}} on the Red Hat OpenShift Container P
 * These steps assume you have a working OCP environment.
 * You can adapt the suggested policies and configuration to meet your specific needs and [security][] policies.
 
-## Configure Role-Based Access Control
+## Configure RBAC
 
-You must configure RBAC to allow secure access to Kubernetes and OCP resources.
+You must configure Role-Based Access Control (RBAC) to allow secure access to Kubernetes and OCP resources.
 
 1. Download the [rbac.yaml][] configuration file. This configuration file defines the OCP verbs and permissions for {{< param "PRODUCT_NAME" >}}.
 1. Review the `rbac.yaml` file and adapt as needed for your local environment. Refer to [Managing Role-based Access Control (RBAC)][rbac] topic in the OCP documentation for more information about updating and managing your RBAC configurations.
@@ -27,9 +27,9 @@ You must configure RBAC to allow secure access to Kubernetes and OCP resources.
 You must configure {{< param "PRODUCT_NAME" >}} to [run as a non-root user][nonroot].
 This ensures that {{< param "PRODUCT_NAME" >}} complies with your OCP security policies.
 
-## Apply Security Context Constraints
+## Apply SSC
 
-OCP uses Security Context Constraints (SCC) to control pod permissions.
+OCP uses Security Context Constraints (SCC) to control Pod permissions.
 Refer to [Managing security context constraints][scc] for more information about how you can define and enforce these permissions.
 This ensures that the pods running {{< param "PRODUCT_NAME" >}} comply with OCP security policies.
 
@@ -87,6 +87,8 @@ spec:
            emptyDir: {}
 ```
 
+Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information about deploying {{< param "PRODUCT_NAME" >}} in your environment.
+
 ## Next steps
 
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
@@ -97,3 +99,4 @@ spec:
 [nonroot]: ../../../configure/nonroot/
 [scc]: https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html
 [Configure]: ../../../configure/linux/
+[deploy]: ../../deploy/
