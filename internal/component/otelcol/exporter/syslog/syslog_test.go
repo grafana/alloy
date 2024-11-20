@@ -57,8 +57,11 @@ func Test(t *testing.T) {
 	require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
 	require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
 
+	// Truncating to second to make the syslog representation consistent, as the OTLP
+	// representation doesn't show the sub-second precision consistently.
+	timestamp := time.Now().Truncate(time.Second)
+
 	// Send logs in the background to our exporter.
-	timestamp := time.Now()
 	go func() {
 		exports := ctrl.Exports().(otelcol.ConsumerExports)
 
@@ -83,7 +86,7 @@ func Test(t *testing.T) {
 	case <-time.After(time.Second):
 		require.FailNow(t, "failed waiting for logs")
 	case log := <-ch:
-		expected := fmt.Sprintf("<165>1 %s test-host Application 12345 - [Auth Realm=\"ADMIN\" User=\"root\"] This is a test log\n", timestamp.UTC().Format("2006-01-02T15:04:05.000000Z"))
+		expected := fmt.Sprintf("<165>1 %s test-host Application 12345 - [Auth Realm=\"ADMIN\" User=\"root\"] This is a test log\n", timestamp.UTC().Format("2006-01-02T15:04:05Z"))
 		require.Equal(t, expected, log)
 	}
 }
