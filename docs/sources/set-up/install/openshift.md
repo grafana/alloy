@@ -95,5 +95,5 @@ spec:
 [rbac]: https://docs.openshift.com/container-platform/3.11/admin_guide/manage_rbac.html
 [security]: https://grafana.com/docs/grafana-cloud/monitor-infrastructure/kubernetes-monitoring/configuration/troubleshooting/#openshift-support
 [nonroot]: ../../../configure/nonroot/
-[scc]: https://docs.openshift.com/container-platform/4.6/authentication/managing-security-context-constraints.html
+[scc]: https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html
 [Configure]: ../../../configure/linux/
