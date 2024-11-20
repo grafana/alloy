@@ -34,7 +34,7 @@ otelcol.exporter.syslog "LABEL" {
 The exporter creates one syslog message for each log record based on the following attributes of the log record.
 If an attribute is missing, the default value is used. The log's timestamp field is used for the syslog message's time.
 RFC3164 only supports a subset of the attributes supported by RFC5424, and the default values are not the same between
-the two protocols. See the [OpenTelemetry documentation][upstream_readme] for the exporter for more details.
+the two protocols. Refer to the [OpenTelemetry documentation][upstream_readme] for the exporter for more details.
 
 | Attribute name    | Type   | RFC5424 Default value  | RFC3164 supported | RFC3164 Default value
 | ----------------- | ------ | ---------------------- |------------------ | ----------------------
@@ -128,7 +128,7 @@ The following fields are exported and can be referenced by other components:
 
 ### TCP endpoint without TLS
 
-This example creates an exporter to send data to a syslog server expecting RFC5424 compliant messages over TCP without TLS:
+This example creates an exporter to send data to a syslog server expecting RFC5424-compliant messages over TCP without TLS:
 
 ```alloy
 otelcol.exporter.syslog "default" {
@@ -140,7 +140,7 @@ otelcol.exporter.syslog "default" {
 }
 ```
 
-### Using the `otelcol.processor.transform` component to format logs from `loki.source.syslog`
+###  Use the `otelcol.processor.transform` component to format logs from `loki.source.syslog`
 
 This example shows one of the methods for annotating your loki messages into the format expected 
 by the exporter using a `otelcol.receiver.loki` component in addition to the `otelcol.processor.transform` 
@@ -181,7 +181,7 @@ otelcol.processor.transform "syslog" {
 }
 ```
 
-### Using the `otelcol.processor.transform` component to format otel logs
+### Use the `otelcol.processor.transform` component to format OpenTelemetry logs
 
 This example shows one of the methods for annotating your messages in the OpenTelemetry log format into the format expected 
 by the exporter using an `otelcol.processor.transform` component. This example assumes that the log messages being 
