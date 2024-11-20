@@ -13,8 +13,7 @@ forwards it to other `otelcol.*` components.
  `otelcol.receiver.syslog` is a wrapper over the upstream  OpenTelemetry Collector `otlp` receiver. Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
-Multiple `otelcol.receiver.syslog` components can be specified by giving them
-different labels.
+You can specify multiple `otelcol.receiver.syslog` components by giving them different labels.
 
 ## Usage
 
