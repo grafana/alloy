@@ -156,10 +156,10 @@ func (cn *ImportConfigNode) setContentHealth(t component.HealthType, msg string)
 //  4. Health reported from the source.
 //  5. Health reported from the nested imports.
 func (cn *ImportConfigNode) CurrentHealth() component.Health {
-	cn.healthMut.RLock()
-	defer cn.healthMut.RUnlock()
 	cn.mut.RLock()
 	defer cn.mut.RUnlock()
+	cn.healthMut.RLock()
+	defer cn.healthMut.RUnlock()
 
 	health := component.LeastHealthy(
 		cn.runHealth,
