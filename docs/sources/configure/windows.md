@@ -61,7 +61,7 @@ To change the set of command-line arguments passed to the {{< param "PRODUCT_NAM
 
    1. Click on **All Tasks > Restart**.
 
-## Change Environment Variable Values
+## Change environment variable values
 
 The Go runtime provides several ways to modify the execution of a binary using Environment Variables, see our [reference documentation][environment] for more specific details.
 
