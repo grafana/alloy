@@ -9,7 +9,7 @@ title: otelcol.exporter.syslog
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.exporter.syslog` accepts logs from other `otelcol` components and writes them over the network using the syslog protocol. 
-It supports syslog protocols [RFC5424][RFC5424] and [RFC3164][RFC3164] and can send data over `TCP` or `UDP`.
+It supports syslog protocols [RFC5424][] and [RFC3164][] and can send data over `TCP` or `UDP`.
 
 {{< admonition type="note" >}}
 `otelcol.exporter.syslog` is a wrapper over the upstream OpenTelemetry Collector `syslog` exporter.
