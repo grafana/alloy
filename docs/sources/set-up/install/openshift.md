@@ -57,7 +57,7 @@ You can adapt the SCCs to meet your local requirements and needs.
 The following example shows a SCC configuration that deploys {{< param "PRODUCT_NAME" >}} as a non-root user:
 
 ```yaml
-piVerison: aapps/v1
+apiVersion: aapps/v1
 kind: DaemonSet
 metadata:
   name: alloy-logs
