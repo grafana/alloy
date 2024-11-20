@@ -2,6 +2,8 @@ package mysql
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -169,10 +171,26 @@ func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 	c.args = newArgs
 
+	dbConnection, err := sql.Open("mysql", string(newArgs.DataSourceName))
+	if err != nil {
+		return err
+	}
+
+	if dbConnection == nil {
+		return errors.New("nil DB connection")
+	}
+
+	if err = dbConnection.Ping(); err != nil {
+		return err
+	}
+
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
+	// dbConnection.Close()
+	// entryHandler.Stop()
+
 	qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
-		DSN:            string(newArgs.DataSourceName),
+		DB:             dbConnection,
 		ScrapeInterval: newArgs.ScrapeInterval,
 		EntryHandler:   entryHandler,
 		Logger:         c.opts.Logger,

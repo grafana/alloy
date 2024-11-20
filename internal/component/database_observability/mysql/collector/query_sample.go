@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -32,7 +31,7 @@ const selectQuerySamples = `
 	WHERE last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)`
 
 type QuerySampleArguments struct {
-	DSN            string
+	DB             *sql.DB
 	ScrapeInterval time.Duration
 	EntryHandler   loki.EntryHandler
 
@@ -51,21 +50,8 @@ type QuerySample struct {
 }
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
-	dbConnection, err := sql.Open("mysql", args.DSN)
-	if err != nil {
-		return nil, err
-	}
-
-	if dbConnection == nil {
-		return nil, errors.New("nil DB connection")
-	}
-
-	if err = dbConnection.Ping(); err != nil {
-		return nil, err
-	}
-
 	return &QuerySample{
-		dbConnection:   dbConnection,
+		dbConnection:   args.DB,
 		scrapeInterval: args.ScrapeInterval,
 		entryHandler:   args.EntryHandler,
 		logger:         args.Logger,
