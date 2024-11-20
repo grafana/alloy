@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.syslog/
-aliases:
-  - ../otelcol.exporter.syslog/ # /docs/alloy/latest/reference/components/otelcol.exporter.syslog/
 description: Learn about otelcol.exporter.syslog
 title: otelcol.exporter.syslog
 ---
@@ -130,7 +128,7 @@ The following fields are exported and can be referenced by other components:
 
 ### TCP endpoint without TLS
 
-This example creates an exporter to send data to a syslog server expecting rfc5424 compliant messages over TCP without TLS:
+This example creates an exporter to send data to a syslog server expecting RFC5424 compliant messages over TCP without TLS:
 
 ```alloy
 otelcol.exporter.syslog "default" {
