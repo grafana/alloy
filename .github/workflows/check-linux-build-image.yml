@@ -7,7 +7,7 @@ on:
 
 jobs:
   check-linux-build-image:
-    runs-on: ubuntu-x64
+    runs-on: ubuntu-x64-large
     steps:
       - name: Checkout
         uses: actions/checkout@v4
