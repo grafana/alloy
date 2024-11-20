@@ -27,11 +27,13 @@ type IntReceiver interface {
 }
 
 type IntReceiverImpl struct {
-	sum atomic.Int32
+	sum             atomic.Int32
+	updateSumExport func(int)
 }
 
 func (r IntReceiverImpl) ReceiveInt(i int) {
-	r.sum.Add(int32(i))
+	new := r.sum.Add(int32(i))
+	r.updateSumExport(int(new))
 }
 
 type SummationConfig_2 struct {
@@ -52,6 +54,15 @@ type Summation_2 struct {
 // NewSummation creates a new summation component.
 func NewSummation_2(o component.Options, cfg SummationConfig_2) (*Summation_2, error) {
 	recv := IntReceiverImpl{}
+
+	recv.updateSumExport = func(newSum int) {
+		o.Logger.Log("msg", "Summation_2: new sum", "sum", newSum)
+		o.OnStateChange(SummationExports_2{
+			Receiver: recv,
+			Sum:      newSum,
+		})
+	}
+
 	o.OnStateChange(SummationExports_2{
 		Receiver: recv,
 	})
@@ -77,5 +88,6 @@ func (t *Summation_2) Run(ctx context.Context) error {
 
 // Update implements Component.
 func (t *Summation_2) Update(args component.Arguments) error {
+
 	return nil
 }

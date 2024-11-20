@@ -1,14 +1,15 @@
 -- main.alloy --
 foreach "testForeach" {
   collection = [1, 2, 3, 4]
-  //var = "num"
 
-  // Similar to testcomponents.summation, but with a "forward_to"
-  testcomponents.summation1 "sum" {
-    //TODO: Use the num variable here
-    // input = num
-    input = 1
-    forward_to = testcomponents.summation2.final.receiver
+  template {
+    // Similar to testcomponents.summation, but with a "forward_to"
+    testcomponents.summation1 "sum" {
+      //TODO: Use the num variable here
+      // input = num
+      input = 1
+      forward_to = [testcomponents.summation2.final.receiver]
+    }
   }
 }
 

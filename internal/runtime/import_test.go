@@ -83,6 +83,13 @@ func buildTestImportFile(t *testing.T, filename string) testImportFile {
 
 // This is a copy of TestImportFile.
 // It may need to be modified further to make it work with a foreach.
+//
+// TODO: Why does this test fail? It seems to be running multiple times,
+// then fails on the final retry since it's interrupted by a shutdown
+// as indicated in the "node exited without error" log message.
+//
+// TODO: Test a foreach inside a foreach.
+// TODO: Test foreach with clustering.
 func TestForeach(t *testing.T) {
 	directory := "./testdata/foreach"
 	for _, file := range getTestFiles(directory, t) {
@@ -132,6 +139,9 @@ func TestImportFile(t *testing.T) {
 	}
 }
 
+// TODO: Why does this test fail? It seems to be running multiple times,
+// then fails on the final retry since it's interrupted by a shutdown
+// as indicated in the "node exited without error" log message.
 func TestImportString(t *testing.T) {
 	directory := "./testdata/import_string"
 	for _, file := range getTestFiles(directory, t) {
@@ -386,9 +396,9 @@ func testConfig2(t *testing.T, config string, reloadConfig string, update func()
 	require.Eventually(t, func() bool {
 		export := getExport[testcomponents.SummationExports_2](t, ctrl, "", "testcomponents.summation2.final")
 		// If each iteration of the for loop adds a 1,
-		// and there are 3 iterations, we expect 3 to be the end result.
-		//TODO: Make this configurable?
-		return export.Sum == 3
+		// and there are 4 iterations, we expect 4 to be the end result.
+		//TODO: Make the expected "sum" value configurable?
+		return export.Sum == 4
 	}, 3*time.Second, 10*time.Millisecond)
 
 	// if update != nil {
