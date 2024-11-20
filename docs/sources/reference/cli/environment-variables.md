@@ -100,9 +100,10 @@ threads are not counted against `GOMAXPROCS`.
 
 ## GOTRACEBACK
 
-The `GOTRACEBACK` environment variable defines the behavior of the Go panic output. The standard panic output behavior is usually
-sufficient to debug and resolve an issue, but this setting can be used in cases of a reproducable panic to collect
-additional information from the runtime if required. The following values are supported.
+The `GOTRACEBACK` environment variable defines the behavior of the Go panic output.
+The standard panic output behavior is usually sufficient to debug and resolve an issue.
+If required, you can use this setting to collect additional information from the runtime.
+The following values are supported.
 
 Value            | Description                                                                     | Traces include runtime internal functions
 -----------------|---------------------------------------------------------------------------------|------------------------------------------
