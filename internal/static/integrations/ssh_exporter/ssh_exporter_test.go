@@ -2,14 +2,19 @@ package ssh_exporter
 
 import (
     "os"
+    "path/filepath"
     "testing"
 
     "github.com/go-kit/log"
     "github.com/go-kit/log/level"
     "github.com/prometheus/client_golang/prometheus"
-    "github.com/stretchr/testify/require"
     "gopkg.in/yaml.v2"
+
+    "github.com/stretchr/testify/require"
+    "os/user"
 )
+var currentUser = user.Current
+
 func TestConfig_UnmarshalYAML_MultipleTargets(t *testing.T) {
     yamlConfig := `
 verbose_logging: true
@@ -246,4 +251,28 @@ func TestNewSSHClient_KeyFileNotFound(t *testing.T) {
     _, err := NewSSHClient(target)
     require.Error(t, err)
     require.Contains(t, err.Error(), "unable to read private key")
+}
+func TestSSHClient_HostKeyCallback(t *testing.T) {
+    tmpDir := t.TempDir()
+    knownHostsPath := filepath.Join(tmpDir, "known_hosts")
+    validKey := "localhost ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAr0Z...validkey"
+    require.NoError(t, os.WriteFile(knownHostsPath, []byte(validKey+"\n"), 0644))
+
+    // Mock currentUser
+    originalCurrentUser := currentUser
+    defer func() { currentUser = originalCurrentUser }()
+    currentUser = func() (*user.User, error) {
+        return &user.User{HomeDir: tmpDir}, nil
+    }
+
+    target := Target{
+        Address:  "localhost",
+        Port:     22,
+        Username: "testuser",
+        Password: "testpassword",
+    }
+
+    client, err := NewSSHClient(target)
+    require.NoError(t, err)
+    require.NotNil(t, client.config.HostKeyCallback)
 }

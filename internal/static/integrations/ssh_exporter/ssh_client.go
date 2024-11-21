@@ -4,12 +4,16 @@ import (
     "bytes"
     "fmt"
     "os"
+    "path/filepath"
     "time"
 
     "github.com/go-kit/log"
     "github.com/go-kit/log/level"
     "golang.org/x/crypto/ssh"
+    "golang.org/x/crypto/ssh/knownhosts"
+    "os/user"
 )
+
 
 type SSHClient struct {
     config  *ssh.ClientConfig
@@ -20,21 +24,35 @@ type SSHClient struct {
 }
 
 func NewSSHClient(target Target) (*SSHClient, error) {
+    usr, err := user.Current()
+    if err != nil {
+        return nil, fmt.Errorf("unable to determine current user: %w", err)
+    }
+
+    knownHostsPath := filepath.Join(usr.HomeDir, ".ssh", "known_hosts")
+
+    if _, err := os.Stat(knownHostsPath); os.IsNotExist(err) {
+        return nil, fmt.Errorf("known_hosts file not found at %s", knownHostsPath)
+    }
+
+    hostKeyCallback, err := knownhosts.New(knownHostsPath)
+    if err != nil {
+        return nil, fmt.Errorf("failed to initialize known_hosts verification: %w", err)
+    }
+
     config := &ssh.ClientConfig{
-        User:            target.Username,
-        Auth:            []ssh.AuthMethod{},
-        HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-        Timeout:         time.Duration(target.CommandTimeout) * time.Second,
+        User: target.Username,
+        Auth: []ssh.AuthMethod{},
+        HostKeyCallback: hostKeyCallback,
+        Timeout: time.Duration(target.CommandTimeout) * time.Second,
     }
 
     if target.Password != "" {
         config.Auth = append(config.Auth, ssh.Password(target.Password))
-    }
-
-    if target.KeyFile != "" {
+    } else if target.KeyFile != "" {
         key, err := os.ReadFile(target.KeyFile)
         if err != nil {
-            return nil, fmt.Errorf("unable to read private key: %w", err)
+            return nil, fmt.Errorf("unable to read private key file %s: %w", target.KeyFile, err)
         }
         signer, err := ssh.ParsePrivateKey(key)
         if err != nil {
@@ -47,7 +65,7 @@ func NewSSHClient(target Target) (*SSHClient, error) {
         config:  config,
         host:    target.Address,
         port:    target.Port,
-        logger:  nil,
+        logger:  log.NewNopLogger(),
         timeout: time.Duration(target.CommandTimeout) * time.Second,
     }, nil
 }
