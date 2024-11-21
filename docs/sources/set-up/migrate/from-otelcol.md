@@ -25,28 +25,27 @@ This topic describes how to:
 
 ## Before you begin
 
-* You must have an existing OpenTelemetry Collector configuration.
+* You must have an OpenTelemetry Collector configuration.
 * You must have a set of OpenTelemetry Collector applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
 * You must be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Convert an OpenTelemetry Collector configuration
 
 To fully migrate your configuration from [OpenTelemetry Collector] to {{< param "PRODUCT_NAME" >}}, you must convert your OpenTelemetry Collector configuration into a {{< param "PRODUCT_NAME" >}} configuration.
-This conversion will enable you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
+This conversion allows you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
 
-> In this task, you will use the [convert][] CLI command to output a {{< param "PRODUCT_NAME" >}}
-> configuration from a OpenTelemetry Collector configuration.
+In this task, you use the [convert][] CLI command to output a {{< param "PRODUCT_NAME" >}} configuration from a OpenTelemetry Collector configuration.
 
 1. Open a terminal window and run the following command.
 
-   ```
+   ```shell
    alloy convert --source-format=otelcol --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
    Replace the following:
 
-   - _`<INPUT_CONFIG_PATH>`_: The full path to the OpenTelemetry Collector configuration.
-   - _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the OpenTelemetry Collector configuration.
+   * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 1. [Run][] {{< param "PRODUCT_NAME" >}} using the new {{< param "PRODUCT_NAME" >}} configuration from _`<OUTPUT_CONFIG_PATH>`_:
 
@@ -60,25 +59,26 @@ This conversion will enable you to take full advantage of the many additional fe
     Make sure you fully test the converted configuration before using it in a production environment.
     {{< /admonition >}}
 
-   ```
+   ```shell
    alloy convert --source-format=otelcol --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
 
    Replace the following:
 
-   - _`<INPUT_CONFIG_PATH>`_: The full path to the OpenTelemetry Collector configuration.
-   - _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the OpenTelemetry Collector configuration.
+   * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 1. You can also output a diagnostic report by including the `--report` flag.
 
-   ```
+   ```shell
    alloy convert --source-format=otelcol --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
+
    Replace the following:
 
-   - _`<INPUT_CONFIG_PATH>`_: The full path to the OpenTelemetry Collector configuration.
-   - _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
-   - _`<OUTPUT_REPORT_PATH>`_: The output path for the report.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the OpenTelemetry Collector configuration.
+   * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+   * _`<OUTPUT_REPORT_PATH>`_: The output path for the report.
 
     Using the [example][] OpenTelemetry Collector configuration below, the diagnostic report provides the following information:
 
@@ -92,17 +92,16 @@ This conversion will enable you to take full advantage of the many additional fe
 
 ## Run an OpenTelemetry Collector configuration
 
-If you’re not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "FULL_PRODUCT_NAME" >}} using your existing OpenTelemetry Collector configuration.
+If you're not ready to completely switch to a {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "FULL_PRODUCT_NAME" >}} using your OpenTelemetry Collector configuration.
 The `--config.format=otelcol` flag tells {{< param "FULL_PRODUCT_NAME" >}} to convert your OpenTelemetry Collector configuration to a {{< param "PRODUCT_NAME" >}} configuration and load it directly without saving the new configuration.
-This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your existing OpenTelemetry Collector configuration infrastructure.
+This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your OpenTelemetry Collector configuration infrastructure.
 
-> In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}}
-> using an OpenTelemetry Collector configuration.
+In this task, you use the [run][run_cli] CLI command to run {{< param "PRODUCT_NAME" >}} using an OpenTelemetry Collector configuration.
 
 [Run][] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=otelcol`.
 Your configuration file must be a valid OpenTelemetry Collector configuration file rather than a {{< param "PRODUCT_NAME" >}} configuration file.
 
-### Debugging
+### Debug
 
 1. You can follow the convert CLI command [debugging][] instructions to generate a diagnostic report.
 
@@ -113,7 +112,7 @@ Your configuration file must be a valid OpenTelemetry Collector configuration fi
 
    {{< admonition type="caution" >}}
    If you bypass the errors, the behavior of the converted configuration may not match the original Prometheus configuration.
-   Do not use this flag in a production environment.
+   Don't use this flag in a production environment.
    {{< /admonition >}}
 
 ## Example
@@ -157,14 +156,14 @@ service:
 
 The convert command takes the YAML file as input and outputs an {{< param "PRODUCT_NAME" >}} configuration file.
 
-```
+```shell
 alloy convert --source-format=otelcol --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
 ```
 
 Replace the following:
 
-- _`<INPUT_CONFIG_PATH>`_: The full path to the OpenTelemetry Collector configuration.
-- _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+* _`<INPUT_CONFIG_PATH>`_: The full path to the OpenTelemetry Collector configuration.
+* _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 The new {{< param "PRODUCT_NAME" >}} configuration file looks like this:
 
@@ -225,7 +224,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Components]: ../../../get-started/components/
 [Component Reference]: ../../../reference/components/
 [convert]: ../../../reference/cli/convert/
-[run]: ../../../reference/cli/run/
+[run_cli]: ../../../reference/cli/run/
 [Run]: ../../../get-started/run/
 [DebuggingUI]: ../../../troubleshoot/debug/
 [UI]: ../../../troubleshoot/debug/#alloy-ui
