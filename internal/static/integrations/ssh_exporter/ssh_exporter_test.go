@@ -41,7 +41,6 @@ var mockSSHKeyscanCommand = func(targetAddress string) ([]byte, error) {
 func init() {
 	sshKeyscanCommand = mockSSHKeyscanCommand
 }
-
 // TestMain handles test setup and teardown
 func TestMain(m *testing.M) {
 	var err error
