@@ -20,7 +20,7 @@ Main (unreleased)
 
 - Add `otelcol.receiver.solace` component to receive traces from a Solace broker. (@wildum)
 
-- Added InfluxDB receiver that converts influx metric into OTEL. (@EHSchmitt4395)
+- Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
