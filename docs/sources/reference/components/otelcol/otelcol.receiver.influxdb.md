@@ -44,7 +44,7 @@ Hierarchy | Block | Description | Required
 tls | [tls][] | Configures TLS for the HTTP server. | no
 cors | [cors][] | Configures CORS for the HTTP server. | no
 debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
-output | [output][] | Configures where to send received traces. | yes
+output | [output][] | Configures where to send received metrics. | yes
 
 The `>` symbol indicates deeper levels of nesting. For example, `grpc > tls`
 refers to a `tls` block defined inside a `grpc` block.
