@@ -6,7 +6,6 @@ title: otelcol.receiver.influxdb
 
 # otelcol.receiver.influxdb
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.receiver.influxdb` receives InfluxDB metrics, converts them into OpenTelemetry (OTEL) format, and forwards them to other otelcol.* components over the network.
 
