@@ -6,6 +6,8 @@ import (
     "os"
     "path/filepath"
     "time"
+    "os/exec"
+    "strings"
 
     "github.com/go-kit/log"
     "github.com/go-kit/log/level"
@@ -22,6 +24,65 @@ type SSHClient struct {
     logger  log.Logger
     timeout time.Duration
 }
+var sshKeyscanCommand = func(targetAddress string) ([]byte, error) {
+    cmd := exec.Command("ssh-keyscan", "-H", targetAddress)
+    return cmd.Output()
+}
+
+func ensureKnownHosts(knownHostsPath, targetAddress string) error {
+    // Ensure .ssh directory exists
+    if err := os.MkdirAll(filepath.Dir(knownHostsPath), 0700); err != nil {
+        return fmt.Errorf("failed to create .ssh directory: %w", err)
+    }
+
+    var knownHostsContent []string
+    if _, err := os.Stat(knownHostsPath); err == nil {
+        content, err := os.ReadFile(knownHostsPath)
+        if err != nil {
+            return fmt.Errorf("failed to read known_hosts file: %w", err)
+        }
+        knownHostsContent = strings.Split(string(content), "\n")
+    }
+
+    var output []byte
+    var scanErr error
+    for i := 0; i < 3; i++ {
+        output, scanErr = sshKeyscanCommand(targetAddress)
+        if scanErr == nil {
+            break
+        }
+        fmt.Printf("Attempt %d: failed to fetch host key for %s: %v\n", i+1, targetAddress, scanErr)
+        time.Sleep(time.Second)
+    }
+    if len(output) == 0 {
+        return fmt.Errorf("failed to fetch host key for %s after 3 attempts: last error: %w", targetAddress, scanErr)
+    }
+    scannedKey := strings.TrimSpace(string(output))
+
+    for _, line := range knownHostsContent {
+        if strings.Contains(line, targetAddress) {
+            if line != scannedKey {
+                return fmt.Errorf(
+                    "host key mismatch for %s: existing key [%s] differs from scanned key [%s]. Manual verification required.",
+                    targetAddress, line, scannedKey,
+                )            }
+            return nil
+        }
+    }
+
+    file, err := os.OpenFile(knownHostsPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+    if err != nil {
+        return fmt.Errorf("failed to open known_hosts file: %w", err)
+    }
+    defer file.Close()
+
+    if _, err := file.WriteString(scannedKey + "\n"); err != nil {
+        return fmt.Errorf("failed to write to known_hosts file: %w", err)
+    }
+
+    return nil
+}
+
 
 func NewSSHClient(target Target) (*SSHClient, error) {
     usr, err := user.Current()
@@ -31,8 +92,9 @@ func NewSSHClient(target Target) (*SSHClient, error) {
 
     knownHostsPath := filepath.Join(usr.HomeDir, ".ssh", "known_hosts")
 
-    if _, err := os.Stat(knownHostsPath); os.IsNotExist(err) {
-        return nil, fmt.Errorf("known_hosts file not found at %s", knownHostsPath)
+    // Ensure known_hosts exists and is valid
+    if err := ensureKnownHosts(knownHostsPath, target.Address); err != nil {
+        return nil, fmt.Errorf("failed to ensure known_hosts: %w", err)
     }
 
     hostKeyCallback, err := knownhosts.New(knownHostsPath)
@@ -40,16 +102,21 @@ func NewSSHClient(target Target) (*SSHClient, error) {
         return nil, fmt.Errorf("failed to initialize known_hosts verification: %w", err)
     }
 
+    // Build SSH ClientConfig
     config := &ssh.ClientConfig{
-        User: target.Username,
-        Auth: []ssh.AuthMethod{},
+        User:            target.Username,
+        Auth:            []ssh.AuthMethod{},
         HostKeyCallback: hostKeyCallback,
-        Timeout: time.Duration(target.CommandTimeout) * time.Second,
+        Timeout:         time.Duration(target.CommandTimeout) * time.Second,
     }
 
+    // Add Password Authentication
     if target.Password != "" {
         config.Auth = append(config.Auth, ssh.Password(target.Password))
-    } else if target.KeyFile != "" {
+    }
+
+    // Add Private Key Authentication
+    if target.KeyFile != "" {
         key, err := os.ReadFile(target.KeyFile)
         if err != nil {
             return nil, fmt.Errorf("unable to read private key file %s: %w", target.KeyFile, err)
@@ -61,6 +128,11 @@ func NewSSHClient(target Target) (*SSHClient, error) {
         config.Auth = append(config.Auth, ssh.PublicKeys(signer))
     }
 
+    // Validate at least one auth method
+    if len(config.Auth) == 0 {
+        return nil, fmt.Errorf("no valid authentication method provided (password or private key)")
+    }
+
     return &SSHClient{
         config:  config,
         host:    target.Address,
@@ -69,6 +141,8 @@ func NewSSHClient(target Target) (*SSHClient, error) {
         timeout: time.Duration(target.CommandTimeout) * time.Second,
     }, nil
 }
+
+
 
 func (c *SSHClient) RunCommand(command string) (string, error) {
     conn, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", c.host, c.port), c.config)

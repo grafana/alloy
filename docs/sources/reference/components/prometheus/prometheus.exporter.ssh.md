@@ -12,7 +12,7 @@ The `prometheus.exporter.ssh` component embeds an SSH exporter for collecting me
 
 ## Usage
 
-```alloy
+```
 prometheus.exporter.ssh "LABEL" {
   // Configuration options
 }
@@ -46,8 +46,8 @@ The `targets` block defines the remote servers to connect to and the metrics to 
 | `address`         | `string`              | The IP address or hostname of the target server.                       |         | yes      |
 | `port`            | `int`                 | SSH port number.                                                       | `22`    | no       |
 | `username`        | `string`              | SSH username for authentication.                                       |         | yes      |
-| `password`        | `secret`              | Password for password-based SSH authentication.                        |         | no       |
-| `key_file`        | `string`              | Path to the private key file for key-based SSH authentication.         |         | no       |
+| `password`        | `secret`              | Password for password-based SSH authentication.                        |         | Required if `key_file` is not provided |
+| `key_file`        | `string`              | Path to the private key file for key-based SSH authentication.         |         | Required if `password` is not provided |
 | `command_timeout` | `int`                 | Timeout in seconds for each command execution over SSH.                | `30`    | no       |
 | `custom_metrics`  | `block`               | One or more custom metrics to collect from the target server.          |         | yes      |
 
@@ -77,6 +77,34 @@ The `custom_metrics` block defines the metrics to collect from the target server
 
 If the command output is not a simple numeric value, use `parse_regex` to extract the numeric value from the output.
 
+---
+
+## Secure Known Hosts Setup
+
+### How It Works
+
+The `prometheus.exporter.ssh` component uses the `known_hosts` file to validate host keys and protect against man-in-the-middle (MITM) attacks. Here's how it handles this:
+
+1. **First-Time Setup**:
+   - If the `known_hosts` file does not exist, the component creates it and fetches the host key using `ssh-keyscan`.
+   - The fetched key is securely stored in the `known_hosts` file.
+
+2. **Subsequent Runs**:
+   - The component validates the server's host key against the stored key in `known_hosts`.
+   - If the keys match, the connection proceeds.
+   - If there is a mismatch, the component raises an error, requiring **manual intervention** to verify the legitimacy of the key change.
+
+3. **Adding or Modifying Targets**:
+   - When a new target is added, or its address changes, the component automatically scans and stores the host key.
+   - If the target's key already exists but has changed, the connection is blocked until the discrepancy is resolved manually.
+
+### Manual Resolution
+
+If a host key mismatch occurs due to a legitimate key update:
+- Manually update the `known_hosts` file with the new key using `ssh-keyscan` or other secure methods.
+
+---
+
 ## Exported fields
 
 {{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -93,11 +121,13 @@ If the command output is not a simple numeric value, use `parse_regex` to extrac
 
 `prometheus.exporter.ssh` doesn't expose any component-specific debug metrics.
 
+---
+
 ## Example
 
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.ssh`:
 
-```alloy
+```
 prometheus.exporter.ssh "example" {
   verbose_logging = true
 
