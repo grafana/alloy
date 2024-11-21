@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -47,7 +46,7 @@ const (
 )
 
 type SchemaTableArguments struct {
-	DSN            string
+	DB             *sql.DB
 	ScrapeInterval time.Duration
 	EntryHandler   loki.EntryHandler
 	CacheTTL       time.Duration
@@ -81,20 +80,8 @@ type tableInfo struct {
 }
 
 func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
-	dbConnection, err := sql.Open("mysql", args.DSN+"?parseTime=true")
-	if err != nil {
-		return nil, err
-	}
-	if dbConnection == nil {
-		return nil, errors.New("nil DB connection")
-	}
-
-	if err = dbConnection.Ping(); err != nil {
-		return nil, err
-	}
-
 	return &SchemaTable{
-		dbConnection:   dbConnection,
+		dbConnection:   args.DB,
 		scrapeInterval: args.ScrapeInterval,
 		entryHandler:   args.EntryHandler,
 		cache:          expirable.NewLRU[string, tableInfo](0, nil, args.CacheTTL),

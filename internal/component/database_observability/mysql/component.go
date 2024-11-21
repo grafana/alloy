@@ -171,7 +171,8 @@ func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 	c.args = newArgs
 
-	dbConnection, err := sql.Open("mysql", string(newArgs.DataSourceName))
+	// TODO(cristian): verify before appending parameter
+	dbConnection, err := sql.Open("mysql", string(newArgs.DataSourceName)+"?parseTime=true")
 	if err != nil {
 		return err
 	}
@@ -186,6 +187,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
+	// TODO(cristian)
 	// dbConnection.Close()
 	// entryHandler.Stop()
 
@@ -206,7 +208,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.collectors = append(c.collectors, qsCollector)
 
 	stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
-		DSN:            string(newArgs.DataSourceName),
+		DB:             dbConnection,
 		ScrapeInterval: newArgs.ScrapeInterval,
 		EntryHandler:   entryHandler,
 		Logger:         c.opts.Logger,
