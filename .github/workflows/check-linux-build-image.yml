@@ -7,10 +7,18 @@ on:
 
 jobs:
   check-linux-build-image:
-    runs-on: ubuntu-latest
+    runs-on: github-hosted-ubuntu-x64-large
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Remove unnecessary files
+        run: |
+            rm -rf /usr/share/dotnet
+            rm -rf "$AGENT_TOOLSDIRECTORY"
+            rm -rf /opt/ghc
+            rm -rf "/usr/local/share/boost"
+            rm -rf /opt/hostedtoolcache
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3
@@ -25,7 +33,7 @@ jobs:
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=golang:1.22.7-bullseye
+            GO_RUNTIME=golang:1.23.3-bullseye
 
       - name: Create test Linux build image for boring crypto
         uses: docker/build-push-action@v6
@@ -34,4 +42,4 @@ jobs:
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.22.7-bullseye
+            GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.23.3-bullseye

@@ -253,7 +253,7 @@ The following arguments are supported:
 ### ottl_condition block
 
 The `ottl_condition` block configures a policy of type `ottl_condition`. The policy samples based on a given boolean
-[OTTL](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/ottl) condition (span and span event).
+[OTTL](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/pkg/ottl) condition (span and span event).
 
 The following arguments are supported:
 

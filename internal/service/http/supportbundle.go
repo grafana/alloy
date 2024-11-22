@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
@@ -28,19 +29,20 @@ type SupportBundleContext struct {
 
 // Bundle collects all the data that is exposed as a support bundle.
 type Bundle struct {
-	meta              []byte
-	alloyMetricsStart []byte
-	alloyMetricsEnd   []byte
-	components        []byte
-	peers             []byte
-	runtimeFlags      []byte
-	sources           map[string][]byte
-	remoteCfg         []byte
-	heapBuf           *bytes.Buffer
-	goroutineBuf      *bytes.Buffer
-	blockBuf          *bytes.Buffer
-	mutexBuf          *bytes.Buffer
-	cpuBuf            *bytes.Buffer
+	meta                 []byte
+	alloyMetricsStart    []byte
+	alloyMetricsEnd      []byte
+	components           []byte
+	peers                []byte
+	runtimeFlags         []byte
+	environmentVariables []byte
+	sources              map[string][]byte
+	remoteCfg            []byte
+	heapBuf              *bytes.Buffer
+	goroutineBuf         *bytes.Buffer
+	blockBuf             *bytes.Buffer
+	mutexBuf             *bytes.Buffer
+	cpuBuf               *bytes.Buffer
 }
 
 // Metadata contains general runtime information about the current Alloy environment.
@@ -143,19 +145,20 @@ func ExportSupportBundle(ctx context.Context, runtimeFlags []string, srvAddress 
 	// Finally, bundle everything up to be served, either as a zip from
 	// memory, or exported to a directory.
 	bundle := &Bundle{
-		meta:              meta,
-		alloyMetricsStart: alloyMetricsStart,
-		alloyMetricsEnd:   alloyMetricsEnd,
-		components:        components,
-		peers:             peers,
-		sources:           sources,
-		remoteCfg:         remoteCfg,
-		runtimeFlags:      []byte(strings.Join(runtimeFlags, "\n")),
-		heapBuf:           &heapBuf,
-		goroutineBuf:      &goroutineBuf,
-		blockBuf:          &blockBuf,
-		mutexBuf:          &mutexBuf,
-		cpuBuf:            &cpuBuf,
+		meta:                 meta,
+		alloyMetricsStart:    alloyMetricsStart,
+		alloyMetricsEnd:      alloyMetricsEnd,
+		components:           components,
+		peers:                peers,
+		sources:              sources,
+		remoteCfg:            remoteCfg,
+		runtimeFlags:         []byte(strings.Join(runtimeFlags, "\n")),
+		environmentVariables: []byte(strings.Join(retrieveEnvironmentVariables(), "\n")),
+		heapBuf:              &heapBuf,
+		goroutineBuf:         &goroutineBuf,
+		blockBuf:             &blockBuf,
+		mutexBuf:             &mutexBuf,
+		cpuBuf:               &cpuBuf,
 	}
 
 	return bundle, nil
@@ -175,6 +178,32 @@ func retrieveAPIEndpoint(httpClient http.Client, srvAddress, endpoint string) ([
 	return res, nil
 }
 
+func retrieveEnvironmentVariables() []string {
+	relevantVariables := []string{
+		"AUTOMEMLIMIT",
+		"GODEBUG",
+		"GOGC",
+		"GOMAXPROCS",
+		"GOMEMLIMIT",
+		"HOSTNAME",
+		// the proxy variables can be provided either uppercased or lowercased
+		"HTTP_PROXY",
+		"http_proxy",
+		"HTTPS_PROXY",
+		"https_proxy",
+		"NO_PROXY",
+		"no_proxy",
+		"PPROF_BLOCK_PROFILING_RATE",
+		"PPROF_MUTEX_PROFILING_PERCENT",
+	}
+	values := []string{}
+	for _, v := range relevantVariables {
+		values = append(values, fmt.Sprintf("%s=%s", v, os.Getenv(v)))
+	}
+
+	return values
+}
+
 // ServeSupportBundle the collected data and logs as a zip file over the given
 // http.ResponseWriter.
 func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf *bytes.Buffer) error {
@@ -189,6 +218,7 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf *bytes.Buffer
 		"alloy-metrics-sample-start.txt":     b.alloyMetricsStart,
 		"alloy-metrics-sample-end.txt":       b.alloyMetricsEnd,
 		"alloy-runtime-flags.txt":            b.runtimeFlags,
+		"alloy-environment.txt":              b.environmentVariables,
 		"alloy-logs.txt":                     logsBuf.Bytes(),
 		"sources/remote-config/remote.alloy": b.remoteCfg,
 		"pprof/cpu.pprof":                    b.cpuBuf.Bytes(),
