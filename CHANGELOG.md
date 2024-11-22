@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
 
+- Add relevant golang environment variables to the support bundle (@dehaansa)
+
 ### Bugfixes
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
