@@ -169,10 +169,6 @@ They generally behave the same, but there are likely edge cases where they diffe
   of send calls to remote storage.
 * `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` (gauge):
   Unix timestamp of the latest WAL sample successfully sent by a queue.
-* `prometheus_remote_storage_samples_pending` (gauge): The number of samples
-  pending in shards to be sent to remote storage.
-* `prometheus_remote_storage_exemplars_pending` (gauge): The number of
-  exemplars pending in shards to be sent to remote storage.
 * `prometheus_remote_storage_samples_in_total` (counter): Samples read into
   remote storage.
 * `prometheus_remote_storage_exemplars_in_total` (counter): Exemplars read into
