@@ -1,6 +1,8 @@
 package traces
 
 import (
+	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -24,7 +26,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	prom_config "github.com/prometheus/common/config"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/confmap"
+	"go.opentelemetry.io/collector/confmap/provider/yamlprovider"
 	otelexporter "go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
@@ -1002,26 +1006,46 @@ func orderProcessors(processors []string, splitPipelines bool) [][]string {
 }
 
 func otelcolConfigFromStringMap(otelMapStructure map[string]interface{}, factories *otelcol.Factories) (*otelcol.Config, error) {
-	configMap := confmap.NewFromStringMap(otelMapStructure)
-	otelCfg, err := otelcol.Unmarshal(configMap, *factories)
+	var b bytes.Buffer
+	enc := yaml.NewEncoder(&b)
+
+	enc.SetHook(func(in interface{}) (ok bool, out interface{}, err error) {
+		switch v := in.(type) {
+		case SecretString:
+			return true, string(v), nil
+		case configopaque.String:
+			return true, string(v), nil
+		default:
+			return false, nil, nil
+		}
+	})
+
+	if err := enc.Encode(otelMapStructure); err != nil {
+		return nil, err
+	}
+	cp, err := otelcol.NewConfigProvider(otelcol.ConfigProviderSettings{
+		ResolverSettings: confmap.ResolverSettings{
+			URIs: []string{"yaml:" + string(b.Bytes())},
+			ProviderFactories: []confmap.ProviderFactory{
+				yamlprovider.NewFactory(),
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create config provider: %w", err)
+	}
+
+	otelCfg, err := cp.Get(context.Background(), *factories)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load OTel config: %w", err)
 	}
 
-	res := otelcol.Config{
-		Receivers:  otelCfg.Receivers.Configs(),
-		Processors: otelCfg.Processors.Configs(),
-		Exporters:  otelCfg.Exporters.Configs(),
-		Connectors: otelCfg.Connectors.Configs(),
-		Extensions: otelCfg.Extensions.Configs(),
-		Service:    otelCfg.Service,
-	}
-
-	if err := res.Validate(); err != nil {
+	if err := otelCfg.Validate(); err != nil {
 		return nil, err
 	}
 
-	return &res, nil
+	return otelCfg, nil
 }
 
 // Code taken from OTel's service/configcheck.go

@@ -1172,6 +1172,7 @@ extensions:
   oauth2client/otlphttp0:
     client_id: someclientid
     client_secret: someclientsecret
+    endpoint_params: {}
     token_url: https://example.com/oauth2/default/v1/token
     scopes: ["api.metrics"]
     timeout: 2s
@@ -1368,6 +1369,7 @@ extensions:
  oauth2client/otlphttp0:
    client_id: someclientid
    client_secret: someclientsecret
+   endpoint_params: {}
    token_url: https://example.com/oauth2/default/v1/token
    scopes: ["api.metrics"]
    timeout: 2s
@@ -1376,6 +1378,7 @@ extensions:
  oauth2client/otlp1:
    client_id: anotherclientid
    client_secret: anotherclientsecret
+   endpoint_params: {}
    token_url: https://example.com/oauth2/default/v1/token
    scopes: ["api.metrics"]
    timeout: 2s
@@ -1436,6 +1439,7 @@ extensions:
   oauth2client/otlphttp0:
     client_id: someclientid
     client_secret: someclientsecret
+    endpoint_params: {}
     token_url: https://example.com/oauth2/default/v1/token
     scopes: ["api.metrics"]
     timeout: 2s
@@ -1545,7 +1549,7 @@ service:
 			sortService(actualConfig)
 			sortService(expectedConfig)
 
-			assert.Equal(t, *expectedConfig, *actualConfig)
+			assert.Equal(t, expectedConfig, actualConfig)
 		})
 	}
 }

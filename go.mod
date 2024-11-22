@@ -915,18 +915,6 @@ replace (
 	github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20231004161416-702318429731
 )
 
-// Replacing for an internal fork which allows us to observe metrics produced by the Collector.
-// This is a temporary solution while a new configuration design is discussed for the collector. Related issues:
-// https://github.com/open-telemetry/opentelemetry-collector/issues/7532
-// https://github.com/open-telemetry/opentelemetry-collector/pull/7644
-// https://github.com/open-telemetry/opentelemetry-collector/pull/7696
-// https://github.com/open-telemetry/opentelemetry-collector/issues/4970
-replace (
-	go.opentelemetry.io/collector/otelcol => github.com/grafana/opentelemetry-collector/otelcol v0.0.0-20241104164848-8ea9d0a3e17a
-	go.opentelemetry.io/collector/processor/batchprocessor => github.com/grafana/opentelemetry-collector/processor/batchprocessor v0.0.0-20241104164848-8ea9d0a3e17a
-	go.opentelemetry.io/collector/service => github.com/grafana/opentelemetry-collector/service v0.0.0-20241104164848-8ea9d0a3e17a
-)
-
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
 
 // Submodules.
