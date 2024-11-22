@@ -11,9 +11,14 @@ import (
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 func TestSchemaTableRun(t *testing.T) {
+	// The goroutine which deletes expired entries runs indefinitely,
+	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
 	defer db.Close()

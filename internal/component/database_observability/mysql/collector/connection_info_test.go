@@ -9,9 +9,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 func TestConnectionInfoRun(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	const baseExpectedMetrics = `
 	# HELP connection_info Information about the connection
 	# TYPE connection_info gauge

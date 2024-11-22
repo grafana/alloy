@@ -8,6 +8,7 @@ import (
 
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/prometheus/common/model"
+	"go.uber.org/goleak"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
@@ -15,6 +16,8 @@ import (
 )
 
 func TestQuerySampleRun(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
 	defer db.Close()
