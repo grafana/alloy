@@ -3,6 +3,9 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/grafanaclo
 description: Learn about grafanacloud.database_observability.mysql
 title: grafanacloud.database_observability.mysql
 ---
+
+Database Observability component.
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
