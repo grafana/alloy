@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
 
+- Add all raw configuration files & a copy of the latest remote config to the support bundle (@dehaansa)
+
 - Add relevant golang environment variables to the support bundle (@dehaansa)
 
 ### Bugfixes
