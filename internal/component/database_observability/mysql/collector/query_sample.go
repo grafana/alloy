@@ -112,7 +112,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 		redacted, err := sqlparser.RedactSQLQuery(query_sample_text)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to redact sql", "err", err)
+			level.Error(c.logger).Log("msg", "failed to redact sql query", "err", err)
 		}
 
 		c.entryHandler.Chan() <- loki.Entry{
@@ -146,7 +146,7 @@ func (c QuerySample) tablesFromQuery(query string) []string {
 
 	stmt, err := sqlparser.Parse(query)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to parse sql", "err", err)
+		level.Error(c.logger).Log("msg", "failed to parse sql query", "err", err)
 		return []string{}
 	}
 
