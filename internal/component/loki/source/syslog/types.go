@@ -11,25 +11,18 @@ import (
 	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 )
 
-const (
-	// A modern Syslog RFC
-	SyslogFormatRFC5424 = "rfc5424"
-	// A legacy Syslog RFC also known as BSD-syslog
-	SyslogFormatRFC3164 = "rfc3164"
-)
-
 // ListenerConfig defines a syslog listener.
 type ListenerConfig struct {
-	ListenAddress        string            `alloy:"address,attr"`
-	ListenProtocol       string            `alloy:"protocol,attr,optional"`
-	IdleTimeout          time.Duration     `alloy:"idle_timeout,attr,optional"`
-	LabelStructuredData  bool              `alloy:"label_structured_data,attr,optional"`
-	Labels               map[string]string `alloy:"labels,attr,optional"`
-	UseIncomingTimestamp bool              `alloy:"use_incoming_timestamp,attr,optional"`
-	UseRFC5424Message    bool              `alloy:"use_rfc5424_message,attr,optional"`
-	MaxMessageLength     int               `alloy:"max_message_length,attr,optional"`
-	TLSConfig            config.TLSConfig  `alloy:"tls_config,block,optional"`
-	SyslogFormat         string            `alloy:"syslog_format,attr,optional"`
+	ListenAddress        string              `alloy:"address,attr"`
+	ListenProtocol       string              `alloy:"protocol,attr,optional"`
+	IdleTimeout          time.Duration       `alloy:"idle_timeout,attr,optional"`
+	LabelStructuredData  bool                `alloy:"label_structured_data,attr,optional"`
+	Labels               map[string]string   `alloy:"labels,attr,optional"`
+	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
+	UseRFC5424Message    bool                `alloy:"use_rfc5424_message,attr,optional"`
+	MaxMessageLength     int                 `alloy:"max_message_length,attr,optional"`
+	TLSConfig            config.TLSConfig    `alloy:"tls_config,block,optional"`
+	SyslogFormat         config.SysLogFormat `alloy:"syslog_format,attr,optional"`
 }
 
 // DefaultListenerConfig provides the default arguments for a syslog listener.
@@ -37,7 +30,7 @@ var DefaultListenerConfig = ListenerConfig{
 	ListenProtocol:   st.DefaultProtocol,
 	IdleTimeout:      st.DefaultIdleTimeout,
 	MaxMessageLength: st.DefaultMaxMessageLength,
-	SyslogFormat:     SyslogFormatRFC5424,
+	SyslogFormat:     config.SyslogFormatRFC5424,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -85,11 +78,11 @@ func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 	}, nil
 }
 
-func convertSyslogFormat(format string) (scrapeconfig.SyslogFormat, error) {
+func convertSyslogFormat(format config.SysLogFormat) (scrapeconfig.SyslogFormat, error) {
 	switch format {
-	case SyslogFormatRFC3164:
+	case config.SyslogFormatRFC3164:
 		return scrapeconfig.SyslogFormatRFC3164, nil
-	case SyslogFormatRFC5424:
+	case config.SyslogFormatRFC5424:
 		return scrapeconfig.SyslogFormatRFC5424, nil
 	default:
 		return "", fmt.Errorf("unknown syslog format %q", format)
