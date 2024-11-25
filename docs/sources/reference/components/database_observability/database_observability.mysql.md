@@ -1,7 +1,7 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/grafanacloud.database_observability.mysql/
-description: Learn about grafanacloud.database_observability.mysql
-title: grafanacloud.database_observability.mysql
+canonical: https://grafana.com/docs/alloy/latest/reference/components/database_observability.mysql/
+description: Learn about database_observability.mysql
+title: database_observability.mysql
 ---
 
 Database Observability component. This component is under active development and can be run with Alloy flag `--stability.level=experimental`.
@@ -9,13 +9,13 @@ Database Observability component. This component is under active development and
 ## Example
 
 ```alloy
-grafanacloud.database_observability.mysql "orders_db" {
+database_observability.mysql "orders_db" {
   data_source_name = "user:pass@mysql:3306/"
   forward_to = [loki.write.logs_service.receiver]
 }
 
 prometheus.scrape "orders_db" {
-  targets = grafanacloud.database_observability.mysql.orders_db.targets
+  targets = database_observability.mysql.orders_db.targets
   honor_labels = true // required to keep job and instance labels
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
@@ -45,11 +45,11 @@ loki.write "logs_service" {
 
 ## Compatible components
 
-`grafanacloud.database_observability.mysql` can accept arguments from the following components:
+`database_observability.mysql` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
 
-`grafanacloud.database_observability.mysql` has exports that can be consumed by the following components:
+`database_observability.mysql` has exports that can be consumed by the following components:
 
 - Components that consume [Targets](../../../compatibility/#targets-consumers)
 

@@ -26,7 +26,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
-const name = "grafanacloud.database_observability.mysql"
+const name = "database_observability.mysql"
 
 func init() {
 	component.Register(component.Registration{

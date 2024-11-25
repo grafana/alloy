@@ -43,6 +43,10 @@ The following components, grouped by namespace, _export_ Targets.
 - [beyla.ebpf](../components/beyla/beyla.ebpf)
 {{< /collapse >}}
 
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
+{{< /collapse >}}
+
 {{< collapse title="discovery" >}}
 - [discovery.azure](../components/discovery/discovery.azure)
 - [discovery.consul](../components/discovery/discovery.consul)
@@ -75,10 +79,6 @@ The following components, grouped by namespace, _export_ Targets.
 - [discovery.serverset](../components/discovery/discovery.serverset)
 - [discovery.triton](../components/discovery/discovery.triton)
 - [discovery.uyuni](../components/discovery/discovery.uyuni)
-{{< /collapse >}}
-
-{{< collapse title="grafanacloud" >}}
-- [grafanacloud.database_observability.mysql](../components/grafanacloud/grafanacloud.database_observability.mysql)
 {{< /collapse >}}
 
 {{< collapse title="local" >}}
@@ -240,12 +240,12 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Loki `LogsReceiver` -->
 
-{{< collapse title="faro" >}}
-- [faro.receiver](../components/faro/faro.receiver)
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
 {{< /collapse >}}
 
-{{< collapse title="grafanacloud" >}}
-- [grafanacloud.database_observability.mysql](../components/grafanacloud/grafanacloud.database_observability.mysql)
+{{< collapse title="faro" >}}
+- [faro.receiver](../components/faro/faro.receiver)
 {{< /collapse >}}
 
 {{< collapse title="loki" >}}
