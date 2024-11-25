@@ -58,8 +58,8 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	}, nil
 }
 
-func (c *QuerySample) Run(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "QuerySample collector running")
+func (c *QuerySample) Start(ctx context.Context) error {
+	level.Debug(c.logger).Log("msg", "QuerySample collector started")
 
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx

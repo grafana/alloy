@@ -89,8 +89,8 @@ func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	}, nil
 }
 
-func (c *SchemaTable) Run(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "SchemaTable collector running")
+func (c *SchemaTable) Start(ctx context.Context) error {
+	level.Debug(c.logger).Log("msg", "SchemaTable collector started")
 
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx

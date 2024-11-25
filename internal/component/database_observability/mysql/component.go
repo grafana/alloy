@@ -78,7 +78,7 @@ var (
 )
 
 type Collector interface {
-	Run(context.Context) error
+	Start(context.Context) error
 	Stop()
 }
 
@@ -201,8 +201,8 @@ func (c *Component) Update(args component.Arguments) error {
 		level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
 		return err
 	}
-	if err := qsCollector.Run(context.Background()); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to run QuerySample collector", "err", err)
+	if err := qsCollector.Start(context.Background()); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
 		return err
 	}
 	c.collectors = append(c.collectors, qsCollector)
@@ -217,8 +217,8 @@ func (c *Component) Update(args component.Arguments) error {
 		level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)
 		return err
 	}
-	if err := stCollector.Run(context.Background()); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to run SchemaTable collector", "err", err)
+	if err := stCollector.Start(context.Background()); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to start SchemaTable collector", "err", err)
 		return err
 	}
 	c.collectors = append(c.collectors, stCollector)
@@ -231,8 +231,8 @@ func (c *Component) Update(args component.Arguments) error {
 		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
 		return err
 	}
-	if err := ciCollector.Run(context.Background()); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to run ConnectionInfo collector", "err", err)
+	if err := ciCollector.Start(context.Background()); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to start ConnectionInfo collector", "err", err)
 		return err
 	}
 	c.collectors = append(c.collectors, ciCollector)

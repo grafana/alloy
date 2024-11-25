@@ -38,7 +38,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 	}, nil
 }
 
-func (c *ConnectionInfo) Run(ctx context.Context) error {
+func (c *ConnectionInfo) Start(ctx context.Context) error {
 	cfg, err := mysql.ParseDSN(c.DSN)
 	if err != nil {
 		return err
