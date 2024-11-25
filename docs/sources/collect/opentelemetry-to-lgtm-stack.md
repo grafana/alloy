@@ -36,7 +36,6 @@ This topic describes how to:
 * Identify where {{< param "PRODUCT_NAME" >}} will write received telemetry data.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 * Complete the [Collect open telemetry data][] task.
-  You will pick up from where that guide ended.
 
 ## The pipeline
 
@@ -74,9 +73,9 @@ otelcol.exporter.otlp "default" {
 }
 ```
 
-The pipeline currently looks like this:
+The pipeline looks like this:
 
-```
+```plaintext
 Metrics, Logs, Traces: OTLP Receiver → batch processor → OTLP Exporter
 ```
 
@@ -88,7 +87,7 @@ You can find the OTLP connection details from the OpenTelemetry **Details** page
 
 You must update the configuration file as follows:
 
-```
+```alloy
 otelcol.auth.basic "default" {
   username = "<ACCOUNT ID>"
   password = "<API TOKEN>"
@@ -108,17 +107,18 @@ Replace the following:
 * _`<API TOKEN>`_: Your Grafana Cloud API token.
 * _`<OTLP_ENDPOINT>`_: Your OTLP endpoint.
 
-This configuration will use the credentials stored in `otelcol.auth.basic "default"` to authenticate against the Grafana Cloud OTLP endpoints, and you should start to see your data arrive!
+This configuration uses the credentials stored in `otelcol.auth.basic "default"` to authenticate against the Grafana Cloud OTLP endpoints, and you should start to see your data arrive.
 
 ## Other platforms (Grafana Enterprise, Grafana Open Source)
 
-You will implement the following pipelines to send your data to Loki, Tempo, and Mimir or Prometheus.
+You can implement the following pipelines to send your data to Loki, Tempo, and Mimir or Prometheus.
 
-```
+```plaintext
 Metrics: OTel → batch processor → Mimir or Prometheus remote write
 Logs: OTel → batch processor → Loki exporter
 Traces: OTel → batch processor → OTel exporter
 ```
+
 ### Grafana Loki
 
 [Grafana Loki][] is a horizontally scalable, highly available, multi-tenant log aggregation system inspired by Prometheus.
@@ -126,12 +126,12 @@ Similar to Prometheus, to send from OTLP to Loki, you can configure passthrough 
 
 ```alloy
 otelcol.exporter.loki "default" {
-	forward_to = [loki.write.default.receiver]
+  forward_to = [loki.write.default.receiver]
 }
 
 loki.write "default" {
-	endpoint {
-		url = "http://loki-endpoint:8080/loki/api/v1/push"
+  endpoint {
+    url = "http://loki-endpoint:8080/loki/api/v1/push"
         }
 }
 ```
@@ -141,18 +141,18 @@ You can get the Loki configuration from the Loki **Details** page in the [Grafan
 
 ```alloy
 otelcol.exporter.loki "grafana_cloud_logs" {
-	forward_to = [loki.write.grafana_cloud_logs.receiver]
+  forward_to = [loki.write.grafana_cloud_logs.receiver]
 }
 
 loki.write "grafana_cloud_logs" {
-	endpoint {
-		url = "https://logs-prod-us-central1.grafana.net/loki/api/v1/push"
+  endpoint {
+    url = "https://logs-prod-us-central1.grafana.net/loki/api/v1/push"
 
-		basic_auth {
-			username = 5252
-			password = sys.env("GRAFANA_CLOUD_API_KEY")
-		}
-	}
+    basic_auth {
+      username = 5252
+      password = sys.env("GRAFANA_CLOUD_API_KEY")
+    }
+  }
 }
 ```
 
@@ -174,15 +174,15 @@ You can get the Tempo configuration from the Tempo **Details** page in the [Graf
 
 ```alloy
 otelcol.exporter.otlp "grafana_cloud_traces" {
-	client {
-		endpoint = "tempo-us-central1.grafana.net:443"
-		auth     = otelcol.auth.basic.grafana_cloud_traces.handler
-	}
+  client {
+    endpoint = "tempo-us-central1.grafana.net:443"
+    auth     = otelcol.auth.basic.grafana_cloud_traces.handler
+  }
 }
 
 otelcol.auth.basic "grafana_cloud_traces" {
-	username = 4094
-	password = sys.env("GRAFANA_CLOUD_API_KEY")
+  username = 4094
+  password = sys.env("GRAFANA_CLOUD_API_KEY")
 }
 ```
 
@@ -194,13 +194,13 @@ The Prometheus remote write component in {{< param "PRODUCT_NAME" >}} is a robus
 
 ```alloy
 otelcol.exporter.prometheus "default" {
-	forward_to = [prometheus.remote_write.default.receiver]
+  forward_to = [prometheus.remote_write.default.receiver]
 }
 
 prometheus.remote_write "default" {
-	endpoint {
-		url = "http://prometheus:9090/api/v1/write"
-	}
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
 }
 ```
 
@@ -224,7 +224,7 @@ prometheus.remote_write "grafana_cloud_metrics" {
 }
 ```
 
-### Putting it all together
+### Put it all together
 
 Instead of referencing `otelcol.exporter.otlp.default.input` in the output of `otelcol.processor.batch`, you need to reference the three exporters you set up.
 The final configuration becomes:
@@ -255,15 +255,15 @@ otelcol.processor.batch "example" {
 }
 
 otelcol.exporter.otlp "grafana_cloud_traces" {
-	client {
-		endpoint = "tempo-us-central1.grafana.net:443"
-		auth     = otelcol.auth.basic.grafana_cloud_traces.handler
-	}
+  client {
+    endpoint = "tempo-us-central1.grafana.net:443"
+    auth     = otelcol.auth.basic.grafana_cloud_traces.handler
+  }
 }
 
 otelcol.auth.basic "grafana_cloud_traces" {
-	username = 4094
-	password = sys.env("GRAFANA_CLOUD_API_KEY")
+  username = 4094
+  password = sys.env("GRAFANA_CLOUD_API_KEY")
 }
 
 otelcol.exporter.prometheus "grafana_cloud_metrics" {
@@ -282,24 +282,24 @@ prometheus.remote_write "grafana_cloud_metrics" {
 }
 
 otelcol.exporter.loki "grafana_cloud_logs" {
-	forward_to = [loki.write.grafana_cloud_logs.receiver]
+  forward_to = [loki.write.grafana_cloud_logs.receiver]
 }
 
 loki.write "grafana_cloud_logs" {
-	endpoint {
-		url = "https://logs-prod-us-central1.grafana.net/loki/api/v1/push"
+  endpoint {
+    url = "https://logs-prod-us-central1.grafana.net/loki/api/v1/push"
 
-		basic_auth {
-			username = 5252
-			password = sys.env("GRAFANA_CLOUD_API_KEY")
-		}
-	}
+    basic_auth {
+      username = 5252
+      password = sys.env("GRAFANA_CLOUD_API_KEY")
+    }
+  }
 }
 ```
 
-Running {{< param "PRODUCT_NAME" >}} now will give you the following:
+Running {{< param "PRODUCT_NAME" >}} gives you the following:
 
-```
+```plaintext
 ./alloy run alloy-config.alloy
 ./alloy run alloy-config.alloy
 ts=2023-05-09T09:37:15.300959Z level=info msg="running usage stats reporter"

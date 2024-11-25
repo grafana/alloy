@@ -31,7 +31,7 @@ If you want a fresh start with {{< param "PRODUCT_NAME" >}}, you can [uninstall 
 
 By default, you can only use functionality marked _Generally available_.
 
-You can enable functionality in _Experimental_ and _Public preview_ by setting the `--stability.level` flag in [run].
+You can enable functionality in _Experimental_ and _Public preview_ by setting the `--stability.level` flag in [run][].
 
 * The default value of `--storage.path` has changed from `data-agent/` to `data-alloy/`.
 * The default value of `--server.http.memory-addr` has changed from `agent.internal:12345` to `alloy.internal:12345`.
@@ -118,5 +118,5 @@ After you have completed the migration, you can uninstall Grafana Agent Flow.
 
 You can enable auto-scaling in your {{< param "PRODUCT_NAME" >}} deployment if you disabled it during the migration process.
 
-[install]: ../../../set-up/install
-[run]: ../../../reference/cli/run
+[install]: ../../../set-up/install/
+[run]: ../../../reference/cli/run/

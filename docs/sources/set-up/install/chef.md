@@ -88,7 +88,7 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
 The `alloy` package installs a default configuration file that doesn't send telemetry anywhere.
 
 The default configuration file location is `/etc/alloy/config.alloy`.
-You can replace this file with your own configuration or create a new configuration file for the service to use.
+You can replace this file with your own configuration or create a configuration file for the service to use.
 
 ## Next steps
 

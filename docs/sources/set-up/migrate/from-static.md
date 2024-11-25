@@ -386,7 +386,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Promtail Limitations]: ../from-promtail/#limitations
 [Metrics]: https://grafana.com/docs/agent/latest/static/configuration/metrics-config/
 [Logs]: https://grafana.com/docs/agent/latest/static/configuration/logs-config/
-[UI]: ../../../debug/#alloy-ui
+[UI]: ../../../troubleshoot/debug/#alloy-ui
 [otelcol.receiver.otlp]: ../../../reference/components/otelcol/otelcol.receiver.otlp/
 [otelcol.processor.batch]: ../../../reference/components/otelcol/otelcol.processor.batch/
 [otelcol.exporter.otlp]:../../../reference/components/otelcol/otelcol.exporter.otlp/

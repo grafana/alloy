@@ -67,14 +67,3 @@ You can use transformations to inject extra metadata into telemetry or filter ou
 [Collect]: ../collect/
 [tutorials]: ../tutorials/
 [reference]: ../reference/
-[Pyroscope]: https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/go_pull
-[helm chart]: https://grafana.com/docs/grafana-cloud/monitor-infrastructure/kubernetes-monitoring/configuration/config-k8s-helmchart
-[sla]: https://grafana.com/legal/grafana-cloud-sla
-[observability]: https://grafana.com/docs/grafana-cloud/monitor-applications/application-observability/setup#send-telemetry
-[components]: ./reference/components
-[Prometheus]: ./tasks/collect-prometheus-metrics/
-[OTel]: ./tasks/collect-opentelemetry-data/
-[Loki]: ./tasks/migrate/from-promtail/
-[clustering]: ./concepts/clustering/
-[rules]: ./reference/components/mimir.rules.kubernetes/
-[vault]: ./reference/components/remote.vault/

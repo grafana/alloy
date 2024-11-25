@@ -14,7 +14,7 @@ There are three different ways you can use {{< param "PRODUCT_NAME" >}} to colle
 
 1. [Use a custom OpenTelemetry configuration file from the SSM Parameter store](#use-a-custom-opentelemetry-configuration-file-from-the-ssm-parameter-store).
 1. [Create an ECS task definition](#create-an-ecs-task-definition).
-1. [Run {{< param "PRODUCT_NAME" >}} directly in your instance, or as a Kubernetes sidecar](#run-alloy-directly-in-your-instance-or-as-a-kubernetes-sidecar).
+1. [Run {{< param "PRODUCT_NAME" >}} directly in your instance, or as a Kubernetes sidecar](#run-alloy-directly-in-your-instance-or-as-a-kubernetes-sidecar)
 
 ## Before you begin
 
@@ -82,7 +82,7 @@ To create an ECS Task Definition for AWS Fargate with an ADOT collector, complet
      * Use `--config=/etc/ecs/container-insights/otel-task-metrics-config.yaml` to use StatsD, OTLP, Xray, and Container Resource utilization metrics.
 1. Follow the ECS Fargate setup instructions to [create a task definition][task] using the template.
 
-## Run {{% param "PRODUCT_NAME" %}} directly in your instance, or as a Kubernetes sidecar
+## Run Alloy directly in your instance, or as a Kubernetes sidecar
 
 SSH or connect to the Amazon ECS or AWS Fargate-managed container. Refer to [9 steps to SSH into an AWS Fargate managed container][steps] for more information about using SSH with Amazon ECS or AWS Fargate.
 

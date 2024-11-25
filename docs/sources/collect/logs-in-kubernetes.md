@@ -56,9 +56,9 @@ To configure a `loki.write` component for logs delivery, complete the following 
 
    Replace the following:
 
-   - _`<LABEL>`_: The label for the component, such as `default`.
+   * _`<LABEL>`_: The label for the component, such as `default`.
      The label you use must be unique across all `loki.write` components in the same configuration file.
-   - _`<LOKI_URL>`_ : The full URL of the Loki endpoint where logs will be sent, such as `https://logs-us-central1.grafana.net/loki/api/v1/push`.
+   * _`<LOKI_URL>`_ : The full URL of the Loki endpoint where logs are sent, such as `https://logs-us-central1.grafana.net/loki/api/v1/push`.
 
 1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
@@ -71,13 +71,13 @@ To configure a `loki.write` component for logs delivery, complete the following 
 
    Replace the following:
 
-   - _`<USERNAME>`_: The basic authentication username.
-   - _`<PASSWORD>`_: The basic authentication password or API key.
+   * _`<USERNAME>`_: The basic authentication username.
+   * _`<PASSWORD>`_: The basic authentication password or API key.
 
-  1. If you have more than one endpoint to write logs to, repeat the `endpoint` block for additional endpoints.
+1. If you have more than one endpoint to write logs to, repeat the `endpoint` block for additional endpoints.
 
-The following simple example demonstrates configuring `loki.write` with multiple endpoints, mixed usage of basic authentication, 
-and a `loki.source.file` component that collects logs from the filesystem on Alloy's own container.
+The following simple example demonstrates configuring `loki.write` with multiple endpoints, mixed usage of basic authentication,
+and a `loki.source.file` component that collects logs from the filesystem on the {{< param "PRODUCT_NAME" >}} container.
 
 ```alloy
 loki.write "default" {
@@ -110,8 +110,8 @@ loki.source.file "example" {
 
 Replace the following:
 
-   - _`<USERNAME>`_: The remote write username.
-   - _`<PASSWORD>`_: The remote write password.
+* _`<USERNAME>`_: The remote write username.
+* _`<PASSWORD>`_: The remote write password.
 
 For more information on configuring logs delivery, refer to [loki.write][].
 
@@ -123,11 +123,12 @@ For more information on configuring logs delivery, refer to [loki.write][].
 1. Pods logs
 1. Kubernetes Events
 
-Thanks to the component architecture, you can follow one or all of the next sections to get those logs. Once you have followed the [Configure logs delivery](#configure-logs-delivery) to ensure collected logs can be written somewhere, jump to the relevant sections.
+Thanks to the component architecture, you can follow one or all of the next sections to get those logs. After you have followed the [Configure logs delivery](#configure-logs-delivery) to ensure collected logs can be written somewhere, jump to the relevant sections.
 
 ### System logs
 
 To get the system logs, you should use the following components:
+
 1. [local.file_match][]: Discovers files on the local filesystem.
 1. [loki.source.file][]: Reads log entries from files.
 1. [loki.write][]: Send logs to the Loki endpoint. You should have configured it in the [Configure logs delivery](#configure-logs-delivery) section.
@@ -156,8 +157,8 @@ loki.source.file "node_logs" {
 
 Replace the following values:
 
-- _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
-- _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
+* _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
+* _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
 
 ### Pods logs
 
@@ -167,7 +168,7 @@ You can get pods logs through the log files on each node. In this guide, you wil
 
 The following components are needed:
 
-1. [discovery.kubernetes][]: Discover pods information and list them for future components to use.
+1. [discovery.kubernetes][]: Discover pods information and list them for components to use.
 1. [discovery.relabel][]: Enforce relabelling strategies on the list of pods.
 1. [loki.source.kubernetes][]: Tails logs from a list of Kubernetes pods targets.
 1. [loki.process][]: Modify the logs before sending them to the next component.
@@ -266,8 +267,8 @@ loki.process "pod_logs" {
 
 Replace the following values:
 
-- _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
-- _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
+* _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
+* _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
 
 ### Kubernetes Cluster Events
 
@@ -291,7 +292,7 @@ loki.source.kubernetes_events "cluster_events" {
 }
 
 // loki.process receives log entries from other loki components, applies one or more processing stages,
-// and forwards the results to the list of receivers in the component’s arguments.
+// and forwards the results to the list of receivers in the component's arguments.
 loki.process "cluster_events" {
   forward_to = [loki.write.<WRITE_COMPONENT_NAME>.receiver]
 
@@ -311,15 +312,10 @@ loki.process "cluster_events" {
 
 Replace the following values:
 
-- _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
-- _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
+* _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
+* _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
 
 [Loki]: https://grafana.com/oss/loki/
-[Field Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
-[Labels and Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#set-based-requirement
-[Field Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
-[Labels and Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#set-based-requirement
-[Configure logs delivery]: #configure-logs-delivery
 [discovery.kubernetes]: ../../reference/components/discovery/discovery.kubernetes/
 [loki.write]: ../../reference/components/loki/loki.write/
 [local.file_match]: ../../reference/components/local/local.file_match/
@@ -329,4 +325,3 @@ Replace the following values:
 [loki.process]: ../../reference/components/loki/loki.process/
 [loki.source.kubernetes_events]: ../../reference/components/loki/loki.source.kubernetes_events/
 [Components]: ../../get-started/components/
-[Objects]: ../../concepts/configuration-syntax/expressions/types_and_values/#objects
