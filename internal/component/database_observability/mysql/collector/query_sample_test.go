@@ -25,10 +25,10 @@ func TestQuerySample(t *testing.T) {
 	lokiClient := loki_fake.NewClient(func() {})
 
 	collector, err := NewQuerySample(QuerySampleArguments{
-		DB:             db,
-		ScrapeInterval: time.Minute,
-		EntryHandler:   lokiClient,
-		Logger:         log.NewLogfmtLogger(os.Stderr),
+		DB:              db,
+		CollectInterval: time.Minute,
+		EntryHandler:    lokiClient,
+		Logger:          log.NewLogfmtLogger(os.Stderr),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, collector)

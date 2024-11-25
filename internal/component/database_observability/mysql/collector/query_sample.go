@@ -31,17 +31,17 @@ const selectQuerySamples = `
 	WHERE last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)`
 
 type QuerySampleArguments struct {
-	DB             *sql.DB
-	ScrapeInterval time.Duration
-	EntryHandler   loki.EntryHandler
+	DB              *sql.DB
+	CollectInterval time.Duration
+	EntryHandler    loki.EntryHandler
 
 	Logger log.Logger
 }
 
 type QuerySample struct {
-	dbConnection   *sql.DB
-	scrapeInterval time.Duration
-	entryHandler   loki.EntryHandler
+	dbConnection    *sql.DB
+	collectInterval time.Duration
+	entryHandler    loki.EntryHandler
 
 	logger log.Logger
 
@@ -51,10 +51,10 @@ type QuerySample struct {
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	return &QuerySample{
-		dbConnection:   args.DB,
-		scrapeInterval: args.ScrapeInterval,
-		entryHandler:   args.EntryHandler,
-		logger:         args.Logger,
+		dbConnection:    args.DB,
+		collectInterval: args.CollectInterval,
+		entryHandler:    args.EntryHandler,
+		logger:          args.Logger,
 	}, nil
 }
 
@@ -66,7 +66,7 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	c.cancel = cancel
 
 	go func() {
-		ticker := time.NewTicker(c.scrapeInterval)
+		ticker := time.NewTicker(c.collectInterval)
 
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {

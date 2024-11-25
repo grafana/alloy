@@ -47,13 +47,13 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName alloytypes.Secret   `alloy:"data_source_name,attr"`
-	ScrapeInterval time.Duration       `alloy:"scrape_interval,attr,optional"`
-	ForwardTo      []loki.LogsReceiver `alloy:"forward_to,attr"`
+	DataSourceName  alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval time.Duration       `alloy:"collect_interval,attr,optional"`
+	ForwardTo       []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
 
 var DefaultArguments = Arguments{
-	ScrapeInterval: 10 * time.Second,
+	CollectInterval: 10 * time.Second,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -192,10 +192,10 @@ func (c *Component) Update(args component.Arguments) error {
 	// entryHandler.Stop()
 
 	qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
-		DB:             dbConnection,
-		ScrapeInterval: newArgs.ScrapeInterval,
-		EntryHandler:   entryHandler,
-		Logger:         c.opts.Logger,
+		DB:              dbConnection,
+		CollectInterval: newArgs.CollectInterval,
+		EntryHandler:    entryHandler,
+		Logger:          c.opts.Logger,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
@@ -208,10 +208,10 @@ func (c *Component) Update(args component.Arguments) error {
 	c.collectors = append(c.collectors, qsCollector)
 
 	stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
-		DB:             dbConnection,
-		ScrapeInterval: newArgs.ScrapeInterval,
-		EntryHandler:   entryHandler,
-		Logger:         c.opts.Logger,
+		DB:              dbConnection,
+		CollectInterval: newArgs.CollectInterval,
+		EntryHandler:    entryHandler,
+		Logger:          c.opts.Logger,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)

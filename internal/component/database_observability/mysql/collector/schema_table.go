@@ -46,18 +46,18 @@ const (
 )
 
 type SchemaTableArguments struct {
-	DB             *sql.DB
-	ScrapeInterval time.Duration
-	EntryHandler   loki.EntryHandler
-	CacheTTL       time.Duration
+	DB              *sql.DB
+	CollectInterval time.Duration
+	EntryHandler    loki.EntryHandler
+	CacheTTL        time.Duration
 
 	Logger log.Logger
 }
 
 type SchemaTable struct {
-	dbConnection   *sql.DB
-	scrapeInterval time.Duration
-	entryHandler   loki.EntryHandler
+	dbConnection    *sql.DB
+	collectInterval time.Duration
+	entryHandler    loki.EntryHandler
 	// Cache of table definitions. Entries are removed after a configurable TTL.
 	// Key is a string of the form "schema.table@timestamp", where timestamp is
 	// the last update time of the table (this allows capturing schema changes
@@ -81,11 +81,11 @@ type tableInfo struct {
 
 func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	return &SchemaTable{
-		dbConnection:   args.DB,
-		scrapeInterval: args.ScrapeInterval,
-		entryHandler:   args.EntryHandler,
-		cache:          expirable.NewLRU[string, tableInfo](0, nil, args.CacheTTL),
-		logger:         args.Logger,
+		dbConnection:    args.DB,
+		collectInterval: args.CollectInterval,
+		entryHandler:    args.EntryHandler,
+		cache:           expirable.NewLRU[string, tableInfo](0, nil, args.CacheTTL),
+		logger:          args.Logger,
 	}, nil
 }
 
@@ -97,7 +97,7 @@ func (c *SchemaTable) Start(ctx context.Context) error {
 	c.cancel = cancel
 
 	go func() {
-		ticker := time.NewTicker(c.scrapeInterval)
+		ticker := time.NewTicker(c.collectInterval)
 
 		for {
 			if err := c.extractSchema(c.ctx); err != nil {

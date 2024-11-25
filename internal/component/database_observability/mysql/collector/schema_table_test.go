@@ -26,11 +26,11 @@ func TestSchemaTable(t *testing.T) {
 	lokiClient := loki_fake.NewClient(func() {})
 
 	collector, err := NewSchemaTable(SchemaTableArguments{
-		DB:             db,
-		ScrapeInterval: time.Second,
-		EntryHandler:   lokiClient,
-		CacheTTL:       time.Minute,
-		Logger:         log.NewLogfmtLogger(os.Stderr),
+		DB:              db,
+		CollectInterval: time.Second,
+		EntryHandler:    lokiClient,
+		CacheTTL:        time.Minute,
+		Logger:          log.NewLogfmtLogger(os.Stderr),
 	})
 
 	require.NoError(t, err)
