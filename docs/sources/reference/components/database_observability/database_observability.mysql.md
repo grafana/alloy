@@ -10,6 +10,27 @@ title: database_observability.mysql
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+## Usage
+
+```alloy
+database_observability.mysql "LABEL" {
+  data_source_name = DATA_SOURCE_NAME
+  forward_to       = [LOKI_RECEIVERS]
+}
+```
+
+## Arguments
+
+The following arguments are supported:
+
+| Name                 | Type           | Description                                                                                                         | Default | Required |
+| -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `data_source_name`   | `secret`       | [Data Source Name](https://github.com/go-sql-driver/mysql#dsn-data-source-name) for the MySQL server to connect to. |         | yes      |
+
+## Blocks
+
+Coming soon.
+
 ## Example
 
 ```alloy
