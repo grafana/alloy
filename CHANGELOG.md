@@ -46,6 +46,8 @@ v1.6.0-rc.1
 
 - Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
 
+- Add a `prometheus.mapping` component to add labels based on a source_label and a mapping table. (@vaxvms)
+
 ### Enhancements
 
 - Update `prometheus.write.queue` to support v2 for cpu performance. (@mattdurham)
