@@ -4,7 +4,11 @@ description: Learn about database_observability.mysql
 title: database_observability.mysql
 ---
 
-Database Observability component. This component is under active development and can be run with Alloy flag `--stability.level=experimental`.
+<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
+
+# database_observability.mysql
+
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Example
 
