@@ -29,7 +29,7 @@ func TestConnectionInfo(t *testing.T) {
 		{
 			name:            "generic dsn",
 			dsn:             "user:pass@tcp(localhost:3306)/db",
-			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "", "", ""),
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "unknown", "unknown", "unknown"),
 		},
 		{
 			name:            "AWS/RDS dsn",

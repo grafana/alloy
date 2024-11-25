@@ -44,7 +44,11 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		return err
 	}
 
-	var providerName, providerRegion, dbInstanceIdentifier string
+	var (
+		providerName         = "unknown"
+		providerRegion       = "unknown"
+		dbInstanceIdentifier = "unknown"
+	)
 
 	host, _, err := net.SplitHostPort(cfg.Addr)
 	if err == nil && host != "" {

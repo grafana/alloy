@@ -102,6 +102,7 @@ func (c *SchemaTable) Start(ctx context.Context) error {
 		for {
 			if err := c.extractSchema(c.ctx); err != nil {
 				level.Error(c.logger).Log("msg", "collector stopping due to error", "err", err)
+				c.Stop()
 				break
 			}
 
@@ -114,7 +115,6 @@ func (c *SchemaTable) Start(ctx context.Context) error {
 		}
 	}()
 
-	c.Stop()
 	return nil
 }
 
