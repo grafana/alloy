@@ -31,7 +31,7 @@ This topic describes how to:
 ## Before you begin
 
 * Ensure that you are familiar with logs labelling when working with Loki.
-* Identify where you will write collected logs.
+* Identify where to write collected logs.
   You can write logs to Loki endpoints such as Grafana Loki, Grafana Cloud, or Grafana Enterprise Logs.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
@@ -163,7 +163,7 @@ Replace the following values:
 ### Pods logs
 
 {{< admonition type="tip" >}}
-You can get pods logs through the log files on each node. In this guide, you will get the logs through the Kubernetes API because it doesn't require system privileges for {{< param "PRODUCT_NAME" >}}.
+You can get pods logs through the log files on each node. In this guide, you get the logs through the Kubernetes API because it doesn't require system privileges for {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
 The following components are needed:
@@ -253,7 +253,7 @@ loki.source.kubernetes "pod_logs" {
 }
 
 // loki.process receives log entries from other Loki components, applies one or more processing stages,
-// and forwards the results to the list of receivers in the component’s arguments.
+// and forwards the results to the list of receivers in the component's arguments.
 loki.process "pod_logs" {
   stage.static_labels {
       values = {

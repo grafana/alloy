@@ -72,7 +72,7 @@ When deploying {{< param "PRODUCT_NAME" >}}, be aware of the following settings:
 * {{< param "PRODUCT_NAME" >}} may need to be deployed with the `--stability.level` flag in [run] to enable non-stable components:
   * Set `--stability.level` to `experimental` if you are using the following component:
     * [otelcol.receiver.vcenter]
-  * Otherwise, `--stability.level` may be omitted or set to the default value (`generally-available`).
+  * Otherwise, `--stability.level` may be omitted or set to the default value, `generally-available`.
 * When installing on Kubernetes, update your `values.yaml` file to rename the `agent` key to `alloy`.
 * If you are deploying {{< param "PRODUCT_NAME" >}} as a cluster:
   * Set the number of instances to match the number of instances in your Grafana Agent Flow cluster.
@@ -85,7 +85,7 @@ Migrate your Grafana Agent Flow data to {{< param "PRODUCT_NAME" >}} by copying 
 * Linux installations: copy the _contents_ of `/var/lib/grafana-agent-flow` to `/var/lib/alloy/data`.
 * macOS installations: copy the _contents_ of `$(brew --prefix)/etc/grafana-agent-flow/data` to `$(brew --prefix)/etc/alloy/data`.
 * Windows installations: copy the _contents_ of `%ProgramData%\Grafana Agent Flow\data` to `%ProgramData%\GrafanaLabs\Alloy\data`.
-* Docker: copy the contents of mounted volumes to a new directory, and then mount the new directory when running {{% param "PRODUCT_NAME" %}}.
+* Docker: copy the contents of mounted volumes to a new directory, and then mount the directory when running {{% param "PRODUCT_NAME" %}}.
 * Kubernetes: use `kubectl cp` to copy the _contents_ of the data directory on Flow pods to the data directory on {{% param "PRODUCT_NAME" %}} pods.
   * The data directory is determined by the `agent.storagePath` (default `/tmp/agent`) and `alloy.storagePath` (default `/tmp/alloy`) fields in `values.yaml`.
 

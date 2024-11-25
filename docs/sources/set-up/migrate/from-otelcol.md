@@ -210,7 +210,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
   {{< param "PRODUCT_NAME" >}} for conversion by reviewing the `otelcol.*` components in the [Component Reference][].
   Any additional unsupported features are returned as errors during conversion.
 * Check if you are using any extra command line arguments with OpenTelemetry Collector that aren't present in your configuration file.
-* Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match OpenTelemetry Collector metamonitoring metrics but uses a different name.
+* Meta-monitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match OpenTelemetry Collector meta-monitoring metrics but uses a different name.
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
 * The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by OpenTelemetry Collector.
 * {{< param "FULL_PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].

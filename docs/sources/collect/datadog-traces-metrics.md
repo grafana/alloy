@@ -21,7 +21,7 @@ This topic describes how to:
 ## Before you begin
 
 * Ensure that at least one instance of the [Datadog Agent][] is collecting metrics and traces.
-* Identify where you will write the collected telemetry.
+* Identify where to write the collected telemetry.
   Metrics can be written to [Prometheus][] or any other OpenTelemetry-compatible database such as Grafana Mimir, Grafana Cloud, or Grafana Enterprise Metrics.
   Traces can be written to Grafana Tempo, Grafana Cloud, or Grafana Enterprise Traces.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.

@@ -33,7 +33,7 @@ This topic describes how to:
 
 * Ensure that you have basic familiarity with instrumenting applications with OpenTelemetry.
 * Have a set of OpenTelemetry applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
-* Identify where {{< param "PRODUCT_NAME" >}} will write received telemetry data.
+* Identify where {{< param "PRODUCT_NAME" >}} writes received telemetry data.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 * Complete the [Collect open telemetry data][] task.
 
@@ -122,7 +122,7 @@ Traces: OTel → batch processor → OTel exporter
 ### Grafana Loki
 
 [Grafana Loki][] is a horizontally scalable, highly available, multi-tenant log aggregation system inspired by Prometheus.
-Similar to Prometheus, to send from OTLP to Loki, you can configure passthrough from the [otelcol.exporter.loki][] component to [loki.write][] component.
+Similar to Prometheus, to send from OTLP to Loki, you can configure pass-through from the [otelcol.exporter.loki][] component to [loki.write][] component.
 
 ```alloy
 otelcol.exporter.loki "default" {
@@ -189,7 +189,7 @@ otelcol.auth.basic "grafana_cloud_traces" {
 ### Grafana Mimir or Prometheus Remote Write
 
 [Prometheus Remote Write][] is a popular metrics transmission protocol supported by most metrics systems, including [Grafana Mimir][] and Grafana Cloud.
-To send from OTLP to a Prometheus compatible `remote_write` endpoint, you can configure passthrough from the [otelcol.exporter.prometheus][] to the [prometheus.remote_write][] component.
+To send from OTLP to a Prometheus compatible `remote_write` endpoint, you can configure pass-through from the [otelcol.exporter.prometheus][] to the [prometheus.remote_write][] component.
 The Prometheus remote write component in {{< param "PRODUCT_NAME" >}} is a robust protocol implementation, including a Write Ahead Log (WAL) for resiliency.
 
 ```alloy

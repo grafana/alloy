@@ -22,7 +22,7 @@ Now that you have built a basic pipeline and scraped some metrics, you can use t
 
 ### Recommended reading
 
-- Optional: [prometheus.relabel][]
+* Optional: [prometheus.relabel][]
 
 ### Add a `prometheus.relabel` component to your pipeline
 
@@ -66,13 +66,13 @@ You have created the following pipeline:
 {{< figure src="/media/docs/alloy/diagram-example-relabel-alloy.png" alt="Diagram of pipeline that scrapes prometheus.exporter.unix, relabels the metrics, and remote_writes them" >}}
 
 This pipeline has a `prometheus.relabel` component that has a single rule.
-This rule has the `replace` action, which will replace the value of the `os` label with a special value: `constants.os`.
-This value is a special constant that is replaced with the OS of the host {{< param "PRODUCT_NAME" >}} is running on.
+This rule has the `replace` action, which replaces the value of the `os` label with a special value: `constants.os`.
+This value is a special constant that's replaced with the OS of the host {{< param "PRODUCT_NAME" >}} is running on.
 You can see the other available constants in the [constants][] documentation.
 This example has one rule block, but you can have as many as you want.
 Each rule block is applied in order.
 
-If you run {{< param "PRODUCT_NAME" >}} and navigate to [localhost:3000/explore][], you can see the `os` label on the metrics.
+If you run {{< param "PRODUCT_NAME" >}} and navigate to [http://localhost:3000/explore][], you can see the `os` label on the metrics.
 Try querying for `node_context_switches_total` and look at the labels.
 
 Relabeling uses the same rules as Prometheus. You can always refer to the [prometheus.relabel rule-block][] documentation for a full list of available options.
@@ -95,9 +95,9 @@ Now that you've created components and chained them together, you can collect so
 
 ### Recommended reading
 
-- Optional: [local.file_match][]
-- Optional: [loki.source.file][]
-- Optional: [loki.write][]
+* Optional: [local.file_match][]
+* Optional: [loki.source.file][]
+* Optional: [loki.write][]
 
 ### Find and collect the logs
 
@@ -134,7 +134,7 @@ The rough flow of this pipeline is:
 
 {{< figure src="/media/docs/alloy/diagram-example-logs-loki-alloy.png" width="500" alt="Diagram of pipeline that collects logs from /tmp/alloy-logs and writes them to a local Loki instance" >}}
 
-If you navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`, you can query for `{filename="/tmp/alloy-logs/log.log"}` and see the log line we created earlier.
+If you navigate to [http://localhost:3000/explore][] and switch the Datasource to `Loki`, you can query for `{filename="/tmp/alloy-logs/log.log"}` and see the log line you created earlier.
 Try running the following command to add more logs to the file.
 
 ```bash
@@ -154,13 +154,13 @@ The following exercise guides you through adding a label to the logs, and filter
 
 ### Recommended reading
 
-- [loki.relabel][]
-- [loki.process][]
+* [loki.relabel][]
+* [loki.process][]
 
 ### Add a Label to Logs
 
 This exercise has two parts, and builds on the previous example.
-Start by adding an `os` label (just like the Prometheus example) to all of the logs we collect.
+Start by adding an `os` label (just like the Prometheus example) to all of the logs you collect.
 
 Modify the following snippet to add the label `os` with the value of the `os` constant.
 
@@ -196,7 +196,7 @@ echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/alloy-logs/log.l
 echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/log.log
 ```
 
-Navigate to [localhost:3000/explore][] and switch the Datasource to `Loki`.
+Navigate to [http://localhost:3000/explore][] and switch the Datasource to `Loki`.
 Try querying for `{filename="/tmp/alloy-logs/log.log"}` and see if you can find the new label.
 
 Now that you have added new labels, you can also filter on them. Try querying for `{os!=""}`.
@@ -262,7 +262,7 @@ echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/alloy-logs/log.l
 echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/log.log
 ```
 
-Navigate to [http://localhost:3000/explore](http://localhost:3000/explore) and switch the Datasource to `Loki`.
+Navigate to [http://localhost:3000/explore][] and switch the Datasource to `Loki`.
 Try querying for `{level!=""}` to see the new labels in action.
 
 {{< figure src="/media/docs/alloy/screenshot-log-line-levels.png" alt="Grafana Explore view of example log lines, now with the extracted 'level' label" >}}
@@ -321,7 +321,7 @@ loki.write "local_loki" {
 
 {{< /collapse >}}
 
-## Finishing up and next steps
+## Finish up and next steps
 
 You have learned the concepts of components, attributes, and expressions.
 You have also seen how to use some standard library components to collect metrics and logs.
@@ -336,3 +336,4 @@ In the next tutorial, you learn more about how to use the `loki.process` compone
 [loki.write]: ../../reference/components/loki/loki.write/
 [loki.relabel]: ../../reference/components/loki/loki.relabel/
 [loki.process]: ../../reference/components/loki/loki.process/
+[http://localhost:3000/explore]: http://localhost:3000/explore

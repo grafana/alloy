@@ -193,7 +193,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * The following configurations aren't available for conversion to {{< param "PRODUCT_NAME" >}}: `rule_files`, `alerting`, `remote_read`, `storage`, and `tracing`.
   Any additional unsupported features are returned as errors during conversion.
 * Check if you are using any extra command line arguments with Prometheus that aren't present in your configuration file. For example, `--web.listen-address`.
-* Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Prometheus metamonitoring metrics but uses a different name.
+* Meta-monitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Prometheus meta-monitoring metrics but uses a different name.
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
 * The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Prometheus.
 * {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].

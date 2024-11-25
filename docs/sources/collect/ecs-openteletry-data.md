@@ -73,7 +73,7 @@ To create an ECS Task Definition for AWS Fargate with an ADOT collector, complet
 
 1. Download the [ECS Fargate task definition template][template] from GitHub.
 1. Edit the task definition template and add the following parameters.
-   * `{{region}}`: The region the data is sent to.
+   * `{{region}}`: The region to send the data to.
    * `{{ecsTaskRoleArn}}`: The AWSOTTaskRole ARN.
    * `{{ecsExecutionRoleArn}}`: The AWSOTTaskExcutionRole ARN.
    * `command` - Assign a value to the command variable to select the path to the configuration file.

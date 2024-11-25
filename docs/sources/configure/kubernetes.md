@@ -43,11 +43,10 @@ To modify {{< param "PRODUCT_NAME" >}}'s Helm chart configuration, perform the f
    ```
 
    Replace the following:
-   - _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
 
-[values.yaml]: https://raw.githubusercontent.com/grafana/alloy/main/operations/helm/charts/alloy/values.yaml
+   * _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
 
 ## Kustomize considerations
 

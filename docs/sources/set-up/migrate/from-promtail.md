@@ -175,7 +175,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * In {{< param "PRODUCT_NAME" >}}, the positions file is saved at a different location.
   Refer to the [loki.source.file][] documentation for more details.
   Check if you have any setup, for example, a Kubernetes Persistent Volume, that you must update to use the new positions path.
-* Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Promtail metamonitoring metrics but uses a different name.
+* Meta-monitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Promtail meta-monitoring metrics but uses a different name.
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
 * The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Promtail.
 * {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][], which differs from the Promtail Web UI.
