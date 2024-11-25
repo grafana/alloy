@@ -24,6 +24,8 @@ Main (unreleased)
 
 - (_Experimental_) Add a `database_observability.mysql` component to collect mysql performance data.
 
+- Add a `prometheus.mapping` component to add labels based on a source_label and a mapping table. (@vaxvms)
+
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
