@@ -1,3 +1,4 @@
+// converter_influxdbreceiver.go
 package otelcolconvert
 
 import (
@@ -12,6 +13,8 @@ import (
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/pipeline"
 )
+
+// Assume State and other dependencies are defined elsewhere
 
 func init() {
 	// Register the influxdb receiver converter
@@ -68,25 +71,26 @@ func (influxdbReceiverConverter) ConvertAndAppend(
 	return diags
 }
 
-
 // toInfluxdbReceiver converts the influxdbreceiver.Config to influxdb.Arguments
 func toInfluxdbReceiver(
-	state *State,
-	id componentstatus.InstanceID,
-	cfg *influxdbreceiver.Config,
+    state *State,
+    id componentstatus.InstanceID,
+    cfg *influxdbreceiver.Config,
 ) *influxdb.Arguments {
-	// Ensure the ServerConfig has a default endpoint
-	if cfg.ServerConfig.Endpoint == "" {
-		cfg.ServerConfig.Endpoint = "localhost:8086"
-	}
+    if cfg.ServerConfig.Endpoint == "" {
+        cfg.ServerConfig.Endpoint = "localhost:8086"
+    }
 
-	// Build and return the Arguments
-	return &influxdb.Arguments{
-		Endpoint: cfg.ServerConfig.Endpoint, // Set endpoint explicitly
-		HTTPServer: *toHTTPServerArguments(&cfg.ServerConfig), // Flatten HTTPServer for other fields
-		DebugMetrics: common.DefaultValue[influxdb.Arguments]().DebugMetrics,
-		Output: &otelcol.ConsumerArguments{
-			Metrics: ToTokenizedConsumers(state.Next(id, pipeline.SignalMetrics)),
-		},
-	}
+    metricsConsumers := ToTokenizedConsumers(state.Next(id, pipeline.SignalMetrics))
+    if len(metricsConsumers) == 0 {
+        fmt.Printf("Warning: No metrics consumers found for %s\n", id)
+    }
+
+    return &influxdb.Arguments{
+        HTTPServer: *toHTTPServerArguments(&cfg.ServerConfig),
+        DebugMetrics: common.DefaultValue[influxdb.Arguments]().DebugMetrics,
+        Output: &otelcol.ConsumerArguments{
+            Metrics: metricsConsumers,
+        },
+    }
 }
