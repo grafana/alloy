@@ -36,7 +36,7 @@ func New(node ast.Node) *Evaluator {
 //
 // Each call to Evaluate may provide a different scope with new values for
 // available variables. If a variable used by the Evaluator's node isn't
-// defined in scope or any of the parent scopes, Evaluate will return an error.
+// defined in scope, Evaluate will return an error.
 func (vm *Evaluator) Evaluate(scope *Scope, v interface{}) (err error) {
 	// Track a map that allows us to associate values with ast.Nodes so we can
 	// return decorated error messages.
@@ -455,11 +455,6 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 
 // A Scope exposes a set of variables available to use during evaluation.
 type Scope struct {
-	// Parent optionally points to a parent Scope containing more variable.
-	// Variables defined in children scopes take precedence over variables of the
-	// same name found in parent scopes.
-	Parent *Scope
-
 	// Variables holds the list of available variable names that can be used when
 	// evaluating a node.
 	//
@@ -475,22 +470,13 @@ func NewScope(variables map[string]interface{}) *Scope {
 	}
 }
 
-func NewScopeWithParent(parent *Scope, variables map[string]interface{}) *Scope {
-	return &Scope{
-		Parent:    parent,
-		Variables: variables,
-	}
-}
-
-// Lookup looks up a named identifier from the scope, all of the scope's
-// parents, and the stdlib.
+// Lookup looks up a named identifier from the scope and the stdlib.
 func (s *Scope) Lookup(name string) (interface{}, bool) {
 	// Traverse the scope first, then fall back to stdlib.
-	for s != nil {
+	if s != nil {
 		if val, ok := s.Variables[name]; ok {
 			return val, true
 		}
-		s = s.Parent
 	}
 	if ident, ok := stdlib.Identifiers[name]; ok {
 		return ident, true

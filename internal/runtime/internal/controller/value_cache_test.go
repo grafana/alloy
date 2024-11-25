@@ -176,7 +176,7 @@ func TestModuleArgumentCache(t *testing.T) {
 	}
 }
 
-func TestScopeMerge(t *testing.T) {
+func TestBuildContextWithScope(t *testing.T) {
 	vc := newValueCache()
 	scope := vm.NewScope(
 		map[string]any{
@@ -204,7 +204,7 @@ func TestScopeMerge(t *testing.T) {
 	require.Equal(t, expected, res.Variables)
 }
 
-func TestScopeMergeConflict(t *testing.T) {
+func TestBuildContextWithScopeConflict(t *testing.T) {
 	vc := newValueCache()
 	scope := vm.NewScope(
 		map[string]any{
@@ -230,7 +230,7 @@ func TestScopeMergeConflict(t *testing.T) {
 	require.Equal(t, expected, res.Variables)
 }
 
-func TestScopeMergeOverride(t *testing.T) {
+func TestBuildContextWithScopeOverride(t *testing.T) {
 	vc := newValueCache()
 	scope := vm.NewScope(
 		map[string]any{
@@ -251,23 +251,25 @@ func TestScopeMergeOverride(t *testing.T) {
 		},
 	}
 	require.Equal(t, expected, res.Variables)
+
+	originalScope := vm.NewScope(
+		map[string]any{
+			"test": map[string]any{
+				"scope": barArgs{Number: 13},
+			},
+		},
+	)
+	require.Equal(t, vc.scope, originalScope) // ensure that the original scope is not modified after building the context
 }
 
 func TestScopeMergeMoreNesting(t *testing.T) {
 	vc := newValueCache()
-	parentScope := vm.NewScope(
+	scope := vm.NewScope(
 		map[string]any{
 			"test": map[string]any{
 				"cp1": map[string]any{
 					"scope": barArgs{Number: 13},
 				},
-			},
-		},
-	)
-	scope := vm.NewScopeWithParent(
-		parentScope,
-		map[string]any{
-			"test": map[string]any{
 				"cp2": barArgs{Number: 12},
 			},
 		},

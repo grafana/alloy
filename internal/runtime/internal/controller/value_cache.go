@@ -171,7 +171,7 @@ func (vc *valueCache) BuildContext() *vm.Scope {
 	vc.mut.RLock()
 	defer vc.mut.RUnlock()
 
-	scope := vm.NewScopeWithParent(vc.scope, make(map[string]interface{}))
+	scope := vm.NewScope(make(map[string]interface{}))
 
 	// First, partition components by Alloy block name.
 	var componentsByBlockName = make(map[string][]ComponentID)
@@ -199,16 +199,10 @@ func (vc *valueCache) BuildContext() *vm.Scope {
 		}
 	}
 
-	// The syntax pkg only checks the first key when choosing the scope to evaluate an expression.
-	// if you have:
-	// - parent: "test": "component1": v
-	// - child: "test": "component2": v
-	// the expression "test.component1.v" would result in an error because it would use the child scope.
-	// To avoid such conflict, we merge the scopes into one:
-	// - parent: nil
-	// - child: "test": {"component1": v, "component2": v}
-	scope.Variables = mergeScopes(scope)
-	scope.Parent = nil
+	if vc.scope != nil {
+		// Merges the current scope with the one built from the components at this level.
+		scope.Variables = deepMergeMaps(vc.scope.Variables, scope.Variables)
+	}
 
 	return scope
 }
@@ -246,47 +240,24 @@ func (vc *valueCache) buildValue(from []ComponentID, offset int) interface{} {
 	return attrs
 }
 
-// mergeScopes merges the Variables maps of the scope hierarchy into a new map.
-// The child always overrides the parent's value.
-func mergeScopes(scope *vm.Scope) map[string]any {
-	merged := make(map[string]any)
+// deepMergeMaps merges two maps. It uses the values of map2 in case of conflict.
+func deepMergeMaps(map1, map2 map[string]any) map[string]any {
+	merged := make(map[string]any, len(map1)+len(map2))
 
-	var mergeFrom func(*vm.Scope)
-	mergeFrom = func(s *vm.Scope) {
-		if s == nil {
-			return
-		}
-		mergeFrom(s.Parent)
-		for k, v := range s.Variables {
-			if pm, ok1 := merged[k].(map[string]any); ok1 {
-				if cm, ok2 := v.(map[string]any); ok2 {
-					merged[k] = mergeNestedMaps(pm, cm)
+	for key, value := range map1 {
+		merged[key] = value
+	}
+
+	for key, value := range map2 {
+		if existingValue, exists := merged[key]; exists {
+			if map1Value, ok1 := existingValue.(map[string]any); ok1 {
+				if map2Value, ok2 := value.(map[string]any); ok2 {
+					merged[key] = deepMergeMaps(map1Value, map2Value)
 					continue
 				}
 			}
-			merged[k] = v
 		}
-	}
-
-	mergeFrom(scope)
-	return merged
-}
-
-func mergeNestedMaps(parent, child map[string]any) map[string]any {
-	merged := make(map[string]any)
-
-	for k, v := range parent {
-		merged[k] = v
-	}
-
-	for k, v := range child {
-		if pm, ok1 := merged[k].(map[string]any); ok1 {
-			if cm, ok2 := v.(map[string]any); ok2 {
-				merged[k] = mergeNestedMaps(pm, cm)
-				continue
-			}
-		}
-		merged[k] = v
+		merged[key] = value
 	}
 
 	return merged
