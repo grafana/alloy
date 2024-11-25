@@ -51,7 +51,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		if strings.HasSuffix(host, "rds.amazonaws.com") {
 			providerName = "aws"
 			matches := rdsRegex.FindStringSubmatch(host)
-			if len(matches) > 0 {
+			if len(matches) > 3 {
 				dbInstanceIdentifier = matches[1]
 				providerRegion = matches[3]
 			}
