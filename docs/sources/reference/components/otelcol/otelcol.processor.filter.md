@@ -286,17 +286,17 @@ Some values in the {{< param "PRODUCT_NAME" >}} syntax strings are [escaped][]:
 [escaped]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#strings
 
 
-[OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.85.0/pkg/ottl/README.md
-[OTTL span context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottlspan/README.md
-[OTTL spanevent context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottlspanevent/README.md
-[OTTL metric context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottlmetric/README.md
-[OTTL datapoint context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottldatapoint/README.md
-[OTTL log context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/contexts/ottllog/README.md
-[OTTL Converter functions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/ottl/ottlfuncs#converters
-[HasAttrKeyOnDataPoint]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/filterprocessor/README.md#hasattrkeyondatapoint
-[HasAttrOnDataPoint]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/filterprocessor/README.md#hasattrondatapoint
-[OTTL booleans]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.85.0/pkg/ottl#booleans
-[OTTL math expressions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.85.0/pkg/ottl#math-expressions
+[OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/README.md
+[OTTL span context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottlspan/README.md
+[OTTL spanevent context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottlspanevent/README.md
+[OTTL metric context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottlmetric/README.md
+[OTTL datapoint context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottldatapoint/README.md
+[OTTL log context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottllog/README.md
+[OTTL Converter functions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/pkg/ottl/ottlfuncs#converters
+[HasAttrKeyOnDataPoint]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/processor/filterprocessor/README.md#hasattrkeyondatapoint
+[HasAttrOnDataPoint]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/processor/filterprocessor/README.md#hasattrondatapoint
+[OTTL booleans]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/pkg/ottl#booleans
+[OTTL math expressions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/pkg/ottl#math-expressions
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

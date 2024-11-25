@@ -20,20 +20,35 @@ Main (unreleased)
 
 - Add `otelcol.receiver.solace` component to receive traces from a Solace broker. (@wildum)
 
+- Add `otelcol.exporter.syslog` component to export logs in syslog format (@dehaansa)
+
 - Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
+
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
 
+- Add all raw configuration files & a copy of the latest remote config to the support bundle (@dehaansa)
+
+- Add relevant golang environment variables to the support bundle (@dehaansa)
+
 ### Bugfixes
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
+- Fixed an issue in the `otelcol.exporter.prometheus` component that would set series value incorrectly for stale metrics (@YusifAghalar)
 
 - Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
+
+- Fixed an issue in the `otelcol.processor.attribute` component where the actions `delete` and `hash` could not be used with the `pattern` argument. (@wildum)
+
+- Fixed a race condition that could lead to a deadlock when using `import` statements, which could lead to a memory leak on `/metrics` endpoint of an Alloy instance. (@thampiotr)
 
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
+
+- Use Go 1.23.3 for builds. (@mattdurham)
+
 
 v1.5.0
 -----------------
