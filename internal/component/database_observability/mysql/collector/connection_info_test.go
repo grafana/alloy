@@ -12,7 +12,7 @@ import (
 	"go.uber.org/goleak"
 )
 
-func TestConnectionInfoRun(t *testing.T) {
+func TestConnectionInfo(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	const baseExpectedMetrics = `
@@ -48,7 +48,7 @@ func TestConnectionInfoRun(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		err = collector.Run(context.Background())
+		err = collector.Start(context.Background())
 		require.NoError(t, err)
 
 		err = testutil.GatherAndCompare(reg, strings.NewReader(tc.expectedMetrics))

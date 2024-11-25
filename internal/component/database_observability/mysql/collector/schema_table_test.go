@@ -14,7 +14,7 @@ import (
 	"go.uber.org/goleak"
 )
 
-func TestSchemaTableRun(t *testing.T) {
+func TestSchemaTable(t *testing.T) {
 	// The goroutine which deletes expired entries runs indefinitely,
 	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
@@ -64,7 +64,7 @@ func TestSchemaTableRun(t *testing.T) {
 		),
 	)
 
-	err = collector.Run(context.Background())
+	err = collector.Start(context.Background())
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {

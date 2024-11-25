@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestQuerySampleRun(t *testing.T) {
+func TestQuerySample(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -47,7 +47,7 @@ func TestQuerySampleRun(t *testing.T) {
 		),
 	)
 
-	err = collector.Run(context.Background())
+	err = collector.Start(context.Background())
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {
