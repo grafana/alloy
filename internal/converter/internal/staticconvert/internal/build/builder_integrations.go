@@ -39,6 +39,7 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations/redis_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/snowflake_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/ssh_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/squid_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/statsd_exporter"
 	agent_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/agent"
@@ -124,6 +125,8 @@ func (b *ConfigBuilder) appendV1Integrations() {
 			exports = b.appendSnmpExporter(itg)
 		case *snowflake_exporter.Config:
 			exports = b.appendSnowflakeExporter(itg, nil)
+		case *ssh_exporter.Config:
+			exports = b.appendSSHExporter(itg, nil)
 		case *squid_exporter.Config:
 			exports = b.appendSquidExporter(itg, nil)
 		case *statsd_exporter.Config:
@@ -260,6 +263,8 @@ func (b *ConfigBuilder) appendV2Integrations() {
 				exports = b.appendRedisExporter(v1_itg, itg.Common.InstanceKey)
 			case *snowflake_exporter.Config:
 				exports = b.appendSnowflakeExporter(v1_itg, itg.Common.InstanceKey)
+			case *ssh_exporter.Config:
+				exports = b.appendSSHExporter(v1_itg, itg.Common.InstanceKey)
 			case *squid_exporter.Config:
 				exports = b.appendSquidExporter(v1_itg, itg.Common.InstanceKey)
 			case *statsd_exporter.Config:
