@@ -16,7 +16,7 @@
     - --cluster.enabled=true
     - --cluster.join-addresses={{ include "alloy.fullname" . }}-cluster
     {{- if $values.clustering.name }}
-    - --cluster.name={{ $values.clustering.name | quote }}
+    - --cluster.name={{ $values.clustering.name }}
     {{- end}}
     {{- end}}
     {{- if $values.stabilityLevel }}
