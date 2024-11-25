@@ -188,6 +188,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		}
 	}
 
+	// TODO(cristian): consider moving this into the loop above
 	for _, table := range tables {
 		fullyQualifiedTable := fmt.Sprintf("%s.%s", table.schema, table.tableName)
 		cacheKey := fmt.Sprintf("%s@%d", fullyQualifiedTable, table.updateTime.Unix())
