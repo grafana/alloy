@@ -113,6 +113,7 @@ func (c *SchemaTable) Run(ctx context.Context) error {
 		}
 	}()
 
+	c.Stop()
 	return nil
 }
 
