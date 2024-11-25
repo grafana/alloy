@@ -168,11 +168,10 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
-	newArgs := args.(Arguments)
-	c.args = newArgs
+	c.args = args.(Arguments)
 
 	// TODO(cristian): verify before appending parameter
-	dbConnection, err := sql.Open("mysql", string(newArgs.DataSourceName)+"?parseTime=true")
+	dbConnection, err := sql.Open("mysql", string(c.args.DataSourceName)+"?parseTime=true")
 	if err != nil {
 		return err
 	}
@@ -193,7 +192,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 		DB:              dbConnection,
-		CollectInterval: newArgs.CollectInterval,
+		CollectInterval: c.args.CollectInterval,
 		EntryHandler:    entryHandler,
 		Logger:          c.opts.Logger,
 	})
@@ -209,7 +208,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 		DB:              dbConnection,
-		CollectInterval: newArgs.CollectInterval,
+		CollectInterval: c.args.CollectInterval,
 		EntryHandler:    entryHandler,
 		Logger:          c.opts.Logger,
 	})
@@ -224,7 +223,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.collectors = append(c.collectors, stCollector)
 
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:      string(newArgs.DataSourceName),
+		DSN:      string(c.args.DataSourceName),
 		Registry: c.registry,
 	})
 	if err != nil {
