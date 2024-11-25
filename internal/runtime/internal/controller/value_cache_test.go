@@ -3,6 +3,7 @@ package controller
 import (
 	"testing"
 
+	"github.com/grafana/alloy/syntax/vm"
 	"github.com/stretchr/testify/require"
 )
 
@@ -173,4 +174,120 @@ func TestModuleArgumentCache(t *testing.T) {
 			require.Equal(t, map[string]any{}, res.Variables)
 		})
 	}
+}
+
+func TestScopeMerge(t *testing.T) {
+	vc := newValueCache()
+	scope := vm.NewScope(
+		map[string]any{
+			"test": map[string]any{
+				"scope": barArgs{Number: 13},
+			},
+		},
+	)
+	vc.SetScope(scope)
+	vc.CacheExports(ComponentID{"foo", "bar"}, barArgs{Number: 12})
+	res := vc.BuildContext()
+
+	expected := map[string]any{
+		"test": map[string]any{
+			"scope": barArgs{
+				Number: 13,
+			},
+		},
+		"foo": map[string]any{
+			"bar": barArgs{
+				Number: 12,
+			},
+		},
+	}
+	require.Equal(t, expected, res.Variables)
+}
+
+func TestScopeMergeConflict(t *testing.T) {
+	vc := newValueCache()
+	scope := vm.NewScope(
+		map[string]any{
+			"test": map[string]any{
+				"scope": barArgs{Number: 13},
+			},
+		},
+	)
+	vc.SetScope(scope)
+	vc.CacheExports(ComponentID{"test", "bar"}, barArgs{Number: 12})
+	res := vc.BuildContext()
+
+	expected := map[string]any{
+		"test": map[string]any{
+			"scope": barArgs{
+				Number: 13,
+			},
+			"bar": barArgs{
+				Number: 12,
+			},
+		},
+	}
+	require.Equal(t, expected, res.Variables)
+}
+
+func TestScopeMergeOverride(t *testing.T) {
+	vc := newValueCache()
+	scope := vm.NewScope(
+		map[string]any{
+			"test": map[string]any{
+				"scope": barArgs{Number: 13},
+			},
+		},
+	)
+	vc.SetScope(scope)
+	vc.CacheExports(ComponentID{"test", "scope"}, barArgs{Number: 12})
+	res := vc.BuildContext()
+
+	expected := map[string]any{
+		"test": map[string]any{
+			"scope": barArgs{
+				Number: 12,
+			},
+		},
+	}
+	require.Equal(t, expected, res.Variables)
+}
+
+func TestScopeMergeMoreNesting(t *testing.T) {
+	vc := newValueCache()
+	parentScope := vm.NewScope(
+		map[string]any{
+			"test": map[string]any{
+				"cp1": map[string]any{
+					"scope": barArgs{Number: 13},
+				},
+			},
+		},
+	)
+	scope := vm.NewScopeWithParent(
+		parentScope,
+		map[string]any{
+			"test": map[string]any{
+				"cp2": barArgs{Number: 12},
+			},
+		},
+	)
+	vc.SetScope(scope)
+	vc.CacheExports(ComponentID{"test", "cp1", "foo"}, barArgs{Number: 12})
+	vc.CacheExports(ComponentID{"test", "cp1", "bar", "fizz"}, barArgs{Number: 2})
+	res := vc.BuildContext()
+
+	expected := map[string]any{
+		"test": map[string]any{
+			"cp1": map[string]any{
+				"scope": barArgs{Number: 13},
+				"foo":   barArgs{Number: 12},
+				"bar": map[string]any{
+					"fizz": barArgs{Number: 2},
+				},
+			},
+			"cp2": barArgs{Number: 12},
+		},
+	}
+	require.Equal(t, expected, res.Variables)
 }
