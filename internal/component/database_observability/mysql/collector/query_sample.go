@@ -70,6 +70,7 @@ func (c *QuerySample) Run(ctx context.Context) error {
 
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {
+				level.Error(c.logger).Log("msg", "collector stopping due to error", "err", err)
 				break
 			}
 
