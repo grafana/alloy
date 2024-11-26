@@ -174,9 +174,11 @@ This connects directly to the Prometheus instance running in the Docker containe
 Copy your local `config.alloy` file into the default {{< param "PRODUCT_NAME" >}} configuration file location.
 
 {{< docs/ignore >}}
+
 ```bash
 sudo cp config.alloy /etc/alloy/config.alloy
 ```
+
 {{< /docs/ignore >}}
 <!-- INTERACTIVE ignore START -->
 {{< code >}}
@@ -188,6 +190,7 @@ sudo cp config.alloy $(brew --prefix)/etc/alloy/config.alloy
 ```linux
 sudo cp config.alloy /etc/alloy/config.alloy
 ```
+
 {{< /code >}}
 <!-- INTERACTIVE ignore END -->
 
@@ -217,9 +220,11 @@ If you don’t use this argument, the [debugging UI][debug] won’t be available
 Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and load the configuration file:
 
 {{< docs/ignore >}}
+
 ```bash
   sudo systemctl reload alloy
 ```
+
 {{< /docs/ignore >}}
 
 <!-- INTERACTIVE ignore START -->
@@ -270,8 +275,6 @@ Open [http://localhost:3000/explore](http://localhost:3000/explore) to access th
 Select Prometheus as the data source and click the **Metrics Browser** button to select the metric, labels, and values for your labels.
 
 Here you can see that metrics are flowing through to Prometheus as expected, and the end-to-end configuration was successful.
-
-
 
 <!-- INTERACTIVE page step4.md END -->
 

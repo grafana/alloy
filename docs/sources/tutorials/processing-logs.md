@@ -1,12 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/processing-logs/
 description: Learn how to process logs
-menuTitle: Processing Logs
-title: Processing logs with Grafana Alloy
+menuTitle: Process Logs
+title: Process logs with Grafana Alloy
 weight: 300
 ---
 
-# Processing logs with {{% param "FULL_PRODUCT_NAME" %}}
+# Process logs with {{% param "FULL_PRODUCT_NAME" %}}
 
 This tutorial assumes you are familiar with setting up and connecting components.
 It covers using `loki.source.api` to receive logs over HTTP, processing and filtering them, and sending them to Loki.
@@ -24,7 +24,7 @@ It can be useful for receiving logs from other {{< param "PRODUCT_NAME" >}}s or 
 
 ### Recommended reading
 
-- Optional: [loki.source.api][]
+* Optional: [loki.source.api][]
 
 ### Set up the `loki.source.api` component
 
@@ -54,9 +54,9 @@ You are configuring the `loki.source.api` component to listen on `127.0.0.1:9999
 
 ### Recommended reading
 
-- [loki.process#stage.drop][]
-- [loki.process#stage.json][]
-- [loki.process#stage.labels][]
+* [loki.process#stage.drop][]
+* [loki.process#stage.json][]
+* [loki.process#stage.labels][]
 
 ### Configure the `loki.process` and `loki.write` components
 
@@ -142,13 +142,13 @@ loki.write "local_loki" {
 
 Many of the `stage.*` blocks in `loki.process` act on reading or writing a shared map of values extracted from the logs.
 You can think of this extracted map as a hashmap or table that each stage has access to, and it's referred to as the "extracted map" from here on.
-In subsequent stages, you can use the extracted map to filter logs, add or remove labels, or even modify the log line.
+In subsequent stages, you can use the extracted map to filter logs, add, or remove labels, or even modify the log line.
 
 {{< admonition type="note" >}}
 `stage.*` blocks are executed in the order they appear in the component, top down.
 {{< /admonition >}}
 
-Let's use an example log line to illustrate this, then go stage by stage, showing the contents of the extracted map.
+You can use an example log line to illustrate this, then go stage by stage, showing the contents of the extracted map.
 Here is the example log line:
 
 ```json
@@ -345,7 +345,7 @@ Replace the following:
 
 * _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
-Try executing the following which will insert the current timestamp:
+Try executing the following which inserts the current timestamp:
 
 ```bash
 curl localhost:9999/loki/api/v1/raw -XPOST -H "Content-Type: application/json" -d '{"log": {"is_secret": "false", "level": "debug", "message": "This is a debug message!"}, "timestamp":  "'"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'"}'
@@ -367,9 +367,9 @@ Refer to the [discovery.docker][] and [loki.source.docker][] documentation for m
 
 To ensure proper timestamps and other labels, make sure you use a `loki.process` component to process the logs before sending them to Loki.
 
-Although you haven't used it before, let's use a `discovery.relabel` component to attach the container name as a label to the logs.
+Although you haven't used it before, you can use a `discovery.relabel` component to attach the container name as a label to the logs.
 You can refer to the [discovery.relabel][] documentation for more information.
-The `discovery.relabel` component is very similar to the `prometheus.relabel` component, but is used to relabel discovered targets rather than metrics.
+The `discovery.relabel` component is very similar to the `prometheus.relabel` component, but it relabels discovered targets rather than metrics.
 
 {{< collapse title="Solution" >}}
 
