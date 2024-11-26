@@ -162,6 +162,32 @@ func TestAlloyConfig(t *testing.T) {
 			}),
 		},
 		{
+			testName: "AzureAD_Oauth",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				azuread {
+					cloud = "AzureChina"
+					oauth {
+						client_id = "00000000-0000-0000-0000-000000000000"
+						tenant_id     = "00000000-0000-0000-0000-000000000001"
+						client_secret = "00000000-0000-0000-0000-000000000002"
+					}
+				}
+			}`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].AzureADConfig = &azuread.AzureADConfig{
+					Cloud: "AzureChina",
+					OAuth: &azuread.OAuthConfig{
+						ClientID:     "00000000-0000-0000-0000-000000000000",
+						ClientSecret: "00000000-0000-0000-0000-000000000002",
+						TenantID:     "00000000-0000-0000-0000-000000000001",
+					},
+				}
+			}),
+		},
+		{
 			testName: "SigV4_Defaults",
 			cfg: `
 			endpoint {
@@ -222,6 +248,24 @@ func TestAlloyConfig(t *testing.T) {
 				}
 			}`,
 			errorMsg: "at most one of sigv4, azuread, basic_auth, oauth2, bearer_token & bearer_token_file must be configured",
+		},
+		{
+			testName: "TooManyAuthAzureAD",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				sigv4 {}
+				azuread {
+					managed_identity {
+						client_id = "00000000-0000-0000-0000-000000000000"
+					}
+					oauth {
+						client_id = "00000000-0000-0000-0000-000000000000"
+					}
+				}
+			}`,
+			errorMsg: "at most oauth or managed identity must be configured for azuread",
 		},
 		{
 			testName: "BadAzureClientId",
