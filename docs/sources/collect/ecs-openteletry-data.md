@@ -78,8 +78,8 @@ To create an ECS Task Definition for AWS Fargate with an ADOT collector, complet
    * `{{ecsExecutionRoleArn}}`: The AWSOTTaskExcutionRole ARN.
    * `command` - Assign a value to the command variable to select the path to the configuration file.
      The AWS Collector comes with two configurations. Select one of them based on your environment:
-     * Use `--config=/etc/ecs/ecs-default-config.yaml` to consume StatsD metrics, OTLP metrics and traces, and X-Ray SDK traces.
-     * Use `--config=/etc/ecs/container-insights/otel-task-metrics-config.yaml` to use StatsD, OTLP, Xray, and Container Resource utilization metrics.
+     * Use `--config=/etc/ecs/ecs-default-config.yaml` to consume StatsD metrics, OTLP metrics and traces, and AWS X-Ray SDK traces.
+     * Use `--config=/etc/ecs/container-insights/otel-task-metrics-config.yaml` to use StatsD, OTLP, AWS X-Ray, and Container Resource utilization metrics.
 1. Follow the ECS Fargate setup instructions to [create a task definition][task] using the template.
 
 ## Run Alloy directly in your instance, or as a Kubernetes sidecar
