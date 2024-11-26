@@ -48,12 +48,10 @@ func (influxdbReceiverConverter) ConvertAndAppend(
 	// Convert the config into Arguments format
 	args := toInfluxdbReceiver(state, id, cfg.(*influxdbreceiver.Config))
 
-	// Create a block with the converted arguments
-	block := common.NewBlockWithOverride(
-		[]string{"otelcol", "receiver", "influxdb"},
-		label,
-		args,
-	)
+	// // Create a block with the converted arguments
+	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "influxdb"}, label, args)
+
+	// block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "influxdb"}, label, args)
 
 	// Debug logs (optional)
 	fmt.Printf("InfluxDB Arguments: %+v\n", args)
@@ -77,20 +75,23 @@ func toInfluxdbReceiver(
     id componentstatus.InstanceID,
     cfg *influxdbreceiver.Config,
 ) *influxdb.Arguments {
-    if cfg.ServerConfig.Endpoint == "" {
-        cfg.ServerConfig.Endpoint = "localhost:8086"
-    }
+    // if cfg.ServerConfig.Endpoint == "" {
+    //     cfg.ServerConfig.Endpoint = "localhost:8086"
+    // }
+	fmt.Printf("cfg: %v\n", cfg)
 
     metricsConsumers := ToTokenizedConsumers(state.Next(id, pipeline.SignalMetrics))
     if len(metricsConsumers) == 0 {
-        fmt.Printf("Warning: No metrics consumers found for %s\n", id)
+		fmt.Printf("Warning: No metrics consumers found for %v\n", id)
     }
 
-    return &influxdb.Arguments{
-        HTTPServer: *toHTTPServerArguments(&cfg.ServerConfig),
-        DebugMetrics: common.DefaultValue[influxdb.Arguments]().DebugMetrics,
-        Output: &otelcol.ConsumerArguments{
-            Metrics: metricsConsumers,
-        },
-    }
+	args := &influxdb.Arguments{
+		HTTPServer:  *toHTTPServerArguments(&cfg.ServerConfig),
+		DebugMetrics: common.DefaultValue[influxdb.Arguments]().DebugMetrics,
+		Output: &otelcol.ConsumerArguments{
+			Metrics: metricsConsumers,
+		},
+	}
+	fmt.Printf("Generated Arguments: %+v\n", args)
+	return args
 }

@@ -30,23 +30,25 @@ func init() {
 
 // Arguments configures the otelcol.receiver.influxdb component.
 type Arguments struct {
-    HTTPServer    otelcol.HTTPServerArguments         `alloy:",squash"` // Use custom struct for HTTP
-    DebugMetrics  otelcolCfg.DebugMetricsArguments   `alloy:"debug_metrics,block,optional"`
-    Output        *otelcol.ConsumerArguments         `alloy:"output,block"`
-}
-type HTTPServerArguments struct {
-    Endpoint              string   `alloy:"endpoint,attr"`
-    // CompressionAlgorithms []string `alloy:"compression_algorithms,attr,optional"`
-}
-// SetToDefault implements syntax.Defaulter.
-func (args *Arguments) SetToDefault() {
-    args.HTTPServer = otelcol.HTTPServerArguments{
-        Endpoint:              "localhost:8086",
-        // CompressionAlgorithms: []string{"gzip", "zstd"},
-    }
-    args.DebugMetrics.SetToDefault()
+    HTTPServer otelcol.HTTPServerArguments `alloy:",squash"`
+
+    DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+
+    Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
+var _ receiver.Arguments = Arguments{}
+
+func (args *Arguments) SetToDefault() {
+	*args = Arguments{
+		HTTPServer: otelcol.HTTPServerArguments{
+			Endpoint:              "localhost:8086",
+			// CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
+			CompressionAlgorithms: []string{""}, // compression algs not supported by influx receiver
+		},
+	}
+	args.DebugMetrics.SetToDefault()
+}
 // Validate ensures that the Arguments configuration is valid.
 func (args *Arguments) Validate() error {
     if args.HTTPServer.Endpoint == "" {

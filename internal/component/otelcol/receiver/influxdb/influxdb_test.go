@@ -61,10 +61,11 @@ func makeMetricsOutput(ch chan pmetric.Metrics) *otelcol.ConsumerArguments {
 // TestInfluxdbUnmarshal tests the unmarshaling of the Alloy configuration into influxdb.Arguments
 func TestInfluxdbUnmarshal(t *testing.T) {
 	metricCh := make(chan pmetric.Metrics)
-//    compression_algorithms = ["gzip", "zstd"]
 
 	influxdbConfig := `
     endpoint = "localhost:8086"
+    compression_algorithms = ["gzip", "zstd"]
+
     debug_metrics {
         disable_high_cardinality_metrics = false
     }
@@ -82,7 +83,7 @@ func TestInfluxdbUnmarshal(t *testing.T) {
 
 	// Validate HTTPServer block
 	assert.Equal(t, "localhost:8086", args.HTTPServer.Endpoint, "HTTPServer.Endpoint should match")
-	// assert.ElementsMatch(t, []string{"gzip", "zstd"}, args.HTTPServer.CompressionAlgorithms, "HTTPServer.CompressionAlgorithms should match")
+	assert.ElementsMatch(t, []string{"gzip", "zstd"}, args.HTTPServer.CompressionAlgorithms, "HTTPServer.CompressionAlgorithms should match")
 
 	// Validate debug_metrics block
 	assert.Equal(t, false, args.DebugMetrics.DisableHighCardinalityMetrics, "DebugMetrics.DisableHighCardinalityMetrics should be false")
@@ -162,7 +163,7 @@ func TestReceiverStart(t *testing.T) {
     config := influxdb.Arguments{
         HTTPServer: otelcol.HTTPServerArguments{
             Endpoint:              addr,
-            // CompressionAlgorithms: []string{"gzip", "zstd"},
+            CompressionAlgorithms: []string{"gzip", "zstd"},
         },
         Output: makeMetricsOutput(metricCh),
     }
@@ -190,6 +191,7 @@ func TestReceiverProcessesMetrics(t *testing.T) {
     config := influxdb.Arguments{
         HTTPServer: otelcol.HTTPServerArguments{
             Endpoint: addr,
+            CompressionAlgorithms: []string{""},
         },
         Output: nil, // Output will not be used since we are directly testing the consumer
     }

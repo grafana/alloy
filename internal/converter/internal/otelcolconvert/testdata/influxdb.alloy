@@ -1,6 +1,4 @@
 otelcol.receiver.influxdb "default" {
-	endpoint = "localhost:8086"
-
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]
 	}

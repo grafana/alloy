@@ -104,8 +104,6 @@ This example forwards received telemetry through a batch processor before finall
 
 ```alloy
 otelcol.receiver.influxdb "influxdb_metrics" {
-  endpoint = "localhost:8086"  // InfluxDB metrics ingestion endpoint
-
   output {
     metrics = [otelcol.processor.batch.default.input]
   }
@@ -128,8 +126,6 @@ This example forwards received telemetry to Prometheus Remote Write (Mimir):
 
 ```alloy
 otelcol.receiver.influxdb "influxdb_metrics" {
-  endpoint = "localhost:8086"  // InfluxDB metrics ingestion endpoint
-
   output {
     metrics = [otelcol.exporter.prometheus.influx_output.input]  // Forward metrics to Prometheus exporter
   }
