@@ -87,9 +87,9 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	return nil
 }
 
+// Stop should be kept idempotent
 func (c *QuerySample) Stop() {
 	c.cancel()
-	c.dbConnection.Close()
 }
 
 func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {

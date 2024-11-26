@@ -118,9 +118,9 @@ func (c *SchemaTable) Start(ctx context.Context) error {
 	return nil
 }
 
+// Stop should be kept idempotent
 func (c *SchemaTable) Stop() {
 	c.cancel()
-	c.dbConnection.Close()
 }
 
 func (c *SchemaTable) extractSchema(ctx context.Context) error {

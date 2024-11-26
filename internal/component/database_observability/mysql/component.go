@@ -83,14 +83,15 @@ type Collector interface {
 }
 
 type Component struct {
-	opts       component.Options
-	args       Arguments
-	mut        sync.RWMutex
-	receivers  []loki.LogsReceiver
-	handler    loki.LogsReceiver
-	registry   *prometheus.Registry
-	baseTarget discovery.Target
-	collectors []Collector
+	opts         component.Options
+	args         Arguments
+	mut          sync.RWMutex
+	receivers    []loki.LogsReceiver
+	handler      loki.LogsReceiver
+	registry     *prometheus.Registry
+	baseTarget   discovery.Target
+	collectors   []Collector
+	dbConnection *sql.DB
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -121,6 +122,9 @@ func (c *Component) Run(ctx context.Context) error {
 		c.mut.RLock()
 		for _, collector := range c.collectors {
 			collector.Stop()
+		}
+		if c.dbConnection != nil {
+			c.dbConnection.Close()
 		}
 		c.mut.RUnlock()
 	}()
@@ -168,6 +172,10 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
+	if c.dbConnection != nil {
+		c.dbConnection.Close()
+	}
+
 	c.args = args.(Arguments)
 
 	// TODO(cristian): verify before appending parameter
@@ -179,16 +187,12 @@ func (c *Component) Update(args component.Arguments) error {
 	if dbConnection == nil {
 		return errors.New("nil DB connection")
 	}
-
 	if err = dbConnection.Ping(); err != nil {
 		return err
 	}
+	c.dbConnection = dbConnection
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-
-	// TODO(cristian)
-	// dbConnection.Close()
-	// entryHandler.Stop()
 
 	qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 		DB:              dbConnection,
