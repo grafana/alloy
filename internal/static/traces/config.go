@@ -281,25 +281,6 @@ type TLSClientSetting struct {
 	ServerNameOverride       string        `yaml:"server_name_override,omitempty"`
 }
 
-func (c TLSClientSetting) toOtelConfig() map[string]interface{} {
-	m := make(map[string]interface{}, 0)
-	m["ca_file"] = c.CAFile
-	m["ca_pem"] = c.CAPem
-	m["include_system_ca_certs_pool"] = c.IncludeSystemCACertsPool
-	m["cert_file"] = c.CertFile
-	m["cert_pem"] = c.CertPem
-	m["key_file"] = c.KeyFile
-	m["key_pem"] = c.KeyPem
-	m["min_version"] = c.MinVersion
-	m["max_version"] = c.MaxVersion
-	m["cipher_suites"] = c.CipherSuites
-	m["reload_interval"] = c.ReloadInterval
-	m["insecure"] = c.Insecure
-	m["insecure_skip_verify"] = c.InsecureSkipVerify
-	m["server_name_override"] = c.ServerNameOverride
-	return m
-}
-
 // OAuth2Config configures the oauth2client extension for a remote_write exporter
 // compatible with oauth2clientauthextension.Config
 type OAuth2Config struct {
@@ -310,25 +291,6 @@ type OAuth2Config struct {
 	Scopes         []string         `yaml:"scopes,omitempty"`
 	TLS            TLSClientSetting `yaml:"tls,omitempty"`
 	Timeout        time.Duration    `yaml:"timeout,omitempty"`
-}
-
-// Agent uses standard YAML unmarshalling, while the oauth2clientauthextension relies on
-// mapstructure without providing YAML labels. `toOtelConfig` marshals `Oauth2Config` to configuration type expected by
-// the oauth2clientauthextension Extension Factory
-func (c OAuth2Config) toOtelConfig() map[string]interface{} {
-	m := make(map[string]interface{}, 0)
-	m["client_id"] = c.ClientID
-	m["client_secret"] = c.ClientSecret
-	// Ensures consistent output after changes to otelcolConfigFromStringMap,
-	// as the function now encodes to yaml before using the otelcol libraries to unmarshal
-	if len(c.EndpointParams) > 0 {
-		m["endpoint_params"] = c.EndpointParams
-	}
-	m["token_url"] = c.TokenURL
-	m["scopes"] = c.Scopes
-	m["tls"] = c.TLS.toOtelConfig()
-	m["timeout"] = c.Timeout
-	return m
 }
 
 // RemoteWriteConfig controls the configuration of an exporter
@@ -579,8 +541,7 @@ func (c *InstanceConfig) extensions() (map[string]interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		oauthConfig := remoteWriteConfig.Oauth2.toOtelConfig()
-		extensions[getAuthExtensionName(exporterName)] = oauthConfig
+		extensions[getAuthExtensionName(exporterName)] = remoteWriteConfig.Oauth2
 	}
 	if c.JaegerRemoteSampling != nil {
 		if len(c.JaegerRemoteSampling) == 0 {
