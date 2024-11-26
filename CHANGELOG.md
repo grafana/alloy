@@ -20,6 +20,8 @@ Main (unreleased)
 
 - Add `otelcol.receiver.solace` component to receive traces from a Solace broker. (@wildum)
 
+- Add `otelcol.exporter.syslog` component to export logs in syslog format (@dehaansa)
+
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
@@ -38,6 +40,8 @@ Main (unreleased)
 - Fixed an issue in the `otelcol.processor.attribute` component where the actions `delete` and `hash` could not be used with the `pattern` argument. (@wildum)
 
 - Fixed a race condition that could lead to a deadlock when using `import` statements, which could lead to a memory leak on `/metrics` endpoint of an Alloy instance. (@thampiotr) 
+
+- Fix a race condition where the ui service was dependent on starting after the remotecfg service, which is not guaranteed. (@dehaansa & @erikbaranowski)
 
 ### Other changes
 

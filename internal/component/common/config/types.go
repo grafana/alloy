@@ -408,3 +408,32 @@ func (o *OAuth2Config) Validate() error {
 
 	return o.ProxyConfig.Validate()
 }
+
+type SysLogFormat string
+
+const (
+	// A modern Syslog RFC
+	SyslogFormatRFC5424 SysLogFormat = "rfc5424"
+	// A legacy Syslog RFC also known as BSD-syslog
+	SyslogFormatRFC3164 SysLogFormat = "rfc3164"
+)
+
+// MarshalText implements encoding.TextMarshaler
+func (s SysLogFormat) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler
+func (s *SysLogFormat) UnmarshalText(text []byte) error {
+	str := string(text)
+	switch str {
+	case "rfc5424":
+		*s = SyslogFormatRFC5424
+	case "rfc3164":
+		*s = SyslogFormatRFC3164
+	default:
+		return fmt.Errorf("unknown syslog format: %s", str)
+	}
+
+	return nil
+}

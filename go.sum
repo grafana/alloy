@@ -1045,8 +1045,9 @@ github.com/gogo/status v1.1.1 h1:DuHXlSFHNKqTQ+/ACf5Vs6r4X/dH2EgIzR9Vr+H65kg=
 github.com/gogo/status v1.1.1/go.mod h1:jpG3dM5QPcqu19Hg8lkUhBFBa3TcLs1DG7+2Jqci7oU=
 github.com/golang-jwt/jwt/v4 v4.0.0/go.mod h1:/xlHOz8bRuivTWchD4jCa+NbatV+wEUSzwAxVc6locg=
 github.com/golang-jwt/jwt/v4 v4.2.0/go.mod h1:/xlHOz8bRuivTWchD4jCa+NbatV+wEUSzwAxVc6locg=
-github.com/golang-jwt/jwt/v4 v4.5.0 h1:7cYmW1XlMY7h7ii7UhUyChSgS5wUJEnm9uZVTGqOWzg=
 github.com/golang-jwt/jwt/v4 v4.5.0/go.mod h1:m21LjoU+eqJr34lmDMbreY2eSTRJ1cv77w39/MY0Ch0=
+github.com/golang-jwt/jwt/v4 v4.5.1 h1:JdqV9zKUdtaa9gdPlywC3aeoEsR681PlKC+4F5gQgeo=
+github.com/golang-jwt/jwt/v4 v4.5.1/go.mod h1:m21LjoU+eqJr34lmDMbreY2eSTRJ1cv77w39/MY0Ch0=
 github.com/golang-jwt/jwt/v5 v5.2.1 h1:OuVbFODueb089Lh128TAcimifWaLhJwVflnrgM17wHk=
 github.com/golang-jwt/jwt/v5 v5.2.1/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
 github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 h1:au07oEsX2xN0ktxqI+Sida1w446QrXBRJ0nee3SNZlA=
@@ -1638,6 +1639,7 @@ github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvW
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
+github.com/kisielk/sqlstruct v0.0.0-20201105191214-5f3e10d3ab46/go.mod h1:yyMNCyc/Ib3bDTKd379tNMpB/7/H5TjM2Y9QJ5THLbE=
 github.com/klauspost/asmfmt v1.3.2 h1:4Ri7ox3EwapiOjCki+hw14RyKk201CN4rzyCJRFLpK4=
 github.com/klauspost/asmfmt v1.3.2/go.mod h1:AG8TuvYojzulgDAMCnYn50l/5QV3Bs/tp6j0HLHbNSE=
 github.com/klauspost/compress v1.11.0/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=
@@ -1933,6 +1935,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexp
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.112.0/go.mod h1:QwYTlmQDuLeaxS0HkIG9K9x45vQhHzL0SvI8inxzMeU=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.112.0 h1:bIoCW8VYBEGnvpNYlamlvkPyeoQHCtfGgEuuELJYWYE=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.112.0/go.mod h1:7usJQKG52/DDvzJ7Vm5+QEBE1eAYrVhEYbzYFzfkn2Q=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.112.0 h1:p48hoUvtg9lWOlTFbaG9DfxKg15KK3V6cMXpyfCfoT4=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.112.0/go.mod h1:CIFj32FwT/eauhbQgxUs53LObCOzoRhjLzZgDjOJB4Y=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.112.0 h1:RY0/7LTffj76403QxSlEjb0gnF788Qyfpxc+y32Rd6c=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.112.0/go.mod h1:1Z84oB3hwUH1B3IsL46csEtu7WA1qQJ/p6USTulGJf4=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.112.0 h1:GLh1rnXcY4P2hkMwuMLYCZMjZxze1KnciJXJTOFXOJ8=

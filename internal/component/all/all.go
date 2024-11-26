@@ -3,6 +3,7 @@ package all
 
 import (
 	_ "github.com/grafana/alloy/internal/component/beyla/ebpf"                               // Import beyla.ebpf
+	_ "github.com/grafana/alloy/internal/component/database_observability/mysql"             // Import database_observability.mysql
 	_ "github.com/grafana/alloy/internal/component/discovery/aws"                            // Import discovery.aws.ec2 and discovery.aws.lightsail
 	_ "github.com/grafana/alloy/internal/component/discovery/azure"                          // Import discovery.azure
 	_ "github.com/grafana/alloy/internal/component/discovery/consul"                         // Import discovery.consul
@@ -78,6 +79,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"                // Import otelcol.exporter.otlphttp
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus"              // Import otelcol.exporter.prometheus
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec"               // Import otelcol.exporter.splunkhec
+	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/syslog"                  // Import otelcol.exporter.syslog
 	_ "github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling" // Import otelcol.extension.jaeger_remote_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/attributes"             // Import otelcol.processor.attributes
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/batch"                  // Import otelcol.processor.batch

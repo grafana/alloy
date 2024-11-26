@@ -43,6 +43,10 @@ The following components, grouped by namespace, _export_ Targets.
 - [beyla.ebpf](../components/beyla/beyla.ebpf)
 {{< /collapse >}}
 
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
+{{< /collapse >}}
+
 {{< collapse title="discovery" >}}
 - [discovery.azure](../components/discovery/discovery.azure)
 - [discovery.consul](../components/discovery/discovery.consul)
@@ -236,6 +240,10 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Loki `LogsReceiver` -->
 
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
+{{< /collapse >}}
+
 {{< collapse title="faro" >}}
 - [faro.receiver](../components/faro/faro.receiver)
 {{< /collapse >}}
@@ -299,6 +307,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.otlphttp](../components/otelcol/otelcol.exporter.otlphttp)
 - [otelcol.exporter.prometheus](../components/otelcol/otelcol.exporter.prometheus)
 - [otelcol.exporter.splunkhec](../components/otelcol/otelcol.exporter.splunkhec)
+- [otelcol.exporter.syslog](../components/otelcol/otelcol.exporter.syslog)
 - [otelcol.processor.attributes](../components/otelcol/otelcol.processor.attributes)
 - [otelcol.processor.batch](../components/otelcol/otelcol.processor.batch)
 - [otelcol.processor.deltatocumulative](../components/otelcol/otelcol.processor.deltatocumulative)
