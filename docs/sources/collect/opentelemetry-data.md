@@ -20,11 +20,11 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [otelcol.auth.basic][]
-* [otelcol.exporter.otlp][]
-* [otelcol.exporter.otlphttp][]
-* [otelcol.processor.batch][]
-* [otelcol.receiver.otlp][]
+* [`otelcol.auth.basic`][otelcol.auth.basic]
+* [`otelcol.exporter.otlp`][otelcol.exporter.otlp]
+* [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp]
+* [`otelcol.processor.batch`][otelcol.processor.batch]
+* [`otelcol.receiver.otlp`][otelcol.receiver.otlp]
 
 ## Before you begin
 
@@ -321,4 +321,5 @@ For more information on receiving OpenTelemetry data using the OpenTelemetry Pro
 [otelcol.exporter.otlp]: ../../reference/components/otelcol/otelcol.exporter.otlp/
 [otelcol.processor.batch]: ../../reference/components/otelcol/otelcol.processor.batch/
 [otelcol.receiver.otlp]: ../../reference/components/otelcol/otelcol.receiver.otlp/
+[otelcol.exporter.otlphttp]: ../../reference/components/otelcol/otelcol.exporter.otlphttp/
 [Components]: ../../get-started/components/
