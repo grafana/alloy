@@ -31,9 +31,9 @@ The following arguments are supported:
 
 The following blocks are supported inside the definition of `database_observability.mysql`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-            |        |                |
+| Hierarchy | Block | Description | Required |
+| --------- | ----- | ----------- | -------- |
+|           |       |             |          |
 
 ## Example
 
