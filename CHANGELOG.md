@@ -20,9 +20,15 @@ Main (unreleased)
 
 - Add `otelcol.receiver.solace` component to receive traces from a Solace broker. (@wildum)
 
+- Add `otelcol.exporter.syslog` component to export logs in syslog format (@dehaansa)
+
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
+
+- Add all raw configuration files & a copy of the latest remote config to the support bundle (@dehaansa)
+
+- Add relevant golang environment variables to the support bundle (@dehaansa)
 
 ### Bugfixes
 
@@ -38,6 +44,9 @@ Main (unreleased)
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
+
+- Use Go 1.23.3 for builds. (@mattdurham)
+
 
 v1.5.0
 -----------------

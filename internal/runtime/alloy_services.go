@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/syntax/ast"
 )
 
 // GetServiceConsumers implements [service.Host]. It returns a slice of
@@ -93,12 +94,12 @@ type ServiceController struct {
 }
 
 func (sc ServiceController) Run(ctx context.Context) { sc.f.Run(ctx) }
-func (sc ServiceController) LoadSource(b []byte, args map[string]any, configPath string) error {
+func (sc ServiceController) LoadSource(b []byte, args map[string]any, configPath string) (*ast.File, error) {
 	source, err := ParseSource("", b)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return sc.f.LoadSource(source, args, configPath)
+	return source.SourceFiles()[""], sc.f.LoadSource(source, args, configPath)
 }
 func (sc ServiceController) Ready() bool { return sc.f.Ready() }
 

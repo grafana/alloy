@@ -61,6 +61,37 @@ To change the set of command-line arguments passed to the {{< param "PRODUCT_NAM
 
    1. Click on **All Tasks > Restart**.
 
+## Change environment variable values
+
+The Go runtime provides several ways to modify the execution of a binary using [environment variables][environment].
+
+To change the environment variables used by {{< param "PRODUCT_NAME" >}}, perform the following steps.
+
+1. Open the Registry Editor:
+
+   1. Right click on the Start Menu and select **Run**.
+
+   1. Type `regedit` and click **OK**.
+
+1. Navigate to the key at the path `HKEY_LOCAL_MACHINE\SOFTWARE\GrafanaLabs\Alloy`.
+
+1. Double-click on the multi-string value called **Environment***.
+
+1. In the dialog box, enter the environment variable values to pass to the {{< param "PRODUCT_NAME" >}} binary.
+   Make sure that each variable is on its own line.
+
+1. Restart the {{< param "PRODUCT_NAME" >}} service:
+
+   1. Open the Windows Services manager (`services.msc`):
+
+      1. Right click on the Start Menu and select **Run**.
+
+      1. Type `services.msc` and click **OK**.
+
+   1. Right click on the service called **{{< param "PRODUCT_NAME" >}}**.
+
+   1. Click on **All Tasks > Restart**.
+
 ## Expose the UI to other machines
 
 By default, {{< param "PRODUCT_NAME" >}} listens on the local network for its HTTP
@@ -85,3 +116,4 @@ To expose the UI to other machines, complete the following steps:
      To listen on all interfaces, replace _`<LISTEN_ADDR>`_ with `0.0.0.0`.
 
 [UI]: ../../troubleshoot/debug/#alloy-ui
+[environment]: ../../reference/cli/environment-variables
