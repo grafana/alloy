@@ -29,7 +29,11 @@ The following arguments are supported:
 
 ## Blocks
 
-Coming soon.
+The following blocks are supported inside the definition of `database_observability.mysql`:
+
+Hierarchy | Block | Description | Required
+--------- | ----- | ----------- | --------
+            |        |                |
 
 ## Example
 
