@@ -472,12 +472,13 @@ func NewScope(variables map[string]interface{}) *Scope {
 
 // Lookup looks up a named identifier from the scope and the stdlib.
 func (s *Scope) Lookup(name string) (interface{}, bool) {
-	// Traverse the scope first, then fall back to stdlib.
+	// Check the scope first.
 	if s != nil {
 		if val, ok := s.Variables[name]; ok {
 			return val, true
 		}
 	}
+	// Falls back to the stdlib.
 	if ident, ok := stdlib.Identifiers[name]; ok {
 		return ident, true
 	}
