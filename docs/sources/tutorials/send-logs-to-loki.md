@@ -88,7 +88,7 @@ Install and run {{< param "PRODUCT_NAME" >}} on macOS.
 1. [Run {{< param "PRODUCT_NAME" >}}][Run on macOS].
 <!-- INTERACTIVE ignore END -->
 
-You should now be able to access the {{< param "PRODUCT_NAME" >}} UI at [http://localhost:12345](http://localhost:12345).
+You can access the {{< param "PRODUCT_NAME" >}} UI at [http://localhost:12345](http://localhost:12345).
 
 <!-- INTERACTIVE page step1.md END -->
 
@@ -104,7 +104,7 @@ This Docker Compose file includes Loki and Prometheus configured as data sources
 > The interactive sandbox has a VSCode-like editor that allows you to access files and folders. To access this feature, click on the `Editor` tab. The editor also has a terminal that you can use to run commands. Since some commands assume you are within a specific directory, we recommend running the commands in `tab1`.
 {{< /docs/ignore >}}
 
-1. Create a new directory and save the Docker Compose file as `docker-compose.yml`.
+1. Create a directory and save the Docker Compose file as `docker-compose.yml`.
 
    ```bash
    mkdir alloy-tutorial
@@ -221,6 +221,7 @@ This configuration creates a [local.file_match][] component named `local_files` 
 ### Second component: Scraping
 
 Copy and paste the following component configuration below the previous component in your `config.alloy` file:
+
 ```alloy
   loki.source.file "log_scrape" {
     targets    = local.file_match.local_files.targets
@@ -422,10 +423,5 @@ In the [next tutorial][], you learn more about configuration concepts and metric
 [loki.write]: ../../reference/components/loki/loki.write/
 [loki.source.file]: ../../reference/components/loki/loki.source.file/
 [loki.process]: ../../reference/components/loki/loki.process/
-[alloy]: https://grafana.com/docs/alloy/latest/
-[configuration]: ../../concepts/configuration-syntax/
-[install]: ../../get-started/install/binary/#install-alloy-as-a-standalone-binary
-[debugging your configuration]: ../../troubleshoot/debug/
-[parse]: ../../reference/components/loki/loki.process/
 [next tutorial]: ../send-metrics-to-prometheus/
 [loki.process]: ../../reference/components/loki/loki.process/

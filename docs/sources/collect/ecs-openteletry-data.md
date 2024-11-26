@@ -55,11 +55,11 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
 1. Choose *Create parameter*.
 1. Create a parameter with the following values:
 
-   * `Name`: otel-collector-config
-   * `Tier`: Standard
-   * `Type`: String
-   * `Data type`: Text
-   * `Value`: Copy and paste your custom OpenTelemetry configuration file or [{{< param "PRODUCT_NAME" >}} configuration file][configure].
+   * Name: `otel-collector-config`
+   * Tier: `Standard`
+   * Type: `String`
+   * Data type: `Text`
+   * Value: Copy and paste your custom OpenTelemetry configuration file or [{{< param "PRODUCT_NAME" >}} configuration file][configure].
 
 ### Run your task
 

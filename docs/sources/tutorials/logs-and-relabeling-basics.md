@@ -184,8 +184,8 @@ loki.write "local_loki" {
 {{< admonition type="tip" >}}
 You can use the [loki.relabel][] component to relabel and add labels, just like you can with the [prometheus.relabel][] component.
 
-[loki.relabel]: ../../reference/components/loki/loki.relabel
-[prometheus.relabel]: ../../reference/components/prometheus/prometheus.relabel
+[loki.relabel]: ../../reference/components/loki/loki.relabel/
+[prometheus.relabel]: ../../reference/components/prometheus/prometheus.relabel/
 {{< /admonition >}}
 
 Run {{< param "PRODUCT_NAME" >}} and execute the following:

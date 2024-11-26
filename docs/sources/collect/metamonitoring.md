@@ -16,10 +16,10 @@ This topic describes how to collect and forward metrics, logs, and traces data f
 
 ## Components and configuration blocks used in this topic
 
-* [prometheus.exporter.self][]
-* [prometheus.scrape][]
-* [logging][]
-* [tracing][]
+* [`prometheus.exporter.self`][prometheus.exporter.self]
+* [`prometheus.scrape`][prometheus.scrape]
+* [`logging`][logging]
+* [`tracing`][tracing]
 
 ## Before you begin
 
@@ -30,7 +30,7 @@ This topic describes how to collect and forward metrics, logs, and traces data f
 
 {{< param "PRODUCT_NAME" >}} exposes its internal metrics using the Prometheus exposition format.
 
-In this task, you use the [prometheus.exporter.self][] and [prometheus.scrape][] components to scrape {{< param "PRODUCT_NAME" >}}'s  internal metrics and forward it to compatible {{< param "PRODUCT_NAME" >}} components.
+In this task, you use the [`prometheus.exporter.self`][prometheus.exporter.self] and [`prometheus.scrape`][prometheus.scrape] components to scrape {{< param "PRODUCT_NAME" >}}'s  internal metrics and forward it to compatible {{< param "PRODUCT_NAME" >}} components.
 
 1. Add the following `prometheus.exporter.self` component to your configuration. The component accepts no arguments.
 

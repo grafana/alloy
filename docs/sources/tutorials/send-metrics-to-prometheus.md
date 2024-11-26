@@ -49,7 +49,7 @@ To complete this tutorial:
 
 <!-- INTERACTIVE ignore START -->
 {{< admonition type="tip" >}}
-Alternatively, you can try out this example in our interactive learning environment: [Sending metrics to Prometheus](https://killercoda.com/grafana-labs/course/alloy/send-metrics-to-prometheus).
+Alternatively, you can try out this example in the interactive learning environment: [Sending metrics to Prometheus](https://killercoda.com/grafana-labs/course/alloy/send-metrics-to-prometheus).
 
 It's a fully configured environment with all the dependencies already installed.
 
@@ -205,7 +205,7 @@ curl -X POST http://localhost:12345/-/reload
 This step uses the {{< param "PRODUCT_NAME" >}} UI, on `localhost` port `12345`.
 If you choose to run Alloy in a Docker container, make sure you use the `--server.http.listen-addr=0.0.0.0:12345` argument.
 
-If you don’t use this argument, the [debugging UI][debug] won’t be available outside of the Docker container.
+If you don't use this argument, the [debugging UI][debug] won't be available outside of the Docker container.
 
 [debug]: ../../troubleshoot/debug/#alloy-ui
 {{< /admonition >}}
@@ -213,7 +213,7 @@ If you don’t use this argument, the [debugging UI][debug] won’t be available
 
 {{< docs/ignore >}}
 
-> This step uses the {{< param "PRODUCT_NAME" >}} UI on `localhost` port `12345`. If you chose to run {{< param "PRODUCT_NAME" >}} in a Docker container, make sure you use the `--server.http.listen-addr=` argument. If you don’t use this argument, the [debugging UI](../../troubleshoot/debug/#alloy-ui) won’t be available outside of the Docker container.
+> This step uses the {{< param "PRODUCT_NAME" >}} UI on `localhost` port `12345`. If you chose to run {{< param "PRODUCT_NAME" >}} in a Docker container, make sure you use the `--server.http.listen-addr=` argument. If you don't use this argument, the [debugging UI](../../troubleshoot/debug/#alloy-ui) won't be available outside of the Docker container.
 
 {{< /docs/ignore >}}
 
@@ -264,11 +264,11 @@ You can see that the components are healthy, and you are ready to explore the me
 
 Open [http://localhost:3000/explore/metrics/](http://localhost:3000/explore/metrics/) to access the **Explore Metrics** feature in Grafana.
 
-From here you can visually explore the metrics that are being sent to Prometheus by {{< param "PRODUCT_NAME" >}}. 
+From here you can visually explore the metrics sent to Prometheus by {{< param "PRODUCT_NAME" >}}.
 
 {{< figure src="/media/docs/alloy/explore-metrics.png" alt="Explore Metrics App" >}}
 
-You can also build promQL queries manually to explore the data further.
+You can also build PromQL queries manually to explore the data further.
 
 Open [http://localhost:3000/explore](http://localhost:3000/explore) to access the **Explore** feature in Grafana.
 

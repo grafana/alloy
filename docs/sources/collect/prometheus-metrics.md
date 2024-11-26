@@ -18,9 +18,9 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [discovery.kubernetes][]
-* [prometheus.remote_write][]
-* [prometheus.scrape][]
+* [`discovery.kubernetes`][discovery.kubernetes]
+* [`prometheus.remote_write`][prometheus.remote_write]
+* [`prometheus.scrape`][prometheus.scrape]
 
 ## Before you begin
 
@@ -34,7 +34,7 @@ This topic describes how to:
 
 Before components can collect Prometheus metrics, you must have a component responsible for writing those metrics somewhere.
 
-The [prometheus.remote_write][] component is responsible for delivering Prometheus metrics to one or more Prometheus-compatible endpoints.
+The [`prometheus.remote_write`][prometheus.remote_write] component is responsible for delivering Prometheus metrics to one or more Prometheus-compatible endpoints.
 After a `prometheus.remote_write` component is defined, you can use other {{< param "PRODUCT_NAME" >}} components to forward metrics to it.
 
 To configure a `prometheus.remote_write` component for metrics delivery, complete the following steps:
@@ -226,7 +226,7 @@ prometheus.remote_write "default" {
 }
 ```
 
-For more information on configuring Kubernetes service delivery and collecting metrics, refer to [discovery.kubernetes][] and [prometheus.scrape][].
+For more information on configuring Kubernetes service delivery and collecting metrics, refer to [`discovery.kubernetes`][discovery.kubernetes] and [`prometheus.scrape`][prometheus.scrape].
 
 ## Collect metrics from Kubernetes Services
 
@@ -352,7 +352,7 @@ prometheus.remote_write "default" {
 }
 ```
 
-For more information on configuring Kubernetes service delivery and collecting metrics, refer to [discovery.kubernetes][] and [prometheus.scrape][].
+For more information on configuring Kubernetes service delivery and collecting metrics, refer to [`discovery.kubernetes`][discovery.kubernetes] and [`prometheus.scrape`][prometheus.scrape].
 
 ## Collect metrics from custom targets
 
@@ -384,7 +384,7 @@ To collect metrics from a custom set of targets, complete the following steps.
      * To explicitly specify which HTTP path to collect metrics from, set the `__metrics_path__` key to the HTTP path to use.
        If the `__metrics_path__` key isn't provided, the path to use is inherited by the settings of the `prometheus.scrape` component. The default is `"/metrics"`.
      * Add additional keys as desired to inject extra labels to collected metrics.
-       Any label starting with two underscores (`__`) will be dropped prior to scraping.
+       Any label starting with two underscores (`__`) is dropped prior to scraping.
 
    * _`<REMOTE_WRITE_LABEL>`_: The label for your `prometheus.remote_write` component.
 

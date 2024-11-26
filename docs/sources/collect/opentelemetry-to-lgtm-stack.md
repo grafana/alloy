@@ -20,14 +20,14 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [loki.write][]
-* [otelcol.auth.basic][]
-* [otelcol.exporter.loki][]
-* [otelcol.exporter.otlp][]
-* [otelcol.exporter.prometheus][]
-* [otelcol.processor.batch][]
-* [otelcol.receiver.otlp][]
-* [prometheus.remote_write][]
+* [`loki.write`][loki.write]
+* [`otelcol.auth.basic`][otelcol.auth.basic]
+* [`otelcol.exporter.loki`][otelcol.exporter.loki]
+* [`otelcol.exporter.otlp`][otelcol.exporter.otlp]
+* [`otelcol.exporter.prometheus`][otelcol.exporter.prometheus]
+* [`otelcol.processor.batch`][otelcol.processor.batch]
+* [`otelcol.receiver.otlp`][otelcol.receiver.otlp]
+* [`prometheus.remote_write`][prometheus.remote_write]
 
 ## Before you begin
 
@@ -122,7 +122,7 @@ Traces: OTel → batch processor → OTel exporter
 ### Grafana Loki
 
 [Grafana Loki][] is a horizontally scalable, highly available, multi-tenant log aggregation system inspired by Prometheus.
-Similar to Prometheus, to send from OTLP to Loki, you can configure pass-through from the [otelcol.exporter.loki][] component to [loki.write][] component.
+Similar to Prometheus, to send from OTLP to Loki, you can configure pass-through from the [`otelcol.exporter.loki`][otelcol.exporter.loki] component to [`loki.write`][loki.write] component.
 
 ```alloy
 otelcol.exporter.loki "default" {
@@ -136,7 +136,7 @@ loki.write "default" {
 }
 ```
 
-To use Loki with basic-auth, which is required with Grafana Cloud Logs, you must configure the [loki.write][] component.
+To use Loki with basic-auth, which is required with Grafana Cloud Logs, you must configure the [`loki.write`][loki.write] component.
 You can get the Loki configuration from the Loki **Details** page in the [Grafana Cloud Portal][].
 
 ```alloy
@@ -189,7 +189,7 @@ otelcol.auth.basic "grafana_cloud_traces" {
 ### Grafana Mimir or Prometheus Remote Write
 
 [Prometheus Remote Write][] is a popular metrics transmission protocol supported by most metrics systems, including [Grafana Mimir][] and Grafana Cloud.
-To send from OTLP to a Prometheus compatible `remote_write` endpoint, you can configure pass-through from the [otelcol.exporter.prometheus][] to the [prometheus.remote_write][] component.
+To send from OTLP to a Prometheus compatible `remote_write` endpoint, you can configure pass-through from the [`otelcol.exporter.prometheus`][otelcol.exporter.prometheus] to the [`prometheus.remote_write`][prometheus.remote_write] component.
 The Prometheus remote write component in {{< param "PRODUCT_NAME" >}} is a robust protocol implementation, including a Write Ahead Log (WAL) for resiliency.
 
 ```alloy
@@ -204,7 +204,7 @@ prometheus.remote_write "default" {
 }
 ```
 
-To use Prometheus with basic-auth, which is required with Grafana Cloud Metrics, you must configure the [prometheus.remote_write][] component.
+To use Prometheus with basic-auth, which is required with Grafana Cloud Metrics, you must configure the [`prometheus.remote_write`][prometheus.remote_write] component.
 You can get the Prometheus configuration from the Prometheus **Details** page in the [Grafana Cloud Portal][].
 
 ```alloy
