@@ -43,8 +43,8 @@ func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		HTTPServer: otelcol.HTTPServerArguments{
 			Endpoint:              "localhost:8086",
-			// CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
-			CompressionAlgorithms: []string{""}, // compression algs not supported by influx receiver
+			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
+			// compression algs not supported by influx receiver
 		},
 	}
 	args.DebugMetrics.SetToDefault()
