@@ -55,7 +55,7 @@ endpoint > oauth2 > tls_config | [tls_config][] | Configure TLS settings for con
 endpoint > sigv4 | [sigv4][] | Configure AWS Signature Verification 4 for authenticating to the endpoint. | no
 endpoint > azuread | [azuread][] | Configure AzureAD for authenticating to the endpoint. | no
 endpoint > azuread > managed_identity | [managed_identity][] | Configure Azure user-assigned managed identity. | no
-endpoint > azuread > oauth | [oauth][] | Configure Azure application managed identity. | no
+endpoint > azuread > oauth | [oauth][] | Configure Azure application authenication. | no
 endpoint > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
 endpoint > queue_config | [queue_config][] | Configuration for how metrics are batched before sending. | no
 endpoint > metadata_config | [metadata_config][] | Configuration for how metric metadata is sent. | no
