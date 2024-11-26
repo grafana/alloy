@@ -17,7 +17,7 @@ Documented functionality that's released as _Generally available_ is covered by 
 
 * **APIs**, for any network or code API released as v1.0.0 or later.
 
-* **Observability data used in official dashboards**, where the official set of dashboards are found in [the `alloy-mixin/` directory][alloy-mixin].
+* **Observability data used in official dashboards**, where the official set of dashboards are found in the [`alloy-mixin/`][alloy-mixin] directory.
 
 ## Exceptions
 
