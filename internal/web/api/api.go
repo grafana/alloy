@@ -66,7 +66,7 @@ func listComponentsHandlerRemoteCfg(host service.Host) http.HandlerFunc {
 			return
 		}
 
-		listComponentsHandlerInternal(svc.Data().(*remotecfg.Data).Host, w, r)
+		listComponentsHandlerInternal(svc.Data().(remotecfg.Data).Host, w, r)
 	}
 }
 
@@ -108,7 +108,7 @@ func getComponentHandlerRemoteCfg(host service.Host) http.HandlerFunc {
 			return
 		}
 
-		getComponentHandlerInternal(svc.Data().(*remotecfg.Data).Host, w, r)
+		getComponentHandlerInternal(svc.Data().(remotecfg.Data).Host, w, r)
 	}
 }
 
