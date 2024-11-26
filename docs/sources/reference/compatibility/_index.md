@@ -43,6 +43,10 @@ The following components, grouped by namespace, _export_ Targets.
 - [beyla.ebpf](../components/beyla/beyla.ebpf)
 {{< /collapse >}}
 
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
+{{< /collapse >}}
+
 {{< collapse title="discovery" >}}
 - [discovery.azure](../components/discovery/discovery.azure)
 - [discovery.consul](../components/discovery/discovery.consul)
@@ -235,6 +239,10 @@ The following components, grouped by namespace, _export_ Loki `LogsReceiver`.
 The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Loki `LogsReceiver` -->
+
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
+{{< /collapse >}}
 
 {{< collapse title="faro" >}}
 - [faro.receiver](../components/faro/faro.receiver)
