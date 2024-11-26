@@ -2,8 +2,9 @@ package operator
 
 import (
 	"fmt"
-	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 	"time"
+
+	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
@@ -36,6 +37,8 @@ type Arguments struct {
 	RelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 
 	Scrape ScrapeOptions `alloy:"scrape,block,optional"`
+
+	InformerSyncTimeout time.Duration `alloy:"informer_sync_timeout,attr,optional"`
 }
 
 // ScrapeOptions holds values that configure scraping behavior.
@@ -58,7 +61,8 @@ var DefaultArguments = Arguments{
 	Client: kubernetes.ClientArguments{
 		HTTPClientConfig: config.DefaultHTTPClientConfig,
 	},
-	KubernetesRole: string(promk8s.RoleEndpoint),
+	KubernetesRole:      string(promk8s.RoleEndpoint),
+	InformerSyncTimeout: 10 * time.Second,
 }
 
 // SetToDefault implements syntax.Defaulter.
