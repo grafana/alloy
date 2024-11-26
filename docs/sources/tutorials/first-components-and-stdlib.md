@@ -127,9 +127,9 @@ Now that you have a simple pipeline, you can send your first metrics.
 
 ### Recommended reading
 
-* Optional: [prometheus.exporter.unix][]
-* Optional: [prometheus.scrape][]
-* Optional: [prometheus.remote_write][]
+* Optional: [`prometheus.exporter.unix`][prometheus.exporter.unix]
+* Optional: [`prometheus.scrape`][prometheus.scrape]
+* Optional: [`prometheus.remote_write`][prometheus.remote_write]
 
 ### Modify your pipeline and scrape the metrics
 
@@ -198,7 +198,7 @@ The following exercise guides you through modifying your pipeline to scrape metr
 
 ### Recommended Reading
 
-* Optional: [prometheus.exporter.redis][]
+* Optional: [`prometheus.exporter.redis`][prometheus.exporter.redis]
 
 Start a container running Redis and configure {{< param "PRODUCT_NAME" >}} to scrape the metrics.
 
@@ -207,14 +207,14 @@ docker container run -d --name alloy-redis -p 6379:6379 --rm redis
 ```
 
 Try modifying the pipeline to scrape metrics from the Redis exporter.
-You can refer to the [prometheus.exporter.redis][] component documentation for more information on how to configure it.
+You can refer to the [`prometheus.exporter.redis`][prometheus.exporter.redis] component documentation for more information on how to configure it.
 
 To give a visual hint, you want to create a pipeline that looks like this:
 
 {{< figure src="/media/docs/alloy/diagram-example-pipeline-exercise-alloy.png" alt="Exercise pipeline, with a scrape, unix_exporter, redis_exporter, and remote_write component" >}}
 
 {{< admonition type="tip" >}}
-Refer to the [array.concat][] standard library function for information about combining lists of values into a single list.
+Refer to the [`array.concat`][array.concat] standard library function for information about combining lists of values into a single list.
 
 [array.concat]: ../../reference/stdlib/array/
 {{< /admonition >}}

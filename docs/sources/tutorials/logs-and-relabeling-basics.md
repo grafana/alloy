@@ -22,7 +22,7 @@ Now that you have built a basic pipeline and scraped some metrics, you can use t
 
 ### Recommended reading
 
-* Optional: [prometheus.relabel][]
+* Optional: [`prometheus.relabel`][prometheus.relabel]
 
 ### Add a `prometheus.relabel` component to your pipeline
 
@@ -75,7 +75,7 @@ Each rule block is applied in order.
 If you run {{< param "PRODUCT_NAME" >}} and navigate to [http://localhost:3000/explore][], you can see the `os` label on the metrics.
 Try querying for `node_context_switches_total` and look at the labels.
 
-Relabeling uses the same rules as Prometheus. You can always refer to the [prometheus.relabel rule-block][] documentation for a full list of available options.
+Relabeling uses the same rules as Prometheus. You can always refer to the [`prometheus.relabel rule-block`][prometheus.relabel rule-block] documentation for a full list of available options.
 
 {{< admonition type="note" >}}
 You can forward multiple components to one `prometheus.relabel` component. This allows you to apply the same relabeling rules to multiple pipelines.
@@ -84,7 +84,7 @@ You can forward multiple components to one `prometheus.relabel` component. This 
 {{< admonition type="warning" >}}
 There is an issue commonly faced when relabeling and using labels that start with `__` (double underscore).
 These labels are considered internal and are dropped before relabeling rules from a `prometheus.relabel` component are applied.
-If you would like to keep or act on these kinds of labels, use a [discovery.relabel][] component.
+If you would like to keep or act on these kinds of labels, use a [`discovery.relabel`][discovery.relabel] component.
 
 [discovery.relabel]: ../../reference/components/discovery/discovery.relabel/
 {{< /admonition >}}
@@ -95,9 +95,9 @@ Now that you've created components and chained them together, you can collect so
 
 ### Recommended reading
 
-* Optional: [local.file_match][]
-* Optional: [loki.source.file][]
-* Optional: [loki.write][]
+* Optional: [`local.file_match`][local.file_match]
+* Optional: [`loki.source.file`][loki.source.file]
+* Optional: [`loki.write`][loki.write]
 
 ### Find and collect the logs
 
@@ -154,8 +154,8 @@ The following exercise guides you through adding a label to the logs, and filter
 
 ### Recommended reading
 
-* [loki.relabel][]
-* [loki.process][]
+* [`loki.relabel`][loki.relabel]
+* [`loki.process`][loki.process]
 
 ### Add a Label to Logs
 
@@ -182,7 +182,7 @@ loki.write "local_loki" {
 ```
 
 {{< admonition type="tip" >}}
-You can use the [loki.relabel][] component to relabel and add labels, just like you can with the [prometheus.relabel][] component.
+You can use the [`loki.relabel`][loki.relabel] component to relabel and add labels, just like you can with the [`prometheus.relabel`][prometheus.relabel] component.
 
 [loki.relabel]: ../../reference/components/loki/loki.relabel/
 [prometheus.relabel]: ../../reference/components/prometheus/prometheus.relabel/
@@ -244,7 +244,7 @@ You can always come back to this exercise later.
 
 This exercise builds on the previous one, though it's more involved.
 
-Assume you want to extract the `level` from the logs and add it as a label. As a starting point, look at [loki.process][].
+Assume you want to extract the `level` from the logs and add it as a label. As a starting point, look at [`loki.process`][loki.process].
 This component allows you to perform processing on logs, including extracting values from log contents.
 
 Try modifying your configuration from the previous section to extract the `level` from the logs and add it as a label.

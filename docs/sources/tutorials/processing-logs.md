@@ -24,7 +24,7 @@ It can be useful for receiving logs from other {{< param "PRODUCT_NAME" >}}s or 
 
 ### Recommended reading
 
-* Optional: [loki.source.api][]
+* Optional: [`loki.source.api`][loki.source.api]
 
 ### Set up the `loki.source.api` component
 
@@ -54,9 +54,9 @@ You are configuring the `loki.source.api` component to listen on `127.0.0.1:9999
 
 ### Recommended reading
 
-* [loki.process#stage.drop][]
-* [loki.process#stage.json][]
-* [loki.process#stage.labels][]
+* [`loki.process#stage.drop`][loki.process#stage.drop]
+* [`loki.process#stage.json`][loki.process#stage.json]
+* [`loki.process#stage.labels`][loki.process#stage.labels]
 
 ### Configure the `loki.process` and `loki.write` components
 
@@ -301,7 +301,7 @@ stage.drop {
 This stage acts on the `is_secret` value in the extracted map, which is a value that you extracted in the previous stage.
 This stage drops the log line if the value of `is_secret` is `"true"` and doesn't modify the extracted map.
 There are many other ways to filter logs, but this is a simple example.
-Refer to the [loki.process#stage.drop][] documentation for more information.
+Refer to the [`loki.process`][loki.process#stage.drop] stage.drop documentation for more information.
 
 #### Stage 5
 
@@ -363,12 +363,12 @@ You can also try adding more stages to the `loki.process` component to extract m
 ## Exercise
 
 Since you are already using Docker and Docker exports logs, you can send those logs to Loki.
-Refer to the [discovery.docker][] and [loki.source.docker][] documentation for more information.
+Refer to the [`discovery.docker`][discovery.docker] and [`loki.source.docker`][loki.source.docker] documentation for more information.
 
 To ensure proper timestamps and other labels, make sure you use a `loki.process` component to process the logs before sending them to Loki.
 
 Although you haven't used it before, you can use a `discovery.relabel` component to attach the container name as a label to the logs.
-You can refer to the [discovery.relabel][] documentation for more information.
+You can refer to the [`discovery.relabel`][discovery.relabel] documentation for more information.
 The `discovery.relabel` component is very similar to the `prometheus.relabel` component, but it relabels discovered targets rather than metrics.
 
 {{< collapse title="Solution" >}}

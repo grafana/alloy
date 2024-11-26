@@ -22,12 +22,12 @@ You may not want to upload your profiles to a public location.
 The port you use to send the HTTP request is controlled by the `--server.http.listen-addr` [command line argument][cmd-cli].
 It's set to `127.0.0.1:12345` by default.
 
-[pprof-pkg]: https://pkg.go.dev/net/http/pprof
+[pprof-pkg]: https://pkg.go.dev/net/http/pprof/
 [pyroscope-adhoc]: https://play.grafana.org/a/grafana-pyroscope-app/ad-hoc
-[go-pprof]: https://go.dev/blog/pprof
+[go-pprof]: https://go.dev/blog/pprof/
 [pyroscope-getstarted]: https://grafana.com/docs/pyroscope/latest/get-started/
 [flame-graph]: https://grafana.com/docs/pyroscope/latest/view-and-analyze-profile-data/flamegraphs/
-[cmd-cli]: ../../reference/cli/run
+[cmd-cli]: ../../reference/cli/run/
 
 ## Obtain a single profile
 
@@ -84,13 +84,13 @@ pyroscope.write "default" {
 }
 ```
 
-[pyroscope components]: ../../reference/components/pyroscope
+[pyroscope components]: ../../reference/components/pyroscope/
 
 ## Expected resource consumption
 
 Refer to [Estimate resource usage][res-usage] for more information about the expected resource consumption in {{< param "PRODUCT_NAME" >}}.
 
-[res-usage]: ../../introduction/estimate-resource-usage
+[res-usage]: ../../introduction/estimate-resource-usage/
 
 ## {{% param "PRODUCT_NAME" %}} consumes an abnormally large amount of resources
 
@@ -98,4 +98,4 @@ If {{< param "PRODUCT_NAME" >}} consumes an abnormally large amount of resources
 Attach your pprof files and your {{< param "PRODUCT_NAME" >}} configuration file.
 Make sure you redact any secrets in the attachments.
 
-[alloy-repo]: https://github.com/grafana/alloy/issue
+[alloy-repo]: https://github.com/grafana/alloy/issue/
