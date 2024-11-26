@@ -25,15 +25,13 @@ The following arguments are supported:
 
 | Name                 | Type           | Description                                                                                                         | Default | Required |
 | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `data_source_name`   | `secret`       | [Data Source Name](https://github.com/go-sql-driver/mysql#dsn-data-source-name) for the MySQL server to connect to. |         | yes      |
+| `data_source_name` | `secret`             | [Data Source Name](https://github.com/go-sql-driver/mysql#dsn-data-source-name) for the MySQL server to connect to.                   |         | yes      |
+| `forward_to`       | `list(LogsReceiver)` | Where to forward log entries after processing.     |         | yes      |
+| `collect_interval` | `duration`           | How frequently to collect query samples from database | `"10s"` | no       |
 
 ## Blocks
 
-The following blocks are supported inside the definition of `database_observability.mysql`:
-
-| Hierarchy | Block | Description | Required |
-| --------- | ----- | ----------- | -------- |
-|           |       |             |          |
+The `database_observability.mysql` component does not support any blocks, and is configured fully through arguments.
 
 ## Example
 
