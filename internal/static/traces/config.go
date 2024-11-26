@@ -319,7 +319,11 @@ func (c OAuth2Config) toOtelConfig() map[string]interface{} {
 	m := make(map[string]interface{}, 0)
 	m["client_id"] = c.ClientID
 	m["client_secret"] = c.ClientSecret
-	m["endpoint_params"] = c.EndpointParams
+	// Ensures consistent output after changes to otelcolConfigFromStringMap,
+	// as the function now encodes to yaml before using the otelcol libraries to unmarshal
+	if len(c.EndpointParams) > 0 {
+		m["endpoint_params"] = c.EndpointParams
+	}
 	m["token_url"] = c.TokenURL
 	m["scopes"] = c.Scopes
 	m["tls"] = c.TLS.toOtelConfig()
