@@ -62,7 +62,7 @@ var DefaultArguments = Arguments{
 		HTTPClientConfig: config.DefaultHTTPClientConfig,
 	},
 	KubernetesRole:      string(promk8s.RoleEndpoint),
-	InformerSyncTimeout: 10 * time.Second,
+	InformerSyncTimeout: time.Minute,
 }
 
 // SetToDefault implements syntax.Defaulter.
