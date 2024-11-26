@@ -106,6 +106,8 @@ v1.5.0
 
 - Add `proxy_url` to `otelcol.exporter.otlphttp`. (@wildum)
 
+- Allow setting `informer_sync_timeout` in prometheus.operator.* components. (@captncraig)
+
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
