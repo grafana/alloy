@@ -47,7 +47,7 @@ To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the foll
 1. Reinstall the {{< param "PRODUCT_NAME" >}} Formula by running the following command in a terminal:
 
    ```shell
-   brew reinstall alloy
+   brew reinstall --formula alloy
    ```
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service by running the command in a terminal:
