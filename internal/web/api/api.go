@@ -18,19 +18,19 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/prometheus/prometheus/util/httputil"
 )
 
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
 	alloy           service.Host
-	remotecfg       service.Host
 	CallbackManager livedebugging.CallbackManager
 }
 
 // NewAlloyAPI instantiates a new Alloy API.
-func NewAlloyAPI(alloy, remotecfg service.Host, CallbackManager livedebugging.CallbackManager) *AlloyAPI {
-	return &AlloyAPI{alloy: alloy, remotecfg: remotecfg, CallbackManager: CallbackManager}
+func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager) *AlloyAPI {
+	return &AlloyAPI{alloy: alloy, CallbackManager: CallbackManager}
 }
 
 // RegisterRoutes registers all the API's routes.
@@ -40,13 +40,13 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	// component IDs.
 
 	r.Handle(path.Join(urlPrefix, "/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: listComponentsHandler(a.alloy)})
-	r.Handle(path.Join(urlPrefix, "/remotecfg/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: listComponentsHandler(a.remotecfg)})
+	r.Handle(path.Join(urlPrefix, "/remotecfg/modules/{moduleID:.+}/components"), httputil.CompressionHandler{Handler: listComponentsHandlerRemoteCfg(a.alloy)})
 
 	r.Handle(path.Join(urlPrefix, "/components"), httputil.CompressionHandler{Handler: listComponentsHandler(a.alloy)})
-	r.Handle(path.Join(urlPrefix, "/remotecfg/components"), httputil.CompressionHandler{Handler: listComponentsHandler(a.remotecfg)})
+	r.Handle(path.Join(urlPrefix, "/remotecfg/components"), httputil.CompressionHandler{Handler: listComponentsHandlerRemoteCfg(a.alloy)})
 
 	r.Handle(path.Join(urlPrefix, "/components/{id:.+}"), httputil.CompressionHandler{Handler: getComponentHandler(a.alloy)})
-	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: getComponentHandler(a.remotecfg)})
+	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: getComponentHandlerRemoteCfg(a.alloy)})
 
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: getClusteringPeersHandler(a.alloy)})
 	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
@@ -54,53 +54,85 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// moduleID is set from the /modules/{moduleID:.+}/components route above
-		// but not from the /components route.
-		var moduleID string
-		if vars := mux.Vars(r); vars != nil {
-			moduleID = vars["moduleID"]
-		}
-
-		components, err := host.ListComponents(moduleID, component.InfoOptions{
-			GetHealth: true,
-		})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		bb, err := json.Marshal(components)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		_, _ = w.Write(bb)
+		listComponentsHandlerInternal(host, w, r)
 	}
+}
+
+func listComponentsHandlerRemoteCfg(host service.Host) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		svc, found := host.GetService(remotecfg.ServiceName)
+		if !found {
+			http.Error(w, "remote config service not available", http.StatusInternalServerError)
+			return
+		}
+
+		listComponentsHandlerInternal(svc.Data().(*remotecfg.Data).Host, w, r)
+	}
+}
+
+func listComponentsHandlerInternal(host service.Host, w http.ResponseWriter, r *http.Request) {
+	// moduleID is set from the /modules/{moduleID:.+}/components route above
+	// but not from the /components route.
+	var moduleID string
+	if vars := mux.Vars(r); vars != nil {
+		moduleID = vars["moduleID"]
+	}
+
+	components, err := host.ListComponents(moduleID, component.InfoOptions{
+		GetHealth: true,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	bb, err := json.Marshal(components)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_, _ = w.Write(bb)
 }
 
 func getComponentHandler(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		requestedComponent := component.ParseID(vars["id"])
-
-		component, err := host.GetComponent(requestedComponent, component.InfoOptions{
-			GetHealth:    true,
-			GetArguments: true,
-			GetExports:   true,
-			GetDebugInfo: true,
-		})
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-
-		bb, err := json.Marshal(component)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		_, _ = w.Write(bb)
+		getComponentHandlerInternal(host, w, r)
 	}
+}
+
+func getComponentHandlerRemoteCfg(host service.Host) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		svc, found := host.GetService(remotecfg.ServiceName)
+		if !found {
+			http.Error(w, "remote config service not available", http.StatusInternalServerError)
+			return
+		}
+
+		getComponentHandlerInternal(svc.Data().(*remotecfg.Data).Host, w, r)
+	}
+}
+
+func getComponentHandlerInternal(host service.Host, w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	requestedComponent := component.ParseID(vars["id"])
+
+	component, err := host.GetComponent(requestedComponent, component.InfoOptions{
+		GetHealth:    true,
+		GetArguments: true,
+		GetExports:   true,
+		GetDebugInfo: true,
+	})
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	bb, err := json.Marshal(component)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_, _ = w.Write(bb)
 }
 
 func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
