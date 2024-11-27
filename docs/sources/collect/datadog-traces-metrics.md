@@ -151,7 +151,7 @@ You can do this by setting up your Datadog Agent in the following way:
     dd_url: http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_PORT>
    ```
 
-Or by setting an environment variable:
+   Or by setting an environment variable:
 
    ```bash
    DD_DD_URL='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_PORT>": ["datadog-receiver"]}'

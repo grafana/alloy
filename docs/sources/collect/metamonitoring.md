@@ -120,7 +120,7 @@ loki.write "default" {
 
 The [tracing][] block defines the tracing behavior of {{< param "PRODUCT_NAME" >}}.
 
-In this task you use the [tracing][] block to forward {{< param "PRODUCT_NAME" >}} internal traces to a compatible component. The block is specified without a label and can only be provided once per configuration file.
+In this task, you use the [tracing][] block to forward {{< param "PRODUCT_NAME" >}} internal traces to a compatible component. The block is specified without a label and can only be provided once per configuration file.
 
 1. Add the following `tracing` configuration block to the top level of your configuration file.
 
