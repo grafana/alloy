@@ -5,6 +5,7 @@
 package ebpf
 
 import (
+	"github.com/grafana/alloy/internal/util"
 	ebpfmetrics "github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -49,14 +50,12 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}
 
 	if reg != nil {
-		reg.MustRegister(
-			m.targetsActive,
-			m.profilingSessionsTotal,
-			m.profilingSessionsFailingTotal,
-			m.pprofsTotal,
-			m.pprofBytesTotal,
-			m.pprofSamplesTotal,
-		)
+		m.targetsActive = util.MustRegisterOrGet(reg, m.targetsActive).(prometheus.Gauge)
+		m.profilingSessionsTotal = util.MustRegisterOrGet(reg, m.profilingSessionsTotal).(prometheus.Counter)
+		m.profilingSessionsFailingTotal = util.MustRegisterOrGet(reg, m.profilingSessionsFailingTotal).(prometheus.Counter)
+		m.pprofsTotal = util.MustRegisterOrGet(reg, m.pprofsTotal).(*prometheus.CounterVec)
+		m.pprofBytesTotal = util.MustRegisterOrGet(reg, m.pprofBytesTotal).(*prometheus.CounterVec)
+		m.pprofSamplesTotal = util.MustRegisterOrGet(reg, m.pprofSamplesTotal).(*prometheus.CounterVec)
 	}
 
 	return m
